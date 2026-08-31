@@ -1,0 +1,988 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f2f3f0">
+<title>In tem SKU</title>
+<!--
+  ══════════════════════════════════════════════════════════════════════════════════════════════
+  TRANG IN TEM SKU — BẢN RÚT GỌN CHO NHÂN VIÊN KHO
+  ══════════════════════════════════════════════════════════════════════════════════════════════
+  KHÔNG có gì mới ở phía sau. Trang này đi ĐÚNG con đường mà dashboard đang đi:
+
+      điện thoại → Apps Script (pr_them) → hàng đợi → agent trên DESKTOP-JE75K38 → TSC PE200
+
+  Máy trạm không phải sửa một dòng nào, không phải cài gì, không phải bật thêm gì. Agent và task
+  cọc chống đang chạy hoàn toàn không biết có trang này tồn tại — với nó đây chỉ là thêm một
+  người bấm In.
+
+  ĐẶT Ở ĐÂU: repo riêng, tên miền riêng — chạy độc lập, không cần tệp nào bên cạnh. Hai hệ quả của
+  việc tách repo, cả hai đã xử lý nhưng phải biết:
+    · Lõi tem NHÚNG SẴN trong tệp này (khối mã đầu tiên trong tệp) thay vì đọc từ `index.html`. Đây là
+      bản thứ hai của lõi — sửa bên dashboard thì phải chép sang, xem `CACH-DUNG.md`.
+    · Khoá thiết bị `tb-khoa` theo tên miền, nên KHÔNG mang được từ dashboard sang. Mọi máy phải
+      cấp quyền lại một lần ở tên miền mới, bằng link `#khoa=<mã>`.
+
+  Vì sao làm bản riêng thay vì bảo nhân viên dùng dashboard: dashboard là công cụ của người quản
+  lý, nặng và nhiều thứ không liên quan tới việc dán tem. Trang này chỉ có ba việc.
+  ══════════════════════════════════════════════════════════════════════════════════════════════
+-->
+<style>
+/* Bảng màu lấy từ hệ thống nhà máy (cam thương hiệu #c95d0c). Nền xám-giấy chứ không trắng tinh:
+   kho sáng chói, trắng tinh trên điện thoại ngoài xưởng bị loá. */
+:root{
+  --giay:#f2f3f0; --the:#fff; --muc:#14181b; --muc2:#5d6a70; --muc3:#8b969b;
+  --vien:#dfe3df; --vien2:#eceee9;
+  --cam:#c95d0c; --cam-dam:#a44a08; --cam-mo:#fdf0e4;
+  --ok:#2f7a55; --ok-mo:#e8f3ed; --canh:#b45309; --canh-mo:#fdf3e3; --xau:#c0392b; --xau-mo:#fbeceb;
+  --bo:12px; --nhip:cubic-bezier(.2,.7,.3,1);
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--giay);color:var(--muc);font-size:15px;line-height:1.5;padding-bottom:104px;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  -webkit-font-smoothing:antialiased}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+.top{position:sticky;top:0;z-index:40;background:rgba(242,243,240,.93);backdrop-filter:blur(8px);
+  border-bottom:1px solid var(--vien);padding:10px 16px;display:flex;align-items:center;gap:10px}
+.top h1{font-size:16px;font-weight:750;margin:0;flex:1;letter-spacing:-.01em}
+.boc{max-width:900px;margin:0 auto;padding:16px}
+.the{background:var(--the);border:1px solid var(--vien);border-radius:16px;padding:16px;
+  box-shadow:0 1px 2px rgba(20,24,27,.05),0 8px 24px -12px rgba(20,24,27,.18);margin-bottom:14px}
+.nhan{display:block;font-size:10.5px;font-weight:750;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--muc3);margin-bottom:7px}
+.buoc{display:flex;align-items:baseline;gap:9px;margin:0 0 12px}
+.buoc b{font-size:11px;font-weight:800;color:var(--cam);letter-spacing:.06em}
+.buoc span{font-size:15px;font-weight:700}
+/* Ô nhập 16px để iOS không tự phóng to trang; cao ≥50px cho ngón tay đeo găng kho */
+.o{width:100%;min-height:50px;padding:12px 14px;font-size:16px;font-family:inherit;color:var(--muc);
+  background:var(--the);border:1.5px solid var(--vien);border-radius:var(--bo);outline:none;
+  transition:border-color .15s var(--nhip),box-shadow .15s var(--nhip)}
+.o:focus{border-color:var(--cam);box-shadow:0 0 0 3px var(--cam-mo)}
+.o.ma{font-variant-numeric:tabular-nums;letter-spacing:.06em;font-weight:700;font-size:19px}
+.hang{display:flex;gap:10px;flex-wrap:wrap}.hang>*{flex:1 1 140px;min-width:0}
+.goiy{font-size:12px;color:var(--muc2);margin-top:6px}
+.nut{min-height:50px;padding:0 20px;font-size:15px;font-weight:700;font-family:inherit;border-radius:99px;
+  border:1.5px solid var(--vien);background:var(--the);color:var(--muc);cursor:pointer;
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:transform .1s var(--nhip)}
+.nut:active:not(:disabled){transform:scale(.97)}
+.nut:disabled{opacity:.45;cursor:not-allowed}
+.nut:focus-visible{outline:3px solid var(--cam);outline-offset:2px}
+.nut.chinh{background:var(--cam);border-color:var(--cam);color:#fff}
+.nut.chinh:hover:not(:disabled){background:var(--cam-dam)}
+.nut.tron{min-height:38px;width:38px;padding:0;flex:0 0 auto}
+.day{position:fixed;left:0;right:0;bottom:0;z-index:50;background:rgba(255,255,255,.96);
+  backdrop-filter:blur(10px);border-top:1px solid var(--vien);padding:12px 16px;
+  padding-bottom:calc(12px + env(safe-area-inset-bottom))}
+.day-in{max-width:900px;margin:0 auto;display:flex;align-items:center;gap:12px}
+.day-so{flex:1;min-width:0;font-size:13px;color:var(--muc2)}
+.day-so b{display:block;font-size:17px;font-weight:800;color:var(--muc);font-variant-numeric:tabular-nums}
+.dsach{list-style:none;margin:0;padding:0}
+.dong{display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-top:1px solid var(--vien2)}
+.dong:first-child{border-top:0}
+.dong-th{flex:1;min-width:0}
+.dong-ma{font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:.04em}
+.dong-ten{font-size:13px;color:var(--muc2);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.dong-sl{font-size:12px;color:var(--muc3);margin-top:3px}
+.chip{display:inline-block;padding:2px 9px;border-radius:99px;font-size:11.5px;font-weight:700;
+  background:var(--cam-mo);color:var(--cam-dam);margin:2px 4px 0 0;font-variant-numeric:tabular-nums}
+/* XEM TRƯỚC — dựng đúng dải decal đang lắp: hai ô tem 40mm, khe dọc 2mm, theo tỉ lệ mm thật.
+   Người dán tem nhìn là biết tem của mình nằm bên nào của dải giấy. */
+.xt{background:linear-gradient(180deg,#e9ebe6,#e2e5df);border:1px solid var(--vien);
+  border-radius:var(--bo);padding:16px;overflow-x:auto}
+.xt-dai{display:flex;align-items:stretch;margin:0 auto;width:max-content;background:#fff;
+  box-shadow:0 2px 12px -4px rgba(20,24,27,.28)}
+.xt-tem{background:#fff}.xt-tem svg{display:block;width:100%;height:100%}
+.xt-khe{background:repeating-linear-gradient(45deg,#f6f7f4,#f6f7f4 3px,#e6e9e3 3px,#e6e9e3 6px)}
+.xt-trong{background:#fafbf8}
+.xt-ghi{text-align:center;font-size:11px;color:var(--muc2);margin-top:10px}
+.tt{margin-top:10px;font-size:13.5px;line-height:1.45;min-height:20px}
+.tt.ok{color:var(--ok)}.tt.canh{color:var(--canh)}.tt.xau{color:var(--xau)}
+.vien{display:inline-flex;align-items:center;gap:7px;padding:6px 12px;border-radius:99px;
+  font-size:12px;font-weight:700;border:1px solid var(--vien);background:var(--the);color:var(--muc2)}
+.vien.ok{background:var(--ok-mo);border-color:transparent;color:var(--ok)}
+.vien.canh{background:var(--canh-mo);border-color:transparent;color:var(--canh)}
+.vien.xau{background:var(--xau-mo);border-color:transparent;color:var(--xau)}
+.cham{width:7px;height:7px;border-radius:50%;background:currentColor;flex:0 0 auto}
+.vien.ok .cham{animation:tho 2s infinite}
+@keyframes tho{0%,100%{opacity:1}50%{opacity:.32}}
+.rong{text-align:center;padding:26px 12px;color:var(--muc2);font-size:13.5px}
+#toast{position:fixed;left:50%;bottom:112px;transform:translateX(-50%) translateY(12px);z-index:90;
+  background:var(--muc);color:#fff;padding:12px 18px;border-radius:99px;font-size:13.5px;font-weight:650;
+  opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;max-width:calc(100vw - 32px);text-align:center}
+#toast.hien{opacity:1;transform:translateX(-50%) translateY(0)}
+#toast.xau{background:var(--xau)}#toast.ok{background:var(--ok)}#toast.canh{background:var(--canh)}
+#nap{padding:40px 20px;text-align:center;color:var(--muc2)}
+#toIn{display:none}
+@media print{
+  body>*{display:none!important}
+  #toIn{display:block!important;margin:0}
+  .in-hang{display:flex;page-break-after:always;break-after:page}
+}
+@media(max-width:520px){.boc{padding:12px}.the{padding:14px}}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <h1>In tem SKU</h1>
+  <span id="chip" class="vien"><i class="cham"></i>đang mở…</span>
+</header>
+
+<div id="nap">Đang nạp lõi tem từ dashboard…</div>
+
+<main class="boc" id="than" style="display:none">
+
+  <section class="the">
+    <p class="buoc"><b>1</b><span>Nhập tem</span></p>
+    <label class="nhan" for="fSku">Mã SKU</label>
+    <input id="fSku" class="o ma" autocomplete="off" spellcheck="false" enterkeyhint="next" placeholder="Quét mã hoặc gõ tay">
+    <p class="goiy" id="goiySku">Có máy quét thì cứ quét — mã tự vào ô này.</p>
+
+    <label class="nhan" for="fPn" style="margin-top:14px">Tên hàng</label>
+    <input id="fPn" class="o" autocomplete="off" enterkeyhint="next" placeholder="Ví dụ: Vải thun cotton 4 chiều / Navy / 180gsm">
+
+    <div class="hang" style="margin-top:14px">
+      <div>
+        <label class="nhan" for="fSl">Số lượng in lên tem</label>
+        <input id="fSl" class="o" autocomplete="off" enterkeyhint="next" placeholder="1.200 m">
+        <p class="goiy">Nhiều bịch khác nhau thì gõ <b>12, 14, 16</b> — ra 3 tem, mỗi tem một số.</p>
+      </div>
+      <div style="flex:0 1 150px">
+        <label class="nhan" for="fBan">Số bản in</label>
+        <input id="fBan" class="o ma" type="number" min="1" max="200" value="1" enterkeyhint="done">
+        <p class="goiy">Tem giống hệt nhau.</p>
+      </div>
+    </div>
+    <button class="nut chinh" style="width:100%;margin-top:16px" onclick="them()">Thêm vào danh sách</button>
+  </section>
+
+  <section class="the">
+    <span class="nhan">Tem sẽ ra khỏi máy</span>
+    <div class="xt"><div class="xt-dai" id="xtDai"></div></div>
+    <p class="xt-ghi" id="xtGhi"></p>
+  </section>
+
+  <section class="the">
+    <p class="buoc"><b>2</b><span>Danh sách chờ in</span></p>
+    <ul class="dsach" id="ds"></ul>
+    <div class="rong" id="dsRong">Chưa có tem nào. Nhập ở trên rồi bấm Thêm vào danh sách.</div>
+  </section>
+
+  <p style="text-align:center;font-size:12px;color:var(--muc3);margin:18px 0 4px">
+    Thiết bị: <b id="tenMay">—</b> · <a href="#" onclick="doiTen();return false" style="color:var(--cam)">đổi tên</a>
+    <br><span style="font-size:11px">lõi tem <code id="vanTay">—</code></span>
+  </p>
+</main>
+
+<div class="day" id="day" style="display:none">
+  <div class="day-in">
+    <div class="day-so"><b id="daySo">0 tem</b><span id="dayPhu">danh sách đang trống</span></div>
+    <button class="nut" id="btnLui" style="display:none" onclick="inTrinhDuyet()">In bằng máy này</button>
+    <button class="nut chinh" id="btnIn" onclick="gui()" disabled>In tem</button>
+  </div>
+  <div class="day-in"><p class="tt" id="tt"></p></div>
+</div>
+
+<div id="toast"></div>
+<div id="toIn"></div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * LÕI TEM — BẢN SAO TỪ DASHBOARD, vân tay 5004bd77ca08
+ * -----------------------------------------------------------------------------------------------
+ * Chép nguyên khối giữa hai mốc PR-TEM trong `stocklocationfactory/index.html`. KHÔNG sửa gì ở đây.
+ *
+ * Vì sao phải nhúng thay vì đọc từ dashboard như agent làm: trang này nằm ở REPO RIÊNG, tức là
+ * khác tên miền. `fetch('./index.html')` không có tệp đó, còn trỏ sang tên miền dashboard thì vướng
+ * cross-origin. Nhúng là cách duy nhất chạy được.
+ *
+ * ⚠ CÁI GIÁ, PHẢI BIẾT: đây là BẢN THỨ HAI của lõi tem. Sửa lõi bên dashboard mà quên chép sang đây
+ *   thì tem xem trước và tem ra khỏi máy in sẽ lệch nhau — mà không có dấu hiệu nào báo. Đây đúng là
+ *   loại lỗi đã cắn ngày 20/08/2026 (agent chạy mã cũ, in 4 con tem sai, người dùng phát hiện).
+ *   Chân trang hiển thị vân tay; xem `CACH-DUNG.md` mục "So khớp lõi tem" để đối chiếu.
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════ */
+var LOI_VAN = "5004bd77ca08";
+/*<PR-TEM>*/
+/* ═══════════════════════════════════════════════════════════════════════════════════════════════
+ *  IN TEM SKU — LÕI THUẦN TÍNH TOÁN (không chạm DOM), 20/08/2026
+ *  Bước 1 của việc in tem: chọn SKU vào danh sách chờ → chọn mẫu tem + số lượng → in bằng hộp
+ *  thoại in của Windows (người dùng chọn máy in ở đó). Danh sách máy in + trạng thái sẵn sàng
+ *  NGAY TRONG TRANG là bước 2, cần một tiến trình chạy ở máy — trình duyệt không có API nào cho
+ *  việc đó (đã đo: web thuần không liệt kê được máy in).
+ *  Giữ 2 mốc PR-TEM để `hasaki/qc-in-tem.mjs` cắt ra chạy trong Node — cùng một bản mã với bản
+ *  đang in thật, khỏi lệch nhau.
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════ */
+var PR_TEM = (function(){
+  "use strict";
+  /* ---------- 1. MÃ VẠCH CODE 128B ----------
+   * Vì sao Code 128B: mã SKU của kho là dãy 9 chữ số, 128B mã hoá được nguyên chuỗi mà vẫn ngắn
+   * (11 module/ký tự), và mọi máy quét cầm tay đều đọc. KHÔNG tự nhớ bảng mẫu vạch — bảng dưới đây
+   * lấy từ JsBarcode (constants.js) và được `qc-in-tem.mjs` đối chiếu lại với BẢN GỐC lưu ở
+   * `hasaki/.code128-doi-chung.json`; sai một bit là quét không ra mà nhìn mắt thường không thấy.
+   * Bảng nén thành MỘT chuỗi: 106 mẫu × 11 ký tự, cắt theo chỉ số; mẫu STOP dài 13 để riêng. */
+  var C128 = '11011001100110011011001100110011010010011000100100011001000100110010011001000100110001001000110010011001001000110010001001100010010010110011100100110111001001100111010111001100100111011001001110011011001110010110010111001100100111011011100100110011101001110110111011101001100111001011001110010011011101100100111001101001110011001011011011000110110001101100011011010100011000100010110001000100011010110001000100011010001000110001011010001000110001010001100010001010110111000101100011101000110111010111011000101110001101000111011011101110110110100011101100010111011011101000110111000101101110111011101011000111010001101110001011011101101000111011000101110001101011101111010110010000101111000101010100110000101000011001001011000010010000110100001011001000010011010110010000101100001001001101000010011000010100001101001000011001011000010010110010100001111011101011000010100100011110101010011110010010111100100100111101011110010010011110100100111100101111010010011110010100111100100101101101111011011110110111101101101010111100010100011110100010111101011110100010111100010111101010001111010001010111011110101111011101110101111011110101110110100001001101001000011010011100';
+  var C128_STOP = '1100011101011';
+  var START_B = 104, START_C = 105, MA_SANG_C = 99, MODULO = 103;
+  function mauCua(v){ return (v === 106) ? C128_STOP : C128.substr(v * 11, 11); }
+  /**
+   * Chuỗi → dãy mã Code 128 (kèm start + checksum + stop). Trả null nếu có ký tự ngoài tầm.
+   *
+   * DÙNG SUBSET C CHO MÃ TOÀN SỐ (đổi 20/08/2026 sau khi soi tem in thật). Vì sao:
+   * subset B mã hoá 1 ký tự = 11 module, còn subset C nhét 2 CHỮ SỐ vào 11 module. Mã SKU của kho là
+   * 9 chữ số: B cần 134 module = 33,5mm, chiếm gần hết bề ngang tem 40mm nên vùng trắng đầu/cuối mã
+   * (quiet zone) chỉ còn ~1mm — dưới mức chuẩn (≥10 lần bề rộng module) và máy quét khó ăn, nhất là
+   * sau khi nội dung được dịch trái 2mm. Với C còn 101 module = 25,3mm, quiet zone dư sức.
+   * Mọi máy quét đều đọc subset C, nên đây là thu nhỏ mà KHÔNG mất khả năng đọc.
+   * Số lẻ chữ số: ký tự đầu đi bằng B, rồi chuyển sang C (mã 99) cho phần chẵn còn lại.
+   */
+  function maHoa(txt){
+    var s = String(txt == null ? '' : txt), ma = [], i, c;
+    if (/^[0-9]+$/.test(s) && s.length >= 4){
+      i = 0;
+      if (s.length % 2 === 1){ ma.push(START_B); ma.push(s.charCodeAt(0) - 32); ma.push(MA_SANG_C); i = 1; }
+      else ma.push(START_C);
+      for (; i < s.length; i += 2) ma.push(Number(s.substr(i, 2)));
+    } else {
+      ma.push(START_B);
+      for (i = 0; i < s.length; i++){
+        c = s.charCodeAt(i);
+        if (c < 32 || c > 126) return null;      // 128B phủ ASCII 32..126
+        ma.push(c - 32);
+      }
+    }
+    /* Checksum = (start + Σ vị_trí × giá_trị) % 103 — vị trí đếm từ 1 cho ký tự đầu.
+       Lấy `ma[0]` chứ không phải hằng START_B: mã toàn số bắt đầu bằng START_C. */
+    var tong = ma[0];
+    for (i = 1; i < ma.length; i++) tong += i * ma[i];
+    ma.push(tong % MODULO);
+    ma.push(106);
+    return ma;
+  }
+  /** Chuỗi → chuỗi bit ('1' = vạch đen, '0' = khoảng trắng). */
+  function bit(txt){
+    var ma = maHoa(txt); if (!ma) return '';
+    var ra = '';
+    for (var i = 0; i < ma.length; i++) ra += mauCua(ma[i]);
+    return ra;
+  }
+  /**
+   * Chuỗi → SVG mã vạch. Vẽ bằng <rect> gộp các module liền nhau, không dùng thư viện ngoài
+   * (lệ dự án: không CDN) và không canvas (in ra canvas bị mờ, máy quét kém đọc).
+   * @param opt {mm: bề rộng 1 module (mm), cao: chiều cao vạch (mm), soLe: có in chuỗi số dưới vạch}
+   */
+  function svg(txt, opt){
+    opt = opt || {};
+    var b = bit(txt); if (!b) return '';
+    var mm = opt.mm || 0.28, cao = opt.cao || 9;
+    var rong = b.length * mm, i = 0, rects = '';
+    while (i < b.length){
+      if (b[i] === '1'){
+        var j = i; while (j < b.length && b[j] === '1') j++;
+        rects += '<rect x="' + (i * mm).toFixed(3) + '" y="0" width="' + ((j - i) * mm).toFixed(3) + '" height="' + cao + '" fill="#000"/>';
+        i = j;
+      } else i++;
+    }
+    return '<svg class="pr-bc" width="' + rong.toFixed(2) + 'mm" height="' + cao + 'mm" viewBox="0 0 ' + rong.toFixed(3) + ' ' + cao +
+      '" preserveAspectRatio="none" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg">' + rects + '</svg>';
+  }
+
+  /* ---------- 1b. VẠCH DẠNG <rect> (để nhúng vào SVG của cả con tem) ----------
+   * `svg()` ở trên trả về một thẻ <svg> hoàn chỉnh — tiện cho HTML nhưng không nhúng được vào SVG
+   * lớn. Hàm này trả về ĐÚNG các <rect> + bề rộng, để `svgTem()` đặt vạch vào đúng chỗ trong tem.
+   * Bề rộng module tính theo DOT của đầu in (203 dpi = 8 dot/mm) và làm tròn về SỐ NGUYÊN dot:
+   * vạch lệch nửa dot là vạch bị nhoè một bên, máy quét đọc kém. */
+  function vachRect(txt, opt){
+    opt = opt || {};
+    var b = bit(txt); if (!b) return null;
+    /* ⚠ ĐƠN VỊ: hệ toạ độ của `svgTem` là DOT của đầu in, nên bề rộng một module cũng phải tính
+       bằng DOT. Bản đầu chia lại cho dotMm (ra mm) nên cả mã vạch co thành một khối bé xíu —
+       bắt được ngay ở ảnh xem trước đầu tiên. */
+    var dotMm = opt.dotMm || 8, modDot = Math.max(2, Math.round((opt.mm || 0.25) * dotMm));
+    var mm = modDot, cao = opt.cao || 9, x0 = opt.x || 0, y0 = opt.y || 0;
+    var i = 0, out = '';
+    while (i < b.length){
+      if (b[i] === '1'){
+        var j = i; while (j < b.length && b[j] === '1') j++;
+        out += '<rect x="' + (x0 + i * mm).toFixed(3) + '" y="' + y0 + '" width="' + ((j - i) * mm).toFixed(3) +
+          '" height="' + cao + '" fill="#000"/>';
+        i = j;
+      } else i++;
+    }
+    return { rects: out, rong: +(b.length * mm).toFixed(3), soModule: b.length, modMm: mm };
+  }
+
+  /* ---------- 1c. CỠ CHỮ TỰ PHỦ ĐẦY KHUNG (yêu cầu 20/08/2026) ----------
+   * Tên hàng dài ngắn khác nhau rất nhiều (từ 30 tới 150 ký tự), mà tem thì cùng một khổ. Nếu chọn
+   * một cỡ chữ cố định thì tên ngắn để trống nửa tem, tên dài lại tràn. Nên: tìm cỡ chữ LỚN NHẤT
+   * mà vẫn xếp đủ trong vùng cho phép.
+   *   số ký tự mỗi dòng  n(s) = W / (s × 0,55)      (0,55 = bề rộng trung bình một ký tự Arial)
+   *   số dòng            d(s) = số dòng thực khi bẻ chữ với n(s)
+   *   điều kiện          d(s) × s × 1,22 ≤ H
+   * Duyệt từ cỡ lớn xuống, lấy cỡ đầu tiên vừa — rẻ và không bao giờ tràn.
+   * CHỈ tên hàng mới co giãn; mã SKU · mã vạch · dòng chân giữ cỡ CỐ ĐỊNH (người dùng chốt vậy, và
+   * đó cũng là ba thứ phải nhận ra tức thì nên không được thay đổi giữa các tem). */
+  /* Bẻ dòng tên hàng. Chỗ ngắt hợp lệ KHÔNG chỉ là khoảng trắng mà còn là dấu "/" — PRODUCTNAME của
+     WMS là chuỗi phần tử ghép bằng "/" và có những mẩu dài hơn cả dòng ("Lycra/None/Deep"), bẻ theo
+     khoảng trắng thôi thì ra "Lycra/None/D" + "eep", đọc rất khó. Ngắt sau "/" KHÔNG thêm/bớt ký tự
+     nào nên tên vẫn nguyên văn. Từ nào vẫn dài quá thì mới cắt cứng. */
+  function beDong(txt, soKyTu){
+    var t = String(txt == null ? '' : txt);
+    var manh = t.match(/[^\s\/]*[\/\s]|[^\s\/]+$/g) || [];
+    var dong = [], cur = '';
+    for (var i = 0; i < manh.length; i++){
+      var w = manh[i];
+      while (w.replace(/\s+$/, '').length > soKyTu){       // mẩu dài hơn cả dòng -> cắt cứng
+        if (cur.trim()) { dong.push(cur.replace(/\s+$/, '')); cur = ''; }
+        dong.push(w.slice(0, soKyTu)); w = w.slice(soKyTu);
+      }
+      if ((cur + w).replace(/\s+$/, '').length > soKyTu){
+        if (cur.trim()) dong.push(cur.replace(/\s+$/, ''));
+        cur = w;
+      } else cur += w;
+    }
+    if (cur.trim()) dong.push(cur.replace(/\s+$/, ''));
+    return dong;
+  }
+  function coChuVua(txt, W, H, coMax, coMin){
+    coMax = coMax || 34; coMin = coMin || 7;
+    for (var s = coMax; s >= coMin; s--){
+      var n = Math.floor(W / (s * 0.55));
+      if (n < 4) continue;
+      var d = beDong(txt, n);
+      if (d.length * s * 1.22 <= H) return { co: s, dong: d };
+    }
+    var nMin = Math.max(4, Math.floor(W / (coMin * 0.55)));
+    return { co: coMin, dong: beDong(txt, nMin).slice(0, Math.max(1, Math.floor(H / (coMin * 1.22)))) };
+  }
+
+  /* ---------- 1c-bis. HAI CÁCH VIẾT DÙNG CHUNG CHO TEM ----------
+   * Đặt ở lõi để pop-up và agent in tem viết y như nhau — hai chỗ tự định dạng riêng là kiểu lệch
+   * kinh điển (tem in "1200" mà bảng hiện "1.200").
+   */
+  /** Số lượng: chèn dấu CHẤM cho hàng nghìn (1200 -> 1.200). Chỉ áp cho phần SỐ ở đầu chuỗi, nên
+   *  người gõ "1200 m" vẫn ra "1.200 m", còn gõ chữ thuần thì để nguyên. */
+  function soGon(v){
+    var t = String(v == null ? '' : v).trim();
+    if (!t) return '';
+    var m = t.match(/^(-?\d+)(?:([.,])(\d+))?(.*)$/);
+    if (!m) return t;
+    var nguyen = m[1].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    var thapPhan = m[3] ? ',' + m[3] : '';
+    return nguyen + thapPhan + (m[4] || '');
+  }
+  /** Ngày in trên tem: **dd-mm-yy** (người dùng chốt 20/08/2026) — ngắn hơn dd/mm/yyyy nên chừa được
+   *  chỗ cho số lượng, và không lẫn với ngày kiểu Mỹ. */
+  function ngayTem(d){
+    d = d || new Date();
+    var hai = function(n){ return (n < 10 ? '0' : '') + n; };
+    return hai(d.getDate()) + '-' + hai(d.getMonth() + 1) + '-' + String(d.getFullYear()).slice(-2);
+  }
+
+  /* ---------- 1d. MỘT CON TEM = MỘT SVG (nguồn DUY NHẤT, 20/08/2026) ----------
+   * Vì sao đổi từ HTML sang SVG: bản xem trước trong pop-up phải giống bản in **100%** (yêu cầu của
+   * người dùng sau khi soi tem thật). Trước đây pop-up dựng bằng HTML/CSS còn máy in nhận TSPL +
+   * bitmap render riêng — hai đường dựng khác nhau thì không có cách nào giống nhau được.
+   * Nay CHỈ CÓ MỘT hàm: `svgTem()`. Pop-up nhúng thẳng SVG này; agent in tem render đúng SVG này
+   * thành ảnh rồi gửi máy in. Kể cả mã vạch cũng nằm trong SVG (không nhờ lệnh BARCODE của máy in
+   * nữa) — đổi lại module vạch được ghim về số nguyên dot để không mất độ nét.
+   * Toạ độ tính bằng DOT của đầu in để ảnh render ra khớp từng điểm với giấy.
+   */
+  function svgTem(d, mauK, opt){
+    opt = opt || {};
+    var m = mau(mauK), dotMm = opt.dotMm || 8;
+    var W = Math.round(m.w * dotMm), H = Math.round(m.h * dotMm);
+    /* LỀ 3mm (trước 1,6mm). Vì sao phải rộng: vùng in của máy in lệch phải ~2mm so với mép giấy nên
+       mọi thứ được dịch trái 2mm (xem `lech`); lề 1,6mm thì sau khi dịch nội dung rơi ra ngoài mép
+       và tem TRÁI bị cắt mất đầu mã vạch — đúng lỗi "tem trái không quét được" ngày 20/08/2026. */
+    var le = Math.round((opt.leMm || 3) * dotMm);
+    /* DỊCH TRÁI ngay TRONG SVG, không cắt ảnh. Cắt ảnh là cách sai đã thử: nó xoá luôn vùng trắng
+       đầu mã vạch (quiet zone) và vài vạch đầu, máy quét không đọc được nữa. */
+    var lech = Math.round((opt.lechMm || 0) * dotMm);
+    var coSku = opt.coSku || 34, coChan = opt.coChan || 16;   // CỐ ĐỊNH; dòng chân đã tăng 2 bậc
+    var caoVach = opt.caoVach || Math.round(8 * dotMm);
+    var giua = W / 2 - lech;                                   // trục canh giữa sau khi dịch
+    var x = le - lech;                                         // mốc trái sau khi dịch
+    var y = le;
+    var o = '<svg xmlns="http://www.w3.org/2000/svg" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H +
+      '" shape-rendering="crispEdges" font-family="Arial, Helvetica, sans-serif">' +
+      '<rect width="' + W + '" height="' + H + '" fill="#fff"/>' +
+      '<rect x="' + (2 - lech) + '" y="2" width="' + (W - 4) + '" height="' + (H - 4) + '" fill="none" stroke="#000" stroke-width="2"/>';
+    /* TEM UIDgr (26/08/2026, user chốt — in từ pop-up "Mã QR · UID group"): CÙNG khuôn tem SKU nhưng
+       đổi dữ liệu — mã to + mã vạch là MÃ GROUP (16 chữ số), thêm một dòng "SKU …" in đậm ngay dưới
+       mã vạch, rồi tên hàng; dòng chân vẫn là số lượng + ngày in. d.loai === 'ug' là công tắc; không
+       có cờ thì tem giống HỆT bản cũ (agent chưa cập nhật vẫn in ra tem SKU + dòng UIDgr — xuống cấp
+       êm, không ra tem rác). */
+    var uid = String(d.uid == null ? '' : d.uid).trim();
+    var ug = (d.loai === 'ug') && !!uid;
+    var maTo = ug ? uid : String(d.sku == null ? '' : d.sku);
+    var vungW = W - le * 2;
+    /* Mã group 16 số không vừa cỡ 34 dot của mã SKU 9 số → co cho vừa bề ngang tem (ước 0,6 em một
+       chữ số + 1 dot letter-spacing), sàn 14 dot để còn đọc được. Mã SKU giữ cỡ CỐ ĐỊNH như trước. */
+    var coMa = coSku;
+    if (ug) coMa = Math.max(14, Math.min(coSku, Math.floor((vungW - maTo.length) / (maTo.length * 0.6))));
+    /* ① MÃ SKU — TO, CANH GIỮA, NẰM TRÊN mã vạch (người dùng chốt 20/08/2026 sau khi soi tem thật) */
+    o += '<text x="' + giua + '" y="' + (y + coMa) + '" font-size="' + coMa + '" font-weight="bold"' +
+      ' text-anchor="middle" letter-spacing="1">' + escXml(maTo) + '</text>';
+    y += coMa + Math.round(0.8 * dotMm);
+    /* ② MÃ VẠCH canh giữa, ngay dưới dãy số. Tem UIDgr: mã vạch dài quá bề ngang thì KHÔNG vẽ (vẽ cụt
+       là quét ra sai) — mã group thật 16 số (subset C: 123 module = 246 dot) vừa tem 40mm. */
+    var v = vachRect(maTo, { mm: 0.25, dotMm: dotMm, cao: caoVach, x: 0, y: y });
+    if (v && (!ug || v.rong <= vungW)){
+      o += '<g transform="translate(' + (giua - v.rong / 2) + ',0)">' + v.rects + '</g>';
+      y += caoVach + Math.round(0.7 * dotMm);
+    }
+    if (ug){
+      /* ②b DÒNG SKU in đậm (chỉ tem UIDgr): mã SKU của hàng trong group — người cầm tem biết group
+         này là hàng gì mà không phải tra WMS. Cỡ 2,6mm, dán mép trái, tiền tố "SKU" để không lẫn với
+         mã group ở trên. */
+      var coDongSku = Math.round(2.6 * dotMm);
+      o += '<text x="' + x + '" y="' + (y + coDongSku) + '" font-size="' + coDongSku + '" font-weight="bold">' +
+        escXml('SKU ' + String(d.sku == null ? '' : d.sku)) + '</text>';
+      y += coDongSku + Math.round(0.6 * dotMm);
+    }
+    /* ③ TÊN HÀNG — nguyên văn, cỡ chữ tự phủ đầy chỗ còn lại */
+    /* Chỗ dành cho dòng chân: lấy theo cỡ số lượng LỚN NHẤT có thể (40 dot) chứ không theo cỡ thật —
+       nếu tính theo cỡ thật thì tên hàng dài sẽ chiếm chỗ, rồi số lượng phải co nhỏ lại, mà số lượng
+       là thứ ưu tiên hơn. */
+    /* Chỗ dành cho dòng chân = cỡ số lượng LỚN NHẤT có thể (44) + dòng ngày in + đệm. Tính theo mức
+       lớn nhất chứ không theo cỡ thật: nếu tên hàng dài chiếm trước thì số lượng phải co, mà số lượng
+       là thứ ưu tiên hơn tên. */
+    /* Dòng chân chỉ còn MỘT hàng: chừa theo cỡ số lượng lớn nhất (44 dot) + nét kẻ + chút hở.
+       Bản hai hàng trước đó ăn thêm ~20 dot của phần tên sản phẩm. */
+    var hChan = 44 + Math.round(1.4 * dotMm);
+    /* DÒNG UIDgr (23/08/2026, user chốt): mã group của CUỘN đó, in ngay trên dòng chân.
+       Có mã thì chừa thêm đúng một dòng cho nó — KHÔNG chừa sẵn khi không có, vì tem 40×30mm mà
+       để trống một dòng là tên hàng bị bóp nhỏ đi ở MỌI con tem, kể cả tem chỉ may không có group. */
+    /* Tem UIDgr: mã group đã là mã to ở đỉnh tem — KHÔNG in lại dòng "UIDgr …" trên dòng chân. */
+    var coUid = (uid && !ug) ? Math.round(2.5 * dotMm) : 0;
+    var hUid = (uid && !ug) ? (coUid + Math.round(0.5 * dotMm)) : 0;
+    var vungH = H - y - hChan - hUid - le;
+    var fit = coChuVua(String(d.pn == null ? '' : d.pn), vungW, vungH, opt.coTenMax || 34, opt.coTenMin || 7);
+    for (var i2 = 0; i2 < fit.dong.length; i2++){
+      o += '<text x="' + x + '" y="' + (y + fit.co + i2 * Math.round(fit.co * 1.22)) + '" font-size="' + fit.co + '">' +
+        escXml(fit.dong[i2]) + '</text>';
+    }
+    if (uid && !ug){
+      /* Cắt cho vừa bề ngang tem (mã group thật 16 chữ số — vừa; dài hơn thì cắt, KHÔNG để tràn
+         ra ngoài mép rồi mất mấy số cuối mà nhìn tem không biết là đã mất). */
+      var uidCat = cat('UIDgr ' + uid, Math.max(8, Math.floor(vungW / (coUid * 0.56))));
+      o += '<text x="' + x + '" y="' + (H - le - 44 - Math.round(0.6 * dotMm)) + '" font-size="' + coUid +
+        '" font-weight="bold" fill="#000">' + escXml(uidCat) + '</text>';
+    }
+    /* ④ DÒNG CHÂN — MỘT hàng (chốt lại 20/08/2026 sau khi soi tem in thật):
+         · SỐ LƯỢNG: đậm, dán mép trái, cỡ TỰ CO, có dấu chấm hàng nghìn, chỉ in con số.
+         · NGÀY IN : dạng dd-mm-yy, dán **sát viền dưới, mép phải** — cùng hàng với số lượng.
+       Vì sao KHÔNG tách hai dòng như bản trước: tách ra thì dòng chân cao gấp đôi, đẩy số lượng lên
+       và bóp nhỏ ô tên sản phẩm — tem in thử cho thấy rõ. Nay ngày in nằm sát đáy nên nó không lấy
+       thêm chiều cao nào của phần tên. */
+    var ngay = String(d.ngay == null ? '' : d.ngay);
+    var soLuong = soGon(d.sl);
+    var coNgay = Math.round(coChan * 1.05);
+    var rongNgay = ngay ? Math.round(ngay.length * coNgay * 0.56) : 0;
+    var vungSL = W - le * 2 - rongNgay - Math.round(1 * dotMm);
+    var coSL = coChan;
+    if (soLuong){
+      for (var cs = 44; cs >= 10; cs--){
+        if (soLuong.length * cs * 0.62 <= vungSL) { coSL = cs; break; }
+        coSL = 10;
+      }
+    }
+    var yDay = H - Math.round(1.2 * dotMm);          // sát viền dưới (chừa đúng nét viền + chút hở)
+    o += '<line x1="' + x + '" y1="' + (yDay - coSL - 5) + '" x2="' + (W - le - lech) + '" y2="' + (yDay - coSL - 5) +
+      '" stroke="#000" stroke-width="1.5"/>';
+    if (soLuong){
+      o += '<text x="' + x + '" y="' + yDay + '" font-size="' + coSL + '" font-weight="bold">' +
+        escXml(soLuong) + '</text>';
+    }
+    if (ngay){
+      o += '<text x="' + (W - le - lech) + '" y="' + yDay + '" font-size="' + coNgay +
+        '" text-anchor="end">' + escXml(ngay) + '</text>';
+    }
+    return o + '</svg>';
+  }
+  /* ---------- 1e. TEM THÔNG BÁO ĐỢT IN (20/08/2026) ----------
+   * Khi nhiều người cùng gửi lệnh in, tem của các đợt nối nhau ra khỏi máy in và không ai biết
+   * khúc nào của ai — nhất là khi máy in đặt chung ở kho. Nên MỖI ĐỢT được in kèm MỘT con tem
+   * thông báo đứng đầu: ai gửi · lúc nào · bao nhiêu tem · gồm mấy SKU.
+   * Chỉ in khi đợt đó có nhu cầu phân biệt (xem `prIn`/agent): một người in một mình thì không tốn
+   * thêm tem nào.
+   */
+  function svgTemDot(info, mauK, opt){
+    opt = opt || {};
+    var m = mau(mauK || MAU_MAC_DINH), dotMm = opt.dotMm || 8;
+    var W = Math.round(m.w * dotMm), H = Math.round(m.h * dotMm);
+    var le = Math.round((opt.leMm || 3) * dotMm);
+    var lech = Math.round((opt.lechMm != null ? opt.lechMm : 2) * dotMm);
+    var x = le - lech, giua = W / 2 - lech;
+    var o = '<svg xmlns="http://www.w3.org/2000/svg" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H +
+      '" shape-rendering="crispEdges" font-family="Arial, Helvetica, sans-serif">' +
+      '<rect width="' + W + '" height="' + H + '" fill="#fff"/>' +
+      /* Viền ĐẬM + dải đen ở đầu: nhìn xa là biết ngay "đây là tem phân cách", không lẫn tem hàng. */
+      '<rect x="' + (2 - lech) + '" y="2" width="' + (W - 4) + '" height="' + (H - 4) + '" fill="none" stroke="#000" stroke-width="4"/>' +
+      '<rect x="' + (2 - lech) + '" y="2" width="' + (W - 4) + '" height="' + Math.round(7 * dotMm) + '" fill="#000"/>' +
+      '<text x="' + giua + '" y="' + Math.round(5.6 * dotMm) + '" font-size="' + Math.round(3.4 * dotMm) +
+        '" font-weight="bold" fill="#fff" text-anchor="middle">ĐỢT IN TEM</text>';
+    var y = Math.round(11 * dotMm), co = Math.round(2.6 * dotMm), buoc = Math.round(co * 1.5);
+    var dong = [
+      ['Người gửi', String(info.nguoi || '—')],
+      ['Lúc', String(info.luc || '')],
+      ['Số tem', String(info.soTem == null ? '' : info.soTem)],
+      ['Số SKU', String(info.soSku == null ? '' : info.soSku)]
+    ];
+    for (var k = 0; k < dong.length; k++){
+      o += '<text x="' + x + '" y="' + y + '" font-size="' + Math.round(co * 0.8) + '" fill="#333">' + escXml(dong[k][0]) + '</text>';
+      o += '<text x="' + x + '" y="' + (y + co + 2) + '" font-size="' + co + '" font-weight="bold">' + escXml(dong[k][1]) + '</text>';
+      y += buoc + co;
+    }
+    o += '<text x="' + giua + '" y="' + (H - Math.round(2 * dotMm)) + '" font-size="' + Math.round(2 * dotMm) +
+      '" text-anchor="middle" fill="#333">tem của đợt này in ngay bên dưới</text>';
+    return o + '</svg>';
+  }
+
+  function escXml(s){
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  /* ---------- 2. MẪU TEM ----------
+   * Khổ tem là thứ DUY NHẤT phải khớp với giấy đang lắp trong máy in, nên nó nằm ngay trong tên mẫu
+   * để thủ kho chọn không cần đoán. Mỗi tem in ra ĐÚNG MỘT trang khổ đó (break-after:page) — đó là
+   * cách máy in nhãn hiểu "một con tem".
+   * `ve(d)` chỉ dựng HTML, không chạm DOM, để test dựng được tem mà không cần trình duyệt.
+   * `d` = {sku, pn, dv, ton, ngay}
+   */
+  function cat(s, n){ s = String(s == null ? '' : s); return s.length > n ? s.slice(0, n - 1) + '…' : s; }
+  /* ═══ GIẤY ĐANG LẮP TRONG MÁY: DECAL **2 TEM MỖI HÀNG** (chốt 20/08/2026 sau lần in thử) ═══
+     "Giấy Decal in 2 tem / (40×60)mm × 50m / Cuộn" — tem trái và tem phải là HAI con tem độc lập
+     nằm cạnh nhau trên cùng dải giấy.
+     Đây là chỗ lần in thử đầu tiên vỡ, và nó vỡ vì một giả định sai từ gốc: máy in nhãn chỉ dò được
+     **khe ngang giữa các HÀNG**, nó không biết gì về khe dọc giữa tem trái/tem phải. Với máy in,
+     một "trang" = CẢ HÀNG gồm 2 tem. Nên khai khổ 42,5mm thì vùng in bắt đầu từ mép trái giấy và
+     tràn qua khe sang tem phải — đúng hiện tượng "nửa dữ liệu ở tem trái, nửa ở tem phải".
+     ⇒ Từ nay: `w`/`h` của MẪU là kích thước MỘT CON TEM; số cột và khe dọc khai ở `GIAY`; còn khổ
+     TRANG (thứ đi vào @page và vào lệnh SIZE của TSPL) do `khoTrang()` tính ra.
+     SỐ ĐO THẬT (người dùng đo bằng thước, chốt 20/08/2026):
+       · một con tem: rộng 40mm × dài 60mm
+       · khe DỌC giữa tem trái/phải: 2mm  -> nằm trong vùng in, chỉ là khoảng trắng
+       · khe NGANG giữa hai hàng tem: 3mm -> đây là con số máy in DÒ để biết hết một nhãn (lệnh GAP)
+     Lần in thử đầu khai GAP 2mm (phỏng) trong khi khe thật 3mm — lệch 1mm mỗi hàng, tích luỹ vài
+     hàng là máy in mất đồng bộ và in đè sang tem bên dưới. Nên `kheNgang` phải nằm ở đây, cạnh
+     `khe`, để agent in tem lấy đúng một nguồn. */
+  var GIAY = { soCot: 2, khe: 2, kheNgang: 3 };
+  /* KHỔ TEM đọc từ chính các form BarTender của kho (script `_DOC-MAY-IN.ps1` chạy trên máy cắm máy
+     in, 20/08/2026) — nhưng khổ ĐANG DÙNG THẬT là 40×60 theo nhãn cuộn giấy, nên nó là mặc định. */
+  var MAU = {
+    /* `ve(d)` giờ trả về SVG của cả con tem (xem svgTem ở mục 1d) — pop-up và máy in dùng chung. */
+    /* `lechMm` = dịch trái 2mm cho khớp khuôn tem vật lý (người dùng đo 20/08/2026). Nó nằm trong
+       MẪU chứ không ở agent, để pop-up xem trước và bản in dịch y như nhau. */
+    't40x60': { ten: 'Tem SKU 40 × 60 mm (2 tem/hàng — giấy đang lắp)', w: 40, h: 60,
+      mm: 0.25, cao: 10, ve: function(d){ return svgTem(d, 't40x60', { lechMm: 2 }); } },
+    't42x62': { ten: 'Tem SKU 42,5 × 62 mm (form sku.btw)', w: 42.5, h: 62,
+      mm: 0.25, cao: 10, ve: function(d){ return svgTem(d, 't42x62', { lechMm: 2 }); } },
+    't46x76': { ten: 'Tem lớn 46 × 76 mm (TSC PE200)', w: 46, h: 76,
+      mm: 0.26, cao: 11, ve: function(d){ return svgTem(d, 't46x76', { lechMm: 2 }); } },
+    't42x25': { ten: 'Tem ngang 42 × 25 mm (Zebra ZT230)', w: 42, h: 25,
+      mm: 0.22, cao: 6, ve: function(d){ return svgTem(d, 't42x25', { coSku: 20, coChan: 12, caoVach: 40, coTenMax: 14, leMm: 2, lechMm: 1 }); } },
+    't22x13': { ten: 'Tem mini 21,6 × 12,7 mm (chỉ mã)', w: 21.6, h: 12.7,
+      mm: 0.15, cao: 5, ve: function(d){ return svgTem(d, 't22x13', { coSku: 13, coChan: 9, caoVach: 26, coTenMax: 8, coTenMin: 6, leMm: 1.2, lechMm: 0.5 }); } }
+  };
+  var MAU_MAC_DINH = 't40x60';
+  function mau(k){ return MAU[k] || MAU[MAU_MAC_DINH]; }
+  /** Khổ MỘT TRANG IN = một hàng giấy: `soCot` con tem + khe dọc giữa chúng.
+   *  Đây là con số phải đi vào `@page{size:...}` và vào `SIZE` của TSPL — không phải khổ một con tem. */
+  function khoTrang(k){
+    var m = mau(k), c = Math.max(1, GIAY.soCot | 0);
+    return { w: +(m.w * c + GIAY.khe * (c - 1)).toFixed(2), h: m.h, cot: c, khe: GIAY.khe, tem: m };
+  }
+  /** Chia danh sách con tem thành từng HÀNG (mỗi hàng tối đa `soCot` tem).
+   *  Hàng cuối lẻ tem thì để trống ô còn lại — thà chừa một con tem trắng còn hơn in đè lên nó. */
+  function chiaHang(dsTem, k){
+    var c = khoTrang(k).cot, ra = [];
+    for (var i = 0; i < dsTem.length; i += c) ra.push(dsTem.slice(i, i + c));
+    return ra;
+  }
+
+  /* ---------- 3. TÍNH TOÁN TRÊN DANH SÁCH CHỜ ---------- */
+  /** Tách ô "Số lượng" thành DANH SÁCH. Nhu cầu thật của kho (chốt 20/08/2026): cùng một SKU nhưng
+   *  hàng chia thành nhiều bịch số lượng khác nhau — SKU A có 3 bịch 12 · 14 · 16 thì phải ra 3 con
+   *  tem cùng SKU mà khác số lượng, chứ không phải 3 con tem giống nhau.
+   *  Người dùng gõ "12, 14, 16" (phẩy, chấm phẩy, gạch chéo hay khoảng trắng đều được). Dấu CHẤM là
+   *  dấu ngăn cách hàng nghìn của chính con số nên KHÔNG được coi là dấu tách danh sách — "1.200" là
+   *  một hai trăm, không phải hai số. */
+  function tachSl(v){
+    var t = String(v == null ? '' : v).trim();
+    if (!t) return [];
+    return t.split(/[,;\/\n\t ]+/).map(function(x){ return String(x).trim(); })
+      .filter(function(x){ return x !== '' && /[0-9]/.test(x); });
+  }
+  /** Số con tem của MỘT dòng: nhiều số lượng → mỗi số một con tem; một số lượng → in `sl` bản. */
+  function temCuaDong(r){
+    var l = tachSl(r && r.slHang);
+    return l.length > 1 ? l.length : Math.max(0, Number(r && r.sl) || 0);
+  }
+  /** Tổng số CON TEM sẽ ra khỏi máy in (không phải số dòng) — con số duy nhất đáng cảnh báo. */
+  function tongTem(ds){
+    var n = 0;
+    (ds || []).forEach(function(r){ n += temCuaDong(r); });
+    return n;
+  }
+  /** NỞ danh sách chờ thành từng con tem — mỗi phần tử của kết quả là một con tem sẽ ra giấy.
+   *  Đặt ở LÕI (không phải ở dashboard hay ở agent) vì cả hai đầu đều phải nở y hệt nhau: lệch một
+   *  chỗ là số tem đếm trên màn hình khác số tem ra khỏi máy in. */
+  function moRong(ds){
+    var ra = [];
+    (ds || []).forEach(function(r){
+      var l = tachSl(r.slHang);
+      if (l.length > 1){
+        l.forEach(function(x){ ra.push({ sku: r.sku, pn: r.pn, slHang: x, mau: r.mau, uid: r.uid || '', loai: r.loai || '' }); });
+        return;
+      }
+      var n = Math.max(0, Number(r.sl) || 0);
+      for (var i = 0; i < n; i++) ra.push({ sku: r.sku, pn: r.pn, slHang: l.length ? l[0] : (r.slHang || ''), mau: r.mau, uid: r.uid || '', loai: r.loai || '' });
+    });
+    return ra;
+  }
+  /** Gom theo mẫu tem: mỗi mẫu là một khổ giấy khác nhau, in lẫn nhau trong một lượt là ra sai khổ. */
+  function theoMau(ds){
+    var m = {}, thuTu = [];
+    (ds || []).forEach(function(r){
+      var k = MAU[r.mau] ? r.mau : MAU_MAC_DINH;
+      if (!m[k]) { m[k] = []; thuTu.push(k); }
+      m[k].push(r);
+    });
+    return { m: m, thuTu: thuTu };
+  }
+  return { maHoa: maHoa, bit: bit, svg: svg, MAU: MAU, MAU_MAC_DINH: MAU_MAC_DINH, mau: mau,
+    tongTem: tongTem, theoMau: theoMau, cat: cat, GIAY: GIAY, khoTrang: khoTrang, chiaHang: chiaHang,
+    tachSl: tachSl, temCuaDong: temCuaDong, moRong: moRong,
+    svgTem: svgTem, vachRect: vachRect, coChuVua: coChuVua, beDong: beDong,
+    soGon: soGon, ngayTem: ngayTem, svgTemDot: svgTemDot };
+})();
+
+/*</PR-TEM>*/
+</script>
+<script>
+'use strict';
+/* ── Đường tới Apps Script: ĐÚNG một dòng với dashboard. Đổi bên kia thì đổi cả ở đây. ── */
+var APPSCRIPT_URL = "https://script.google.com/macros/s/AKfycbzIE6E68VYxS0Zm1vj8Ttfd790-JYolO1C4rMoEPj7FdNOWLPb23QpUHgIZ2T_dlZPJRQ/exec";
+
+/* KHÔNG khai lại `PR_TEM` ở đây. Lõi tem đã khai `var PR_TEM` ở khối mã đầu tệp, mà hai khối mã
+   trong cùng một trang dùng CHUNG global scope — khai lại kèm `= null` là xoá trắng lõi vừa nạp,
+   và trang đứng im ở dòng "Đang nạp lõi tem". Đúng lỗi đó đã xảy ra. */
+var DS = [], MAU_K = '', THEO_DOI = null;
+var PR_SKU_TRAN = 40, PR_TEM_TRAN = 400;
+
+function $(id){ return document.getElementById(id); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+function nf(n){ return Number(n||0).toLocaleString('vi-VN'); }
+var _tHen=null;
+function toast(m,k){ var t=$('toast'); t.textContent=m; t.className='hien '+(k||''); clearTimeout(_tHen); _tHen=setTimeout(function(){t.className='';},2800); }
+function tt(html,k){ var e=$('tt'); e.innerHTML=html||''; e.className='tt '+(k||''); }
+
+/* ══ KHOÁ THIẾT BỊ ═══════════════════════════════════════════════════════════════════════════
+ * Dùng CHUNG kho khoá với dashboard (cùng tên miền = cùng localStorage). Máy nào đã bấm In được
+ * trên dashboard thì bấm được ở đây luôn, không phải xin quyền lần nữa.
+ * Máy mới: quản trị gửi link kèm `#khoa=<mã>` — mở một lần là máy nhớ, y như dashboard. */
+(function(){
+  try{
+    var m=(location.hash||'').match(/[#&]khoa=([^&]+)/);
+    if(m){ localStorage.setItem('tb-khoa', decodeURIComponent(m[1]).trim());
+      history.replaceState(null,'',location.pathname+location.search); }
+  }catch(e){}
+})();
+function tbKhoa(){ try{ return localStorage.getItem('tb-khoa')||''; }catch(e){ return ''; } }
+
+/* Danh tính: cùng khoá localStorage với dashboard nên tên thiết bị đã đặt bên kia dùng lại được. */
+function ndsEmail(){
+  var m='';
+  try{ m=localStorage.getItem('nds-mail')||localStorage.getItem('uidgr-mail')||''; }catch(e){}
+  if(/^[a-z0-9._%+-]+@hasaki\.vn$/i.test(m)) return m.toLowerCase();
+  m='may-'+Math.random().toString(36).slice(2,10)+'@hasaki.vn';
+  try{ localStorage.setItem('nds-mail',m); }catch(e){}
+  return m;
+}
+function tenMay(){
+  var t='';
+  try{ t=String(localStorage.getItem('nds-ten-may')||'').trim(); }catch(e){}
+  return t||'Máy kho';
+}
+function doiTen(){
+  var t=window.prompt('Tên thiết bị này (hiện trong hàng đợi in để biết đợt tem của ai):', tenMay());
+  if(t===null) return;
+  t=String(t).replace(/\s+/g,' ').trim().slice(0,24);
+  try{ if(t) localStorage.setItem('nds-ten-may',t); }catch(e){}
+  $('tenMay').textContent=tenMay(); toast('Đã đổi tên thiết bị.','ok');
+}
+
+/* ══ GỌI APPS SCRIPT ═════════════════════════════════════════════════════════════════════════
+ * Bản gọn của `prGoiGas` bên dashboard, giữ nguyên ba chốt đã đổi bằng sự cố thật:
+ *   · nonce sinh MỘT lần cho cả hai lượt thử — GAS có nonce-cache 10 phút nên lượt thử lại trả
+ *     phản hồi cũ chứ không chạy lại `pr_them`. Đây là thứ chặn in đôi khi chặng 2 trả HTML.
+ *   · timeout 45s: fetch không có timeout thì mạng treo là nút In khoá vĩnh viễn. 45 chứ không 20
+ *     vì Apps Script chạy bình thường cũng 7-40s/lượt (đo 12/08/2026).
+ *   · thử 2 lượt: chặng 2 của Apps Script thỉnh thoảng trả trang HTML dù script đã chạy xong. */
+async function goiGas(body){
+  body=Object.assign({ tb: tbKhoa() }, body);
+  if(!body.nonce) body.nonce='pr-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,8);
+  var coTo=(typeof AbortSignal!=='undefined' && typeof AbortSignal.timeout==='function');
+  var cuoi='';
+  for(var i=0;i<2;i++){
+    if(i) await new Promise(function(r){ setTimeout(r,900); });
+    var txt='';
+    try{
+      var r=await fetch(APPSCRIPT_URL,{ method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
+        body:JSON.stringify(body), signal: coTo?AbortSignal.timeout(45000):undefined });
+      txt=await r.text();
+    }catch(e){ cuoi=String(e&&e.message||e); continue; }
+    var t=String(txt||'').trim();
+    if(t.charAt(0)==='{'||t.charAt(0)==='['){
+      try{ return JSON.parse(t); }catch(e){ cuoi='phản hồi không phải JSON'; continue; }
+    }
+    cuoi=/^<!DOCTYPE|^<html/i.test(t)?'Apps Script trả về trang HTML':('phản hồi lạ: '+t.slice(0,60));
+  }
+  throw new Error(cuoi||'không gọi được Apps Script');
+}
+
+/* ══ SỔ TAY SKU CỦA RIÊNG MÁY NÀY ═══════════════════════════════════════════════════════════
+ * Nhân viên gõ tay cả SKU lẫn tên hàng. Gõ lần hai cùng một SKU mà phải gõ lại tên là việc thừa,
+ * nên máy nhớ cặp SKU→tên đã dùng và tự điền. Chỉ nằm trên máy này, không đẩy đi đâu. */
+function soTayDoc(){ try{ return JSON.parse(localStorage.getItem('tem-sotay')||'{}')||{}; }catch(e){ return {}; } }
+function soTayGhi(sku,pn){
+  if(!sku||!pn) return;
+  var s=soTayDoc(); s[sku]=String(pn).slice(0,140);
+  var k=Object.keys(s); if(k.length>800) delete s[k[0]];
+  try{ localStorage.setItem('tem-sotay',JSON.stringify(s)); }catch(e){}
+}
+
+/* ══ XEM TRƯỚC ══ dựng đúng dải giấy thật, không phải khung minh hoạ ══ */
+function veXemTruoc(){
+  if(!PR_TEM) return;
+  var kt=PR_TEM.khoTrang(MAU_K), m=kt.tem;
+  var d={ sku:$('fSku').value.trim()||'—', pn:$('fPn').value.trim(),
+    sl:PR_TEM.tachSl($('fSl').value)[0]||'', ngay:PR_TEM.ngayTem() };
+  var svg=''; try{ svg=m.ve(d); }catch(e){}
+  var o='<div class="xt-tem" style="width:'+m.w+'mm;height:'+m.h+'mm">'+svg+'</div>';
+  for(var i=1;i<kt.cot;i++){
+    o+='<div class="xt-khe" style="width:'+kt.khe+'mm"></div>';
+    o+='<div class="xt-trong" style="width:'+m.w+'mm"></div>';
+  }
+  $('xtDai').innerHTML=o;
+  $('xtGhi').textContent='Dải decal '+kt.cot+' tem mỗi hàng · mỗi con '+m.w+' × '+m.h+' mm · khe giữa '+kt.khe+' mm';
+}
+
+/* ══ DANH SÁCH ══ */
+function them(){
+  var sku=$('fSku').value.trim(), pn=$('fPn').value.trim();
+  if(!sku){ toast('Nhập mã SKU trước đã.','canh'); $('fSku').focus(); return; }
+  if(!pn){ toast('Nhập tên hàng — tem không có tên thì người nhận không biết là hàng gì.','canh'); $('fPn').focus(); return; }
+  if(DS.length>=PR_SKU_TRAN){ toast('Một lệnh tối đa '+PR_SKU_TRAN+' SKU — in thành nhiều lượt.','canh'); return; }
+  var r={ sku:sku, pn:pn, slHang:$('fSl').value.trim(),
+    sl:Math.max(1,Math.min(200,Number($('fBan').value)||1)), mau:MAU_K };
+  DS.push(r); soTayGhi(sku,pn);
+  $('fSku').value=''; $('fPn').value=''; $('fSl').value=''; $('fBan').value=1; $('fSku').focus();
+  veDs(); veXemTruoc();
+  toast('Đã thêm '+PR_TEM.temCuaDong(r)+' tem cho '+sku+'.','ok');
+}
+function xoa(i){ DS.splice(i,1); veDs(); }
+function veDs(){
+  var o='';
+  DS.forEach(function(r,i){
+    var l=PR_TEM.tachSl(r.slHang);
+    var chip=l.length>1 ? l.map(function(x){ return '<span class="chip">'+esc(x)+'</span>'; }).join('')
+                        : (l.length?'<span class="chip">'+esc(l[0])+'</span>':'');
+    o+='<li class="dong"><div class="dong-th"><div class="dong-ma">'+esc(r.sku)+'</div>'
+      +'<div class="dong-ten">'+esc(r.pn)+'</div>'
+      +'<div class="dong-sl">'+PR_TEM.temCuaDong(r)+' tem '+chip+'</div></div>'
+      +'<button class="nut tron" aria-label="Bỏ '+esc(r.sku)+'" onclick="xoa('+i+')">×</button></li>';
+  });
+  $('ds').innerHTML=o;
+  $('dsRong').style.display=DS.length?'none':'';
+  var tong=PR_TEM.tongTem(DS);
+  $('daySo').textContent=nf(tong)+' tem';
+  $('dayPhu').textContent=DS.length?(DS.length+' SKU trong danh sách'):'danh sách đang trống';
+  $('btnIn').disabled=!tong;
+  $('btnIn').textContent=tong?('In '+nf(tong)+' tem'):'In tem';
+}
+
+/* ══ GỬI LỆNH ═══════════════════════════════════════════════════════════════════════════════ */
+async function gui(){
+  var tong=PR_TEM.tongTem(DS);
+  if(!tong) return;
+  if(tong>PR_TEM_TRAN){ toast('Một lệnh tối đa '+PR_TEM_TRAN+' con tem — in thành nhiều lượt.','canh'); return; }
+  if(tong>30 && !confirm('In '+nf(tong)+' con tem cho '+DS.length+' SKU?')) return;
+
+  var b=$('btnIn'), chuCu=b.textContent;
+  b.disabled=true; b.textContent='Đang gửi…'; $('btnLui').style.display='none';
+  var t0=Date.now();
+  /* `sl` gửi đi là SỐ TEM THẬT của dòng, không phải con số trong ô "Số bản in": dòng khai nhiều số
+     lượng thì số tem do danh sách quyết định. Gửi sai con này là hàng đợi báo 1 tem trong khi máy
+     in nhả 3 — và trần số tem cũng gác sai. */
+  var dong=DS.map(function(r){
+    return { sku:String(r.sku), sl:PR_TEM.temCuaDong(r), slHang:String(r.slHang||''),
+      mau:r.mau||PR_TEM.MAU_MAC_DINH, pn:String(r.pn||'').slice(0,140), uid:'', loai:'' };
+  });
+  var nonce='pr-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,8);
+  var kq=null;
+  try{
+    kq=await goiGas({ action:'pr_them', nguoi:tenMay(), may:ndsEmail(), dong:JSON.stringify(dong), nonce:nonce });
+  }catch(e){
+    b.disabled=false; b.textContent=chuCu;
+    tt('✗ Không gọi được hàng đợi in ('+esc(String(e.message||e))+'). Kiểm tra mạng rồi bấm lại — hoặc in tạm bằng máy này.','xau');
+    $('btnLui').style.display='';
+    return;
+  }
+  b.disabled=false; b.textContent=chuCu;
+
+  if(kq && kq.canKhoa){
+    /* Trang ở TÊN MIỀN KHÁC dashboard nên localStorage tách riêng: máy đã có quyền bên dashboard
+       vẫn phải cấp lại một lần ở đây. Nói thẳng ra để người dùng khỏi tưởng mình bị thu quyền. */
+    tt('✗ <b>Máy này chưa được cấp quyền in.</b> Trang nằm ở tên miền khác dashboard nên quyền không '
+      +'mang sang được — xin quản trị gửi link có mã khoá, mở một lần là dùng mãi.','xau');
+    return;
+  }
+  if(!kq || kq.status!=='success' || !kq.id){
+    tt('✗ '+esc((kq&&kq.message)||'Hàng đợi không nhận lệnh')+'.','xau');
+    return;
+  }
+  if(kq.trung){ tt('Lệnh này vừa gửi rồi — không gửi lại để tránh in trùng.','canh'); return; }
+
+  tt('Đã gửi <b>'+nf(tong)+' tem</b>. '+moTaCho(kq), nguyCap(kq));
+  DS=[]; veDs();
+  theoDoi(kq.id, tong, t0);
+}
+
+function moTaCho(kq){
+  var cho=Number(kq.cho)||0;
+  if(!cho) return 'Máy in đang rảnh — tem ra ngay.';
+  return 'Trước bạn còn <b>'+cho+' đợt</b> ('+nf(Number(kq.temCho)||0)+' tem).';
+}
+function nguyCap(kq){
+  var m=kq&&kq.may;
+  if(m&&m.co&&!m.ro&&m.chan) return 'xau';
+  return (Number(kq&&kq.cho)||0)?'canh':'';
+}
+
+/* Hỏi lại tới khi agent báo xong. Dày ở đầu (người bấm còn đứng nhìn), thưa dần về sau. */
+async function theoDoi(id, tong, t0){
+  clearTimeout(THEO_DOI);
+  var HAN=120000;
+  var giay=function(){ return Math.round((Date.now()-t0)/1000); };
+  while(Date.now()-t0<HAN){
+    await new Promise(function(g){ THEO_DOI=setTimeout(g, Date.now()-t0<12000?700:2500); });
+    var kq=null;
+    try{ kq=await goiGas({ action:'pr_trangthai', id:id }); }catch(e){ continue; }
+    if(!kq||kq.status!=='success') continue;
+    veChip(kq.may);
+    /* Máy in đang mắc (hết giấy…) thì ĐỪNG bỏ cuộc sau 2 phút: người dùng còn đi lấy cuộn decal. */
+    if(kq.may && kq.may.co && !kq.may.ro && kq.may.chan) HAN=Math.max(HAN,360000);
+    if(kq.trangThai==='xong'){
+      tt('✓ Đã in xong <b>'+nf(tong)+' tem</b> — mất '+giay()+' giây.','ok');
+      toast('Máy in kho đã in xong '+nf(tong)+' tem.','ok');
+      return;
+    }
+    if(kq.trangThai==='loi'){
+      tt('✗ Máy in báo lỗi: '+esc(kq.ghiChu||'không rõ')+'. Lệnh vẫn còn trong hàng đợi.','xau');
+      $('btnLui').style.display='';
+      return;
+    }
+    /* PHÁN XỬ BẰNG CHUYỆN THẬT: quá 25 giây chưa ai nhặt lệnh thì agent chắc chắn không trực.
+       Kết luận này đáng tin hơn mọi cách đọc nhịp tim, vì nó đo đúng cái người dùng đang cần. */
+    var lau=Date.now()-t0>25000, truoc=Number(kq.truoc)||0;
+    var mt = (kq.trangThai==='dang_in')
+      ? 'Máy in đang chạy đợt của bạn — <b>'+nf(tong)+' tem</b>…'
+      : (lau && !truoc
+          ? 'Chưa ai nhặt lệnh sau '+giay()+' giây — <b>máy trạm chưa bật agent in tem</b>. Lệnh vẫn nằm trong hàng đợi.'
+          : 'Đang chờ — trước bạn còn '+truoc+' đợt.');
+    if(lau && kq.trangThai==='cho' && !truoc) $('btnLui').style.display='';
+    tt(mt+' <span style="color:var(--muc3)">('+giay()+'s)</span>', nguyCap(kq));
+  }
+  tt('Chưa thấy máy in phản hồi sau 2 phút — lệnh vẫn nằm trong hàng đợi. Cần tem ngay thì in bằng máy này.','canh');
+  $('btnLui').style.display='';
+}
+
+/* ══ CHIP TÌNH TRẠNG MÁY IN ══ */
+function veChip(may){
+  var el=$('chip');
+  if(!may||!may.co){ el.className='vien'; el.innerHTML='<i class="cham"></i>chưa rõ máy in'; return; }
+  if(may.ro){ el.className='vien canh'; el.innerHTML='<i class="cham"></i>tin cũ: '+esc(may.chu||''); return; }
+  if(may.chan){ el.className='vien xau'; el.innerHTML='<i class="cham"></i>Máy in: '+esc(may.chu||'đang mắc'); return; }
+  el.className='vien ok'; el.innerHTML='<i class="cham"></i>'+esc(may.chu||'máy in sẵn sàng');
+}
+var _bay=false;
+async function hoiHangDoi(){
+  if(_bay) return;                 // nhịp 4s nhưng một lượt hỏi có thể mất hơn thế — không để chồng
+  _bay=true;
+  try{
+    var kq=await goiGas({ action:'pr_hangdoi' });
+    if(kq&&kq.status==='success'){
+      veChip(kq.may);
+      if(Number(kq.tranSku)>0) PR_SKU_TRAN=Number(kq.tranSku);
+      if(Number(kq.tranTem)>0) PR_TEM_TRAN=Number(kq.tranTem);
+    }
+  }catch(e){ }
+  finally{ _bay=false; }
+}
+
+/* ══ ĐƯỜNG LÙI: in bằng chính máy đang cầm ══ */
+function inTrinhDuyet(){
+  if(!DS.length){ toast('Danh sách đang trống.','canh'); return; }
+  var kt=PR_TEM.khoTrang(MAU_K), m=kt.tem;
+  var hang=PR_TEM.chiaHang(PR_TEM.moRong(DS), MAU_K);
+  var o='<style>@page{size:'+kt.w+'mm '+kt.h+'mm;margin:0}</style>';
+  hang.forEach(function(h){
+    o+='<div class="in-hang" style="width:'+kt.w+'mm;height:'+kt.h+'mm">';
+    for(var i=0;i<kt.cot;i++){
+      if(i) o+='<div style="width:'+kt.khe+'mm"></div>';
+      o+= h[i] ? '<div style="width:'+m.w+'mm;height:'+m.h+'mm">'
+                 +m.ve({ sku:h[i].sku, pn:h[i].pn, sl:h[i].slHang, ngay:PR_TEM.ngayTem() })+'</div>'
+               : '<div style="width:'+m.w+'mm;height:'+m.h+'mm"></div>';
+    }
+    o+='</div>';
+  });
+  $('toIn').innerHTML=o;
+  setTimeout(function(){ window.print(); },60);
+}
+
+/* ══ KHỞI ĐỘNG ══════════════════════════════════════════════════════════════════════════════ */
+(function batDau(){
+  /* Lõi tem phải có mặt trước khi trang chạy. Nói rõ nếu thiếu, thay vì đứng im ở màn hình nạp —
+     một trang treo không lời giải thích là thứ tệ nhất với người đang đứng ở kho. */
+  if (typeof PR_TEM === 'undefined' || !PR_TEM || !PR_TEM.MAU_MAC_DINH){
+    $('nap').innerHTML='<p style="color:var(--xau);font-weight:700">Lõi tem không nạp được.</p>'
+      +'<p style="font-size:13.5px">Khối mã lõi tem ở đầu tệp bị lỗi hoặc bị xoá. Tải lại bản '
+      +'<code>in-tem-sku.html</code> nguyên vẹn.</p>';
+    return;
+  }
+  MAU_K = PR_TEM.MAU_MAC_DINH;
+  $('nap').style.display='none';
+  $('than').style.display='';
+  $('day').style.display='';
+  $('tenMay').textContent=tenMay();
+  $('vanTay').textContent=LOI_VAN;
+  veDs(); veXemTruoc();
+  hoiHangDoi(); setInterval(hoiHangDoi, 4000);
+
+  $('fSku').addEventListener('input', function(){
+    var pn=soTayDoc()[this.value.trim()];
+    if(pn && !$('fPn').value.trim()){ $('fPn').value=pn; $('goiySku').textContent='Đã tự điền tên hàng từ lần in trước — sửa được.'; }
+    veXemTruoc();
+  });
+  ['fPn','fSl'].forEach(function(id){ $(id).addEventListener('input', veXemTruoc); });
+  /* Enter nhảy ô, Enter ở ô cuối = thêm vào danh sách. Máy quét cầm tay gõ xong tự bấm Enter nên
+     quét → nhảy sang ô tên hàng, đúng thứ tự tay người làm. */
+  var CHUOI=['fSku','fPn','fSl','fBan'];
+  CHUOI.forEach(function(id,i){
+    $(id).addEventListener('keydown', function(e){
+      if(e.key!=='Enter') return;
+      e.preventDefault();
+      if(i<CHUOI.length-1) $(CHUOI[i+1]).focus(); else them();
+    });
+  });
+  $('fSku').focus();
+})();
+</script>
+</body>
+</html>
