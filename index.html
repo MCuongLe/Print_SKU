@@ -245,7 +245,7 @@ Error generating stack: `+y.message+`
           radial-gradient(circle at 50% -10%, rgba(0, 95, 65, .34), transparent 34rem),
           linear-gradient(145deg, #07110e 0%, #0b1714 52%, #101b18 100%);
       }
-      #root > header {
+      #root header {
         position: sticky;
         background: rgba(7, 17, 14, .9) !important;
         border-color: rgba(126, 169, 153, .18) !important;
@@ -304,6 +304,22 @@ Error generating stack: `+y.message+`
         backdrop-filter: blur(14px);
       }
       #root .bg-white { background-color: #10201b !important; }
+      #root aside {
+        border-color: rgba(145, 186, 171, .15) !important;
+        background: #0b1b16 !important;
+        box-shadow: 18px 0 45px rgba(0, 0, 0, .14);
+      }
+      #root .bg-slate-50,
+      #root .bg-slate-100 {
+        color: #c8ded6 !important;
+        background-color: rgba(109, 151, 136, .1) !important;
+      }
+      #root code.bg-slate-100 {
+        border: 1px solid rgba(145, 186, 171, .14);
+        color: #bce8d7 !important;
+        font-weight: 600;
+      }
+      #root .text-brand { color: #28ba87 !important; }
       #root .text-slate-800,
       #root .text-slate-700,
       #root .text-slate-600 { color: #e7f1ed !important; }
@@ -347,7 +363,7 @@ Error generating stack: `+y.message+`
         #root > main > p:last-child { grid-column: 1 / -1; }
       }
       @media (max-width: 480px) {
-        #root > header { padding: 10px 14px; }
+        #root header { padding: 10px 14px; }
         #root > header > div { gap: 10px; }
         #root > header > div > div:first-child { width: 38px; height: 38px; }
         #root > header h1 { font-size: 16px; }
@@ -359,5 +375,318 @@ Error generating stack: `+y.message+`
         html, body, #root { color: #000 !important; background: #fff !important; }
       }
     </style>
+    <style id="admin-auth-theme">
+      html.admin-auth-lock { overflow: hidden; }
+      html.admin-auth-pending #root { visibility: hidden; }
+      .admin-auth {
+        position: fixed;
+        inset: 0;
+        z-index: 1000;
+        display: grid;
+        place-items: center;
+        padding: 20px;
+        color: #e7f1ed;
+        background:
+          radial-gradient(circle at 50% 18%, rgba(0, 95, 65, .3), transparent 34rem),
+          rgba(4, 12, 9, .96);
+        font-family: Arial, Helvetica, sans-serif;
+      }
+      .admin-auth[hidden] { display: none; }
+      .admin-auth__card {
+        width: min(100%, 420px);
+        padding: 28px;
+        border: 1px solid rgba(145, 186, 171, .18);
+        border-radius: 24px;
+        background: rgba(15, 31, 26, .96);
+        box-shadow: 0 30px 80px rgba(0,0,0,.42);
+      }
+      .admin-auth__brand { display: flex; align-items: center; gap: 12px; margin-bottom: 25px; }
+      .admin-auth__mark {
+        display: grid;
+        place-items: center;
+        width: 46px;
+        height: 46px;
+        border-radius: 14px;
+        color: white;
+        background: linear-gradient(145deg, #087b58, #005f41);
+        box-shadow: 0 12px 28px rgba(0, 95, 65, .34);
+        font-size: 20px;
+        font-weight: 800;
+      }
+      .admin-auth__brand strong { display: block; font-size: 18px; }
+      .admin-auth__brand span { display: block; margin-top: 3px; color: #7da396; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; }
+      .admin-auth h2 { margin: 0 0 8px; font-size: 22px; }
+      .admin-auth__lead { margin: 0 0 22px; color: #98ada6; font-size: 14px; line-height: 1.55; }
+      .admin-auth label { display: block; margin: 14px 0 7px; color: #b8cbc4; font-size: 11px; font-weight: 800; letter-spacing: .075em; text-transform: uppercase; }
+      .admin-auth input {
+        width: 100%;
+        min-height: 50px;
+        padding: 0 15px;
+        box-sizing: border-box;
+        border: 1px solid rgba(145, 186, 171, .2);
+        border-radius: 13px;
+        outline: none;
+        color: #f1f8f5;
+        background: rgba(5, 15, 12, .76);
+        font: inherit;
+      }
+      .admin-auth input:focus { border-color: #20a97a; box-shadow: 0 0 0 3px rgba(0, 95, 65, .34); }
+      .admin-auth__error { min-height: 19px; margin: 10px 2px 3px; color: #ffaaaa; font-size: 12px; line-height: 1.45; }
+      .admin-auth__submit,
+      .admin-auth__cancel {
+        width: 100%;
+        min-height: 50px;
+        border-radius: 999px;
+        font: 700 14px/1 Arial, Helvetica, sans-serif;
+        cursor: pointer;
+      }
+      .admin-auth__submit { border: 0; color: white; background: #005f41; }
+      .admin-auth__submit:hover { background: #087b58; }
+      .admin-auth__submit:disabled { opacity: .55; cursor: wait; }
+      .admin-auth__cancel { margin-top: 9px; border: 1px solid rgba(145, 186, 171, .2); color: #9fb9b0; background: transparent; }
+      .admin-auth__note { margin: 16px 4px 0; color: #667f76; font-size: 11px; line-height: 1.5; text-align: center; }
+      .admin-session {
+        position: fixed;
+        bottom: 72px;
+        left: 22px;
+        z-index: 80;
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        padding: 7px 8px 7px 12px;
+        border: 1px solid rgba(145, 186, 171, .17);
+        border-radius: 999px;
+        color: #9fc4b7;
+        background: rgba(7, 17, 14, .94);
+        box-shadow: 0 12px 30px rgba(0,0,0,.25);
+        font: 700 12px/1 Arial, Helvetica, sans-serif;
+      }
+      .admin-session[hidden] { display: none; }
+      .admin-session button { min-height: 34px; padding: 0 12px; border: 0; border-radius: 999px; color: white; background: #005f41; font-weight: 700; cursor: pointer; }
+      @media (max-width: 767px) {
+        .admin-auth { align-items: start; padding-top: max(28px, env(safe-area-inset-top)); overflow-y: auto; }
+        .admin-auth__card { padding: 23px 20px; border-radius: 20px; }
+        .admin-session { right: 14px; bottom: 14px; left: auto; }
+      }
+    </style>
+    <section class="admin-auth" id="admin-auth" role="dialog" aria-modal="true" aria-labelledby="admin-auth-title" hidden>
+      <form class="admin-auth__card" id="admin-auth-form" novalidate>
+        <div class="admin-auth__brand">
+          <div class="admin-auth__mark" aria-hidden="true">H</div>
+          <div><strong>In tem SKU</strong><span>Hasaki · Admin access</span></div>
+        </div>
+        <h2 id="admin-auth-title">Đăng nhập Quản trị</h2>
+        <p class="admin-auth__lead">Dùng tài khoản đã được cấp vai trò admin trên Supabase.</p>
+        <label for="admin-auth-email">Email quản trị</label>
+        <input id="admin-auth-email" name="email" type="email" autocomplete="username" inputmode="email" placeholder="ten@hasaki.vn" required>
+        <label for="admin-auth-password">Mật khẩu</label>
+        <input id="admin-auth-password" name="password" type="password" autocomplete="current-password" placeholder="Nhập mật khẩu" required>
+        <div class="admin-auth__error" id="admin-auth-error" role="alert" aria-live="polite"></div>
+        <button class="admin-auth__submit" id="admin-auth-submit" type="submit">Đăng nhập</button>
+        <button class="admin-auth__cancel" id="admin-auth-cancel" type="button">Về màn hình in tem</button>
+        <p class="admin-auth__note">Mật khẩu không được lưu trong ứng dụng. Phiên quản trị kết thúc khi đóng tab.</p>
+      </form>
+    </section>
+    <div class="admin-session" id="admin-session" hidden>
+      <span id="admin-session-name">Admin</span>
+      <button id="admin-session-logout" type="button">Đăng xuất</button>
+    </div>
+    <script>
+      (() => {
+        const SUPABASE_URL = "https://ikzhitdqkoatlmkrxuuh.supabase.co";
+        const SUPABASE_KEY = "sb_publishable_mBl--Ep5nNxuC4Xvyi1gfg_SLGEcRhI";
+        const SESSION_KEY = "print-sku-admin-session-v1";
+        const overlay = document.getElementById("admin-auth");
+        const form = document.getElementById("admin-auth-form");
+        const emailInput = document.getElementById("admin-auth-email");
+        const passwordInput = document.getElementById("admin-auth-password");
+        const errorBox = document.getElementById("admin-auth-error");
+        const submitButton = document.getElementById("admin-auth-submit");
+        const cancelButton = document.getElementById("admin-auth-cancel");
+        const sessionControl = document.getElementById("admin-session");
+        const sessionName = document.getElementById("admin-session-name");
+        const logoutButton = document.getElementById("admin-session-logout");
+        let authorized = false;
+        let session = null;
+        let pendingHash = "#admin/tongquan";
+
+        const isAdminHash = () => /^#admin(?:\/|$)/.test(location.hash);
+        const authHeaders = token => ({
+          apikey: SUPABASE_KEY,
+          Authorization: `Bearer ${token}`
+        });
+        const readSession = () => {
+          try { return JSON.parse(sessionStorage.getItem(SESSION_KEY) || "null"); }
+          catch (_) { return null; }
+        };
+        const saveSession = value => {
+          session = value;
+          try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(value)); } catch (_) {}
+        };
+        const clearSession = () => {
+          session = null;
+          authorized = false;
+          try { sessionStorage.removeItem(SESSION_KEY); } catch (_) {}
+        };
+        const setPending = value => document.documentElement.classList.toggle("admin-auth-pending", value);
+        const setBusy = value => {
+          submitButton.disabled = value;
+          submitButton.textContent = value ? "Đang xác minh…" : "Đăng nhập";
+        };
+        const openLogin = message => {
+          errorBox.textContent = message || "";
+          overlay.hidden = false;
+          sessionControl.hidden = true;
+          document.getElementById("root").inert = true;
+          document.documentElement.classList.add("admin-auth-lock");
+          setTimeout(() => emailInput.focus(), 60);
+        };
+        const closeLogin = () => {
+          overlay.hidden = true;
+          document.getElementById("root").inert = false;
+          document.documentElement.classList.remove("admin-auth-lock");
+          errorBox.textContent = "";
+          passwordInput.value = "";
+        };
+        const showSession = username => {
+          sessionName.textContent = username || "Admin";
+          sessionControl.hidden = !isAdminHash();
+        };
+        const refreshSession = async current => {
+          if (!current?.refresh_token) return null;
+          const response = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
+            method: "POST",
+            headers: { apikey: SUPABASE_KEY, "Content-Type": "application/json" },
+            body: JSON.stringify({ refresh_token: current.refresh_token })
+          });
+          if (!response.ok) return null;
+          const refreshed = await response.json();
+          saveSession(refreshed);
+          return refreshed;
+        };
+        const validateAdmin = async current => {
+          if (!current?.access_token) return null;
+          let active = current;
+          let userResponse = await fetch(`${SUPABASE_URL}/auth/v1/user`, { headers: authHeaders(active.access_token) });
+          if (userResponse.status === 401) {
+            active = await refreshSession(active);
+            if (!active) return null;
+            userResponse = await fetch(`${SUPABASE_URL}/auth/v1/user`, { headers: authHeaders(active.access_token) });
+          }
+          if (!userResponse.ok) return null;
+          const user = await userResponse.json();
+          const roleResponse = await fetch(`${SUPABASE_URL}/rest/v1/user_roles?select=username,role&user_id=eq.${encodeURIComponent(user.id)}&limit=1`, {
+            headers: authHeaders(active.access_token)
+          });
+          if (!roleResponse.ok) throw new Error("Không đọc được bảng quyền. Kiểm tra RLS của user_roles.");
+          const roles = await roleResponse.json();
+          if (!roles[0] || roles[0].role !== "admin") throw new Error("Tài khoản này không có quyền Quản trị.");
+          authorized = true;
+          saveSession(active);
+          showSession(roles[0].username || "Admin");
+          return roles[0];
+        };
+        const requireAdmin = async () => {
+          setPending(true);
+          try {
+            const role = await validateAdmin(session || readSession());
+            if (role) {
+              closeLogin();
+              setPending(false);
+              return true;
+            }
+          } catch (error) {
+            clearSession();
+            setPending(false);
+            openLogin(error.message);
+            return false;
+          }
+          clearSession();
+          setPending(false);
+          openLogin();
+          return false;
+        };
+
+        document.addEventListener("click", event => {
+          const button = event.target.closest("button");
+          if (!button || button.textContent.trim() !== "Quản trị" || authorized) return;
+          event.preventDefault();
+          event.stopPropagation();
+          pendingHash = "#admin/tongquan";
+          requireAdmin().then(ok => {
+            if (ok) location.hash = pendingHash;
+          });
+        }, true);
+
+        window.addEventListener("hashchange", () => {
+          if (!isAdminHash()) {
+            sessionControl.hidden = true;
+            return;
+          }
+          if (authorized) {
+            sessionControl.hidden = false;
+            return;
+          }
+          pendingHash = location.hash;
+          requireAdmin();
+        });
+
+        form.addEventListener("submit", async event => {
+          event.preventDefault();
+          const email = emailInput.value.trim();
+          const password = passwordInput.value;
+          if (!email || !password) {
+            errorBox.textContent = "Nhập đầy đủ email và mật khẩu để tiếp tục.";
+            return;
+          }
+          setBusy(true);
+          errorBox.textContent = "";
+          try {
+            const response = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+              method: "POST",
+              headers: { apikey: SUPABASE_KEY, "Content-Type": "application/json" },
+              body: JSON.stringify({ email, password })
+            });
+            if (!response.ok) throw new Error("Email hoặc mật khẩu chưa đúng.");
+            saveSession(await response.json());
+            const role = await validateAdmin(session);
+            if (!role) throw new Error("Phiên đăng nhập không hợp lệ. Hãy thử lại.");
+            closeLogin();
+            setPending(false);
+            if (location.hash !== pendingHash) location.hash = pendingHash;
+          } catch (error) {
+            clearSession();
+            errorBox.textContent = error.message || "Không kết nối được Supabase. Kiểm tra mạng rồi thử lại.";
+          } finally {
+            setBusy(false);
+          }
+        });
+
+        cancelButton.addEventListener("click", () => {
+          closeLogin();
+          setPending(false);
+          location.hash = "#worker";
+        });
+
+        logoutButton.addEventListener("click", async () => {
+          const current = session || readSession();
+          if (current?.access_token) {
+            fetch(`${SUPABASE_URL}/auth/v1/logout`, {
+              method: "POST",
+              headers: authHeaders(current.access_token)
+            }).catch(() => {});
+          }
+          clearSession();
+          sessionControl.hidden = true;
+          location.hash = "#worker";
+        });
+
+        session = readSession();
+        if (isAdminHash()) {
+          pendingHash = location.hash;
+          requireAdmin();
+        }
+      })();
+    </script>
   </body>
 </html>
