@@ -1,0 +1,15 @@
+# Generated internal data
+data/*.db
+data/*.db-shm
+data/*.db-wal
+data/*.xlsx
+data/*.xls
+data/*.csv
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Local secrets
+.env
+.env.*
