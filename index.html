@@ -5,6 +5,105 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#005F41" />
     <title>In tem SKU</title>
+    <script>
+      (() => {
+        const SUPABASE_URL = "https://ikzhitdqkoatlmkrxuuh.supabase.co";
+        const SUPABASE_KEY = "sb_publishable_mBl--Ep5nNxuC4Xvyi1gfg_SLGEcRhI";
+        const LEGACY_QUEUE_URL = "https://script.google.com/macros/s/AKfycbzIE6E68VYxS0Zm1vj8Ttfd790-JYolO1C4rMoEPj7FdNOWLPb23QpUHgIZ2T_dlZPJRQ/exec";
+        const nativeFetch = window.fetch.bind(window);
+
+        const rpc = async (name, body) => {
+          const response = await nativeFetch(`${SUPABASE_URL}/rest/v1/rpc/${name}`, {
+            method: "POST",
+            headers: {
+              apikey: SUPABASE_KEY,
+              Authorization: `Bearer ${SUPABASE_KEY}`,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify(body),
+            signal: AbortSignal.timeout(30000)
+          });
+          const result = await response.json().catch(() => null);
+          if (!response.ok || !result) throw new Error(result?.message || `Supabase HTTP ${response.status}`);
+          return result;
+        };
+
+        const accessToken = () => "public";
+        try { localStorage.setItem("tb-khoa", "public"); } catch (_) {}
+        const nonce = () => `pr-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+        const viDate = () => new Intl.DateTimeFormat("vi-VN", { day: "2-digit", month: "2-digit", year: "2-digit" }).format(new Date());
+        const printerView = agent => {
+          if (!agent) return null;
+          const printer = agent.state?.printer || {};
+          const seen = agent.lastSeenAt ? Date.parse(agent.lastSeenAt) : 0;
+          return {
+            co: true,
+            chan: Boolean(printer.blocked),
+            chu: printer.message || (printer.blocked ? "Máy in chưa sẵn sàng" : "Máy in sẵn sàng"),
+            ro: !seen || Date.now() - seen > 15000
+          };
+        };
+        const legacyResponse = value => new Response(JSON.stringify(value), {
+          status: 200,
+          headers: { "Content-Type": "application/json; charset=utf-8" }
+        });
+
+        const enqueue = async ({ type, payload, copies, requestedBy, requestNonce }) => rpc("print_enqueue", {
+          p_access_token: accessToken(),
+          p_nonce: requestNonce || nonce(),
+          p_type: type,
+          p_template_version: 1,
+          p_payload: payload,
+          p_copies: copies,
+          p_requested_by: requestedBy || ""
+        });
+        const jobStatus = id => rpc("print_job_status", { p_access_token: accessToken(), p_job_id: id });
+        const queueStatus = () => rpc("print_queue_status", { p_access_token: accessToken() });
+
+        window.PrintSkuQueue = { enqueue, jobStatus, queueStatus, accessToken, supabaseUrl: SUPABASE_URL, publishableKey: SUPABASE_KEY };
+
+        window.fetch = async (input, init = {}) => {
+          const url = typeof input === "string" ? input : input?.url || "";
+          if (url !== LEGACY_QUEUE_URL) return nativeFetch(input, init);
+          let command;
+          try { command = JSON.parse(String(init.body || "{}")); }
+          catch (_) { return legacyResponse({ status: "error", message: "Dữ liệu lệnh in không hợp lệ" }); }
+          try {
+            if (command.action === "pr_hangdoi") {
+              const result = await queueStatus();
+              if (!result.ok) return legacyResponse({ status: "error", canKhoa: result.error?.code === "ACCESS_DENIED", message: result.error?.message });
+              const agents = result.data?.agents || [];
+              const latest = [...agents].sort((a, b) => Date.parse(b.lastSeenAt || 0) - Date.parse(a.lastSeenAt || 0))[0];
+              return legacyResponse({ status: "success", may: printerView(latest), cho: Number(result.data?.queued) || 0, temCho: Number(result.data?.queuedCopies) || 0, tranSku: 30, tranTem: 500 });
+            }
+            if (command.action === "pr_them") {
+              const rows = JSON.parse(command.dong || "[]");
+              const items = rows.map(row => ({
+                sku: String(row.sku || "").trim(),
+                productName: String(row.pn || "").trim(),
+                quantity: String(row.slHang || "").trim(),
+                printedDate: viDate(),
+                copies: Math.max(1, Number(row.sl) || 1)
+              }));
+              const copies = items.reduce((total, item) => total + item.copies, 0);
+              const result = await enqueue({ type: "sku", payload: { items }, copies, requestedBy: command.nguoi, requestNonce: command.nonce });
+              if (!result.ok) return legacyResponse({ status: "error", canKhoa: result.error?.code === "ACCESS_DENIED", message: result.error?.message });
+              return legacyResponse({ status: "success", id: result.data.id, trung: Boolean(result.data.duplicate), cho: 1 });
+            }
+            if (command.action === "pr_trangthai") {
+              const result = await jobStatus(command.id);
+              if (!result.ok) return legacyResponse({ status: "error", canKhoa: result.error?.code === "ACCESS_DENIED", message: result.error?.message });
+              const job = result.data || {};
+              const mapped = job.status === "completed" ? "xong" : job.status === "failed" ? "loi" : job.status === "queued" ? "cho" : "dang_in";
+              return legacyResponse({ status: "success", trangThai: mapped, ghiChu: job.errorMessage || "", truoc: 0 });
+            }
+            return legacyResponse({ status: "error", message: "Thao tác hàng đợi không được hỗ trợ" });
+          } catch (error) {
+            return legacyResponse({ status: "error", message: String(error?.message || error).slice(0, 200) });
+          }
+        };
+      })();
+    </script>
     <script type="module">
 (function(){const e=document.createElement("link").relList;if(e&&e.supports&&e.supports("modulepreload"))return;for(const i of document.querySelectorAll('link[rel="modulepreload"]'))n(i);new MutationObserver(i=>{for(const o of i)if(o.type==="childList")for(const s of o.addedNodes)s.tagName==="LINK"&&s.rel==="modulepreload"&&n(s)}).observe(document,{childList:!0,subtree:!0});function t(i){const o={};return i.integrity&&(o.integrity=i.integrity),i.referrerPolicy&&(o.referrerPolicy=i.referrerPolicy),i.crossOrigin==="use-credentials"?o.credentials="include":i.crossOrigin==="anonymous"?o.credentials="omit":o.credentials="same-origin",o}function n(i){if(i.ep)return;i.ep=!0;const o=t(i);fetch(i.href,o)}})();var Ks={exports:{}},ua={},Ys={exports:{}},Oe={};/**
  * @license React
@@ -469,6 +568,217 @@ Error generating stack: `+y.message+`
         .admin-session { right: 14px; bottom: 14px; left: auto; }
       }
     </style>
+    <style>
+      .uid-launcher {
+        position: fixed; right: 18px; bottom: 72px; z-index: 70; min-height: 48px; padding: 0 18px;
+        border: 0; border-radius: 999px; color: #fff; background: #005f41; box-shadow: 0 12px 28px rgba(0,95,65,.3);
+        font: 800 14px/1 Arial, Helvetica, sans-serif; cursor: pointer;
+      }
+      .uid-screen {
+        position: fixed; inset: 0; z-index: 75; overflow-y: auto; color: #e7f1ed;
+        background:
+          radial-gradient(circle at 50% -10%, rgba(0, 95, 65, .34), transparent 34rem),
+          linear-gradient(145deg, #07110e 0%, #0b1714 52%, #101b18 100%);
+        font-family: Arial, Helvetica, sans-serif;
+      }
+      .uid-screen[hidden], .uid-launcher[hidden] { display: none; }
+      .uid-shell { width: min(760px, calc(100% - 28px)); margin: 0 auto; padding: 20px 0 110px; }
+      .uid-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+      .uid-head h1 { margin: 0; color: #f2faf7; font-size: clamp(24px, 5vw, 34px); letter-spacing: -.03em; }
+      .uid-head p { margin: 5px 0 0; color: #9ab0a8; font-size: 13px; }
+      .uid-back { min-height: 44px; padding: 0 16px; border: 1px solid rgba(145,186,171,.2); border-radius: 999px; color: #b8cbc4; background: rgba(255,255,255,.04); font-weight: 800; cursor: pointer; }
+      .uid-card { padding: clamp(18px, 4vw, 28px); border: 1px solid rgba(145,186,171,.13); border-radius: 24px; background: rgba(15,31,26,.88); box-shadow: 0 20px 55px rgba(0,0,0,.2), inset 0 1px 0 rgba(255,255,255,.025); backdrop-filter: blur(14px); }
+      .uid-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+      .uid-field { display: grid; gap: 7px; }
+      .uid-field--wide { grid-column: 1 / -1; }
+      .uid-field label { color: #789087; font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+      .uid-field input { width: 100%; min-height: 50px; box-sizing: border-box; padding: 12px 14px; border: 1.5px solid rgba(145,186,171,.2); border-radius: 13px; color: #f1f8f5; background: rgba(5,15,12,.72); box-shadow: inset 0 1px 0 rgba(255,255,255,.025); font: 600 16px/1.3 Arial, Helvetica, sans-serif; outline: none; }
+      .uid-field input::placeholder { color: #60766e; }
+      .uid-field input:focus { border-color: #20a97a; box-shadow: 0 0 0 3px rgba(0,95,65,.34); }
+      .uid-optional { color: #28ba87; font-size: 10px; letter-spacing: 0; text-transform: none; }
+      .uid-help { min-height: 18px; margin: 0; color: #9ab0a8; font-size: 12px; line-height: 1.45; }
+      .uid-help[data-tone="ok"] { color: #28ba87; }
+      .uid-help[data-tone="warn"] { color: #b45309; }
+      .uid-stepper { display: flex; align-items: center; gap: 8px; padding: 6px; border: 1.5px solid rgba(145,186,171,.2); border-radius: 13px; background: #10201b; }
+      .uid-stepper:focus-within { border-color: #20a97a; }
+      .uid-stepper button { width: 48px; min-width: 48px; height: 46px; border: 0; border-radius: 12px; color: #28ba87; background: rgba(0,95,65,.22); font: 700 28px/1 Arial, Helvetica, sans-serif; cursor: pointer; transition: transform .12s ease, opacity .12s ease; }
+      .uid-stepper button:active { transform: scale(.95); }
+      .uid-stepper button:disabled { opacity: .35; cursor: default; transform: none; }
+      .uid-stepper input { flex: 1; min-width: 0; min-height: 46px; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; font-size: 20px; font-weight: 800; text-align: center; }
+      .uid-stepper input:focus { border: 0; box-shadow: none; }
+      .uid-submit { width: 100%; min-height: 54px; margin-top: 20px; border: 0; border-radius: 999px; color: #fff; background: #005f41; font: 800 16px/1 Arial, Helvetica, sans-serif; cursor: pointer; }
+      .uid-submit:disabled { opacity: .5; cursor: wait; }
+      .uid-status { min-height: 24px; margin: 14px 4px 0; color: #475569; font-size: 13px; font-weight: 700; line-height: 1.5; text-align: center; }
+      .uid-status[data-tone="ok"] { color: #087b58; }
+      .uid-status[data-tone="error"] { color: #b91c1c; }
+      @media (max-width: 620px) {
+        .uid-launcher { right: 14px; bottom: 14px; }
+        .uid-shell { padding-top: max(16px, env(safe-area-inset-top)); }
+        .uid-head { align-items: flex-start; }
+        .uid-grid { grid-template-columns: 1fr; }
+        .uid-field--wide { grid-column: auto; }
+      }
+    </style>
+    <button class="uid-launcher" id="uid-launcher" type="button">In Group UID</button>
+    <section class="uid-screen" id="uid-screen" aria-labelledby="uid-title" hidden>
+      <main class="uid-shell">
+        <header class="uid-head">
+          <div><h1 id="uid-title">In tem Group UID</h1><p>Nhập Group UID, xác nhận nội dung và gửi đến máy trạm.</p></div>
+          <button class="uid-back" id="uid-back" type="button">← In SKU</button>
+        </header>
+        <form class="uid-card" id="uid-form" novalidate>
+          <div class="uid-grid">
+            <div class="uid-field uid-field--wide">
+              <label for="uid-code">Group UID</label>
+              <input id="uid-code" autocomplete="off" placeholder="Ví dụ: A40000258795" required>
+            </div>
+            <div class="uid-field uid-field--wide">
+              <label for="uid-sku">SKU <span class="uid-optional">Không bắt buộc</span></label>
+              <input id="uid-sku" autocomplete="off" placeholder="Nhập SKU để tự tìm tên">
+              <p class="uid-help" id="uid-lookup" aria-live="polite">Có thể bỏ trống SKU và nhập tên sản phẩm thủ công.</p>
+            </div>
+            <div class="uid-field uid-field--wide">
+              <label for="uid-product">Tên SP</label>
+              <input id="uid-product" autocomplete="off" placeholder="Tự điền theo SKU hoặc nhập thủ công" required>
+            </div>
+            <div class="uid-field uid-field--wide">
+              <label for="uid-copies">Số lượng tem</label>
+              <div class="uid-stepper">
+                <button id="uid-copies-minus" type="button" aria-label="Giảm" disabled>−</button>
+                <input id="uid-copies" inputmode="numeric" pattern="[0-9]*" min="1" max="500" value="1" required>
+                <button id="uid-copies-plus" type="button" aria-label="Tăng">+</button>
+              </div>
+              <p class="uid-help">Tem giống hệt nhau.</p>
+            </div>
+          </div>
+          <button class="uid-submit" id="uid-submit" type="submit">Gửi lệnh in Group UID</button>
+          <p class="uid-status" id="uid-status" aria-live="polite"></p>
+        </form>
+      </main>
+    </section>
+    <script>
+      (() => {
+        const launcher = document.getElementById("uid-launcher");
+        const screen = document.getElementById("uid-screen");
+        const back = document.getElementById("uid-back");
+        const form = document.getElementById("uid-form");
+        const submit = document.getElementById("uid-submit");
+        const groupUid = document.getElementById("uid-code");
+        const sku = document.getElementById("uid-sku");
+        const product = document.getElementById("uid-product");
+        const copies = document.getElementById("uid-copies");
+        const copiesMinus = document.getElementById("uid-copies-minus");
+        const copiesPlus = document.getElementById("uid-copies-plus");
+        const lookup = document.getElementById("uid-lookup");
+        const status = document.getElementById("uid-status");
+        let lookupTimer = 0;
+        let lookupSequence = 0;
+
+        const setStatus = (message, tone = "") => { status.textContent = message; status.dataset.tone = tone; };
+        const setLookup = (message, tone = "") => { lookup.textContent = message; lookup.dataset.tone = tone; };
+        const syncCopies = value => {
+          const count = Math.max(1, Math.min(500, Number(value) || 1));
+          copies.value = String(count);
+          copiesMinus.disabled = count <= 1;
+          copiesPlus.disabled = count >= 500;
+          return count;
+        };
+        copiesMinus.addEventListener("click", () => syncCopies(Number(copies.value) - 1));
+        copiesPlus.addEventListener("click", () => syncCopies(Number(copies.value) + 1));
+        copies.addEventListener("input", () => {
+          copies.value = copies.value.replace(/[^0-9]/g, "");
+          const count = Number(copies.value);
+          copiesMinus.disabled = !count || count <= 1;
+          copiesPlus.disabled = count >= 500;
+        });
+        copies.addEventListener("blur", () => syncCopies(copies.value));
+        const isOpen = () => location.hash.replace(/^#/, "").split("&")[0] === "group-uid";
+        const renderRoute = () => {
+          const open = isOpen();
+          screen.hidden = !open;
+          launcher.hidden = open || /^#admin(?:\/|$)/.test(location.hash);
+          const root = document.getElementById("root");
+          if (root) root.inert = open;
+          if (open) setTimeout(() => groupUid.focus(), 50);
+        };
+        launcher.addEventListener("click", () => { location.hash = "#group-uid"; });
+        back.addEventListener("click", () => { location.hash = "#worker"; });
+        window.addEventListener("hashchange", renderRoute);
+        renderRoute();
+
+        sku.addEventListener("input", () => {
+          clearTimeout(lookupTimer);
+          const value = sku.value.trim();
+          const sequence = ++lookupSequence;
+          if (!value) {
+            setLookup("Có thể bỏ trống SKU và nhập tên sản phẩm thủ công.");
+            return;
+          }
+          setLookup("Đang tra tên sản phẩm…");
+          lookupTimer = setTimeout(async () => {
+            try {
+              const queue = window.PrintSkuQueue;
+              const url = `${queue.supabaseUrl}/rest/v1/SKU_Name?select=sku,product_name&sku=eq.${encodeURIComponent(value)}&limit=1`;
+              const response = await fetch(url, { headers: { apikey: queue.publishableKey, Authorization: `Bearer ${queue.publishableKey}` }, signal: AbortSignal.timeout(8000) });
+              if (!response.ok) throw new Error(`HTTP ${response.status}`);
+              const rows = await response.json();
+              if (sequence !== lookupSequence) return;
+              if (rows[0]?.product_name) {
+                product.value = String(rows[0].product_name);
+                setLookup("Đã tìm thấy SKU và tự điền tên sản phẩm.", "ok");
+              } else {
+                setLookup("Không tìm thấy SKU. Bạn vẫn có thể nhập tên sản phẩm thủ công.", "warn");
+              }
+            } catch (_) {
+              if (sequence === lookupSequence) setLookup("Không tra được Supabase. Hãy nhập tên sản phẩm thủ công.", "warn");
+            }
+          }, 350);
+        });
+
+        const waitForResult = async id => {
+          const started = Date.now();
+          while (Date.now() - started < 180000) {
+            await new Promise(resolve => setTimeout(resolve, 1200));
+            const result = await window.PrintSkuQueue.jobStatus(id);
+            if (!result.ok) throw new Error(result.error?.message || "Không đọc được trạng thái lệnh in");
+            if (result.data.status === "completed") return result.data;
+            if (result.data.status === "failed") throw new Error(result.data.errorMessage || "Máy trạm báo lỗi in");
+            setStatus(result.data.status === "queued" ? "Đã xếp hàng, đang chờ máy trạm…" : "Máy trạm đang xử lý tem…");
+          }
+          throw new Error("Lệnh vẫn đang xử lý. Kiểm tra mục Hàng đợi sau ít phút.");
+        };
+
+        form.addEventListener("submit", async event => {
+          event.preventDefault();
+          const count = Number(copies.value);
+          if (!groupUid.value.trim()) return setStatus("Nhập Group UID trước khi in.", "error");
+          if (!product.value.trim()) return setStatus("Nhập tên sản phẩm hoặc nhập SKU để tự điền.", "error");
+          if (!Number.isInteger(count) || count < 1 || count > 500) return setStatus("Số tem phải từ 1 đến 500.", "error");
+          submit.disabled = true;
+          setStatus("Đang gửi lệnh đến Supabase…");
+          try {
+            const result = await window.PrintSkuQueue.enqueue({
+              type: "group_uid",
+              copies: count,
+              requestedBy: "web-group-uid",
+              payload: {
+                groupUid: groupUid.value.trim(),
+                sku: sku.value.trim(),
+                productName: product.value.trim()
+              }
+            });
+            if (!result.ok) throw new Error(result.error?.message || "Supabase không nhận lệnh in");
+            setStatus(result.data.duplicate ? "Lệnh này đã tồn tại, không gửi trùng." : "Đã xếp hàng, đang chờ máy trạm…");
+            await waitForResult(result.data.id);
+            setStatus(`Đã in xong ${count} tem Group UID.`, "ok");
+          } catch (error) {
+            setStatus(String(error?.message || error), "error");
+          } finally {
+            submit.disabled = false;
+          }
+        });
+      })();
+    </script>
     <section class="admin-auth" id="admin-auth" role="dialog" aria-modal="true" aria-labelledby="admin-auth-title" hidden>
       <form class="admin-auth__card" id="admin-auth-form" novalidate>
         <div class="admin-auth__brand">
