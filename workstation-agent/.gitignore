@@ -1,0 +1,8 @@
+config/.env
+logs/
+preview/
+temp/
+release/
+node_modules/
+*.tspl
+*.png
