@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#005F41" />
-    <title>In tem SKU</title>
+    <title>PRINT BARCODE</title>
     <script>
       (() => {
         const SUPABASE_URL = "https://ikzhitdqkoatlmkrxuuh.supabase.co";
@@ -569,11 +569,25 @@ Error generating stack: `+y.message+`
       }
     </style>
     <style>
-      .uid-launcher {
-        position: fixed; right: 18px; bottom: 72px; z-index: 70; min-height: 48px; padding: 0 18px;
-        border: 0; border-radius: 999px; color: #fff; background: #005f41; box-shadow: 0 12px 28px rgba(0,95,65,.3);
-        font: 800 14px/1 Arial, Helvetica, sans-serif; cursor: pointer;
+      .barcode-home {
+        position: fixed; inset: 0; z-index: 74; display: grid; place-items: center; overflow-y: auto; padding: 24px;
+        color: #e7f1ed; background: radial-gradient(circle at 50% 0%, rgba(0,95,65,.38), transparent 34rem), linear-gradient(145deg, #07110e, #101b18);
+        font-family: Arial, Helvetica, sans-serif;
       }
+      .barcode-home[hidden] { display: none; }
+      .barcode-home__shell { width: min(760px, 100%); text-align: center; }
+      .barcode-home__mark { display: grid; place-items: center; width: 58px; height: 58px; margin: 0 auto 18px; border-radius: 18px; color: #fff; background: #005f41; box-shadow: 0 16px 38px rgba(0,95,65,.34); font-size: 23px; font-weight: 900; }
+      .barcode-home h1 { margin: 0; color: #f5fbf8; font-size: clamp(34px, 8vw, 54px); letter-spacing: -.045em; }
+      .barcode-home__lead { margin: 10px 0 28px; color: #91aaa1; font-size: 14px; }
+      .barcode-home__choices { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+      .barcode-choice { min-height: 180px; padding: 24px; border: 1px solid rgba(145,186,171,.18); border-radius: 24px; color: #e9f4f0; background: rgba(15,31,26,.9); box-shadow: 0 20px 50px rgba(0,0,0,.2); cursor: pointer; text-align: left; transition: transform .15s ease, border-color .15s ease, background .15s ease; }
+      .barcode-choice:hover { transform: translateY(-3px); border-color: rgba(40,186,135,.65); background: #112a22; }
+      .barcode-choice__icon { display: grid; place-items: center; width: 46px; height: 46px; margin-bottom: 24px; border-radius: 14px; color: transparent; background: rgba(0,95,65,.3); font-size: 0; }
+      .barcode-choice__icon::before { content: ""; width: 25px; height: 20px; background: repeating-linear-gradient(90deg, #35c993 0 2px, transparent 2px 4px, #35c993 4px 7px, transparent 7px 9px); }
+      .barcode-choice strong { display: block; font-size: 21px; letter-spacing: -.02em; }
+      .barcode-choice span { display: block; margin-top: 7px; color: #8da59c; font-size: 13px; line-height: 1.45; }
+      .barcode-home-trigger { position: fixed; right: 18px; bottom: 72px; z-index: 70; min-height: 48px; padding: 0 18px; border: 0; border-radius: 999px; color: #fff; background: #005f41; box-shadow: 0 12px 28px rgba(0,95,65,.3); font: 800 13px/1 Arial, Helvetica, sans-serif; cursor: pointer; }
+      .barcode-home-trigger[hidden] { display: none; }
       .uid-screen {
         position: fixed; inset: 0; z-index: 75; overflow-y: auto; color: #e7f1ed;
         background:
@@ -581,13 +595,14 @@ Error generating stack: `+y.message+`
           linear-gradient(145deg, #07110e 0%, #0b1714 52%, #101b18 100%);
         font-family: Arial, Helvetica, sans-serif;
       }
-      .uid-screen[hidden], .uid-launcher[hidden] { display: none; }
-      .uid-shell { width: min(760px, calc(100% - 28px)); margin: 0 auto; padding: 20px 0 110px; }
+      .uid-screen[hidden] { display: none; }
+      .uid-shell { width: min(1120px, calc(100% - 28px)); margin: 0 auto; padding: 20px 0 110px; }
       .uid-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
       .uid-head h1 { margin: 0; color: #f2faf7; font-size: clamp(24px, 5vw, 34px); letter-spacing: -.03em; }
       .uid-head p { margin: 5px 0 0; color: #9ab0a8; font-size: 13px; }
       .uid-back { min-height: 44px; padding: 0 16px; border: 1px solid rgba(145,186,171,.2); border-radius: 999px; color: #b8cbc4; background: rgba(255,255,255,.04); font-weight: 800; cursor: pointer; }
       .uid-card { padding: clamp(18px, 4vw, 28px); border: 1px solid rgba(145,186,171,.13); border-radius: 24px; background: rgba(15,31,26,.88); box-shadow: 0 20px 55px rgba(0,0,0,.2), inset 0 1px 0 rgba(255,255,255,.025); backdrop-filter: blur(14px); }
+      .uid-layout { display: grid; grid-template-columns: minmax(0, .82fr) minmax(0, 1.18fr); gap: 18px; align-items: start; }
       .uid-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
       .uid-field { display: grid; gap: 7px; }
       .uid-field--wide { grid-column: 1 / -1; }
@@ -595,188 +610,359 @@ Error generating stack: `+y.message+`
       .uid-field input { width: 100%; min-height: 50px; box-sizing: border-box; padding: 12px 14px; border: 1.5px solid rgba(145,186,171,.2); border-radius: 13px; color: #f1f8f5; background: rgba(5,15,12,.72); box-shadow: inset 0 1px 0 rgba(255,255,255,.025); font: 600 16px/1.3 Arial, Helvetica, sans-serif; outline: none; }
       .uid-field input::placeholder { color: #60766e; }
       .uid-field input:focus { border-color: #20a97a; box-shadow: 0 0 0 3px rgba(0,95,65,.34); }
+      .uid-field input:disabled { opacity: .45; cursor: not-allowed; }
       .uid-optional { color: #28ba87; font-size: 10px; letter-spacing: 0; text-transform: none; }
       .uid-help { min-height: 18px; margin: 0; color: #9ab0a8; font-size: 12px; line-height: 1.45; }
       .uid-help[data-tone="ok"] { color: #28ba87; }
       .uid-help[data-tone="warn"] { color: #b45309; }
-      .uid-stepper { display: flex; align-items: center; gap: 8px; padding: 6px; border: 1.5px solid rgba(145,186,171,.2); border-radius: 13px; background: #10201b; }
-      .uid-stepper:focus-within { border-color: #20a97a; }
-      .uid-stepper button { width: 48px; min-width: 48px; height: 46px; border: 0; border-radius: 12px; color: #28ba87; background: rgba(0,95,65,.22); font: 700 28px/1 Arial, Helvetica, sans-serif; cursor: pointer; transition: transform .12s ease, opacity .12s ease; }
-      .uid-stepper button:active { transform: scale(.95); }
-      .uid-stepper button:disabled { opacity: .35; cursor: default; transform: none; }
-      .uid-stepper input { flex: 1; min-width: 0; min-height: 46px; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; font-size: 20px; font-weight: 800; text-align: center; }
-      .uid-stepper input:focus { border: 0; box-shadow: none; }
       .uid-submit { width: 100%; min-height: 54px; margin-top: 20px; border: 0; border-radius: 999px; color: #fff; background: #005f41; font: 800 16px/1 Arial, Helvetica, sans-serif; cursor: pointer; }
       .uid-submit:disabled { opacity: .5; cursor: wait; }
-      .uid-status { min-height: 24px; margin: 14px 4px 0; color: #475569; font-size: 13px; font-weight: 700; line-height: 1.5; text-align: center; }
-      .uid-status[data-tone="ok"] { color: #087b58; }
-      .uid-status[data-tone="error"] { color: #b91c1c; }
+      .uid-status { min-height: 24px; margin: 14px 4px 0; color: #9ab0a8; font-size: 13px; font-weight: 700; line-height: 1.5; text-align: center; }
+      .uid-status[data-tone="ok"] { color: #35c993; }
+      .uid-status[data-tone="error"] { color: #ff9d9d; }
+      .uid-queue { min-height: 300px; }
+      .uid-queue__head { display: flex; align-items: end; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+      .uid-queue__head h2 { margin: 0; color: #f2faf7; font-size: 19px; }
+      .uid-queue__head span { color: #789087; font-size: 12px; }
+      .uid-bulk { margin-bottom: 16px; padding: 15px; border: 1px solid rgba(40,186,135,.25); border-radius: 18px; background: rgba(0,95,65,.11); }
+      .uid-bulk__top { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+      .uid-bulk__count { color: #a9beb6; font-size: 12px; }
+      .uid-bulk__count strong { color: #35c993; font-size: 17px; }
+      .uid-bulk__actions { display: flex; gap: 7px; }
+      .uid-bulk__actions button { min-height: 36px; padding: 0 11px; border: 1px solid rgba(145,186,171,.18); border-radius: 999px; color: #b8cbc4; background: rgba(255,255,255,.04); font-size: 11px; font-weight: 800; cursor: pointer; }
+      .uid-bulk__actions button:disabled { opacity: .35; cursor: default; }
+      .uid-bulk__grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+      .uid-bulk__grid label { display: grid; gap: 6px; color: #789087; font-size: 10px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; }
+      .uid-bulk__grid input { width: 100%; min-height: 44px; box-sizing: border-box; padding: 10px 12px; border: 1px solid rgba(145,186,171,.2); border-radius: 11px; outline: none; color: #eef8f4; background: #081712; font: 700 14px/1.2 Arial, Helvetica, sans-serif; }
+      .uid-bulk__grid input:focus { border-color: #20a97a; }
+      .uid-bulk__apply { width: 100%; min-height: 46px; margin-top: 12px; border: 0; border-radius: 999px; color: #fff; background: #087b58; font-size: 13px; font-weight: 900; cursor: pointer; }
+      .uid-bulk__apply:disabled { opacity: .4; cursor: default; }
+      .uid-empty { display: grid; place-items: center; min-height: 210px; padding: 24px; border: 1px dashed rgba(145,186,171,.2); border-radius: 18px; color: #789087; font-size: 13px; text-align: center; }
+      .uid-list { display: grid; gap: 7px; }
+      .uid-list__head, .uid-row { display: grid; grid-template-columns: 26px minmax(145px, 1fr) minmax(0, 2fr) 38px; align-items: center; gap: 10px; }
+      .uid-list__head { padding: 0 11px 3px; color: #6f897f; font-size: 9px; font-weight: 900; letter-spacing: .07em; text-transform: uppercase; }
+      .uid-row { min-height: 54px; padding: 7px 10px; border: 1px solid rgba(145,186,171,.13); border-radius: 12px; background: rgba(4,15,12,.44); transition: border-color .12s ease, background .12s ease; }
+      .uid-row[data-selected="true"] { border-color: rgba(40,186,135,.55); background: rgba(0,95,65,.16); }
+      .uid-select { display: grid; place-items: center; cursor: pointer; }
+      .uid-select input { width: 19px; height: 19px; margin: 0; accent-color: #18a674; }
+      .uid-row__remove { display: grid; place-items: center; width: 34px; height: 34px; padding: 0; border: 1px solid rgba(255,145,145,.16); border-radius: 10px; color: #ffaaaa; background: transparent; font-size: 20px; line-height: 1; cursor: pointer; }
+      .uid-row__code { overflow: hidden; color: #f2faf7; font: 900 13px/1.3 Arial, Helvetica, sans-serif; letter-spacing: .015em; text-overflow: ellipsis; white-space: nowrap; }
+      .uid-row__mapping { display: flex; align-items: center; gap: 8px; min-width: 0; color: #789087; font-size: 12px; }
+      .uid-row__mapping span { flex: 0 0 auto; max-width: 42%; overflow: hidden; padding: 4px 7px; border-radius: 999px; color: #35c993; background: rgba(0,95,65,.2); font-size: 9px; font-weight: 900; letter-spacing: .04em; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
+      .uid-row__mapping strong { min-width: 0; overflow: hidden; color: #dceae5; font-size: 12px; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
+      .uid-row__mapping[data-ready="false"] strong { color: #789087; font-weight: 700; }
+      .uid-summary { position: sticky; bottom: 12px; margin-top: 16px; padding: 13px; border: 1px solid rgba(40,186,135,.22); border-radius: 18px; background: rgba(7,24,18,.96); box-shadow: 0 16px 38px rgba(0,0,0,.32); }
+      .uid-summary__numbers { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 10px; color: #a9beb6; font-size: 12px; }
+      .uid-summary__numbers strong { color: #fff; font-size: 15px; }
+      .uid-summary .uid-submit { margin: 0; }
       @media (max-width: 620px) {
-        .uid-launcher { right: 14px; bottom: 14px; }
+        .barcode-home { align-items: start; padding: max(36px, env(safe-area-inset-top)) 14px 24px; }
+        .barcode-home__choices { grid-template-columns: 1fr; }
+        .barcode-choice { min-height: 142px; }
         .uid-shell { padding-top: max(16px, env(safe-area-inset-top)); }
         .uid-head { align-items: flex-start; }
+        .uid-layout { grid-template-columns: 1fr; }
         .uid-grid { grid-template-columns: 1fr; }
         .uid-field--wide { grid-column: auto; }
+        .uid-bulk__grid { grid-template-columns: 1fr; }
+        .uid-list__head, .uid-row { grid-template-columns: 24px minmax(88px, .9fr) minmax(0, 1.4fr) 34px; gap: 6px; }
+        .uid-list__head { padding-inline: 7px; }
+        .uid-row { min-height: 50px; padding: 6px; }
+        .uid-row__code { font-size: 11px; }
+        .uid-row__mapping { gap: 5px; }
+        .uid-row__mapping span { max-width: 40%; padding-inline: 5px; font-size: 8px; }
+        .uid-row__mapping strong { font-size: 10px; }
+        .uid-row__remove { width: 32px; height: 32px; }
       }
     </style>
-    <button class="uid-launcher" id="uid-launcher" type="button">In Group UID</button>
+    <section class="barcode-home" id="barcode-home" aria-labelledby="barcode-home-title">
+      <main class="barcode-home__shell">
+        <div class="barcode-home__mark" aria-hidden="true">H</div>
+        <h1 id="barcode-home-title">PRINT BARCODE</h1>
+        <p class="barcode-home__lead">Chọn loại tem cần in</p>
+        <div class="barcode-home__choices">
+          <button class="barcode-choice" id="barcode-print-sku" type="button"><span class="barcode-choice__icon" aria-hidden="true">▥</span><strong>PRINT SKU</strong><span>Nhập SKU và tạo danh sách tem cần in.</span></button>
+          <button class="barcode-choice" id="barcode-print-uid" type="button"><span class="barcode-choice__icon" aria-hidden="true">▥</span><strong>PRINT UID</strong><span>Nhập nhiều Group UID, mapping SKU rồi xác nhận in.</span></button>
+        </div>
+      </main>
+    </section>
+    <button class="barcode-home-trigger" id="barcode-home-trigger" type="button" hidden>← PRINT BARCODE</button>
     <section class="uid-screen" id="uid-screen" aria-labelledby="uid-title" hidden>
       <main class="uid-shell">
         <header class="uid-head">
-          <div><h1 id="uid-title">In tem Group UID</h1><p>Nhập Group UID, xác nhận nội dung và gửi đến máy trạm.</p></div>
-          <button class="uid-back" id="uid-back" type="button">← In SKU</button>
+          <div><h1 id="uid-title">PRINT UID</h1><p>Nhập nhiều Group UID, chỉnh nội dung rồi xác nhận in.</p></div>
+          <button class="uid-back" id="uid-back" type="button">← PRINT BARCODE</button>
         </header>
-        <form class="uid-card" id="uid-form" novalidate>
-          <div class="uid-grid">
-            <div class="uid-field uid-field--wide">
-              <label for="uid-code">Group UID</label>
-              <input id="uid-code" autocomplete="off" placeholder="Ví dụ: A40000258795" required>
-            </div>
-            <div class="uid-field uid-field--wide">
-              <label for="uid-sku">SKU <span class="uid-optional">Không bắt buộc</span></label>
-              <input id="uid-sku" autocomplete="off" placeholder="Nhập SKU để tự tìm tên">
-              <p class="uid-help" id="uid-lookup" aria-live="polite">Có thể bỏ trống SKU và nhập tên sản phẩm thủ công.</p>
-            </div>
-            <div class="uid-field uid-field--wide">
-              <label for="uid-product">Tên SP</label>
-              <input id="uid-product" autocomplete="off" placeholder="Tự điền theo SKU hoặc nhập thủ công" required>
-            </div>
-            <div class="uid-field uid-field--wide">
-              <label for="uid-copies">Số lượng tem</label>
-              <div class="uid-stepper">
-                <button id="uid-copies-minus" type="button" aria-label="Giảm" disabled>−</button>
-                <input id="uid-copies" inputmode="numeric" pattern="[0-9]*" min="1" max="500" value="1" required>
-                <button id="uid-copies-plus" type="button" aria-label="Tăng">+</button>
+        <div class="uid-layout">
+          <form class="uid-card" id="uid-form" novalidate>
+            <div class="uid-grid">
+              <div class="uid-field uid-field--wide">
+                <label for="uid-code">Group UID</label>
+                <input id="uid-code" autocomplete="off" placeholder="Ví dụ: A40000258795" required>
+                <p class="uid-help">Thêm UID trước, sau đó tick chọn để gán SKU và tên SP. Mỗi UID in 1 tem.</p>
               </div>
-              <p class="uid-help">Tem giống hệt nhau.</p>
             </div>
-          </div>
-          <button class="uid-submit" id="uid-submit" type="submit">Gửi lệnh in Group UID</button>
-          <p class="uid-status" id="uid-status" aria-live="polite"></p>
-        </form>
+            <button class="uid-submit" id="uid-add" type="submit">Thêm vào danh sách</button>
+            <p class="uid-status" id="uid-status" aria-live="polite"></p>
+          </form>
+          <section class="uid-card uid-queue" aria-labelledby="uid-queue-title">
+            <div class="uid-queue__head"><div><h2 id="uid-queue-title">Danh sách chờ in</h2><span>Mỗi Group UID tương ứng 1 tem</span></div></div>
+            <section class="uid-bulk" aria-label="Mapping hàng loạt">
+              <div class="uid-bulk__top">
+                <span class="uid-bulk__count"><strong id="uid-selected-count">0</strong> UID đã chọn</span>
+                <div class="uid-bulk__actions"><button id="uid-select-all" type="button">Chọn tất cả</button><button id="uid-clear-selection" type="button">Bỏ chọn</button></div>
+              </div>
+              <div class="uid-bulk__grid">
+                <label>SKU <span class="uid-optional">Có thể bỏ trống</span><input id="uid-bulk-sku" autocomplete="off" placeholder="Nhập SKU"></label>
+                <label>Tên SP<input id="uid-bulk-product" autocomplete="off" placeholder="Tự điền theo SKU hoặc nhập thủ công"></label>
+              </div>
+              <p class="uid-help" id="uid-bulk-lookup" aria-live="polite">Tick các UID cần gán chung SKU và tên sản phẩm.</p>
+              <button class="uid-bulk__apply" id="uid-apply-mapping" type="button" disabled>Áp dụng cho UID đã chọn</button>
+            </section>
+            <div id="uid-pending"></div>
+            <div class="uid-summary">
+              <div class="uid-summary__numbers"><span>Group UID: <strong id="uid-total-items">0</strong></span><span>Tổng tem: <strong id="uid-total-copies">0</strong></span></div>
+              <button class="uid-submit" id="uid-print-all" type="button" disabled>Xác nhận in</button>
+            </div>
+          </section>
+        </div>
       </main>
     </section>
     <script>
       (() => {
-        const launcher = document.getElementById("uid-launcher");
+        const home = document.getElementById("barcode-home");
+        const homeTrigger = document.getElementById("barcode-home-trigger");
+        const printSku = document.getElementById("barcode-print-sku");
+        const printUid = document.getElementById("barcode-print-uid");
         const screen = document.getElementById("uid-screen");
         const back = document.getElementById("uid-back");
         const form = document.getElementById("uid-form");
-        const submit = document.getElementById("uid-submit");
+        const add = document.getElementById("uid-add");
+        const printAll = document.getElementById("uid-print-all");
+        const pendingElement = document.getElementById("uid-pending");
+        const totalItems = document.getElementById("uid-total-items");
+        const totalCopies = document.getElementById("uid-total-copies");
+        const selectedCount = document.getElementById("uid-selected-count");
+        const selectAll = document.getElementById("uid-select-all");
+        const clearSelection = document.getElementById("uid-clear-selection");
+        const bulkSku = document.getElementById("uid-bulk-sku");
+        const bulkProduct = document.getElementById("uid-bulk-product");
+        const bulkLookup = document.getElementById("uid-bulk-lookup");
+        const applyMapping = document.getElementById("uid-apply-mapping");
         const groupUid = document.getElementById("uid-code");
-        const sku = document.getElementById("uid-sku");
-        const product = document.getElementById("uid-product");
-        const copies = document.getElementById("uid-copies");
-        const copiesMinus = document.getElementById("uid-copies-minus");
-        const copiesPlus = document.getElementById("uid-copies-plus");
-        const lookup = document.getElementById("uid-lookup");
         const status = document.getElementById("uid-status");
-        let lookupTimer = 0;
-        let lookupSequence = 0;
+        const pending = [];
+        let bulkLookupTimer = 0;
+        let bulkLookupSequence = 0;
+        let nextId = 1;
 
         const setStatus = (message, tone = "") => { status.textContent = message; status.dataset.tone = tone; };
-        const setLookup = (message, tone = "") => { lookup.textContent = message; lookup.dataset.tone = tone; };
-        const syncCopies = value => {
-          const count = Math.max(1, Math.min(500, Number(value) || 1));
-          copies.value = String(count);
-          copiesMinus.disabled = count <= 1;
-          copiesPlus.disabled = count >= 500;
-          return count;
-        };
-        copiesMinus.addEventListener("click", () => syncCopies(Number(copies.value) - 1));
-        copiesPlus.addEventListener("click", () => syncCopies(Number(copies.value) + 1));
-        copies.addEventListener("input", () => {
-          copies.value = copies.value.replace(/[^0-9]/g, "");
-          const count = Number(copies.value);
-          copiesMinus.disabled = !count || count <= 1;
-          copiesPlus.disabled = count >= 500;
-        });
-        copies.addEventListener("blur", () => syncCopies(copies.value));
-        const isOpen = () => location.hash.replace(/^#/, "").split("&")[0] === "group-uid";
+        const escapeHtml = value => String(value ?? "").replace(/[&<>"']/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]);
+
+        const route = () => location.hash.replace(/^#/, "").split("&")[0];
         const renderRoute = () => {
-          const open = isOpen();
-          screen.hidden = !open;
-          launcher.hidden = open || /^#admin(?:\/|$)/.test(location.hash);
+          const current = route();
+          const uidOpen = current === "group-uid";
+          const homeOpen = !current || current === "home";
+          const adminOpen = /^admin(?:\/|$)/.test(current);
+          screen.hidden = !uidOpen;
+          home.hidden = !homeOpen;
+          homeTrigger.hidden = homeOpen || uidOpen || adminOpen;
           const root = document.getElementById("root");
-          if (root) root.inert = open;
-          if (open) setTimeout(() => groupUid.focus(), 50);
+          if (root) root.inert = uidOpen || homeOpen;
+          if (uidOpen) setTimeout(() => groupUid.focus(), 50);
         };
-        launcher.addEventListener("click", () => { location.hash = "#group-uid"; });
-        back.addEventListener("click", () => { location.hash = "#worker"; });
+        printSku.addEventListener("click", () => { location.hash = "#worker"; });
+        printUid.addEventListener("click", () => { location.hash = "#group-uid"; });
+        homeTrigger.addEventListener("click", () => { location.hash = "#home"; });
+        back.addEventListener("click", () => { location.hash = "#home"; });
         window.addEventListener("hashchange", renderRoute);
         renderRoute();
 
-        sku.addEventListener("input", () => {
-          clearTimeout(lookupTimer);
-          const value = sku.value.trim();
-          const sequence = ++lookupSequence;
-          if (!value) {
-            setLookup("Có thể bỏ trống SKU và nhập tên sản phẩm thủ công.");
+        const fetchProductName = async value => {
+          const queue = window.PrintSkuQueue;
+          const url = `${queue.supabaseUrl}/rest/v1/SKU_Name?select=sku,product_name&sku=eq.${encodeURIComponent(value)}&limit=1`;
+          const response = await fetch(url, { headers: { apikey: queue.publishableKey, Authorization: `Bearer ${queue.publishableKey}` }, signal: AbortSignal.timeout(8000) });
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          const rows = await response.json();
+          return rows[0]?.product_name ? String(rows[0].product_name) : "";
+        };
+
+        const updateTotals = () => {
+          const selected = pending.filter(item => item.selected).length;
+          totalItems.textContent = String(pending.length);
+          totalCopies.textContent = String(pending.length);
+          selectedCount.textContent = String(selected);
+          applyMapping.disabled = !selected;
+          selectAll.disabled = !pending.length || selected === pending.length;
+          clearSelection.disabled = !selected;
+          printAll.disabled = !pending.length;
+        };
+
+        const renderPending = () => {
+          if (!pending.length) {
+            pendingElement.innerHTML = '<div class="uid-empty">Chưa có Group UID.<br>Nhập nội dung bên trái rồi thêm vào danh sách.</div>';
+            updateTotals();
             return;
           }
-          setLookup("Đang tra tên sản phẩm…");
-          lookupTimer = setTimeout(async () => {
+          pendingElement.innerHTML = `<div class="uid-list">
+            <div class="uid-list__head" aria-hidden="true"><span></span><span>Group UID</span><span>SKU / Tên SP</span><span></span></div>
+            ${pending.map((item, index) => `
+            <article class="uid-row" data-id="${item.id}" data-selected="${item.selected}">
+              <label class="uid-select" aria-label="Chọn UID ${index + 1}"><input type="checkbox" data-field="selected" ${item.selected ? "checked" : ""}></label>
+              <code class="uid-row__code" title="${escapeHtml(item.groupUid)}">${escapeHtml(item.groupUid)}</code>
+              <div class="uid-row__mapping" data-ready="${Boolean(item.productName.trim())}" title="${escapeHtml([item.sku, item.productName].filter(Boolean).join(" · "))}">${item.productName.trim() ? `<span>${escapeHtml(item.sku.trim() || "Không SKU")}</span><strong>${escapeHtml(item.productName)}</strong>` : "<strong>Chưa gán tên sản phẩm</strong>"}</div>
+              <button class="uid-row__remove" type="button" data-action="remove" aria-label="Xóa UID ${index + 1}" title="Xóa">×</button>
+            </article>`).join("")}</div>`;
+          updateTotals();
+        };
+
+        pendingElement.addEventListener("click", event => {
+          const row = event.target.closest(".uid-row");
+          const action = event.target.dataset.action;
+          if (!row || !action) return;
+          const index = pending.findIndex(item => item.id === Number(row.dataset.id));
+          if (index < 0) return;
+          if (action === "remove") {
+            pending.splice(index, 1);
+            setStatus("Đã xóa Group UID khỏi danh sách.");
+          } else return;
+          renderPending();
+        });
+
+        pendingElement.addEventListener("change", event => {
+          const row = event.target.closest(".uid-row");
+          const field = event.target.dataset.field;
+          if (!row || !field) return;
+          const item = pending.find(entry => entry.id === Number(row.dataset.id));
+          if (!item) return;
+          if (field === "selected") {
+            item.selected = event.target.checked;
+            updateTotals();
+          }
+        });
+
+        selectAll.addEventListener("click", () => {
+          pending.forEach(item => { item.selected = true; });
+          renderPending();
+        });
+
+        clearSelection.addEventListener("click", () => {
+          pending.forEach(item => { item.selected = false; });
+          renderPending();
+        });
+
+        bulkSku.addEventListener("input", () => {
+          clearTimeout(bulkLookupTimer);
+          const value = bulkSku.value.trim();
+          const sequence = ++bulkLookupSequence;
+          if (!value) {
+            bulkLookup.textContent = "Có thể bỏ trống SKU, nhưng tên sản phẩm luôn bắt buộc.";
+            bulkLookup.dataset.tone = "";
+            return;
+          }
+          bulkLookup.textContent = "Đang tra tên sản phẩm…";
+          bulkLookup.dataset.tone = "";
+          bulkLookupTimer = setTimeout(async () => {
             try {
-              const queue = window.PrintSkuQueue;
-              const url = `${queue.supabaseUrl}/rest/v1/SKU_Name?select=sku,product_name&sku=eq.${encodeURIComponent(value)}&limit=1`;
-              const response = await fetch(url, { headers: { apikey: queue.publishableKey, Authorization: `Bearer ${queue.publishableKey}` }, signal: AbortSignal.timeout(8000) });
-              if (!response.ok) throw new Error(`HTTP ${response.status}`);
-              const rows = await response.json();
-              if (sequence !== lookupSequence) return;
-              if (rows[0]?.product_name) {
-                product.value = String(rows[0].product_name);
-                setLookup("Đã tìm thấy SKU và tự điền tên sản phẩm.", "ok");
+              const productName = await fetchProductName(value);
+              if (sequence !== bulkLookupSequence) return;
+              if (productName) {
+                bulkProduct.value = productName;
+                bulkLookup.textContent = "Đã tìm thấy SKU và tự điền tên sản phẩm.";
+                bulkLookup.dataset.tone = "ok";
               } else {
-                setLookup("Không tìm thấy SKU. Bạn vẫn có thể nhập tên sản phẩm thủ công.", "warn");
+                bulkLookup.textContent = "Không tìm thấy SKU. Hãy nhập tên sản phẩm thủ công.";
+                bulkLookup.dataset.tone = "warn";
               }
             } catch (_) {
-              if (sequence === lookupSequence) setLookup("Không tra được Supabase. Hãy nhập tên sản phẩm thủ công.", "warn");
+              if (sequence === bulkLookupSequence) {
+                bulkLookup.textContent = "Không tra được Supabase. Hãy nhập tên sản phẩm thủ công.";
+                bulkLookup.dataset.tone = "warn";
+              }
             }
           }, 350);
         });
 
-        const waitForResult = async id => {
-          const started = Date.now();
-          while (Date.now() - started < 180000) {
-            await new Promise(resolve => setTimeout(resolve, 1200));
-            const result = await window.PrintSkuQueue.jobStatus(id);
-            if (!result.ok) throw new Error(result.error?.message || "Không đọc được trạng thái lệnh in");
-            if (result.data.status === "completed") return result.data;
-            if (result.data.status === "failed") throw new Error(result.data.errorMessage || "Máy trạm báo lỗi in");
-            setStatus(result.data.status === "queued" ? "Đã xếp hàng, đang chờ máy trạm…" : "Máy trạm đang xử lý tem…");
-          }
-          throw new Error("Lệnh vẫn đang xử lý. Kiểm tra mục Hàng đợi sau ít phút.");
-        };
+        applyMapping.addEventListener("click", () => {
+          const selected = pending.filter(item => item.selected);
+          const productName = bulkProduct.value.trim();
+          if (!selected.length) return setStatus("Tick chọn ít nhất một UID trước khi áp dụng.", "error");
+          if (!productName) return setStatus("Nhập tên sản phẩm để áp dụng cho các UID đã chọn.", "error");
+          const skuValue = bulkSku.value.trim();
+          selected.forEach(item => {
+            item.sku = skuValue;
+            item.productName = productName;
+            item.selected = false;
+          });
+          bulkSku.value = "";
+          bulkProduct.value = "";
+          clearTimeout(bulkLookupTimer);
+          bulkLookupSequence += 1;
+          bulkLookup.textContent = "Tick nhóm UID tiếp theo để tiếp tục mapping.";
+          bulkLookup.dataset.tone = "ok";
+          setStatus(`Đã áp dụng ${skuValue ? `SKU ${skuValue} và ` : ""}tên sản phẩm cho ${selected.length} UID.`, "ok");
+          renderPending();
+        });
 
-        form.addEventListener("submit", async event => {
+        form.addEventListener("submit", event => {
           event.preventDefault();
-          const count = Number(copies.value);
-          if (!groupUid.value.trim()) return setStatus("Nhập Group UID trước khi in.", "error");
-          if (!product.value.trim()) return setStatus("Nhập tên sản phẩm hoặc nhập SKU để tự điền.", "error");
-          if (!Number.isInteger(count) || count < 1 || count > 500) return setStatus("Số tem phải từ 1 đến 500.", "error");
-          submit.disabled = true;
-          setStatus("Đang gửi lệnh đến Supabase…");
+          const code = groupUid.value.trim();
+          if (!code) return setStatus("Nhập Group UID trước khi thêm.", "error");
+          if (pending.some(item => item.groupUid.trim().toLowerCase() === code.toLowerCase())) return setStatus("Group UID này đã có trong danh sách.", "error");
+          pending.push({ id: nextId++, groupUid: code, selected: false, sku: "", productName: "" });
+          groupUid.value = "";
+          setStatus(`Đã thêm ${code} vào danh sách chờ.`, "ok");
+          renderPending();
+          groupUid.focus();
+        });
+
+        printAll.addEventListener("click", async () => {
+          if (!pending.length) return;
+          const normalized = pending.map(item => item.groupUid.trim().toLowerCase());
+          if (normalized.some((value, index) => !value || normalized.indexOf(value) !== index)) return setStatus("Danh sách có Group UID trống hoặc bị trùng. Hãy kiểm tra lại.", "error");
+          const missingProduct = pending.find(item => !item.productName.trim());
+          if (missingProduct) return setStatus(`Nhập tên sản phẩm cho UID ${missingProduct.groupUid || "chưa nhập"}.`, "error");
+          const items = pending.map(item => ({
+            groupUid: item.groupUid.trim(),
+            sku: item.sku.trim(),
+            productName: item.productName.trim(),
+            copies: 1
+          }));
+          const labelCount = items.length;
+          if (labelCount > 30 && !confirm(`In ${labelCount} tem cho ${labelCount} Group UID?`)) return;
+          const batches = [];
+          for (let start = 0; start < items.length; start += 100) batches.push(items.slice(start, start + 100));
+          printAll.disabled = true;
+          add.disabled = true;
+          let sentUids = 0;
+          setStatus(`Đang gửi 0/${labelCount} tem đến máy trạm…`);
           try {
-            const result = await window.PrintSkuQueue.enqueue({
-              type: "group_uid",
-              copies: count,
-              requestedBy: "web-group-uid",
-              payload: {
-                groupUid: groupUid.value.trim(),
-                sku: sku.value.trim(),
-                productName: product.value.trim()
-              }
-            });
-            if (!result.ok) throw new Error(result.error?.message || "Supabase không nhận lệnh in");
-            setStatus(result.data.duplicate ? "Lệnh này đã tồn tại, không gửi trùng." : "Đã xếp hàng, đang chờ máy trạm…");
-            await waitForResult(result.data.id);
-            setStatus(`Đã in xong ${count} tem Group UID.`, "ok");
+            for (const batch of batches) {
+              const result = await window.PrintSkuQueue.enqueue({
+                type: "group_uid",
+                copies: batch.reduce((total, item) => total + item.copies, 0),
+                requestedBy: "web-group-uid",
+                payload: { items: batch }
+              });
+              if (!result.ok) throw new Error(result.error?.message || "Supabase không nhận lệnh in");
+              sentUids += batch.length;
+              setStatus(`Đang gửi ${sentUids}/${labelCount} tem đến máy trạm…`);
+            }
+            pending.splice(0, pending.length);
+            renderPending();
+            setStatus(`Đã gửi ${labelCount} Group UID — máy trạm ghép 2 tem mỗi hàng giấy.`, "ok");
           } catch (error) {
-            setStatus(String(error?.message || error), "error");
+            if (sentUids) pending.splice(0, sentUids);
+            renderPending();
+            setStatus(`Đã gửi ${sentUids}/${labelCount} tem. ${String(error?.message || error)}`, "error");
           } finally {
-            submit.disabled = false;
+            add.disabled = false;
+            printAll.disabled = !pending.length;
           }
         });
+
+        renderPending();
       })();
     </script>
     <section class="admin-auth" id="admin-auth" role="dialog" aria-modal="true" aria-labelledby="admin-auth-title" hidden>

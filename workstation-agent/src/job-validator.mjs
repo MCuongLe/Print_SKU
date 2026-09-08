@@ -50,14 +50,31 @@ export function normalizeJob(input) {
   }
 
   if (type === "group_uid") {
-    normalizedPayload = {
-      groupUid: cleanText(payload.groupUid, 40),
-      sku: cleanText(payload.sku, 40),
-      productName: cleanText(payload.productName ?? payload.materialName, 180)
-    };
-    if (!normalizedPayload.groupUid || !ASCII_BARCODE.test(normalizedPayload.groupUid)) errors.push("Group UID không hợp lệ");
-    if (normalizedPayload.sku && !SKU_PATTERN.test(normalizedPayload.sku)) errors.push("SKU không hợp lệ");
-    if (!normalizedPayload.productName) errors.push("Thiếu tên sản phẩm");
+    const normalizeUid = (item) => ({
+      groupUid: cleanText(item.groupUid, 40),
+      sku: cleanText(item.sku, 40),
+      productName: cleanText(item.productName ?? item.materialName, 180),
+      copies: validCopies(item.copies ?? 1) || 0
+    });
+    if (Array.isArray(payload.items)) {
+      const items = payload.items.slice(0, 100).map(normalizeUid);
+      if (!items.length) errors.push("Danh sách Group UID đang trống");
+      items.forEach((item, index) => {
+        if (!item.groupUid || !ASCII_BARCODE.test(item.groupUid)) errors.push(`Group UID dòng ${index + 1} không hợp lệ`);
+        if (item.sku && !SKU_PATTERN.test(item.sku)) errors.push(`SKU dòng ${index + 1} không hợp lệ`);
+        if (!item.productName) errors.push(`Thiếu tên sản phẩm dòng ${index + 1}`);
+        if (!item.copies) errors.push(`Số bản dòng ${index + 1} không hợp lệ`);
+      });
+      const totalCopies = items.reduce((sum, item) => sum + item.copies, 0);
+      if (totalCopies !== copies) errors.push("Tổng số bản Group UID không khớp lệnh in");
+      normalizedPayload = { items };
+    } else {
+      normalizedPayload = normalizeUid(payload);
+      delete normalizedPayload.copies;
+      if (!normalizedPayload.groupUid || !ASCII_BARCODE.test(normalizedPayload.groupUid)) errors.push("Group UID không hợp lệ");
+      if (normalizedPayload.sku && !SKU_PATTERN.test(normalizedPayload.sku)) errors.push("SKU không hợp lệ");
+      if (!normalizedPayload.productName) errors.push("Thiếu tên sản phẩm");
+    }
   }
 
   return {

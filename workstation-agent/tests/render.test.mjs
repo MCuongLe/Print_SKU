@@ -28,6 +28,30 @@ test("dựng TSPL Group UID hai tem mà không gọi máy in", async () => {
   assert.equal(tspl.includes(Buffer.from("PRINT 1\r\n", "ascii")), true);
 });
 
+test("hai Group UID khác nhau ghép chung một hàng giấy", async () => {
+  const job = {
+    id: "dry-uid-batch", nonce: "dry-uid-batch-1", type: "group_uid", copies: 2, templateVersion: 1,
+    payload: { items: [
+      { groupUid: "1028260903000004", sku: "422494672", productName: "Vải woven NSB", copies: 1 },
+      { groupUid: "1028260903000005", sku: "422494672", productName: "Vải woven NSB", copies: 1 }
+    ] }
+  };
+  const tspl = await renderJobTspl(job, config);
+  assert.equal(tspl.toString("latin1").match(/PRINT 1\r\n/g)?.length, 1);
+});
+
+test("ba tem Group UID chỉ tốn hai hàng giấy", async () => {
+  const job = {
+    id: "dry-uid-odd", nonce: "dry-uid-odd-1", type: "group_uid", copies: 3, templateVersion: 1,
+    payload: { items: [
+      { groupUid: "1028260903000006", sku: "", productName: "Vải woven NSB", copies: 1 },
+      { groupUid: "1028260903000007", sku: "", productName: "Vải woven NSB", copies: 2 }
+    ] }
+  };
+  const tspl = await renderJobTspl(job, config);
+  assert.equal(tspl.toString("latin1").match(/PRINT 1\r\n/g)?.length, 2);
+});
+
 test("dựng một batch gồm nhiều SKU", async () => {
   const job = {
     id: "dry-batch", nonce: "dry-batch-1", type: "sku", copies: 3, templateVersion: 1,

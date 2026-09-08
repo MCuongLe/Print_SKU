@@ -15,6 +15,7 @@ Agent này thuộc ứng dụng Print SKU, cài độc lập tại `C:\PrintSKUA
 | Group UID label | `groupUid` | ASCII tối đa 40 ký tự | Phải tạo được Code 128 | NG nếu không hợp lệ |
 | Group UID label | `sku` | Trống hoặc ASCII tối đa 40 ký tự | SKU không bắt buộc; chỉ vẽ barcode SKU khi có giá trị | NG nếu có nhưng sai định dạng |
 | Group UID label | `productName` | Tên sản phẩm tối đa 180 ký tự | Bắt buộc; có thể tra theo SKU hoặc nhập tay | NG nếu trống |
+| Group UID batch | `payload.items` | 1–100 dòng, mỗi dòng có `copies` 1–500 | Tổng `copies` các dòng phải bằng `copies` của lệnh | NG nếu lệch tổng hoặc dòng thiếu dữ liệu |
 | Agent | lease | 30–900 giây | Queue phải trả lệnh về `queued` khi lease hết | OK ở backend Supabase, CHƯA VERIFY tình huống mất điện thật |
 | Máy in | trạng thái trước/sau | ready/blocked | Không gửi khi blocked | NG nếu offline/hết giấy/lỗi |
 
@@ -28,6 +29,7 @@ Agent này thuộc ứng dụng Print SKU, cài độc lập tại `C:\PrintSKUA
 ## Vận hành
 
 - Template nằm trong `src/templates`, không trích xuất từ HTML lúc chạy.
+- Giấy in là khổ 2 tem mỗi hàng; render phải trải phẳng mọi tem của lệnh (kể cả batch nhiều SKU/Group UID khác nhau) rồi ghép 2 tem liền kề vào một hàng, không được để trống tem bên phải trừ hàng cuối khi tổng lẻ.
 - Tem SKU xếp theo thứ tự barcode → mã SKU → Tên SP; vùng số lượng và ngày giữ nguyên ở cuối tem.
 - Bitmap TSPL dùng cực `0 = chấm đen`, `1 = nền trắng`; không đảo lại nếu chưa in thử trực tiếp trên máy TSC.
 - `preview` và `dry-run` tuyệt đối không gọi máy in.

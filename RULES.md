@@ -53,3 +53,11 @@ Xem lại các quy tắc này khi thay đổi cấu trúc form, danh sách chờ
 - Quy tắc dữ liệu, bảo mật, queue lease và mức bằng chứng nằm trong `workstation-agent/RULES.md`.
 - Web dùng lớp tương thích để chuyển ba thao tác hàng đợi cũ sang Supabase mà không sửa rộng bundle React đã minify.
 - Màn hình `#group-uid` cho phép bỏ trống SKU; nếu nhập SKU hợp lệ thì tên sản phẩm được tra từ `public.SKU_Name`, nếu không người dùng nhập tên thủ công.
+- Trang đầu `#home` hiển thị đúng hai lựa chọn `PRINT SKU` và `PRINT UID` dưới tiêu đề `PRINT BARCODE`.
+- `PRINT UID` cho phép tạo danh sách chờ nhiều Group UID. Mỗi dòng chỉ dùng để chọn mapping, xem kết quả và xóa; không chỉnh riêng nội dung hoặc số lượng trên dòng.
+- SKU có thể bỏ trống. Tên sản phẩm và Group UID luôn bắt buộc; mỗi Group UID cố định in đúng 1 tem.
+- Form đầu của `PRINT UID` chỉ nhận Group UID. Sau khi thêm, người dùng tick một nhóm UID rồi áp dụng SKU và tên sản phẩm từ khu vực mapping hàng loạt.
+- Một lần xác nhận trên giao diện gửi toàn bộ danh sách thành một lệnh `group_uid:v1` dạng batch (`payload.items`, tối đa 100 UID mỗi lệnh; vượt quá thì tự chia thành nhiều lệnh).
+- Agent từ 0.3.0 trải phẳng mọi tem của một lệnh rồi ghép 2 tem liền kề — kể cả 2 Group UID khác nhau — lên cùng một hàng giấy 2 tem, nên không còn phí tem bên phải; chỉ tem cuối cùng của lệnh có tổng lẻ mới để trống nửa hàng. Agent 0.2.2 trở xuống không đọc được lệnh batch và phải được cài lại.
+- Danh sách UID hỗ trợ tick nhiều dòng rồi áp dụng chung một SKU (có thể bỏ trống) và một tên sản phẩm (bắt buộc). Sau khi áp dụng, các dòng tự bỏ chọn để người dùng mapping nhóm tiếp theo. Muốn sửa mapping thì chọn lại dòng và áp dụng lại; không chỉnh riêng trên từng dòng.
+- Danh sách chờ hiển thị dạng bảng gọn, mỗi UID đúng một dòng với bốn vùng: chọn, Group UID, SKU/tên sản phẩm và xóa. Nội dung dài rút gọn bằng dấu ba chấm nhưng vẫn có tooltip xem đầy đủ.

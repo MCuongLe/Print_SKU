@@ -22,6 +22,23 @@ test("chấp nhận một lệnh gồm nhiều SKU", () => {
   assert.equal(result.job.payload.items.length, 2);
 });
 
+test("chấp nhận một lệnh gồm nhiều Group UID", () => {
+  const result = normalizeJob({ id: "4", nonce: "n4", type: "group_uid", copies: 3, payload: { items: [
+    { groupUid: "1028260903000004", sku: "422494672", productName: "Vải woven NSB", copies: 1 },
+    { groupUid: "1028260903000005", sku: "", productName: "Vải woven NSB", copies: 2 }
+  ] } });
+  assert.equal(result.ok, true);
+  assert.equal(result.job.payload.items.length, 2);
+});
+
+test("batch Group UID phải khớp tổng số bản", () => {
+  const result = normalizeJob({ id: "5", nonce: "n5", type: "group_uid", copies: 5, payload: { items: [
+    { groupUid: "1028260903000004", productName: "Vải woven NSB", copies: 1 }
+  ] } });
+  assert.equal(result.ok, false);
+  assert.match(result.errors.join(" "), /không khớp/);
+});
+
 test("từ chối loại tem lạ", () => {
   const result = normalizeJob({ id: "1", nonce: "n1", type: "unknown", copies: 1, payload: {} });
   assert.equal(result.ok, false);
