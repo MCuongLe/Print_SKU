@@ -44,7 +44,7 @@ export function loadConfig(options = {}) {
     pollIntervalMs: positiveInt(get("AGENT_POLL_INTERVAL_MS"), 1000, 250, 60000),
     leaseMs: positiveInt(get("AGENT_LEASE_MS"), 120000, 30000, 900000),
     dpi: positiveInt(get("LABEL_DPI"), 203, 150, 600),
-    density: positiveInt(get("LABEL_DENSITY"), 10, 0, 15),
+    density: positiveInt(get("LABEL_DENSITY"), 12, 0, 15),
     speed: positiveInt(get("LABEL_SPEED"), 3, 1, 10),
     logLevel: get("LOG_LEVEL", "info"),
     logDir: path.join(ROOT_DIR, "logs"),

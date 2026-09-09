@@ -11,7 +11,6 @@ export function renderSkuLabel(payload) {
   const quantity = escapeXml(payload.quantity || "");
   const printedDate = escapeXml(payload.printedDate || formatDate());
   return svgDocument(
-    `<rect x="2" y="2" width="316" height="476" fill="none" stroke="#000" stroke-width="2"/>` +
     barcode.rects +
     `<text x="160" y="103" font-size="25" text-anchor="middle">${sku}</text>` +
     product +
