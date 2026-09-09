@@ -4,7 +4,7 @@ import { escapeXml, formatDate, LABEL_HEIGHT, LABEL_WIDTH, svgDocument, wrapText
 export function renderSkuLabel(payload) {
   const sku = escapeXml(payload.sku);
   const barcode = barcodeRects(payload.sku, { x: 12, y: 15, width: 296, height: 62 });
-  const productLines = wrapText(payload.productName, 26, 3);
+  const productLines = wrapText(payload.productName, 26, 7);
   const product = productLines.map((line, index) =>
     `<text x="12" y="${145 + index * 25}" font-size="22">${escapeXml(line)}</text>`
   ).join("");

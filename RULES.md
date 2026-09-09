@@ -54,10 +54,13 @@ Xem lại các quy tắc này khi thay đổi cấu trúc form, danh sách chờ
 - Web dùng lớp tương thích để chuyển ba thao tác hàng đợi cũ sang Supabase mà không sửa rộng bundle React đã minify.
 - Màn hình `#group-uid` cho phép bỏ trống SKU; nếu nhập SKU hợp lệ thì tên sản phẩm được tra từ `public.SKU_Name`, nếu không người dùng nhập tên thủ công.
 - Trang đầu `#home` hiển thị đúng hai lựa chọn `PRINT SKU` và `PRINT UID` dưới tiêu đề `PRINT BARCODE`.
-- `PRINT UID` cho phép tạo danh sách chờ nhiều Group UID. Mỗi dòng chỉ dùng để chọn mapping, xem kết quả và xóa; không chỉnh riêng nội dung hoặc số lượng trên dòng.
-- SKU có thể bỏ trống. Tên sản phẩm và Group UID luôn bắt buộc; mỗi Group UID cố định in đúng 1 tem.
-- Form đầu của `PRINT UID` chỉ nhận Group UID. Sau khi thêm, người dùng tick một nhóm UID rồi áp dụng SKU và tên sản phẩm từ khu vực mapping hàng loạt.
+- Màn hình in tem SKU (`#worker`) mang tiêu đề `PRINT SKU` kèm dòng phiên bản; nút `← PRINT BARCODE` ghim ở mép trên bên phải (desktop trong dải header, mobile thành nút tròn `←` ngay dưới header). Ba dòng hướng dẫn tĩnh dưới ô nhập đã bỏ; dòng nhắc động chỉ hiện khi có nội dung (đang tra/kết quả tra SKU). Font toàn app thống nhất Arial.
+- `PRINT UID` chia đúng 4 cụm đánh số: `1 Thêm Group UID` và `3 Chưa gán SKU` ở cột trái; `2 Gán SKU` và `4 Sẵn sàng in` ở cột phải (mobile xếp dọc 1 → 3 → 2 → 4 theo trình tự thao tác).
+- Cụm 1 nhận UID theo hai cách: quét/nhập từng mã (Enter thêm liên tục) hoặc `Import từ file Excel` — đọc file export Group UID từ WMS (.xlsx), tự tìm cột `Group UID Code`, bỏ qua UID trùng và UID không hợp lệ; parser dùng DecompressionStream sẵn có của Chromium, không thêm thư viện ngoài.
+- Cụm 2 có hai chế độ gán. Gán theo tick chọn: tick UID ở cụm 3 (hoặc `Chọn tất cả`) rồi nhập SKU (bỏ trống được, hiện nhãn `Không SKU`) và tên sản phẩm; Enter trong ô SKU/tên sản phẩm cũng kích hoạt gán. Gán tự động: nhập nhiều dòng `SKU + số UID` (mỗi dòng 1–500), hệ thống chia UID theo thứ tự danh sách cụm 3 từ trên xuống; tổng số UID các dòng không được vượt số UID đang chờ; tên sản phẩm bắt buộc tra được từ `public.SKU_Name`, SKU không tìm thấy thì báo lỗi và không gán dòng nào.
+- SKU có thể bỏ trống ở chế độ tick chọn. Tên sản phẩm và Group UID luôn bắt buộc; mỗi Group UID cố định in đúng 1 tem.
+- Trong cụm 4 `Sẵn sàng in`, mỗi dòng có nút bỏ gán (trả UID về khung chờ, xóa mapping) và nút xóa hẳn. Nút `Xác nhận in` chỉ gửi các UID trong khung sẵn sàng; khung chờ giữ nguyên.
 - Một lần xác nhận trên giao diện gửi toàn bộ danh sách thành một lệnh `group_uid:v1` dạng batch (`payload.items`, tối đa 100 UID mỗi lệnh; vượt quá thì tự chia thành nhiều lệnh).
 - Agent từ 0.3.0 trải phẳng mọi tem của một lệnh rồi ghép 2 tem liền kề — kể cả 2 Group UID khác nhau — lên cùng một hàng giấy 2 tem, nên không còn phí tem bên phải; chỉ tem cuối cùng của lệnh có tổng lẻ mới để trống nửa hàng. Agent 0.2.2 trở xuống không đọc được lệnh batch và phải được cài lại.
-- Danh sách UID hỗ trợ tick nhiều dòng rồi áp dụng chung một SKU (có thể bỏ trống) và một tên sản phẩm (bắt buộc). Sau khi áp dụng, các dòng tự bỏ chọn để người dùng mapping nhóm tiếp theo. Muốn sửa mapping thì chọn lại dòng và áp dụng lại; không chỉnh riêng trên từng dòng.
-- Danh sách chờ hiển thị dạng bảng gọn, mỗi UID đúng một dòng với bốn vùng: chọn, Group UID, SKU/tên sản phẩm và xóa. Nội dung dài rút gọn bằng dấu ba chấm nhưng vẫn có tooltip xem đầy đủ.
+- Muốn sửa mapping của một UID đã gán: bấm bỏ gán để trả về khung chờ rồi gán lại; không chỉnh riêng trên từng dòng.
+- Khung 3 và 4 hiển thị dạng danh sách gọn, có badge đếm số dòng; nội dung dài rút gọn bằng dấu ba chấm nhưng vẫn có tooltip xem đầy đủ. Danh sách dài cuộn bên trong khung, khu vực gán và nút in luôn nhìn thấy.
