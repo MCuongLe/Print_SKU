@@ -33,6 +33,7 @@ Agent này thuộc ứng dụng Print SKU, cài độc lập tại `C:\PrintSKUA
 - Tem SKU xếp theo thứ tự barcode → mã SKU → Tên SP; vùng số lượng và ngày giữ nguyên ở cuối tem.
 - Tên sản phẩm 26 ký tự mỗi dòng, tối đa 7 dòng trên tem SKU và tem Group UID không SKU, 6 dòng trên tem Group UID có SKU (vùng SKU bắt đầu y=332); không được để tên tràn vào vạch kẻ hoặc vùng SKU.
 - Bitmap TSPL dùng cực `0 = chấm đen`, `1 = nền trắng`; không đảo lại nếu chưa in thử trực tiếp trên máy TSC.
+- Độ đậm mặc định `LABEL_DENSITY=12` (thang 0–15); chỉnh theo máy in thật qua `config\.env`, không sửa code.
 - `preview` và `dry-run` tuyệt đối không gọi máy in.
 - Chỉ lệnh `service` mới được phép nhận và in job.
 - Chưa xác nhận vật lý tem đã ra giấy nếu chỉ có phản hồi WritePrinter; cần kiểm tra thêm trạng thái spooler và máy in.
