@@ -783,7 +783,11 @@ Error generating stack: `+y.message+`
                 <button class="uid-map__apply" id="uid-apply-mapping" type="button" disabled>Gán cho UID đã chọn</button>
               </div>
               <div class="uid-map" id="uid-map-auto" role="tabpanel" aria-label="Gán tự động theo danh sách" hidden>
-                <p class="uid-help" style="margin-bottom: 10px;">Chia UID theo thứ tự danh sách ở cụm 3; tên sản phẩm tự tra theo SKU.</p>
+                <p class="uid-help" style="margin-bottom: 10px;">Chia UID theo thứ tự danh sách ở cụm 3; tên sản phẩm tự tra theo SKU. Không có SKU thì chọn tên kho làm Tên SP.</p>
+                <datalist id="uid-wh-suggest">
+                  <option value="WH - MATERIAL - GARMENT"></option>
+                  <option value="WH - MATERIAL - MTG"></option>
+                </datalist>
                 <div class="uid-auto" id="uid-auto-rows"></div>
                 <button class="uid-auto__add" id="uid-auto-add" type="button">+ Thêm dòng SKU</button>
                 <div class="uid-auto__meta"><span>Sẽ gán: <strong id="uid-auto-total">0/0</strong> UID</span></div>
@@ -1002,7 +1006,7 @@ Error generating stack: `+y.message+`
           const quantities = autoRows.map(row => Math.floor(Number(row.qty)) || 0);
           const total = quantities.reduce((sum, qty) => sum + qty, 0);
           autoTotal.textContent = `${total}/${pending.length}`;
-          const invalid = autoRows.some((row, index) => !String(row.sku).trim() || quantities[index] < 1 || quantities[index] > 500);
+          const invalid = autoRows.some((row, index) => (!String(row.sku).trim() && !String(row.name).trim()) || quantities[index] < 1 || quantities[index] > 500);
           autoApply.disabled = invalid || total < 1 || total > pending.length;
         };
 
@@ -1016,7 +1020,7 @@ Error generating stack: `+y.message+`
                 <button type="button" data-action="inc" aria-label="Tăng số UID">+</button>
               </div>
               <button class="uid-row__icon uid-row__icon--remove" type="button" data-action="remove-row" aria-label="Xóa dòng SKU" ${autoRows.length === 1 ? "disabled" : ""}>×</button>
-              <input class="uid-auto__name" data-field="name" autocomplete="off" placeholder="Tên SP — tự tra theo SKU, nhập tay nếu tra không có" value="${escapeHtml(row.name)}">
+              <input class="uid-auto__name" data-field="name" autocomplete="off" list="uid-wh-suggest" placeholder="Tên SP — tự tra theo SKU; không SKU thì chọn tên kho" value="${escapeHtml(row.name)}">
             </div>`).join("");
           updateAutoMeta();
         };
@@ -1077,7 +1081,7 @@ Error generating stack: `+y.message+`
 
         autoApply.addEventListener("click", async () => {
           const rows = autoRows.map(row => ({ sku: String(row.sku).trim(), qty: Math.floor(Number(row.qty)) || 0, name: String(row.name).trim() }));
-          if (rows.some(row => !row.sku || row.qty < 1 || row.qty > 500)) return setAutoHelp("Mỗi dòng cần SKU và số UID từ 1 đến 500.", "warn");
+          if (rows.some(row => (!row.sku && !row.name) || row.qty < 1 || row.qty > 500)) return setAutoHelp("Mỗi dòng cần số UID từ 1 đến 500 và có SKU hoặc Tên SP.", "warn");
           const total = rows.reduce((sum, row) => sum + row.qty, 0);
           if (total > pending.length) return setAutoHelp(`Tổng ${total} UID vượt quá ${pending.length} UID đang chờ gán.`, "warn");
           autoApply.disabled = true;
