@@ -668,7 +668,9 @@ Error generating stack: `+y.message+`
       .uid-map__titlebar { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
       .uid-map__hint { color: #9ab0a8; font-size: 11px; }
       .uid-auto { display: grid; gap: 8px; margin-bottom: 8px; }
-      .uid-auto__row { display: grid; grid-template-columns: minmax(0, 1fr) 132px 32px; align-items: center; gap: 8px; }
+      .uid-auto__row { display: grid; grid-template-columns: minmax(0, 1fr) 132px 32px; align-items: center; gap: 8px; padding-bottom: 8px; border-bottom: 1px dashed rgba(145,186,171,.14); }
+      .uid-auto__row:last-child { padding-bottom: 0; border-bottom: 0; }
+      .uid-auto__name { grid-column: 1 / -1; }
       .uid-auto__row > input { width: 100%; min-height: 46px; box-sizing: border-box; padding: 10px 12px; border: 1px solid rgba(145,186,171,.2); border-radius: 11px; outline: none; color: #eef8f4; background: #081712; font: 700 14px/1.2 Arial, Helvetica, sans-serif; }
       .uid-auto__row > input:focus { border-color: #20a97a; }
       .uid-auto__row > input::placeholder { color: #60766e; }
@@ -842,7 +844,8 @@ Error generating stack: `+y.message+`
         const status = document.getElementById("uid-status");
         const pending = [];
         const mapped = [];
-        const autoRows = [{ id: 1, sku: "", qty: 1 }];
+        const autoRows = [{ id: 1, sku: "", qty: 1, name: "", autoName: "" }];
+        const autoLookupTimers = new Map();
         let nextAutoId = 2;
         let bulkLookupTimer = 0;
         let bulkLookupSequence = 0;
@@ -1013,8 +1016,31 @@ Error generating stack: `+y.message+`
                 <button type="button" data-action="inc" aria-label="Tăng số UID">+</button>
               </div>
               <button class="uid-row__icon uid-row__icon--remove" type="button" data-action="remove-row" aria-label="Xóa dòng SKU" ${autoRows.length === 1 ? "disabled" : ""}>×</button>
+              <input class="uid-auto__name" data-field="name" autocomplete="off" placeholder="Tên SP — tự tra theo SKU, nhập tay nếu tra không có" value="${escapeHtml(row.name)}">
             </div>`).join("");
           updateAutoMeta();
+        };
+
+        const lookupAutoRowName = row => {
+          clearTimeout(autoLookupTimers.get(row.id));
+          const sku = String(row.sku).trim();
+          if (!sku) return;
+          autoLookupTimers.set(row.id, setTimeout(async () => {
+            try {
+              const name = await fetchProductName(sku);
+              if (!autoRows.includes(row) || String(row.sku).trim() !== sku) return;
+              if (!name) {
+                if (!String(row.name).trim()) setAutoHelp(`Không tìm thấy SKU ${sku} — nhập Tên SP thủ công cho dòng đó.`, "warn");
+                return;
+              }
+              if (String(row.name).trim() && row.name !== row.autoName) return;
+              row.name = name;
+              row.autoName = name;
+              const rowElement = autoRowsElement.querySelector(`.uid-auto__row[data-id="${row.id}"] input[data-field="name"]`);
+              if (rowElement) rowElement.value = name;
+              setAutoHelp("");
+            } catch (_) { /* tra lỗi thì người dùng nhập tay */ }
+          }, 400));
         };
 
         autoRowsElement.addEventListener("input", event => {
@@ -1022,6 +1048,7 @@ Error generating stack: `+y.message+`
           const row = rowElement && autoRows.find(entry => entry.id === Number(rowElement.dataset.id));
           if (!row || !event.target.dataset.field) return;
           row[event.target.dataset.field] = event.target.value;
+          if (event.target.dataset.field === "sku") lookupAutoRowName(row);
           updateAutoMeta();
         });
 
@@ -1044,31 +1071,32 @@ Error generating stack: `+y.message+`
         });
 
         autoAdd.addEventListener("click", () => {
-          autoRows.push({ id: nextAutoId++, sku: "", qty: 1 });
+          autoRows.push({ id: nextAutoId++, sku: "", qty: 1, name: "", autoName: "" });
           renderAutoRows();
         });
 
         autoApply.addEventListener("click", async () => {
-          const rows = autoRows.map(row => ({ sku: String(row.sku).trim(), qty: Math.floor(Number(row.qty)) || 0 }));
+          const rows = autoRows.map(row => ({ sku: String(row.sku).trim(), qty: Math.floor(Number(row.qty)) || 0, name: String(row.name).trim() }));
           if (rows.some(row => !row.sku || row.qty < 1 || row.qty > 500)) return setAutoHelp("Mỗi dòng cần SKU và số UID từ 1 đến 500.", "warn");
           const total = rows.reduce((sum, row) => sum + row.qty, 0);
           if (total > pending.length) return setAutoHelp(`Tổng ${total} UID vượt quá ${pending.length} UID đang chờ gán.`, "warn");
           autoApply.disabled = true;
           setAutoHelp("Đang tra tên sản phẩm theo SKU…");
           try {
-            const names = {};
-            for (const sku of [...new Set(rows.map(row => row.sku))]) {
-              const name = await fetchProductName(sku);
-              if (!name) return setAutoHelp(`Không tìm thấy SKU ${sku}. Kiểm tra lại hoặc dùng gán tick chọn.`, "warn");
-              names[sku] = name;
+            const looked = {};
+            for (const row of rows) {
+              if (row.name) continue;
+              if (!(row.sku in looked)) looked[row.sku] = await fetchProductName(row.sku);
+              row.name = looked[row.sku];
+              if (!row.name) return setAutoHelp(`Không tìm thấy SKU ${row.sku} — nhập Tên SP cho dòng đó rồi gán lại.`, "warn");
             }
             for (const row of rows) {
               for (let copy = 0; copy < row.qty; copy += 1) {
                 const item = pending.shift();
-                mapped.push({ id: item.id, groupUid: item.groupUid, sku: row.sku, productName: names[row.sku] });
+                mapped.push({ id: item.id, groupUid: item.groupUid, sku: row.sku, productName: row.name });
               }
             }
-            autoRows.splice(0, autoRows.length, { id: nextAutoId++, sku: "", qty: 1 });
+            autoRows.splice(0, autoRows.length, { id: nextAutoId++, sku: "", qty: 1, name: "", autoName: "" });
             renderAutoRows();
             setAutoHelp("");
             setStatus(`Đã gán tự động ${total} UID theo ${rows.length} dòng SKU.`, "ok");
