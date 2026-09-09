@@ -659,7 +659,11 @@ Error generating stack: `+y.message+`
       .uid-import { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 48px; margin-top: 9px; border: 1px dashed rgba(145,186,171,.3); border-radius: 13px; color: #b8cbc4; background: rgba(255,255,255,.03); font: 800 13px/1 Arial, Helvetica, sans-serif; cursor: pointer; }
       .uid-assign { display: flex; flex-direction: column; gap: 12px; padding: 18px; }
       .uid-assign .uid-panel__head { margin-bottom: 0; }
+      .uid-tabs { display: flex; gap: 6px; box-sizing: border-box; padding: 4px; border: 1px solid rgba(145,186,171,.16); border-radius: 999px; background: rgba(5,15,12,.6); }
+      .uid-tabs button { flex: 1; min-height: 40px; border: 0; border-radius: 999px; color: #9ab0a8; background: transparent; font: 800 13px/1 Arial, Helvetica, sans-serif; cursor: pointer; }
+      .uid-tabs button[aria-selected="true"] { color: #fff; background: #005f41; box-shadow: 0 6px 16px rgba(0,95,65,.3); }
       .uid-map { padding: 13px; border: 1px solid rgba(40,186,135,.25); border-radius: 16px; background: rgba(0,95,65,.11); }
+      .uid-map[hidden] { display: none; }
       .uid-map__title { display: block; margin-bottom: 10px; color: #789087; font-size: 10px; font-weight: 800; letter-spacing: .7px; text-transform: uppercase; }
       .uid-map__titlebar { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
       .uid-map__hint { color: #9ab0a8; font-size: 11px; }
@@ -764,8 +768,11 @@ Error generating stack: `+y.message+`
           <div class="uid-col">
             <section class="uid-card uid-assign" aria-labelledby="uid-assign-title">
               <div class="uid-panel__head"><b class="uid-panel__num">2</b><h2 id="uid-assign-title">Gán SKU</h2></div>
-              <div class="uid-map" aria-label="Gán SKU cho UID đã chọn">
-                <div class="uid-map__title">Gán cho UID đã tick chọn ở cụm 3</div>
+              <div class="uid-tabs" role="tablist" aria-label="Chế độ gán SKU">
+                <button id="uid-tab-manual" type="button" role="tab" aria-selected="true">Gán theo tick chọn</button>
+                <button id="uid-tab-auto" type="button" role="tab" aria-selected="false">Gán tự động</button>
+              </div>
+              <div class="uid-map" id="uid-map-manual" role="tabpanel" aria-label="Gán SKU cho UID đã chọn">
                 <div class="uid-map__grid">
                   <label>SKU <span class="uid-optional">bỏ trống nếu không có</span><input id="uid-bulk-sku" autocomplete="off" placeholder="Nhập SKU để tra tên"></label>
                   <label>Tên sản phẩm<input id="uid-bulk-product" autocomplete="off" placeholder="Tự điền theo SKU hoặc nhập tay"></label>
@@ -773,11 +780,11 @@ Error generating stack: `+y.message+`
                 <p class="uid-help" id="uid-bulk-lookup" aria-live="polite">Tick UID ở khung Chưa gán SKU rồi nhập SKU / tên sản phẩm.</p>
                 <button class="uid-map__apply" id="uid-apply-mapping" type="button" disabled>Gán cho UID đã chọn</button>
               </div>
-              <div class="uid-map" aria-label="Gán tự động theo danh sách">
-                <div class="uid-map__titlebar"><span class="uid-map__title">Gán tự động theo danh sách</span><span class="uid-map__hint">chia theo thứ tự UID ở cụm 3</span></div>
+              <div class="uid-map" id="uid-map-auto" role="tabpanel" aria-label="Gán tự động theo danh sách" hidden>
+                <p class="uid-help" style="margin-bottom: 10px;">Chia UID theo thứ tự danh sách ở cụm 3; tên sản phẩm tự tra theo SKU.</p>
                 <div class="uid-auto" id="uid-auto-rows"></div>
                 <button class="uid-auto__add" id="uid-auto-add" type="button">+ Thêm dòng SKU</button>
-                <div class="uid-auto__meta"><span>Sẽ gán: <strong id="uid-auto-total">0/0</strong> UID</span><span>Tên sản phẩm tự tra theo SKU</span></div>
+                <div class="uid-auto__meta"><span>Sẽ gán: <strong id="uid-auto-total">0/0</strong> UID</span></div>
                 <p class="uid-help" id="uid-auto-help" aria-live="polite"></p>
                 <button class="uid-map__apply" id="uid-auto-apply" type="button" disabled>Gán tự động</button>
               </div>
@@ -820,6 +827,10 @@ Error generating stack: `+y.message+`
         const bulkProduct = document.getElementById("uid-bulk-product");
         const bulkLookup = document.getElementById("uid-bulk-lookup");
         const applyMapping = document.getElementById("uid-apply-mapping");
+        const tabManual = document.getElementById("uid-tab-manual");
+        const tabAuto = document.getElementById("uid-tab-auto");
+        const mapManual = document.getElementById("uid-map-manual");
+        const mapAuto = document.getElementById("uid-map-auto");
         const importButton = document.getElementById("uid-import");
         const importFile = document.getElementById("uid-import-file");
         const autoRowsElement = document.getElementById("uid-auto-rows");
@@ -972,6 +983,15 @@ Error generating stack: `+y.message+`
             importButton.disabled = false;
           }
         });
+
+        const selectAssignTab = auto => {
+          tabManual.setAttribute("aria-selected", String(!auto));
+          tabAuto.setAttribute("aria-selected", String(auto));
+          mapManual.hidden = auto;
+          mapAuto.hidden = !auto;
+        };
+        tabManual.addEventListener("click", () => selectAssignTab(false));
+        tabAuto.addEventListener("click", () => selectAssignTab(true));
 
         const setAutoHelp = (message, tone = "") => { autoHelp.textContent = message; autoHelp.dataset.tone = tone; };
 
