@@ -30,8 +30,9 @@ Agent này thuộc ứng dụng Print SKU, cài độc lập tại `C:\PrintSKUA
 
 - Template nằm trong `src/templates`, không trích xuất từ HTML lúc chạy.
 - Giấy in là khổ 2 tem mỗi hàng; render phải trải phẳng mọi tem của lệnh (kể cả batch nhiều SKU/Group UID khác nhau) rồi ghép 2 tem liền kề vào một hàng, không được để trống tem bên phải trừ hàng cuối khi tổng lẻ.
-- Tem SKU xếp theo thứ tự barcode → mã SKU → Tên SP; vùng số lượng và ngày giữ nguyên ở cuối tem.
-- Tên sản phẩm 26 ký tự mỗi dòng, tối đa 7 dòng trên tem SKU và tem Group UID không SKU, 6 dòng trên tem Group UID có SKU (vùng SKU bắt đầu y=332); không được để tên tràn vào vạch kẻ hoặc vùng SKU.
+- Tem SKU xếp: Tên SP ở trên cùng (tối đa 5 dòng, 22 ký tự/dòng) → mã QR canh giữa (chứa số SKU, mức sửa lỗi M, dùng `qrcode-generator`) → số SKU in đậm ngay dưới QR → vạch kẻ, số lượng (trái) và ngày (phải) giữ nguyên ở cuối tem như bản cũ. Không còn barcode Code 128 trên tem SKU.
+- Tem Group UID vẫn dùng Code 128: tên sản phẩm 26 ký tự mỗi dòng, tối đa 7 dòng khi không SKU, 6 dòng khi có SKU (vùng SKU bắt đầu y=332); không để tên tràn vào vạch kẻ hoặc vùng SKU.
+- Mã QR phải quét ra đúng số SKU; kiểm chứng bằng cách render preview rồi decode lại (ví dụ jsQR) trước khi phát hành.
 - Bitmap TSPL dùng cực `0 = chấm đen`, `1 = nền trắng`; không đảo lại nếu chưa in thử trực tiếp trên máy TSC.
 - Độ đậm mặc định `LABEL_DENSITY=12` (thang 0–15); chỉnh theo máy in thật qua `config\.env`, không sửa code.
 - `preview` và `dry-run` tuyệt đối không gọi máy in.

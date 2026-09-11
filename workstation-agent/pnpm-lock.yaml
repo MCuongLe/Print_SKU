@@ -11,6 +11,9 @@ importers:
       '@img/sharp-win32-x64':
         specifier: 0.35.3
         version: 0.35.3
+      qrcode-generator:
+        specifier: ^2.0.4
+        version: 2.0.4
       sharp:
         specifier: 0.35.3
         version: 0.35.3
@@ -186,6 +189,9 @@ packages:
     resolution: {integrity: sha512-Btj2BOOO83o3WyH59e8MgXsxEQVcarkUOpEYrubB0urwnN10yQ364rsiByU11nZlqWYZm05i/of7io4mzihBtQ==}
     engines: {node: '>=8'}
 
+  qrcode-generator@2.0.4:
+    resolution: {integrity: sha512-mZSiP6RnbHl4xL2Ap5HfkjLnmxfKcPWpWe/c+5XxCuetEenqmNFf1FH/ftXPCtFG5/TDobjsjz6sSNL0Sr8Z9g==}
+
   semver@7.8.5:
     resolution: {integrity: sha512-Y7/KDsb8LjooZpwaqGyulO6DQlksgCncchHGk+sZIY4SBvUocMBEFH5Ur1fI4dV+Jvl0w6cjvucaIi40puRioA==}
     engines: {node: '>=10'}
@@ -316,6 +322,8 @@ snapshots:
   '@img/sharp-win32-x64@0.35.3': {}
 
   detect-libc@2.1.2: {}
+
+  qrcode-generator@2.0.4: {}
 
   semver@7.8.5: {}
 
