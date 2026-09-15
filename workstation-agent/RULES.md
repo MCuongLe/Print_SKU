@@ -25,12 +25,13 @@ Agent này thuộc ứng dụng Print SKU, cài độc lập tại `C:\PrintSKUA
 - Token chỉ nằm trong `C:\PrintSKUAgent\config\.env`, không commit và không đóng vào ZIP.
 - Không ghi token, Authorization header hoặc payload bí mật vào log.
 - Scheduled Task riêng là `Print SKU UID Agent`.
+- Chỉ một bản agent chạy cùng lúc (khóa `temp\agent.lock`). Khóa được "chạm" mỗi vòng quét; bản mới tự chiếm lại khóa nếu tiến trình chủ không còn HOẶC khóa quá 3 phút không được chạm (bao gồm trường hợp máy tắt đột ngột khiến PID cũ bị cấp lại) — không cần xóa khóa thủ công.
 
 ## Vận hành
 
 - Template nằm trong `src/templates`, không trích xuất từ HTML lúc chạy.
 - Giấy in là khổ 2 tem mỗi hàng; render phải trải phẳng mọi tem của lệnh (kể cả batch nhiều SKU/Group UID khác nhau) rồi ghép 2 tem liền kề vào một hàng, không được để trống tem bên phải trừ hàng cuối khi tổng lẻ.
-- Tem SKU xếp: Tên SP ở trên cùng (tối đa 5 dòng, 22 ký tự/dòng) → mã QR canh giữa (chứa số SKU, mức sửa lỗi M, dùng `qrcode-generator`) → số SKU in đậm ngay dưới QR → vạch kẻ, số lượng (trái) và ngày (phải) giữ nguyên ở cuối tem như bản cũ. Không còn barcode Code 128 trên tem SKU.
+- Tem SKU xếp: Tên SP ở trên cùng (tối đa 7 dòng, 22 ký tự/dòng) → mã QR canh giữa, đặt ngay dưới khối tên (`y = max(170, 34 + số_dòng*25 + 14)`) nên tên dài đẩy QR xuống chứ không đè → số SKU in đậm dưới QR → vạch kẻ, số lượng (trái, tự thu nhỏ font theo độ dài) và ngày (phải) ở cuối tem. QR chứa số SKU, mức sửa lỗi M, dùng `qrcode-generator`. Không còn barcode Code 128 trên tem SKU.
 - Tem Group UID vẫn dùng Code 128: tên sản phẩm 26 ký tự mỗi dòng, tối đa 7 dòng khi không SKU, 6 dòng khi có SKU (vùng SKU bắt đầu y=332); không để tên tràn vào vạch kẻ hoặc vùng SKU.
 - Mã QR phải quét ra đúng số SKU; kiểm chứng bằng cách render preview rồi decode lại (ví dụ jsQR) trước khi phát hành.
 - Bitmap TSPL dùng cực `0 = chấm đen`, `1 = nền trắng`; không đảo lại nếu chưa in thử trực tiếp trên máy TSC.

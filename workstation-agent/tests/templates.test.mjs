@@ -17,12 +17,15 @@ test("template Group UID không vẽ vùng SKU khi bỏ trống", () => {
 
 const LONG_NAME = "Thun nhung 7mm/W.TT.S-07-323H_Triều Vĩ/65%polyester,*35%spandex/None/XANH NAVY KHÓI 19-4117 TCX_ WKF-12473/none/7mm/mm";
 
-test("template SKU: tên sản phẩm nằm trên cùng, tối đa 5 dòng", () => {
+test("template SKU: tên sản phẩm nằm trên cùng, tối đa 7 dòng, không đè QR", () => {
   const svg = renderSkuLabel({ sku: "[SKU_DA_XOA]", productName: LONG_NAME, quantity: "", printedDate: "09-09-26" });
   assert.match(svg, /XANH NAVY/);
   const lines = [...svg.matchAll(/<text x="12" y="(\d+)" font-size="22">/g)].map(match => Number(match[1]));
-  assert.ok(lines.length >= 1 && lines.length <= 5, `số dòng tên = ${lines.length}`);
+  assert.ok(lines.length >= 1 && lines.length <= 7, `số dòng tên = ${lines.length}`);
   assert.ok(Math.min(...lines) < 60, "dòng tên đầu tiên phải ở gần đỉnh tem");
+  // rect QR đầu tiên phải nằm dưới dòng tên cuối cùng (không chồng lên chữ)
+  const firstRectY = Number(svg.match(/<rect x="\d+" y="(\d+)"/)[1]);
+  assert.ok(firstRectY > Math.max(...lines), `QR (y=${firstRectY}) phải dưới dòng tên cuối (y=${Math.max(...lines)})`);
 });
 
 test("template SKU: có mã QR ở giữa và số SKU in đậm dưới QR", () => {
