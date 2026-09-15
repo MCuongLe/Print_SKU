@@ -1617,7 +1617,8 @@ Error generating stack: `+y.message+`
         };
 
         // ---- Tách Nhà cung cấp & Màu theo quy chuẩn đặt tên SKU phụ liệu (giữ nguyên tên đầy đủ ở cột Tên) ----
-        const stripTrailingCode = seg => seg.replace(/[_\s]+[A-Za-zÀ-ỹ]{2,}-?\d{2,}\s*$/, "").replace(/[_\s]+$/, "").trim();
+        // Cắt mã ở đuôi: token cuối (đứng sau dấu cách hoặc "_") chứa cả chữ lẫn số — coi là mã NCC/vật tư, vd "WKF-12473", "DL01650-01".
+        const stripTrailingCode = seg => seg.replace(/[_\s]+[A-Za-z0-9][A-Za-z0-9-]*\d[A-Za-z0-9-]*\s*$/, "").replace(/[_\s]+$/, "").trim();
         const parseNameParts = ten => {
           const rawSegs = String(ten).split("/").map(seg => seg.trim());
           // Nhà cung cấp: đoạn dạng <mã>_<tên NCC> — phần mã không có khoảng trắng, phần tên có chữ. Lấy đoạn đầu tiên khớp.
@@ -1630,10 +1631,14 @@ Error generating stack: `+y.message+`
             const seg = rawSegs[1];
             if (seg && seg === seg.toUpperCase() && /[A-Z]{3}/.test(seg) && !/\d{3}/.test(seg) && seg.toLowerCase() !== "none") supplier = seg;
           }
-          // Màu: ưu tiên đoạn có chữ và kết thúc bằng mã NCC (vd "Be ca cao-Etherea WKF-12473" → "Be ca cao-Etherea").
+          // Màu: ưu tiên đoạn có chữ và kết thúc bằng mã (token cuối có cả chữ lẫn số) — cắt mã, giữ tên màu.
+          // vd "Xám DL01650-01" → "Xám", "Be ca cao-Etherea WKF-12473" → "Be ca cao-Etherea".
           let colour = "";
           for (const seg of rawSegs) {
-            if (/[A-Za-zÀ-ỹ]/.test(seg) && /[_\s][A-Za-zÀ-ỹ]{2,}-?\d{2,}\s*$/.test(seg)) { colour = stripTrailingCode(seg); break; }
+            if (/[A-Za-zÀ-ỹ]/.test(seg) && /[_\s][A-Za-z0-9][A-Za-z0-9-]*\d[A-Za-z0-9-]*\s*$/.test(seg)) {
+              const stripped = stripTrailingCode(seg);
+              if (stripped && /[A-Za-zÀ-ỹ]/.test(stripped)) { colour = stripped; break; }
+            }
           }
           // Dự phòng 1: màu là đoạn ngay trước "Size ...".
           if (!colour) {
