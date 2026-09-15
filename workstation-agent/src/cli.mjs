@@ -61,7 +61,7 @@ if (command === "preview" || command === "dry-run") {
   process.on("SIGTERM", () => controller.abort());
   try {
     const queue = config.queueProvider === "supabase" ? new SupabaseQueueClient(config) : new QueueClient(config);
-    await runService(config, queue, logger, controller.signal);
+    await runService(config, queue, logger, controller.signal, releaseLock);
   } finally {
     releaseLock();
   }

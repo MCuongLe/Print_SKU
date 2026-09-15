@@ -3,12 +3,13 @@ import { escapeXml, formatDate, LABEL_WIDTH, svgDocument, wrapText } from "./com
 
 export function renderSkuLabel(payload) {
   const sku = escapeXml(payload.sku);
-  // Tên sản phẩm ở trên cùng; mã QR ở giữa; số SKU dưới QR; số lượng và ngày giữ ở cuối tem.
-  const productLines = wrapText(payload.productName, 22, 5);
+  // Tên sản phẩm ở trên cùng (tối đa 7 dòng); mã QR ở giữa; số SKU dưới QR; số lượng và ngày ở cuối tem.
+  const productLines = wrapText(payload.productName, 22, 7);
   const product = productLines.map((line, index) =>
     `<text x="12" y="${34 + index * 25}" font-size="22">${escapeXml(line)}</text>`
   ).join("");
-  const qrTop = 150;
+  // QR dời xuống dưới khối tên (chừa ~2 hàng đệm cho tên dài), tối thiểu y=170.
+  const qrTop = Math.max(170, 34 + productLines.length * 25 + 14);
   const qr = qrRects(payload.sku, { centerX: LABEL_WIDTH / 2, top: qrTop, box: 154 });
   const skuY = qrTop + qr.size + 36;
   const quantityRaw = String(payload.quantity || "");
