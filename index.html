@@ -1616,27 +1616,33 @@ Error generating stack: `+y.message+`
           return rows;
         };
 
-        // ---- Tách tên theo quy chuẩn đặt tên SKU phụ liệu ----
+        // ---- Tách Nhà cung cấp & Màu theo quy chuẩn đặt tên SKU phụ liệu (giữ nguyên tên đầy đủ ở cột Tên) ----
+        const stripTrailingCode = seg => seg.replace(/[_\s]+[A-Za-zÀ-ỹ]{2,}-?\d{2,}\s*$/, "").replace(/[_\s]+$/, "").trim();
         const parseNameParts = ten => {
           const rawSegs = String(ten).split("/").map(seg => seg.trim());
+          // Nhà cung cấp: đoạn dạng <mã>_<tên NCC> — phần mã không có khoảng trắng, phần tên có chữ. Lấy đoạn đầu tiên khớp.
           let supplier = "";
-          let supplierIdx = -1;
-          rawSegs.forEach((seg, index) => {
-            if (supplierIdx >= 0) return;
-            const match = seg.match(/^[A-Z0-9-]{2,}_(.{2,})$/);
-            if (match && /[A-Za-zÀ-ỹ]/.test(match[1])) { supplier = match[1].trim(); supplierIdx = index; }
-          });
-          if (supplierIdx < 0 && rawSegs.length > 1) {
-            const seg = rawSegs[1];
-            if (seg && seg === seg.toUpperCase() && /[A-Z]{3}/.test(seg) && !/\d{3}/.test(seg) && seg.toLowerCase() !== "none") { supplier = seg; supplierIdx = 1; }
+          for (const seg of rawSegs) {
+            const m = seg.match(/^[A-Za-z0-9.\-]{2,}_(.+)$/);
+            if (m && /[A-Za-zÀ-ỹ]/.test(m[1])) { supplier = m[1].trim(); break; }
           }
-          const segs = rawSegs.filter((seg, index) => index !== supplierIdx);
-          const colourFrom = seg => { const match = seg.match(/^(.+?)_[A-Z0-9][A-Z0-9 -]+$/); return (match ? match[1] : seg).trim(); };
+          if (!supplier && rawSegs.length > 1) {
+            const seg = rawSegs[1];
+            if (seg && seg === seg.toUpperCase() && /[A-Z]{3}/.test(seg) && !/\d{3}/.test(seg) && seg.toLowerCase() !== "none") supplier = seg;
+          }
+          // Màu: ưu tiên đoạn có chữ và kết thúc bằng mã NCC (vd "Be ca cao-Etherea WKF-12473" → "Be ca cao-Etherea").
           let colour = "";
-          const sizeIdx = segs.findIndex(seg => /^size\b/i.test(seg));
-          if (sizeIdx > 0 && segs[sizeIdx - 1] && segs[sizeIdx - 1].toLowerCase() !== "none") colour = colourFrom(segs[sizeIdx - 1]);
-          if (!colour) { const cand = segs.find(seg => /^[A-Za-zÀ-ỹ ]{3,}_[A-Z0-9-]+$/.test(seg)); if (cand) colour = colourFrom(cand); }
-          return { name: segs.join("/"), supplier, colour };
+          for (const seg of rawSegs) {
+            if (/[A-Za-zÀ-ỹ]/.test(seg) && /[_\s][A-Za-zÀ-ỹ]{2,}-?\d{2,}\s*$/.test(seg)) { colour = stripTrailingCode(seg); break; }
+          }
+          // Dự phòng 1: màu là đoạn ngay trước "Size ...".
+          if (!colour) {
+            const sizeIdx = rawSegs.findIndex(seg => /^size\b/i.test(seg));
+            if (sizeIdx > 0 && rawSegs[sizeIdx - 1] && rawSegs[sizeIdx - 1].toLowerCase() !== "none") colour = stripTrailingCode(rawSegs[sizeIdx - 1]);
+          }
+          // Dự phòng 2: đoạn dạng "Tên màu_Mã".
+          if (!colour) { const cand = rawSegs.find(seg => /^[A-Za-zÀ-ỹ ]{3,}_[A-Z0-9-]+$/.test(seg)); if (cand) colour = stripTrailingCode(cand); }
+          return { name: String(ten).trim(), supplier, colour };
         };
 
         const parsePo = rows => {
@@ -1783,6 +1789,17 @@ Error generating stack: `+y.message+`
             const sheetFile = files.find(file => file.name === "xl/worksheets/sheet1.xml");
             const decoder = new TextDecoder();
             const encoder = new TextEncoder();
+            // Nâng cỡ chữ vùng dữ liệu lên 12: font Times New Roman index 4 và 7 (đang 10pt) mà các ô A–H dùng.
+            const stylesFile = files.find(file => file.name === "xl/styles.xml");
+            if (stylesFile) {
+              let fontIndex = -1;
+              const stylesXml = decoder.decode(stylesFile.data).replace(/<font>[\s\S]*?<\/font>/g, block => {
+                fontIndex += 1;
+                if ((fontIndex === 4 || fontIndex === 7) && /Times New Roman/.test(block)) return block.replace(/<sz val="10"\/>/, '<sz val="12"/>');
+                return block;
+              });
+              stylesFile.data = encoder.encode(stylesXml);
+            }
             let xml = decoder.decode(sheetFile.data);
             const escapeXmlValue = value => String(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
             const setCell = (ref, value, numeric) => {
@@ -1802,7 +1819,7 @@ Error generating stack: `+y.message+`
             const write = (ref, raw) => { const value = String(raw ?? "").trim(); if (!value) setCell(ref, null); else if (numeric(value)) setCell(ref, value, true); else setCell(ref, value); };
             const writeText = (ref, raw) => { const value = String(raw ?? "").trim(); setCell(ref, value || null); };
             setCell("C5", "MASTIGE");
-            writeText("C6", fields.po.value);
+            setCell("C6", null);
             setCell("C7", null);
             writeText("C8", fields.po.value);
             setCell("C9", items.reduce((sum, item) => sum + (Math.floor(Number(item.qty)) || 0), 0), true);
@@ -1815,9 +1832,10 @@ Error generating stack: `+y.message+`
                 write("B" + row, item.name);
                 write("C" + row, item.supplier);
                 write("D" + row, item.colour);
-                setCell("E" + row, Math.floor(Number(item.qty)) || 0, true);
-                setCell("F" + row, null);
-                setCell("H" + row, aqlSample(Math.floor(Number(item.qty)) || 0), true);
+                const rowQty = Math.floor(Number(item.qty)) || 0;
+                setCell("E" + row, rowQty, true);
+                setCell("F" + row, rowQty, true);
+                setCell("H" + row, aqlSample(rowQty), true);
               } else {
                 for (const col of ["A", "B", "C", "D", "E", "F", "H"]) setCell(col + row, null);
               }
