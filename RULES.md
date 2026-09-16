@@ -66,3 +66,28 @@ Xem lại các quy tắc này khi thay đổi cấu trúc form, danh sách chờ
 - Agent từ 0.3.0 trải phẳng mọi tem của một lệnh rồi ghép 2 tem liền kề — kể cả 2 Group UID khác nhau — lên cùng một hàng giấy 2 tem, nên không còn phí tem bên phải; chỉ tem cuối cùng của lệnh có tổng lẻ mới để trống nửa hàng. Agent 0.2.2 trở xuống không đọc được lệnh batch và phải được cài lại.
 - Muốn sửa mapping của một UID đã gán: bấm bỏ gán để trả về khung chờ rồi gán lại; không chỉnh riêng trên từng dòng.
 - Khung 3 và 4 hiển thị dạng danh sách gọn, có badge đếm số dòng; nội dung dài rút gọn bằng dấu ba chấm nhưng vẫn có tooltip xem đầy đủ. Danh sách dài cuộn bên trong khung, khu vực gán và nút in luôn nhìn thấy.
+
+## Làm mới SKU từ Mastige Inside
+
+Nguồn dữ liệu `SKU_Name` là màn `Products` trên `inside.mastige.vn`. Ba lệnh trong `scripts/refresh_skus.py`:
+
+```
+python scripts/refresh_skus.py snippet   # in đoạn JS, dán vào Console tab inside đã đăng nhập
+python scripts/refresh_skus.py merge     # quét Downloads, kiểm tra category, nạp vào data/sku.db
+python scripts/refresh_skus.py sync      # upsert lên Supabase (không xoá dòng nào)
+```
+
+- Danh sách category nằm ở `scripts/sku_categories.json`. Thêm/bớt category chỉ sửa file này, không sửa code. `id` phải khớp `category_id` trên Inside, `name` phải khớp tên đang dùng trong Supabase.
+- `merge` chỉ nhận file export chứa **đúng một** category và tự đối chiếu `category_id` bên trong file với cấu hình — không bao giờ nạp file dưới nhãn category sai. File nhiều category bị bỏ qua và liệt kê trong `ignored_files`.
+- Category nào chưa có file sẽ nằm trong `missing` và lệnh thoát khác 0; chạy lại snippet cho những category đó.
+- Chỉ xét file tải trong 180 phút gần nhất (đổi bằng `--since-minutes`) để không nạp nhầm file export cũ. Khi có nhiều file cùng category thì lấy file mới nhất.
+- Sao lưu trước khi nạp bằng `merge --backup data/sku.before-refresh.db` (chỉ sao lưu một lần cho cả lượt chạy).
+
+Ràng buộc của Inside — đã kiểm chứng, đừng mất công thử lại:
+
+- Không gọi được endpoint export từ ngoài: request trực tiếp trả **401**, nó chỉ chạy khi được nạp như script con từ trang inside đã đăng nhập. Vì vậy bắt buộc phải qua trình duyệt, không viết được script Python thuần.
+- URL export dựng từ **địa chỉ trang**, không phải ô select category; muốn đổi category phải đổi trang (snippet dùng iframe cùng origin nên không phải tải lại tab đang mở).
+- Server **cache file export theo từng category mỗi ngày** nên export lại gần như tức thì — retry không tốn gì.
+- HTTP **503 khi tải nghĩa là file chưa tạo xong**, không phải lỗi quyền; gọi lại là được. Snippet tự thử tối đa 3 lần bằng cách đọc nội dung iframe.
+- Export không lọc category (toàn bộ catalog) chạy quá 8 phút chưa xong — không dùng.
+- Nút Download thật là `#download-products`; trong trang còn link `Products` khác ở breadcrumb, click nhầm sẽ không kích hoạt export.

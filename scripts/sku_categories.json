@@ -1,0 +1,12 @@
+{
+  "_comment": "Danh sách category cần làm mới. Thêm category: chép một dòng và sửa id + name. id phải khớp category_id trên inside.mastige.vn, name phải khớp tên dùng trong Supabase.",
+  "categories": [
+    { "id": "954", "name": "Thời Trang (Phụ Liệu)" },
+    { "id": "957", "name": "Thời Trang (NVL)" },
+    { "id": "960", "name": "Thời Trang" },
+    { "id": "961", "name": "Thực phẩm" },
+    { "id": "962", "name": "Mẫu Thời Trang" },
+    { "id": "963", "name": "Nhận hàng gia công" },
+    { "id": "964", "name": "Nguyên liệu nhận Gia công" }
+  ]
+}
