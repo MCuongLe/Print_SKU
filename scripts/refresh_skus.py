@@ -162,7 +162,9 @@ def command_merge(args: argparse.Namespace) -> int:
             missing.append(entry)
             continue
         source = files[-1]  # file moi nhat cua category nay
-        result = merge_workbook(source, database, entry["id"], entry["name"], backup)
+        result = merge_workbook(
+            source, database, entry["id"], entry["name"], backup, not args.no_update
+        )
         backup = None  # chi sao luu mot lan cho ca luot chay
         used_files.extend(files)
         merged.append(
@@ -172,6 +174,8 @@ def command_merge(args: argparse.Namespace) -> int:
                 "file": source.name,
                 "duplicates": len(files) - 1,
                 "inserted": result["inserted"],
+                "updated": result["updated"],
+                "changed_fields": result["changed_fields"],
                 "category_rows": result["category_rows"],
                 "total_rows": result["total_rows"],
             }
@@ -183,6 +187,7 @@ def command_merge(args: argparse.Namespace) -> int:
         "window_minutes": args.since_minutes,
         "merged": merged,
         "inserted_total": sum(int(item["inserted"]) for item in merged),
+        "updated_total": sum(int(item["updated"]) for item in merged),
         "total_rows": merged[-1]["total_rows"] if merged else None,
         "missing": missing,
         "ignored_files": rejected,
@@ -242,6 +247,11 @@ def main() -> None:
         help="Chi nhan file tai trong khoang thoi gian nay (mac dinh 180 phut)",
     )
     merge.add_argument("--backup", type=Path, help="Sao luu sku.db truoc khi nap")
+    merge.add_argument(
+        "--no-update",
+        action="store_true",
+        help="Chi them SKU moi, khong cap nhat ten/trang thai/category cua SKU da co",
+    )
     merge.add_argument(
         "--cleanup",
         action="store_true",
