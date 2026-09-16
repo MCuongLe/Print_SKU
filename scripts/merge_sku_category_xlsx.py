@@ -2,9 +2,11 @@
 """Merge a filtered Mastige Category XLSX export into an existing SKU database.
 
 The Mastige ``Download -> Category`` workbook has a different, very wide
-layout from the full SKU export.  This script reads its core product columns,
-adds the category selected on the website, and inserts only SKUs that are not
-already present in ``products``.
+layout from the full SKU export.  This script reads its core product columns
+and adds the category selected on the website.  SKUs missing from ``products``
+are inserted; SKUs already there are updated when a tracked field (tên, trạng
+thái, barcode, giá, thương hiệu, category) khác với file export, để bản local
+luôn phản chiếu Inside.  ``--no-update`` giữ hành vi chỉ thêm như trước.
 """
 
 from __future__ import annotations
@@ -31,6 +33,21 @@ SOURCE_CANDIDATES = {
 }
 
 
+# Cột số: bản cũ lưu chuỗi rỗng còn export ghi "0", so thô sẽ báo đổi cho gần
+# như mọi dòng. So theo giá trị số để chỉ bắt thay đổi thật.
+NUMERIC_COLUMNS = {"price", "latest_cost", "product_average_cost"}
+
+
+def comparable(column: str, value: str) -> str:
+    text = (value or "").strip()
+    if column in NUMERIC_COLUMNS:
+        try:
+            return format(float(text or 0), ".4f")
+        except ValueError:
+            return text
+    return text
+
+
 def status_value(value: str) -> str:
     normalized = value.strip().casefold()
     return {
@@ -48,6 +65,7 @@ def merge_workbook(
     category_id: str,
     category_name: str,
     backup: Path | None,
+    update_existing: bool = True,
 ) -> dict[str, object]:
     rows = worksheet_rows(source)
     try:
@@ -85,10 +103,16 @@ def merge_workbook(
         if missing:
             raise ValueError(f"Products table is missing required columns: {', '.join(missing)}")
 
-        existing_skus = {
-            row[0]
+        # Các cột được đồng bộ lại mỗi lần nạp cho SKU đã có sẵn.
+        tracked_columns = [name for name in selected if name != "sku"]
+        tracked_columns += ["category_id", "category_name"]
+        tracked_sql = ", ".join(f'"{name}"' for name in tracked_columns)
+        existing_rows = {
+            row[0]: tuple(
+                comparable(name, value) for name, value in zip(tracked_columns, row[1:])
+            )
             for row in connection.execute(
-                "SELECT sku FROM products WHERE TRIM(sku) <> ''"
+                f"SELECT sku, {tracked_sql} FROM products WHERE TRIM(sku) <> ''"
             )
         }
         next_source_row = connection.execute(
@@ -98,32 +122,55 @@ def merge_workbook(
         quoted_columns = ", ".join(f'"{name}"' for name in destination_columns)
         placeholders = ", ".join("?" for _ in destination_columns)
         insert_sql = f"INSERT INTO products ({quoted_columns}) VALUES ({placeholders})"
+        assignments = ", ".join(f'"{name}" = ?' for name in tracked_columns)
+        update_sql = f'UPDATE products SET {assignments}, "imported_at" = ? WHERE sku = ?'
 
         inserted = 0
-        duplicate_skus = 0
+        updated = 0
+        unchanged = 0
         empty_skus = 0
+        changed_fields: dict[str, int] = {}
         batch: list[tuple[object, ...]] = []
+        updates: list[tuple[object, ...]] = []
         for values in rows:
             values = (values + [""] * len(source_columns))[: len(source_columns)]
             sku = values[selected["sku"]].strip()
             if not sku:
                 empty_skus += 1
                 continue
-            if sku in existing_skus:
-                duplicate_skus += 1
+
+            mapped = {name: values[index].strip() for name, index in selected.items()}
+            mapped["status"] = status_value(str(mapped.get("status", "")))
+            mapped["category_id"] = category_id
+            mapped["category_name"] = category_name
+            tracked_values = tuple(mapped[name] for name in tracked_columns)
+            tracked_keys = tuple(
+                comparable(name, value) for name, value in zip(tracked_columns, tracked_values)
+            )
+
+            current = existing_rows.get(sku)
+            if current is not None:
+                if not update_existing or current == tracked_keys:
+                    unchanged += 1
+                    continue
+                for name, before, after in zip(tracked_columns, current, tracked_keys):
+                    if before != after:
+                        changed_fields[name] = changed_fields.get(name, 0) + 1
+                updates.append(tracked_values + (imported_at, sku))
+                existing_rows[sku] = tracked_keys
+                updated += 1
+                if len(updates) >= 500:
+                    connection.executemany(update_sql, updates)
+                    updates.clear()
                 continue
 
             record = {name: "" for name in destination_columns}
             record["source_row"] = next_source_row
-            record["category_id"] = category_id
-            record["category_name"] = category_name
             record["imported_at"] = imported_at
-            for destination, index in selected.items():
-                record[destination] = values[index].strip()
-            record["status"] = status_value(str(record.get("status", "")))
+            record.update(mapped)
 
             batch.append(tuple(record[name] for name in destination_columns))
-            existing_skus.add(sku)
+            existing_rows[sku] = tracked_keys
             next_source_row += 1
             inserted += 1
             if len(batch) >= 500:
@@ -131,6 +178,8 @@ def merge_workbook(
                 batch.clear()
         if batch:
             connection.executemany(insert_sql, batch)
+        if updates:
+            connection.executemany(update_sql, updates)
 
         connection.execute(
             "INSERT OR REPLACE INTO import_runs VALUES (?, ?, ?)",
@@ -152,7 +201,9 @@ def merge_workbook(
             "category_id": category_id,
             "category_name": category_name,
             "inserted": inserted,
-            "duplicates_skipped": duplicate_skus,
+            "updated": updated,
+            "changed_fields": changed_fields,
+            "unchanged": unchanged,
             "empty_skus_skipped": empty_skus,
             "category_rows": category_count,
             "total_rows": total_rows,
@@ -177,6 +228,11 @@ def main() -> None:
         type=Path,
         help="Optional database backup path created immediately before the merge",
     )
+    parser.add_argument(
+        "--no-update",
+        action="store_true",
+        help="Chi them SKU moi, khong cap nhat SKU da co (mac dinh la co cap nhat)",
+    )
     args = parser.parse_args()
 
     if not args.source.is_file():
@@ -189,6 +245,7 @@ def main() -> None:
         args.category_id,
         args.category_name,
         args.backup.resolve() if args.backup else None,
+        not args.no_update,
     )
     print(json.dumps(result, ensure_ascii=False, indent=2))
 

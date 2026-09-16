@@ -79,6 +79,8 @@ python scripts/refresh_skus.py sync      # upsert lên Supabase (không xoá dò
 
 - Danh sách category nằm ở `scripts/sku_categories.json`. Thêm/bớt category chỉ sửa file này, không sửa code. `id` phải khớp `category_id` trên Inside, `name` phải khớp tên đang dùng trong Supabase.
 - `merge` chỉ nhận file export chứa **đúng một** category và tự đối chiếu `category_id` bên trong file với cấu hình — không bao giờ nạp file dưới nhãn category sai. File nhiều category bị bỏ qua và liệt kê trong `ignored_files`.
+- `merge` vừa thêm SKU mới vừa **cập nhật SKU đã có** khi tên, trạng thái, category, barcode, thương hiệu hoặc giá khác với file export; báo cáo có `updated` và `changed_fields` cho biết cột nào đổi bao nhiêu dòng. `--no-update` giữ hành vi chỉ thêm như bản đầu. Không có bước này thì tên sản phẩm đổi trên Inside sẽ không bao giờ tới được Supabase và tem in ra mang tên cũ.
+- Cột số (`price`, `latest_cost`, `product_average_cost`) so theo **giá trị số** chứ không so chuỗi: bản nạp cũ lưu chuỗi rỗng còn export ghi `0`, so thô sẽ báo "đã đổi" cho gần như mọi dòng (đo thật: 7.752 dòng báo đổi trong khi chỉ 84 dòng đổi thật).
 - Category nào chưa có file sẽ nằm trong `missing` và lệnh thoát khác 0; chạy lại snippet cho những category đó.
 - Chỉ xét file tải trong 180 phút gần nhất (đổi bằng `--since-minutes`) để không nạp nhầm file export cũ. Khi có nhiều file cùng category thì lấy file mới nhất.
 - Sao lưu trước khi nạp bằng `merge --backup data/sku.before-refresh.db` (chỉ sao lưu một lần cho cả lượt chạy).
@@ -93,3 +95,11 @@ Ràng buộc của Inside — đã kiểm chứng, đừng mất công thử l�
 - HTTP **503 khi tải nghĩa là file chưa tạo xong**, không phải lỗi quyền; gọi lại là được. Snippet tự thử tối đa 3 lần bằng cách đọc nội dung iframe.
 - Export không lọc category (toàn bộ catalog) chạy quá 8 phút chưa xong — không dùng.
 - Nút Download thật là `#download-products`; trong trang còn link `Products` khác ở breadcrumb, click nhầm sẽ không kích hoạt export.
+
+### Hạn chế còn lại: SKU ngừng Active
+
+Export luôn lọc `status=1`, nên SKU bị ngừng Active **biến mất khỏi file** thay vì xuất hiện với trạng thái mới. Hệ quả: `merge` không thấy nó để cập nhật, và `sync` (chỉ gửi dòng `status = '1'`, upsert theo `sku`, không xoá) cũng không đụng tới bản ghi cũ trên Supabase. Bản ghi đó nằm lại vĩnh viễn với trạng thái Active.
+
+Hiện tại đã có 3 SKU như vậy ở category 954 (`[SKU_DA_XOA]`, `[SKU_DA_XOA]`, `[SKU_DA_XOA]`) — Supabase 21.161 dòng so với 21.158 dòng local.
+
+Chưa xử lý tự động vì phải quyết định trước: xoá hẳn khỏi Supabase thì tem đã in không tra được tên nữa, nên hướng đúng là đánh dấu ngừng Active chứ không xoá. Muốn làm thì cần đối chiếu danh sách SKU của từng category giữa local và export rồi đẩy trạng thái mới lên, và phải có chốt chặn không cho một file export lỗi/thiếu dòng làm ngừng hàng loạt SKU.
