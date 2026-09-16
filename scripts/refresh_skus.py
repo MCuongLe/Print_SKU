@@ -93,16 +93,20 @@ def load_categories() -> list[dict[str, str]]:
     return [{"id": str(e["id"]).strip(), "name": str(e["name"]).strip()} for e in categories]
 
 
-def newest_export_per_category(
+def exports_by_category(
     downloads: Path, minutes: int
-) -> tuple[dict[str, Path], list[dict[str, object]]]:
-    """Map category_id to the newest matching export file, plus files we refused."""
+) -> tuple[dict[str, list[Path]], list[dict[str, object]]]:
+    """Group export files by category (cu truoc, moi sau), plus the files we refused.
+
+    Inside kich hoat tai hai lan moi cu bam nen mot category thuong co nhieu file
+    trung nhau; giu ca nhom de `--cleanup` don duoc het.
+    """
     cutoff = time.time() - minutes * 60
     candidates = sorted(
         (path for path in downloads.glob(EXPORT_GLOB) if path.stat().st_mtime >= cutoff),
         key=lambda path: path.stat().st_mtime,
     )
-    chosen: dict[str, Path] = {}
+    groups: dict[str, list[Path]] = {}
     rejected: list[dict[str, object]] = []
     for path in candidates:
         try:
@@ -119,8 +123,8 @@ def newest_export_per_category(
                 }
             )
             continue
-        chosen[found[0]["category_id"]] = path  # danh sach da sap theo mtime, file moi thang
-    return chosen, rejected
+        groups.setdefault(found[0]["category_id"], []).append(path)
+    return groups, rejected
 
 
 def command_snippet(_: argparse.Namespace) -> int:
@@ -146,23 +150,27 @@ def command_merge(args: argparse.Namespace) -> int:
         print(f"Database does not exist: {database}", file=sys.stderr)
         return 2
 
-    chosen, rejected = newest_export_per_category(args.downloads, args.since_minutes)
+    groups, rejected = exports_by_category(args.downloads, args.since_minutes)
     backup = args.backup.resolve() if args.backup else None
 
     merged: list[dict[str, object]] = []
     missing: list[dict[str, str]] = []
+    used_files: list[Path] = []
     for entry in categories:
-        source = chosen.get(entry["id"])
-        if source is None:
+        files = groups.get(entry["id"])
+        if not files:
             missing.append(entry)
             continue
+        source = files[-1]  # file moi nhat cua category nay
         result = merge_workbook(source, database, entry["id"], entry["name"], backup)
         backup = None  # chi sao luu mot lan cho ca luot chay
+        used_files.extend(files)
         merged.append(
             {
                 "category_id": entry["id"],
                 "category_name": entry["name"],
                 "file": source.name,
+                "duplicates": len(files) - 1,
                 "inserted": result["inserted"],
                 "category_rows": result["category_rows"],
                 "total_rows": result["total_rows"],
@@ -181,6 +189,27 @@ def command_merge(args: argparse.Namespace) -> int:
     }
     if missing:
         report["next_step"] = "chay lai snippet cho cac category con thieu"
+    if args.cleanup:
+        # Chi xoa file cua nhung category da nap xong; file la, file nhieu category
+        # va file cua category chua nap deu giu nguyen.
+        deleted: list[str] = []
+        freed = 0
+        failures: list[dict[str, str]] = []
+        for path in used_files:
+            try:
+                size = path.stat().st_size
+                path.unlink()
+            except OSError as error:
+                failures.append({"file": path.name, "reason": str(error)})
+                continue
+            deleted.append(path.name)
+            freed += size
+        report["cleanup"] = {
+            "deleted": len(deleted),
+            "freed_bytes": freed,
+            "files": deleted,
+            "failed": failures,
+        }
     print(json.dumps(report, ensure_ascii=False, indent=2))
     return 1 if missing else 0
 
@@ -213,6 +242,11 @@ def main() -> None:
         help="Chi nhan file tai trong khoang thoi gian nay (mac dinh 180 phut)",
     )
     merge.add_argument("--backup", type=Path, help="Sao luu sku.db truoc khi nap")
+    merge.add_argument(
+        "--cleanup",
+        action="store_true",
+        help="Xoa cac file export cua category da nap xong (ke ca ban trung)",
+    )
     merge.set_defaults(handler=command_merge)
 
     sync = subparsers.add_parser("sync", help="Day sku.db len Supabase")

@@ -82,6 +82,8 @@ python scripts/refresh_skus.py sync      # upsert lên Supabase (không xoá dò
 - Category nào chưa có file sẽ nằm trong `missing` và lệnh thoát khác 0; chạy lại snippet cho những category đó.
 - Chỉ xét file tải trong 180 phút gần nhất (đổi bằng `--since-minutes`) để không nạp nhầm file export cũ. Khi có nhiều file cùng category thì lấy file mới nhất.
 - Sao lưu trước khi nạp bằng `merge --backup data/sku.before-refresh.db` (chỉ sao lưu một lần cho cả lượt chạy).
+- `merge --cleanup` xoá file export sau khi nạp xong. Chỉ xoá file của category đã nạp thành công, kể cả các bản trùng; file không đọc được, file nhiều category, file của category còn thiếu và mọi file khác trong thư mục đều giữ nguyên. Mặc định tắt vì đây là xoá file trong thư mục Downloads của người dùng.
+- Mỗi lần bấm Download, Inside kích hoạt tải **hai lần** nên một category thường để lại 2 file trùng; `merge` luôn lấy file mới nhất nên không ảnh hưởng kết quả, nhưng không dọn thì Downloads phình dần.
 
 Ràng buộc của Inside — đã kiểm chứng, đừng mất công thử lại:
 
