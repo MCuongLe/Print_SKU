@@ -60,12 +60,24 @@ test("het giay: so trang dung yen thi bao loi kem so trang da in", async () => {
   );
 });
 
-test("may in bao loi thi dung ngay", async () => {
+const blocked = () => ({ ok: true, blocked: true, code: "PRINTER_BLOCKED", message: "het giay" });
+
+test("het giay roi thay giay xong thi in tiep, khong bo cuoc", async () => {
+  // Chinh sach van hanh: uu tien in tiep. Windows giu nguyen job trong hang doi
+  // nen nguoi van hanh thay giay xong la chay tiep.
+  const state = await waitForSpooler({}, 7, {
+    __query: fakeQuery([present(4), blocked(), blocked(), blocked(), present(9), ready()]),
+    appearMs: 5000, stallMs: 60000, pollMs: 5
+  });
+  assert.equal(state.confirmed, true);
+});
+
+test("khong ai thay giay qua stallMs thi moi bo cuoc", async () => {
   await assert.rejects(
     waitForSpooler({}, 7, {
-      __query: fakeQuery([{ ok: true, blocked: true, code: "PRINTER_BLOCKED", message: "hết giấy" }]),
-      pollMs: 5
+      __query: fakeQuery([present(4), blocked()]),
+      appearMs: 5000, stallMs: 40, pollMs: 5
     }),
-    (error) => error.code === "PRINTER_BLOCKED"
+    (error) => error.code === "PRINTER_BLOCKED" && error.pagesPrinted === 4
   );
 });
