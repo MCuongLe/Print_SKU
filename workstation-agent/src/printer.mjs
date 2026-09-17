@@ -63,8 +63,10 @@ export async function waitForSpooler(config, jobId, options = {}) {
     stallMs = 600000,        // kiên nhẫn chờ người vận hành thay giấy
     pollMs = 1000,
     requireConfirm = false,  // máy in không để lộ job thì đừng coi là lỗi
+    heartbeatMs = 30000,     // nhịp giữ lease khi chờ lâu
     onProgress,
     onProblem,
+    onHeartbeat,
     __query = queryPrinter   // chỉ dùng cho test, tránh phải dựng cả Windows Spooler
   } = options;
 
@@ -72,10 +74,18 @@ export async function waitForSpooler(config, jobId, options = {}) {
   let seen = false;
   let lastPages = -1;
   let lastChange = Date.now();
+  let lastBeat = Date.now();
   let problem = null;
 
   while (Date.now() - started < timeoutMs) {
     const state = await __query(config, jobId);
+    // Lease chỉ được gia hạn khi agent báo tiến độ. Chờ thay giấy có thể kéo dài
+    // hơn lease rất nhiều mà số trang không nhúc nhích, nên phải đập nhịp đều
+    // đặn — nếu không backend sẽ trả lệnh về hàng đợi và in lại lần hai.
+    if (Date.now() - lastBeat >= heartbeatMs) {
+      lastBeat = Date.now();
+      onHeartbeat?.(lastPages >= 0 ? lastPages : null, state);
+    }
 
     if (!state.ok || state.blocked) {
       // Máy kẹt hoặc không đọc được trạng thái KHÔNG phải lý do bỏ cuộc ngay:
