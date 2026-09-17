@@ -7,7 +7,7 @@ const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function publicState(config, printer) {
   return {
-    version: "0.3.6",
+    version: "0.3.7",
     capabilities: CAPABILITIES,
     printer: {
       name: config.printerName,
@@ -43,10 +43,13 @@ export async function processClaimedJob(input, dependencies) {
     const spool = await sendRaw(config, tspl, job.id);
     await queue.progress(job.id, "spooling", { spoolJobId: spool.jobId ?? null });
     let pagesPrinted = null;
+    let spoolConfirmed = false;
     if (spool.jobId) {
       const final = await waitForSpooler(config, spool.jobId, {
         timeoutMs: config.spoolTimeoutMs,
         stallMs: config.spoolStallMs,
+        appearMs: config.spoolAppearMs,
+        requireConfirm: config.spoolRequireConfirm,
         onProgress: (pages) => {
           pagesPrinted = pages;
           logger.info(`Lệnh ${job.id}: máy in đã in ${pages} trang`);
@@ -56,12 +59,16 @@ export async function processClaimedJob(input, dependencies) {
         }
       });
       if (final?.targetPagesPrinted != null) pagesPrinted = Number(final.targetPagesPrinted);
+      spoolConfirmed = Boolean(final?.confirmed);
+      if (!spoolConfirmed) {
+        logger.warn(`Lệnh ${job.id}: spooler không để lộ job nên chưa xác nhận được tem đã ra giấy`);
+      }
     }
     const after = await queryPrinter(config);
     if (!after.ok || after.blocked) {
       throw Object.assign(new Error(after.message || "Máy in báo lỗi sau khi nhận dữ liệu"), { code: after.code || "PRINTER_POSTCHECK_FAILED" });
     }
-    const result = { copies: job.copies, bytes: tspl.length, spoolJobId: spool.jobId ?? null, pagesPrinted, templateVersion: job.templateVersion };
+    const result = { copies: job.copies, bytes: tspl.length, spoolJobId: spool.jobId ?? null, pagesPrinted, spoolConfirmed, templateVersion: job.templateVersion };
     await queue.complete(job.id, result);
     logger.info(`Hoàn tất ${job.id}: ${job.copies} tem, ${tspl.length} byte`);
     return { ok: true, result };
@@ -76,7 +83,7 @@ export async function processClaimedJob(input, dependencies) {
 }
 
 export async function runService(config, queue, logger, signal, lock) {
-  logger.info(`Agent ${config.agentId} v0.3.6 khởi động; hỗ trợ ${CAPABILITIES.join(", ")}`);
+  logger.info(`Agent ${config.agentId} v0.3.7 khởi động; hỗ trợ ${CAPABILITIES.join(", ")}`);
   while (!signal?.aborted) {
     try {
       lock?.touch?.();
