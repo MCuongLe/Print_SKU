@@ -81,3 +81,16 @@ test("khong ai thay giay qua stallMs thi moi bo cuoc", async () => {
     (error) => error.code === "PRINTER_BLOCKED" && error.pagesPrinted === 4
   );
 });
+
+test("cho lau van dap nhip giu lease", async () => {
+  // Khong co nhip nay thi lease 2 phut het han trong luc cho thay giay,
+  // backend tra lenh ve hang doi va agent in lai lan hai -> trung tem.
+  let beats = 0;
+  await waitForSpooler({}, 7, {
+    __query: fakeQuery([present(4), blocked(), blocked(), blocked(), present(9), ready()]),
+    appearMs: 5000, stallMs: 60000, pollMs: 5,
+    heartbeatMs: 1,
+    onHeartbeat: () => { beats += 1; }
+  });
+  assert.ok(beats >= 3, `phai co nhip giu lease, dem duoc ${beats}`);
+});

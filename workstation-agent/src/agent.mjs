@@ -7,7 +7,7 @@ const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function publicState(config, printer) {
   return {
-    version: "0.3.8",
+    version: "0.3.9",
     capabilities: CAPABILITIES,
     printer: {
       name: config.printerName,
@@ -50,6 +50,11 @@ export async function processClaimedJob(input, dependencies) {
         stallMs: config.spoolStallMs,
         appearMs: config.spoolAppearMs,
         requireConfirm: config.spoolRequireConfirm,
+        onHeartbeat: (pages) => {
+          queue
+            .progress(job.id, "spooling", { spoolJobId: spool.jobId, pagesPrinted: pages, waiting: true })
+            .catch(() => { /* mất một nhịp giữ lease không được phép làm hỏng lệnh in */ });
+        },
         onProblem: (error) => {
           logger.warn(`Lệnh ${job.id}: ${error.message} — vẫn giữ job, chờ máy in sống lại`);
         },
@@ -86,7 +91,7 @@ export async function processClaimedJob(input, dependencies) {
 }
 
 export async function runService(config, queue, logger, signal, lock) {
-  logger.info(`Agent ${config.agentId} v0.3.8 khởi động; hỗ trợ ${CAPABILITIES.join(", ")}`);
+  logger.info(`Agent ${config.agentId} v0.3.9 khởi động; hỗ trợ ${CAPABILITIES.join(", ")}`);
   while (!signal?.aborted) {
     try {
       lock?.touch?.();
