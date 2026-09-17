@@ -43,6 +43,9 @@ Agent này thuộc ứng dụng Print SKU, cài độc lập tại `C:\PrintSKUA
   - thấy job rồi nó biến mất → in xong, `spoolConfirmed = true`
   - thấy job nhưng số trang đứng yên quá `SPOOL_STALL_MS` → `PRINTER_STALLED` (đây là nhánh bắt được hết giấy)
   - không bao giờ thấy job → **bình thường, không phải lỗi**, nhưng cũng không chứng minh được tem đã ra giấy: hoàn tất với `spoolConfirmed = false`
+- **Chính sách vận hành: ưu tiên in tiếp được.** Máy kẹt giữa chừng thì Windows vẫn giữ nguyên job trong hàng đợi và in nốt khi máy sống lại, nên agent phải kiên nhẫn chứ không được bỏ cuộc. Máy báo lỗi hoặc không đọc được trạng thái đều KHÔNG phải lý do dừng ngay — chỉ đầu hàng khi kéo dài quá `SPOOL_STALL_MS` (mặc định 600 giây). Đồng hồ đếm ngược reset mỗi khi in thêm được một trang, nên máy sống lại lúc nào là tiếp tục lúc đó, không phải chờ hết 10 phút.
+- `SPOOL_TIMEOUT_MS` (mặc định 3600 giây) phải rộng hơn `SPOOL_STALL_MS` nhiều lần, nếu không lệnh sẽ chết vì trần tổng trước khi kịp dùng hết kiên nhẫn.
+- Khi máy in hết giấy giữa chừng, **không được xoá job trong spooler**. Lắp giấy, đóng nắp, bấm FEED là in tiếp phần dở. Ngày 17/09 đã xoá job 4 và 5 nên mất hẳn 114 tem, phải tạo lệnh mới. Chỉ xoá khi chủ động quyết định bỏ phần dở để in lại từ đầu, và phải ghi lại UID cuối cùng đã ra giấy trước khi xoá.
 - Không được biến "thiếu bằng chứng" thành lỗi cứng: bản 0.3.6 báo `SPOOLER_JOB_MISSING` cho mọi lệnh và chặn đứng sản xuất. Muốn siết thì bật `SPOOL_REQUIRE_CONFIRM=true`, chỉ dùng cho máy in thật sự để lộ job trong hàng đợi.
 - Cũng không được coi "không thấy job" là "đã in xong" như bản ≤ 0.3.5: lệnh 136 tem báo hoàn tất sau 9 giây y hệt lệnh 2 tem, và ngày 17/09 mất dấu 114 tem vì thế. `spoolConfirmed` tồn tại để nói thẳng ra chỗ không biết, thay vì đoán về một trong hai phía.
 - Job ở trạng thái `Retained` (hàng đợi giữ lại bản ghi sau khi in) tính là đã in xong, vì nó không bao giờ tự biến mất.

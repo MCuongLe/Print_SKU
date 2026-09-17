@@ -58,12 +58,13 @@ export async function sendRaw(config, buffer, jobId) {
  */
 export async function waitForSpooler(config, jobId, options = {}) {
   const {
-    timeoutMs = 900000,      // trần tuyệt đối cho một lệnh
+    timeoutMs = 3600000,     // trần tuyệt đối; phải rộng hơn stallMs nhiều lần
     appearMs = 8000,         // chờ job hiện ra; mọi lệnh đều phải trả phí này
-    stallMs = 120000,        // không in thêm trang nào trong ngần này là kẹt
+    stallMs = 600000,        // kiên nhẫn chờ người vận hành thay giấy
     pollMs = 1000,
     requireConfirm = false,  // máy in không để lộ job thì đừng coi là lỗi
     onProgress,
+    onProblem,
     __query = queryPrinter   // chỉ dùng cho test, tránh phải dựng cả Windows Spooler
   } = options;
 
@@ -71,12 +72,25 @@ export async function waitForSpooler(config, jobId, options = {}) {
   let seen = false;
   let lastPages = -1;
   let lastChange = Date.now();
+  let problem = null;
 
   while (Date.now() - started < timeoutMs) {
     const state = await __query(config, jobId);
+
     if (!state.ok || state.blocked) {
-      throw Object.assign(new Error(state.message || "Spooler báo lỗi"), { code: state.code || "SPOOLER_FAILED" });
+      // Máy kẹt hoặc không đọc được trạng thái KHÔNG phải lý do bỏ cuộc ngay:
+      // Windows giữ nguyên job trong hàng đợi, người vận hành thay giấy xong là
+      // in tiếp. Chỉ đầu hàng khi tình trạng này kéo dài quá stallMs.
+      problem = Object.assign(new Error(state.message || "Máy in chưa sẵn sàng"), {
+        code: state.code || "SPOOLER_FAILED",
+        pagesPrinted: lastPages >= 0 ? lastPages : undefined
+      });
+      onProblem?.(problem, state);
+      if (Date.now() - lastChange > stallMs) throw problem;
+      await new Promise((resolve) => setTimeout(resolve, pollMs));
+      continue;
     }
+    problem = null;
 
     if (state.targetPresent) {
       seen = true;
@@ -90,7 +104,7 @@ export async function waitForSpooler(config, jobId, options = {}) {
       if (state.targetRetained) return { ...state, confirmed: true };
       if (Date.now() - lastChange > stallMs) {
         throw Object.assign(
-          new Error(`Máy in đứng yên ${Math.round(stallMs / 1000)} giây ở trang ${pages}`),
+          new Error(`Máy in đứng yên ${Math.round(stallMs / 60000)} phút ở trang ${pages}`),
           { code: "PRINTER_STALLED", pagesPrinted: pages }
         );
       }
