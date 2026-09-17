@@ -42,15 +42,68 @@ export async function sendRaw(config, buffer, jobId) {
   }
 }
 
-export async function waitForSpooler(config, jobId, timeoutMs = 45000) {
+/**
+ * Chờ tới khi Windows Spooler thực sự in xong job.
+ *
+ * Bản cũ coi "không tìm thấy job" là "đã in xong", nên lần quét đầu — chạy ngay
+ * sau khi gửi, lúc spooler chưa kịp liệt kê job — đã thoát và báo hoàn tất.
+ * Cả lệnh 100 tem cũng "xong" sau 2 giây trong khi giấy chưa chạy.
+ *
+ * Nay job phải được nhìn thấy ít nhất một lần thì mới được coi là biến mất vì
+ * đã in xong; và tiến độ trang phải nhúc nhích, đứng yên quá lâu là lỗi.
+ */
+export async function waitForSpooler(config, jobId, options = {}) {
+  const {
+    timeoutMs = 900000,      // trần tuyệt đối cho một lệnh
+    appearMs = 20000,        // chờ job hiện ra trong hàng đợi
+    stallMs = 120000,        // không in thêm trang nào trong ngần này là kẹt
+    pollMs = 1000,
+    onProgress,
+    __query = queryPrinter   // chỉ dùng cho test, tránh phải dựng cả Windows Spooler
+  } = options;
+
   const started = Date.now();
+  let seen = false;
+  let lastPages = -1;
+  let lastChange = Date.now();
+
   while (Date.now() - started < timeoutMs) {
-    const state = await queryPrinter(config, jobId);
+    const state = await __query(config, jobId);
     if (!state.ok || state.blocked) {
       throw Object.assign(new Error(state.message || "Spooler báo lỗi"), { code: state.code || "SPOOLER_FAILED" });
     }
-    if (!state.targetPresent) return state;
-    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    if (state.targetPresent) {
+      seen = true;
+      const pages = Number(state.targetPagesPrinted || 0);
+      if (pages !== lastPages) {
+        lastPages = pages;
+        lastChange = Date.now();
+        onProgress?.(pages, state);
+      }
+      // Hàng đợi giữ lại bản ghi sau khi in xong thì job không bao giờ tự biến mất.
+      if (state.targetRetained) return state;
+      if (Date.now() - lastChange > stallMs) {
+        throw Object.assign(
+          new Error(`Máy in đứng yên ${Math.round(stallMs / 1000)} giây ở trang ${pages}`),
+          { code: "PRINTER_STALLED", pagesPrinted: pages }
+        );
+      }
+    } else if (seen) {
+      return state;                                   // đã thấy rồi, giờ hết => in xong
+    } else if (Date.now() - started > appearMs) {
+      // Không bao giờ thấy job: không kết luận được là đã in. Báo lỗi để người
+      // vận hành kiểm tra giấy thay vì im lặng coi như thành công.
+      throw Object.assign(
+        new Error(`Không thấy job ${jobId} trong hàng đợi máy in sau ${Math.round(appearMs / 1000)} giây`),
+        { code: "SPOOLER_JOB_MISSING" }
+      );
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, pollMs));
   }
-  throw Object.assign(new Error("Print job không rời Windows Spooler trong 45 giây"), { code: "SPOOLER_TIMEOUT" });
+  throw Object.assign(
+    new Error(`Print job chưa in xong sau ${Math.round(timeoutMs / 60000)} phút (trang đã in: ${lastPages})`),
+    { code: "SPOOLER_TIMEOUT", pagesPrinted: lastPages }
+  );
 }

@@ -39,13 +39,21 @@ Agent này thuộc ứng dụng Print SKU, cài độc lập tại `C:\PrintSKUA
 - `preview` và `dry-run` tuyệt đối không gọi máy in.
 - Chỉ lệnh `service` mới được phép nhận và in job.
 - Chưa xác nhận vật lý tem đã ra giấy nếu chỉ có phản hồi WritePrinter; cần kiểm tra thêm trạng thái spooler và máy in.
+- **Không được coi "không tìm thấy job trong hàng đợi" là "đã in xong."** Job phải được nhìn thấy ít nhất một lần rồi mới được kết luận biến mất vì in xong. Không thấy job sau `appearMs` (mặc định 20 giây) thì báo `SPOOLER_JOB_MISSING`, không được im lặng báo hoàn tất. Đây chính là lỗi của bản ≤ 0.3.5: lần quét đầu chạy ngay sau khi gửi, spooler chưa kịp liệt kê job, nên lệnh 100 tem "xong" sau 2 giây trong khi giấy chưa hề chạy — ngày 17/09 mất dấu 114 tem vì lỗi này.
+- Job ở trạng thái `Retained` (hàng đợi giữ lại bản ghi sau khi in) tính là đã in xong, vì nó không bao giờ tự biến mất.
+- Số trang đã in phải nhúc nhích; đứng yên quá `SPOOL_STALL_MS` (mặc định 120 giây) thì báo `PRINTER_STALLED` kèm `pagesPrinted`. Mọi lỗi in phải mang theo `pagesPrinted` khi biết, vì đó là manh mối duy nhất để biết in lại từ tem nào.
+- Tiến độ trang được ghi vào `print_events` (stage `spooling`, kèm `pagesPrinted`) trong lúc in, không đợi tới lúc kết thúc.
+- `SPOOL_TIMEOUT_MS` mặc định 900 giây. Không đặt thấp: 100 tem chạy vài phút, bản cũ để 45 giây là quá ngắn cho lệnh thật.
+- Driver TSC PE200 **không** báo lỗi vật lý về Windows: lúc máy sáng đèn đỏ, `Win32_Printer` vẫn trả `PrinterStatus=3` (Idle) và `DetectedErrorState=0`. Đừng tin trạng thái máy in của Windows để kết luận máy khoẻ; chỉ dùng nó để phát hiện lỗi khi nó có báo.
 
 ## Mức bằng chứng
 
 - N2: validator và unit test.
 - N3: PNG preview và TSPL dry-run.
-- N4: spooler nhận đủ byte, trạng thái trước/sau không lỗi.
+- N4: spooler nhận đủ byte, job rời hàng đợi sau khi đã được nhìn thấy, số trang có tiến triển, trạng thái trước/sau không lỗi.
 - N5: người vận hành quét được barcode trên tem thật — CHƯA VERIFY.
+
+Từ 0.3.6, N4 mới thật sự là N4. Trước đó agent báo hoàn tất ngay khi spooler nhận byte, nên mọi sự cố vật lý (hết giấy, kẹt, bung nắp) đều vô hình và lệnh vẫn ghi `completed`.
 
 ## Khi nào xem lại
 

@@ -13,7 +13,28 @@ try {
   $status = [string]$p.PrinterStatus
   $targetStatus = ($target | ForEach-Object { [string]$_.JobStatus }) -join ','
   $blocked = $p.WorkOffline -or ($status -match $blockedWords) -or ($targetStatus -match $blockedWords)
-  @{ ok = $true; blocked = [bool]$blocked; code = $(if ($blocked) { 'PRINTER_BLOCKED' } else { 'READY' }); message = $(if ($blocked) { "Máy in: $status; job: $targetStatus" } else { 'sẵn sàng' }); jobs = $jobs.Count; targetPresent = ($target.Count -gt 0); targetStatus = $targetStatus; printer = $p.Name } | ConvertTo-Json -Compress
+  # Retained: máy in đã in xong nhưng hàng đợi giữ lại bản ghi. Không phải lỗi,
+  # nhưng job sẽ không bao giờ tự biến mất nên phải coi là đã in xong.
+  $retained = ($targetStatus -match 'Retained') -and -not ($targetStatus -match 'Printing|Spooling')
+  $pagesPrinted = 0
+  $totalPages = 0
+  if ($target.Count -gt 0) {
+    $pagesPrinted = [int]($target | Measure-Object -Property PagesPrinted -Sum).Sum
+    $totalPages = [int]($target | Measure-Object -Property TotalPages -Sum).Sum
+  }
+  @{
+    ok = $true
+    blocked = [bool]$blocked
+    code = $(if ($blocked) { 'PRINTER_BLOCKED' } else { 'READY' })
+    message = $(if ($blocked) { "Máy in: $status; job: $targetStatus" } else { 'sẵn sàng' })
+    jobs = $jobs.Count
+    targetPresent = ($target.Count -gt 0)
+    targetStatus = $targetStatus
+    targetRetained = [bool]$retained
+    targetPagesPrinted = $pagesPrinted
+    targetTotalPages = $totalPages
+    printer = $p.Name
+  } | ConvertTo-Json -Compress
 } catch {
   @{ ok = $false; blocked = $true; code = 'PRINTER_NOT_FOUND'; message = $_.Exception.Message; jobs = -1 } | ConvertTo-Json -Compress
   exit 1

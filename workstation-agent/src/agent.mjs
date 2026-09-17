@@ -7,7 +7,7 @@ const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function publicState(config, printer) {
   return {
-    version: "0.3.5",
+    version: "0.3.6",
     capabilities: CAPABILITIES,
     printer: {
       name: config.printerName,
@@ -42,17 +42,33 @@ export async function processClaimedJob(input, dependencies) {
     await queue.progress(job.id, "sending", { bytes: tspl.length });
     const spool = await sendRaw(config, tspl, job.id);
     await queue.progress(job.id, "spooling", { spoolJobId: spool.jobId ?? null });
-    if (spool.jobId) await waitForSpooler(config, spool.jobId);
+    let pagesPrinted = null;
+    if (spool.jobId) {
+      const final = await waitForSpooler(config, spool.jobId, {
+        timeoutMs: config.spoolTimeoutMs,
+        stallMs: config.spoolStallMs,
+        onProgress: (pages) => {
+          pagesPrinted = pages;
+          logger.info(`Lệnh ${job.id}: máy in đã in ${pages} trang`);
+          queue
+            .progress(job.id, "spooling", { spoolJobId: spool.jobId, pagesPrinted: pages })
+            .catch(() => { /* mất một nhịp tiến độ không được phép làm hỏng lệnh in */ });
+        }
+      });
+      if (final?.targetPagesPrinted != null) pagesPrinted = Number(final.targetPagesPrinted);
+    }
     const after = await queryPrinter(config);
     if (!after.ok || after.blocked) {
       throw Object.assign(new Error(after.message || "Máy in báo lỗi sau khi nhận dữ liệu"), { code: after.code || "PRINTER_POSTCHECK_FAILED" });
     }
-    const result = { copies: job.copies, bytes: tspl.length, spoolJobId: spool.jobId ?? null, templateVersion: job.templateVersion };
+    const result = { copies: job.copies, bytes: tspl.length, spoolJobId: spool.jobId ?? null, pagesPrinted, templateVersion: job.templateVersion };
     await queue.complete(job.id, result);
     logger.info(`Hoàn tất ${job.id}: ${job.copies} tem, ${tspl.length} byte`);
     return { ok: true, result };
   } catch (error) {
     const details = { code: error.code || "PRINT_FAILED", message: String(error.message || error).slice(0, 200) };
+    // Số trang đã in được là manh mối duy nhất để biết in lại từ tem nào.
+    if (error.pagesPrinted != null) details.pagesPrinted = error.pagesPrinted;
     await queue.fail(job.id, details).catch((reportError) => logger.error("Không báo lỗi được về queue", reportError.message));
     logger.error(`Lệnh ${job.id} thất bại: ${details.message}`);
     return { ok: false, error: details };
@@ -60,7 +76,7 @@ export async function processClaimedJob(input, dependencies) {
 }
 
 export async function runService(config, queue, logger, signal, lock) {
-  logger.info(`Agent ${config.agentId} v0.3.5 khởi động; hỗ trợ ${CAPABILITIES.join(", ")}`);
+  logger.info(`Agent ${config.agentId} v0.3.6 khởi động; hỗ trợ ${CAPABILITIES.join(", ")}`);
   while (!signal?.aborted) {
     try {
       lock?.touch?.();

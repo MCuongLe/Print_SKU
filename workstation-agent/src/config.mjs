@@ -43,6 +43,8 @@ export function loadConfig(options = {}) {
     agentId: get("AGENT_ID", "may-kho-01"),
     pollIntervalMs: positiveInt(get("AGENT_POLL_INTERVAL_MS"), 1000, 250, 60000),
     leaseMs: positiveInt(get("AGENT_LEASE_MS"), 120000, 30000, 900000),
+    spoolTimeoutMs: positiveInt(get("SPOOL_TIMEOUT_MS"), 900000, 60000, 3600000),
+    spoolStallMs: positiveInt(get("SPOOL_STALL_MS"), 120000, 15000, 900000),
     dpi: positiveInt(get("LABEL_DPI"), 203, 150, 600),
     density: positiveInt(get("LABEL_DENSITY"), 12, 0, 15),
     speed: positiveInt(get("LABEL_SPEED"), 3, 1, 10),
