@@ -17,10 +17,17 @@ const present = (pages, extra = {}) => ({
   ok: true, blocked: false, targetPresent: true, targetPagesPrinted: pages, ...extra
 });
 
-test("job chua kip hien ra thi khong duoc coi la da in xong", async () => {
-  // Đây chính là lỗi cũ: lần quét đầu không thấy job nên báo hoàn tất ngay.
+test("khong thay job: xong nhung danh dau chua xac nhan", async () => {
+  // TSC PE200 day thang byte ra cong USB nen job khoe khong kip hien trong
+  // hang doi. Day la binh thuong, khong phai loi — nhung cung khong chung minh
+  // duoc tem da ra giay.
+  const state = await waitForSpooler({}, 7, { __query: fakeQuery([ready()]), appearMs: 30, pollMs: 5 });
+  assert.equal(state.confirmed, false);
+});
+
+test("requireConfirm=true thi khong thay job la loi", async () => {
   await assert.rejects(
-    waitForSpooler({}, 7, { __query: fakeQuery([ready()]), appearMs: 50, pollMs: 5 }),
+    waitForSpooler({}, 7, { __query: fakeQuery([ready()]), appearMs: 30, pollMs: 5, requireConfirm: true }),
     (error) => error.code === "SPOOLER_JOB_MISSING"
   );
 });
@@ -31,6 +38,7 @@ test("thay job roi moi bien mat thi la in xong", async () => {
     appearMs: 5000, pollMs: 5
   });
   assert.equal(state.targetPresent, false);
+  assert.equal(state.confirmed, true);
 });
 
 test("job Retained tinh la da in xong", async () => {
@@ -39,6 +47,7 @@ test("job Retained tinh la da in xong", async () => {
     pollMs: 5
   });
   assert.equal(state.targetRetained, true);
+  assert.equal(state.confirmed, true);
 });
 
 test("het giay: so trang dung yen thi bao loi kem so trang da in", async () => {

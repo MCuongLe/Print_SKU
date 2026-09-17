@@ -39,7 +39,12 @@ Agent này thuộc ứng dụng Print SKU, cài độc lập tại `C:\PrintSKUA
 - `preview` và `dry-run` tuyệt đối không gọi máy in.
 - Chỉ lệnh `service` mới được phép nhận và in job.
 - Chưa xác nhận vật lý tem đã ra giấy nếu chỉ có phản hồi WritePrinter; cần kiểm tra thêm trạng thái spooler và máy in.
-- **Không được coi "không tìm thấy job trong hàng đợi" là "đã in xong."** Job phải được nhìn thấy ít nhất một lần rồi mới được kết luận biến mất vì in xong. Không thấy job sau `appearMs` (mặc định 20 giây) thì báo `SPOOLER_JOB_MISSING`, không được im lặng báo hoàn tất. Đây chính là lỗi của bản ≤ 0.3.5: lần quét đầu chạy ngay sau khi gửi, spooler chưa kịp liệt kê job, nên lệnh 100 tem "xong" sau 2 giây trong khi giấy chưa hề chạy — ngày 17/09 mất dấu 114 tem vì lỗi này.
+- **Trên TSC PE200, spooler đẩy thẳng byte ra cổng USB: job khoẻ biến mất trước nhịp quét đầu, chỉ khi máy kẹt (hết giấy, bung nắp) job mới nằm lại hàng đợi.** Đã đo trực tiếp ngày 17/09: job 27 không hề xuất hiện trong `Get-PrintJob` dù máy in bình thường, trong khi job 4 và 5 lúc hết giấy thì nằm lại cả chục phút. Do đó ba nhánh kết luận:
+  - thấy job rồi nó biến mất → in xong, `spoolConfirmed = true`
+  - thấy job nhưng số trang đứng yên quá `SPOOL_STALL_MS` → `PRINTER_STALLED` (đây là nhánh bắt được hết giấy)
+  - không bao giờ thấy job → **bình thường, không phải lỗi**, nhưng cũng không chứng minh được tem đã ra giấy: hoàn tất với `spoolConfirmed = false`
+- Không được biến "thiếu bằng chứng" thành lỗi cứng: bản 0.3.6 báo `SPOOLER_JOB_MISSING` cho mọi lệnh và chặn đứng sản xuất. Muốn siết thì bật `SPOOL_REQUIRE_CONFIRM=true`, chỉ dùng cho máy in thật sự để lộ job trong hàng đợi.
+- Cũng không được coi "không thấy job" là "đã in xong" như bản ≤ 0.3.5: lệnh 136 tem báo hoàn tất sau 9 giây y hệt lệnh 2 tem, và ngày 17/09 mất dấu 114 tem vì thế. `spoolConfirmed` tồn tại để nói thẳng ra chỗ không biết, thay vì đoán về một trong hai phía.
 - Job ở trạng thái `Retained` (hàng đợi giữ lại bản ghi sau khi in) tính là đã in xong, vì nó không bao giờ tự biến mất.
 - Số trang đã in phải nhúc nhích; đứng yên quá `SPOOL_STALL_MS` (mặc định 120 giây) thì báo `PRINTER_STALLED` kèm `pagesPrinted`. Mọi lỗi in phải mang theo `pagesPrinted` khi biết, vì đó là manh mối duy nhất để biết in lại từ tem nào.
 - Tiến độ trang được ghi vào `print_events` (stage `spooling`, kèm `pagesPrinted`) trong lúc in, không đợi tới lúc kết thúc.

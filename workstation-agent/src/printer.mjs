@@ -43,21 +43,26 @@ export async function sendRaw(config, buffer, jobId) {
 }
 
 /**
- * Chờ tới khi Windows Spooler thực sự in xong job.
+ * Theo dõi job trong Windows Spooler cho tới khi xong hoặc kẹt.
  *
- * Bản cũ coi "không tìm thấy job" là "đã in xong", nên lần quét đầu — chạy ngay
- * sau khi gửi, lúc spooler chưa kịp liệt kê job — đã thoát và báo hoàn tất.
- * Cả lệnh 100 tem cũng "xong" sau 2 giây trong khi giấy chưa chạy.
+ * Trên TSC PE200, spooler đẩy thẳng byte ra cổng USB: job khoẻ biến mất trước
+ * nhịp quét đầu, chỉ khi máy kẹt (hết giấy, bung nắp) job mới nằm lại hàng đợi.
+ * Vì vậy:
+ *   - thấy job rồi nó biến mất  -> in xong, confirmed = true
+ *   - thấy job nhưng số trang đứng yên -> PRINTER_STALLED (bắt được hết giấy)
+ *   - không bao giờ thấy job    -> bình thường, nhưng KHÔNG chứng minh được
+ *                                  tem đã ra giấy: confirmed = false
  *
- * Nay job phải được nhìn thấy ít nhất một lần thì mới được coi là biến mất vì
- * đã in xong; và tiến độ trang phải nhúc nhích, đứng yên quá lâu là lỗi.
+ * Bản ≤ 0.3.5 coi "không thấy job" là "đã in xong" nên lệnh 136 tem cũng báo
+ * hoàn tất sau 9 giây. Nay sự thiếu bằng chứng đó được nói ra thay vì giấu đi.
  */
 export async function waitForSpooler(config, jobId, options = {}) {
   const {
     timeoutMs = 900000,      // trần tuyệt đối cho một lệnh
-    appearMs = 20000,        // chờ job hiện ra trong hàng đợi
+    appearMs = 8000,         // chờ job hiện ra; mọi lệnh đều phải trả phí này
     stallMs = 120000,        // không in thêm trang nào trong ngần này là kẹt
     pollMs = 1000,
+    requireConfirm = false,  // máy in không để lộ job thì đừng coi là lỗi
     onProgress,
     __query = queryPrinter   // chỉ dùng cho test, tránh phải dựng cả Windows Spooler
   } = options;
@@ -82,7 +87,7 @@ export async function waitForSpooler(config, jobId, options = {}) {
         onProgress?.(pages, state);
       }
       // Hàng đợi giữ lại bản ghi sau khi in xong thì job không bao giờ tự biến mất.
-      if (state.targetRetained) return state;
+      if (state.targetRetained) return { ...state, confirmed: true };
       if (Date.now() - lastChange > stallMs) {
         throw Object.assign(
           new Error(`Máy in đứng yên ${Math.round(stallMs / 1000)} giây ở trang ${pages}`),
@@ -90,14 +95,19 @@ export async function waitForSpooler(config, jobId, options = {}) {
         );
       }
     } else if (seen) {
-      return state;                                   // đã thấy rồi, giờ hết => in xong
+      return { ...state, confirmed: true };           // đã thấy rồi, giờ hết => in xong
     } else if (Date.now() - started > appearMs) {
-      // Không bao giờ thấy job: không kết luận được là đã in. Báo lỗi để người
-      // vận hành kiểm tra giấy thay vì im lặng coi như thành công.
-      throw Object.assign(
-        new Error(`Không thấy job ${jobId} trong hàng đợi máy in sau ${Math.round(appearMs / 1000)} giây`),
-        { code: "SPOOLER_JOB_MISSING" }
-      );
+      // Trên TSC PE200, spooler đẩy thẳng byte ra cổng USB nên job khoẻ thường
+      // biến mất trước nhịp quét đầu; job chỉ nằm lại hàng đợi khi máy kẹt.
+      // Vậy "không thấy job" là bình thường, KHÔNG phải lỗi — nhưng cũng không
+      // chứng minh được tem đã ra giấy, nên đánh dấu chưa xác nhận.
+      if (requireConfirm) {
+        throw Object.assign(
+          new Error(`Không thấy job ${jobId} trong hàng đợi máy in sau ${Math.round(appearMs / 1000)} giây`),
+          { code: "SPOOLER_JOB_MISSING" }
+        );
+      }
+      return { ...state, confirmed: false };
     }
 
     await new Promise((resolve) => setTimeout(resolve, pollMs));
