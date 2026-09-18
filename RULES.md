@@ -89,7 +89,16 @@ python scripts/refresh_skus.py sync
 
 - Trang danh sách sắp theo `Modified` giảm dần và nhận tham số `&limit=` (mặc định 100, chạy tốt tới 3.000), nên `quick` chỉ đọc từ trên xuống tới khi chạm dòng cũ hơn mốc cắt rồi dừng. Đo thật ngày 18/09: **21 giây, 361 dòng, file JSON 112 KB** — so với ~10 phút và 5 MB Excel.
 - Mốc cắt lấy theo `--days` (mặc định 7) chứ không lưu trạng thái lần chạy trước: nạp lại dòng không đổi là vô hại, còn mất trạng thái thì không bao giờ gây sót.
-- Đổi tên SKU **có** làm `Modified` nhảy — đã kiểm chứng với 3 SKU đổi tên ngày 17/09, cả ba đều mang mốc `26-09-17 10:58`. Chưa có mẫu thật để xác nhận đổi trạng thái hay chuyển category có nhảy hay không, nên **vẫn phải chạy đường Excel định kỳ để đối chiếu**.
+- Đổi tên SKU **có** làm `Modified` nhảy — đã kiểm chứng với 3 SKU đổi tên ngày 17/09, cả ba đều mang mốc `26-09-17 10:58`.
+
+**Hai giả định do chủ hệ thống chốt ngày 18/09/2026:**
+
+1. Inside **sẽ không đổi cấu trúc** bảng danh sách.
+2. `Modified` **sẽ không bỏ sót** bất kỳ loại thay đổi nào.
+
+Vì vậy đường Excel không cần chạy định kỳ nữa, chỉ chạy **khi được yêu cầu đối chiếu**. Hai chốt chặn trong `apply` vẫn giữ nguyên vì chúng không tốn gì khi giả định còn đúng — cầu dao đổi tên chưa bao giờ nổ trong vận hành bình thường, và chốt chặn chống ghi rỗng cũng vậy. Chúng chỉ có tác dụng đúng vào ngày một trong hai giả định trên sai, và khi đó biến sự cố âm thầm thành một lần dừng ồn ào.
+
+Nếu về sau `apply` báo dừng vì đổi tên hàng loạt, hoặc một đợt đối chiếu Excel cho ra chênh lệch, thì chính là một trong hai giả định trên đã hết đúng — xem lại từ đó.
 
 - Danh sách category nằm ở `scripts/sku_categories.json`. Thêm/bớt category chỉ sửa file này, không sửa code. `id` phải khớp `category_id` trên Inside, `name` phải khớp tên đang dùng trong Supabase.
 - `merge` chỉ nhận file export chứa **đúng một** category và tự đối chiếu `category_id` bên trong file với cấu hình — không bao giờ nạp file dưới nhãn category sai. File nhiều category bị bỏ qua và liệt kê trong `ignored_files`.
