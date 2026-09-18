@@ -19,14 +19,17 @@ import json
 import subprocess
 import sys
 import time
+from datetime import datetime, timedelta
 from pathlib import Path
 
+from apply_sku_rows import apply_rows
 from inspect_export_category import inspect
 from merge_sku_category_xlsx import merge_workbook
 
 
 CONFIG_PATH = Path(__file__).with_name("sku_categories.json")
 EXPORT_GLOB = "hasaki-product-all-sku-cate-*.xlsx"
+CHANGES_GLOB = "sku-changes-*.json"
 DEFAULT_DOWNLOADS = Path.home() / "Downloads"
 DEFAULT_DATABASE = Path("data/sku.db")
 
@@ -143,6 +146,124 @@ def command_snippet(_: argparse.Namespace) -> int:
     return 0
 
 
+# Doan JS doc THANG bang danh sach cua Inside, khong qua may chu export.
+# Trang danh sach sap theo Modified giam dan, nen chi can doc tu tren xuong toi
+# khi cham dong cu hon moc cat la du. Ten san pham nam trong the <a> cua o
+# Product Name; chu dung truoc the do la ten thuong hieu, KHONG duoc lay.
+QUICK_SNIPPET = r"""
+(async () => {
+  const CATS = @@CATS@@;
+  const MOC = "@@CUTOFF@@";          // chi lay dong sua tu ngay nay tro di
+  const MOI_LAN = 200;
+  const TOI_DA_TRANG = 40;
+  const log = (m) => console.log("%c[SKU]", "color:#0a7", m);
+  if (!document.getElementById("download-products")) { log("CHUA DANG NHAP"); return; }
+
+  const doc1Trang = async (id, trang) => {
+    const url = "/sales/product?kw=&category_id=" + id +
+      "&barcode=0&status=1&type=0&pushweb=&config=&stocking_status=0&hide_kw=" +
+      "&limit=" + MOI_LAN + "&page=" + trang;
+    const doc = new DOMParser().parseFromString(
+      await (await fetch(url, { credentials: "include" })).text(), "text/html");
+    const heads = [...doc.querySelectorAll("table thead th")].map((t) => t.textContent.trim().toLowerCase());
+    const need = { sku: "sku", product_name: "product name", status: "status",
+                   barcode: "barcode", latest_cost: "latestcost",
+                   product_average_cost: "average cost", price: "price", modified: "modified" };
+    const idx = {};
+    for (const [key, label] of Object.entries(need)) {
+      idx[key] = heads.indexOf(label);
+      if (idx[key] < 0 && ["sku", "product_name", "status", "modified"].includes(key)) {
+        throw new Error("Inside doi ten cot: khong thay '" + label + "'");
+      }
+    }
+    return [...doc.querySelectorAll("table tbody tr")].map((tr) => {
+      const td = tr.querySelectorAll("td");
+      const o = td[idx.product_name];
+      const link = o && o.querySelector("a");        // ten that nam trong the <a>
+      const lay = (k) => (idx[k] >= 0 ? (td[idx[k]]?.textContent || "").trim() : "");
+      return {
+        sku: lay("sku"),
+        product_name: link ? link.textContent.trim() : "",
+        status: lay("status"),
+        barcode: lay("barcode"),
+        latest_cost: lay("latest_cost"),
+        product_average_cost: lay("product_average_cost"),
+        price: lay("price"),
+        modified: lay("modified")
+      };
+    }).filter((r) => r.sku && r.product_name);
+  };
+
+  const ketQua = [];
+  for (const cat of CATS) {
+    let lay = 0;
+    for (let trang = 1; trang <= TOI_DA_TRANG; trang++) {
+      const rows = await doc1Trang(cat.id, trang);
+      if (!rows.length) break;
+      const moi = rows.filter((r) => r.modified >= MOC);
+      for (const r of moi) ketQua.push({ ...r, category_id: cat.id, category_name: cat.name });
+      lay += moi.length;
+      if (moi.length < rows.length) break;           // da cham vung cu hon moc cat
+    }
+    log("category " + cat.id + ": " + lay + " dong thay doi");
+  }
+
+  const payload = { generatedAt: new Date().toISOString(), cutoff: MOC,
+                    categories: CATS.map((c) => c.id), rows: ketQua };
+  const blob = new Blob([JSON.stringify(payload)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "sku-changes-" + Date.now() + ".json";
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 30000);
+  log("XONG - " + ketQua.length + " dong. Buoc tiep: python scripts/refresh_skus.py apply");
+})();
+"""
+
+
+def command_quick(args: argparse.Namespace) -> int:
+    categories = load_categories()
+    cutoff = (datetime.now() - timedelta(days=args.days)).strftime("%y-%m-%d")
+    snippet = (QUICK_SNIPPET
+               .replace("@@CATS@@", json.dumps(categories, ensure_ascii=False))
+               .replace("@@CUTOFF@@", cutoff))
+    print(snippet.strip())
+    print()
+    print(f"# Lay cac dong sua tu {cutoff} tro di, {len(categories)} category.", file=sys.stderr)
+    print("# Dan vao Console (F12) cua tab inside.mastige.vn da dang nhap.", file=sys.stderr)
+    return 0
+
+
+def command_apply(args: argparse.Namespace) -> int:
+    database = args.database.resolve()
+    if not database.is_file():
+        print(f"Database does not exist: {database}", file=sys.stderr)
+        return 2
+    cutoff = time.time() - args.since_minutes * 60
+    files = sorted(
+        (path for path in args.downloads.glob(CHANGES_GLOB) if path.stat().st_mtime >= cutoff),
+        key=lambda path: path.stat().st_mtime,
+    )
+    if not files:
+        print(json.dumps({"error": "Khong thay file sku-changes-*.json moi trong Downloads",
+                          "downloads": str(args.downloads)}, ensure_ascii=False, indent=2))
+        return 1
+    source = files[-1]
+    payload = json.loads(source.read_text(encoding="utf-8"))
+    rows = payload.get("rows") or []
+    if not rows:
+        print(json.dumps({"file": source.name, "rows_read": 0,
+                          "note": "khong co dong nao thay doi"}, ensure_ascii=False, indent=2))
+        return 0
+    report = apply_rows(database, rows)
+    report["file"] = source.name
+    report["cutoff"] = payload.get("cutoff")
+    print(json.dumps(report, ensure_ascii=False, indent=2))
+    if args.cleanup:
+        source.unlink(missing_ok=True)
+    return 0
+
+
 def command_merge(args: argparse.Namespace) -> int:
     categories = load_categories()
     database = args.database.resolve()
@@ -228,6 +349,11 @@ def command_sync(args: argparse.Namespace) -> int:
 
 
 def main() -> None:
+    # Keep Vietnamese output valid in Windows consoles and redirected reports.
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", errors="backslashreplace")
+
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
@@ -237,7 +363,19 @@ def main() -> None:
         handler=command_snippet
     )
 
-    merge = subparsers.add_parser("merge", help="Nap cac file vua tai vao sku.db")
+    quick = subparsers.add_parser("quick", help="In doan JS doc thang tu Inside, khong can Excel")
+    quick.add_argument("--days", type=int, default=7,
+                       help="Lay cac dong sua trong bao nhieu ngay gan day (mac dinh 7)")
+    quick.set_defaults(handler=command_quick)
+
+    apply_cmd = subparsers.add_parser("apply", help="Nap file sku-changes-*.json vao sku.db")
+    apply_cmd.add_argument("--database", "-d", type=Path, default=DEFAULT_DATABASE)
+    apply_cmd.add_argument("--downloads", type=Path, default=DEFAULT_DOWNLOADS)
+    apply_cmd.add_argument("--since-minutes", type=int, default=60)
+    apply_cmd.add_argument("--cleanup", action="store_true", help="Xoa file json sau khi nap")
+    apply_cmd.set_defaults(handler=command_apply)
+
+    merge = subparsers.add_parser("merge", help="Nap cac file Excel (doi chieu toan bo)")
     merge.add_argument("--database", "-d", type=Path, default=DEFAULT_DATABASE)
     merge.add_argument("--downloads", type=Path, default=DEFAULT_DOWNLOADS)
     merge.add_argument(
