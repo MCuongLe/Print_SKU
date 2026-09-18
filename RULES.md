@@ -69,13 +69,27 @@ Xem lại các quy tắc này khi thay đổi cấu trúc form, danh sách chờ
 
 ## Làm mới SKU từ Mastige Inside
 
-Nguồn dữ liệu `SKU_Name` là màn `Products` trên `inside.mastige.vn`. Ba lệnh trong `scripts/refresh_skus.py`:
+Nguồn dữ liệu `SKU_Name` là màn `Products` trên `inside.mastige.vn`. Có hai đường, dùng cho hai mục đích khác nhau.
+
+**Đường thường dùng — đọc thẳng bảng danh sách, không qua Excel:**
 
 ```
-python scripts/refresh_skus.py snippet   # in đoạn JS, dán vào Console tab inside đã đăng nhập
-python scripts/refresh_skus.py merge     # quét Downloads, kiểm tra category, nạp vào data/sku.db
+python scripts/refresh_skus.py quick     # in đoạn JS, dán vào Console tab inside đã đăng nhập
+python scripts/refresh_skus.py apply     # nạp sku-changes-*.json vào data/sku.db
 python scripts/refresh_skus.py sync      # upsert lên Supabase (không xoá dòng nào)
 ```
+
+**Đường đối chiếu — tải Excel toàn bộ, chạy khi cần kiểm chứng:**
+
+```
+python scripts/refresh_skus.py snippet
+python scripts/refresh_skus.py merge --cleanup
+python scripts/refresh_skus.py sync
+```
+
+- Trang danh sách sắp theo `Modified` giảm dần và nhận tham số `&limit=` (mặc định 100, chạy tốt tới 3.000), nên `quick` chỉ đọc từ trên xuống tới khi chạm dòng cũ hơn mốc cắt rồi dừng. Đo thật ngày 18/09: **21 giây, 361 dòng, file JSON 112 KB** — so với ~10 phút và 5 MB Excel.
+- Mốc cắt lấy theo `--days` (mặc định 7) chứ không lưu trạng thái lần chạy trước: nạp lại dòng không đổi là vô hại, còn mất trạng thái thì không bao giờ gây sót.
+- Đổi tên SKU **có** làm `Modified` nhảy — đã kiểm chứng với 3 SKU đổi tên ngày 17/09, cả ba đều mang mốc `26-09-17 10:58`. Chưa có mẫu thật để xác nhận đổi trạng thái hay chuyển category có nhảy hay không, nên **vẫn phải chạy đường Excel định kỳ để đối chiếu**.
 
 - Danh sách category nằm ở `scripts/sku_categories.json`. Thêm/bớt category chỉ sửa file này, không sửa code. `id` phải khớp `category_id` trên Inside, `name` phải khớp tên đang dùng trong Supabase.
 - `merge` chỉ nhận file export chứa **đúng một** category và tự đối chiếu `category_id` bên trong file với cấu hình — không bao giờ nạp file dưới nhãn category sai. File nhiều category bị bỏ qua và liệt kê trong `ignored_files`.
@@ -94,6 +108,8 @@ Ràng buộc của Inside — đã kiểm chứng, đừng mất công thử l�
 - Server **cache file export theo từng category mỗi ngày** nên export lại gần như tức thì — retry không tốn gì.
 - HTTP **503 khi tải nghĩa là file chưa tạo xong**, không phải lỗi quyền; gọi lại là được. Snippet tự thử tối đa 3 lần bằng cách đọc nội dung iframe.
 - Export không lọc category (toàn bộ catalog) chạy quá 8 phút chưa xong — không dùng.
+- **Tên sản phẩm trong bảng HTML nằm trong thẻ `<a>` của ô Product Name; chữ đứng trước thẻ đó là tên thương hiệu và KHÔNG thuộc `product_name`.** Ô đó là `No brand - <a>Chỉ quấn chân nút/...</a>`. Lấy `textContent` cả ô sẽ dính tiền tố và làm đổi sai toàn bộ 21.000 tên; phải lấy đúng nội dung thẻ `<a>`.
+- **Bảng HTML render RỖNG các cột Barcode, LatestCost, Average Cost** — giá chỉ có trong file Excel. Vì vậy `apply` chỉ được phép cập nhật `product_name`, `status`, `category_id`, `category_name`. Lúc chạy thử đã đưa cả cột giá vào và ghi rỗng đè mất giá vốn của 44 dòng. Ngoài việc giới hạn danh sách cột, `apply` còn có chốt chặn thứ hai: không bao giờ ghi giá trị rỗng đè lên dữ liệu cũ.
 - Nút Download thật là `#download-products`; trong trang còn link `Products` khác ở breadcrumb, click nhầm sẽ không kích hoạt export.
 
 ### Hạn chế còn lại: SKU ngừng Active
