@@ -37,7 +37,17 @@ def normalize(row: dict[str, object]) -> dict[str, str]:
     return clean
 
 
-def apply_rows(database: Path, rows: list[dict[str, object]]) -> dict[str, object]:
+# Cầu dao đổi tên hàng loạt. Một lỗi parser (lấy nhầm ô, dính tiền tố thương
+# hiệu, Inside đổi cấu trúc) luôn làm GẦN NHƯ MỌI dòng "đổi tên", trong khi
+# người thật sửa tên chỉ vài chục dòng. Vượt ngưỡng thì huỷ cả lượt nạp và bắt
+# người dùng nhìn tận mắt, thay vì âm thầm ghi sai 21.000 tên.
+RENAME_FLOOR = 25          # dưới mức này luôn cho qua
+RENAME_PERCENT = 20        # trên mức sàn thì không được vượt tỷ lệ này
+
+
+def apply_rows(
+    database: Path, rows: list[dict[str, object]], force: bool = False
+) -> dict[str, object]:
     missing = REQUIRED_FIELDS.difference(rows[0]) if rows else set()
     if missing:
         raise ValueError(f"Dòng dữ liệu thiếu trường: {', '.join(sorted(missing))}")
@@ -119,6 +129,16 @@ def apply_rows(database: Path, rows: list[dict[str, object]]) -> dict[str, objec
             next_source_row += 1
             inserted += 1
 
+        renames = changed_fields.get("product_name", 0)
+        compared = updated + unchanged
+        limit = max(RENAME_FLOOR, compared * RENAME_PERCENT // 100)
+        if renames > limit and not force:
+            raise ValueError(
+                f"Dừng: {renames}/{compared} dòng bị đổi tên, vượt ngưỡng {limit}. "
+                "Gần như chắc chắn là lỗi đọc dữ liệu chứ không phải người sửa tên. "
+                "Kiểm tra lại rồi chạy với --force nếu thật sự đúng."
+            )
+
         if inserts:
             connection.executemany(insert_sql, inserts)
         if updates:
@@ -137,6 +157,7 @@ def apply_rows(database: Path, rows: list[dict[str, object]]) -> dict[str, objec
             "unchanged": unchanged,
             "skipped_empty": skipped_empty,
             "changed_fields": changed_fields,
+            "rename_limit": limit,
             "total_rows": total_rows,
         }
     except Exception:

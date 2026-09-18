@@ -255,7 +255,7 @@ def command_apply(args: argparse.Namespace) -> int:
         print(json.dumps({"file": source.name, "rows_read": 0,
                           "note": "khong co dong nao thay doi"}, ensure_ascii=False, indent=2))
         return 0
-    report = apply_rows(database, rows)
+    report = apply_rows(database, rows, force=args.force)
     report["file"] = source.name
     report["cutoff"] = payload.get("cutoff")
     print(json.dumps(report, ensure_ascii=False, indent=2))
@@ -373,6 +373,8 @@ def main() -> None:
     apply_cmd.add_argument("--downloads", type=Path, default=DEFAULT_DOWNLOADS)
     apply_cmd.add_argument("--since-minutes", type=int, default=60)
     apply_cmd.add_argument("--cleanup", action="store_true", help="Xoa file json sau khi nap")
+    apply_cmd.add_argument("--force", action="store_true",
+                           help="Bo qua cau dao doi ten hang loat (chi dung khi da kiem tra tan mat)")
     apply_cmd.set_defaults(handler=command_apply)
 
     merge = subparsers.add_parser("merge", help="Nap cac file Excel (doi chieu toan bo)")
