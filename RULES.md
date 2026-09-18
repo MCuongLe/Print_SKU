@@ -110,6 +110,8 @@ Ràng buộc của Inside — đã kiểm chứng, đừng mất công thử l�
 - Export không lọc category (toàn bộ catalog) chạy quá 8 phút chưa xong — không dùng.
 - **Tên sản phẩm trong bảng HTML nằm trong thẻ `<a>` của ô Product Name; chữ đứng trước thẻ đó là tên thương hiệu và KHÔNG thuộc `product_name`.** Ô đó là `No brand - <a>Chỉ quấn chân nút/...</a>`. Lấy `textContent` cả ô sẽ dính tiền tố và làm đổi sai toàn bộ 21.000 tên; phải lấy đúng nội dung thẻ `<a>`.
 - **Bảng HTML render RỖNG các cột Barcode, LatestCost, Average Cost** — giá chỉ có trong file Excel. Vì vậy `apply` chỉ được phép cập nhật `product_name`, `status`, `category_id`, `category_name`. Lúc chạy thử đã đưa cả cột giá vào và ghi rỗng đè mất giá vốn của 44 dòng. Ngoài việc giới hạn danh sách cột, `apply` còn có chốt chặn thứ hai: không bao giờ ghi giá trị rỗng đè lên dữ liệu cũ.
+- **Cầu dao đổi tên hàng loạt.** `apply` huỷ cả lượt nạp nếu số dòng đổi tên vượt `max(25 dòng, 20% số dòng đối chiếu)`. Lý do: lỗi đọc dữ liệu luôn làm gần như MỌI dòng "đổi tên", còn người thật sửa tên chỉ vài chục dòng. Đã thử lại bằng cách giả lập đúng lỗi tiền tố thương hiệu trên 300 dòng — cầu dao chặn và rollback. Chỉ dùng `--force` sau khi đã nhìn tận mắt danh sách tên mới.
+- Kết quả kiểm chứng ngày 18/09 trên 1.666 dòng thuộc cả 7 category: tên đọc từ HTML **khớp tuyệt đối 1.666/1.666** với tên lấy từ Excel. Không có dòng nào bị cắt ngắn (dài nhất 191 ký tự), không có HTML entity, mỗi ô đúng một thẻ `<a>`. Phân trang cũng sạch: `page=1&limit=200` cho dòng 0–199, `page=2&limit=200` cho dòng 200–399, không trùng không sót.
 - Nút Download thật là `#download-products`; trong trang còn link `Products` khác ở breadcrumb, click nhầm sẽ không kích hoạt export.
 
 ### Hạn chế còn lại: SKU ngừng Active
