@@ -2077,7 +2077,6 @@ Error generating stack: `+y.message+`
               <span class="sample-row__qty" title="Số mẫu trong bao">${escapeHtml(bag.quantity)}</span>
               <div class="sample-tools">
                 <button class="uid-row__icon" type="button" data-act="minus" data-sku="${escapeHtml(bag.sku)}" title="Bớt 1 mẫu" aria-label="Bớt 1 mẫu">−</button>
-                <button class="uid-row__icon uid-row__icon--remove" type="button" data-act="remove" data-sku="${escapeHtml(bag.sku)}" title="Xoá hẳn bao" aria-label="Xoá hẳn bao">×</button>
               </div>
             </article>`;
           }).join("");
@@ -2250,11 +2249,13 @@ Error generating stack: `+y.message+`
           const button = event.target.closest("button[data-act]");
           if (!button || busy) return;
           const sku = button.dataset.sku || "";
-          const remove = button.dataset.act === "remove";
-          if (remove && !window.confirm(`Xoá hẳn bao của SKU ${sku}?`)) return;
+          // Chi con mot thao tac sua: bot 1 mau. Xoa ca bao da bi thu hoi quyen duoi
+          // database (supabase/sample_bag_v2_lock_delete.sql) vi app khong co dang nhap,
+          // ai co link cung goi duoc RPC dang mo cho anon.
+          if (button.dataset.act !== "minus") return;
           busy = true;
           try {
-            const payload = await callRpc(remove ? "sample_delete" : "sample_decrement", { p_sku: sku });
+            const payload = await callRpc("sample_decrement", { p_sku: sku });
             if (!payload.ok) { setStatus(payload.error?.message || "Không sửa được bao", "error"); return; }
             const data = payload.data || {};
             applyLocal(data);

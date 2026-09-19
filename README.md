@@ -45,6 +45,7 @@ Trước khi dùng, nạp schema một lần:
 
 ```powershell
 python scripts/apply_supabase_sql.py supabase/sample_bag_v1.sql
+python scripts/apply_supabase_sql.py supabase/sample_bag_v2_lock_delete.sql
 ```
 
 Hoặc dán tay nội dung `supabase/sample_bag_v1.sql` vào Supabase SQL Editor nếu không muốn dùng token.
