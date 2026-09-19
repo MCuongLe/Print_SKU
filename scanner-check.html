@@ -64,7 +64,7 @@
   </head>
   <body>
     <h1>Kiểm tra máy quét</h1>
-    <p class="lead">Bấm vào ô bên dưới rồi quét <b>một</b> mã QR trên hàng mẫu. Trang này chỉ đọc, không ghi gì vào bao.</p>
+    <p class="lead">Quét <b>một</b> mã QR trên hàng mẫu. Con trỏ tự nằm sẵn trong ô. Trang này chỉ đọc, không ghi gì vào bao.<br><b id="build-stamp">bản —</b> · nếu dòng này không hiện ngày mới nhất thì máy đang chạy bản cũ trong cache.</p>
 
     <div class="card">
       <h2>1 · Quét vào đây</h2>
@@ -91,14 +91,15 @@
     </div>
 
     <div class="card">
-      <h2>4 · Nhật ký phím thô</h2>
-      <pre id="log">Chưa có phím nào.</pre>
+      <h2>4 · Nhật ký sự kiện thô</h2>
+      <pre id="log">Chưa có sự kiện nào.</pre>
       <button id="copy" type="button">Sao chép toàn bộ kết quả</button>
       <p class="hint">Gửi đoạn này cho người dựng app là đủ để biết máy quét đang cấu hình sai chỗ nào.</p>
     </div>
 
     <script>
       (() => {
+        const BUILD = "bản 19/09 · 17h";
         const SUPABASE_URL = "https://ikzhitdqkoatlmkrxuuh.supabase.co";
         const SUPABASE_KEY = "sb_publishable_mBl--Ep5nNxuC4Xvyi1gfg_SLGEcRhI";
 
@@ -122,11 +123,22 @@
         const setFlag = (element, tone, text) => { element.dataset.tone = tone; element.textContent = text; };
         const describeKey = key => key === " " ? "Space" : key === "" ? "(rỗng)" : key;
 
+        // Máy quét qua IME không đưa ký tự theo sự kiện phím, nó đi bằng composition/input.
+        // Chỉ ghi phím là nhìn thiếu đúng nửa quan trọng — lần đo trước đã vấp chính chỗ này.
+        const signals = [];
+        const startedAt = { at: 0 };
+        const note = (kind, detail) => {
+          const now = performance.now();
+          if (!startedAt.at) startedAt.at = now;
+          signals.push({ ms: Math.round(now - startedAt.at), kind, detail });
+          renderLog();
+        };
+
         const renderLog = () => {
-          if (!events.length) { logElement.textContent = "Chưa có phím nào."; return; }
-          logElement.textContent = events
-            .map(e => `+${String(e.delta).padStart(4)}ms  key=${JSON.stringify(e.key)}  code=${e.code || "-"}  which=${e.which}`)
-            .join("\n");
+          const keyLines = events.map(e => `+${String(e.delta).padStart(4)}ms  keydown  key=${JSON.stringify(e.key)}  code=${e.code || "-"}  which=${e.which}`);
+          const signalLines = signals.map(s => `+${String(s.ms).padStart(4)}ms  ${s.kind.padEnd(16)} ${s.detail}`);
+          const all = keyLines.concat(signalLines);
+          logElement.textContent = all.length ? all.join("\n") : "Chưa có sự kiện nào.";
         };
 
         // Bắt ở cấp document: nếu con trỏ rơi ra ngoài ô thì vẫn thấy được phím,
@@ -149,13 +161,28 @@
 
         // Một số máy quét và IME Android nhét cả cụm chữ vào ô mà không sinh phím nào.
         // Chỉ nghe keydown thì trang này đứng im đúng lúc cần chẩn đoán nhất.
-        box.addEventListener("input", () => {
+        box.addEventListener("input", event => {
           const now = performance.now();
-          if (finished) { events = []; finished = false; firstAt = now; lastAt = 0; }
+          if (finished) { events = []; signals.length = 0; finished = false; firstAt = now; lastAt = 0; startedAt.at = 0; }
           if (!firstAt) firstAt = now;
           bulkInsert = events.length === 0;
+          note("input", `inputType=${event.inputType || "-"} data=${JSON.stringify(event.data ?? null)} value=${JSON.stringify(box.value)}`);
           clearTimeout(idleTimer);
           idleTimer = setTimeout(() => finish(""), 400);
+        });
+
+        // Ba luồng còn lại mà máy quét kiểu IME hay dùng. Ghi hết để một lần quét là đủ kết luận.
+        box.addEventListener("beforeinput", event => note("beforeinput", `inputType=${event.inputType || "-"} data=${JSON.stringify(event.data ?? null)}`));
+        for (const kind of ["compositionstart", "compositionupdate", "compositionend"]) {
+          box.addEventListener(kind, event => {
+            note(kind, `data=${JSON.stringify(event.data ?? null)}`);
+            clearTimeout(idleTimer);
+            idleTimer = setTimeout(() => finish(""), 400);
+          });
+        }
+        box.addEventListener("paste", event => {
+          const text = event.clipboardData ? event.clipboardData.getData("text") : "";
+          note("paste", `text=${JSON.stringify(text)}`);
         });
 
         const analyse = (text, terminator) => {
@@ -163,11 +190,12 @@
           const aim = /^\]([A-Za-z])([0-9])/.exec(text);
           const onlyDigits = /^[0-9]+$/.test(text);
           if (!text && events.length) {
-            // Phím có bắn ra nhưng ô rỗng: ký tự không đi theo sự kiện phím.
+            // Phím có bắn ra nhưng ô rỗng. Câu hỏi quyết định: có sự kiện CHỮ nào tới ô không?
             const ime = events.every(e => e.key === "Unidentified" || e.key === "Process" || e.key === "");
-            setFlag(verdict, "bad", ime
-              ? `Máy quét CÓ gửi ${events.length} phím, nhưng phím không mang ký tự (key="Unidentified"). Đây là kiểu bàn phím ảo / IME của Android: ký tự thật chỉ chui vào ô đang được focus. Lúc quét con trỏ không nằm trong ô nên mã rơi mất — bấm vào ô rồi quét lại.`
-              : `Máy quét gửi ${events.length} phím nhưng không ký tự nào vào được ô. Nhiều khả năng con trỏ không nằm trong ô lúc quét — bấm vào ô rồi quét lại.`);
+            const textSignals = signals.filter(s => s.kind !== "paste").length;
+            setFlag(verdict, "bad", textSignals
+              ? `Có ${textSignals} sự kiện chữ tới ô nhưng ô vẫn rỗng. Xem nhật ký bên dưới để biết chữ bị nuốt ở đâu — gửi nguyên đoạn đó cho người dựng app.`
+              : `Máy quét bắn ra ${events.length} phím${ime ? ' rỗng (key="Unidentified")' : ""} nhưng KHÔNG có một sự kiện chữ nào tới ô: không input, không composition, không paste. Nghĩa là máy quét không thật sự nhập chữ vào trình duyệt — nhiều khả năng nó đang chạy chế độ Intent/broadcast của Android, gửi dữ liệu thẳng cho một app khác. Ở chế độ đó trang web không có cách nào lấy được mã. Phải vào app cấu hình của máy Honeywell đổi sang chế độ bàn phím (Keyboard Wedge / HID).`);
             return codes;
           }
           if (!text) {
@@ -259,7 +287,10 @@
         document.getElementById("reset").addEventListener("click", () => {
           box.value = "";
           events = [];
+          signals.length = 0;
+          startedAt.at = 0;
           finished = false;
+          bulkInsert = false;
           firstAt = lastAt = 0;
           valueElement.textContent = "chưa quét";
           valueElement.classList.add("empty");
@@ -285,6 +316,7 @@
           catch { window.prompt("Copy tay đoạn dưới:", report); }
         });
 
+        document.getElementById("build-stamp").textContent = BUILD;
         box.focus();
         refreshFocus();
       })();
