@@ -2203,8 +2203,12 @@ Error generating stack: `+y.message+`
             setStatus("", "");
             scheduleRefresh();
           } catch (error) {
-            showResult({ tone: "error", eyebrow: "Lỗi kết nối", sku, note: String(error?.message || error) });
-            setHint("Kiểm tra mạng rồi quét lại — chưa ghi gì vào bao.", "warn");
+            // Timeout phía client KHÔNG có nghĩa là server chưa ghi — lệnh vẫn có thể đã chạy xong.
+            // Nói chắc "chưa ghi gì" ở đây là nói liều, và người quét sẽ quét lại thành ra đếm gấp đôi.
+            // Đo thật ngày 19/09: một lệnh xoá báo timeout nhưng đã xoá xong trên database.
+            showResult({ tone: "error", eyebrow: "Lỗi kết nối", sku, note: `${String(error?.message || error)} — chưa rõ bao đã ghi hay chưa.` });
+            setHint("Xem danh sách bao bên phải để biết mã này đã vào bao chưa rồi hãy quét lại.", "warn");
+            loadList({ quiet: true });
           } finally {
             busy = false;
             submit.disabled = false;
@@ -2247,7 +2251,9 @@ Error generating stack: `+y.message+`
             setStatus(data.removed ? `Đã xoá bao số ${data.bagNo} (SKU ${sku}).` : `Bao số ${data.bagNo} còn ${data.quantity} mẫu.`, "ok");
             scheduleRefresh();
           } catch (error) {
-            setStatus(`Không sửa được bao: ${String(error?.message || error)}`, "error");
+            // Cùng lý do như lúc quét: timeout không chứng minh được là server chưa ghi.
+            setStatus(`Không rõ sửa được bao chưa: ${String(error?.message || error)}. Đang tải lại danh sách để đối chiếu.`, "error");
+            loadList({ quiet: true });
           } finally {
             busy = false;
             focusInput();
@@ -2257,12 +2263,31 @@ Error generating stack: `+y.message+`
         reloadButton.addEventListener("click", () => { setStatus("Đang tải lại…"); loadList(); });
 
         // Máy quét Honeywell gõ như bàn phím: mất focus là mất nguyên mã, nên kéo mọi phím lạc về ô SKU.
-        document.addEventListener("keydown", event => {
-          if (screen.hidden || !modal.hidden) return;
+        // Máy quét đi qua IME Android báo key="Unidentified" (hoặc "Process") với keyCode 0/229: ký tự
+        // thật KHÔNG nằm trong sự kiện phím, nó chỉ chui vào ô đang được focus. Lọc theo key.length === 1
+        // là bỏ sót đúng loại máy này — đo thật trên máy Honeywell ngày 19/09: 5 phím, tất cả Unidentified,
+        // ô nhập rỗng vì con trỏ nằm ngoài.
+        const typingElsewhere = () => {
           const active = document.activeElement;
-          if (active === input || (active && /^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName))) return;
-          if (event.key.length !== 1 || event.ctrlKey || event.altKey || event.metaKey) return;
+          return active === input || (active && /^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName));
+        };
+        document.addEventListener("keydown", event => {
+          if (screen.hidden || !modal.hidden || typingElsewhere()) return;
+          if (event.ctrlKey || event.altKey || event.metaKey) return;
+          const key = event.key || "";
+          if (key.length !== 1 && key !== "Unidentified" && key !== "Process") return;
           input.focus();
+        });
+
+        // Với máy quét kiểu IME, focus rơi ra ngoài là mất nguyên mã và không cứu lại được bằng cách nào.
+        // Giữ con trỏ nằm lì trong ô, trừ khi người dùng đang thật sự bấm một nút trong màn.
+        input.addEventListener("blur", () => {
+          setTimeout(() => {
+            if (screen.hidden || !modal.hidden) return;
+            const active = document.activeElement;
+            if (active && active !== document.body && screen.contains(active)) return;
+            input.focus();
+          }, 0);
         });
 
         // ---- Xuất .xlsx dựng từ đầu (không template), dùng lại bộ ghi zip của màn Inspection ----

@@ -162,8 +162,16 @@
           const codes = [...text].map(character => `${JSON.stringify(character)}=${character.codePointAt(0)}`);
           const aim = /^\]([A-Za-z])([0-9])/.exec(text);
           const onlyDigits = /^[0-9]+$/.test(text);
+          if (!text && events.length) {
+            // Phím có bắn ra nhưng ô rỗng: ký tự không đi theo sự kiện phím.
+            const ime = events.every(e => e.key === "Unidentified" || e.key === "Process" || e.key === "");
+            setFlag(verdict, "bad", ime
+              ? `Máy quét CÓ gửi ${events.length} phím, nhưng phím không mang ký tự (key="Unidentified"). Đây là kiểu bàn phím ảo / IME của Android: ký tự thật chỉ chui vào ô đang được focus. Lúc quét con trỏ không nằm trong ô nên mã rơi mất — bấm vào ô rồi quét lại.`
+              : `Máy quét gửi ${events.length} phím nhưng không ký tự nào vào được ô. Nhiều khả năng con trỏ không nằm trong ô lúc quét — bấm vào ô rồi quét lại.`);
+            return codes;
+          }
           if (!text) {
-            setFlag(verdict, "bad", "Máy quét không gửi ra ký tự nào. Nhiều khả năng nó đang ở chế độ khác (Bluetooth SPP, Intent/broadcast của Android) chứ không phải chế độ bàn phím HID.");
+            setFlag(verdict, "bad", "Máy quét không sinh ra sự kiện nào. Nhiều khả năng nó đang ở chế độ khác (Bluetooth SPP, Intent/broadcast của Android) chứ không phải chế độ bàn phím.");
             return codes;
           }
           if (aim) {
@@ -236,6 +244,16 @@
         };
         document.addEventListener("focusin", refreshFocus);
         document.addEventListener("focusout", () => setTimeout(refreshFocus, 0));
+
+        // Máy quét kiểu IME chỉ đưa ký tự vào ô đang focus, nên giữ con trỏ nằm lì trong ô.
+        box.addEventListener("blur", () => {
+          setTimeout(() => {
+            const active = document.activeElement;
+            if (active && active.tagName === "BUTTON") return;
+            box.focus();
+            refreshFocus();
+          }, 0);
+        });
         box.addEventListener("keydown", event => { if (event.key === "Enter") event.preventDefault(); });
 
         document.getElementById("reset").addEventListener("click", () => {
