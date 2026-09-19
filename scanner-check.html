@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#005F41" />
+    <title>Kiểm tra máy quét</title>
+    <style>
+      :root { color-scheme: dark; }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; min-height: 100%; background: #07110e; }
+      body {
+        padding: 14px 14px 40px;
+        color: #e7f1ed;
+        background:
+          radial-gradient(circle at 50% -10%, rgba(0, 95, 65, .34), transparent 34rem),
+          linear-gradient(145deg, #07110e 0%, #0b1714 52%, #101b18 100%);
+        font-family: Arial, Helvetica, sans-serif;
+      }
+      h1 { margin: 0 0 4px; font-size: 19px; letter-spacing: -.01em; }
+      .lead { margin: 0 0 14px; color: #8da59c; font-size: 12px; line-height: 1.5; }
+      .card { margin-bottom: 12px; padding: 14px; border: 1px solid rgba(145,186,171,.14); border-radius: 16px; background: rgba(15,31,26,.9); }
+      .card h2 { margin: 0 0 10px; color: #789087; font-size: 10px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; }
+      input {
+        width: 100%;
+        min-height: 56px;
+        padding: 12px 14px;
+        border: 1.5px solid rgba(145,186,171,.22);
+        border-radius: 13px;
+        outline: none;
+        color: #f1f8f5;
+        background: rgba(5,15,12,.75);
+        font: 800 19px/1 Arial, Helvetica, sans-serif;
+        letter-spacing: .04em;
+      }
+      input:focus { border-color: #20a97a; box-shadow: 0 0 0 3px rgba(0,95,65,.34); }
+      button {
+        width: 100%;
+        min-height: 48px;
+        margin-top: 9px;
+        border: 0;
+        border-radius: 999px;
+        color: #fff;
+        background: #005f41;
+        font: 800 14px/1 Arial, Helvetica, sans-serif;
+        cursor: pointer;
+      }
+      button.ghost { border: 1px solid rgba(145,186,171,.22); color: #9fb9b0; background: transparent; }
+      .focus-pill { display: inline-flex; align-items: center; gap: 7px; margin-top: 9px; padding: 5px 11px; border-radius: 999px; font-size: 11px; font-weight: 800; }
+      .focus-pill[data-ok="true"] { color: #35c993; background: rgba(0,95,65,.24); }
+      .focus-pill[data-ok="false"] { color: #e8a33d; background: rgba(120,80,10,.3); }
+      .value { margin: 0; color: #f5fbf8; font: 900 27px/1.25 Arial, Helvetica, sans-serif; letter-spacing: .02em; word-break: break-all; }
+      .value.empty { color: #5c736a; font-size: 15px; font-weight: 700; }
+      dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; margin: 0; font-size: 13px; }
+      dt { color: #8da59c; }
+      dd { margin: 0; color: #f1f8f5; font-weight: 700; word-break: break-all; }
+      .flag { display: block; margin-top: 9px; padding: 9px 11px; border-radius: 11px; font-size: 12.5px; font-weight: 700; line-height: 1.5; }
+      .flag[data-tone="ok"] { color: #35c993; background: rgba(0,95,65,.22); }
+      .flag[data-tone="warn"] { color: #e8a33d; background: rgba(120,80,10,.28); }
+      .flag[data-tone="bad"] { color: #ffaaaa; background: rgba(74,20,20,.45); }
+      pre { max-height: 260px; margin: 0; overflow: auto; color: #bcd8cd; font: 12px/1.55 Consolas, monospace; white-space: pre-wrap; word-break: break-all; }
+      .hint { margin: 8px 0 0; color: #8da59c; font-size: 11.5px; line-height: 1.55; }
+    </style>
+  </head>
+  <body>
+    <h1>Kiểm tra máy quét</h1>
+    <p class="lead">Bấm vào ô bên dưới rồi quét <b>một</b> mã QR trên hàng mẫu. Trang này chỉ đọc, không ghi gì vào bao.</p>
+
+    <div class="card">
+      <h2>1 · Quét vào đây</h2>
+      <input id="box" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Quét mã…" />
+      <span class="focus-pill" id="focus-pill" data-ok="true">Con trỏ đang ở trong ô</span>
+      <button class="ghost" id="reset" type="button">Xoá, quét lại</button>
+    </div>
+
+    <div class="card">
+      <h2>2 · Chuỗi máy quét gửi ra</h2>
+      <p class="value empty" id="value">chưa quét</p>
+      <dl>
+        <dt>Số ký tự</dt><dd id="len">—</dd>
+        <dt>Kết thúc bằng</dt><dd id="terminator">—</dd>
+        <dt>Thời gian gõ</dt><dd id="speed">—</dd>
+      </dl>
+      <span class="flag" id="verdict" data-tone="warn">Chưa có dữ liệu.</span>
+    </div>
+
+    <div class="card">
+      <h2>3 · Đối chiếu danh mục SKU</h2>
+      <span class="flag" id="lookup" data-tone="warn">Quét xong sẽ tự tra.</span>
+      <p class="hint">Tra thẳng bảng <code>SKU_Name</code> trên Supabase — đúng nguồn mà màn Sample dùng để báo inactive.</p>
+    </div>
+
+    <div class="card">
+      <h2>4 · Nhật ký phím thô</h2>
+      <pre id="log">Chưa có phím nào.</pre>
+      <button id="copy" type="button">Sao chép toàn bộ kết quả</button>
+      <p class="hint">Gửi đoạn này cho người dựng app là đủ để biết máy quét đang cấu hình sai chỗ nào.</p>
+    </div>
+
+    <script>
+      (() => {
+        const SUPABASE_URL = "https://ikzhitdqkoatlmkrxuuh.supabase.co";
+        const SUPABASE_KEY = "sb_publishable_mBl--Ep5nNxuC4Xvyi1gfg_SLGEcRhI";
+
+        const box = document.getElementById("box");
+        const focusPill = document.getElementById("focus-pill");
+        const valueElement = document.getElementById("value");
+        const lenElement = document.getElementById("len");
+        const terminatorElement = document.getElementById("terminator");
+        const speedElement = document.getElementById("speed");
+        const verdict = document.getElementById("verdict");
+        const lookup = document.getElementById("lookup");
+        const logElement = document.getElementById("log");
+
+        let events = [];
+        let firstAt = 0;
+        let lastAt = 0;
+        let idleTimer = 0;
+        let finished = false;
+        let bulkInsert = false;
+
+        const setFlag = (element, tone, text) => { element.dataset.tone = tone; element.textContent = text; };
+        const describeKey = key => key === " " ? "Space" : key === "" ? "(rỗng)" : key;
+
+        const renderLog = () => {
+          if (!events.length) { logElement.textContent = "Chưa có phím nào."; return; }
+          logElement.textContent = events
+            .map(e => `+${String(e.delta).padStart(4)}ms  key=${JSON.stringify(e.key)}  code=${e.code || "-"}  which=${e.which}`)
+            .join("\n");
+        };
+
+        // Bắt ở cấp document: nếu con trỏ rơi ra ngoài ô thì vẫn thấy được phím,
+        // và đó chính là một trong những lý do máy quét "không ăn".
+        document.addEventListener("keydown", event => {
+          const now = performance.now();
+          if (finished || !events.length) { events = []; finished = false; firstAt = now; }
+          events.push({
+            key: event.key,
+            code: event.code,
+            which: event.which || event.keyCode || 0,
+            delta: Math.round(now - (lastAt && !finished ? lastAt : now))
+          });
+          lastAt = now;
+          renderLog();
+          clearTimeout(idleTimer);
+          if (event.key === "Enter" || event.key === "Tab") { finish(event.key); return; }
+          idleTimer = setTimeout(() => finish(""), 400);
+        });
+
+        // Một số máy quét và IME Android nhét cả cụm chữ vào ô mà không sinh phím nào.
+        // Chỉ nghe keydown thì trang này đứng im đúng lúc cần chẩn đoán nhất.
+        box.addEventListener("input", () => {
+          const now = performance.now();
+          if (finished) { events = []; finished = false; firstAt = now; lastAt = 0; }
+          if (!firstAt) firstAt = now;
+          bulkInsert = events.length === 0;
+          clearTimeout(idleTimer);
+          idleTimer = setTimeout(() => finish(""), 400);
+        });
+
+        const analyse = (text, terminator) => {
+          const codes = [...text].map(character => `${JSON.stringify(character)}=${character.codePointAt(0)}`);
+          const aim = /^\]([A-Za-z])([0-9])/.exec(text);
+          const onlyDigits = /^[0-9]+$/.test(text);
+          if (!text) {
+            setFlag(verdict, "bad", "Máy quét không gửi ra ký tự nào. Nhiều khả năng nó đang ở chế độ khác (Bluetooth SPP, Intent/broadcast của Android) chứ không phải chế độ bàn phím HID.");
+            return codes;
+          }
+          if (aim) {
+            setFlag(verdict, "bad", `Máy quét bật AIM identifier: mã thật bị thêm tiền tố "${aim[0]}". Tắt mục AIM / Symbology ID trong cấu hình máy quét, hoặc tôi cắt tiền tố này trong app.`);
+          } else if (!terminator && bulkInsert) {
+            setFlag(verdict, "bad", "Cả chuỗi vào ô cùng lúc, không sinh phím nào, và không có Enter ở cuối. Máy quét đang chạy chế độ nhét cụm (IME / Intent của Android) chứ không phải bàn phím HID. App chờ Enter nên không có tín hiệu nào để xử lý.");
+          } else if (!terminator) {
+            setFlag(verdict, "bad", "Máy quét KHÔNG gửi Enter ở cuối. Chữ vào được ô nhưng app không có tín hiệu để xử lý — đây là lỗi hay gặp nhất. Bật Suffix = Enter (CR) trong cấu hình máy quét.");
+          } else if (terminator === "Tab") {
+            setFlag(verdict, "warn", "Máy quét kết thúc bằng Tab chứ không phải Enter. Đổi Suffix thành Enter (CR), hoặc tôi cho app nhận cả Tab.");
+          } else if (!onlyDigits) {
+            setFlag(verdict, "warn", "Có Enter ở cuối, nhưng chuỗi không phải toàn chữ số — nhiều khả năng mã QR chứa nhiều thông tin chứ không riêng SKU. Xem mục 3 và nhật ký để biết cần cắt phần nào.");
+          } else {
+            setFlag(verdict, "ok", "Máy quét gửi đúng: chuỗi toàn chữ số và kết thúc bằng Enter. Nếu app vẫn không nhận thì vấn đề nằm ở chỗ khác, gửi nhật ký này cho người dựng app.");
+          }
+          return codes;
+        };
+
+        const checkCatalog = async text => {
+          if (!text) { setFlag(lookup, "warn", "Không có chuỗi để tra."); return; }
+          setFlag(lookup, "warn", "Đang tra danh mục…");
+          const attempt = async value => {
+            const url = `${SUPABASE_URL}/rest/v1/SKU_Name?select=sku,product_name&sku=eq.${encodeURIComponent(value)}&limit=1`;
+            const response = await fetch(url, { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            return (await response.json())[0] || null;
+          };
+          try {
+            const exact = await attempt(text);
+            if (exact) {
+              setFlag(lookup, "ok", `Có trong danh mục: ${exact.product_name}`);
+              return;
+            }
+            const digits = (text.match(/[0-9]{6,}/g) || [])[0] || "";
+            if (digits && digits !== text) {
+              const inner = await attempt(digits);
+              if (inner) {
+                setFlag(lookup, "warn", `Nguyên chuỗi KHÔNG có trong danh mục, nhưng đoạn số "${digits}" bên trong thì có: ${inner.product_name}. Nghĩa là mã QR gói SKU kèm thứ khác — app cần cắt lấy đoạn số này.`);
+                return;
+              }
+            }
+            setFlag(lookup, "bad", "Không tìm thấy chuỗi này trong danh mục SKU_Name. Hoặc SKU đã ngừng Active, hoặc mã QR không chứa SKU.");
+          } catch (error) {
+            setFlag(lookup, "bad", `Không tra được danh mục: ${String(error?.message || error)}. Kiểm tra máy có mạng không.`);
+          }
+        };
+
+        function finish(terminator) {
+          if (finished) return;
+          finished = true;
+          clearTimeout(idleTimer);
+          const text = box.value;
+          valueElement.textContent = text || "(ô nhập rỗng)";
+          valueElement.classList.toggle("empty", !text);
+          lenElement.textContent = text ? `${text.length}` : "0";
+          terminatorElement.textContent = terminator ? describeKey(terminator) : "không có gì (máy quét không gửi Enter)";
+          const elapsed = lastAt && firstAt ? Math.round(lastAt - firstAt) : 0;
+          speedElement.textContent = events.length > 1
+            ? `${elapsed} ms cho ${events.length} phím`
+            : bulkInsert ? "cả cụm vào một lúc, không gõ từng phím" : "—";
+          const codes = analyse(text, terminator);
+          logElement.textContent += `\n\n--- chuỗi cuối ---\n${JSON.stringify(text)}\nKý tự: ${codes.join(" ")}\nKết thúc: ${terminator || "(không có)"}`;
+          checkCatalog(text);
+        }
+
+        const refreshFocus = () => {
+          const ok = document.activeElement === box;
+          focusPill.dataset.ok = String(ok);
+          focusPill.textContent = ok ? "Con trỏ đang ở trong ô" : "Con trỏ KHÔNG ở trong ô — bấm vào ô trước khi quét";
+        };
+        document.addEventListener("focusin", refreshFocus);
+        document.addEventListener("focusout", () => setTimeout(refreshFocus, 0));
+        box.addEventListener("keydown", event => { if (event.key === "Enter") event.preventDefault(); });
+
+        document.getElementById("reset").addEventListener("click", () => {
+          box.value = "";
+          events = [];
+          finished = false;
+          firstAt = lastAt = 0;
+          valueElement.textContent = "chưa quét";
+          valueElement.classList.add("empty");
+          lenElement.textContent = terminatorElement.textContent = speedElement.textContent = "—";
+          setFlag(verdict, "warn", "Chưa có dữ liệu.");
+          setFlag(lookup, "warn", "Quét xong sẽ tự tra.");
+          renderLog();
+          box.focus();
+        });
+
+        document.getElementById("copy").addEventListener("click", async () => {
+          const report = [
+            "KIEM TRA MAY QUET",
+            `Chuoi: ${JSON.stringify(box.value)}`,
+            `So ky tu: ${box.value.length}`,
+            `Ket thuc: ${terminatorElement.textContent}`,
+            `Nhan xet: ${verdict.textContent}`,
+            `Danh muc: ${lookup.textContent}`,
+            "",
+            logElement.textContent
+          ].join("\n");
+          try { await navigator.clipboard.writeText(report); document.getElementById("copy").textContent = "Đã sao chép"; }
+          catch { window.prompt("Copy tay đoạn dưới:", report); }
+        });
+
+        box.focus();
+        refreshFocus();
+      })();
+    </script>
+  </body>
+</html>

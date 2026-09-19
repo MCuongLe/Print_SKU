@@ -2136,12 +2136,42 @@ Error generating stack: `+y.message+`
         };
         const scheduleRefresh = () => { clearTimeout(refreshTimer); refreshTimer = setTimeout(() => loadList({ quiet: true }), 2500); };
 
+        // Không phải máy quét nào cũng gửi Enter ở cuối, và có máy nhét cả cụm qua IME Android
+        // mà không sinh phím nào. Chờ đúng Enter là chết với hai kiểu đó, nên tự chốt khi ô đứng
+        // yên sau một cụm nhập nhanh. Người gõ tay chậm hơn nhiều nên không bị chốt hụt giữa chừng.
+        const SCANNER_MAX_GAP = 60;    // ms giữa hai ký tự — nhanh hơn tốc độ gõ tay
+        const SCANNER_IDLE = 320;      // ms ô đứng yên thì coi như quét xong
+        const MIN_SCAN_LENGTH = 5;
+        let lastInputAt = 0;
+        let slowEdits = 0;
+        let autoSubmitTimer = 0;
+        const resetBurst = () => { clearTimeout(autoSubmitTimer); lastInputAt = 0; slowEdits = 0; };
+
+        // Máy quét hay được bật AIM identifier: mã thật bị thêm tiền tố kiểu "]Q0" hoặc "]C1".
+        // Ký tự điều khiển và zero-width cũng lọt vào theo cấu hình suffix của từng máy.
+        const AIM_LETTER = /[A-Za-z]/;
+        const AIM_DIGIT = /[0-9]/;
+        const cleanScan = value => {
+          let text = String(value || "");
+          // May quet bat AIM identifier se them tien to kieu "]Q0" / "]C1" truoc ma that.
+          if (text.length > 3 && text[0] === "]" && AIM_LETTER.test(text[1]) && AIM_DIGIT.test(text[2])) text = text.slice(3);
+          let out = "";
+          for (const character of text) {
+            const code = character.codePointAt(0);
+            // Bo ky tu dieu khien va ky tu vo hinh lot vao theo cau hinh suffix cua tung may.
+            if (code < 32 || code === 127 || (code >= 0x200b && code <= 0x200f) || code === 0xfeff) continue;
+            out += character;
+          }
+          return out.trim();
+        };
+
         const scan = async raw => {
-          const sku = String(raw || "").trim();
+          const sku = cleanScan(raw);
           if (!sku || busy) return;
           busy = true;
           submit.disabled = true;
           input.value = "";
+          resetBurst();
           setHint(`Đang kiểm tra ${sku}…`, "");
           try {
             const payload = await callRpc("sample_scan", { p_sku: sku });
@@ -2183,6 +2213,20 @@ Error generating stack: `+y.message+`
         };
 
         form.addEventListener("submit", event => { event.preventDefault(); scan(input.value); });
+
+        input.addEventListener("input", event => {
+          const now = performance.now();
+          const gap = lastInputAt ? now - lastInputAt : 0;
+          const bulk = String(event.data || "").length > 1 || event.inputType === "insertFromPaste";
+          if (!input.value) { resetBurst(); return; }
+          if (lastInputAt && gap > SCANNER_MAX_GAP && !bulk) slowEdits += 1;
+          lastInputAt = now;
+          clearTimeout(autoSubmitTimer);
+          if (!bulk && slowEdits > 1) return;
+          autoSubmitTimer = setTimeout(() => {
+            if (!busy && modal.hidden && cleanScan(input.value).length >= MIN_SCAN_LENGTH) form.requestSubmit();
+          }, SCANNER_IDLE);
+        });
 
         listElement.addEventListener("click", async event => {
           const button = event.target.closest("button[data-act]");
