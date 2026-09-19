@@ -1888,7 +1888,17 @@ Error generating stack: `+y.message+`
       .sample-result[data-tone="error"] { border-color: rgba(255,145,145,.35) !important; background: rgba(74,20,20,.42) !important; }
       .sample-result[data-tone="error"] .sample-result__eyebrow { color: #ffaaaa; }
       .sample-result[data-tone="error"] .sample-result__note { color: #ffaaaa; }
-      .sample-reload { margin-left: auto; font-size: 17px; }
+      .sample-reload { flex: 0 0 auto; font-size: 17px; }
+      .sample-kb { width: 100%; min-height: 40px; margin-top: 9px; border: 1px solid rgba(145,186,171,.22); border-radius: 999px; color: #9fb9b0; background: transparent; font: 700 12px/1 Arial, Helvetica, sans-serif; cursor: pointer; }
+      .sample-kb[aria-pressed="false"] { border-color: rgba(40,186,135,.4); color: #35c993; background: rgba(0,95,65,.16); }
+      .sample-head { display: flex; flex: 1; align-items: center; gap: 8px; min-width: 0; padding: 4px 0; border: 0; color: inherit; background: transparent; font: inherit; text-align: left; cursor: pointer; }
+      .sample-head__title { min-width: 0; overflow: hidden; color: #f2faf7; font-size: 18px; font-weight: 700; letter-spacing: -.01em; text-overflow: ellipsis; white-space: nowrap; }
+      .sample-chevron { margin-left: auto; color: #789087; font-size: 15px; transition: transform .18s ease; }
+      .sample-head[aria-expanded="true"] .sample-chevron { transform: rotate(180deg); }
+      /* .uid-panel__list dùng display:grid nên [hidden] mặc định không thắng được. */
+      .uid-panel__list[hidden] { display: none; }
+      .sample-panel[data-open="false"] { min-height: 0; }
+      .sample-panel[data-open="false"] .uid-summary { margin-top: 12px; }
       .sample-row { display: grid; grid-template-columns: 46px minmax(0, 1fr) 52px auto; align-items: center; gap: 10px; min-height: 56px; padding: 7px 10px; border: 1px solid rgba(145,186,171,.13); border-radius: 12px; background: rgba(5,15,12,.5); }
       .sample-row[data-hit="true"] { border-color: rgba(40,186,135,.55); background: rgba(0,95,65,.2); }
       .sample-row__no { display: grid; place-items: center; min-height: 34px; border-radius: 10px; color: #07231a; background: #35c993; font: 900 15px/1 Arial, Helvetica, sans-serif; }
@@ -1937,7 +1947,8 @@ Error generating stack: `+y.message+`
                 <input id="sample-sku" autocomplete="off" spellcheck="false" enterkeyhint="done" placeholder="Quét mã QR bằng máy Honeywell…" required>
                 <button class="uid-add__btn" id="sample-add" type="submit">Kiểm tra</button>
               </div>
-              <p class="uid-help" id="sample-hint" aria-live="polite">Máy quét gõ mã rồi tự Enter — con trỏ luôn nằm sẵn ở ô này.</p>
+              <button class="sample-kb" id="sample-keyboard" type="button" aria-pressed="true">Bàn phím ảo: đang ẩn</button>
+              <p class="uid-help" id="sample-hint" aria-live="polite">Con trỏ luôn nằm sẵn ở ô này — quét thẳng, không cần chạm. Nếu máy quét bỗng không nhập được nữa, thử bấm hiện lại bàn phím ảo.</p>
             </form>
             <div class="uid-card sample-result" id="sample-result" hidden>
               <span class="sample-result__eyebrow" id="sample-result-eyebrow"></span>
@@ -1948,11 +1959,14 @@ Error generating stack: `+y.message+`
             </div>
           </div>
           <div class="uid-col">
-            <section class="uid-card uid-panel" aria-labelledby="sample-list-title">
+            <section class="uid-card uid-panel sample-panel" data-open="false" aria-labelledby="sample-list-title">
               <div class="uid-panel__head">
-                <b class="uid-panel__num">2</b>
-                <h2 id="sample-list-title">Danh sách bao</h2>
-                <span class="uid-badge" id="sample-count">0</span>
+                <button class="sample-head" id="sample-list-toggle" type="button" aria-expanded="false" aria-controls="sample-list">
+                  <b class="uid-panel__num">2</b>
+                  <span class="sample-head__title" id="sample-list-title">Danh sách bao</span>
+                  <span class="uid-badge" id="sample-count">0</span>
+                  <span class="sample-chevron" aria-hidden="true">▾</span>
+                </button>
                 <button class="uid-row__icon sample-reload" id="sample-reload" type="button" title="Tải lại danh sách" aria-label="Tải lại danh sách">⟳</button>
               </div>
               <div class="uid-panel__list" id="sample-list"></div>
@@ -2261,6 +2275,50 @@ Error generating stack: `+y.message+`
         });
 
         reloadButton.addEventListener("click", () => { setStatus("Đang tải lại…"); loadList(); });
+
+        // Bàn phím ảo Android che mất màn hình khi quét. inputmode="none" giấu nó đi mà vẫn giữ ô
+        // ở trạng thái nhận chữ. Nhưng máy quét chế độ Keyboard gõ qua chính IME đó, nên nếu giấu
+        // bàn phím làm mất luôn đường nhập thì phải bật lại được ngay — vì vậy đây là nút, không
+        // phải hằng số. Trạng thái nhớ trong localStorage của từng máy.
+        const KEYBOARD_STORE = "sample-ban-phim";
+        const keyboardToggle = document.getElementById("sample-keyboard");
+        let keyboardHidden = true;
+        try { keyboardHidden = localStorage.getItem(KEYBOARD_STORE) !== "hien"; } catch (_) {}
+        const applyKeyboard = () => {
+          input.inputMode = keyboardHidden ? "none" : "text";
+          keyboardToggle.textContent = keyboardHidden ? "Bàn phím ảo: đang ẩn — bấm để hiện" : "Bàn phím ảo: đang hiện — bấm để ẩn";
+          keyboardToggle.setAttribute("aria-pressed", String(keyboardHidden));
+        };
+        keyboardToggle.addEventListener("click", () => {
+          keyboardHidden = !keyboardHidden;
+          try { localStorage.setItem(KEYBOARD_STORE, keyboardHidden ? "an" : "hien"); } catch (_) {}
+          applyKeyboard();
+          // Đổi inputmode chỉ ăn sau khi ô được focus lại.
+          input.blur();
+          setTimeout(() => input.focus(), 60);
+        });
+        applyKeyboard();
+
+        // Danh sách bao dạng thả: bấm đầu khung để mở, bấm lần nữa thu gọn.
+        // Số bao, tổng mẫu và nút xuất Excel vẫn nhìn thấy khi đang thu gọn.
+        const LIST_STORE = "sample-mo-danh-sach";
+        const listToggle = document.getElementById("sample-list-toggle");
+        const listPanel = listToggle.closest(".sample-panel");
+        let listOpen = false;
+        try { listOpen = localStorage.getItem(LIST_STORE) === "mo"; } catch (_) {}
+        const applyListOpen = () => {
+          listElement.hidden = !listOpen;
+          listPanel.dataset.open = String(listOpen);
+          listToggle.setAttribute("aria-expanded", String(listOpen));
+        };
+        listToggle.addEventListener("click", () => {
+          listOpen = !listOpen;
+          try { localStorage.setItem(LIST_STORE, listOpen ? "mo" : "dong"); } catch (_) {}
+          applyListOpen();
+          if (listOpen && lastHitSku) focusRow(lastHitSku);
+          focusInput();
+        });
+        applyListOpen();
 
         // Máy quét Honeywell gõ như bàn phím: mất focus là mất nguyên mã, nên kéo mọi phím lạc về ô SKU.
         // Máy quét đi qua IME Android báo key="Unidentified" (hoặc "Process") với keyCode 0/229: ký tự
