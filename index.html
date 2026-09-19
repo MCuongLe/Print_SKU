@@ -575,12 +575,12 @@ Error generating stack: `+y.message+`
         font-family: Arial, Helvetica, sans-serif;
       }
       .barcode-home[hidden] { display: none; }
-      .barcode-home__shell { width: min(1020px, 100%); text-align: center; }
+      .barcode-home__shell { width: min(1180px, 100%); text-align: center; }
       .barcode-home__mark { display: grid; place-items: center; width: 58px; height: 58px; margin: 0 auto 18px; border-radius: 18px; color: #fff; background: #005f41; box-shadow: 0 16px 38px rgba(0,95,65,.34); font-size: 23px; font-weight: 900; }
       .barcode-home h1 { margin: 0; color: #f5fbf8; font-size: clamp(34px, 8vw, 54px); letter-spacing: -.045em; }
       .barcode-home__lead { margin: 10px 0 28px; color: #91aaa1; font-size: 14px; }
-      .barcode-home__choices { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
-      @media (max-width: 900px) and (min-width: 621px) { .barcode-home__choices { grid-template-columns: 1fr 1fr; } }
+      .barcode-home__choices { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+      @media (max-width: 1080px) and (min-width: 621px) { .barcode-home__choices { grid-template-columns: 1fr 1fr; } }
       .barcode-choice { min-height: 180px; padding: 24px; border: 1px solid rgba(145,186,171,.18); border-radius: 24px; color: #e9f4f0; background: rgba(15,31,26,.9); box-shadow: 0 20px 50px rgba(0,0,0,.2); cursor: pointer; text-align: left; transition: transform .15s ease, border-color .15s ease, background .15s ease; }
       .barcode-choice:hover { transform: translateY(-3px); border-color: rgba(40,186,135,.65); background: #112a22; }
       .barcode-choice__icon { display: grid; place-items: center; width: 46px; height: 46px; margin-bottom: 24px; border-radius: 14px; color: transparent; background: rgba(0,95,65,.3); font-size: 0; }
@@ -755,6 +755,7 @@ Error generating stack: `+y.message+`
           <button class="barcode-choice" id="barcode-print-sku" type="button"><span class="barcode-choice__icon" aria-hidden="true">▥</span><strong>PRINT SKU</strong><span>Nhập SKU và tạo danh sách tem cần in.</span></button>
           <button class="barcode-choice" id="barcode-print-uid" type="button"><span class="barcode-choice__icon" aria-hidden="true">▥</span><strong>PRINT UID</strong><span>Nhập nhiều Group UID, mapping SKU rồi xác nhận in.</span></button>
           <button class="barcode-choice" id="barcode-inspection" type="button"><span class="barcode-choice__icon" aria-hidden="true">▥</span><strong>INSPECTION</strong><span>Import PO phụ liệu, xuất Biên bản kiểm tra đầu vào.</span></button>
+          <button class="barcode-choice" id="barcode-sample" type="button"><span class="barcode-choice__icon" aria-hidden="true">▥</span><strong>SAMPLE</strong><span>Quét SKU hàng mẫu, gom cùng SKU vào một bao.</span></button>
         </div>
       </main>
     </section>
@@ -921,6 +922,7 @@ Error generating stack: `+y.message+`
           const current = route();
           const uidOpen = current === "group-uid";
           const insOpen = current === "inspection";
+          const sampleOpen = current === "sample";
           const homeOpen = !current || current === "home";
           const adminOpen = /^admin(?:\/|$)/.test(current);
           clearInterval(printerTimer);
@@ -931,16 +933,20 @@ Error generating stack: `+y.message+`
           screen.hidden = !uidOpen;
           const insScreen = document.getElementById("ins-screen");
           if (insScreen) insScreen.hidden = !insOpen;
+          const sampleScreen = document.getElementById("sample-screen");
+          if (sampleScreen) sampleScreen.hidden = !sampleOpen;
           home.hidden = !homeOpen;
-          homeTrigger.hidden = homeOpen || uidOpen || adminOpen || insOpen;
+          homeTrigger.hidden = homeOpen || uidOpen || adminOpen || insOpen || sampleOpen;
           const root = document.getElementById("root");
-          if (root) root.inert = uidOpen || homeOpen || insOpen;
+          if (root) root.inert = uidOpen || homeOpen || insOpen || sampleOpen;
           if (uidOpen) setTimeout(() => groupUid.focus(), 50);
         };
         printSku.addEventListener("click", () => { location.hash = "#worker"; });
         printUid.addEventListener("click", () => { location.hash = "#group-uid"; });
         const inspectionChoice = document.getElementById("barcode-inspection");
         if (inspectionChoice) inspectionChoice.addEventListener("click", () => { location.hash = "#inspection"; });
+        const sampleChoice = document.getElementById("barcode-sample");
+        if (sampleChoice) sampleChoice.addEventListener("click", () => { location.hash = "#sample"; });
         homeTrigger.addEventListener("click", () => { location.hash = "#home"; });
         back.addEventListener("click", () => { location.hash = "#home"; });
         window.addEventListener("hashchange", renderRoute);
@@ -1781,6 +1787,7 @@ Error generating stack: `+y.message+`
           for (const chunk of chunks) { out.set(chunk, cursor); cursor += chunk.length; }
           return out;
         };
+        window.PrintSkuZip.buildZip = buildZip;
 
         exportButton.addEventListener("click", async () => {
           if (!items.length) return;
@@ -1866,6 +1873,431 @@ Error generating stack: `+y.message+`
         // Màn Inspection nằm sau script routing của PRINT UID; nếu người dùng F5 thẳng vào #inspection
         // thì lần renderRoute đầu tiên chưa thấy element này. Kích hoạt lại routing một lần khi đã sẵn sàng.
         if (location.hash.replace(/^#/, "").split("&")[0] === "inspection") window.dispatchEvent(new HashChangeEvent("hashchange"));
+      })();
+    </script>
+    <style id="sample-theme">
+      .sample-result { padding: 18px; text-align: center; }
+      .sample-result[hidden] { display: none; }
+      .sample-result__eyebrow { display: block; color: #789087; font-size: 10px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; }
+      .sample-result__no { display: block; margin: 6px 0 0; color: #35c993; font: 900 54px/1 Arial, Helvetica, sans-serif; letter-spacing: -.03em; }
+      .sample-result__no[hidden] { display: none; }
+      .sample-result__sku { margin: 9px 0 0; color: #f2faf7; font: 900 18px/1.3 Arial, Helvetica, sans-serif; letter-spacing: .02em; word-break: break-all; }
+      .sample-result__name { margin: 5px 0 0; color: #9ab0a8; font-size: 13px; line-height: 1.45; }
+      .sample-result__note { margin: 10px 0 0; color: #b8cbc4; font-size: 13px; font-weight: 700; line-height: 1.5; }
+      .sample-result[data-tone="ok"] { border-color: rgba(40,186,135,.42) !important; background: rgba(0,95,65,.18) !important; }
+      .sample-result[data-tone="error"] { border-color: rgba(255,145,145,.35) !important; background: rgba(74,20,20,.42) !important; }
+      .sample-result[data-tone="error"] .sample-result__eyebrow { color: #ffaaaa; }
+      .sample-result[data-tone="error"] .sample-result__note { color: #ffaaaa; }
+      .sample-reload { margin-left: auto; font-size: 17px; }
+      .sample-row { display: grid; grid-template-columns: 46px minmax(0, 1fr) 52px auto; align-items: center; gap: 10px; min-height: 56px; padding: 7px 10px; border: 1px solid rgba(145,186,171,.13); border-radius: 12px; background: rgba(5,15,12,.5); }
+      .sample-row[data-hit="true"] { border-color: rgba(40,186,135,.55); background: rgba(0,95,65,.2); }
+      .sample-row__no { display: grid; place-items: center; min-height: 34px; border-radius: 10px; color: #07231a; background: #35c993; font: 900 15px/1 Arial, Helvetica, sans-serif; }
+      .sample-row__body { display: grid; gap: 3px; min-width: 0; }
+      .sample-row__body b { overflow: hidden; color: #f2faf7; font: 900 13px/1.3 Arial, Helvetica, sans-serif; text-overflow: ellipsis; white-space: nowrap; }
+      .sample-row__body span { overflow: hidden; color: #9ab0a8; font-size: 11px; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
+      .sample-row__qty { display: grid; place-items: center; min-height: 34px; padding: 0 7px; border-radius: 999px; color: #dceae5; background: rgba(255,255,255,.07); font: 900 14px/1 Arial, Helvetica, sans-serif; }
+      .sample-tools { display: flex; gap: 6px; }
+      .sample-modal { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; padding: 20px; background: rgba(4,12,9,.92); backdrop-filter: blur(6px); font-family: Arial, Helvetica, sans-serif; }
+      .sample-modal[hidden] { display: none; }
+      .sample-modal__card { box-sizing: border-box; width: min(100%, 430px); padding: 28px 24px; border: 1px solid rgba(40,186,135,.42); border-radius: 24px; color: #e7f1ed; background: rgba(15,31,26,.98); box-shadow: 0 30px 80px rgba(0,0,0,.5); text-align: center; }
+      .sample-modal__eyebrow { display: block; color: #35c993; font-size: 11px; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; }
+      .sample-modal__no { display: block; margin: 8px 0 0; color: #f5fbf8; font: 900 82px/1 Arial, Helvetica, sans-serif; letter-spacing: -.045em; }
+      .sample-modal__sku { margin: 12px 0 0; color: #f2faf7; font: 900 19px/1.3 Arial, Helvetica, sans-serif; word-break: break-all; }
+      .sample-modal__name { margin: 5px 0 0; color: #9ab0a8; font-size: 13px; line-height: 1.45; }
+      .sample-modal__lead { margin: 17px 0 18px; color: #b8cbc4; font-size: 13px; line-height: 1.55; }
+      .sample-modal__ok { width: 100%; min-height: 52px; border: 0; border-radius: 999px; color: #fff; background: #005f41; font: 900 16px/1 Arial, Helvetica, sans-serif; cursor: pointer; }
+      .sample-modal__ok:hover { background: #087b58; }
+      .sample-modal__ok:focus-visible { outline: 3px solid #35c993; outline-offset: 2px; }
+      @media (max-width: 620px) {
+        .sample-row { grid-template-columns: 40px minmax(0, 1fr) 48px; }
+        .sample-row__no { grid-row: 1; grid-column: 1; }
+        .sample-row__body { grid-row: 1; grid-column: 2; }
+        .sample-row__qty { grid-row: 1; grid-column: 3; }
+        .sample-tools { grid-row: 2; grid-column: 2 / -1; justify-content: flex-end; }
+        .sample-modal__no { font-size: 64px; }
+        .sample-result__no { font-size: 46px; }
+      }
+    </style>
+    <section class="uid-screen" id="sample-screen" aria-labelledby="sample-title" hidden>
+      <header class="uid-topbar">
+        <div class="uid-topbar__inner">
+          <span class="uid-topbar__mark" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7.5 4.27 9 5.15"></path><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"></path><path d="m3.3 7 8.7 5 8.7-5"></path><path d="M12 22V12"></path></svg></span>
+          <div class="uid-topbar__name"><h1 id="sample-title">SAMPLE</h1><span>Gom hàng mẫu theo SKU · Phiên bản 1.1</span></div>
+          <button class="uid-back" id="sample-back" type="button">← WH-MATERIAL</button>
+        </div>
+      </header>
+      <main class="uid-shell">
+        <p class="uid-status" id="sample-status" aria-live="polite"></p>
+        <div class="uid-layout">
+          <div class="uid-col">
+            <form class="uid-card uid-add" id="sample-form" novalidate>
+              <div class="uid-panel__head"><b class="uid-panel__num">1</b><h2>Quét SKU hàng mẫu</h2></div>
+              <label class="uid-add__label" for="sample-sku">Mã SKU</label>
+              <div class="uid-add__row">
+                <input id="sample-sku" autocomplete="off" spellcheck="false" enterkeyhint="done" placeholder="Quét mã QR bằng máy Honeywell…" required>
+                <button class="uid-add__btn" id="sample-add" type="submit">Kiểm tra</button>
+              </div>
+              <p class="uid-help" id="sample-hint" aria-live="polite">Máy quét gõ mã rồi tự Enter — con trỏ luôn nằm sẵn ở ô này.</p>
+            </form>
+            <div class="uid-card sample-result" id="sample-result" hidden>
+              <span class="sample-result__eyebrow" id="sample-result-eyebrow"></span>
+              <strong class="sample-result__no" id="sample-result-no" hidden></strong>
+              <p class="sample-result__sku" id="sample-result-sku"></p>
+              <p class="sample-result__name" id="sample-result-name"></p>
+              <p class="sample-result__note" id="sample-result-note"></p>
+            </div>
+          </div>
+          <div class="uid-col">
+            <section class="uid-card uid-panel" aria-labelledby="sample-list-title">
+              <div class="uid-panel__head">
+                <b class="uid-panel__num">2</b>
+                <h2 id="sample-list-title">Danh sách bao</h2>
+                <span class="uid-badge" id="sample-count">0</span>
+                <button class="uid-row__icon sample-reload" id="sample-reload" type="button" title="Tải lại danh sách" aria-label="Tải lại danh sách">⟳</button>
+              </div>
+              <div class="uid-panel__list" id="sample-list"></div>
+              <div class="uid-summary">
+                <div class="uid-summary__numbers"><span>Số bao: <strong id="sample-total-bags">0</strong></span><span>Tổng mẫu: <strong id="sample-total-qty">0</strong></span></div>
+                <button class="uid-submit" id="sample-export" type="button" disabled>Xuất Excel theo dõi (.xlsx)</button>
+              </div>
+            </section>
+          </div>
+        </div>
+      </main>
+    </section>
+    <div class="sample-modal" id="sample-modal" role="dialog" aria-modal="true" aria-labelledby="sample-modal-title" hidden>
+      <div class="sample-modal__card">
+        <span class="sample-modal__eyebrow" id="sample-modal-title">Bao mới</span>
+        <strong class="sample-modal__no" id="sample-modal-no">1</strong>
+        <p class="sample-modal__sku" id="sample-modal-sku"></p>
+        <p class="sample-modal__name" id="sample-modal-name"></p>
+        <p class="sample-modal__lead">Ghi số bao này lên bao, bỏ mẫu vào rồi bấm Xác nhận để quét tiếp.</p>
+        <button class="sample-modal__ok" id="sample-modal-ok" type="button">Xác nhận</button>
+      </div>
+    </div>
+    <script>
+      (() => {
+        const screen = document.getElementById("sample-screen");
+        const back = document.getElementById("sample-back");
+        const form = document.getElementById("sample-form");
+        const input = document.getElementById("sample-sku");
+        const submit = document.getElementById("sample-add");
+        const hint = document.getElementById("sample-hint");
+        const status = document.getElementById("sample-status");
+        const result = document.getElementById("sample-result");
+        const resultEyebrow = document.getElementById("sample-result-eyebrow");
+        const resultNo = document.getElementById("sample-result-no");
+        const resultSku = document.getElementById("sample-result-sku");
+        const resultName = document.getElementById("sample-result-name");
+        const resultNote = document.getElementById("sample-result-note");
+        const listElement = document.getElementById("sample-list");
+        const countBadge = document.getElementById("sample-count");
+        const totalBagsElement = document.getElementById("sample-total-bags");
+        const totalQtyElement = document.getElementById("sample-total-qty");
+        const exportButton = document.getElementById("sample-export");
+        const reloadButton = document.getElementById("sample-reload");
+        const modal = document.getElementById("sample-modal");
+        const modalNo = document.getElementById("sample-modal-no");
+        const modalSku = document.getElementById("sample-modal-sku");
+        const modalName = document.getElementById("sample-modal-name");
+        const modalOk = document.getElementById("sample-modal-ok");
+
+        const names = new Map();
+        let bags = [];
+        let lastHitSku = "";
+        let busy = false;
+        let refreshTimer = 0;
+
+        const setStatus = (message, tone = "") => { status.textContent = message; status.dataset.tone = tone; };
+        const setHint = (message, tone = "") => { hint.textContent = message; hint.dataset.tone = tone; };
+        const escapeHtml = value => String(value ?? "").replace(/[&<>"']/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]);
+        const route = () => location.hash.replace(/^#/, "").split("&")[0];
+
+        // ---- Supabase: bảng sample_bags chỉ mở qua RPC, giống hàng đợi in ----
+        const bridge = () => window.PrintSkuQueue;
+        const callRpc = async (name, body) => {
+          const queue = bridge();
+          const response = await fetch(`${queue.supabaseUrl}/rest/v1/rpc/${name}`, {
+            method: "POST",
+            headers: { apikey: queue.publishableKey, Authorization: `Bearer ${queue.publishableKey}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ p_access_token: queue.accessToken(), ...body }),
+            signal: AbortSignal.timeout(15000)
+          });
+          const payload = await response.json().catch(() => null);
+          if (!response.ok || !payload) throw new Error(payload?.message || `Supabase HTTP ${response.status}`);
+          return payload;
+        };
+
+        // Tên sản phẩm chỉ để xem và để xuất file — bảng bao không lưu tên, luôn tra lại từ SKU_Name.
+        const fetchNames = async skus => {
+          const missing = [...new Set(skus.map(value => String(value || "").trim()).filter(value => value && !names.has(value)))];
+          if (!missing.length) return;
+          const queue = bridge();
+          for (let index = 0; index < missing.length; index += 80) {
+            const chunk = missing.slice(index, index + 80);
+            const url = `${queue.supabaseUrl}/rest/v1/SKU_Name?select=sku,product_name&sku=in.(${chunk.map(encodeURIComponent).join(",")})`;
+            const response = await fetch(url, { headers: { apikey: queue.publishableKey, Authorization: `Bearer ${queue.publishableKey}` }, signal: AbortSignal.timeout(12000) });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const rows = await response.json();
+            for (const value of chunk) names.set(value, "");
+            for (const row of rows) names.set(String(row.sku), String(row.product_name || ""));
+          }
+        };
+
+        const totalQuantity = () => bags.reduce((sum, bag) => sum + (Number(bag.quantity) || 0), 0);
+
+        const render = () => {
+          countBadge.textContent = String(bags.length);
+          totalBagsElement.textContent = String(bags.length);
+          totalQtyElement.textContent = String(totalQuantity());
+          exportButton.disabled = !bags.length;
+          if (!bags.length) {
+            listElement.innerHTML = '<div class="uid-empty">Chưa có bao nào.<br>Quét SKU đầu tiên để mở bao số 1.</div>';
+            return;
+          }
+          listElement.innerHTML = bags.map(bag => {
+            const name = names.get(bag.sku) || "";
+            return `<article class="sample-row" data-sku="${escapeHtml(bag.sku)}" data-hit="${bag.sku === lastHitSku}">
+              <span class="sample-row__no" title="Bao số ${escapeHtml(bag.bagNo)}">${escapeHtml(bag.bagNo)}</span>
+              <div class="sample-row__body"><b title="${escapeHtml(bag.sku)}">${escapeHtml(bag.sku)}</b><span title="${escapeHtml(name)}">${escapeHtml(name || "—")}</span></div>
+              <span class="sample-row__qty" title="Số mẫu trong bao">${escapeHtml(bag.quantity)}</span>
+              <div class="sample-tools">
+                <button class="uid-row__icon" type="button" data-act="minus" data-sku="${escapeHtml(bag.sku)}" title="Bớt 1 mẫu" aria-label="Bớt 1 mẫu">−</button>
+                <button class="uid-row__icon uid-row__icon--remove" type="button" data-act="remove" data-sku="${escapeHtml(bag.sku)}" title="Xoá hẳn bao" aria-label="Xoá hẳn bao">×</button>
+              </div>
+            </article>`;
+          }).join("");
+        };
+
+        const focusRow = sku => {
+          const row = listElement.querySelector(`.sample-row[data-sku="${CSS.escape(sku)}"]`);
+          if (row) row.scrollIntoView({ block: "nearest" });
+        };
+
+        const focusInput = () => { if (!screen.hidden && modal.hidden) setTimeout(() => input.focus(), 30); };
+
+        const applyLocal = data => {
+          const sku = String(data.sku || "");
+          const index = bags.findIndex(bag => bag.sku === sku);
+          if (data.removed || Number(data.quantity) <= 0) {
+            if (index >= 0) bags.splice(index, 1);
+            return;
+          }
+          const row = {
+            bagNo: Number(data.bagNo) || 0,
+            sku,
+            quantity: Number(data.quantity) || 0,
+            createdAt: data.createdAt || (index >= 0 ? bags[index].createdAt : ""),
+            updatedAt: data.updatedAt || ""
+          };
+          if (index >= 0) bags[index] = row;
+          else { bags.push(row); bags.sort((a, b) => a.bagNo - b.bagNo); }
+        };
+
+        const showResult = ({ tone, eyebrow, no = "", sku = "", name = "", note = "" }) => {
+          result.hidden = false;
+          result.dataset.tone = tone;
+          resultEyebrow.textContent = eyebrow;
+          resultNo.hidden = no === "";
+          resultNo.textContent = no === "" ? "" : String(no);
+          resultSku.textContent = sku;
+          resultName.textContent = name;
+          resultNote.textContent = note;
+        };
+
+        const openModal = (bagNo, sku, name) => {
+          modalNo.textContent = String(bagNo);
+          modalSku.textContent = sku;
+          modalName.textContent = name || "";
+          modal.hidden = false;
+          setTimeout(() => modalOk.focus(), 30);
+        };
+        const closeModal = () => { modal.hidden = true; focusInput(); };
+        modalOk.addEventListener("click", closeModal);
+        modal.addEventListener("keydown", event => { if (event.key === "Escape") { event.preventDefault(); closeModal(); } });
+
+        const loadList = async ({ quiet = false } = {}) => {
+          try {
+            const payload = await callRpc("sample_list", {});
+            if (!payload.ok) throw new Error(payload.error?.message || "không đọc được danh sách bao");
+            bags = (payload.data?.bags || []).map(bag => ({
+              bagNo: Number(bag.bagNo) || 0,
+              sku: String(bag.sku || ""),
+              quantity: Number(bag.quantity) || 0,
+              createdAt: bag.createdAt || "",
+              updatedAt: bag.updatedAt || ""
+            }));
+            await fetchNames(bags.map(bag => bag.sku)).catch(() => {});
+            render();
+            if (!quiet) setStatus(bags.length ? `Đang có ${bags.length} bao · ${totalQuantity()} mẫu.` : "Chưa có bao nào — quét SKU đầu tiên để mở bao số 1.", "");
+          } catch (error) {
+            if (!quiet) setStatus(`Không đọc được danh sách bao: ${String(error?.message || error)}`, "error");
+          }
+        };
+        const scheduleRefresh = () => { clearTimeout(refreshTimer); refreshTimer = setTimeout(() => loadList({ quiet: true }), 2500); };
+
+        const scan = async raw => {
+          const sku = String(raw || "").trim();
+          if (!sku || busy) return;
+          busy = true;
+          submit.disabled = true;
+          input.value = "";
+          setHint(`Đang kiểm tra ${sku}…`, "");
+          try {
+            const payload = await callRpc("sample_scan", { p_sku: sku });
+            if (!payload.ok) {
+              if (payload.error?.code === "SKU_INACTIVE") {
+                showResult({ tone: "error", eyebrow: "SKU inactive", sku, note: "SKU này inactive — không có trong database SKU tổng. Không mở bao." });
+                setHint("Không mở bao cho SKU inactive.", "warn");
+              } else {
+                showResult({ tone: "error", eyebrow: "Không ghi được", sku, note: payload.error?.message || "Không rõ lỗi" });
+                setHint("", "");
+              }
+              return;
+            }
+            const data = payload.data || {};
+            applyLocal(data);
+            lastHitSku = sku;
+            await fetchNames([sku]).catch(() => {});
+            const name = names.get(sku) || "";
+            render();
+            focusRow(sku);
+            if (data.created) {
+              showResult({ tone: "ok", eyebrow: "Bao mới", no: data.bagNo, sku, name, note: "Đã mở bao mới cho SKU này." });
+              setHint("Ghi số bao lên bao rồi bấm Xác nhận để quét tiếp.", "ok");
+              openModal(data.bagNo, sku, name);
+            } else {
+              showResult({ tone: "ok", eyebrow: "SKU này đã có bao", no: data.bagNo, sku, name, note: `Bỏ mẫu vào bao số ${data.bagNo} — bao đang có ${data.quantity} mẫu.` });
+              setHint(`SKU này đã có bao số ${data.bagNo}.`, "ok");
+            }
+            setStatus("", "");
+            scheduleRefresh();
+          } catch (error) {
+            showResult({ tone: "error", eyebrow: "Lỗi kết nối", sku, note: String(error?.message || error) });
+            setHint("Kiểm tra mạng rồi quét lại — chưa ghi gì vào bao.", "warn");
+          } finally {
+            busy = false;
+            submit.disabled = false;
+            focusInput();
+          }
+        };
+
+        form.addEventListener("submit", event => { event.preventDefault(); scan(input.value); });
+
+        listElement.addEventListener("click", async event => {
+          const button = event.target.closest("button[data-act]");
+          if (!button || busy) return;
+          const sku = button.dataset.sku || "";
+          const remove = button.dataset.act === "remove";
+          if (remove && !window.confirm(`Xoá hẳn bao của SKU ${sku}?`)) return;
+          busy = true;
+          try {
+            const payload = await callRpc(remove ? "sample_delete" : "sample_decrement", { p_sku: sku });
+            if (!payload.ok) { setStatus(payload.error?.message || "Không sửa được bao", "error"); return; }
+            const data = payload.data || {};
+            applyLocal(data);
+            if (data.removed && lastHitSku === sku) lastHitSku = "";
+            // Thẻ kết quả của lần quét trước giữ số mẫu cũ, sửa tay xong là nó nói sai — ẩn đi.
+            if (resultSku.textContent === sku) result.hidden = true;
+            render();
+            setStatus(data.removed ? `Đã xoá bao số ${data.bagNo} (SKU ${sku}).` : `Bao số ${data.bagNo} còn ${data.quantity} mẫu.`, "ok");
+            scheduleRefresh();
+          } catch (error) {
+            setStatus(`Không sửa được bao: ${String(error?.message || error)}`, "error");
+          } finally {
+            busy = false;
+            focusInput();
+          }
+        });
+
+        reloadButton.addEventListener("click", () => { setStatus("Đang tải lại…"); loadList(); });
+
+        // Máy quét Honeywell gõ như bàn phím: mất focus là mất nguyên mã, nên kéo mọi phím lạc về ô SKU.
+        document.addEventListener("keydown", event => {
+          if (screen.hidden || !modal.hidden) return;
+          const active = document.activeElement;
+          if (active === input || (active && /^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName))) return;
+          if (event.key.length !== 1 || event.ctrlKey || event.altKey || event.metaKey) return;
+          input.focus();
+        });
+
+        // ---- Xuất .xlsx dựng từ đầu (không template), dùng lại bộ ghi zip của màn Inspection ----
+        const escapeXml = value => String(value ?? "").replace(/[&<>"']/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]);
+        const columnName = index => { let number = index + 1, out = ""; while (number > 0) { const rest = (number - 1) % 26; out = String.fromCharCode(65 + rest) + out; number = Math.floor((number - 1) / 26); } return out; };
+        const cellXml = (ref, value, style) => {
+          const styleAttr = style ? ` s="${style}"` : "";
+          if (typeof value === "number" && Number.isFinite(value)) return `<c r="${ref}"${styleAttr}><v>${value}</v></c>`;
+          const text = String(value ?? "");
+          if (!text) return `<c r="${ref}"${styleAttr}/>`;
+          return `<c r="${ref}"${styleAttr} t="inlineStr"><is><t xml:space="preserve">${escapeXml(text)}</t></is></c>`;
+        };
+        const buildWorkbook = rows => {
+          const sheet = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><sheetFormatPr defaultRowHeight="15"/><cols><col min="1" max="1" width="11" customWidth="1"/><col min="2" max="2" width="16" customWidth="1"/><col min="3" max="3" width="54" customWidth="1"/><col min="4" max="4" width="11" customWidth="1"/><col min="5" max="6" width="19" customWidth="1"/></cols><sheetData>${rows.map((cells, rowIndex) => `<row r="${rowIndex + 1}">${cells.map((cell, columnIndex) => cellXml(columnName(columnIndex) + (rowIndex + 1), cell && cell.v, cell && cell.s)).join("")}</row>`).join("")}</sheetData></worksheet>`;
+          const files = [
+            { name: "[Content_Types].xml", xml: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>' },
+            { name: "_rels/.rels", xml: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>' },
+            { name: "xl/workbook.xml", xml: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Bao mau" sheetId="1" r:id="rId1"/></sheets></workbook>' },
+            { name: "xl/_rels/workbook.xml.rels", xml: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>' },
+            { name: "xl/styles.xml", xml: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Arial"/></font><font><b/><sz val="11"/><name val="Arial"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs></styleSheet>' },
+            { name: "xl/worksheets/sheet1.xml", xml: sheet }
+          ];
+          const encoder = new TextEncoder();
+          return window.PrintSkuZip.buildZip(files.map(file => ({ name: file.name, data: encoder.encode(file.xml) })));
+        };
+
+        const twoDigits = value => String(value).padStart(2, "0");
+        const stamp = value => {
+          const date = value ? new Date(value) : null;
+          if (!date || Number.isNaN(date.getTime())) return "";
+          return `${twoDigits(date.getDate())}/${twoDigits(date.getMonth() + 1)}/${date.getFullYear()} ${twoDigits(date.getHours())}:${twoDigits(date.getMinutes())}`;
+        };
+
+        exportButton.addEventListener("click", async () => {
+          if (!bags.length) return;
+          exportButton.disabled = true;
+          setStatus("Đang tạo file Excel…");
+          try {
+            await fetchNames(bags.map(bag => bag.sku)).catch(() => {});
+            const header = ["STT bao", "SKU", "Tên sản phẩm", "Số lượng", "Mở bao lúc", "Cập nhật lúc"].map(value => ({ v: value, s: 1 }));
+            const body = bags.map(bag => [
+              { v: bag.bagNo },
+              { v: bag.sku },
+              { v: names.get(bag.sku) || "" },
+              { v: bag.quantity },
+              { v: stamp(bag.createdAt) },
+              { v: stamp(bag.updatedAt) }
+            ]);
+            const footer = [{ v: "TỔNG", s: 1 }, null, { v: `${bags.length} bao`, s: 1 }, { v: totalQuantity(), s: 1 }, null, null];
+            const bytes = buildWorkbook([header, ...body, footer]);
+            const now = new Date();
+            const blob = new Blob([bytes], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = `Sample_Bao_${now.getFullYear()}${twoDigits(now.getMonth() + 1)}${twoDigits(now.getDate())}-${twoDigits(now.getHours())}${twoDigits(now.getMinutes())}.xlsx`;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            setTimeout(() => URL.revokeObjectURL(link.href), 10000);
+            setStatus(`Đã xuất ${bags.length} bao · ${totalQuantity()} mẫu.`, "ok");
+          } catch (error) {
+            setStatus(`Không xuất được file: ${String(error?.message || error)}`, "error");
+          } finally {
+            exportButton.disabled = !bags.length;
+          }
+        });
+
+        back.addEventListener("click", () => { location.hash = "#home"; });
+        const onRoute = () => {
+          if (route() !== "sample") { clearTimeout(refreshTimer); return; }
+          loadList();
+          focusInput();
+        };
+        window.addEventListener("hashchange", onRoute);
+        render();
+
+        // Cùng lý do như màn Inspection: element này nằm sau script routing, F5 thẳng vào #sample
+        // thì lần renderRoute đầu tiên chưa thấy nó — kích hoạt lại routing một lần khi đã sẵn sàng.
+        if (route() === "sample") window.dispatchEvent(new HashChangeEvent("hashchange"));
       })();
     </script>
     <section class="admin-auth" id="admin-auth" role="dialog" aria-modal="true" aria-labelledby="admin-auth-title" hidden>
