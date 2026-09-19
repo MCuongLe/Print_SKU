@@ -13,3 +13,13 @@ __pycache__/
 # Local secrets
 .env
 .env.*
+
+# Cấu hình chạy cục bộ (launch.json chứa đường dẫn tuyệt đối của từng máy)
+.claude/
+
+# Đoạn JS sinh ra bởi refresh_skus.py snippet — chạy lại lúc nào cũng có
+sku-refresh-snippet.js
+
+# Export SKU tải về gốc repo: dữ liệu SKU thật, không được lên Git
+/*.xlsx
+/*.xls
