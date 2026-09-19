@@ -142,6 +142,11 @@ def run_query(ref: str, token: str, sql: str, timeout: int) -> object:
 
 
 def main() -> int:
+    # Keep Vietnamese output valid in Windows consoles and redirected reports.
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", errors="backslashreplace")
+
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("sql_file", type=Path, help="đường dẫn file .sql cần chạy")
     parser.add_argument("--project-ref", default="", help="ghi đè project ref lấy từ SUPABASE_URL")
