@@ -753,7 +753,7 @@ Error generating stack: `+y.message+`
         <p class="barcode-home__lead">Chọn chức năng cần dùng</p>
         <div class="barcode-home__choices">
           <button class="barcode-choice" id="barcode-print-sku" type="button"><span class="barcode-choice__icon" aria-hidden="true">▥</span><strong>PRINT SKU</strong><span>Nhập SKU và tạo danh sách tem cần in.</span></button>
-          <button class="barcode-choice" id="barcode-print-uid" type="button"><span class="barcode-choice__icon" aria-hidden="true">▥</span><strong>PRINT UID</strong><span>Nhập nhiều Group UID, mapping SKU rồi xác nhận in.</span></button>
+          <button class="barcode-choice" id="barcode-print-uid" type="button"><span class="barcode-choice__icon" aria-hidden="true">▥</span><strong>PRINT UID</strong><span>Nhập Group UID, tự tra thông tin tem rồi xác nhận in.</span></button>
           <button class="barcode-choice" id="barcode-inspection" type="button"><span class="barcode-choice__icon" aria-hidden="true">▥</span><strong>INSPECTION</strong><span>Import PO phụ liệu, xuất Biên bản kiểm tra đầu vào.</span></button>
           <button class="barcode-choice" id="barcode-sample" type="button"><span class="barcode-choice__icon" aria-hidden="true">▥</span><strong>SAMPLE</strong><span>Quét SKU hàng mẫu, gom cùng SKU vào một bao.</span></button>
         </div>
@@ -784,7 +784,7 @@ Error generating stack: `+y.message+`
                 Import từ file Excel
               </button>
               <input id="uid-import-file" type="file" accept=".xlsx" hidden>
-              <p class="uid-help">Quét liên tục bằng máy quét được, mỗi UID in 1 tem. File Excel dùng bản export Group UID từ WMS — tự đọc cột Group UID Code, bỏ qua UID trùng.</p>
+              <p class="uid-help">UID có dữ liệu sẽ tự chuyển sang Sẵn sàng in với SKU, tên sản phẩm, lot và roll. UID chưa đủ thông tin thì gán thủ công. Mỗi UID in 1 tem; import Excel tự bỏ qua UID trùng.</p>
             </form>
             <section class="uid-card uid-panel" aria-labelledby="uid-pending-title">
               <div class="uid-panel__head">
@@ -891,6 +891,8 @@ Error generating stack: `+y.message+`
         let bulkLookupTimer = 0;
         let bulkLookupSequence = 0;
         let nextId = 1;
+        const lookingUp = new Set();
+        let printing = false;
 
         const setStatus = (message, tone = "") => { status.textContent = message; status.dataset.tone = tone; };
         const escapeHtml = value => String(value ?? "").replace(/[&<>"']/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]);
@@ -963,6 +965,49 @@ Error generating stack: `+y.message+`
           if (!response.ok) throw new Error(`HTTP ${response.status}`);
           const rows = await response.json();
           return rows[0]?.product_name ? String(rows[0].product_name) : "";
+        };
+
+        const addGroupUids = async codes => {
+          const known = new Set([...pending, ...mapped].map(item => item.groupUid.toLowerCase()));
+          const fresh = [];
+          let skipped = 0, ready = 0, waiting = 0, failed = 0;
+          for (const code of codes) {
+            const key = code.toLowerCase();
+            if (known.has(key) || lookingUp.has(key)) { skipped++; continue; }
+            known.add(key);
+            lookingUp.add(key);
+            fresh.push(code);
+          }
+          renderAll();
+          const queue = window.PrintSkuQueue;
+          for (let start = 0; start < fresh.length; start += 100) {
+            const batch = fresh.slice(start, start + 100);
+            let found = new Map();
+            try {
+              const response = await fetch(`${queue.supabaseUrl}/rest/v1/rpc/group_uid_lookup`, {
+                method: "POST",
+                headers: { apikey: queue.publishableKey, Authorization: `Bearer ${queue.publishableKey}`, "Content-Type": "application/json" },
+                body: JSON.stringify({ p_codes: batch }), signal: AbortSignal.timeout(10000)
+              });
+              if (!response.ok) throw new Error(`HTTP ${response.status}`);
+              const rows = await response.json();
+              if (!Array.isArray(rows)) throw new Error("Invalid lookup response");
+              found = new Map(rows.map(row => [row.group_uid_code, row]));
+            } catch (_) { failed += batch.length; }
+            for (const code of batch) {
+              const row = found.get(code);
+              const item = { id: nextId++, groupUid: code, selected: false,
+                sku: row?.sku || "", productName: String(row?.product_name || "").trim(),
+                lot: row?.lot || "", roll: row?.roll || "" };
+              if (item.productName) { mapped.push(item); ready++; }
+              else { pending.push(item); waiting++; }
+              lookingUp.delete(code.toLowerCase());
+            }
+            renderAll();
+          }
+          const message = [`${ready} UID sẵn sàng in`, `${waiting} UID chờ gán`, skipped ? `${skipped} UID trùng đã bỏ qua` : "",
+            failed ? `Không tra được ${failed} UID. Có thể xóa rồi thêm lại để thử tra cứu hoặc gán thủ công.` : ""].filter(Boolean).join(". ");
+          setStatus(message, failed ? "error" : waiting ? "warn" : "ok");
         };
 
         const readZipEntries = bytes => {
@@ -1051,18 +1096,8 @@ Error generating stack: `+y.message+`
           try {
             const uids = await readGroupUidsFromXlsx(await file.arrayBuffer());
             if (!uids.length) return setStatus("Không tìm thấy cột Group UID Code trong file.", "error");
-            const known = new Set([...pending, ...mapped].map(item => item.groupUid.trim().toLowerCase()));
-            let added = 0;
-            let skipped = 0;
-            for (const uid of uids) {
-              const key = uid.toLowerCase();
-              if (known.has(key)) { skipped += 1; continue; }
-              known.add(key);
-              pending.push({ id: nextId++, groupUid: uid, selected: false });
-              added += 1;
-            }
-            renderAll();
-            setStatus(`Đã import ${added} Group UID từ file${skipped ? `, bỏ qua ${skipped} UID trùng` : ""}.`, added ? "ok" : "error");
+            setStatus(`Đang tra ${uids.length} Group UID…`);
+            await addGroupUids(uids);
           } catch (error) {
             setStatus(`Không đọc được file Excel: ${String(error?.message || error)}`, "error");
           } finally {
@@ -1176,7 +1211,7 @@ Error generating stack: `+y.message+`
             for (const row of rows) {
               for (let copy = 0; copy < row.qty; copy += 1) {
                 const item = pending.shift();
-                mapped.push({ id: item.id, groupUid: item.groupUid, sku: row.sku, productName: row.name });
+                mapped.push({ ...item, sku: row.sku || item.sku || "", productName: row.name });
               }
             }
             autoRows.splice(0, autoRows.length, { id: nextAutoId++, sku: "", qty: 1, name: "", autoName: "" });
@@ -1201,7 +1236,7 @@ Error generating stack: `+y.message+`
           selectAll.indeterminate = selected > 0 && selected < pending.length;
           selectAll.disabled = !pending.length;
           applyMapping.disabled = !selected;
-          printAll.disabled = !mapped.length;
+          printAll.disabled = !mapped.length || lookingUp.size > 0 || printing;
           printAll.textContent = mapped.length ? `Xác nhận in ${mapped.length} tem` : "Xác nhận in";
           pendingElement.innerHTML = pending.length
             ? pending.map((item, index) => `
@@ -1221,7 +1256,7 @@ Error generating stack: `+y.message+`
                 <button class="uid-row__icon uid-row__icon--remove" type="button" data-action="remove" aria-label="Xóa UID ${index + 1}" title="Xóa">×</button>
               </div>
             </article>`).join("")
-            : '<div class="uid-empty">Chưa có tem sẵn sàng in.<br>Gán SKU ở cụm 2 — UID đã gán sẽ chuyển sang đây.</div>';
+            : '<div class="uid-empty">Chưa có tem sẵn sàng in.<br>UID có dữ liệu sẽ tự chuyển sang đây; UID chưa đủ thông tin thì gán ở cụm 2.</div>';
           updateAutoMeta();
         };
 
@@ -1252,7 +1287,7 @@ Error generating stack: `+y.message+`
           if (index < 0) return;
           if (action === "unmap") {
             const item = mapped.splice(index, 1)[0];
-            pending.push({ id: item.id, groupUid: item.groupUid, selected: false });
+            pending.push({ ...item, selected: false });
             setStatus(`Đã trả ${item.groupUid} về khung chờ gán.`);
           } else if (action === "remove") {
             mapped.splice(index, 1);
@@ -1308,7 +1343,7 @@ Error generating stack: `+y.message+`
           const lotValue = bulkLot.value.trim();
           const rollValue = bulkRoll.value.trim();
           selected.forEach(item => {
-            mapped.push({ id: item.id, groupUid: item.groupUid, sku: skuValue, productName, lot: lotValue, roll: rollValue });
+            mapped.push({ ...item, sku: skuValue || item.sku || "", productName, lot: lotValue || item.lot || "", roll: rollValue || item.roll || "" });
           });
           for (let index = pending.length - 1; index >= 0; index -= 1) {
             if (pending[index].selected) pending.splice(index, 1);
@@ -1333,21 +1368,22 @@ Error generating stack: `+y.message+`
         bulkSku.addEventListener("keydown", applyOnEnter);
         bulkProduct.addEventListener("keydown", applyOnEnter);
 
-        form.addEventListener("submit", event => {
+        form.addEventListener("submit", async event => {
           event.preventDefault();
+          if (printing) return;
           const code = groupUid.value.trim();
           if (!code) return setStatus("Nhập Group UID trước khi thêm.", "error");
-          const exists = [...pending, ...mapped].some(item => item.groupUid.trim().toLowerCase() === code.toLowerCase());
+          if (code.length > 40 || !/^[\x20-\x7E]+$/.test(code)) return setStatus("Group UID cần tối đa 40 ký tự chữ/số không dấu.", "error");
+          const exists = lookingUp.has(code.toLowerCase()) || [...pending, ...mapped].some(item => item.groupUid.trim().toLowerCase() === code.toLowerCase());
           if (exists) return setStatus("Group UID này đã có trong danh sách.", "error");
-          pending.push({ id: nextId++, groupUid: code, selected: false });
           groupUid.value = "";
-          setStatus(`Đã thêm ${code} vào khung chờ gán.`, "ok");
-          renderAll();
           groupUid.focus();
+          setStatus(`Đang tra Group UID ${code}…`);
+          await addGroupUids([code]);
         });
 
         printAll.addEventListener("click", async () => {
-          if (!mapped.length) return;
+          if (!mapped.length || lookingUp.size || printing) return;
           const items = mapped.map(item => ({
             groupUid: item.groupUid,
             sku: item.sku,
@@ -1361,6 +1397,8 @@ Error generating stack: `+y.message+`
           const batches = [];
           for (let start = 0; start < items.length; start += 100) batches.push(items.slice(start, start + 100));
           printAll.disabled = true;
+          printing = true;
+          importButton.disabled = true;
           add.disabled = true;
           let sentUids = 0;
           setStatus(`Đang gửi 0/${labelCount} tem đến máy trạm…`);
@@ -1382,6 +1420,8 @@ Error generating stack: `+y.message+`
             if (sentUids) mapped.splice(0, sentUids);
             setStatus(`Đã gửi ${sentUids}/${labelCount} tem. ${String(error?.message || error)}`, "error");
           } finally {
+            printing = false;
+            importButton.disabled = false;
             add.disabled = false;
             renderAll();
           }

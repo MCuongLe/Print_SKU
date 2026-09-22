@@ -75,7 +75,56 @@ Project ref lấy tự động từ `SUPABASE_URL`, ghi đè bằng `--project-r
 
 **Cầu dao:** file chứa `DROP`, `TRUNCATE` hay `DELETE FROM` ở cấp cao nhất bị chặn, phải thêm `--allow-destructive` mới chạy. Câu lệnh nằm trong thân hàm `$$ ... $$` không tính — đó là định nghĩa chứ không phải lệnh chạy, và nếu chặn cả hai thì ai cũng gõ `--allow-destructive` theo phản xạ, lúc đó cầu dao hết tác dụng.
 
-## Đồng bộ lên Supabase
+## Database Group UID
+
+`public.group_uid_details` lưu 11 trường: `group_uid_code`, `batch_code`,
+`roll_code`, `warehouse`, `location`, `product`, `sku`, `qty`, `updated_by`,
+`updated_date`, `status`. Khóa chính là Group UID Code; mã lưu dạng text để giữ
+số 0 đầu. `product` lấy từ Product Name, `qty` lấy từ Qty (không phải SKU Qty).
+SKU, sản phẩm, vị trí và người cập nhật có thể trống. Không ràng buộc SKU vào
+danh mục Active vì file WMS có thể chứa SKU ngoài danh mục đó.
+
+Tạo bảng một lần trên project hiện tại:
+
+```powershell
+python scripts/apply_supabase_sql.py supabase/group_uid_v1.sql
+```
+
+Kiểm tra rồi nhập file export (chỉ cần Python standard library):
+
+```powershell
+python scripts/import_group_uid_xlsx.py "C:\path\to\GROUP_UID_DETAIL.xlsx"
+python scripts/import_group_uid_xlsx.py "C:\path\to\GROUP_UID_DETAIL.xlsx" --apply
+```
+
+Lệnh nhập dùng `SUPABASE_URL` và personal access token giống script nạp schema.
+Toàn bộ file được kiểm tra trước khi gửi và upsert theo lô 500 dòng để nằm trong
+giới hạn Management API; mỗi lô là một giao dịch nguyên tử. Nếu gián đoạn, các lô
+đã xong vẫn được giữ; chạy lại cùng file để hoàn tất mà không tạo dòng trùng.
+Mã trùng trong file, số lượng âm/không hợp lệ hoặc ngày thiếu/sai sẽ bị từ chối.
+File cũ không ghi đè bản ghi có Updated Date mới hơn; mã không có trong file
+không bị xóa. Ngày không có múi giờ được hiểu là UTC+07:00. Updated By và
+Updated Date giữ thông tin WMS, không tự đổi thành người/giờ nhập Supabase.
+Status giữ nguyên văn bản WMS để tiếp nhận trạng thái mới.
+
+Bảng bật RLS; chưa mở quyền đọc/ghi cho `anon` hoặc `authenticated`.
+Quản trị truy cập bằng SQL Editor/Management API hoặc backend `service_role`.
+Không lưu file dữ liệu thật vào Git.
+
+Màn `#group-uid` tự gọi RPC `group_uid_lookup` khi thêm mã hoặc import Excel,
+chuyển UID đủ tên sản phẩm sang Sẵn sàng in. Tên ưu tiên từ `SKU_Name`, dự phòng
+`group_uid_details.product`; Batch Code → Lot, Roll Code → Roll. Mỗi UID vẫn in
+một tem, không lấy Qty tồn kho làm số bản in. Thiếu tên/chưa có mã/lỗi mạng thì
+chuyển về chờ gán thủ công; SKU, lot và roll đã tra được vẫn giữ khi bổ sung tên.
+
+RPC được định nghĩa trong `supabase/group_uid_v2_lookup.sql`, chỉ trả thông tin
+tem theo danh sách tối đa 100 mã chính xác, không trả người cập nhật hoặc vị trí kho.
+Migration v2 đã triển khai sau khi chủ ứng dụng xác nhận quyền tra cứu thông tin
+tem cho người không đăng nhập (`anon`). Bảng vẫn không mở quyền đọc/ghi trực tiếp.
+Đã kiểm tra frontend với RPC thật: UID có dữ liệu tự chuyển sang Sẵn sàng in,
+đủ SKU, tên sản phẩm, lot và roll. Frontend báo lỗi và cho gán tay nếu RPC không truy cập được.
+
+## Đồng bộ danh mục SKU lên Supabase
 
 Đặt `SUPABASE_URL` và `SUPABASE_SECRET_KEY` trong biến môi trường của máy chạy đồng bộ. Không lưu secret key trong source code hoặc Git.
 
