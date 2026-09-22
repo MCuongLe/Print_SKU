@@ -101,6 +101,8 @@ python scripts/refresh_skus.py apply     # nạp sku-changes-*.json vào data/sk
 python scripts/refresh_skus.py sync      # upsert lên Supabase (không xoá dòng nào)
 ```
 
+`apply` ghi nhận file JSON đã nạp nhưng giữ file trong Downloads. `sync` chỉ dọn đúng các file JSON đã nạp sau khi **toàn bộ lô upsert Supabase thành công**; file mới/chưa nạp hoặc đã bị sửa nội dung được giữ lại. `sync --dry-run` và lần sync lỗi không xoá file. Nếu `apply` dùng `--downloads` khác mặc định, truyền cùng thư mục đó cho `sync --downloads`. Không dùng `apply --cleanup` vì xoá trước khi đồng bộ có thể làm mất dữ liệu cần thử lại.
+
 **Đường đối chiếu — tải Excel toàn bộ, chạy khi cần kiểm chứng:**
 
 ```

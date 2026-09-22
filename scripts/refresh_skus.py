@@ -15,10 +15,13 @@ Them category: sua scripts/sku_categories.json, khong can sua code.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import sqlite3
 import subprocess
 import sys
 import time
+from contextlib import closing
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -249,19 +252,74 @@ def command_apply(args: argparse.Namespace) -> int:
                           "downloads": str(args.downloads)}, ensure_ascii=False, indent=2))
         return 1
     source = files[-1]
-    payload = json.loads(source.read_text(encoding="utf-8"))
+    content = source.read_bytes()
+    payload = json.loads(content.decode("utf-8"))
     rows = payload.get("rows") or []
     if not rows:
-        print(json.dumps({"file": source.name, "rows_read": 0,
-                          "note": "khong co dong nao thay doi"}, ensure_ascii=False, indent=2))
-        return 0
-    report = apply_rows(database, rows, force=args.force)
-    report["file"] = source.name
-    report["cutoff"] = payload.get("cutoff")
+        report = {"file": source.name, "rows_read": 0,
+                  "note": "khong co dong nao thay doi"}
+    else:
+        report = apply_rows(database, rows, force=args.force)
+        report["file"] = source.name
+        report["cutoff"] = payload.get("cutoff")
+    record_pending_json(database, source.name, hashlib.sha256(content).hexdigest())
     print(json.dumps(report, ensure_ascii=False, indent=2))
-    if args.cleanup:
-        source.unlink(missing_ok=True)
     return 0
+
+
+def record_pending_json(database: Path, name: str, digest: str) -> None:
+    """Remember a successfully applied file until Supabase sync completes."""
+    with closing(sqlite3.connect(database)) as connection:
+        with connection:
+            connection.execute(
+                "CREATE TABLE IF NOT EXISTS pending_sku_json "
+                "(file_name TEXT PRIMARY KEY, sha256 TEXT NOT NULL)"
+            )
+            connection.execute(
+                "INSERT OR REPLACE INTO pending_sku_json VALUES (?, ?)", (name, digest)
+            )
+
+
+def cleanup_synced_json(database: Path, downloads: Path) -> dict[str, object]:
+    """Delete only applied JSON files whose contents have not changed."""
+    result: dict[str, object] = {"deleted": [], "skipped": []}
+    with closing(sqlite3.connect(database)) as connection:
+        table = connection.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='pending_sku_json'"
+        ).fetchone()
+        if not table:
+            return result
+        with connection:
+            pending = connection.execute(
+                "SELECT file_name, sha256 FROM pending_sku_json"
+            ).fetchall()
+            root = downloads.resolve()
+            for name, digest in pending:
+                path = root / name
+                if (path.parent != root or path.is_symlink()
+                        or not path.name.startswith("sku-changes-") or path.suffix != ".json"):
+                    result["skipped"].append({"file": name, "reason": "invalid path"})
+                    continue
+                if not path.is_file():
+                    result["skipped"].append({"file": name, "reason": "file missing"})
+                    connection.execute("DELETE FROM pending_sku_json WHERE file_name = ?", (name,))
+                    continue
+                try:
+                    current_digest = hashlib.sha256(path.read_bytes()).hexdigest()
+                except OSError as error:
+                    result["skipped"].append({"file": name, "reason": str(error)})
+                    continue
+                if current_digest != digest:
+                    result["skipped"].append({"file": name, "reason": "file changed"})
+                    continue
+                try:
+                    path.unlink()
+                except OSError as error:
+                    result["skipped"].append({"file": name, "reason": str(error)})
+                    continue
+                connection.execute("DELETE FROM pending_sku_json WHERE file_name = ?", (name,))
+                result["deleted"].append(name)
+    return result
 
 
 def command_merge(args: argparse.Namespace) -> int:
@@ -345,7 +403,11 @@ def command_sync(args: argparse.Namespace) -> int:
     command = [sys.executable, str(script), "--database", str(args.database)]
     if args.dry_run:
         command.append("--dry-run")
-    return subprocess.call(command)
+    status = subprocess.call(command)
+    if status == 0 and not args.dry_run:
+        print(json.dumps({"json_cleanup": cleanup_synced_json(args.database, args.downloads)},
+                         ensure_ascii=False, indent=2))
+    return status
 
 
 def main() -> None:
@@ -372,7 +434,6 @@ def main() -> None:
     apply_cmd.add_argument("--database", "-d", type=Path, default=DEFAULT_DATABASE)
     apply_cmd.add_argument("--downloads", type=Path, default=DEFAULT_DOWNLOADS)
     apply_cmd.add_argument("--since-minutes", type=int, default=60)
-    apply_cmd.add_argument("--cleanup", action="store_true", help="Xoa file json sau khi nap")
     apply_cmd.add_argument("--force", action="store_true",
                            help="Bo qua cau dao doi ten hang loat (chi dung khi da kiem tra tan mat)")
     apply_cmd.set_defaults(handler=command_apply)
@@ -401,6 +462,7 @@ def main() -> None:
 
     sync = subparsers.add_parser("sync", help="Day sku.db len Supabase")
     sync.add_argument("--database", "-d", type=Path, default=DEFAULT_DATABASE)
+    sync.add_argument("--downloads", type=Path, default=DEFAULT_DOWNLOADS)
     sync.add_argument("--dry-run", action="store_true")
     sync.set_defaults(handler=command_sync)
 
