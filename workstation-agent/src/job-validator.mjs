@@ -50,10 +50,14 @@ export function normalizeJob(input) {
   }
 
   if (type === "group_uid") {
+    // Lot và Roll không bắt buộc: trước đây người vận hành ghi bút lên tem.
+    // Bỏ trống thì template không vẽ dòng đó.
     const normalizeUid = (item) => ({
       groupUid: cleanText(item.groupUid, 40),
       sku: cleanText(item.sku, 40),
       productName: cleanText(item.productName ?? item.materialName, 180),
+      lot: cleanText(item.lot, 20),
+      roll: cleanText(item.roll, 20),
       copies: validCopies(item.copies ?? 1) || 0
     });
     if (Array.isArray(payload.items)) {

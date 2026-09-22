@@ -15,6 +15,8 @@ Agent này thuộc ứng dụng Print SKU, cài độc lập tại `C:\PrintSKUA
 | Group UID label | `groupUid` | ASCII tối đa 40 ký tự | Phải tạo được Code 128 | NG nếu không hợp lệ |
 | Group UID label | `sku` | Trống hoặc ASCII tối đa 40 ký tự | SKU không bắt buộc; chỉ vẽ barcode SKU khi có giá trị | NG nếu có nhưng sai định dạng |
 | Group UID label | `productName` | Tên sản phẩm tối đa 180 ký tự | Bắt buộc; có thể tra theo SKU hoặc nhập tay | NG nếu trống |
+| Group UID label | `lot` | Trống hoặc tối đa 20 ký tự | Không bắt buộc; bỏ trống thì không vẽ dòng LOT | OK cả khi trống |
+| Group UID label | `roll` | Trống hoặc tối đa 20 ký tự | Không bắt buộc; bỏ trống thì không vẽ dòng ROLL | OK cả khi trống |
 | Group UID batch | `payload.items` | 1–100 dòng, mỗi dòng có `copies` 1–500 | Tổng `copies` các dòng phải bằng `copies` của lệnh | NG nếu lệch tổng hoặc dòng thiếu dữ liệu |
 | Agent | lease | 30–900 giây | Queue phải trả lệnh về `queued` khi lease hết | OK ở backend Supabase, CHƯA VERIFY tình huống mất điện thật |
 | Máy in | trạng thái trước/sau | ready/blocked | Không gửi khi blocked | NG nếu offline/hết giấy/lỗi |
@@ -32,6 +34,7 @@ Agent này thuộc ứng dụng Print SKU, cài độc lập tại `C:\PrintSKUA
 - Template nằm trong `src/templates`, không trích xuất từ HTML lúc chạy.
 - Giấy in là khổ 2 tem mỗi hàng; render phải trải phẳng mọi tem của lệnh (kể cả batch nhiều SKU/Group UID khác nhau) rồi ghép 2 tem liền kề vào một hàng, không được để trống tem bên phải trừ hàng cuối khi tổng lẻ.
 - Tem SKU xếp: Tên SP ở trên cùng (tối đa 7 dòng, 22 ký tự/dòng) → mã QR canh giữa, đặt ngay dưới khối tên (`y = max(170, 34 + số_dòng*25 + 14)`) nên tên dài đẩy QR xuống chứ không đè → số SKU in đậm dưới QR → vạch kẻ, số lượng (trái, tự thu nhỏ font theo độ dài) và ngày (phải) ở cuối tem. QR chứa số SKU, mức sửa lỗi M, dùng `qrcode-generator`. Không còn barcode Code 128 trên tem SKU.
+- Tem Group UID in `LOT` (canh trái x=12) và `ROLL` (canh phải x=308) ở đáy tem, y=452 — dưới barcode SKU kết thúc ở y=418, đúng chỗ người vận hành vẫn ghi bút. Trường nào trống thì không vẽ, tem giữ nguyên bố cục cũ. Hai trường này chỉ có ở tab gán tay của `PRINT UID`.
 - Tem Group UID vẫn dùng Code 128: tên sản phẩm 26 ký tự mỗi dòng, tối đa 7 dòng khi không SKU, 6 dòng khi có SKU (vùng SKU bắt đầu y=332); không để tên tràn vào vạch kẻ hoặc vùng SKU.
 - Mã QR phải quét ra đúng số SKU; kiểm chứng bằng cách render preview rồi decode lại (ví dụ jsQR) trước khi phát hành.
 - Bitmap TSPL dùng cực `0 = chấm đen`, `1 = nền trắng`; không đảo lại nếu chưa in thử trực tiếp trên máy TSC.

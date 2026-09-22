@@ -64,3 +64,32 @@ test("template SKU thu nhỏ font số lượng khi nhiều ký tự", () => {
   assert.equal(fontOf(short), 40);
   assert.ok(fontOf(long) < 40, `font dài phải nhỏ hơn 40, đang là ${fontOf(long)}`);
 });
+
+test("tem Group UID in Lot va Roll o day tem", () => {
+  const svg = renderGroupUidLabel({
+    groupUid: "[UID_DA_XOA]", sku: "[SKU_DA_XOA]",
+    productName: "Vai Pique/SK9115_Shaoxing Sukun/88% Nylon 12% Spandex",
+    lot: "B", roll: "56"
+  });
+  assert.match(svg, /LOT: B/);
+  assert.match(svg, /ROLL: 56/);
+  // phai nam duoi barcode SKU (ket thuc y=418) va trong long tem (cao 480)
+  const y = Number(svg.match(/y="(\d+)"[^>]*>LOT: B/)?.[1] ?? svg.match(/<text x="12" y="(\d+)"[^>]*>LOT/)?.[1]);
+  assert.ok(y > 418 && y < 480, `LOT phai o day tem, dang o y=${y}`);
+});
+
+test("tem Group UID bo trong Lot/Roll thi khong ve gi them", () => {
+  const svg = renderGroupUidLabel({
+    groupUid: "[UID_DA_XOA]", sku: "[SKU_DA_XOA]", productName: "Vai Pique"
+  });
+  assert.ok(!svg.includes("LOT:"), "khong duoc ve LOT khi bo trong");
+  assert.ok(!svg.includes("ROLL:"), "khong duoc ve ROLL khi bo trong");
+});
+
+test("tem Group UID chi co Lot, khong co Roll", () => {
+  const svg = renderGroupUidLabel({
+    groupUid: "[UID_DA_XOA]", productName: "Vai Pique", lot: "B"
+  });
+  assert.match(svg, /LOT: B/);
+  assert.ok(!svg.includes("ROLL:"));
+});

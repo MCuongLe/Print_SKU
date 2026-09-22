@@ -13,12 +13,20 @@ export function renderGroupUidLabel(payload) {
   const lines = productLines(payload, hasSku ? 6 : 7).map((line, index) =>
     `<text x="12" y="${145 + index * 25}" font-size="22">${escapeXml(line)}</text>`
   ).join("");
+  // Lot và Roll in ở đáy tem, dưới barcode SKU (kết thúc ở y=418) — đúng chỗ
+  // người vận hành vẫn ghi bút. Bỏ trống thì không vẽ, tem giữ nguyên như cũ.
+  const lot = String(payload.lot || "").trim();
+  const roll = String(payload.roll || "").trim();
+  const footer =
+    (lot ? `<text x="12" y="452" font-size="24">LOT: ${escapeXml(lot)}</text>` : "") +
+    (roll ? `<text x="308" y="452" font-size="24" text-anchor="end">ROLL: ${escapeXml(roll)}</text>` : "");
   return svgDocument(
     topBarcode.rects +
     `<text x="160" y="103" font-size="25" text-anchor="middle">${escapeXml(payload.groupUid)}</text>` +
     lines +
     (hasSku ? `<text x="32" y="332" font-size="24">SKU:</text>` +
     `<text x="112" y="332" font-size="24">${escapeXml(payload.sku)}</text>` +
-    bottomBarcode.rects : "")
+    bottomBarcode.rects : "") +
+    footer
   );
 }

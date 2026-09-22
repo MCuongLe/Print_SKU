@@ -811,6 +811,8 @@ Error generating stack: `+y.message+`
                 <div class="uid-map__grid">
                   <label>SKU <span class="uid-optional">bỏ trống nếu không có</span><input id="uid-bulk-sku" autocomplete="off" placeholder="Nhập SKU để tra tên"></label>
                   <label>Tên sản phẩm<input id="uid-bulk-product" autocomplete="off" placeholder="Tự điền theo SKU hoặc nhập tay"></label>
+                  <label>Lot <span class="uid-optional">bỏ trống nếu không có</span><input id="uid-bulk-lot" autocomplete="off" maxlength="20" placeholder="VD: B"></label>
+                  <label>Roll <span class="uid-optional">bỏ trống nếu không có</span><input id="uid-bulk-roll" autocomplete="off" maxlength="20" placeholder="VD: 56"></label>
                 </div>
                 <p class="uid-help" id="uid-bulk-lookup" aria-live="polite">Tick UID ở khung Chưa gán SKU rồi nhập SKU / tên sản phẩm.</p>
                 <button class="uid-map__apply" id="uid-apply-mapping" type="button" disabled>Gán cho UID đã chọn</button>
@@ -864,6 +866,8 @@ Error generating stack: `+y.message+`
         const selectAll = document.getElementById("uid-select-all");
         const bulkSku = document.getElementById("uid-bulk-sku");
         const bulkProduct = document.getElementById("uid-bulk-product");
+        const bulkLot = document.getElementById("uid-bulk-lot");
+        const bulkRoll = document.getElementById("uid-bulk-roll");
         const bulkLookup = document.getElementById("uid-bulk-lookup");
         const applyMapping = document.getElementById("uid-apply-mapping");
         const tabManual = document.getElementById("uid-tab-manual");
@@ -1211,7 +1215,7 @@ Error generating stack: `+y.message+`
             ? mapped.map((item, index) => `
             <article class="uid-row uid-row--ready" data-id="${item.id}">
               <code class="uid-row__code" title="${escapeHtml(item.groupUid)}">${escapeHtml(item.groupUid)}</code>
-              <div class="uid-row__mapping" title="${escapeHtml([item.sku, item.productName].filter(Boolean).join(" · "))}"><span>${escapeHtml(item.sku || "Không SKU")}</span><strong>${escapeHtml(item.productName)}</strong></div>
+              <div class="uid-row__mapping" title="${escapeHtml([item.sku, item.productName, item.lot ? `Lot ${item.lot}` : "", item.roll ? `Roll ${item.roll}` : ""].filter(Boolean).join(" · "))}"><span>${escapeHtml([item.sku || "Không SKU", item.lot ? `Lot ${item.lot}` : "", item.roll ? `Roll ${item.roll}` : ""].filter(Boolean).join(" · "))}</span><strong>${escapeHtml(item.productName)}</strong></div>
               <div class="uid-row__tools">
                 <button class="uid-row__icon" type="button" data-action="unmap" aria-label="Bỏ gán UID ${index + 1}" title="Bỏ gán, trả về khung chờ">↩</button>
                 <button class="uid-row__icon uid-row__icon--remove" type="button" data-action="remove" aria-label="Xóa UID ${index + 1}" title="Xóa">×</button>
@@ -1301,14 +1305,18 @@ Error generating stack: `+y.message+`
           if (!selected.length) return setStatus("Tick chọn ít nhất một UID trước khi gán.", "error");
           if (!productName) return setStatus("Nhập tên sản phẩm để gán cho các UID đã chọn.", "error");
           const skuValue = bulkSku.value.trim();
+          const lotValue = bulkLot.value.trim();
+          const rollValue = bulkRoll.value.trim();
           selected.forEach(item => {
-            mapped.push({ id: item.id, groupUid: item.groupUid, sku: skuValue, productName });
+            mapped.push({ id: item.id, groupUid: item.groupUid, sku: skuValue, productName, lot: lotValue, roll: rollValue });
           });
           for (let index = pending.length - 1; index >= 0; index -= 1) {
             if (pending[index].selected) pending.splice(index, 1);
           }
           bulkSku.value = "";
           bulkProduct.value = "";
+          bulkLot.value = "";
+          bulkRoll.value = "";
           clearTimeout(bulkLookupTimer);
           bulkLookupSequence += 1;
           bulkLookup.textContent = "Tick nhóm UID tiếp theo để tiếp tục gán.";
@@ -1344,6 +1352,8 @@ Error generating stack: `+y.message+`
             groupUid: item.groupUid,
             sku: item.sku,
             productName: item.productName,
+            lot: item.lot || "",
+            roll: item.roll || "",
             copies: 1
           }));
           const labelCount = items.length;

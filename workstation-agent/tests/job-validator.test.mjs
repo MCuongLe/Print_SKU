@@ -49,3 +49,21 @@ test("không cho in quá 500 tem", () => {
   const result = normalizeJob({ id: "1", nonce: "n1", type: "sku", copies: 501, payload: { sku: "204900073", productName: "Test" } });
   assert.equal(result.ok, false);
 });
+
+test("group_uid nhan Lot va Roll, va chung khong bat buoc", () => {
+  const coLot = normalizeJob({
+    id: "j1", nonce: "n1", type: "group_uid", templateVersion: 1, copies: 1,
+    payload: { items: [{ groupUid: "[UID_DA_XOA]", sku: "[SKU_DA_XOA]",
+                         productName: "Vai Pique", lot: "B", roll: "56", copies: 1 }] }
+  });
+  assert.equal(coLot.ok, true, coLot.errors?.join("; "));
+  assert.equal(coLot.job.payload.items[0].lot, "B");
+  assert.equal(coLot.job.payload.items[0].roll, "56");
+
+  const khongLot = normalizeJob({
+    id: "j2", nonce: "n2", type: "group_uid", templateVersion: 1, copies: 1,
+    payload: { items: [{ groupUid: "[UID_DA_XOA]", productName: "Vai Pique", copies: 1 }] }
+  });
+  assert.equal(khongLot.ok, true, khongLot.errors?.join("; "));
+  assert.equal(khongLot.job.payload.items[0].lot, "");
+});
