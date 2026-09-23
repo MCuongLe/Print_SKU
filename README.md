@@ -77,17 +77,20 @@ Project ref lấy tự động từ `SUPABASE_URL`, ghi đè bằng `--project-r
 
 ## Database Group UID
 
-`public.group_uid_details` lưu 11 trường: `group_uid_code`, `batch_code`,
-`roll_code`, `warehouse`, `location`, `product`, `sku`, `qty`, `updated_by`,
+`public.group_uid_details` lưu 10 trường: `group_uid_code`, `batch_code`,
+`roll_code`, `warehouse`, `location`, `sku`, `qty`, `updated_by`,
 `updated_date`, `status`. Khóa chính là Group UID Code; mã lưu dạng text để giữ
-số 0 đầu. `product` lấy từ Product Name, `qty` lấy từ Qty (không phải SKU Qty).
-SKU, sản phẩm, vị trí và người cập nhật có thể trống. Không ràng buộc SKU vào
-danh mục Active vì file WMS có thể chứa SKU ngoài danh mục đó.
+số 0 đầu. `qty` lấy từ Qty (không phải SKU Qty). Tên sản phẩm được tra qua
+`SKU_Name.product_name` bằng SKU, không lưu lại trong bảng Group UID. SKU, vị trí
+và người cập nhật có thể trống. Không ràng buộc SKU vào danh mục Active vì file
+WMS có thể chứa SKU ngoài danh mục đó.
 
 Tạo bảng một lần trên project hiện tại:
 
 ```powershell
 python scripts/apply_supabase_sql.py supabase/group_uid_v1.sql
+python scripts/apply_supabase_sql.py supabase/group_uid_v2_lookup.sql
+python scripts/apply_supabase_sql.py supabase/group_uid_v3_drop_product.sql --allow-destructive
 ```
 
 Kiểm tra rồi nhập file export (chỉ cần Python standard library):
@@ -112,8 +115,8 @@ Quản trị truy cập bằng SQL Editor/Management API hoặc backend `service
 Không lưu file dữ liệu thật vào Git.
 
 Màn `#group-uid` tự gọi RPC `group_uid_lookup` khi thêm mã hoặc import Excel,
-chuyển UID đủ tên sản phẩm sang Sẵn sàng in. Tên ưu tiên từ `SKU_Name`, dự phòng
-`group_uid_details.product`; Batch Code → Lot, Roll Code → Roll. Mỗi UID vẫn in
+chuyển UID đủ tên sản phẩm sang Sẵn sàng in. Tên lấy từ `SKU_Name`;
+Batch Code → Lot, Roll Code → Roll. Mỗi UID vẫn in
 một tem, không lấy Qty tồn kho làm số bản in. Thiếu tên/chưa có mã/lỗi mạng thì
 chuyển về chờ gán thủ công; SKU, lot và roll đã tra được vẫn giữ khi bổ sung tên.
 
@@ -121,6 +124,8 @@ RPC được định nghĩa trong `supabase/group_uid_v2_lookup.sql`, chỉ tr�
 tem theo danh sách tối đa 100 mã chính xác, không trả người cập nhật hoặc vị trí kho.
 Migration v2 đã triển khai sau khi chủ ứng dụng xác nhận quyền tra cứu thông tin
 tem cho người không đăng nhập (`anon`). Bảng vẫn không mở quyền đọc/ghi trực tiếp.
+Migration v3 xóa cột `product` và sửa RPC để chỉ dùng tên từ `SKU_Name`.
+Các UID có SKU chưa có tên trong `SKU_Name` sẽ chờ gán tên thủ công.
 Đã kiểm tra frontend với RPC thật: UID có dữ liệu tự chuyển sang Sẵn sàng in,
 đủ SKU, tên sản phẩm, lot và roll. Frontend báo lỗi và cho gán tay nếu RPC không truy cập được.
 

@@ -20,7 +20,7 @@ from import_sku_xlsx import worksheet_rows
 FIELDS = {
     'Group UID Code': 'group_uid_code', 'Batch Code': 'batch_code',
     'Roll Code': 'roll_code', 'Warehouse': 'warehouse', 'Location': 'location',
-    'Product Name': 'product', 'SKU': 'sku', 'Qty': 'qty',
+    'SKU': 'sku', 'Qty': 'qty',
     'Updated By': 'updated_by', 'Updated Date': 'updated_date', 'Status': 'status',
 }
 SOURCE_TZ = timezone(timedelta(hours=7))

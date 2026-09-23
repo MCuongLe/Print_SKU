@@ -8,7 +8,7 @@ from import_group_uid_xlsx import FIELDS, parse_rows, import_sql
 
 class GroupUidImportTests(unittest.TestCase):
     def rows(self, **changes):
-        row = dict(zip(FIELDS.values(), ['0000123', '001', '', 'TEST WH', '', '', '', '0', '', '2026-09-22 17:02:00', 'New']))
+        row = dict(zip(FIELDS.values(), ['0000123', '001', '', 'TEST WH', '', '', '0', '', '2026-09-22 17:02:00', 'New']))
         row.update(changes)
         return [list(FIELDS), [row[field] for field in FIELDS.values()]]
 
@@ -29,11 +29,20 @@ class GroupUidImportTests(unittest.TestCase):
                 parse_rows(self.rows(**changes))
 
     def test_decimal_and_sql_quote(self):
-        rows = parse_rows(self.rows(qty='0.123456789', product="Test O'Brien"))
+        rows = parse_rows(self.rows(qty='0.123456789', warehouse="Test O'Brien"))
         self.assertEqual(rows[0]['qty'], '0.123456789')
         sql = import_sql(rows)
         self.assertIn("O''Brien", sql)
+        self.assertNotIn('product', sql)
         self.assertIn('excluded.updated_date >= group_uid_details.updated_date', sql)
+
+    def test_legacy_product_name_column_is_ignored(self):
+        headers, values = self.rows(sku='000123456')
+        headers.insert(6, 'Product Name')
+        values.insert(6, 'WMS name that must not be stored')
+        row = parse_rows([headers, values])[0]
+        self.assertNotIn('product', row)
+        self.assertEqual(row['sku'], '000123456')
 
 
 if __name__ == '__main__':

@@ -48,11 +48,12 @@ Giao diện ứng dụng in tem SKU vẫn mở trực tiếp và giữ nguyên t
 ### Tra Group UID từ database
 
 - Nhập/quét hoặc import Group UID gọi `group_uid_lookup` theo từng lô tối đa 100 mã chính xác.
-- Object là tem Group UID. SKU từ `group_uid_details.sku`; tên ưu tiên `SKU_Name.product_name`, dự phòng `group_uid_details.product`; Lot từ `batch_code`, Roll từ `roll_code`.
+- Object là tem Group UID. SKU từ `group_uid_details.sku`; tên chỉ từ `SKU_Name.product_name`; Lot từ `batch_code`, Roll từ `roll_code`.
 - Có tên sản phẩm thì tự sang Sẵn sàng in, không cần thao tác gán SKU. Không có SKU vẫn cho in khi có tên; thiếu tên thì chờ bổ sung thủ công. Không tự bịa tên từ mã hoặc tên kho.
 - Mỗi UID một tem; Qty trong database là số lượng hàng, không phải số bản in. Vẫn cần bấm Xác nhận in.
 - UID trùng, kể cả đang tra, không thêm lần hai. Khi đang tra không gửi in. Lỗi mạng phải báo không tra được, không khẳng định mã không tồn tại.
 - RPC chỉ đọc trường phục vụ tem, không trả người cập nhật, kho, vị trí hoặc số lượng tồn. Không cấp quyền trực tiếp lên bảng. Migration `group_uid_v2_lookup.sql` đã triển khai sau khi chủ ứng dụng xác nhận quyền tra cứu không đăng nhập ngày 22/09/2026.
+- Migration `group_uid_v3_drop_product.sql` loại cột tên trùng `product` theo yêu cầu; Excel WMS vẫn có thể chứa Product Name nhưng script nhập bỏ qua. SKU chưa có tên trong `SKU_Name` phải chờ bổ sung tên thủ công, không tự chuyển sang Sẵn sàng in.
 - Đã kiểm tra Chromium desktop 1280px/mobile 375px bằng dữ liệu giả: tự gán, giữ lot/roll, không SKU, mã trùng đang tra, không tìm thấy, thiếu tên, lỗi mạng, gán tay và payload in. Đã kiểm tra RPC thật qua frontend: tự chuyển sang Sẵn sàng in, đủ tên/SKU/lot/roll. CHƯA VERIFY: import Excel qua trình duyệt, máy quét và bản in thật.
 
 Xem lại các quy tắc này khi thay đổi cấu trúc form, danh sách chờ in, header, thanh hành động, kích thước tem in, vai trò Supabase hoặc cơ chế xác minh Apps Script.
