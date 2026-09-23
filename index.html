@@ -2509,6 +2509,10 @@ Error generating stack: `+y.message+`
       .gui-metric strong { display: block; margin-top: 7px; color: #17382d; font-size: 22px; }
       .gui-metric[data-tone="warn"] strong { color: #9b6500; }
       .gui-metric[data-tone="error"] strong { color: #b32929; }
+      .gui-metric-button { width: 100%; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+      .gui-metric-button:not(:disabled):hover { border-color: #60aa91; background: #f1faf7; box-shadow: 0 5px 16px rgba(0,103,71,.08); }
+      .gui-metric-button:not(:disabled) span::after { content: "Xem chi tiết →"; display: block; margin-top: 3px; color: #087b58; font-size: 9px; font-weight: 800; }
+      .gui-metric-button:disabled { cursor: default; }
       .gui-apply { width: 100%; min-height: 50px; margin-top: 16px; border: 0; border-radius: 14px; background: #006747; color: white; font-size: 15px; font-weight: 900; cursor: pointer; }
       .gui-apply:disabled { opacity: .38; cursor: not-allowed; }
       .gui-note { margin: 11px 0 0; color: #76867f; font-size: 11px; line-height: 1.55; }
@@ -2521,6 +2525,28 @@ Error generating stack: `+y.message+`
       .gui-history td { padding: 10px 8px; vertical-align: top; border-bottom: 1px solid #edf1f0; }
       .gui-history code { color: #215a48; font-size: 11px; }
       .gui-pill { display: inline-block; padding: 4px 7px; border-radius: 999px; background: #e7f3ef; color: #176248; font-size: 10px; font-weight: 800; }
+      .gui-modal[hidden] { display: none; }
+      .gui-modal { position: fixed; inset: 0; z-index: 10040; display: grid; place-items: center; padding: 18px; background: rgba(4,28,21,.58); }
+      .gui-modal__panel { width: min(920px,100%); max-height: min(780px,calc(100vh - 36px)); overflow: hidden; border-radius: 22px; background: #fff; box-shadow: 0 24px 70px rgba(0,0,0,.24); }
+      .gui-modal__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 20px 22px 14px; border-bottom: 1px solid #e3ebe8; }
+      .gui-modal__head h2 { margin: 0; color: #12392d; font-size: 20px; }
+      .gui-modal__head p { margin: 5px 0 0; color: #6b7f77; font-size: 12px; }
+      .gui-modal__close { flex: 0 0 auto; width: 38px; height: 38px; border: 1px solid #dce7e3; border-radius: 11px; background: #f7faf9; color: #315b4d; font-size: 20px; cursor: pointer; }
+      .gui-modal__tools { display: flex; gap: 10px; padding: 14px 22px; background: #f7faf9; }
+      .gui-modal__search { flex: 1; min-width: 0; height: 42px; padding: 0 13px; border: 1px solid #ceddd8; border-radius: 11px; background: #fff; font: inherit; }
+      .gui-modal__body { max-height: calc(100vh - 245px); overflow: auto; padding: 0 22px 18px; }
+      .gui-change { margin-top: 12px; overflow: hidden; border: 1px solid #deebe6; border-radius: 14px; }
+      .gui-change__title { display: flex; justify-content: space-between; gap: 12px; padding: 10px 12px; background: #edf7f3; color: #164f3c; font-size: 12px; }
+      .gui-change__title code { font-weight: 900; }
+      .gui-change__row { display: grid; grid-template-columns: 130px minmax(0,1fr) 24px minmax(0,1fr); gap: 8px; align-items: start; padding: 9px 12px; border-top: 1px solid #edf2f0; font-size: 12px; }
+      .gui-change__field { color: #60756d; font-weight: 800; }
+      .gui-change__old { color: #9b3535; word-break: break-word; }
+      .gui-change__new { color: #087b58; font-weight: 700; word-break: break-word; }
+      .gui-change__arrow { color: #8b9a95; text-align: center; }
+      .gui-modal__foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 22px; border-top: 1px solid #e3ebe8; }
+      .gui-modal__foot span { color: #647970; font-size: 12px; }
+      .gui-page { min-height: 36px; padding: 0 13px; border: 1px solid #cbdcd6; border-radius: 10px; background: #fff; color: #176248; font-weight: 800; cursor: pointer; }
+      .gui-page:disabled { opacity: .4; cursor: default; }
       .admin-session { flex-wrap: wrap; }
       @media(max-width:760px) {
         .gui-top__in,.gui-main { padding-left: 14px; padding-right: 14px; }
@@ -2529,6 +2555,14 @@ Error generating stack: `+y.message+`
         .gui-card { padding: 16px; border-radius: 17px; }
         .gui-back { padding: 0 12px; }
         .gui-history th:nth-child(2),.gui-history td:nth-child(2) { display: none; }
+        .gui-modal { padding: 0; place-items: end center; }
+        .gui-modal__panel { max-height: 92vh; border-radius: 20px 20px 0 0; }
+        .gui-modal__head,.gui-modal__tools,.gui-modal__foot { padding-left: 14px; padding-right: 14px; }
+        .gui-modal__body { padding-left: 14px; padding-right: 14px; }
+        .gui-change__row { grid-template-columns: 1fr; gap: 3px; }
+        .gui-change__arrow { display: none; }
+        .gui-change__old::before { content: "Cũ: "; color: #8b9a95; }
+        .gui-change__new::before { content: "Mới: "; color: #8b9a95; font-weight: 400; }
       }
     </style>
     <section class="gui-screen" id="group-uid-import-screen" aria-labelledby="gui-heading" hidden>
@@ -2554,7 +2588,7 @@ Error generating stack: `+y.message+`
               <div class="gui-metrics">
                 <div class="gui-metric"><span>Tổng dòng</span><strong id="gui-total">0</strong></div>
                 <div class="gui-metric"><span>Thêm mới</span><strong id="gui-new">0</strong></div>
-                <div class="gui-metric"><span>Cập nhật</span><strong id="gui-update">0</strong></div>
+                <button class="gui-metric gui-metric-button" id="gui-update-open" type="button" disabled aria-haspopup="dialog"><span>Cập nhật</span><strong id="gui-update">0</strong></button>
                 <div class="gui-metric"><span>Không thay đổi</span><strong id="gui-unchanged">0</strong></div>
                 <div class="gui-metric"><span>Bỏ qua dữ liệu cũ</span><strong id="gui-stale">0</strong></div>
                 <div class="gui-metric" data-tone="warn"><span>SKU trống</span><strong id="gui-blank-sku">0</strong></div>
@@ -2572,6 +2606,14 @@ Error generating stack: `+y.message+`
         </div>
       </main>
     </section>
+    <div class="gui-modal" id="gui-update-modal" role="dialog" aria-modal="true" aria-labelledby="gui-update-title" hidden>
+      <div class="gui-modal__panel">
+        <div class="gui-modal__head"><div><h2 id="gui-update-title">Chi tiết dữ liệu cập nhật</h2><p>Xem trường nào sẽ đổi từ database sang giá trị trong file WMS.</p></div><button class="gui-modal__close" id="gui-update-close" type="button" aria-label="Đóng">×</button></div>
+        <div class="gui-modal__tools"><input class="gui-modal__search" id="gui-update-search" type="search" placeholder="Tìm Group UID hoặc SKU…" autocomplete="off"></div>
+        <div class="gui-modal__body" id="gui-update-list"><p class="gui-status">Đang tải chi tiết…</p></div>
+        <div class="gui-modal__foot"><span id="gui-update-page">0 kết quả</span><div><button class="gui-page" id="gui-update-prev" type="button">Trước</button> <button class="gui-page" id="gui-update-next" type="button">Sau</button></div></div>
+      </div>
+    </div>
     <section class="admin-auth" id="admin-auth" role="dialog" aria-modal="true" aria-labelledby="admin-auth-title" hidden>
       <form class="admin-auth__card" id="admin-auth-form" novalidate>
         <div class="admin-auth__brand">
@@ -2815,6 +2857,14 @@ Error generating stack: `+y.message+`
         const errorsBox = document.getElementById("gui-errors");
         const applyButton = document.getElementById("gui-apply");
         const historyBody = document.getElementById("gui-history");
+        const updateOpen = document.getElementById("gui-update-open");
+        const updateModal = document.getElementById("gui-update-modal");
+        const updateClose = document.getElementById("gui-update-close");
+        const updateSearch = document.getElementById("gui-update-search");
+        const updateList = document.getElementById("gui-update-list");
+        const updatePage = document.getElementById("gui-update-page");
+        const updatePrev = document.getElementById("gui-update-prev");
+        const updateNext = document.getElementById("gui-update-next");
         const metricIds = {
           totalRows: "gui-total", newRows: "gui-new", updatedRows: "gui-update",
           unchangedRows: "gui-unchanged", staleRows: "gui-stale", blankSkuRows: "gui-blank-sku",
@@ -2829,6 +2879,15 @@ Error generating stack: `+y.message+`
         };
         let currentRun = null;
         let busy = false;
+        let detailOffset = 0;
+        let detailTotal = 0;
+        let detailTimer = 0;
+        const DETAIL_LIMIT = 25;
+        const FIELD_LABELS = {
+          batchCode: "Batch Code / Lot", rollCode: "Roll Code", warehouse: "Warehouse",
+          location: "Location", sku: "SKU", qty: "Qty", updatedBy: "Updated By",
+          updatedDate: "Updated Date", status: "Status"
+        };
 
         const escapeHtml = value => String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
         const setStatus = (message, tone = "") => { status.textContent = message; status.dataset.tone = tone; };
@@ -2840,6 +2899,14 @@ Error generating stack: `+y.message+`
           const rows = (items || []).slice(0, 50);
           errorsBox.hidden = !rows.length;
           errorsBox.innerHTML = rows.map(item => `<div class="gui-error"><b>Dòng ${escapeHtml(item.rowNo || "—")}</b> · ${escapeHtml(item.message || item.groupUidCode || "Dữ liệu không hợp lệ")}</div>`).join("");
+        };
+        const displayValue = (field, value) => {
+          if (value === null || value === undefined || value === "") return "(trống)";
+          if (field === "updatedDate") {
+            const date = new Date(value);
+            if (!Number.isNaN(date.getTime())) return date.toLocaleString("vi-VN");
+          }
+          return String(value);
         };
         const normalizeHeader = value => String(value || "").replace(/\s+/g, " ").trim().toLowerCase();
         const cellColumn = reference => (reference || "").replace(/\d+$/, "");
@@ -2863,6 +2930,43 @@ Error generating stack: `+y.message+`
           try { result = await response.json(); } catch (_) {}
           if (!response.ok) throw new Error(result?.message || `Supabase HTTP ${response.status}`);
           return result;
+        };
+
+        const closeUpdateDetails = () => {
+          updateModal.hidden = true;
+          document.body.style.overflow = "";
+        };
+        const loadUpdateDetails = async () => {
+          if (!currentRun) return;
+          updateList.innerHTML = '<p class="gui-status">Đang tải chi tiết…</p>';
+          updatePrev.disabled = true; updateNext.disabled = true;
+          try {
+            const result = await rpc("group_uid_import_update_details", {
+              p_run_id: currentRun.id, p_search: updateSearch.value.trim() || null,
+              p_offset: detailOffset, p_limit: DETAIL_LIMIT
+            });
+            if (!result?.ok) throw new Error(result?.error?.message || "Không đọc được chi tiết cập nhật");
+            const data = result.data || {};
+            const items = data.items || [];
+            detailTotal = Number(data.total || 0);
+            updateList.innerHTML = items.length ? items.map(item => `<section class="gui-change"><div class="gui-change__title"><code>${escapeHtml(item.groupUidCode)}</code><span>${item.sku ? `SKU ${escapeHtml(item.sku)}` : "SKU trống"}</span></div>${(item.changes || []).map(change => `<div class="gui-change__row"><div class="gui-change__field">${escapeHtml(FIELD_LABELS[change.field] || change.field)}</div><div class="gui-change__old">${escapeHtml(displayValue(change.field,change.oldValue))}</div><div class="gui-change__arrow">→</div><div class="gui-change__new">${escapeHtml(displayValue(change.field,change.newValue))}</div></div>`).join("")}</section>`).join("") : '<p class="gui-status">Không có UID phù hợp.</p>';
+            const first = detailTotal ? detailOffset + 1 : 0;
+            const last = Math.min(detailOffset + items.length, detailTotal);
+            updatePage.textContent = `${first.toLocaleString("vi-VN")}–${last.toLocaleString("vi-VN")} / ${detailTotal.toLocaleString("vi-VN")} UID`;
+            updatePrev.disabled = detailOffset === 0;
+            updateNext.disabled = detailOffset + DETAIL_LIMIT >= detailTotal;
+          } catch (error) {
+            updateList.innerHTML = `<p class="gui-status" data-tone="error">${escapeHtml(error.message || "Không đọc được chi tiết cập nhật.")}</p>`;
+            updatePage.textContent = "Không tải được dữ liệu";
+          }
+        };
+        const openUpdateDetails = () => {
+          if (!currentRun || Number(currentRun.summary?.updatedRows || 0) < 1) return;
+          detailOffset = 0; updateSearch.value = "";
+          updateModal.hidden = false;
+          document.body.style.overflow = "hidden";
+          loadUpdateDetails();
+          updateClose.focus();
         };
 
         const readWorkbook = async (file, buffer) => {
@@ -2955,6 +3059,7 @@ Error generating stack: `+y.message+`
           if (busy || !file) return;
           currentRun = null;
           applyButton.disabled = true;
+          updateOpen.disabled = true;
           setMetrics({}); showErrors([]); setProgress(2);
           if (!/\.xlsx$/i.test(file.name)) return setStatus("Chỉ nhận file .xlsx xuất từ WMS.", "error");
           if (file.size < 1 || file.size > 10 * 1024 * 1024) return setStatus("File phải nhỏ hơn hoặc bằng 10 MB.", "error");
@@ -2996,6 +3101,7 @@ Error generating stack: `+y.message+`
             }
             currentRun = { id: runId, summary, fileName: file.name };
             applyButton.disabled = false;
+            updateOpen.disabled = Number(summary.updatedRows || 0) < 1;
             setProgress(100);
             const repeated = Number(started.data.previousImports || 0);
             setStatus(`File hợp lệ và chưa thay đổi database.${repeated ? ` File này đã được nạp ${repeated} lần trước.` : ""}`, repeated ? "" : "ok");
@@ -3020,6 +3126,8 @@ Error generating stack: `+y.message+`
             if (!result?.ok) throw new Error(result?.error?.message || "Database không nhận dữ liệu");
             setProgress(100);
             setStatus(`Đã cập nhật ${Number(result.data.writtenRows || 0).toLocaleString("vi-VN")} dòng Group UID.`, "ok");
+            closeUpdateDetails();
+            updateOpen.disabled = true;
             currentRun = null;
             await loadHistory();
           } catch (error) {
@@ -3029,6 +3137,17 @@ Error generating stack: `+y.message+`
             busy = false; fileInput.disabled = false;
           }
         });
+
+        updateOpen.addEventListener("click", openUpdateDetails);
+        updateClose.addEventListener("click", closeUpdateDetails);
+        updateModal.addEventListener("click", event => { if (event.target === updateModal) closeUpdateDetails(); });
+        document.addEventListener("keydown", event => { if (event.key === "Escape" && !updateModal.hidden) closeUpdateDetails(); });
+        updateSearch.addEventListener("input", () => {
+          clearTimeout(detailTimer);
+          detailTimer = setTimeout(() => { detailOffset = 0; loadUpdateDetails(); }, 300);
+        });
+        updatePrev.addEventListener("click", () => { detailOffset = Math.max(0,detailOffset-DETAIL_LIMIT); loadUpdateDetails(); });
+        updateNext.addEventListener("click", () => { if (detailOffset+DETAIL_LIMIT<detailTotal) { detailOffset += DETAIL_LIMIT; loadUpdateDetails(); } });
 
         let routeSequence = 0;
         const renderRoute = async () => {

@@ -22,6 +22,7 @@ const path = require('node:path');
       const errors = [];
       let uploaded = 0;
       let commitCalls = 0;
+      let detailCalls = 0;
       page.on('pageerror', error => errors.push(error.message));
       await page.route('**/*', async route => {
         const url = route.request().url();
@@ -38,6 +39,23 @@ const path = require('node:path');
           ok: true, data: { totalRows: uploaded, newRows: 12, updatedRows: 20, unchangedRows: uploaded - 35,
             staleRows: 3, blankSkuRows: 2331, unknownSkuRows: 8, duplicateRows: 0 }
         }) });
+        if (url.endsWith('/rpc/group_uid_import_update_details')) {
+          detailCalls += 1;
+          const query = route.request().postDataJSON();
+          const items = query.p_search ? [{
+            rowNo: 2, groupUidCode: '[UID_DA_XOA]', sku: '[SKU_DA_XOA]',
+            changes: [{ field: 'location', oldValue: 'A-01', newValue: 'B-02' }]
+          }] : [{
+            rowNo: 2, groupUidCode: '[UID_DA_XOA]', sku: '[SKU_DA_XOA]',
+            changes: [
+              { field: 'location', oldValue: 'A-01', newValue: 'B-02' },
+              { field: 'qty', oldValue: 10, newValue: 12 }
+            ]
+          }];
+          return route.fulfill({ contentType: 'application/json', body: JSON.stringify({
+            ok: true, data: { total: query.p_search ? 1 : 20, offset: query.p_offset, limit: query.p_limit, items }
+          }) });
+        }
         if (url.endsWith('/rpc/group_uid_import_commit')) {
           commitCalls += 1;
           return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ ok: true, data: { writtenRows: 32, status: 'completed' } }) });
@@ -53,13 +71,24 @@ const path = require('node:path');
       assert.equal(await page.locator('#gui-total').innerText(), '8.148');
       assert.equal(await page.locator('#gui-blank-sku').innerText(), '2.331');
       assert.match(await page.locator('#gui-status').innerText(), /File hợp lệ/);
+      await page.locator('#gui-update-open').click();
+      await page.locator('#gui-update-modal').waitFor({ state: 'visible' });
+      await page.locator('.gui-change').first().waitFor({ state: 'visible' });
+      assert.match(await page.locator('#gui-update-list').innerText(), /A-01/);
+      assert.match(await page.locator('#gui-update-list').innerText(), /B-02/);
+      assert.match(await page.locator('#gui-update-page').innerText(), /20 UID/);
+      await page.locator('#gui-update-search').fill('[UID_DA_XOA]');
+      await page.waitForFunction(() => document.querySelector('#gui-update-page').textContent.includes('/ 1 UID'));
+      assert.ok(detailCalls >= 2);
+      await page.locator('#gui-update-close').click();
+      await page.locator('#gui-update-modal').waitFor({ state: 'hidden' });
       page.once('dialog', dialog => dialog.accept());
       await page.locator('#gui-apply').click();
       await page.waitForFunction(() => document.querySelector('#gui-status').textContent.includes('Đã cập nhật'));
       assert.equal(commitCalls, 1);
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
       assert.deepEqual(errors, []);
-      console.log(`PASS ${width}px: parsed 8,148 WMS rows, uploaded 500-row chunks, previewed, confirmed and committed without overflow/page errors`);
+      console.log(`PASS ${width}px: parsed 8,148 WMS rows, showed searchable field differences, confirmed and committed without overflow/page errors`);
       await context.close();
     }
   } finally { await browser.close(); }

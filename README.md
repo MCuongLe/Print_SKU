@@ -136,6 +136,10 @@ dòng thêm mới, cập nhật, không thay đổi, dữ liệu cũ, SKU trốn
 `SKU_Name`. Khi bấm **Cập nhật database**, dữ liệu đã kiểm tra mới được upsert;
 không xóa Group UID vắng mặt trong file.
 
+Sau khi kiểm tra, ô **Cập nhật** có thể bấm để xem danh sách UID và từng trường
+sẽ đổi theo dạng giá trị hiện tại → giá trị từ file. Danh sách có tìm kiếm theo
+Group UID/SKU và phân trang 25 UID; backend chỉ trả dữ liệu thuộc lượt nạp của Admin.
+
 Backend nằm trong `supabase/group_uid_v4_admin_import.sql`: bảng staging, lịch sử
 và năm RPC `start/chunk/validate/commit/history`. RPC chỉ cấp cho `authenticated`
 và tự kiểm tra `auth.uid()` có role `admin`; web không có quyền ghi trực tiếp vào
@@ -146,6 +150,7 @@ Triển khai hoặc cập nhật backend bằng migration:
 
 ```powershell
 python scripts/apply_supabase_sql.py supabase/group_uid_v4_admin_import.sql
+python scripts/apply_supabase_sql.py supabase/group_uid_v5_update_details.sql
 ```
 
 Tài liệu kiến trúc và quy tắc phục hồi nằm tại

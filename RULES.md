@@ -64,6 +64,7 @@ Giao diện ứng dụng in tem SKU vẫn mở trực tiếp và giữ nguyên t
 - Product Name bị bỏ qua. Ánh xạ 10 trường theo `docs/GROUP_UID_ADMIN_IMPORT_DESIGN.md`; ngày không có timezone dùng UTC+07:00.
 - Phải validate đủ `uploaded_rows = expected_rows`, không có mã trùng rồi mới bật nút commit. Commit là upsert nguyên tử, không xóa mã vắng mặt và không ghi đè `Updated Date` mới hơn.
 - Hash SHA-256 dùng cảnh báo file đã nạp; import lại vẫn được phép và phải idempotent. Dữ liệu staging của lượt completed/failed quá 7 ngày được dọn khi tạo lượt mới; metadata lịch sử được giữ.
+- Ô **Cập nhật** mở chi tiết theo trang qua RPC `group_uid_import_update_details`; mỗi UID phải hiển thị đúng trường thay đổi, giá trị database và giá trị file. RPC chỉ đọc lượt nạp do chính Admin tạo, hỗ trợ tìm theo Group UID/SKU và không cấp cho `anon`.
 - Đã kiểm tra file WMS thật 8.148 dòng trên Chromium 1280px và 375px bằng RPC mock; đã kiểm tra RPC thật bằng transaction rollback, gồm start → chunk → validate → commit. Đã xác minh `anon` không gọi được RPC và `authenticated` không ghi trực tiếp bảng. CHƯA VERIFY: thao tác đăng nhập Admin và import thật qua trang production.
 
 Xem lại các quy tắc này khi thay đổi cấu trúc form, danh sách chờ in, header, thanh hành động, kích thước tem in, vai trò Supabase hoặc cơ chế xác minh Apps Script.
