@@ -35,6 +35,11 @@ const fs = require('node:fs');
       await page.goto('http://127.0.0.1:8000/#home');
       await page.locator('#barcode-cut-uid').click();
       assert.equal(page.url().endsWith('#cut-group-uid'), true);
+      await page.locator('#cut-group-uid-screen').waitFor({ state: 'visible' });
+      assert.deepEqual(await page.locator('#cut-group-uid-screen').evaluate(element => {
+        const rect = element.getBoundingClientRect();
+        return { position: getComputedStyle(element).position, top: rect.top, left: rect.left, width: rect.width, viewport: innerWidth };
+      }), { position: 'fixed', top: 0, left: 0, width, viewport: width });
       await page.evaluate(() => {
         window.testJobs = [];
         window.PrintSkuQueue.enqueue = async job => { window.testJobs.push(job); return { ok: true, data: { id: '11111111-1111-4111-8111-111111111111' } }; };
