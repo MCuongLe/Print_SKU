@@ -190,3 +190,12 @@ Chưa xử lý tự động vì phải quyết định trước: xoá hẳn kh�
 - Gửi qua PrintSkuQueue; khi lỗi mạng giữ nonce cho cùng dữ liệu để thử lại không tạo job trùng.
 - Agent cũ không claim Fabric; cần migration v2 và agent 0.5.0. Giữ nguyên cơ chế quyền, lease và spooler hiện có.
 - CHƯA VERIFY: chất lượng trên máy in vật lý, căn tem và độ đậm với cuộn giấy thực tế. Xem lại khi đổi giấy, driver, máy in hoặc quy tắc mã hàng.
+
+### Fabric Relaxation v2 — nhiều mã trên một tem
+
+- Object: lệnh in `fabric_relaxation:v2`; `itemCodes` là mảng 1–5 mã nhập riêng trên frontend (N3).
+- Mỗi mã nằm đúng một dòng; font tự giảm để mã tối đa 40 ký tự không xuống dòng.
+- Ngay dưới từng mã có một hàng Ngày/Giờ/Lot để trống, bố trí sát nhau; không lấy dữ liệu hệ thống.
+- Agent 0.6.0 hỗ trợ cả v1 và v2. Hàng đợi chỉ giao job v2 cho capability `fabric_relaxation:v2`.
+- Migration áp dụng: `print_queue_v3_fabric_relaxation_multi_item.sql`; có thể chạy trực tiếp sau schema v1 hoặc v2.
+- CHƯA VERIFY: khả năng ghi tay trên năm hàng ở tem thật 40 × 60 mm; phải in thử 1 và 5 mã trước khi dùng sản xuất.

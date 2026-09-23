@@ -83,3 +83,11 @@ Xem lại khi đổi khổ giấy, máy in, barcode, queue contract, thời hạ
 - Gửi qua PrintSkuQueue; khi lỗi mạng giữ nonce cho cùng dữ liệu để thử lại không tạo job trùng.
 - Agent cũ không claim Fabric; cần migration v2 và agent 0.5.0. Giữ nguyên cơ chế quyền, lease và spooler hiện có.
 - CHƯA VERIFY: chất lượng trên máy in vật lý, căn tem và độ đậm với cuộn giấy thực tế. Xem lại khi đổi giấy, driver, máy in hoặc quy tắc mã hàng.
+
+### Fabric Relaxation v2 — nhiều mã trên một tem
+
+- Payload v2 là `itemCodes`: mảng 1–5 mã, mỗi mã 1–40 ký tự hợp lệ.
+- Mỗi mã in đúng một dòng; Ngày/Giờ/Lot nằm trên một hàng riêng ngay dưới mã.
+- Agent 0.6.0 giữ capability v1 để không bỏ sót job cũ và thêm capability v2 cho mẫu mới.
+- Hàng đợi phải dùng migration v3 để agent 0.5.0 không claim job v2.
+- CHƯA VERIFY: độ rõ và khoảng ghi tay khi in năm mã trên cuộn tem thực tế.

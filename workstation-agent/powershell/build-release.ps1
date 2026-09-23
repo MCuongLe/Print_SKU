@@ -36,7 +36,7 @@ Copy-Item -LiteralPath $NodePath -Destination (Join-Path $bundledNodeDir 'node.e
 
 # Include the matching static page and additive queue migration for deployment.
 $repoRoot = Split-Path -Parent $agentRoot
-$migration = Join-Path $repoRoot 'supabase\print_queue_v2_fabric_relaxation.sql'
+$migration = Join-Path $repoRoot 'supabase\print_queue_v3_fabric_relaxation_multi_item.sql'
 if (Test-Path -LiteralPath $migration) {
   $deploymentDir = Join-Path $stageRoot 'deployment'
   New-Item -ItemType Directory -Path $deploymentDir -Force | Out-Null

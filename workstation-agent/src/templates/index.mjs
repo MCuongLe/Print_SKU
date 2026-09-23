@@ -2,7 +2,7 @@ import { renderGroupUidLabel } from "./group-uid-label.mjs";
 import { renderSkuLabel } from "./sku-label.mjs";
 import { renderFabricRelaxationLabel } from "./fabric-relaxation-label.mjs";
 
-export const CAPABILITIES = ["sku:v1", "group_uid:v1", "fabric_relaxation:v1"];
+export const CAPABILITIES = ["sku:v1", "group_uid:v1", "fabric_relaxation:v1", "fabric_relaxation:v2"];
 
 export function renderLabelSvg(job) {
   if (job.type === "fabric_relaxation") return renderFabricRelaxationLabel(job.payload);

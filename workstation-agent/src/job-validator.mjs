@@ -14,6 +14,7 @@ export function normalizeJob(input) {
   const source = input && typeof input === "object" ? input : {};
   const payload = source.payload && typeof source.payload === "object" ? source.payload : {};
   const type = cleanText(source.type, 30).toLowerCase();
+  const templateVersion = Number(source.templateVersion) || 1;
   const copies = validCopies(source.copies);
   const errors = [];
   if (!source.id) errors.push("Thiếu id của lệnh in");
@@ -23,9 +24,18 @@ export function normalizeJob(input) {
 
   let normalizedPayload = {};
   if (type === "fabric_relaxation") {
-    const itemCode = String(payload.itemCode ?? "").trim();
-    if (!SKU_PATTERN.test(itemCode)) errors.push("Mã hàng phải có 1–40 ký tự: chữ, số, dấu chấm, gạch ngang hoặc gạch dưới");
-    normalizedPayload = { itemCode };
+    if (templateVersion === 1) {
+      const itemCode = String(payload.itemCode ?? "").trim();
+      if (!SKU_PATTERN.test(itemCode)) errors.push("Mã hàng phải có 1–40 ký tự: chữ, số, dấu chấm, gạch ngang hoặc gạch dưới");
+      normalizedPayload = { itemCode };
+    } else if (templateVersion === 2) {
+      const itemCodes = Array.isArray(payload.itemCodes) ? payload.itemCodes.map(value => String(value ?? "").trim()) : [];
+      if (itemCodes.length < 1 || itemCodes.length > 5) errors.push("Mỗi tem phải có từ 1 đến 5 mã hàng");
+      itemCodes.forEach((itemCode, index) => {
+        if (!SKU_PATTERN.test(itemCode)) errors.push(`Mã hàng dòng ${index + 1} không hợp lệ`);
+      });
+      normalizedPayload = { itemCodes };
+    } else errors.push("Phiên bản tem Fabric Relaxation không được hỗ trợ");
   }
   if (type === "sku") {
     const normalizeSku = (item) => ({
@@ -93,7 +103,7 @@ export function normalizeJob(input) {
       id: cleanText(source.id, 100),
       nonce: cleanText(source.nonce, 120),
       type,
-      templateVersion: Number(source.templateVersion) || 1,
+      templateVersion,
       copies: copies || 0,
       requestedBy: cleanText(source.requestedBy, 100),
       payload: normalizedPayload

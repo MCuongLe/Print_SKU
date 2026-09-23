@@ -7,7 +7,7 @@ const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function publicState(config, printer) {
   return {
-    version: "0.5.0",
+    version: "0.6.0",
     capabilities: CAPABILITIES,
     printer: {
       name: config.printerName,
@@ -91,7 +91,7 @@ export async function processClaimedJob(input, dependencies) {
 }
 
 export async function runService(config, queue, logger, signal, lock) {
-  logger.info(`Agent ${config.agentId} v0.5.0 khởi động; hỗ trợ ${CAPABILITIES.join(", ")}`);
+  logger.info(`Agent ${config.agentId} v0.6.0 khởi động; hỗ trợ ${CAPABILITIES.join(", ")}`);
   while (!signal?.aborted) {
     try {
       lock?.touch?.();

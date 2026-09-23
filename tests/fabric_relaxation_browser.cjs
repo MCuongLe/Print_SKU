@@ -21,7 +21,13 @@ const assert = require('node:assert/strict');
       });
       await page.locator('#fabric-print').click();
       assert.equal(await page.evaluate(() => window.jobs.length), 0);
-      await page.locator('#fabric-code').fill('000TEST-FABRIC-01');
+      await page.locator('#fabric-code-1').fill('000TEST-FABRIC-01');
+      for (const value of ['000TEST-FABRIC-02','000TEST-FABRIC-03','000TEST-FABRIC-04','000TEST-FABRIC-05']) {
+        await page.locator('#fabric-add-code').click();
+        await page.locator(`#fabric-code-${await page.locator('.fabric-code-row').count()}`).fill(value);
+      }
+      assert.equal(await page.locator('.fabric-code-row').count(),5);
+      assert.equal(await page.locator('#fabric-add-code').isVisible(),false);
       for (const value of ['0', '1.5', '501']) {
         await page.locator('#fabric-copies').fill(value);
         await page.locator('#fabric-print').click();
@@ -34,10 +40,13 @@ const assert = require('node:assert/strict');
       await page.waitForFunction(() => document.querySelector('#fabric-status').textContent.includes('hoàn tất'));
       const jobs = await page.evaluate(() => window.jobs);
       assert.equal(jobs.length,2); assert.equal(jobs[0].requestNonce,jobs[1].requestNonce);
-      assert.deepEqual(jobs[1].payload,{ itemCode:'000TEST-FABRIC-01' });
+      assert.deepEqual(jobs[1].payload,{ itemCodes:['000TEST-FABRIC-01','000TEST-FABRIC-02','000TEST-FABRIC-03','000TEST-FABRIC-04','000TEST-FABRIC-05'] });
       assert.equal(jobs[1].copies,3); assert.equal(jobs[1].type,'fabric_relaxation');
-      await page.locator('#fabric-code').fill('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ1234');
-      assert.equal(await page.locator('#fabric-preview-code').textContent(),'0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ1234');
+      assert.equal(jobs[1].templateVersion,2);
+      assert.equal((await page.locator('#fabric-preview-code').getByText('Ngày:').count()),5);
+      await page.locator('.fabric-code-row button').last().click();
+      assert.equal(await page.locator('.fabric-code-row').count(),4);
+      assert.equal(await page.locator('#fabric-add-code').isVisible(),true);
       assert.equal(await page.evaluate(() => document.querySelector('#fabric-screen').scrollWidth <= innerWidth),true);
       await page.screenshot({ path:`workstation-agent/preview/fabric-ui-${width}.png`,fullPage:true });
       await page.locator('#fabric-back').click();
