@@ -196,3 +196,20 @@ Kiểm tra không in thật: `npm test` trong `workstation-agent`,
 `node src/cli.mjs dry-run --type fabric_relaxation` tạo PNG và TSPL.
 Browser test: `node tests/fabric_relaxation_browser.cjs` khi server local chạy cổng 8000;
 đặt `PLAYWRIGHT_MODULE` nếu Playwright nằm ngoài repo. Test chặn mọi kết nối ngoài local.
+
+## Cắt Group UID
+
+Mở **CẮT GROUP UID** ở WH-MATERIAL hoặc `#cut-group-uid`. Người dùng quét một
+UID, hệ thống tra `group_uid_details` và `SKU_Name`, rồi lưu snapshot SKU, UID,
+Lot, Roll và tên sản phẩm vào danh sách tem chờ in. Màn này dùng lại đúng lệnh
+`group_uid:v1`, vì vậy agent 0.6.1 hiện tại không cần cập nhật.
+
+Áp dụng backend một lần trước khi sử dụng:
+
+```powershell
+python scripts/apply_supabase_sql.py supabase/cut_group_uid_v1.sql
+```
+
+Danh sách chờ in nằm trên Supabase nên vẫn còn khi tải lại trang hoặc đổi thiết
+bị. Phần tra cứu lọc theo SKU và xuất `.xlsx` có thiết lập giấy A4 ngang, gồm
+SKU, UID, Lot, Roll và Tên SP.
