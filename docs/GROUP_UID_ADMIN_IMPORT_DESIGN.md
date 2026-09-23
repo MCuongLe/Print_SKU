@@ -1,5 +1,11 @@
 # Thiết kế nạp Group UID từ Excel trên màn Admin
 
+## Trạng thái triển khai
+
+Đã triển khai ngày 23/09/2026 bằng `supabase/group_uid_v4_admin_import.sql` và màn
+`#admin/group-uid-data` trong `index.html`. Phạm vi hiện tại tương ứng Giai đoạn 1;
+chưa có tải CSV lỗi, tiếp tục upload sau khi đóng tab, snapshot xóa/archive hoặc rollback.
+
 ## Kết luận
 
 Hướng này khả thi với ứng dụng hiện tại. File WMS đang dùng có khoảng 8.148 dòng,

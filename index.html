@@ -2478,6 +2478,100 @@ Error generating stack: `+y.message+`
         if (route() === "sample") window.dispatchEvent(new HashChangeEvent("hashchange"));
       })();
     </script>
+    <style id="group-uid-import-theme">
+      .gui-screen { min-height: 100vh; background: #f3f6f5; color: #17251f; font-family: Inter, Arial, sans-serif; }
+      .gui-screen[hidden] { display: none; }
+      .gui-top { position: sticky; top: 0; z-index: 20; border-bottom: 1px solid #dce6e2; background: rgba(255,255,255,.95); backdrop-filter: blur(12px); }
+      .gui-top__in { max-width: 1120px; margin: auto; padding: 15px 22px; display: flex; align-items: center; gap: 14px; }
+      .gui-mark { width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; color: white; background: #005f41; font-weight: 900; }
+      .gui-top h1 { margin: 0; font-size: 19px; }
+      .gui-top p { margin: 3px 0 0; color: #6a7f77; font-size: 12px; }
+      .gui-back { margin-left: auto; min-height: 42px; padding: 0 16px; border: 1px solid #d5e1dd; border-radius: 999px; background: white; color: #315248; font-weight: 800; cursor: pointer; }
+      .gui-main { max-width: 1120px; margin: auto; padding: 25px 22px 70px; }
+      .gui-grid { display: grid; grid-template-columns: minmax(0,1.15fr) minmax(320px,.85fr); gap: 18px; align-items: start; }
+      .gui-card { border: 1px solid #e0e9e6; border-radius: 20px; background: white; box-shadow: 0 10px 30px rgba(27,61,49,.05); padding: 21px; }
+      .gui-card + .gui-card { margin-top: 18px; }
+      .gui-title { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+      .gui-title b { width: 28px; height: 28px; border-radius: 9px; display: grid; place-items: center; color: #006747; background: #daf3e9; }
+      .gui-title h2 { margin: 0; font-size: 16px; }
+      .gui-drop { display: block; padding: 26px 18px; border: 1.5px dashed #9db9af; border-radius: 16px; text-align: center; background: #f8fbfa; cursor: pointer; }
+      .gui-drop strong { display: block; color: #006747; font-size: 16px; }
+      .gui-drop span { display: block; margin-top: 6px; color: #70837c; font-size: 12px; line-height: 1.5; }
+      .gui-file { margin-top: 13px; padding: 12px 14px; border-radius: 12px; background: #eef5f2; font-size: 12px; color: #476158; word-break: break-word; }
+      .gui-status { min-height: 21px; margin: 13px 2px 0; color: #64766f; font-size: 13px; line-height: 1.5; }
+      .gui-status[data-tone="ok"] { color: #087b58; }
+      .gui-status[data-tone="error"] { color: #b32929; }
+      .gui-progress { height: 8px; margin-top: 12px; overflow: hidden; border-radius: 999px; background: #e8efed; }
+      .gui-progress i { display: block; width: 0; height: 100%; border-radius: inherit; background: #0a8b61; transition: width .18s ease; }
+      .gui-metrics { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 10px; }
+      .gui-metric { padding: 13px; border: 1px solid #e3ebe8; border-radius: 13px; background: #fbfcfc; }
+      .gui-metric span { display: block; min-height: 28px; color: #70817b; font-size: 11px; line-height: 1.3; }
+      .gui-metric strong { display: block; margin-top: 7px; color: #17382d; font-size: 22px; }
+      .gui-metric[data-tone="warn"] strong { color: #9b6500; }
+      .gui-metric[data-tone="error"] strong { color: #b32929; }
+      .gui-apply { width: 100%; min-height: 50px; margin-top: 16px; border: 0; border-radius: 14px; background: #006747; color: white; font-size: 15px; font-weight: 900; cursor: pointer; }
+      .gui-apply:disabled { opacity: .38; cursor: not-allowed; }
+      .gui-note { margin: 11px 0 0; color: #76867f; font-size: 11px; line-height: 1.55; }
+      .gui-errors { max-height: 250px; overflow: auto; margin-top: 13px; border: 1px solid #f0dddd; border-radius: 12px; }
+      .gui-errors[hidden] { display: none; }
+      .gui-error { padding: 9px 11px; border-bottom: 1px solid #f3e7e7; color: #873737; font-size: 12px; }
+      .gui-error:last-child { border-bottom: 0; }
+      .gui-history { width: 100%; border-collapse: collapse; font-size: 12px; }
+      .gui-history th { padding: 9px 8px; color: #72817c; text-align: left; border-bottom: 1px solid #dfe8e5; }
+      .gui-history td { padding: 10px 8px; vertical-align: top; border-bottom: 1px solid #edf1f0; }
+      .gui-history code { color: #215a48; font-size: 11px; }
+      .gui-pill { display: inline-block; padding: 4px 7px; border-radius: 999px; background: #e7f3ef; color: #176248; font-size: 10px; font-weight: 800; }
+      .admin-session { flex-wrap: wrap; }
+      @media(max-width:760px) {
+        .gui-top__in,.gui-main { padding-left: 14px; padding-right: 14px; }
+        .gui-grid { grid-template-columns: 1fr; }
+        .gui-metrics { grid-template-columns: repeat(2,minmax(0,1fr)); }
+        .gui-card { padding: 16px; border-radius: 17px; }
+        .gui-back { padding: 0 12px; }
+        .gui-history th:nth-child(2),.gui-history td:nth-child(2) { display: none; }
+      }
+    </style>
+    <section class="gui-screen" id="group-uid-import-screen" aria-labelledby="gui-heading" hidden>
+      <header class="gui-top"><div class="gui-top__in">
+        <div class="gui-mark" aria-hidden="true">UID</div>
+        <div><h1 id="gui-heading">Nạp dữ liệu Group UID</h1><p>Admin · Excel WMS → Supabase</p></div>
+        <button class="gui-back" id="gui-back" type="button">← Tổng quan</button>
+      </div></header>
+      <main class="gui-main">
+        <div class="gui-grid">
+          <div>
+            <section class="gui-card">
+              <div class="gui-title"><b>1</b><h2>Chọn file Excel WMS</h2></div>
+              <label class="gui-drop" for="gui-file"><strong>Chọn file GROUP_UID_DETAIL.xlsx</strong><span>Tối đa 10 MB và 50.000 dòng. Product Name được bỏ qua; tên sản phẩm lấy từ SKU_Name.</span></label>
+              <input id="gui-file" type="file" accept=".xlsx" hidden>
+              <div class="gui-file" id="gui-file-meta" hidden></div>
+              <div class="gui-progress" aria-hidden="true"><i id="gui-progress"></i></div>
+              <p class="gui-status" id="gui-status" aria-live="polite">Chọn file để bắt đầu kiểm tra.</p>
+              <div class="gui-errors" id="gui-errors" hidden></div>
+            </section>
+            <section class="gui-card">
+              <div class="gui-title"><b>2</b><h2>Kết quả kiểm tra</h2></div>
+              <div class="gui-metrics">
+                <div class="gui-metric"><span>Tổng dòng</span><strong id="gui-total">0</strong></div>
+                <div class="gui-metric"><span>Thêm mới</span><strong id="gui-new">0</strong></div>
+                <div class="gui-metric"><span>Cập nhật</span><strong id="gui-update">0</strong></div>
+                <div class="gui-metric"><span>Không thay đổi</span><strong id="gui-unchanged">0</strong></div>
+                <div class="gui-metric"><span>Bỏ qua dữ liệu cũ</span><strong id="gui-stale">0</strong></div>
+                <div class="gui-metric" data-tone="warn"><span>SKU trống</span><strong id="gui-blank-sku">0</strong></div>
+                <div class="gui-metric" data-tone="warn"><span>SKU chưa có tên</span><strong id="gui-unknown-sku">0</strong></div>
+                <div class="gui-metric" data-tone="error"><span>Dòng trùng / lỗi</span><strong id="gui-invalid">0</strong></div>
+              </div>
+              <button class="gui-apply" id="gui-apply" type="button" disabled>Cập nhật database</button>
+              <p class="gui-note">Chỉ thêm hoặc cập nhật theo Group UID Code. Không xóa mã vắng mặt trong file. Dữ liệu có Updated Date cũ hơn database sẽ được bỏ qua.</p>
+            </section>
+          </div>
+          <aside class="gui-card">
+            <div class="gui-title"><b>3</b><h2>Lịch sử nạp gần nhất</h2></div>
+            <div style="overflow:auto"><table class="gui-history"><thead><tr><th>File</th><th>Người nạp</th><th>Kết quả</th></tr></thead><tbody id="gui-history"><tr><td colspan="3">Đang tải…</td></tr></tbody></table></div>
+          </aside>
+        </div>
+      </main>
+    </section>
     <section class="admin-auth" id="admin-auth" role="dialog" aria-modal="true" aria-labelledby="admin-auth-title" hidden>
       <form class="admin-auth__card" id="admin-auth-form" novalidate>
         <div class="admin-auth__brand">
@@ -2498,6 +2592,7 @@ Error generating stack: `+y.message+`
     </section>
     <div class="admin-session" id="admin-session" hidden>
       <span id="admin-session-name">Admin</span>
+      <button id="admin-uid-data" type="button">Dữ liệu UID</button>
       <button id="admin-session-logout" type="button">Đăng xuất</button>
     </div>
     <script>
@@ -2590,9 +2685,11 @@ Error generating stack: `+y.message+`
           if (!roleResponse.ok) throw new Error("Không đọc được bảng quyền. Kiểm tra RLS của user_roles.");
           const roles = await roleResponse.json();
           if (!roles[0] || roles[0].role !== "admin") throw new Error("Tài khoản này không có quyền Quản trị.");
+          const becameAuthorized = !authorized;
           authorized = true;
           saveSession(active);
           showSession(roles[0].username || "Admin");
+          if (becameAuthorized) window.dispatchEvent(new CustomEvent("print-sku-admin-ready"));
           return roles[0];
         };
         const requireAdmin = async () => {
@@ -2690,11 +2787,268 @@ Error generating stack: `+y.message+`
           location.hash = "#worker";
         });
 
+        window.PrintSkuAdminAuth = {
+          async accessToken() {
+            const role = await validateAdmin(session || readSession());
+            if (!role) throw new Error("Phiên Admin đã hết hạn. Hãy đăng nhập lại.");
+            return (session || readSession()).access_token;
+          }
+        };
+
         session = readSession();
         if (isAdminHash()) {
           pendingHash = location.hash;
           requireAdmin();
         }
+      })();
+    </script>
+    <script>
+      (() => {
+        const screen = document.getElementById("group-uid-import-screen");
+        const root = document.getElementById("root");
+        const openButton = document.getElementById("admin-uid-data");
+        const backButton = document.getElementById("gui-back");
+        const fileInput = document.getElementById("gui-file");
+        const fileMeta = document.getElementById("gui-file-meta");
+        const status = document.getElementById("gui-status");
+        const progress = document.getElementById("gui-progress");
+        const errorsBox = document.getElementById("gui-errors");
+        const applyButton = document.getElementById("gui-apply");
+        const historyBody = document.getElementById("gui-history");
+        const metricIds = {
+          totalRows: "gui-total", newRows: "gui-new", updatedRows: "gui-update",
+          unchangedRows: "gui-unchanged", staleRows: "gui-stale", blankSkuRows: "gui-blank-sku",
+          unknownSkuRows: "gui-unknown-sku", invalidRows: "gui-invalid"
+        };
+        const API_URL = "https://ikzhitdqkoatlmkrxuuh.supabase.co";
+        const API_KEY = "sb_publishable_mBl--Ep5nNxuC4Xvyi1gfg_SLGEcRhI";
+        const REQUIRED = {
+          "group uid code": "group_uid_code", "batch code": "batch_code", "roll code": "roll_code",
+          "warehouse": "warehouse", "location": "location", "sku": "sku", "qty": "qty",
+          "updated by": "updated_by", "updated date": "updated_date", "status": "status"
+        };
+        let currentRun = null;
+        let busy = false;
+
+        const escapeHtml = value => String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
+        const setStatus = (message, tone = "") => { status.textContent = message; status.dataset.tone = tone; };
+        const setProgress = value => { progress.style.width = `${Math.max(0, Math.min(100, value))}%`; };
+        const setMetrics = data => {
+          for (const [key, id] of Object.entries(metricIds)) document.getElementById(id).textContent = Number(data?.[key] || 0).toLocaleString("vi-VN");
+        };
+        const showErrors = items => {
+          const rows = (items || []).slice(0, 50);
+          errorsBox.hidden = !rows.length;
+          errorsBox.innerHTML = rows.map(item => `<div class="gui-error"><b>Dòng ${escapeHtml(item.rowNo || "—")}</b> · ${escapeHtml(item.message || item.groupUidCode || "Dữ liệu không hợp lệ")}</div>`).join("");
+        };
+        const normalizeHeader = value => String(value || "").replace(/\s+/g, " ").trim().toLowerCase();
+        const cellColumn = reference => (reference || "").replace(/\d+$/, "");
+        const normalizeDate = value => {
+          const text = String(value || "").trim();
+          if (!text) return "";
+          const base = text.replace(" ", "T");
+          const iso = /(Z|[+-]\d{2}:?\d{2})$/i.test(base) ? base : `${base}+07:00`;
+          return Number.isNaN(Date.parse(iso)) ? "" : iso;
+        };
+        const hashHex = async buffer => [...new Uint8Array(await crypto.subtle.digest("SHA-256", buffer))].map(value => value.toString(16).padStart(2, "0")).join("");
+
+        const rpc = async (name, body) => {
+          const token = await window.PrintSkuAdminAuth.accessToken();
+          const response = await fetch(`${API_URL}/rest/v1/rpc/${name}`, {
+            method: "POST",
+            headers: { apikey: API_KEY, Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+            body: JSON.stringify(body), signal: AbortSignal.timeout(120000)
+          });
+          let result = null;
+          try { result = await response.json(); } catch (_) {}
+          if (!response.ok) throw new Error(result?.message || `Supabase HTTP ${response.status}`);
+          return result;
+        };
+
+        const readWorkbook = async (file, buffer) => {
+          const bytes = new Uint8Array(buffer);
+          const zip = window.PrintSkuZip;
+          if (!zip) throw new Error("Bộ đọc Excel chưa sẵn sàng. Hãy tải lại trang.");
+          const entries = zip.readZipEntries(bytes);
+          const sheetName = Object.keys(entries).filter(name => /^xl\/worksheets\/sheet\d+\.xml$/.test(name)).sort()[0];
+          if (!sheetName) throw new Error("Không tìm thấy worksheet trong file.");
+          const decoder = new TextDecoder();
+          const parser = new DOMParser();
+          const shared = [];
+          if (entries["xl/sharedStrings.xml"]) {
+            const xml = parser.parseFromString(decoder.decode(await zip.inflateZipEntry(bytes, entries["xl/sharedStrings.xml"])), "application/xml");
+            xml.querySelectorAll("si").forEach(item => shared.push(item.textContent || ""));
+          }
+          const sheet = parser.parseFromString(decoder.decode(await zip.inflateZipEntry(bytes, entries[sheetName])), "application/xml");
+          if (sheet.querySelector("parsererror")) throw new Error("Worksheet XML không hợp lệ.");
+          const valueOf = cell => {
+            const type = cell.getAttribute("t");
+            if (type === "inlineStr") return cell.querySelector("is")?.textContent || "";
+            const value = cell.querySelector("v")?.textContent || "";
+            if (type === "s") return shared[Number(value)] ?? "";
+            if (type === "b") return value === "1" ? "TRUE" : "FALSE";
+            return value;
+          };
+          const rows = [...sheet.querySelectorAll("sheetData > row")];
+          if (!rows.length) throw new Error("File không có dữ liệu.");
+          const headerByColumn = new Map();
+          rows[0].querySelectorAll("c").forEach(cell => headerByColumn.set(cellColumn(cell.getAttribute("r")), normalizeHeader(valueOf(cell))));
+          const columns = {};
+          for (const [header, field] of Object.entries(REQUIRED)) {
+            const matches = [...headerByColumn].filter(([, value]) => value === header);
+            if (matches.length !== 1) throw new Error(`Thiếu hoặc trùng cột: ${header}`);
+            columns[matches[0][0]] = field;
+          }
+          const parsed = [], errors = [], seen = new Map();
+          for (const [offset, row] of rows.slice(1).entries()) {
+            const rowNo = Number(row.getAttribute("r")) || offset + 2;
+            const raw = {};
+            row.querySelectorAll("c").forEach(cell => {
+              const field = columns[cellColumn(cell.getAttribute("r"))];
+              if (field) raw[field] = String(valueOf(cell)).replace(/\s+/g, " ").trim();
+            });
+            if (!Object.values(raw).some(Boolean)) continue;
+            const code = raw.group_uid_code || "";
+            const qtyText = (raw.qty || "").replace(/,/g, "");
+            const qty = Number(qtyText);
+            const updatedDate = normalizeDate(raw.updated_date);
+            const rowErrors = [];
+            if (!code || code.length > 40) rowErrors.push("Group UID Code trống hoặc dài quá 40 ký tự");
+            if (!Number.isFinite(qty) || qty < 0 || qtyText === "") rowErrors.push("Qty không hợp lệ");
+            if (!updatedDate) rowErrors.push("Updated Date không hợp lệ");
+            if (!raw.status) rowErrors.push("Status đang trống");
+            if (seen.has(code)) rowErrors.push(`Group UID trùng với dòng ${seen.get(code)}`);
+            else if (code) seen.set(code, rowNo);
+            if (rowErrors.length) {
+              errors.push({ rowNo, message: rowErrors.join("; ") });
+              continue;
+            }
+            parsed.push({
+              row_no: rowNo, group_uid_code: code, batch_code: raw.batch_code || null,
+              roll_code: raw.roll_code || null, warehouse: raw.warehouse || null,
+              location: raw.location || null, sku: raw.sku || null, qty: qtyText,
+              updated_by: raw.updated_by || null, updated_date: updatedDate, status: raw.status
+            });
+            if (parsed.length > 50000) throw new Error("File vượt quá 50.000 dòng.");
+          }
+          if (!parsed.length && !errors.length) throw new Error("Không có dòng Group UID nào trong file.");
+          return { rows: parsed, errors };
+        };
+
+        const formatTime = value => value ? new Date(value).toLocaleString("vi-VN") : "—";
+        const loadHistory = async () => {
+          if (location.hash !== "#admin/group-uid-data") return;
+          try {
+            const result = await rpc("group_uid_import_history", { p_limit: 10 });
+            const rows = result?.data?.runs || [];
+            historyBody.innerHTML = rows.length ? rows.map(row => {
+              const counts = row.counts || {};
+              const resultText = row.status === "completed" ? `${Number(counts.writtenRows || 0).toLocaleString("vi-VN")} dòng` : row.status;
+              return `<tr><td><b>${escapeHtml(row.fileName)}</b><br><code>${formatTime(row.createdAt)}</code></td><td>${escapeHtml(row.username || "Admin")}</td><td><span class="gui-pill">${escapeHtml(resultText)}</span>${row.errorMessage ? `<br>${escapeHtml(row.errorMessage)}` : ""}</td></tr>`;
+            }).join("") : '<tr><td colspan="3">Chưa có lịch sử nạp.</td></tr>';
+          } catch (error) {
+            historyBody.innerHTML = `<tr><td colspan="3">${escapeHtml(error.message)}</td></tr>`;
+          }
+        };
+
+        const handleFile = async file => {
+          if (busy || !file) return;
+          currentRun = null;
+          applyButton.disabled = true;
+          setMetrics({}); showErrors([]); setProgress(2);
+          if (!/\.xlsx$/i.test(file.name)) return setStatus("Chỉ nhận file .xlsx xuất từ WMS.", "error");
+          if (file.size < 1 || file.size > 10 * 1024 * 1024) return setStatus("File phải nhỏ hơn hoặc bằng 10 MB.", "error");
+          busy = true; fileInput.disabled = true;
+          try {
+            setStatus("Đang đọc và kiểm tra file…");
+            const buffer = await file.arrayBuffer();
+            const [content, sha256] = await Promise.all([readWorkbook(file, buffer), hashHex(buffer)]);
+            fileMeta.hidden = false;
+            fileMeta.innerHTML = `<b>${escapeHtml(file.name)}</b> · ${(file.size / 1024).toLocaleString("vi-VN", {maximumFractionDigits:1})} KB<br>SHA-256: <code>${sha256.slice(0,16)}…</code>`;
+            setMetrics({ totalRows: content.rows.length, invalidRows: content.errors.length });
+            showErrors(content.errors);
+            if (content.errors.length) {
+              setProgress(0);
+              return setStatus(`File có ${content.errors.length.toLocaleString("vi-VN")} dòng lỗi. Sửa file rồi chọn lại.`, "error");
+            }
+            setStatus(`Đã đọc ${content.rows.length.toLocaleString("vi-VN")} dòng. Đang tạo lượt nạp…`);
+            const started = await rpc("group_uid_import_start", {
+              p_file_name: file.name, p_file_size: file.size, p_file_sha256: sha256, p_expected_rows: content.rows.length
+            });
+            if (!started?.ok) throw new Error(started?.error?.message || "Không tạo được lượt nạp");
+            const runId = started.data.runId;
+            for (let start = 0; start < content.rows.length; start += 500) {
+              const chunk = content.rows.slice(start, start + 500);
+              const result = await rpc("group_uid_import_chunk", { p_run_id: runId, p_rows: chunk });
+              if (!result?.ok) throw new Error(result?.error?.message || "Không tải được lô dữ liệu");
+              const done = Math.min(content.rows.length, start + chunk.length);
+              setProgress(done / content.rows.length * 85);
+              setStatus(`Đang tải vùng kiểm tra: ${done.toLocaleString("vi-VN")}/${content.rows.length.toLocaleString("vi-VN")} dòng…`);
+            }
+            setStatus("Đang đối chiếu với database…");
+            const checked = await rpc("group_uid_import_validate", { p_run_id: runId });
+            const summary = checked?.data || {};
+            setMetrics({ ...summary, invalidRows: Number(summary.duplicateRows || 0) });
+            if (!checked?.ok) {
+              showErrors((summary.duplicateCodes || []).map(item => ({ message: `Group UID ${item.groupUidCode} xuất hiện ${item.count} lần` })));
+              setProgress(0);
+              throw new Error(checked?.error?.message || "File chưa đạt kiểm tra");
+            }
+            currentRun = { id: runId, summary, fileName: file.name };
+            applyButton.disabled = false;
+            setProgress(100);
+            const repeated = Number(started.data.previousImports || 0);
+            setStatus(`File hợp lệ và chưa thay đổi database.${repeated ? ` File này đã được nạp ${repeated} lần trước.` : ""}`, repeated ? "" : "ok");
+          } catch (error) {
+            setProgress(0);
+            setStatus(error.message || "Không kiểm tra được file.", "error");
+          } finally {
+            busy = false; fileInput.disabled = false; fileInput.value = "";
+          }
+        };
+
+        fileInput.addEventListener("change", () => handleFile(fileInput.files?.[0]));
+        applyButton.addEventListener("click", async () => {
+          if (!currentRun || busy) return;
+          const s = currentRun.summary;
+          const message = `Cập nhật database từ ${currentRun.fileName}?\n\nThêm mới: ${s.newRows || 0}\nCập nhật: ${s.updatedRows || 0}\nKhông thay đổi: ${s.unchangedRows || 0}\nBỏ qua dữ liệu cũ: ${s.staleRows || 0}\n\nKhông xóa Group UID vắng mặt trong file.`;
+          if (!confirm(message)) return;
+          busy = true; applyButton.disabled = true; fileInput.disabled = true;
+          try {
+            setProgress(35); setStatus("Đang áp dụng vào database…");
+            const result = await rpc("group_uid_import_commit", { p_run_id: currentRun.id });
+            if (!result?.ok) throw new Error(result?.error?.message || "Database không nhận dữ liệu");
+            setProgress(100);
+            setStatus(`Đã cập nhật ${Number(result.data.writtenRows || 0).toLocaleString("vi-VN")} dòng Group UID.`, "ok");
+            currentRun = null;
+            await loadHistory();
+          } catch (error) {
+            applyButton.disabled = false;
+            setProgress(0); setStatus(error.message || "Không cập nhật được database.", "error");
+          } finally {
+            busy = false; fileInput.disabled = false;
+          }
+        });
+
+        let routeSequence = 0;
+        const renderRoute = async () => {
+          const sequence = ++routeSequence;
+          const active = location.hash === "#admin/group-uid-data";
+          root.hidden = active;
+          screen.hidden = true;
+          if (!active) return;
+          try {
+            await window.PrintSkuAdminAuth.accessToken();
+            if (sequence !== routeSequence || location.hash !== "#admin/group-uid-data") return;
+            screen.hidden = false;
+            loadHistory();
+          } catch (_) { /* lớp đăng nhập Admin đang hiển thị */ }
+        };
+        openButton.addEventListener("click", () => { location.hash = "#admin/group-uid-data"; });
+        backButton.addEventListener("click", () => { location.hash = "#admin/tongquan"; });
+        window.addEventListener("hashchange", renderRoute);
+        window.addEventListener("print-sku-admin-ready", renderRoute);
+        renderRoute();
       })();
     </script>
   </body>

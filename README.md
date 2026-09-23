@@ -129,6 +129,28 @@ Các UID có SKU chưa có tên trong `SKU_Name` sẽ chờ gán tên thủ côn
 Đã kiểm tra frontend với RPC thật: UID có dữ liệu tự chuyển sang Sẵn sàng in,
 đủ SKU, tên sản phẩm, lot và roll. Frontend báo lỗi và cho gán tay nếu RPC không truy cập được.
 
+### Nạp Excel Group UID trên Admin
+
+Admin mở `#admin/group-uid-data`, chọn file `.xlsx` xuất từ WMS rồi xem trước số
+dòng thêm mới, cập nhật, không thay đổi, dữ liệu cũ, SKU trống và SKU chưa có trong
+`SKU_Name`. Khi bấm **Cập nhật database**, dữ liệu đã kiểm tra mới được upsert;
+không xóa Group UID vắng mặt trong file.
+
+Backend nằm trong `supabase/group_uid_v4_admin_import.sql`: bảng staging, lịch sử
+và năm RPC `start/chunk/validate/commit/history`. RPC chỉ cấp cho `authenticated`
+và tự kiểm tra `auth.uid()` có role `admin`; web không có quyền ghi trực tiếp vào
+bảng chính hoặc bảng staging. File chia lô 500 dòng, tối đa 10 MB / 50.000 dòng.
+Product Name trong Excel bị bỏ qua, ngày không có múi giờ được hiểu là UTC+07:00.
+
+Triển khai hoặc cập nhật backend bằng migration:
+
+```powershell
+python scripts/apply_supabase_sql.py supabase/group_uid_v4_admin_import.sql
+```
+
+Tài liệu kiến trúc và quy tắc phục hồi nằm tại
+[`docs/GROUP_UID_ADMIN_IMPORT_DESIGN.md`](docs/GROUP_UID_ADMIN_IMPORT_DESIGN.md).
+
 ## Đồng bộ danh mục SKU lên Supabase
 
 Đặt `SUPABASE_URL` và `SUPABASE_SECRET_KEY` trong biến môi trường của máy chạy đồng bộ. Không lưu secret key trong source code hoặc Git.

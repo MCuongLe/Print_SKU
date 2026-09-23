@@ -56,6 +56,16 @@ Giao diện ứng dụng in tem SKU vẫn mở trực tiếp và giữ nguyên t
 - Migration `group_uid_v3_drop_product.sql` loại cột tên trùng `product` theo yêu cầu; Excel WMS vẫn có thể chứa Product Name nhưng script nhập bỏ qua. SKU chưa có tên trong `SKU_Name` phải chờ bổ sung tên thủ công, không tự chuyển sang Sẵn sàng in.
 - Đã kiểm tra Chromium desktop 1280px/mobile 375px bằng dữ liệu giả: tự gán, giữ lot/roll, không SKU, mã trùng đang tra, không tìm thấy, thiếu tên, lỗi mạng, gán tay và payload in. Đã kiểm tra RPC thật qua frontend: tự chuyển sang Sẵn sàng in, đủ tên/SKU/lot/roll. CHƯA VERIFY: import Excel qua trình duyệt, máy quét và bản in thật.
 
+### Admin nạp Excel Group UID
+
+- Chỉ tài khoản Supabase Auth có `user_roles.role = admin` được gọi RPC import. Chốt quyền phải nằm trong mỗi RPC; ẩn nút trên giao diện không phải là phân quyền.
+- Frontend không có `service_role`, personal access token hoặc quyền ghi trực tiếp `group_uid_details`, `group_uid_import_runs`, `group_uid_import_rows`.
+- File tối đa 10 MB / 50.000 dòng, tải staging từng lô tối đa 500. Mã trùng, thiếu Group UID, Qty âm/sai, ngày sai hoặc Status trống là lỗi chặn.
+- Product Name bị bỏ qua. Ánh xạ 10 trường theo `docs/GROUP_UID_ADMIN_IMPORT_DESIGN.md`; ngày không có timezone dùng UTC+07:00.
+- Phải validate đủ `uploaded_rows = expected_rows`, không có mã trùng rồi mới bật nút commit. Commit là upsert nguyên tử, không xóa mã vắng mặt và không ghi đè `Updated Date` mới hơn.
+- Hash SHA-256 dùng cảnh báo file đã nạp; import lại vẫn được phép và phải idempotent. Dữ liệu staging của lượt completed/failed quá 7 ngày được dọn khi tạo lượt mới; metadata lịch sử được giữ.
+- Đã kiểm tra file WMS thật 8.148 dòng trên Chromium 1280px và 375px bằng RPC mock; đã kiểm tra RPC thật bằng transaction rollback, gồm start → chunk → validate → commit. Đã xác minh `anon` không gọi được RPC và `authenticated` không ghi trực tiếp bảng. CHƯA VERIFY: thao tác đăng nhập Admin và import thật qua trang production.
+
 Xem lại các quy tắc này khi thay đổi cấu trúc form, danh sách chờ in, header, thanh hành động, kích thước tem in, vai trò Supabase hoặc cơ chế xác minh Apps Script.
 
 ## Agent máy trạm mới
