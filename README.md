@@ -179,7 +179,7 @@ python scripts/sync_sku_to_supabase.py --database data/sku.db
 
 Mở **FABRIC RELAXATION** ở WH-MATERIAL hoặc `#fabric-relaxation`.
 Nhập riêng từ 1 đến 5 mã hàng và số tem (1–500), xem trước rồi bấm In.
-Mỗi mã nằm trên một dòng, ngay bên dưới có Ngày, Giờ, Lot riêng để ghi tay. Sử dụng agent SKU/UID,
+Các mã xếp liên tiếp, mỗi mã một dòng; bên dưới chỉ có một bộ Ngày, Giờ, Lot dùng chung, mỗi mục một dòng để ghi tay. Sử dụng agent SKU/UID,
 giấy 40 × 60 mm, hai tem mỗi hàng; số lẻ để trắng tem bên phải hàng cuối.
 
 Kích hoạt trên hệ thống đang chạy:
@@ -188,7 +188,7 @@ Kích hoạt trên hệ thống đang chạy:
    Migration chạy trong transaction, chỉ mở rộng loại tem và cập nhật enqueue/claim;
    không xóa job. Nếu dùng `scripts/apply_supabase_sql.py`, cần `--allow-destructive`
    vì migration thay CHECK constraint (không xóa dữ liệu).
-2. Cập nhật agent lên 0.6.0 tại máy in, giữ nguyên `config/.env`, token và cấu hình máy in.
+2. Cập nhật agent lên 0.6.1 tại máy in, giữ nguyên `config/.env`, token và cấu hình máy in. Nếu đã áp dụng migration v3 thì không cần chạy lại SQL cho bản sửa bố cục này.
    Khởi động lại agent sau khi hàng đợi hiện tại đã hoàn tất. Agent tự báo capability mới.
 3. Cập nhật `index.html` trên nơi phục vụ ứng dụng. In thử 1, 2 và 3 tem để kiểm tra căn giấy.
 

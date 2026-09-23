@@ -15,13 +15,18 @@ test("Fabric v2 giữ 1–5 mã hàng riêng và chặn danh sách không hợp 
   for (const copies of [0, -1, 1.5, 501]) assert.equal(normalizeJob({ ...job, copies }).ok, false);
   for (const copies of [1, 500]) assert.equal(normalizeJob({ ...job, copies }).ok, true);
 });
-test("Fabric giữ mỗi mã một dòng với Ngày/Giờ/Lot ngay bên dưới", () => {
+test("Fabric xếp mã liên tiếp phía trên và chỉ có một bộ Ngày/Giờ/Lot dùng chung", () => {
   const itemCodes = ["TEST-01", "TEST-02", "TEST-03", "TEST-04", "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ1234"];
   const svg = renderFabricRelaxationLabel({ itemCodes, lot:"DO-NOT-PRINT" });
   assert.match(svg, /width="320" height="480"/);
   assert.deepEqual([...svg.matchAll(/font-weight="700"[^>]*>(.*?)<\/text>/g)].map(x => x[1]), itemCodes);
-  for (const name of ["Ngày:", "Giờ:", "Lot:"]) assert.equal((svg.match(new RegExp(name, "g")) || []).length, 5);
-  assert.equal((svg.match(/stroke-dasharray=/g) || []).length, 15);
+  for (const name of ["Ngày:", "Giờ:", "Lot:"]) assert.equal((svg.match(new RegExp(name, "g")) || []).length, 1);
+  assert.equal((svg.match(/stroke-dasharray=/g) || []).length, 3);
+  const codeYs = [...svg.matchAll(/<text x="160" y="(\d+)"[^>]*font-weight="700"/g)].map(match => Number(match[1]));
+  const fieldYs = [...svg.matchAll(/<text x="16" y="(\d+)"/g)].map(match => Number(match[1]));
+  assert.equal(codeYs.length, 5);
+  assert.ok(Math.max(...codeYs) < Math.min(...fieldYs));
+  assert.equal(new Set(fieldYs).size, 3);
   assert.ok(!svg.includes("DO-NOT-PRINT"));
 });
 test("Fabric v1 vẫn in được job cũ đang chờ", () => {

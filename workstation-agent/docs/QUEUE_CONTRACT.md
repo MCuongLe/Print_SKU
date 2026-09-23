@@ -37,7 +37,7 @@ Backend chuẩn nằm ở `supabase/print_queue_v1.sql`. Agent gọi Supabase RP
 
 ```json
 {
-  "version": "0.6.0",
+  "version": "0.6.1",
   "capabilities": ["sku:v1", "group_uid:v1", "fabric_relaxation:v1", "fabric_relaxation:v2"]
 }
 ```
@@ -53,5 +53,5 @@ Agent chỉ lấy job Fabric khi có capability `fabric_relaxation:v1`.
 Job v2: `type: "fabric_relaxation"`, `templateVersion: 2`, `copies: 1..500`,
 `payload: { "itemCodes": ["TEST-FABRIC-01", "TEST-FABRIC-02"] }`.
 Mỗi tem có 1–5 mã; mỗi mã 1–40 ký tự `[0-9A-Za-z._-]` và giữ số 0 đầu.
-Ngày/Giờ/Lot không nằm trong payload, luôn để trống riêng dưới từng mã.
-Agent 0.6.0 vẫn quảng bá v1 để xử lý an toàn các job cũ đang chờ.
+Ngày/Giờ/Lot không nằm trong payload; chỉ có một bộ dùng chung bên dưới danh sách mã, mỗi mục một dòng trống.
+Agent 0.6.1 vẫn quảng bá v1 để xử lý an toàn các job cũ đang chờ. Bản sửa bố cục giữ nguyên payload và migration v3.

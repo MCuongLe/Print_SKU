@@ -87,7 +87,7 @@ Xem lại khi đổi khổ giấy, máy in, barcode, queue contract, thời hạ
 ### Fabric Relaxation v2 — nhiều mã trên một tem
 
 - Payload v2 là `itemCodes`: mảng 1–5 mã, mỗi mã 1–40 ký tự hợp lệ.
-- Mỗi mã in đúng một dòng; Ngày/Giờ/Lot nằm trên một hàng riêng ngay dưới mã.
-- Agent 0.6.0 giữ capability v1 để không bỏ sót job cũ và thêm capability v2 cho mẫu mới.
+- Mỗi mã in đúng một dòng, xếp liên tiếp ở trên; chỉ một bộ Ngày/Giờ/Lot dùng chung phía dưới, mỗi mục một dòng trống.
+- Agent 0.6.1 sửa bố cục v2 theo ảnh mẫu đính chính; giữ capability v1/v2 và migration hiện có.
 - Hàng đợi phải dùng migration v3 để agent 0.5.0 không claim job v2.
 - CHƯA VERIFY: độ rõ và khoảng ghi tay khi in năm mã trên cuộn tem thực tế.

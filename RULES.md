@@ -195,7 +195,7 @@ Chưa xử lý tự động vì phải quyết định trước: xoá hẳn kh�
 
 - Object: lệnh in `fabric_relaxation:v2`; `itemCodes` là mảng 1–5 mã nhập riêng trên frontend (N3).
 - Mỗi mã nằm đúng một dòng; font tự giảm để mã tối đa 40 ký tự không xuống dòng.
-- Ngay dưới từng mã có một hàng Ngày/Giờ/Lot để trống, bố trí sát nhau; không lấy dữ liệu hệ thống.
-- Agent 0.6.0 hỗ trợ cả v1 và v2. Hàng đợi chỉ giao job v2 cho capability `fabric_relaxation:v2`.
+- Theo ảnh mẫu được người dùng đính chính: mã xếp liên tiếp phía trên; chỉ một bộ Ngày/Giờ/Lot dùng chung phía dưới, mỗi mục một dòng trống dài để ghi tay.
+- Agent 0.6.1 sửa bố cục v2, hỗ trợ cả v1 và v2; không đổi payload hoặc migration. Máy trạm cần nâng 0.6.1 để in đúng mẫu mới.
 - Migration áp dụng: `print_queue_v3_fabric_relaxation_multi_item.sql`; có thể chạy trực tiếp sau schema v1 hoặc v2.
 - CHƯA VERIFY: khả năng ghi tay trên năm hàng ở tem thật 40 × 60 mm; phải in thử 1 và 5 mã trước khi dùng sản xuất.

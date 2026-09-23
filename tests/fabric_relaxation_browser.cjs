@@ -43,7 +43,7 @@ const assert = require('node:assert/strict');
       assert.deepEqual(jobs[1].payload,{ itemCodes:['000TEST-FABRIC-01','000TEST-FABRIC-02','000TEST-FABRIC-03','000TEST-FABRIC-04','000TEST-FABRIC-05'] });
       assert.equal(jobs[1].copies,3); assert.equal(jobs[1].type,'fabric_relaxation');
       assert.equal(jobs[1].templateVersion,2);
-      assert.equal((await page.locator('#fabric-preview-code').getByText('Ngày:').count()),5);
+      for (const name of ['Ngày:', 'Giờ:', 'Lot:']) assert.equal(await page.locator('#fabric-preview-code').getByText(name, { exact:true }).count(),1);
       await page.locator('.fabric-code-row button').last().click();
       assert.equal(await page.locator('.fabric-code-row').count(),4);
       assert.equal(await page.locator('#fabric-add-code').isVisible(),true);
