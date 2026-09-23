@@ -19,9 +19,14 @@ export function normalizeJob(input) {
   if (!source.id) errors.push("Thiếu id của lệnh in");
   if (!source.nonce) errors.push("Thiếu nonce chống gửi trùng");
   if (!copies) errors.push("Số tem phải từ 1 đến 500");
-  if (!['sku', 'group_uid'].includes(type)) errors.push("Loại tem không được hỗ trợ");
+  if (!['sku', 'group_uid', 'fabric_relaxation'].includes(type)) errors.push("Loại tem không được hỗ trợ");
 
   let normalizedPayload = {};
+  if (type === "fabric_relaxation") {
+    const itemCode = String(payload.itemCode ?? "").trim();
+    if (!SKU_PATTERN.test(itemCode)) errors.push("Mã hàng phải có 1–40 ký tự: chữ, số, dấu chấm, gạch ngang hoặc gạch dưới");
+    normalizedPayload = { itemCode };
+  }
   if (type === "sku") {
     const normalizeSku = (item) => ({
       sku: cleanText(item.sku, 40),

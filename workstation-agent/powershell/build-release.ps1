@@ -34,5 +34,15 @@ $bundledNodeDir = Join-Path $stageRoot 'node'
 New-Item -ItemType Directory -Path $bundledNodeDir -Force | Out-Null
 Copy-Item -LiteralPath $NodePath -Destination (Join-Path $bundledNodeDir 'node.exe')
 
+# Include the matching static page and additive queue migration for deployment.
+$repoRoot = Split-Path -Parent $agentRoot
+$migration = Join-Path $repoRoot 'supabase\print_queue_v2_fabric_relaxation.sql'
+if (Test-Path -LiteralPath $migration) {
+  $deploymentDir = Join-Path $stageRoot 'deployment'
+  New-Item -ItemType Directory -Path $deploymentDir -Force | Out-Null
+  Copy-Item -LiteralPath $migration -Destination $deploymentDir
+  Copy-Item -LiteralPath (Join-Path $repoRoot 'index.html') -Destination $deploymentDir
+}
+
 Compress-Archive -LiteralPath $stageRoot -DestinationPath $zipPath -CompressionLevel Optimal
 Write-Output $zipPath

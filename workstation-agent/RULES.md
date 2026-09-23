@@ -69,3 +69,17 @@ Từ 0.3.6, N4 mới thật sự là N4. Trước đó agent báo hoàn tất ng
 ## Khi nào xem lại
 
 Xem lại khi đổi khổ giấy, máy in, barcode, queue contract, thời hạn lease hoặc nội dung một trong hai template.
+
+
+## Fabric Relaxation (23/09/2026)
+
+- Nguồn yêu cầu: ảnh tem xả vải và chỉ đạo dùng cùng giấy/agent SKU, UID.
+- Object: lệnh in `fabric_relaxation:v1`; mã hàng nhập tay, chưa đối chiếu danh mục (N3).
+- Mã hàng: 1–40 ký tự chữ/số/chấm/gạch ngang/gạch dưới; giữ số 0 đầu. Rỗng hoặc ký tự khác: NG, chặn in.
+- Số tem: số nguyên 1–500; ngoài phạm vi: NG. Giới hạn kế thừa hàng đợi hiện có.
+- Tem 40 × 60 mm; 2 cột, khe ngang 2 mm, khe hàng 3 mm, 8 dot/mm, cùng renderer TSPL SKU/UID.
+- Ngày, Giờ, Lot luôn là dòng chấm trống; không điền thời gian hệ thống hoặc dữ liệu Lot.
+- Mã dài chia dòng mỗi 16 ký tự, tối đa 3 dòng; font monospace để không cắt mã rộng.
+- Gửi qua PrintSkuQueue; khi lỗi mạng giữ nonce cho cùng dữ liệu để thử lại không tạo job trùng.
+- Agent cũ không claim Fabric; cần migration v2 và agent 0.5.0. Giữ nguyên cơ chế quyền, lease và spooler hiện có.
+- CHƯA VERIFY: chất lượng trên máy in vật lý, căn tem và độ đậm với cuộn giấy thực tế. Xem lại khi đổi giấy, driver, máy in hoặc quy tắc mã hàng.

@@ -1,6 +1,23 @@
 # Print SKU UID Agent
 
-Agent Windows độc lập phục vụ ứng dụng Print SKU. Agent hỗ trợ tem SKU và tem Group UID, không phụ thuộc AuditFactory.
+Agent Windows độc lập phục vụ ứng dụng Print SKU. Bản 0.5.0 hỗ trợ tem SKU, Group UID và Fabric Relaxation, không phụ thuộc AuditFactory.
+
+## Cập nhật Fabric Relaxation
+
+Chờ lệnh in hiện tại hoàn tất, dừng agent cũ rồi cài ZIP theo quy trình hiện có.
+Giữ nguyên `config/.env` và token máy trạm. Chạy `powershell/install-agent.ps1`
+bằng quyền Administrator để cập nhật cùng Scheduled Task, không tạo agent thứ hai.
+
+Quản trị hệ thống cần chạy `deployment/print_queue_v2_fabric_relaxation.sql`
+trong Supabase SQL Editor một lần và đưa `deployment/index.html` lên nơi phục vụ web.
+Thư mục `deployment` trong ZIP là tài liệu/file triển khai web và database,
+không phải cấu hình máy trạm. Migration chỉ mở rộng CHECK constraint và enqueue/claim;
+agent cũ tiếp tục dùng SKU/UID, agent 0.5.0 tự báo capability Fabric mới.
+
+Chọn FABRIC RELAXATION trên web, nhập mã và số tem. Tem 40 × 60 mm,
+hai tem mỗi hàng; Ngày/Giờ/Lot luôn trống để ghi tay.
+`npm run dry-run:fabric` tạo ảnh và TSPL để xem trước, không gọi máy in.
+Sau khi cập nhật, thử 1, 2 và 3 tem để kiểm tra căn giấy thực tế.
 
 ## Yêu cầu phát triển
 

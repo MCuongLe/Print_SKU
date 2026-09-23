@@ -756,6 +756,7 @@ Error generating stack: `+y.message+`
           <button class="barcode-choice" id="barcode-print-uid" type="button"><span class="barcode-choice__icon" aria-hidden="true">▥</span><strong>PRINT UID</strong><span>Nhập Group UID, tự tra thông tin tem rồi xác nhận in.</span></button>
           <button class="barcode-choice" id="barcode-inspection" type="button"><span class="barcode-choice__icon" aria-hidden="true">▥</span><strong>INSPECTION</strong><span>Import PO phụ liệu, xuất Biên bản kiểm tra đầu vào.</span></button>
           <button class="barcode-choice" id="barcode-sample" type="button"><span class="barcode-choice__icon" aria-hidden="true">▥</span><strong>SAMPLE</strong><span>Quét SKU hàng mẫu, gom cùng SKU vào một bao.</span></button>
+          <button class="barcode-choice" id="barcode-fabric" type="button"><span class="barcode-choice__icon" aria-hidden="true">▥</span><strong>FABRIC RELAXATION</strong><span>In tem xả vải, để trống Ngày, Giờ và Lot để ghi tay.</span></button>
         </div>
       </main>
     </section>
@@ -929,6 +930,7 @@ Error generating stack: `+y.message+`
           const uidOpen = current === "group-uid";
           const insOpen = current === "inspection";
           const sampleOpen = current === "sample";
+          const fabricOpen = current === "fabric-relaxation";
           const homeOpen = !current || current === "home";
           const adminOpen = /^admin(?:\/|$)/.test(current);
           clearInterval(printerTimer);
@@ -942,9 +944,9 @@ Error generating stack: `+y.message+`
           const sampleScreen = document.getElementById("sample-screen");
           if (sampleScreen) sampleScreen.hidden = !sampleOpen;
           home.hidden = !homeOpen;
-          homeTrigger.hidden = homeOpen || uidOpen || adminOpen || insOpen || sampleOpen;
+          homeTrigger.hidden = homeOpen || uidOpen || adminOpen || insOpen || sampleOpen || fabricOpen;
           const root = document.getElementById("root");
-          if (root) root.inert = uidOpen || homeOpen || insOpen || sampleOpen;
+          if (root) root.inert = uidOpen || homeOpen || insOpen || sampleOpen || fabricOpen;
           if (uidOpen) setTimeout(() => groupUid.focus(), 50);
         };
         printSku.addEventListener("click", () => { location.hash = "#worker"; });
@@ -3168,6 +3170,111 @@ Error generating stack: `+y.message+`
         window.addEventListener("hashchange", renderRoute);
         window.addEventListener("print-sku-admin-ready", renderRoute);
         renderRoute();
+      })();
+    </script>
+    <style id="fabric-theme">
+      .fabric-layout { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:20px; max-width:900px; margin:auto; }
+      .fabric-card { padding:24px; border:1px solid #29473b; border-radius:20px; background:#10201b; min-width:0; }
+      .fabric-card h2 { font-size:20px; font-weight:700; margin:0 0 18px; }
+      .fabric-card label { display:block; margin:18px 0 8px; font-size:14px; }
+      .fabric-card input { width:100%; min-height:48px; box-sizing:border-box; border:1px solid #587166; border-radius:12px; padding:12px; background:#07110e; color:#fff; font-size:18px; }
+      .fabric-card button { min-height:48px; width:100%; margin-top:24px; border:0; border-radius:24px; background:#005f41; color:white; font-weight:700; cursor:pointer; }
+      .fabric-card button:disabled { opacity:.5; cursor:wait; }
+      .fabric-preview { display:block; width:240px; max-width:100%; height:auto; margin:0 auto; background:white; }
+      .fabric-note { color:#9ab0a8; font-size:13px; line-height:1.6; margin-top:16px; }
+      #fabric-status { margin-top:16px; overflow-wrap:anywhere; }
+      #fabric-status[data-tone="error"] { color:#ffaaaa; }
+      @media(max-width:620px) { .fabric-layout { grid-template-columns:1fr; } .fabric-card { padding:18px; } }
+    </style>
+    <section class="uid-screen" id="fabric-screen" aria-labelledby="fabric-title" hidden>
+      <header class="uid-topbar"><div class="uid-topbar__inner">
+        <div class="uid-topbar__name"><h1 id="fabric-title">FABRIC RELAXATION</h1><span>In tem xả vải</span></div>
+        <button class="uid-back" id="fabric-back" type="button">← WH-MATERIAL</button>
+      </div></header>
+      <main class="uid-shell"><div class="fabric-layout">
+        <form class="fabric-card" id="fabric-form">
+          <h2>Thông tin in tem</h2>
+          <label for="fabric-code">Mã hàng</label>
+          <input id="fabric-code" required maxlength="40" pattern="[0-9A-Za-z._\-]{1,40}" autocomplete="off" placeholder="Ví dụ: TEST-FABRIC-01" title="1–40 ký tự: chữ, số, dấu chấm, gạch ngang hoặc gạch dưới">
+          <label for="fabric-copies">Số tem in</label>
+          <input id="fabric-copies" type="number" min="1" max="500" step="1" value="1" required inputmode="numeric">
+          <p class="fabric-note">Tem 40 × 60 mm, 2 tem mỗi hàng — cùng giấy và máy in SKU/UID. Ngày, Giờ và Lot để trống để ghi tay.</p>
+          <button id="fabric-print" type="submit">In 1 tem</button>
+          <p id="fabric-status" role="status" aria-live="polite"></p>
+        </form>
+        <div class="fabric-card"><h2>Xem trước tem</h2>
+          <svg class="fabric-preview" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 480" role="img" aria-label="Tem xả vải: mã hàng và các dòng Ngày, Giờ, Lot để trống" font-family="Arial,Helvetica,sans-serif" fill="#000">
+            <rect width="320" height="480" fill="#fff"/>
+            <text x="160" y="44" font-size="26" text-anchor="middle">Mã hàng</text>
+            <g id="fabric-preview-code" font-family="Courier New,monospace" font-size="28" font-weight="700" text-anchor="middle"></g>
+            <text x="16" y="225" font-size="28">Ngày:</text><line x1="94" y1="225" x2="300" y2="225" stroke="#000" stroke-width="2" stroke-dasharray="2 6"/>
+            <text x="16" y="325" font-size="28">Giờ:</text><line x1="94" y1="325" x2="300" y2="325" stroke="#000" stroke-width="2" stroke-dasharray="2 6"/>
+            <text x="16" y="425" font-size="28">Lot:</text><line x1="94" y1="425" x2="300" y2="425" stroke="#000" stroke-width="2" stroke-dasharray="2 6"/>
+          </svg>
+          <p class="fabric-note">Nếu in số lẻ, vị trí tem bên phải ở hàng cuối sẽ để trắng.</p>
+        </div>
+      </div></main>
+    </section>
+    <script>
+      (() => {
+        const screen = document.getElementById("fabric-screen");
+        const form = document.getElementById("fabric-form");
+        const code = document.getElementById("fabric-code");
+        const copies = document.getElementById("fabric-copies");
+        const button = document.getElementById("fabric-print");
+        const status = document.getElementById("fabric-status");
+        const preview = document.getElementById("fabric-preview-code");
+        let busy = false, pending = null, pollTimer = 0, trackedId = "";
+        const active = () => location.hash.split("&")[0] === "#fabric-relaxation";
+        const message = (text, tone = "") => { status.textContent = text; status.dataset.tone = tone; };
+        const update = () => {
+          preview.replaceChildren();
+          for (const [index, line] of (code.value.trim().match(/.{1,16}/g) || ["—"]).entries()) {
+            const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+            text.setAttribute("x", "160"); text.setAttribute("y", String(82 + index * 32)); text.textContent = line; preview.append(text);
+          }
+          if (!busy) button.textContent = `In ${copies.validity.valid ? copies.value : "…"} tem`;
+        };
+        const poll = async () => {
+          clearTimeout(pollTimer);
+          if (!trackedId || !active()) return;
+          const id = trackedId;
+          try {
+            const result = await window.PrintSkuQueue.jobStatus(id);
+            if (id !== trackedId) return;
+            if (!result?.ok) throw new Error(result?.error?.message || "Không đọc được trạng thái lệnh in.");
+            const job = result.data;
+            const labels = { queued:"Đang chờ agent máy trạm", claimed:"Agent đã nhận lệnh", rendering:"Đang dựng tem", sending:"Đang gửi máy in", spooling:"Đang in", completed:"Agent đã hoàn tất lệnh in", failed:"In không thành công", cancelled:"Lệnh in đã hủy" };
+            message(`${labels[job.status] || job.status} · ${id}${job.errorMessage ? " · " + job.errorMessage : ""}`, job.status === "failed" ? "error" : "");
+            if (["completed", "failed", "cancelled"].includes(job.status)) { trackedId = ""; return; }
+          } catch (error) { if (id === trackedId) message(`Đã gửi lệnh ${id}. Chưa đọc được trạng thái: ${error.message}`, "error"); }
+          if (trackedId && active()) pollTimer = setTimeout(poll, 2500);
+        };
+        form.addEventListener("submit", async event => {
+          event.preventDefault();
+          if (busy) return;
+          code.value = code.value.trim();
+          if (!form.reportValidity()) return;
+          const payload = { itemCode: code.value };
+          const count = Number(copies.value);
+          const signature = JSON.stringify([payload, count]);
+          if (!pending || pending.signature !== signature) pending = { signature, nonce: `fabric-${crypto.randomUUID()}` };
+          busy = true; button.disabled = true; code.disabled = true; copies.disabled = true; button.textContent = "Đang gửi…";
+          try {
+            const result = await window.PrintSkuQueue.enqueue({ type:"fabric_relaxation", payload, copies:count, requestNonce:pending.nonce });
+            if (!result?.ok || !result.data?.id) throw new Error(result?.error?.message || "Hàng đợi chưa nhận lệnh in.");
+            pending = null; trackedId = result.data.id;
+            message(`Đã gửi ${count} tem đến agent máy trạm · ${trackedId}`);
+            pollTimer = setTimeout(poll, 1500);
+          } catch (error) { message(`Chưa xác nhận được lệnh in: ${error.message} Bấm lại với cùng thông tin để kiểm tra/gửi lại, tránh tạo lệnh trùng.`, "error"); }
+          finally { busy = false; button.disabled = false; code.disabled = false; copies.disabled = false; update(); }
+        });
+        code.addEventListener("input", update); copies.addEventListener("input", update);
+        document.getElementById("barcode-fabric").addEventListener("click", () => { location.hash = "#fabric-relaxation"; });
+        document.getElementById("fabric-back").addEventListener("click", () => { location.hash = "#home"; });
+        const route = () => { screen.hidden = !active(); clearTimeout(pollTimer); if (active()) { code.focus(); if (trackedId) poll(); } };
+        window.addEventListener("hashchange", route);
+        update(); route();
       })();
     </script>
   </body>
