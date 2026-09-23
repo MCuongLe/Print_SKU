@@ -216,6 +216,6 @@ Chưa xử lý tự động vì phải quyết định trước: xoá hẳn kh�
 - Rule NG: UID không tồn tại hoặc thiếu SKU/Tên SP thì chặn lưu và yêu cầu cập nhật dữ liệu Group UID. UID đã có trong bảng cắt bị chặn, kể cả tem cũ đã in, để tránh cắt hai lần.
 - Trạng thái: `pending` (chờ in), `queued` (đã gửi agent), `printed` (agent hoàn tất), `failed` (agent báo lỗi). Chỉ `pending`/`failed` được chọn in hoặc xóa khỏi danh sách chờ.
 - Một job tối đa 100 UID theo giới hạn batch `group_uid:v1`; mỗi UID đúng 1 tem và dùng nguyên format Group UID hiện tại.
-- Tra cứu theo SKU dùng so khớp chứa, tối đa 5.000 dòng/lượt. Excel chỉ xuất đúng kết quả đang lọc với 5 cột SKU, UID, Lot, Roll, Tên SP; worksheet đặt khổ A4 ngang và fit một trang theo chiều rộng.
+- Tra cứu theo SKU dùng so khớp chứa, tối đa 5.000 dòng/lượt. Excel chỉ xuất đúng kết quả đang lọc với 5 cột SKU, UID, Lot, Roll, Tên SP; worksheet dùng Arial 12, header xanh dương, đóng khung từng ô và tự xuống dòng. Khổ A4 ngang chỉ co vừa một trang theo chiều rộng; nhiều UID tiếp tục sang trang 2, 3… và lặp lại header trên mỗi trang.
 - Backend bật RLS và thu hồi quyền bảng trực tiếp; frontend anon chỉ gọi các RPC `cut_group_uid_*`, theo mô hình truy cập hiện hữu của ứng dụng.
 - CHƯA VERIFY: bản in vật lý sau khi đi qua máy trạm và cách Excel phân trang trên phiên bản Microsoft Excel tại kho. Xem lại sau lần in/xuất thật đầu tiên.

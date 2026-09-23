@@ -58,17 +58,30 @@ const fs = require('node:fs');
       const jobs = await page.evaluate(() => window.testJobs);
       assert.equal(jobs.length, 1);
       assert.deepEqual(jobs[0].payload.items[0], { groupUid: 'UID-0001', sku: 'SKU-001', productName: 'Vải thử nghiệm', lot: 'LOT-7', roll: 'ROLL-2', copies: 1 });
+      for (let number = 2; number <= 80; number++) records.push({
+        groupUid: `UID-${String(number).padStart(4, '0')}`, sku: 'SKU-001',
+        productName: 'Vải thử nghiệm có tên dài để kiểm tra tự xuống dòng trong packing list',
+        lot: 'LOT-7', roll: String(number), printStatus: 'printed', cutAt: new Date().toISOString()
+      });
       await page.locator('#cut-sku').fill('SKU-001');
       await page.locator('#cut-search').evaluate(form => form.requestSubmit());
-      await page.waitForFunction(() => document.querySelector('#cut-found').textContent === '1');
+      await page.waitForFunction(() => document.querySelector('#cut-found').textContent === '80');
       assert.match(await page.locator('#cut-results').innerText(), /SKU-001.*UID-0001.*LOT-7.*ROLL-2.*Vải thử nghiệm/s);
       const downloadPromise = page.waitForEvent('download');
       await page.locator('#cut-export').click();
       const download = await downloadPromise, path = await download.path();
+      if (process.env.CUT_XLSX_OUTPUT && width === 1280) await download.saveAs(process.env.CUT_XLSX_OUTPUT);
       assert.match(download.suggestedFilename(), /^Group_UID_da_cat_\d{8}\.xlsx$/);
       assert.ok(fs.statSync(path).size > 1500);
       const xlsx = fs.readFileSync(path);
       assert.equal(xlsx.includes(Buffer.from('orientation="landscape"')), true);
+      assert.equal(xlsx.includes(Buffer.from('fitToWidth="1" fitToHeight="0" pageOrder="downThenOver"')), true);
+      assert.equal(xlsx.includes(Buffer.from('_xlnm.Print_Titles')), true);
+      assert.equal(xlsx.includes(Buffer.from('<sz val="12"/>')), true);
+      assert.equal(xlsx.includes(Buffer.from('rgb="FF1F4E78"')), true);
+      assert.equal(xlsx.includes(Buffer.from('<left style="thin">')), true);
+      assert.equal(xlsx.includes(Buffer.from('<c r="A2" s="2"')), true);
+      assert.equal(xlsx.includes(Buffer.from('ref="A1:E81"')), true);
       for (const header of ['SKU', 'UID', 'Lot', 'Roll', 'Tên SP']) assert.equal(xlsx.includes(Buffer.from(header)), true);
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
       assert.deepEqual(errors, []);
