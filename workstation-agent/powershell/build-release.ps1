@@ -22,7 +22,10 @@ foreach ($file in @('.env.example', 'package.json', 'pnpm-lock.yaml', 'README.md
 
 Push-Location $stageRoot
 try {
-  pnpm install --prod --frozen-lockfile --config.node-linker=hoisted
+  # Copy package files into the release instead of hard-linking them from the
+  # pnpm store. Hard links can carry store ACLs that make package.json
+  # unreadable after the ZIP is extracted on another Windows workstation.
+  pnpm install --prod --frozen-lockfile --config.node-linker=hoisted --config.package-import-method=copy
   if ($LASTEXITCODE -ne 0) {
     throw "Không thể dựng node_modules (pnpm mã $LASTEXITCODE)."
   }
@@ -36,7 +39,7 @@ Copy-Item -LiteralPath $NodePath -Destination (Join-Path $bundledNodeDir 'node.e
 
 # Include the matching static page and additive queue migration for deployment.
 $repoRoot = Split-Path -Parent $agentRoot
-$migration = Join-Path $repoRoot 'supabase\print_queue_v3_fabric_relaxation_multi_item.sql'
+$migration = Join-Path $repoRoot 'supabase\print_queue_v4_fabric_relaxation_handwritten.sql'
 if (Test-Path -LiteralPath $migration) {
   $deploymentDir = Join-Path $stageRoot 'deployment'
   New-Item -ItemType Directory -Path $deploymentDir -Force | Out-Null

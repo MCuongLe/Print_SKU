@@ -208,6 +208,15 @@ Chưa xử lý tự động vì phải quyết định trước: xoá hẳn kh�
 - Migration áp dụng: `print_queue_v3_fabric_relaxation_multi_item.sql`; có thể chạy trực tiếp sau schema v1 hoặc v2.
 - CHƯA VERIFY: khả năng ghi tay trên năm hàng ở tem thật 40 × 60 mm; phải in thử 1 và 5 mã trước khi dùng sản xuất.
 
+### Fabric Relaxation v3 — tem viết tay hoàn toàn
+
+- Frontend chỉ nhận số lượng 1–500; không còn ô nhập Mã hàng.
+- Payload cố định `{handwritten:true}` với `templateVersion:3`; agent capability là `fabric_relaxation:v3`.
+- Tem in: Mã hàng ở đầu tem và chừa khoảng hai dòng để viết; Lot nằm bên dưới; Ngày có mẫu `..... / .....`; Giờ có mẫu `..... : .....`.
+- Cỡ chữ Mã hàng, Lot, Ngày và Giờ là 28, tăng 2 so với bố cục v2.
+- Agent 0.7.0 vẫn giữ khả năng in job Fabric v1/v2 đang chờ. Migration áp dụng: `print_queue_v4_fabric_relaxation_handwritten.sql`.
+- CHƯA VERIFY: khoảng viết tay và độ rõ cỡ chữ trên tem thật 40 × 60 mm; in thử trước khi dùng sản xuất.
+
 ## Cắt Group UID (23/09/2026)
 
 - Object: một bản ghi `cut_group_uids`, khóa duy nhất là `group_uid_code`. Field snapshot gồm SKU, UID, Lot, Roll, Tên SP, thời gian cắt, trạng thái in và mã job in.

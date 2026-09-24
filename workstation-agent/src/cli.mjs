@@ -17,7 +17,7 @@ function argument(name, fallback = "") {
 
 function sample(type) {
   const common = { id: `preview-${type}`, nonce: `preview-${Date.now()}`, type, copies: 1, templateVersion: 1, requestedBy: "test" };
-  if (type === "fabric_relaxation") return { ...common, templateVersion: 2, payload: { itemCodes: ["TEST-01", "TEST-02", "TEST-03", "TEST-04", "TEST-05"] } };
+  if (type === "fabric_relaxation") return { ...common, templateVersion: 3, payload: { handwritten: true } };
   if (type === "group_uid") return { ...common, payload: { groupUid: "A40000258795", sku: "204900073", productName: "Vải Rayon Tropical Firal" } };
   return { ...common, payload: { sku: "204900073", productName: "Sản phẩm kiểm thử tem SKU", quantity: "12", printedDate: "08-09-26" } };
 }

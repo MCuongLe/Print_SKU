@@ -1,6 +1,6 @@
 # Print SKU UID Agent
 
-Agent Windows độc lập phục vụ ứng dụng Print SKU. Bản 0.6.1 sửa bố cục Fabric Relaxation: danh sách mã ở trên và một bộ Ngày/Giờ/Lot dùng chung bên dưới.
+Agent Windows độc lập phục vụ ứng dụng Print SKU. Bản 0.7.0 dùng tem Fabric Relaxation viết tay hoàn toàn; frontend chỉ chọn số lượng tem.
 
 ## Cập nhật Fabric Relaxation
 
@@ -8,14 +8,14 @@ Chờ lệnh in hiện tại hoàn tất, dừng agent cũ rồi cài ZIP theo q
 Giữ nguyên `config/.env` và token máy trạm. Chạy `powershell/install-agent.ps1`
 bằng quyền Administrator để cập nhật cùng Scheduled Task, không tạo agent thứ hai.
 
-Quản trị hệ thống cần chạy `deployment/print_queue_v3_fabric_relaxation_multi_item.sql`
+Quản trị hệ thống cần chạy `deployment/print_queue_v4_fabric_relaxation_handwritten.sql`
 trong Supabase SQL Editor một lần và đưa `deployment/index.html` lên nơi phục vụ web.
 Thư mục `deployment` trong ZIP là tài liệu/file triển khai web và database,
 không phải cấu hình máy trạm. Migration chỉ mở rộng CHECK constraint và enqueue/claim;
-agent cũ tiếp tục dùng SKU/UID, agent 0.6.1 tự báo capability Fabric v1/v2. Nếu đã chạy migration v3 khi cài 0.6.0 thì không cần cập nhật SQL lần nữa.
+agent cũ tiếp tục dùng SKU/UID, agent 0.7.0 tự báo capability Fabric v1/v2/v3.
 
-Chọn FABRIC RELAXATION trên web, nhập mã và số tem. Tem 40 × 60 mm,
-hai tem mỗi hàng; mỗi tem có tối đa 5 mã xếp liên tiếp, bên dưới có một bộ Ngày/Giờ/Lot dùng chung, mỗi mục một dòng ghi tay.
+Chọn FABRIC RELAXATION trên web và nhập số tem. Tem 40 × 60 mm,
+hai tem mỗi hàng; Mã hàng, Lot, Ngày và Giờ đều để trống để ghi tay.
 `npm run dry-run:fabric` tạo ảnh và TSPL để xem trước, không gọi máy in.
 Sau khi cập nhật, thử 1, 2 và 3 tem để kiểm tra căn giấy thực tế.
 

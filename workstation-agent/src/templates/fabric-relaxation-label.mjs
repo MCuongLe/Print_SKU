@@ -1,6 +1,14 @@
 import { escapeXml, svgDocument } from "./common.mjs";
 
 export function renderFabricRelaxationLabel(payload) {
+  if (payload.handwritten === true) {
+    return svgDocument(
+      '<text x="160" y="50" font-size="28" text-anchor="middle">Mã hàng</text>' +
+      '<text x="16" y="200" font-size="28">Lot:</text><line x1="78" y1="200" x2="300" y2="200" stroke="#000" stroke-width="2" stroke-dasharray="2 6"/>' +
+      '<text x="16" y="305" font-size="28">Ngày:</text><text x="104" y="305" font-size="28">..... / .....</text>' +
+      '<text x="16" y="415" font-size="28">Giờ:</text><text x="104" y="415" font-size="28">..... : .....</text>'
+    );
+  }
   if (!Array.isArray(payload.itemCodes)) {
     const code = String(payload.itemCode || "");
     const lines = code.match(/.{1,16}/g) || [""];

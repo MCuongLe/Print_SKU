@@ -5,6 +5,23 @@ import { renderFabricRelaxationLabel } from "../src/templates/fabric-relaxation-
 import { renderJobTspl, renderRowSvg } from "../src/render.mjs";
 
 const job = { id:"test-fabric", nonce:"test-fabric-1", type:"fabric_relaxation", templateVersion:2, copies:3, payload:{ itemCodes:["000TEST-FABRIC-01", "000TEST-FABRIC-02"], lot:"DO-NOT-PRINT" } };
+const handwrittenJob = { id:"test-fabric-v3", nonce:"test-fabric-v3-1", type:"fabric_relaxation", templateVersion:3, copies:3, payload:{ handwritten:true } };
+test("Fabric v3 chỉ nhận tem viết tay không có mã hàng", () => {
+  const result = normalizeJob(handwrittenJob);
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.job.payload, { handwritten:true });
+  for (const payload of [{}, { handwritten:false }, { handwritten:"true" }, { itemCodes:["SHOULD-NOT-PRINT"] }]) {
+    assert.equal(normalizeJob({ ...handwrittenJob, payload }).ok, false);
+  }
+});
+test("Fabric v3 chừa khoảng ghi tay dưới Mã hàng rồi in Lot, Ngày và Giờ cỡ 28", () => {
+  const svg = renderFabricRelaxationLabel({ handwritten:true });
+  assert.match(svg, /<text x="160" y="50" font-size="28" text-anchor="middle">Mã hàng<\/text>/);
+  assert.match(svg, /<text x="16" y="200" font-size="28">Lot:<\/text>/);
+  assert.match(svg, /<text x="16" y="305" font-size="28">Ngày:<\/text><text x="104" y="305" font-size="28">\.\.\.\.\. \/ \.\.\.\.\.<\/text>/);
+  assert.match(svg, /<text x="16" y="415" font-size="28">Giờ:<\/text><text x="104" y="415" font-size="28">\.\.\.\.\. : \.\.\.\.\.<\/text>/);
+  assert.ok(!svg.includes("itemCodes"));
+});
 test("Fabric v2 giữ 1–5 mã hàng riêng và chặn danh sách không hợp lệ", () => {
   const result = normalizeJob(job);
   assert.equal(result.ok, true);
@@ -35,7 +52,7 @@ test("Fabric v1 vẫn in được job cũ đang chờ", () => {
   assert.match(renderFabricRelaxationLabel(oldJob.payload), /OLD-FABRIC-01/);
 });
 test("Fabric số lẻ để trắng bên phải; TSPL dùng giấy 82 × 60 và đúng số hàng", async () => {
-  const normalized = normalizeJob(job).job;
+  const normalized = normalizeJob(handwrittenJob).job;
   assert.equal((renderRowSvg([normalized]).match(/Mã hàng/g) || []).length, 1);
   for (const copies of [1, 2, 3, 4]) {
     const tspl = await renderJobTspl({ ...normalized, copies }, { density:10, speed:3 });

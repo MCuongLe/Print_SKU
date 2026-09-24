@@ -3207,20 +3207,19 @@ Error generating stack: `+y.message+`
       <main class="uid-shell"><div class="fabric-layout">
         <form class="fabric-card" id="fabric-form">
           <h2>Thông tin in tem</h2>
-          <div class="fabric-code-head"><span>Mã hàng</span><b id="fabric-code-count">1/5</b></div>
-          <div class="fabric-code-list" id="fabric-code-list"></div>
-          <button class="fabric-add-code" id="fabric-add-code" type="button">＋ Thêm mã hàng</button>
           <label for="fabric-copies">Số tem in</label>
           <input id="fabric-copies" type="number" min="1" max="500" step="1" value="1" required inputmode="numeric">
-          <p class="fabric-note">Mỗi tem tối đa 5 mã hàng, mỗi mã một dòng. Ngày, Giờ và Lot dùng chung cho cả tem, để trống ghi tay.</p>
+          <p class="fabric-note">Mã hàng, Lot, Ngày và Giờ để trống trên tem để người dùng tự ghi tay.</p>
           <button class="fabric-print" id="fabric-print" type="submit">In 1 tem</button>
           <p id="fabric-status" role="status" aria-live="polite"></p>
         </form>
         <div class="fabric-card"><h2>Xem trước tem</h2>
-          <svg class="fabric-preview" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 480" role="img" aria-label="Tem xả vải: tối đa năm mã hàng và một bộ Ngày, Giờ, Lot dùng chung để trống" font-family="Arial,Helvetica,sans-serif" fill="#000">
+          <svg class="fabric-preview" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 480" role="img" aria-label="Tem xả vải để trống Mã hàng, Lot, Ngày và Giờ để ghi tay" font-family="Arial,Helvetica,sans-serif" fill="#000">
             <rect width="320" height="480" fill="#fff"/>
-            <text x="160" y="40" font-size="26" text-anchor="middle">Mã hàng</text>
-            <g id="fabric-preview-code"></g>
+            <text x="160" y="50" font-size="28" text-anchor="middle">Mã hàng</text>
+            <text x="16" y="200" font-size="28">Lot:</text><line x1="78" y1="200" x2="300" y2="200" stroke="#000" stroke-width="2" stroke-dasharray="2 6"/>
+            <text x="16" y="305" font-size="28">Ngày:</text><text x="104" y="305" font-size="28">..... / .....</text>
+            <text x="16" y="415" font-size="28">Giờ:</text><text x="104" y="415" font-size="28">..... : .....</text>
           </svg>
           <p class="fabric-note">Nếu in số lẻ, vị trí tem bên phải ở hàng cuối sẽ để trắng.</p>
         </div>
@@ -3230,63 +3229,13 @@ Error generating stack: `+y.message+`
       (() => {
         const screen = document.getElementById("fabric-screen");
         const form = document.getElementById("fabric-form");
-        const codeList = document.getElementById("fabric-code-list");
-        const codeCount = document.getElementById("fabric-code-count");
-        const addCode = document.getElementById("fabric-add-code");
         const copies = document.getElementById("fabric-copies");
         const button = document.getElementById("fabric-print");
         const status = document.getElementById("fabric-status");
-        const preview = document.getElementById("fabric-preview-code");
-        let codes = [""];
         let busy = false, pending = null, pollTimer = 0, trackedId = "";
         const active = () => location.hash.split("&")[0] === "#fabric-relaxation";
         const message = (text, tone = "") => { status.textContent = text; status.dataset.tone = tone; };
-        const svgText = (x, y, value, attributes = {}) => {
-          const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
-          text.setAttribute("x", x); text.setAttribute("y", y); text.textContent = value;
-          for (const [name, attribute] of Object.entries(attributes)) text.setAttribute(name, attribute);
-          return text;
-        };
-        const svgLine = (x1, y1, x2, y2, attributes = {}) => {
-          const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-          for (const [name, value] of Object.entries({ x1, y1, x2, y2, ...attributes })) line.setAttribute(name, value);
-          return line;
-        };
-        const updatePreview = () => {
-          preview.replaceChildren();
-          const visibleCodes = codes.map(value => value.trim()).filter(Boolean);
-          for (const [index, value] of (visibleCodes.length ? visibleCodes : ["—"]).entries()) {
-            const codeY = 76 + index * 32;
-            const fontSize = Math.min(28, Math.floor(460 / Math.max(1, value.length)));
-            preview.append(svgText(160, codeY, value, { "font-family":"Courier New,monospace", "font-size":fontSize, "font-weight":"700", "text-anchor":"middle" }));
-          }
-          ["Ngày", "Giờ", "Lot"].forEach((name, index) => {
-            const y = 270 + index * 70;
-            preview.append(svgText(16, y, `${name}:`, { "font-size":26 }), svgLine(94, y, 300, y, { stroke:"#000", "stroke-width":2, "stroke-dasharray":"2 6" }));
-          });
-          if (!busy) button.textContent = `In ${copies.validity.valid ? copies.value : "…"} tem`;
-        };
-        const renderCodeInputs = focusIndex => {
-          codeList.replaceChildren();
-          codes.forEach((value, index) => {
-            const row = document.createElement("div"); row.className = "fabric-code-row";
-            const number = document.createElement("span"); number.textContent = index + 1;
-            const input = document.createElement("input");
-            input.id = `fabric-code-${index + 1}`; input.value = value; input.required = true; input.maxLength = 40;
-            input.pattern = "[0-9A-Za-z._\\-]{1,40}"; input.autocomplete = "off"; input.placeholder = `Mã hàng ${index + 1}`;
-            input.title = "1–40 ký tự: chữ, số, dấu chấm, gạch ngang hoặc gạch dưới";
-            input.addEventListener("input", () => { codes[index] = input.value; updatePreview(); });
-            input.addEventListener("keydown", event => {
-              if (event.key === "Enter" && codes.length < 5) { event.preventDefault(); codes[index] = input.value; codes.push(""); renderCodeInputs(codes.length - 1); }
-            });
-            const remove = document.createElement("button"); remove.type = "button"; remove.textContent = "×";
-            remove.disabled = codes.length === 1; remove.setAttribute("aria-label", `Xóa mã hàng ${index + 1}`);
-            remove.addEventListener("click", () => { codes.splice(index, 1); renderCodeInputs(Math.max(0, index - 1)); });
-            row.append(number, input, remove); codeList.append(row);
-          });
-          codeCount.textContent = `${codes.length}/5`; addCode.hidden = codes.length >= 5; updatePreview();
-          if (Number.isInteger(focusIndex)) codeList.querySelectorAll("input")[focusIndex]?.focus();
-        };
+        const updateButton = () => { if (!busy) button.textContent = `In ${copies.validity.valid ? copies.value : "…"} tem`; };
         const poll = async () => {
           clearTimeout(pollTimer);
           if (!trackedId || !active()) return;
@@ -3304,31 +3253,27 @@ Error generating stack: `+y.message+`
         };
         form.addEventListener("submit", async event => {
           event.preventDefault();
-          if (busy) return;
-          codes = codes.map(value => value.trim());
-          renderCodeInputs();
-          if (!form.reportValidity()) return;
-          const payload = { itemCodes: [...codes] };
+          if (busy || !form.reportValidity()) return;
+          const payload = { handwritten: true };
           const count = Number(copies.value);
           const signature = JSON.stringify([payload, count]);
           if (!pending || pending.signature !== signature) pending = { signature, nonce: `fabric-${crypto.randomUUID()}` };
-          busy = true; button.disabled = true; addCode.disabled = true; codeList.querySelectorAll("input,button").forEach(element => { element.disabled = true; }); copies.disabled = true; button.textContent = "Đang gửi…";
+          busy = true; button.disabled = true; copies.disabled = true; button.textContent = "Đang gửi…";
           try {
-            const result = await window.PrintSkuQueue.enqueue({ type:"fabric_relaxation", templateVersion:2, payload, copies:count, requestNonce:pending.nonce });
+            const result = await window.PrintSkuQueue.enqueue({ type:"fabric_relaxation", templateVersion:3, payload, copies:count, requestNonce:pending.nonce });
             if (!result?.ok || !result.data?.id) throw new Error(result?.error?.message || "Hàng đợi chưa nhận lệnh in.");
             pending = null; trackedId = result.data.id;
             message(`Đã gửi ${count} tem đến agent máy trạm · ${trackedId}`);
             pollTimer = setTimeout(poll, 1500);
-          } catch (error) { message(`Chưa xác nhận được lệnh in: ${error.message} Bấm lại với cùng thông tin để kiểm tra/gửi lại, tránh tạo lệnh trùng.`, "error"); }
-          finally { busy = false; button.disabled = false; addCode.disabled = false; copies.disabled = false; renderCodeInputs(); }
+          } catch (error) { message(`Chưa xác nhận được lệnh in: ${error.message} Bấm lại với cùng số lượng để kiểm tra/gửi lại, tránh tạo lệnh trùng.`, "error"); }
+          finally { busy = false; button.disabled = false; copies.disabled = false; updateButton(); }
         });
-        addCode.addEventListener("click", () => { if (codes.length < 5) { codes.push(""); renderCodeInputs(codes.length - 1); } });
-        copies.addEventListener("input", updatePreview);
+        copies.addEventListener("input", updateButton);
         document.getElementById("barcode-fabric").addEventListener("click", () => { location.hash = "#fabric-relaxation"; });
         document.getElementById("fabric-back").addEventListener("click", () => { location.hash = "#home"; });
-        const route = () => { screen.hidden = !active(); clearTimeout(pollTimer); if (active()) { codeList.querySelector("input")?.focus(); if (trackedId) poll(); } };
+        const route = () => { screen.hidden = !active(); clearTimeout(pollTimer); if (active()) { copies.focus(); if (trackedId) poll(); } };
         window.addEventListener("hashchange", route);
-        renderCodeInputs(); route();
+        updateButton(); route();
       })();
     </script>
     <style id="cut-group-uid-theme">

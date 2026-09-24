@@ -35,6 +35,9 @@ export function normalizeJob(input) {
         if (!SKU_PATTERN.test(itemCode)) errors.push(`Mã hàng dòng ${index + 1} không hợp lệ`);
       });
       normalizedPayload = { itemCodes };
+    } else if (templateVersion === 3) {
+      if (payload.handwritten !== true) errors.push("Tem viết tay không hợp lệ");
+      normalizedPayload = { handwritten: true };
     } else errors.push("Phiên bản tem Fabric Relaxation không được hỗ trợ");
   }
   if (type === "sku") {
