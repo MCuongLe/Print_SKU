@@ -2,12 +2,13 @@ import { normalizeJob } from "./job-validator.mjs";
 import { CAPABILITIES } from "./templates/index.mjs";
 import { queryPrinter, sendRaw, waitForSpooler } from "./printer.mjs";
 import { renderJobTspl } from "./render.mjs";
+import { measureTextWidths } from "./text-metrics.mjs";
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function publicState(config, printer) {
   return {
-    version: "0.7.0",
+    version: "0.8.0",
     capabilities: CAPABILITIES,
     printer: {
       name: config.printerName,
@@ -36,8 +37,11 @@ export async function processClaimedJob(input, dependencies) {
       return { ok: false, requeued: true };
     }
     await queue.progress(job.id, "rendering");
-    const tspl = await renderJobTspl(job, config, (rendered, total) =>
-      queue.progress(job.id, "rendering", { rendered, total })
+    const tspl = await renderJobTspl(
+      job,
+      config,
+      (rendered, total) => queue.progress(job.id, "rendering", { rendered, total }),
+      { measureText: measureTextWidths, logger }
     );
     await queue.progress(job.id, "sending", { bytes: tspl.length });
     const spool = await sendRaw(config, tspl, job.id);
@@ -91,7 +95,7 @@ export async function processClaimedJob(input, dependencies) {
 }
 
 export async function runService(config, queue, logger, signal, lock) {
-  logger.info(`Agent ${config.agentId} v0.7.0 khởi động; hỗ trợ ${CAPABILITIES.join(", ")}`);
+  logger.info(`Agent ${config.agentId} v0.8.0 khởi động; hỗ trợ ${CAPABILITIES.join(", ")}`);
   while (!signal?.aborted) {
     try {
       lock?.touch?.();

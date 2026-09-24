@@ -9,6 +9,7 @@ import { queryPrinter } from "./printer.mjs";
 import { renderJobTspl, writePreview } from "./render.mjs";
 import { runService } from "./agent.mjs";
 import { acquireSingleInstance } from "./single-instance.mjs";
+import { measureTextWidths } from "./text-metrics.mjs";
 
 function argument(name, fallback = "") {
   const index = process.argv.indexOf(name);
@@ -36,10 +37,13 @@ if (command === "preview" || command === "dry-run") {
   if (!checked.ok) throw new Error(checked.errors.join("; "));
   const base = argument("--out") || path.join(config.previewDir, `${checked.job.type}-${Date.now()}`);
   const png = base.toLowerCase().endsWith(".png") ? base : `${base}.png`;
-  await writePreview(checked.job, png);
+  // Dung do chu that (GDI+) khi xem preview de thay dung ket qua se in ra thuc
+  // te; loi do chu (vd may khong co PowerShell) thi tu lui ve dem ky tu cu,
+  // khong lam hong lenh preview.
+  await writePreview(checked.job, png, { config, measureText: measureTextWidths, logger });
   console.log(`Preview: ${png}`);
   if (command === "dry-run") {
-    const tspl = await renderJobTspl(checked.job, config);
+    const tspl = await renderJobTspl(checked.job, config, null, { measureText: measureTextWidths, logger });
     const tsplFile = png.replace(/\.png$/i, ".tspl");
     fs.writeFileSync(tsplFile, tspl);
     console.log(`TSPL: ${tsplFile} (${tspl.length} byte) — chưa gửi máy in`);
