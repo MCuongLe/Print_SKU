@@ -27,7 +27,7 @@ from pathlib import Path
 
 from apply_sku_rows import apply_rows
 from inspect_export_category import inspect
-from merge_sku_category_xlsx import merge_workbook
+from merge_sku_category_xlsx import AGENT_PRODUCT_NAME_LIMIT, merge_workbook
 
 
 CONFIG_PATH = Path(__file__).with_name("sku_categories.json")
@@ -264,7 +264,31 @@ def command_apply(args: argparse.Namespace) -> int:
         report["cutoff"] = payload.get("cutoff")
     record_pending_json(database, source.name, hashlib.sha256(content).hexdigest())
     print(json.dumps(report, ensure_ascii=False, indent=2))
+    warn_long_product_names(report.get("long_product_names") or [])
     return 0
+
+
+def warn_long_product_names(entries: list[dict[str, object]]) -> None:
+    """Cảnh báo SKU có tên vượt giới hạn agent đang chấp nhận khi in.
+
+    job-validator.mjs (workstation-agent) cắt cứng productName ở 180 ký tự lúc
+    nhận lệnh in — tên dài hơn mức đó vẫn nạp/sync bình thường, chỉ bị agent
+    tự cắt mất đuôi khi lên tem, âm thầm giống lỗi SKU [SKU_DA_XOA] ngày
+    24/09/2026. Đây chỉ là cảnh báo, không chặn import: người sửa tên dài hơn
+    là chủ ý thật của Inside, không phải lỗi đọc dữ liệu.
+    """
+    if not entries:
+        return
+    print(
+        f"\n[CANH BAO] {len(entries)} SKU co ten dai hon {AGENT_PRODUCT_NAME_LIMIT} ky tu "
+        "— agent se tu cat mat phan duoi khi in tem, tru khi nang gioi han trong "
+        "workstation-agent/src/job-validator.mjs (cleanText(item.productName, 180)):",
+        file=sys.stderr,
+    )
+    for entry in sorted(entries, key=lambda e: -int(e["length"]))[:20]:
+        print(f"  - {entry['sku']}: {entry['length']} ky tu", file=sys.stderr)
+    if len(entries) > 20:
+        print(f"  ... va {len(entries) - 20} SKU khac", file=sys.stderr)
 
 
 def record_pending_json(database: Path, name: str, digest: str) -> None:
@@ -357,6 +381,7 @@ def command_merge(args: argparse.Namespace) -> int:
                 "changed_fields": result["changed_fields"],
                 "category_rows": result["category_rows"],
                 "total_rows": result["total_rows"],
+                "long_product_names": result["long_product_names"],
             }
         )
 
@@ -395,6 +420,7 @@ def command_merge(args: argparse.Namespace) -> int:
             "failed": failures,
         }
     print(json.dumps(report, ensure_ascii=False, indent=2))
+    warn_long_product_names([entry for item in merged for entry in item["long_product_names"]])
     return 1 if missing else 0
 
 

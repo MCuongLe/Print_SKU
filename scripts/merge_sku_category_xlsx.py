@@ -38,6 +38,18 @@ SOURCE_CANDIDATES = {
 # như mọi dòng. So theo giá trị số để chỉ bắt thay đổi thật.
 NUMERIC_COLUMNS = {"price", "latest_cost", "product_average_cost"}
 
+# workstation-agent/src/job-validator.mjs (cleanText(item.productName, 180)) cắt
+# cứng tên sản phẩm ở 180 ký tự khi nhận lệnh in — đây là giới hạn THẬT sự áp
+# dụng lúc in, không phải giới hạn của database. Tên nào dài hơn mức này vẫn
+# nạp bình thường vào sku.db/Supabase (không chặn), nhưng sẽ bị agent cắt mất
+# đuôi khi lên tem, giống lỗi SKU [SKU_DA_XOA] ngày 24/09/2026 (ten 150 ky tu bi
+# web cat con 140, khong lien quan agent — nhung agent cung se cat neu ten
+# THAT SU dai hon 180). Kiem chung ngay 18/09/2026 tung thay ten dai nhat la
+# 191 ky tu trong catalog thuc te, tuc la da co ten vuot muc nay. Vi vay moi
+# lan nap du lieu moi can canh bao de con nguoi quyet dinh co nang gioi han
+# phia agent len hay khong, thay vi am tham mat du lieu luc in.
+AGENT_PRODUCT_NAME_LIMIT = 180
+
 
 def comparable(column: str, value: str) -> str:
     text = (value or "").strip()
@@ -131,6 +143,7 @@ def merge_workbook(
         unchanged = 0
         empty_skus = 0
         changed_fields: dict[str, int] = {}
+        long_product_names: list[dict[str, object]] = []
         batch: list[tuple[object, ...]] = []
         updates: list[tuple[object, ...]] = []
         for values in rows:
@@ -144,6 +157,9 @@ def merge_workbook(
             mapped["status"] = status_value(str(mapped.get("status", "")))
             mapped["category_id"] = category_id
             mapped["category_name"] = category_name
+            name = mapped.get("product_name", "")
+            if len(name) > AGENT_PRODUCT_NAME_LIMIT:
+                long_product_names.append({"sku": sku, "length": len(name)})
             tracked_values = tuple(mapped[name] for name in tracked_columns)
             tracked_keys = tuple(
                 comparable(name, value) for name, value in zip(tracked_columns, tracked_values)
@@ -210,6 +226,7 @@ def merge_workbook(
             "total_rows": total_rows,
             "distinct_skus": distinct_skus,
             "backup": str(backup.resolve()) if backup is not None else None,
+            "long_product_names": long_product_names,
         }
     except Exception:
         connection.rollback()
