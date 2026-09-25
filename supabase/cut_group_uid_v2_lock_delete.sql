@@ -1,0 +1,15 @@
+-- Khoá hẳn đường xoá cut_group_uids từ frontend.
+--
+-- Nguon yeu cau: 25/09/2026 phat hien bang cut_group_uids mat 103/106 dong tung
+-- insert (pg_stat_user_tables: n_tup_del=103), khong ro nguyen nhan chinh xac.
+-- cut_group_uid_remove la duong xoa DUY NHAT trong toan bo code, va no da duoc
+-- grant execute cho ca "anon" — nghia la BAT KY AI mo trang web (khong can dang
+-- nhap, dung thiet ke hien tai cua app) deu goi duoc RPC nay truc tiep qua REST
+-- API (khong nhat thiet phai qua nut bam tren giao dien), du RPC chi xoa dung 1
+-- dong theo group_uid_code va chi khi con 'pending'/'failed'.
+--
+-- Khong DROP function (giu lai de sau nay co the mo lai qua duong Admin co dang
+-- nhap, giong mo hinh group_uid_admin_allowed cua Excel import) — chi REVOKE
+-- execute khoi anon/authenticated, nen goi truc tiep qua REST se bi Postgres
+-- tu choi (permission denied) bat ke frontend co con nut bam hay khong.
+revoke execute on function public.cut_group_uid_remove(text,text) from anon,authenticated;
