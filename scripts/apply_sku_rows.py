@@ -13,7 +13,7 @@ import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 
-from merge_sku_category_xlsx import AGENT_PRODUCT_NAME_LIMIT, comparable, status_value
+from merge_sku_category_xlsx import comparable, status_value
 
 
 # CHỈ những cột mà trang danh sách thật sự hiển thị. Đo trên máy thật: cột
@@ -92,7 +92,6 @@ def apply_rows(
 
         inserted = updated = unchanged = skipped_empty = 0
         changed_fields: dict[str, int] = {}
-        long_product_names: list[dict[str, object]] = []
         inserts: list[tuple[object, ...]] = []
         updates: list[tuple[object, ...]] = []
         seen: set[str] = set()
@@ -101,8 +100,6 @@ def apply_rows(
             if sku in seen:
                 continue
             seen.add(sku)
-            if len(row["product_name"]) > AGENT_PRODUCT_NAME_LIMIT:
-                long_product_names.append({"sku": sku, "length": len(row["product_name"])})
             values = tuple(row[name] for name in TRACKED_COLUMNS)
             if any(not value for value in values):
                 # Chốt chặn thứ hai: không bao giờ ghi giá trị rỗng đè lên dữ liệu cũ.
@@ -162,7 +159,6 @@ def apply_rows(
             "changed_fields": changed_fields,
             "rename_limit": limit,
             "total_rows": total_rows,
-            "long_product_names": long_product_names,
         }
     except Exception:
         connection.rollback()
