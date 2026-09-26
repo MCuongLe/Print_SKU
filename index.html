@@ -3418,7 +3418,7 @@ Error generating stack: `+y.message+`
     <script>
       (()=>{
         const screen=document.getElementById('xa-vai-screen'),form=document.getElementById('xa-vai-form'),code=document.getElementById('xa-vai-code'),message=document.getElementById('xa-vai-message'),openList=document.getElementById('xa-vai-open-list'),openCount=document.getElementById('xa-vai-open-count'),openReload=document.getElementById('xa-vai-open-reload'),searchForm=document.getElementById('xa-vai-search'),skuFilter=document.getElementById('xa-vai-sku'),dateFilter=document.getElementById('xa-vai-date'),exportButton=document.getElementById('xa-vai-export'),resultsBody=document.getElementById('xa-vai-results'),found=document.getElementById('xa-vai-found'),keyboardToggle=document.getElementById('xa-vai-keyboard'),tabScan=document.getElementById('xa-vai-tab-scan'),tabOpen=document.getElementById('xa-vai-tab-open'),tabDone=document.getElementById('xa-vai-tab-done'),gotoOpen=document.getElementById('xa-vai-goto-open');
-        let busy=false,openItems=[],searchItems=[];
+        let busy=false,openItems=[],searchItems=[],refreshTimer=0;
         const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
         const active=()=>location.hash.replace(/^#/,'').split('&')[0]==='xa-vai';
         const tell=(text,tone='')=>{message.textContent=text;message.dataset.tone=tone};
@@ -3435,6 +3435,15 @@ Error generating stack: `+y.message+`
           if(!quiet)tell('Đang tải danh sách…');
           try{const r=await rpc('xa_vai_list_open');if(!r.ok)throw new Error(r.error?.message);openItems=r.data?.items||[];renderOpen();if(!quiet)tell(`Có ${openItems.length} UID đang xả.`,'ok')}
           catch(e){tell(`Không tải được danh sách: ${e.message}`,'error')}
+        };
+        // Ngoai nut "Tai lai" bam tay, tu dong lam moi cum "Dang xa" theo dinh ky (15s) trong
+        // luc con dang mo man hinh nay - tranh truong hop may khac vua bam Ket thuc ma may nay
+        // khong biet cho toi khi ai do tu bam Tai lai. Chi goi rpc quiet (khong hien thong bao
+        // "Dang tai danh sach...") de khong lam phien nguoi dang thao tac o cum khac.
+        const scheduleRefresh=()=>{
+          clearTimeout(refreshTimer);
+          if(!active())return;
+          refreshTimer=setTimeout(async()=>{await loadOpen({quiet:true});scheduleRefresh()},15000);
         };
         openReload.addEventListener('click',()=>loadOpen());
         openList.addEventListener('click',async event=>{
@@ -3632,7 +3641,7 @@ Error generating stack: `+y.message+`
         });
 
         document.getElementById('xa-vai-back').addEventListener('click',()=>location.hash='#home');
-        const route=()=>{screen.hidden=!active();if(active()){loadOpen({quiet:true});runSearch();if(activeTab==='scan')setTimeout(()=>code.focus(),50)}};
+        const route=()=>{screen.hidden=!active();if(active()){loadOpen({quiet:true});runSearch();scheduleRefresh();if(activeTab==='scan')setTimeout(()=>code.focus(),50)}else{clearTimeout(refreshTimer)}};
         window.addEventListener('hashchange',route);renderSearch();route();
       })();
     </script>
