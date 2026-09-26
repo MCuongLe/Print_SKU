@@ -3451,11 +3451,14 @@ Error generating stack: `+y.message+`
           if(!button||busy)return;
           const uid=button.closest('.cut-row').dataset.code;
           busy=true;button.disabled=true;
+          tell(`Đang ghi giờ kết thúc xả vải cho ${uid}…`);
           try{
             const r=await rpc('xa_vai_end',{p_group_uid:uid});
             if(!r.ok)throw new Error(r.error?.message||'Không kết thúc được');
             tell(`Đã ghi giờ kết thúc xả vải cho ${uid}.`,'ok');
-            await loadOpen({quiet:true})
+            openItems=openItems.filter(item=>item.groupUid!==uid);
+            renderOpen();
+            loadOpen({quiet:true});
           }catch(e){tell(`Chưa rõ đã ghi hay chưa: ${e.message}`,'error')}
           finally{busy=false}
         });
