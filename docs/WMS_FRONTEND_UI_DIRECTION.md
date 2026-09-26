@@ -77,7 +77,10 @@ Mỗi card gồm icon thống nhất, tên tác vụ, mô tả ngắn và badge 
 --wms-success: #16845b;
 --wms-warning: #b7791f;
 --wms-danger: #c2413b;
+--wms-font: Arial, Helvetica, sans-serif;
 ```
+
+Font chủ đạo: `Arial` (font hệ thống, không cần tải thêm), giống hướng của WMS tham khảo.
 
 Tên class dùng chung có thể gồm:
 
