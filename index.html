@@ -570,23 +570,25 @@ Error generating stack: `+y.message+`
     </style>
     <style>
       .barcode-home {
-        position: fixed; inset: 0; z-index: 74; display: grid; place-items: center; overflow-y: auto; padding: 24px;
-        color: #e7f1ed; background: radial-gradient(circle at 50% 0%, rgba(0,95,65,.38), transparent 34rem), linear-gradient(145deg, #07110e, #101b18);
+        position: fixed; inset: 0; z-index: 74; overflow-y: auto;
+        background: var(--wms-bg); color: var(--wms-text);
         font-family: Arial, Helvetica, sans-serif;
       }
       .barcode-home[hidden] { display: none; }
-      .barcode-home__shell { width: min(1180px, 100%); text-align: center; }
-      .barcode-home__mark { display: grid; place-items: center; width: 58px; height: 58px; margin: 0 auto 18px; border-radius: 18px; color: #fff; background: #005f41; box-shadow: 0 16px 38px rgba(0,95,65,.34); font-size: 23px; font-weight: 900; }
-      .barcode-home h1 { margin: 0; color: #f5fbf8; font-size: clamp(34px, 8vw, 54px); letter-spacing: -.045em; }
-      .barcode-home__lead { margin: 10px 0 28px; color: #91aaa1; font-size: 14px; }
-      .barcode-home__choices { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
-      @media (max-width: 1080px) and (min-width: 621px) { .barcode-home__choices { grid-template-columns: 1fr 1fr; } }
-      .barcode-choice { min-height: 180px; padding: 24px; border: 1px solid rgba(145,186,171,.18); border-radius: 24px; color: #e9f4f0; background: rgba(15,31,26,.9); box-shadow: 0 20px 50px rgba(0,0,0,.2); cursor: pointer; text-align: left; transition: transform .15s ease, border-color .15s ease, background .15s ease; }
-      .barcode-choice:hover { transform: translateY(-3px); border-color: rgba(40,186,135,.65); background: #112a22; }
-      .barcode-choice__icon { display: grid; place-items: center; width: 46px; height: 46px; margin-bottom: 24px; border-radius: 14px; color: transparent; background: rgba(0,95,65,.3); font-size: 0; }
-      .barcode-choice__icon::before { content: ""; width: 25px; height: 20px; background: repeating-linear-gradient(90deg, #35c993 0 2px, transparent 2px 4px, #35c993 4px 7px, transparent 7px 9px); }
-      .barcode-choice strong { display: block; font-size: 21px; letter-spacing: -.02em; }
-      .barcode-choice span { display: block; margin-top: 7px; color: #8da59c; font-size: 13px; line-height: 1.45; }
+      .barcode-home__header { display: flex; align-items: center; gap: 14px; padding: 18px 20px; background: var(--wms-brand); }
+      .barcode-home__shell { max-width: 1280px; margin: 0 auto; padding: 0 20px 40px; box-sizing: border-box; }
+      .barcode-home__mark { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; color: #fff; background: rgba(255,255,255,.16); font-size: 17px; font-weight: 900; flex: none; }
+      .barcode-home h1 { margin: 0; color: #fff; font-size: 18px; font-weight: 700; letter-spacing: .01em; }
+      .barcode-home__lead { margin: 2px 0 0; color: rgba(255,255,255,.78); font-size: 12px; }
+      .barcode-home__groups { display: grid; gap: 28px; padding: 28px 0 0; }
+      .barcode-home__group-title { margin: 0 0 12px; font-size: 13px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--wms-muted); }
+      .barcode-home__choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+      .barcode-choice { min-height: 132px; padding: 20px; border: 1px solid var(--wms-border); border-radius: 14px; color: var(--wms-text); background: var(--wms-surface); box-shadow: 0 1px 2px rgba(23,37,31,.04); cursor: pointer; text-align: left; transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease; }
+      .barcode-choice:hover { transform: translateY(-2px); border-color: var(--wms-brand); box-shadow: 0 8px 20px rgba(23,37,31,.1); }
+      .barcode-choice__icon { display: grid; place-items: center; width: 40px; height: 40px; margin-bottom: 16px; border-radius: 10px; background: rgba(0,95,65,.1); color: var(--wms-brand); }
+      .barcode-choice__icon svg { width: 21px; height: 21px; }
+      .barcode-choice strong { display: block; font-size: 16px; font-weight: 700; letter-spacing: -.01em; }
+      .barcode-choice span { display: block; margin-top: 5px; color: var(--wms-muted); font-size: 13px; line-height: 1.45; }
       .barcode-home-trigger { position: fixed; top: 9px; right: 12px; z-index: 60; min-height: 38px; padding: 0 16px; border: 0; border-radius: 999px; color: #fff; background: #005f41; box-shadow: 0 6px 18px rgba(0,95,65,.35); font: 800 12px/1 Arial, Helvetica, sans-serif; cursor: pointer; }
       .barcode-home-trigger[hidden] { display: none; }
       #root { font-family: Arial, Helvetica, sans-serif; }
@@ -723,9 +725,9 @@ Error generating stack: `+y.message+`
         .uid-panel__list { max-height: 52vh; }
       }
       @media (max-width: 620px) {
-        .barcode-home { align-items: start; padding: max(36px, env(safe-area-inset-top)) 14px 24px; }
+        .barcode-home__header { padding: max(14px, env(safe-area-inset-top)) 14px 14px; }
+        .barcode-home__shell { padding: 0 14px 30px; }
         .barcode-home__choices { grid-template-columns: 1fr; }
-        .barcode-choice { min-height: 142px; }
         .uid-shell { padding-top: max(16px, env(safe-area-inset-top)); }
         .uid-topbar__name span { display: none; }
         .uid-topbar__printer { padding: 0 10px; font-size: 11px; }
@@ -747,18 +749,37 @@ Error generating stack: `+y.message+`
       }
     </style>
     <section class="barcode-home" id="barcode-home" aria-labelledby="barcode-home-title">
+      <header class="barcode-home__header">
+        <span class="barcode-home__mark" aria-hidden="true">H</span>
+        <div>
+          <h1 id="barcode-home-title">WH-MATERIAL</h1>
+          <p class="barcode-home__lead">Chọn chức năng cần dùng</p>
+        </div>
+      </header>
       <main class="barcode-home__shell">
-        <div class="barcode-home__mark" aria-hidden="true">H</div>
-        <h1 id="barcode-home-title">WH-MATERIAL</h1>
-        <p class="barcode-home__lead">Chọn chức năng cần dùng</p>
-        <div class="barcode-home__choices">
-          <button class="barcode-choice" id="barcode-print-sku" type="button"><span class="barcode-choice__icon" aria-hidden="true">▥</span><strong>PRINT SKU</strong><span>Nhập SKU và tạo danh sách tem cần in.</span></button>
-          <button class="barcode-choice" id="barcode-print-uid" type="button"><span class="barcode-choice__icon" aria-hidden="true">▥</span><strong>PRINT UID</strong><span>Nhập Group UID, tự tra thông tin tem rồi xác nhận in.</span></button>
-          <button class="barcode-choice" id="barcode-cut-uid" type="button"><span class="barcode-choice__icon" aria-hidden="true">✂</span><strong>CẮT GROUP UID</strong><span>Quét UID, lưu tem chờ in và tra cứu UID đã cắt theo SKU.</span></button>
-          <button class="barcode-choice" id="barcode-inspection" type="button"><span class="barcode-choice__icon" aria-hidden="true">▥</span><strong>INSPECTION</strong><span>Import PO phụ liệu, xuất Biên bản kiểm tra đầu vào.</span></button>
-          <button class="barcode-choice" id="barcode-sample" type="button"><span class="barcode-choice__icon" aria-hidden="true">▥</span><strong>SAMPLE</strong><span>Quét SKU hàng mẫu, gom cùng SKU vào một bao.</span></button>
-          <button class="barcode-choice" id="barcode-fabric" type="button"><span class="barcode-choice__icon" aria-hidden="true">▥</span><strong>FABRIC RELAXATION</strong><span>In tem xả vải, để trống Ngày, Giờ và Lot để ghi tay.</span></button>
-          <button class="barcode-choice" id="barcode-xa-vai" type="button"><span class="barcode-choice__icon" aria-hidden="true">⏱</span><strong>THEO DÕI XẢ VẢI</strong><span>Quét UID, bấm bắt đầu/kết thúc xả vải, tra cứu đối chiếu.</span></button>
+        <div class="barcode-home__groups">
+          <section class="barcode-home__group">
+            <h2 class="barcode-home__group-title">In tem</h2>
+            <div class="barcode-home__choices">
+              <button class="barcode-choice" id="barcode-print-sku" type="button"><span class="barcode-choice__icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V3h12v6"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="7"/></svg></span><strong>PRINT SKU</strong><span>Nhập SKU và tạo danh sách tem cần in.</span></button>
+              <button class="barcode-choice" id="barcode-print-uid" type="button"><span class="barcode-choice__icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5" fill="currentColor"/></svg></span><strong>PRINT UID</strong><span>Nhập Group UID, tự tra thông tin tem rồi xác nhận in.</span></button>
+              <button class="barcode-choice" id="barcode-fabric" type="button"><span class="barcode-choice__icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></svg></span><strong>FABRIC RELAXATION</strong><span>In tem xả vải, để trống Ngày, Giờ và Lot để ghi tay.</span></button>
+            </div>
+          </section>
+          <section class="barcode-home__group">
+            <h2 class="barcode-home__group-title">Vận hành kho</h2>
+            <div class="barcode-home__choices">
+              <button class="barcode-choice" id="barcode-cut-uid" type="button"><span class="barcode-choice__icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><path d="M8.12 8.12 12 12"/><path d="M20 4 8.12 15.88"/><circle cx="6" cy="18" r="3"/><path d="M14.8 14.8 20 20"/></svg></span><strong>CẮT GROUP UID</strong><span>Quét UID, lưu tem chờ in và tra cứu UID đã cắt theo SKU.</span></button>
+              <button class="barcode-choice" id="barcode-xa-vai" type="button"><span class="barcode-choice__icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2"/><path d="M5 3 2 6"/><path d="m22 6-3-3"/></svg></span><strong>THEO DÕI XẢ VẢI</strong><span>Quét UID, bấm bắt đầu/kết thúc xả vải, tra cứu đối chiếu.</span></button>
+            </div>
+          </section>
+          <section class="barcode-home__group">
+            <h2 class="barcode-home__group-title">Kiểm tra</h2>
+            <div class="barcode-home__choices">
+              <button class="barcode-choice" id="barcode-inspection" type="button"><span class="barcode-choice__icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></svg></span><strong>INSPECTION</strong><span>Import PO phụ liệu, xuất Biên bản kiểm tra đầu vào.</span></button>
+              <button class="barcode-choice" id="barcode-sample" type="button"><span class="barcode-choice__icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16.5 9.4 7.55 4.24"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg></span><strong>SAMPLE</strong><span>Quét SKU hàng mẫu, gom cùng SKU vào một bao.</span></button>
+            </div>
+          </section>
         </div>
       </main>
     </section>
