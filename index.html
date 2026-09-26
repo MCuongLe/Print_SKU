@@ -3649,5 +3649,89 @@ Error generating stack: `+y.message+`
         window.addEventListener('hashchange',route);renderSearch();route();
       })();
     </script>
+    <style id="wms-design-system">
+      /* Giai đoạn 1 - Chuẩn hóa nền tảng (docs/WMS_FRONTEND_UI_DIRECTION.md).
+         Chỉ định nghĩa design tokens + lớp CSS dùng chung, CHƯA gắn vào bất kỳ
+         màn nào — không đổi JS/route/nghiệp vụ. Các màn hiện có (Cắt Group UID,
+         Xả vải, Print UID...) giữ nguyên theme riêng cho tới khi được migrate
+         từng màn một ở Giai đoạn 2. Tông sáng ở đây khớp với body{} gốc của
+         app (#f4f6f5) - không phải đổi ngược theme, mà đưa các màn tối đi theo
+         đúng nền tảng ban đầu. */
+      :root {
+        --wms-brand: #005f41;
+        --wms-brand-hover: #087b58;
+        --wms-bg: #f4f7f6;
+        --wms-surface: #ffffff;
+        --wms-text: #17251f;
+        --wms-muted: #60736b;
+        --wms-border: #d9e2de;
+        --wms-success: #16845b;
+        --wms-warning: #b7791f;
+        --wms-danger: #c2413b;
+      }
+
+      /* Bố cục */
+      .wms-shell { max-width: 1280px; margin: 0 auto; padding: 20px; box-sizing: border-box; }
+      .wms-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+      @media (max-width: 600px) {
+        .wms-shell { padding: 14px; }
+        .wms-grid { grid-template-columns: 1fr; }
+      }
+
+      /* .wms-header */
+      .wms-header { background: var(--wms-brand); color: #ffffff; padding: 14px 20px; display: flex; align-items: center; gap: 12px; }
+      .wms-header h1 { margin: 0; font-size: 18px; font-weight: 700; letter-spacing: .01em; }
+      .wms-header p { margin: 2px 0 0; font-size: 12px; color: rgba(255, 255, 255, .78); }
+
+      /* .wms-card */
+      .wms-card { background: var(--wms-surface); border: 1px solid var(--wms-border); border-radius: 14px; padding: 18px; box-shadow: 0 1px 2px rgba(23, 37, 31, .04); }
+      .wms-card h2 { margin: 0 0 14px; font-size: 16px; color: var(--wms-text); }
+
+      /* .wms-input */
+      .wms-input { width: 100%; min-height: 44px; box-sizing: border-box; border: 1px solid var(--wms-border); border-radius: 10px; background: var(--wms-surface); color: var(--wms-text); padding: 0 14px; font-size: 15px; outline: none; transition: border-color .12s ease, box-shadow .12s ease; }
+      .wms-input::placeholder { color: var(--wms-muted); }
+      .wms-input:focus { border-color: var(--wms-brand); box-shadow: 0 0 0 3px rgba(0, 95, 65, .15); }
+      label.wms-label { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 600; color: var(--wms-text); }
+      .wms-note { font-size: 12px; color: var(--wms-muted); }
+
+      /* .wms-button */
+      .wms-button { min-height: 48px; padding: 0 20px; border-radius: 10px; border: 1px solid transparent; font-weight: 700; font-size: 14px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: background .12s ease, border-color .12s ease, color .12s ease; }
+      .wms-button--primary { background: var(--wms-brand); color: #ffffff; }
+      .wms-button--primary:hover { background: var(--wms-brand-hover); }
+      .wms-button--secondary { background: var(--wms-surface); color: var(--wms-text); border-color: var(--wms-border); }
+      .wms-button--secondary:hover { border-color: var(--wms-brand); color: var(--wms-brand); }
+      .wms-button--danger { background: #ffffff; color: var(--wms-danger); border-color: rgba(194, 65, 59, .35); }
+      .wms-button--danger:hover { background: rgba(194, 65, 59, .08); }
+      .wms-button:disabled { opacity: .45; cursor: not-allowed; }
+      .wms-button:focus-visible { outline: 2px solid var(--wms-brand); outline-offset: 2px; }
+
+      /* .wms-tabs */
+      .wms-tabs { display: flex; gap: 8px; }
+      .wms-tab { flex: 1; min-height: 46px; border: 1px solid var(--wms-border); border-radius: 10px; background: var(--wms-surface); color: var(--wms-muted); font-weight: 700; font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 0 8px; text-align: center; }
+      .wms-tab[aria-selected="true"] { border-color: var(--wms-brand); background: rgba(0, 95, 65, .08); color: var(--wms-brand); }
+      .wms-tab-badge { display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px; background: var(--wms-border); color: var(--wms-text); font-size: 11px; font-weight: 800; }
+      .wms-tab[aria-selected="true"] .wms-tab-badge { background: var(--wms-brand); color: #ffffff; }
+
+      /* .wms-table */
+      .wms-table-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 14px; }
+      .wms-table-wrap { overflow: auto; border: 1px solid var(--wms-border); border-radius: 12px; }
+      .wms-table { width: 100%; border-collapse: collapse; background: var(--wms-surface); }
+      .wms-table th, .wms-table td { padding: 10px 14px; border-bottom: 1px solid var(--wms-border); text-align: left; font-size: 13px; }
+      .wms-table th { position: sticky; top: 0; background: #eef3f1; color: var(--wms-text); font-weight: 700; }
+      .wms-table tbody tr:hover { background: #f7faf9; }
+      .wms-table tbody tr.is-selected { background: rgba(0, 95, 65, .08); }
+      .wms-table-empty { padding: 28px 10px; text-align: center; color: var(--wms-muted); }
+
+      /* .wms-status - luôn kèm icon + chữ + màu, không chỉ phân biệt bằng màu nền */
+      .wms-status { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; background: #eef3f1; color: var(--wms-text); }
+      .wms-status svg { width: 13px; height: 13px; flex: none; }
+      .wms-status--success { background: rgba(22, 132, 91, .12); color: var(--wms-success); }
+      .wms-status--warning { background: rgba(183, 121, 31, .12); color: var(--wms-warning); }
+      .wms-status--danger { background: rgba(194, 65, 59, .12); color: var(--wms-danger); }
+
+      /* .wms-action-bar */
+      .wms-action-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+      .wms-action-bar--sticky { position: sticky; bottom: 0; background: var(--wms-surface); border-top: 1px solid var(--wms-border); padding: 12px 16px; margin: 0 -16px; z-index: 5; }
+    </style>
   </body>
 </html>
