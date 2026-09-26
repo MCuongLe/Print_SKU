@@ -3459,6 +3459,7 @@ Error generating stack: `+y.message+`
             openItems=openItems.filter(item=>item.groupUid!==uid);
             renderOpen();
             loadOpen({quiet:true});
+            runSearch({quiet:true});
           }catch(e){tell(`Chưa rõ đã ghi hay chưa: ${e.message}`,'error')}
           finally{busy=false}
         });
@@ -3588,8 +3589,8 @@ Error generating stack: `+y.message+`
           exportButton.disabled=!searchItems.length;
           resultsBody.innerHTML=searchItems.length?searchItems.map((item,i)=>`<tr><td>${i+1}</td><td>${esc(item.groupUid)}</td><td>${esc(item.batchCode||'')}</td><td>${esc(item.rollCode||'')}</td><td>${esc(item.sku)}</td><td>${esc(fmtDate(item.startedAt))}</td><td>${esc(fmtTime(item.startedAt))}</td><td>${esc(fmtTime(item.endedAt))}</td></tr>`).join(''):'<tr><td colspan="8" class="cut-empty">Chưa có dữ liệu phù hợp.</td></tr>'
         };
-        const runSearch=async()=>{
-          try{const r=await rpc('xa_vai_search',{p_sku:skuFilter.value.trim(),p_date_from:dateFromFilter.value||null,p_date_to:dateToFilter.value||null,p_limit:5000});if(!r.ok)throw new Error(r.error?.message);searchItems=r.data?.items||[];renderSearch();tell(`Tìm thấy ${searchItems.length} dòng.`,'ok')}
+        const runSearch=async({quiet=false}={})=>{
+          try{const r=await rpc('xa_vai_search',{p_sku:skuFilter.value.trim(),p_date_from:dateFromFilter.value||null,p_date_to:dateToFilter.value||null,p_limit:5000});if(!r.ok)throw new Error(r.error?.message);searchItems=r.data?.items||[];renderSearch();if(!quiet)tell(`Tìm thấy ${searchItems.length} dòng.`,'ok')}
           catch(e){tell(`Không tra cứu được: ${e.message}`,'error')}
         };
         searchForm.addEventListener('submit',event=>{event.preventDefault();runSearch()});
