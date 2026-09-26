@@ -802,7 +802,7 @@ Error generating stack: `+y.message+`
               <div class="uid-panel__head"><b class="uid-panel__num">1</b><h2>Thêm Group UID</h2></div>
               <div class="uid-add__row">
                 <input id="uid-code" autocomplete="off" placeholder="Quét hoặc nhập Group UID…" required>
-                <button class="uid-add__btn" id="uid-add" type="submit">Thêm</button>
+                <button class="uid-add__btn act-icon act-icon--add" id="uid-add" type="submit">Thêm</button>
               </div>
               <button class="uid-import" id="uid-import" type="button">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V4"></path><path d="M7 9l5-5 5 5"></path><path d="M4 16v3a1.5 1.5 0 0 0 1.5 1.5h13A1.5 1.5 0 0 0 20 19v-3"></path></svg>
@@ -849,7 +849,7 @@ Error generating stack: `+y.message+`
                   <option value="WH - MATERIAL - MTG"></option>
                 </datalist>
                 <div class="uid-auto" id="uid-auto-rows"></div>
-                <button class="uid-auto__add" id="uid-auto-add" type="button">+ Thêm dòng SKU</button>
+                <button class="uid-auto__add act-icon act-icon--add" id="uid-auto-add" type="button">Thêm dòng SKU</button>
                 <div class="uid-auto__meta"><span>Sẽ gán: <strong id="uid-auto-total">0/0</strong> UID</span></div>
                 <p class="uid-help" id="uid-auto-help" aria-live="polite"></p>
                 <button class="uid-map__apply" id="uid-auto-apply" type="button" disabled>Gán tự động</button>
@@ -864,7 +864,7 @@ Error generating stack: `+y.message+`
               <div class="uid-panel__list" id="uid-ready"></div>
               <div class="uid-summary">
                 <div class="uid-summary__numbers"><span>Tem sẽ in: <strong id="uid-total-copies">0</strong></span><span>Ghép 2 tem mỗi hàng giấy</span></div>
-                <button class="uid-submit" id="uid-print-all" type="button" disabled>Xác nhận in</button>
+                <button class="uid-submit act-icon act-icon--print" id="uid-print-all" type="button" disabled>Xác nhận in</button>
               </div>
             </section>
           </div>
@@ -1479,7 +1479,7 @@ Error generating stack: `+y.message+`
           <div class="uid-card uid-add">
             <div class="uid-panel__head"><b class="uid-panel__num">1</b><h2>Import PO phụ liệu</h2></div>
             <input type="file" id="ins-file" accept=".xls,.xlsx" hidden>
-            <button class="uid-add__btn" id="ins-import" type="button" style="width: 100%;">Chọn file PO (.xls / .xlsx)</button>
+            <button class="uid-add__btn act-icon act-icon--import" id="ins-import" type="button" style="width: 100%;">Chọn file PO (.xls / .xlsx)</button>
             <p class="uid-help" style="margin-top: 8px;">Nhận file PHIẾU MUA export từ Mastige. App tự đọc Mã số PO, ngày giao và danh sách phụ liệu.</p>
           </div>
           <div class="uid-card uid-add" id="ins-info" hidden>
@@ -1497,7 +1497,7 @@ Error generating stack: `+y.message+`
             <div class="ins-scroll">
               <div class="ins-table" id="ins-items"></div>
             </div>
-            <button class="uid-submit" id="ins-export" type="button" style="margin-top: 14px;" disabled>Xuất Biên bản kiểm tra (.xlsx)</button>
+            <button class="uid-submit act-icon act-icon--export" id="ins-export" type="button" style="margin-top: 14px;" disabled>Xuất Biên bản kiểm tra (.xlsx)</button>
           </div>
         </div>
       </main>
@@ -2029,7 +2029,7 @@ Error generating stack: `+y.message+`
               <label class="uid-add__label" for="sample-sku">Mã SKU</label>
               <div class="uid-add__row">
                 <input id="sample-sku" autocomplete="off" spellcheck="false" enterkeyhint="done" placeholder="Quét mã QR bằng máy Honeywell…" required>
-                <button class="uid-add__btn" id="sample-add" type="submit">Kiểm tra</button>
+                <button class="uid-add__btn act-icon act-icon--check" id="sample-add" type="submit">Kiểm tra</button>
               </div>
               <button class="sample-kb" id="sample-keyboard" type="button" aria-pressed="true">Bàn phím ảo: đang ẩn</button>
               <p class="uid-help" id="sample-hint" aria-live="polite">Con trỏ luôn nằm sẵn ở ô này — quét thẳng, không cần chạm. Nếu máy quét bỗng không nhập được nữa, thử bấm hiện lại bàn phím ảo.</p>
@@ -2051,12 +2051,12 @@ Error generating stack: `+y.message+`
                   <span class="uid-badge" id="sample-count">0</span>
                   <span class="sample-chevron" aria-hidden="true">▾</span>
                 </button>
-                <button class="uid-row__icon sample-reload" id="sample-reload" type="button" title="Tải lại danh sách" aria-label="Tải lại danh sách">⟳</button>
+                <button class="uid-row__icon sample-reload act-icon act-icon--load" id="sample-reload" type="button" title="Tải lại danh sách" aria-label="Tải lại danh sách"></button>
               </div>
               <div class="uid-panel__list" id="sample-list"></div>
               <div class="uid-summary">
                 <div class="uid-summary__numbers"><span>Số bao: <strong id="sample-total-bags">0</strong></span><span>Tổng mẫu: <strong id="sample-total-qty">0</strong></span></div>
-                <button class="uid-submit" id="sample-export" type="button" disabled>Xuất Excel theo dõi (.xlsx)</button>
+                <button class="uid-submit act-icon act-icon--export" id="sample-export" type="button" disabled>Xuất Excel theo dõi (.xlsx)</button>
               </div>
             </section>
           </div>
@@ -3230,7 +3230,7 @@ Error generating stack: `+y.message+`
           <label for="fabric-copies">Số tem in</label>
           <input id="fabric-copies" type="number" min="1" max="500" step="1" value="1" required inputmode="numeric">
           <p class="fabric-note">Mã hàng, Lot, Ngày và Giờ để trống trên tem để người dùng tự ghi tay.</p>
-          <button class="fabric-print" id="fabric-print" type="submit">In 1 tem</button>
+          <button class="fabric-print act-icon act-icon--print" id="fabric-print" type="submit">In 1 tem</button>
           <p id="fabric-status" role="status" aria-live="polite"></p>
         </form>
         <div class="fabric-card"><h2>Xem trước tem</h2>
@@ -3309,9 +3309,9 @@ Error generating stack: `+y.message+`
         </div>
         <p class="cut-message" id="cut-message" aria-live="polite" style="margin-bottom:14px"></p>
         <div class="cut-grid">
-        <section class="cut-card" data-panel="scan"><h2><span>1</span>Quét Group UID</h2><form class="cut-scan" id="cut-form"><input class="cut-input" id="cut-code" autocomplete="off" inputmode="none" placeholder="Quét hoặc nhập UID…" maxlength="40" required><button class="cut-primary" id="cut-add" type="submit">Lưu tem</button></form><button class="cut-secondary" id="cut-keyboard" type="button">Bàn phím ảo: đang ẩn — bấm để hiện</button><p class="cut-note">Hệ thống tự lấy SKU, tên sản phẩm, Lot và Roll từ dữ liệu Group UID. UID thiếu dữ liệu sẽ không được lưu.</p><div class="cut-last" id="cut-last" hidden></div><button class="cut-link" id="cut-goto-data" type="button">Xem trong Tra cứu →</button></section>
+        <section class="cut-card" data-panel="scan"><h2><span>1</span>Quét Group UID</h2><form class="cut-scan" id="cut-form"><input class="cut-input" id="cut-code" autocomplete="off" inputmode="none" placeholder="Quét hoặc nhập UID…" maxlength="40" required><button class="cut-primary act-icon act-icon--add" id="cut-add" type="submit">Lưu tem</button></form><button class="cut-secondary" id="cut-keyboard" type="button">Bàn phím ảo: đang ẩn — bấm để hiện</button><p class="cut-note">Hệ thống tự lấy SKU, tên sản phẩm, Lot và Roll từ dữ liệu Group UID. UID thiếu dữ liệu sẽ không được lưu.</p><div class="cut-last" id="cut-last" hidden></div><button class="cut-link" id="cut-goto-data" type="button">Xem trong Tra cứu →</button></section>
         <section class="cut-card" data-panel="data"><h2><span>2</span>Tra cứu UID đã cắt</h2><form class="cut-searchbar" id="cut-search"><input class="cut-input" id="cut-sku" placeholder="Lọc theo SKU…" autocomplete="off"><input class="cut-input" id="cut-lot" style="max-width:150px" placeholder="Lọc theo Lot…" autocomplete="off"><button class="cut-secondary" type="submit">Tìm kiếm</button></form><div class="cut-actions"><button class="cut-icon-btn" id="cut-export" type="button" disabled title="Xuất Excel A4 ngang" aria-label="Xuất Excel A4 ngang"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button><button class="cut-primary" id="cut-push" type="button" disabled>Đưa vào hàng chờ in</button></div><div class="cut-table-wrap" style="margin-top:14px"><table class="cut-table"><thead><tr><th class="cut-th-check"><input id="cut-search-all" type="checkbox" aria-label="Chọn tất cả tem có thể in trong bảng"></th><th>SKU</th><th>UID</th><th>Lot</th><th>Roll</th><th>Tên SP</th><th>Trạng thái</th><th>Thời gian cắt</th></tr></thead><tbody id="cut-results"></tbody></table></div></section>
-        <section class="cut-card" data-panel="print"><h2><span>3</span>Tem chờ in</h2><button class="cut-link" id="cut-goto-data-2" type="button">← Chọn thêm ở Tra cứu</button><div class="cut-actions"><label class="cut-selectall"><input id="cut-all" type="checkbox"><span>Chọn tất cả tem có thể in</span><em id="cut-selected-count">Đã chọn 0</em></label><button class="cut-secondary" id="cut-reload" type="button">Tải lại</button><button class="cut-primary" id="cut-print" type="button" disabled>In tem đã chọn</button></div><div class="cut-list" id="cut-list"></div></section>
+        <section class="cut-card" data-panel="print"><h2><span>3</span>Tem chờ in</h2><button class="cut-link" id="cut-goto-data-2" type="button">← Chọn thêm ở Tra cứu</button><div class="cut-actions"><label class="cut-selectall"><input id="cut-all" type="checkbox"><span>Chọn tất cả tem có thể in</span><em id="cut-selected-count">Đã chọn 0</em></label><button class="cut-secondary act-icon act-icon--load" id="cut-reload" type="button">Tải lại</button><button class="cut-primary act-icon act-icon--print" id="cut-print" type="button" disabled>In tem đã chọn</button></div><div class="cut-list" id="cut-list"></div></section>
       </div></main>
     </section>
     <script>
@@ -3425,7 +3425,7 @@ Error generating stack: `+y.message+`
         <p class="cut-message" id="xa-vai-message" aria-live="polite" style="margin-bottom:14px"></p>
         <div class="cut-grid">
         <section class="cut-card" data-panel="scan"><h2><span>1</span>Quét Group UID</h2><form class="cut-scan" id="xa-vai-form"><div class="cut-scanwrap"><input class="cut-input cut-input--scan" id="xa-vai-code" autocomplete="off" inputmode="none" placeholder="Quét hoặc nhập UID…" maxlength="40" required><button class="cut-camera" id="xa-vai-camera" type="button" title="Quét mã bằng camera" hidden><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 12h10"/></svg></button></div><button class="cut-primary" type="submit">Bắt đầu xả vải</button></form><button class="cut-secondary" id="xa-vai-keyboard" type="button">Bàn phím ảo: đang ẩn — bấm để hiện</button><p class="cut-note">Quét UID — hệ thống tự tra dữ liệu và ghi giờ bắt đầu xả vải ngay. Mỗi lần chỉ xả được 1 UID.</p><button class="cut-link" id="xa-vai-goto-open" type="button">Xem đang xả →</button></section>
-        <section class="cut-card" data-panel="open"><h2><span>2</span>Đang xả vải</h2><div class="cut-actions"><button class="cut-secondary" id="xa-vai-open-reload" type="button">Tải lại</button></div><div class="cut-list" id="xa-vai-open-list"></div></section>
+        <section class="cut-card" data-panel="open"><h2><span>2</span>Đang xả vải</h2><div class="cut-actions"><button class="cut-secondary act-icon act-icon--load" id="xa-vai-open-reload" type="button">Tải lại</button></div><div class="cut-list" id="xa-vai-open-list"></div></section>
         <section class="cut-card" data-panel="done"><h2><span>3</span>Đã xả xong</h2><form class="cut-searchbar" id="xa-vai-search"><input class="cut-input" id="xa-vai-sku" placeholder="Lọc theo SKU…" autocomplete="off"><div class="cut-daterange"><input class="cut-input" id="xa-vai-date-from" type="date"><span aria-hidden="true">→</span><input class="cut-input" id="xa-vai-date-to" type="date"></div><button class="cut-secondary" type="submit">Tìm kiếm</button></form><div class="cut-actions"><button class="cut-icon-btn" id="xa-vai-export" type="button" disabled title="Xuất Excel A4 ngang" aria-label="Xuất Excel A4 ngang"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button></div><div class="cut-table-wrap"><table class="cut-table"><thead><tr><th>STT</th><th>UID</th><th>Batch</th><th>Roll</th><th>SKU</th><th>Ngày bắt đầu xả</th><th>Giờ bắt đầu xả</th><th>Giờ xả vải xong</th></tr></thead><tbody id="xa-vai-results"></tbody></table></div></section>
       </div></main>
     </section>
@@ -3684,6 +3684,24 @@ Error generating stack: `+y.message+`
         --wms-danger: #c2413b;
         --wms-font: Arial, Helvetica, sans-serif;
       }
+
+      /* Icon chuẩn hoá cho nút hành động (add/print/load/check) dùng chung toàn
+         app — bằng ::before + mask-image thay vì gắn <svg> thật vào HTML, vì vài
+         nút (#cut-print, #fabric-print) có nhãn bị JS ghi đè bằng textContent
+         theo số lượng chọn; icon qua ::before không phải node con nên không bị
+         xoá khi textContent đổi. Nút export/import đã có sẵn <svg> thật
+         (#cut-export, #xa-vai-export, #uid-import) thì giữ nguyên, không đụng. */
+      .act-icon { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+      .act-icon::before { content: ""; width: 16px; height: 16px; flex: none; background-color: currentColor;
+        -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+        -webkit-mask-position: center; mask-position: center;
+        -webkit-mask-size: contain; mask-size: contain; }
+      .act-icon--add::before { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 5v14M5 12h14'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 5v14M5 12h14'/%3E%3C/svg%3E"); }
+      .act-icon--print::before { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9V3h12v6'/%3E%3Cpath d='M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2'/%3E%3Crect x='6' y='14' width='12' height='7'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9V3h12v6'/%3E%3Cpath d='M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2'/%3E%3Crect x='6' y='14' width='12' height='7'/%3E%3C/svg%3E"); }
+      .act-icon--load::before { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 12a9 9 0 1 1-2.64-6.36'/%3E%3Cpath d='M21 3v6h-6'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 12a9 9 0 1 1-2.64-6.36'/%3E%3Cpath d='M21 3v6h-6'/%3E%3C/svg%3E"); }
+      .act-icon--check::before { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E"); }
+      .act-icon--export::before { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4'/%3E%3Cpolyline points='7 10 12 15 17 10'/%3E%3Cline x1='12' y1='15' x2='12' y2='3'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4'/%3E%3Cpolyline points='7 10 12 15 17 10'/%3E%3Cline x1='12' y1='15' x2='12' y2='3'/%3E%3C/svg%3E"); }
+      .act-icon--import::before { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 15V4'/%3E%3Cpath d='M7 9l5-5 5 5'/%3E%3Cpath d='M4 16v3a1.5 1.5 0 0 0 1.5 1.5h13A1.5 1.5 0 0 0 20 19v-3'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 15V4'/%3E%3Cpath d='M7 9l5-5 5 5'/%3E%3Cpath d='M4 16v3a1.5 1.5 0 0 0 1.5 1.5h13A1.5 1.5 0 0 0 20 19v-3'/%3E%3C/svg%3E"); }
     </style>
   </body>
 </html>
