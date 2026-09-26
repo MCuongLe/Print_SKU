@@ -3410,8 +3410,13 @@ Error generating stack: `+y.message+`
         const hasCamera=()=>typeof navigator!=='undefined'&&!!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia);
         const isSecure=()=>typeof window!=='undefined'&&(window.isSecureContext||location.hostname==='localhost');
         if(hasCamera()&&isSecure())cameraBtn.hidden=false;
-        let cameraStream=null;
-        const stopCamera=()=>{if(cameraStream){cameraStream.getTracks().forEach(t=>t.stop());cameraStream=null}const overlay=document.getElementById('xa-vai-cam-overlay');if(overlay)overlay.remove()};
+        let cameraStream=null,cropVideo=null,cropCanvas=null,cropCtx=null,cropReady=false,cropTried=false;
+        const stopCamera=()=>{
+          if(cameraStream){cameraStream.getTracks().forEach(t=>t.stop());cameraStream=null}
+          if(cropVideo){cropVideo.srcObject&&cropVideo.srcObject.getTracks().forEach(t=>t.stop());cropVideo=null}
+          cropCanvas=null;cropCtx=null;cropReady=false;cropTried=false;
+          const overlay=document.getElementById('xa-vai-cam-overlay');if(overlay)overlay.remove();
+        };
         cameraBtn.addEventListener('click',async()=>{
           if(document.getElementById('xa-vai-cam-overlay'))return;
           const scanner=window.PrintSkuScanner;
@@ -3419,23 +3424,66 @@ Error generating stack: `+y.message+`
           const overlay=document.createElement('div');
           overlay.id='xa-vai-cam-overlay';
           overlay.style.cssText='position:fixed;inset:0;background:#000;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;box-sizing:border-box';
+          // Khung 50% giua video (kieu spotlight giong man PRINT SKU) - CHỈ la goi y hinh
+          // anh cho nguoi dung; vung thuc su duoc dua vao bo doc ma la anh da cat rieng
+          // ben duoi (drawCrop/cropCanvas), khong phai video goc.
+          const videoWrap=document.createElement('div');
+          videoWrap.style.cssText='position:relative;display:inline-block;line-height:0';
           const video=document.createElement('video');
           video.setAttribute('playsinline','');video.muted=true;
-          video.style.cssText='max-width:100%;max-height:65vh;border-radius:12px';
+          video.style.cssText='display:block;max-width:100%;max-height:65vh;border-radius:12px';
+          const guide=document.createElement('div');
+          guide.style.cssText='position:absolute;left:25%;top:25%;width:50%;height:50%;border:2px solid rgba(255,255,255,.85);border-radius:10px;box-shadow:0 0 0 100vmax rgba(0,0,0,.45);pointer-events:none';
+          videoWrap.append(video,guide);
           const hint=document.createElement('p');
           hint.textContent='Đang mở camera…';
-          hint.style.cssText='color:#eafff7;margin:14px 0;font-size:14px;text-align:center';
-          const closeBtn=document.createElement('button');
-          closeBtn.type='button';closeBtn.className='cut-secondary';closeBtn.textContent='Đóng';
-          overlay.append(video,hint,closeBtn);
-          document.body.appendChild(overlay);
-          closeBtn.addEventListener('click',stopCamera);
+          hint.style.cssText='color:#eafff7;margin:14px 0 6px;font-size:14px;text-align:center';
           // Dong chan doan hien ngay tren man hinh (engine dang dung, kich thuoc video, so lan
           // da quet thu) - de biet chinh xac iOS ket o buoc nao thay vi im lang "khong nhan
           // duoc", vi khong co thiet bi iOS that de tu debug truc tiep.
           const debug=document.createElement('p');
-          debug.style.cssText='color:#6b8f80;margin:0;font-size:11px;text-align:center';
-          overlay.insertBefore(debug,closeBtn);
+          debug.style.cssText='color:#6b8f80;margin:0 0 6px;font-size:11px;text-align:center';
+          const cropLabel=document.createElement('p');
+          cropLabel.textContent='Ảnh đã cắt 50% đưa vào bộ đọc:';
+          cropLabel.style.cssText='color:#6b8f80;margin:6px 0 4px;font-size:11px;text-align:center';
+          const closeBtn=document.createElement('button');
+          closeBtn.type='button';closeBtn.className='cut-secondary';closeBtn.textContent='Đóng';
+          overlay.append(videoWrap,hint,debug,cropLabel,closeBtn);
+          document.body.appendChild(overlay);
+          closeBtn.addEventListener('click',stopCamera);
+          // Chi dua vao bo doc vung 50% chinh giua khung hinh (tranh quet nham sang UID/nhan
+          // khac nam canh ben "quet lan") - dung canvas.captureStream() tao 1 video "ao" chi
+          // chua vung da cat, roi feed video ao do vao engine (engine yeu cau HTMLVideoElement
+          // that, khong nhan canvas truc tiep). Anh da cat cung duoc hien luon tren man (o
+          // cropLabel ben tren) de tu kiem tra co bi den/dung hinh khong tren may that. Neu may
+          // khong ho tro captureStream, tu dong quay ve quet full khung hinh nhu truoc, KHONG
+          // lam hong tinh nang cu.
+          const drawCrop=()=>{
+            if(!cropCtx||!video.videoWidth)return;
+            const sw=Math.round(video.videoWidth*0.5),sh=Math.round(video.videoHeight*0.5);
+            const sx=Math.round((video.videoWidth-sw)/2),sy=Math.round((video.videoHeight-sh)/2);
+            if(cropCanvas.width!==sw||cropCanvas.height!==sh){cropCanvas.width=sw;cropCanvas.height=sh}
+            cropCtx.drawImage(video,sx,sy,sw,sh,0,0,sw,sh);
+          };
+          const setupCrop=async()=>{
+            cropTried=true;
+            try{
+              cropCanvas=document.createElement('canvas');
+              cropCanvas.style.cssText='width:120px;height:80px;border-radius:8px;border:1px solid #234;background:#000;display:block;margin:0 auto 8px';
+              cropCtx=cropCanvas.getContext('2d');
+              overlay.insertBefore(cropCanvas,closeBtn);
+              drawCrop();
+              if(typeof cropCanvas.captureStream!=='function')return;
+              const stream=cropCanvas.captureStream();
+              cropVideo=document.createElement('video');
+              cropVideo.setAttribute('playsinline','');cropVideo.muted=true;
+              cropVideo.srcObject=stream;
+              await cropVideo.play();
+              const until=Date.now()+800;
+              while(Date.now()<until&&!cropVideo.videoWidth)await new Promise(res=>setTimeout(res,50));
+              cropReady=!!cropVideo.videoWidth;
+            }catch{cropReady=false}
+          };
           try{
             const engine=await scanner.Jp();
             if(!engine){hint.textContent='Trình duyệt này không hỗ trợ quét mã bằng camera.';return}
@@ -3447,8 +3495,11 @@ Error generating stack: `+y.message+`
             const tick=async()=>{
               if(!cameraStream)return;
               ticks++;
-              debug.textContent=`Engine: ${engine.nguon} · video ${video.videoWidth}x${video.videoHeight} · đã quét thử ${ticks} lần`;
-              try{const r=await engine.doc(video);if(r&&r.ma){const value=r.ma;stopCamera();code.value=value;form.requestSubmit();return}}catch(_){}
+              if(video.videoWidth&&!cropTried)await setupCrop();
+              if(cropCtx)drawCrop();
+              const src=cropReady?cropVideo:video;
+              debug.textContent=`Engine: ${engine.nguon} · ${cropReady?'đã thu 50%':'quét full khung hình'} ${src.videoWidth||0}x${src.videoHeight||0} · đã quét thử ${ticks} lần`;
+              try{const r=await engine.doc(src);if(r&&r.ma){const value=r.ma;stopCamera();code.value=value;form.requestSubmit();return}}catch(_){}
               requestAnimationFrame(tick);
             };
             requestAnimationFrame(tick);
