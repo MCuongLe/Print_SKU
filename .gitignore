@@ -23,3 +23,6 @@ sku-refresh-snippet.js
 # Export SKU tải về gốc repo: dữ liệu SKU thật, không được lên Git
 /*.xlsx
 /*.xls
+
+# Nhật ký thay đổi nội bộ: giữ trên máy, không đưa lên repo public
+/RULES.md
