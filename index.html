@@ -3402,15 +3402,22 @@ Error generating stack: `+y.message+`
     </script>
     <section class="cut-screen" id="xa-vai-screen" aria-labelledby="xa-vai-title" hidden>
       <header class="cut-head"><div class="cut-head__in"><div><h1 id="xa-vai-title">THEO DÕI XẢ VẢI</h1><p>Quét UID · bắt đầu · kết thúc · tra cứu</p></div><button class="cut-back" id="xa-vai-back" type="button">← WH-MATERIAL</button></div></header>
-      <main class="cut-main"><div class="cut-grid">
-        <section class="cut-card"><h2><span>1</span>Quét Group UID</h2><form class="cut-scan" id="xa-vai-form"><div class="cut-scanwrap"><input class="cut-input cut-input--scan" id="xa-vai-code" autocomplete="off" inputmode="none" placeholder="Quét hoặc nhập UID…" maxlength="40" required><button class="cut-camera" id="xa-vai-camera" type="button" title="Quét mã bằng camera" hidden><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 12h10"/></svg></button></div><button class="cut-primary" type="submit">Bắt đầu xả vải</button></form><button class="cut-secondary" id="xa-vai-keyboard" type="button">Bàn phím ảo: đang ẩn — bấm để hiện</button><p class="cut-note">Quét UID — hệ thống tự tra dữ liệu và ghi giờ bắt đầu xả vải ngay. Mỗi lần chỉ xả được 1 UID.</p><p class="cut-message" id="xa-vai-message" aria-live="polite"></p></section>
-        <section class="cut-card"><div class="cut-queue-head"><h2><span>2</span>Đang xả vải</h2><b class="cut-badge" id="xa-vai-open-count">0</b></div><div class="cut-list" id="xa-vai-open-list"></div><div class="cut-actions"><button class="cut-secondary" id="xa-vai-open-reload" type="button">Tải lại</button></div></section>
-        <section class="cut-card cut-history"><button class="cut-table-head" id="xa-vai-search-toggle" type="button" aria-expanded="false" aria-controls="xa-vai-search-body"><h2><span>3</span>Tra cứu / Đối chiếu</h2><b class="cut-badge" id="xa-vai-found">0</b><span class="cut-chevron" aria-hidden="true">▾</span></button><div id="xa-vai-search-body" hidden><form class="cut-searchbar" id="xa-vai-search"><input class="cut-input" id="xa-vai-sku" placeholder="Lọc theo SKU…" autocomplete="off"><button class="cut-secondary" type="submit">Tìm kiếm</button><button class="cut-primary" id="xa-vai-export" type="button" disabled>Xuất Excel A4 ngang</button></form><div class="cut-table-wrap"><table class="cut-table"><thead><tr><th>STT</th><th>UID</th><th>Batch</th><th>Roll</th><th>SKU</th><th>Ngày bắt đầu xả</th><th>Giờ bắt đầu xả</th><th>Giờ xả vải xong</th></tr></thead><tbody id="xa-vai-results"></tbody></table></div></div></section>
+      <main class="cut-main">
+        <div class="cut-tabs" role="tablist">
+          <button class="cut-tab" id="xa-vai-tab-scan" type="button" role="tab" data-tab="scan" aria-selected="true">1 · Quét Group UID</button>
+          <button class="cut-tab" id="xa-vai-tab-open" type="button" role="tab" data-tab="open" aria-selected="false">2 · Đang xả <b class="cut-badge" id="xa-vai-open-count">0</b></button>
+          <button class="cut-tab" id="xa-vai-tab-done" type="button" role="tab" data-tab="done" aria-selected="false">3 · Đã xả xong <b class="cut-badge" id="xa-vai-found">0</b></button>
+        </div>
+        <p class="cut-message" id="xa-vai-message" aria-live="polite" style="margin-bottom:14px"></p>
+        <div class="cut-grid">
+        <section class="cut-card" data-panel="scan"><h2><span>1</span>Quét Group UID</h2><form class="cut-scan" id="xa-vai-form"><div class="cut-scanwrap"><input class="cut-input cut-input--scan" id="xa-vai-code" autocomplete="off" inputmode="none" placeholder="Quét hoặc nhập UID…" maxlength="40" required><button class="cut-camera" id="xa-vai-camera" type="button" title="Quét mã bằng camera" hidden><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 12h10"/></svg></button></div><button class="cut-primary" type="submit">Bắt đầu xả vải</button></form><button class="cut-secondary" id="xa-vai-keyboard" type="button">Bàn phím ảo: đang ẩn — bấm để hiện</button><p class="cut-note">Quét UID — hệ thống tự tra dữ liệu và ghi giờ bắt đầu xả vải ngay. Mỗi lần chỉ xả được 1 UID.</p><button class="cut-link" id="xa-vai-goto-open" type="button">Xem đang xả →</button></section>
+        <section class="cut-card" data-panel="open"><h2><span>2</span>Đang xả vải</h2><div class="cut-actions"><button class="cut-secondary" id="xa-vai-open-reload" type="button">Tải lại</button></div><div class="cut-list" id="xa-vai-open-list"></div></section>
+        <section class="cut-card" data-panel="done"><h2><span>3</span>Đã xả xong</h2><form class="cut-searchbar" id="xa-vai-search"><input class="cut-input" id="xa-vai-sku" placeholder="Lọc theo SKU…" autocomplete="off"><input class="cut-input" id="xa-vai-date" type="date" style="max-width:170px"><button class="cut-secondary" type="submit">Tìm kiếm</button></form><div class="cut-actions"><button class="cut-primary" id="xa-vai-export" type="button" disabled>Xuất Excel A4 ngang</button></div><div class="cut-table-wrap"><table class="cut-table"><thead><tr><th>STT</th><th>UID</th><th>Batch</th><th>Roll</th><th>SKU</th><th>Ngày bắt đầu xả</th><th>Giờ bắt đầu xả</th><th>Giờ xả vải xong</th></tr></thead><tbody id="xa-vai-results"></tbody></table></div></section>
       </div></main>
     </section>
     <script>
       (()=>{
-        const screen=document.getElementById('xa-vai-screen'),form=document.getElementById('xa-vai-form'),code=document.getElementById('xa-vai-code'),message=document.getElementById('xa-vai-message'),openList=document.getElementById('xa-vai-open-list'),openCount=document.getElementById('xa-vai-open-count'),openReload=document.getElementById('xa-vai-open-reload'),searchForm=document.getElementById('xa-vai-search'),skuFilter=document.getElementById('xa-vai-sku'),exportButton=document.getElementById('xa-vai-export'),resultsBody=document.getElementById('xa-vai-results'),found=document.getElementById('xa-vai-found'),keyboardToggle=document.getElementById('xa-vai-keyboard'),searchToggle=document.getElementById('xa-vai-search-toggle'),searchBody=document.getElementById('xa-vai-search-body');
+        const screen=document.getElementById('xa-vai-screen'),form=document.getElementById('xa-vai-form'),code=document.getElementById('xa-vai-code'),message=document.getElementById('xa-vai-message'),openList=document.getElementById('xa-vai-open-list'),openCount=document.getElementById('xa-vai-open-count'),openReload=document.getElementById('xa-vai-open-reload'),searchForm=document.getElementById('xa-vai-search'),skuFilter=document.getElementById('xa-vai-sku'),dateFilter=document.getElementById('xa-vai-date'),exportButton=document.getElementById('xa-vai-export'),resultsBody=document.getElementById('xa-vai-results'),found=document.getElementById('xa-vai-found'),keyboardToggle=document.getElementById('xa-vai-keyboard'),tabScan=document.getElementById('xa-vai-tab-scan'),tabOpen=document.getElementById('xa-vai-tab-open'),tabDone=document.getElementById('xa-vai-tab-done'),gotoOpen=document.getElementById('xa-vai-goto-open');
         let busy=false,openItems=[],searchItems=[];
         const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
         const active=()=>location.hash.replace(/^#/,'').split('&')[0]==='xa-vai';
@@ -3422,7 +3429,7 @@ Error generating stack: `+y.message+`
 
         const renderOpen=()=>{
           openCount.textContent=openItems.length;
-          openList.innerHTML=openItems.length?openItems.map(item=>`<div class="cut-row" data-code="${esc(item.groupUid)}"><span aria-hidden="true">⏱</span><div class="cut-row__body"><strong>${esc(item.groupUid)} · ${esc(item.sku)}</strong><span>Batch ${esc(item.batchCode||'—')} · Roll ${esc(item.rollCode||'—')}</span><small>Bắt đầu ${esc(fmt(item.startedAt))}</small></div><button class="cut-primary" data-action="end" type="button">Kết thúc</button></div>`).join(''):'<div class="cut-empty">Chưa có UID nào đang xả. Quét UID ở khung bên trái để bắt đầu.</div>';
+          openList.innerHTML=openItems.length?openItems.map(item=>`<div class="cut-row" data-code="${esc(item.groupUid)}"><span aria-hidden="true">⏱</span><div class="cut-row__body"><strong>${esc(item.groupUid)} · ${esc(item.sku)}</strong><span>Batch ${esc(item.batchCode||'—')} · Roll ${esc(item.rollCode||'—')}</span><small>Bắt đầu ${esc(fmt(item.startedAt))}</small></div><button class="cut-primary" data-action="end" type="button">Kết thúc</button></div>`).join(''):'<div class="cut-empty">Chưa có UID nào đang xả. Sang cụm 1 · Quét Group UID để bắt đầu.</div>';
         };
         const loadOpen=async({quiet=false}={})=>{
           if(!quiet)tell('Đang tải danh sách…');
@@ -3570,7 +3577,7 @@ Error generating stack: `+y.message+`
           resultsBody.innerHTML=searchItems.length?searchItems.map((item,i)=>`<tr><td>${i+1}</td><td>${esc(item.groupUid)}</td><td>${esc(item.batchCode||'')}</td><td>${esc(item.rollCode||'')}</td><td>${esc(item.sku)}</td><td>${esc(fmtDate(item.startedAt))}</td><td>${esc(fmtTime(item.startedAt))}</td><td>${esc(fmtTime(item.endedAt))}</td></tr>`).join(''):'<tr><td colspan="8" class="cut-empty">Chưa có dữ liệu phù hợp.</td></tr>'
         };
         const runSearch=async()=>{
-          try{const r=await rpc('xa_vai_search',{p_sku:skuFilter.value.trim(),p_limit:5000});if(!r.ok)throw new Error(r.error?.message);searchItems=r.data?.items||[];renderSearch();tell(`Tìm thấy ${searchItems.length} dòng.`,'ok')}
+          try{const r=await rpc('xa_vai_search',{p_sku:skuFilter.value.trim(),p_date:dateFilter.value||null,p_limit:5000});if(!r.ok)throw new Error(r.error?.message);searchItems=r.data?.items||[];renderSearch();tell(`Tìm thấy ${searchItems.length} dòng.`,'ok')}
           catch(e){tell(`Không tra cứu được: ${e.message}`,'error')}
         };
         searchForm.addEventListener('submit',event=>{event.preventDefault();runSearch()});
@@ -3588,9 +3595,28 @@ Error generating stack: `+y.message+`
         keyboardToggle.addEventListener('click',()=>{keyboardHidden=!keyboardHidden;try{localStorage.setItem(KEYBOARD_STORE,keyboardHidden?'an':'hien')}catch(_){}applyKeyboard();code.blur();setTimeout(()=>code.focus(),60)});
         applyKeyboard();
 
+        // 3 cụm Scan/Đang xả/Đã xả xong, mỗi lần chỉ hiện đúng 1 cụm (giống tab) — bấm tiêu đề
+        // cụm hoặc nút "→" ở cụm Scan để nhảy sang cụm khác. Nhớ cụm đang mở theo localStorage.
+        const xaVaiTabs={scan:{btn:tabScan,panel:screen.querySelector('.cut-card[data-panel="scan"]')},open:{btn:tabOpen,panel:screen.querySelector('.cut-card[data-panel="open"]')},done:{btn:tabDone,panel:screen.querySelector('.cut-card[data-panel="done"]')}};
+        const TAB_STORE='xa-vai-cum-dang-mo';
+        let activeTab='scan';
+        try{const saved=localStorage.getItem(TAB_STORE);if(saved&&xaVaiTabs[saved])activeTab=saved}catch(_){}
+        const setActiveTab=name=>{
+          if(!xaVaiTabs[name])return;
+          activeTab=name;
+          try{localStorage.setItem(TAB_STORE,name)}catch(_){}
+          Object.entries(xaVaiTabs).forEach(([key,t])=>{const on=key===name;t.btn.setAttribute('aria-selected',String(on));t.panel.dataset.active=String(on)});
+          if(name==='scan')setTimeout(()=>code.focus(),50);
+        };
+        tabScan.addEventListener('click',()=>setActiveTab('scan'));
+        tabOpen.addEventListener('click',()=>setActiveTab('open'));
+        tabDone.addEventListener('click',()=>setActiveTab('done'));
+        gotoOpen.addEventListener('click',()=>setActiveTab('open'));
+        setActiveTab(activeTab);
+
         const typingElsewhere=()=>{const el=document.activeElement;return el===code||(el&&/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName))};
         document.addEventListener('keydown',event=>{
-          if(screen.hidden||typingElsewhere())return;
+          if(screen.hidden||activeTab!=='scan'||typingElsewhere())return;
           if(event.ctrlKey||event.altKey||event.metaKey)return;
           const key=event.key||'';
           if(key.length!==1&&key!=='Unidentified'&&key!=='Process')return;
@@ -3605,23 +3631,8 @@ Error generating stack: `+y.message+`
           },0);
         });
 
-        // Khung Tra cứu/Đối chiếu gấp lại theo mặc định (chạm để mở, chạm lần nữa để thu gọn) —
-        // giống hệt "Danh sách bao" ở màn #sample. Chỉ chạy tra cứu khi thật sự mở ra, tránh
-        // tải dữ liệu không cần lúc màn hình vừa hiện.
-        const SEARCH_STORE='xa-vai-mo-tra-cuu';
-        let searchOpen=false;
-        try{searchOpen=localStorage.getItem(SEARCH_STORE)==='mo'}catch(_){}
-        const applySearchOpen=()=>{searchBody.hidden=!searchOpen;searchToggle.setAttribute('aria-expanded',String(searchOpen))};
-        searchToggle.addEventListener('click',()=>{
-          searchOpen=!searchOpen;
-          try{localStorage.setItem(SEARCH_STORE,searchOpen?'mo':'dong')}catch(_){}
-          applySearchOpen();
-          if(searchOpen&&!searchItems.length)runSearch();
-        });
-        applySearchOpen();
-
         document.getElementById('xa-vai-back').addEventListener('click',()=>location.hash='#home');
-        const route=()=>{screen.hidden=!active();if(active()){loadOpen({quiet:true});if(searchOpen)runSearch();setTimeout(()=>code.focus(),50)}};
+        const route=()=>{screen.hidden=!active();if(active()){loadOpen({quiet:true});runSearch();if(activeTab==='scan')setTimeout(()=>code.focus(),50)}};
         window.addEventListener('hashchange',route);renderSearch();route();
       })();
     </script>
