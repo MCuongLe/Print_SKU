@@ -758,6 +758,7 @@ Error generating stack: `+y.message+`
           <button class="barcode-choice" id="barcode-inspection" type="button"><span class="barcode-choice__icon" aria-hidden="true">▥</span><strong>INSPECTION</strong><span>Import PO phụ liệu, xuất Biên bản kiểm tra đầu vào.</span></button>
           <button class="barcode-choice" id="barcode-sample" type="button"><span class="barcode-choice__icon" aria-hidden="true">▥</span><strong>SAMPLE</strong><span>Quét SKU hàng mẫu, gom cùng SKU vào một bao.</span></button>
           <button class="barcode-choice" id="barcode-fabric" type="button"><span class="barcode-choice__icon" aria-hidden="true">▥</span><strong>FABRIC RELAXATION</strong><span>In tem xả vải, để trống Ngày, Giờ và Lot để ghi tay.</span></button>
+          <button class="barcode-choice" id="barcode-xa-vai" type="button"><span class="barcode-choice__icon" aria-hidden="true">⏱</span><strong>THEO DÕI XẢ VẢI</strong><span>Quét UID, bấm bắt đầu/kết thúc xả vải, tra cứu đối chiếu.</span></button>
         </div>
       </main>
     </section>
@@ -934,6 +935,7 @@ Error generating stack: `+y.message+`
           const insOpen = current === "inspection";
           const sampleOpen = current === "sample";
           const fabricOpen = current === "fabric-relaxation";
+          const xaVaiOpen = current === "xa-vai";
           const homeOpen = !current || current === "home";
           const adminOpen = /^admin(?:\/|$)/.test(current);
           clearInterval(printerTimer);
@@ -947,9 +949,9 @@ Error generating stack: `+y.message+`
           const sampleScreen = document.getElementById("sample-screen");
           if (sampleScreen) sampleScreen.hidden = !sampleOpen;
           home.hidden = !homeOpen;
-          homeTrigger.hidden = homeOpen || uidOpen || cutUidOpen || adminOpen || insOpen || sampleOpen || fabricOpen;
+          homeTrigger.hidden = homeOpen || uidOpen || cutUidOpen || adminOpen || insOpen || sampleOpen || fabricOpen || xaVaiOpen;
           const root = document.getElementById("root");
-          if (root) root.inert = uidOpen || cutUidOpen || homeOpen || insOpen || sampleOpen || fabricOpen;
+          if (root) root.inert = uidOpen || cutUidOpen || homeOpen || insOpen || sampleOpen || fabricOpen || xaVaiOpen;
           if (uidOpen) setTimeout(() => groupUid.focus(), 50);
         };
         printSku.addEventListener("click", () => { location.hash = "#worker"; });
@@ -959,6 +961,8 @@ Error generating stack: `+y.message+`
         if (inspectionChoice) inspectionChoice.addEventListener("click", () => { location.hash = "#inspection"; });
         const sampleChoice = document.getElementById("barcode-sample");
         if (sampleChoice) sampleChoice.addEventListener("click", () => { location.hash = "#sample"; });
+        const xaVaiChoice = document.getElementById("barcode-xa-vai");
+        if (xaVaiChoice) xaVaiChoice.addEventListener("click", () => { location.hash = "#xa-vai"; });
         homeTrigger.addEventListener("click", () => { location.hash = "#home"; });
         back.addEventListener("click", () => { location.hash = "#home"; });
         window.addEventListener("hashchange", renderRoute);
@@ -3351,6 +3355,119 @@ Error generating stack: `+y.message+`
         });
 
         document.getElementById('cut-back').addEventListener('click',()=>location.hash='#home');const route=()=>{screen.hidden=!active();clearTimeout(pollTimer);if(active()){Promise.all([loadOpen({quiet:true}),runSearch()]);setTimeout(()=>code.focus(),50)}};window.addEventListener('hashchange',route);renderSearch();route();
+      })();
+    </script>
+    <section class="cut-screen" id="xa-vai-screen" aria-labelledby="xa-vai-title" hidden>
+      <header class="cut-head"><div class="cut-head__in"><div><h1 id="xa-vai-title">THEO DÕI XẢ VẢI</h1><p>Quét UID · bắt đầu · kết thúc · tra cứu</p></div><button class="cut-back" id="xa-vai-back" type="button">← WH-MATERIAL</button></div></header>
+      <main class="cut-main"><div class="cut-grid">
+        <section class="cut-card"><h2><span>1</span>Quét Group UID</h2><form class="cut-scan" id="xa-vai-form"><input class="cut-input" id="xa-vai-code" autocomplete="off" inputmode="none" placeholder="Quét hoặc nhập UID…" maxlength="40" required><button class="cut-primary" type="submit">Tra UID</button></form><button class="cut-secondary" id="xa-vai-keyboard" type="button">Bàn phím ảo: đang ẩn — bấm để hiện</button><p class="cut-note">Quét UID để xem trạng thái, sau đó bấm Bắt đầu hoặc Kết thúc xả vải.</p><p class="cut-message" id="xa-vai-message" aria-live="polite"></p><div class="cut-last" id="xa-vai-info" hidden></div><div class="cut-actions" id="xa-vai-buttons" hidden><button class="cut-primary" id="xa-vai-start-btn" type="button">Bắt đầu xả vải</button><button class="cut-primary" id="xa-vai-end-btn" type="button">Kết thúc xả vải</button></div></section>
+        <section class="cut-card cut-history"><div class="cut-table-head"><h2><span>2</span>Tra cứu / Đối chiếu</h2><b class="cut-badge" id="xa-vai-found">0</b></div><form class="cut-searchbar" id="xa-vai-search"><input class="cut-input" id="xa-vai-sku" placeholder="Lọc theo SKU…" autocomplete="off"><button class="cut-secondary" type="submit">Tìm kiếm</button><button class="cut-primary" id="xa-vai-export" type="button" disabled>Xuất Excel A4 ngang</button></form><div class="cut-table-wrap"><table class="cut-table"><thead><tr><th>STT</th><th>UID</th><th>Batch</th><th>Roll</th><th>SKU</th><th>Ngày bắt đầu xả</th><th>Giờ bắt đầu xả</th><th>Giờ xả vải xong</th></tr></thead><tbody id="xa-vai-results"></tbody></table></div></section>
+      </div></main>
+    </section>
+    <script>
+      (()=>{
+        const screen=document.getElementById('xa-vai-screen'),form=document.getElementById('xa-vai-form'),code=document.getElementById('xa-vai-code'),message=document.getElementById('xa-vai-message'),info=document.getElementById('xa-vai-info'),buttons=document.getElementById('xa-vai-buttons'),startBtn=document.getElementById('xa-vai-start-btn'),endBtn=document.getElementById('xa-vai-end-btn'),searchForm=document.getElementById('xa-vai-search'),skuFilter=document.getElementById('xa-vai-sku'),exportButton=document.getElementById('xa-vai-export'),resultsBody=document.getElementById('xa-vai-results'),found=document.getElementById('xa-vai-found'),keyboardToggle=document.getElementById('xa-vai-keyboard');
+        let busy=false,current=null,searchItems=[];
+        const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+        const active=()=>location.hash.replace(/^#/,'').split('&')[0]==='xa-vai';
+        const tell=(text,tone='')=>{message.textContent=text;message.dataset.tone=tone};
+        const rpc=async(name,args={})=>{const q=window.PrintSkuQueue,r=await fetch(`${q.supabaseUrl}/rest/v1/rpc/${name}`,{method:'POST',headers:{apikey:q.publishableKey,Authorization:`Bearer ${q.publishableKey}`,'Content-Type':'application/json'},body:JSON.stringify(args),signal:AbortSignal.timeout(15000)});const data=await r.json().catch(()=>null);if(!r.ok||!data)throw new Error(data?.message||`Supabase HTTP ${r.status}`);return data};
+        const stateLabel={new:'Chưa bắt đầu',running:'Đang xả',done:'Đã xong'};
+        const fmtDate=value=>{if(!value)return '';const d=new Date(value);return Number.isNaN(d.getTime())?'':new Intl.DateTimeFormat('vi-VN',{timeZone:'Asia/Ho_Chi_Minh',day:'2-digit',month:'2-digit',year:'numeric'}).format(d)};
+        const fmtTime=value=>{if(!value)return '';const d=new Date(value);return Number.isNaN(d.getTime())?'':new Intl.DateTimeFormat('vi-VN',{timeZone:'Asia/Ho_Chi_Minh',hour:'2-digit',minute:'2-digit',hour12:false}).format(d)};
+        const fmt=value=>value?`${fmtDate(value)} ${fmtTime(value)}`:'—';
+
+        const renderInfo=()=>{
+          if(!current){info.hidden=true;buttons.hidden=true;return}
+          const d=current;
+          info.hidden=false;
+          info.innerHTML=`<strong>${esc(d.groupUid)} · ${esc(d.sku)}</strong><span>Batch ${esc(d.batchCode||'—')} · Roll ${esc(d.rollCode||'—')}</span><small>${esc(stateLabel[d.state]||d.state)}${d.startedAt?` · Bắt đầu ${esc(fmt(d.startedAt))}`:''}${d.endedAt?` · Kết thúc ${esc(fmt(d.endedAt))}`:''}</small>`;
+          buttons.hidden=false;
+          startBtn.disabled=d.state!=='new';
+          endBtn.disabled=d.state!=='running';
+        };
+
+        form.addEventListener('submit',async event=>{
+          event.preventDefault();
+          const uid=code.value.trim();
+          if(!uid||busy)return;
+          busy=true;tell(`Đang tra ${uid}…`);
+          try{
+            const r=await rpc('xa_vai_lookup',{p_group_uid:uid});
+            if(!r.ok){const extra=r.error?.code==='GROUP_UID_NOT_READY'?' Vào mục Nạp dữ liệu Group UID để cập nhật database.':'';tell((r.error?.message||'Không tra được UID')+extra,'error');current=null;renderInfo();return}
+            current=r.data;renderInfo();tell('Đã tra xong — chọn nút phù hợp.','ok')
+          }catch(e){tell(`Chưa rõ trạng thái: ${e.message}`,'error')}
+          finally{busy=false}
+        });
+
+        startBtn.addEventListener('click',async()=>{
+          if(!current||busy)return;
+          busy=true;startBtn.disabled=true;
+          try{
+            const r=await rpc('xa_vai_start',{p_group_uid:current.groupUid});
+            if(!r.ok){tell(r.error?.message||'Không bắt đầu được','error');return}
+            current={...current,state:'running',startedAt:r.data.startedAt};renderInfo();
+            tell('Đã ghi giờ bắt đầu xả vải.','ok');code.value='';code.focus()
+          }catch(e){tell(`Chưa rõ đã ghi hay chưa: ${e.message}`,'error')}
+          finally{busy=false;renderInfo()}
+        });
+
+        endBtn.addEventListener('click',async()=>{
+          if(!current||busy)return;
+          busy=true;endBtn.disabled=true;
+          try{
+            const r=await rpc('xa_vai_end',{p_group_uid:current.groupUid});
+            if(!r.ok){tell(r.error?.message||'Không kết thúc được','error');return}
+            current={...current,state:'done',endedAt:r.data.endedAt};renderInfo();
+            tell('Đã ghi giờ kết thúc xả vải.','ok');code.value='';code.focus()
+          }catch(e){tell(`Chưa rõ đã ghi hay chưa: ${e.message}`,'error')}
+          finally{busy=false;renderInfo()}
+        });
+
+        const renderSearch=()=>{
+          found.textContent=searchItems.length;
+          exportButton.disabled=!searchItems.length;
+          resultsBody.innerHTML=searchItems.length?searchItems.map((item,i)=>`<tr><td>${i+1}</td><td>${esc(item.groupUid)}</td><td>${esc(item.batchCode||'')}</td><td>${esc(item.rollCode||'')}</td><td>${esc(item.sku)}</td><td>${esc(fmtDate(item.startedAt))}</td><td>${esc(fmtTime(item.startedAt))}</td><td>${esc(fmtTime(item.endedAt))}</td></tr>`).join(''):'<tr><td colspan="8" class="cut-empty">Chưa có dữ liệu phù hợp.</td></tr>'
+        };
+        const runSearch=async()=>{
+          try{const r=await rpc('xa_vai_search',{p_sku:skuFilter.value.trim(),p_limit:5000});if(!r.ok)throw new Error(r.error?.message);searchItems=r.data?.items||[];renderSearch();tell(`Tìm thấy ${searchItems.length} dòng.`,'ok')}
+          catch(e){tell(`Không tra cứu được: ${e.message}`,'error')}
+        };
+        searchForm.addEventListener('submit',event=>{event.preventDefault();runSearch()});
+
+        const xml=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+        const col=i=>{let n=i+1,s='';while(n){const r=(n-1)%26;s=String.fromCharCode(65+r)+s;n=Math.floor((n-1)/26)}return s};
+        const cell=(ref,v,style=0)=>`<c r="${ref}" s="${style}" t="inlineStr"><is><t xml:space="preserve">${xml(v)}</t></is></c>`;
+        const workbook=rows=>{const data=rows.map((row,ri)=>`<row r="${ri+1}" ht="${ri===0?28:36}" customHeight="1">${row.map((v,ci)=>cell(col(ci)+(ri+1),v,ri===0?1:2)).join('')}</row>`).join('');const sheet=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetPr><pageSetUpPr fitToPage="1"/></sheetPr><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols><col min="1" max="1" width="8" customWidth="1"/><col min="2" max="2" width="20" customWidth="1"/><col min="3" max="4" width="12" customWidth="1"/><col min="5" max="5" width="18" customWidth="1"/><col min="6" max="8" width="16" customWidth="1"/></cols><sheetData>${data}</sheetData><autoFilter ref="A1:H${rows.length}"/><printOptions horizontalCentered="0" verticalCentered="0"/><pageMargins left="0.25" right="0.25" top="0.35" bottom="0.35" header="0.1" footer="0.1"/><pageSetup orientation="landscape" paperSize="9" fitToWidth="1" fitToHeight="0" pageOrder="downThenOver"/></worksheet>`;const files=[['[Content_Types].xml','<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>'],['_rels/.rels','<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>'],['xl/workbook.xml','<?xml version="1.0" encoding="UTF-8"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Xa vai" sheetId="1" r:id="rId1"/></sheets><definedNames><definedName name="_xlnm.Print_Titles" localSheetId="0">&apos;Xa vai&apos;!$1:$1</definedName></definedNames></workbook>'],['xl/_rels/workbook.xml.rels','<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>'],['xl/styles.xml','<?xml version="1.0" encoding="UTF-8"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="12"/><name val="Arial"/></font><font><b/><color rgb="FFFFFFFF"/><sz val="12"/><name val="Arial"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF1F4E78"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border><border><left style="thin"><color rgb="FF000000"/></left><right style="thin"><color rgb="FF000000"/></right><top style="thin"><color rgb="FF000000"/></top><bottom style="thin"><color rgb="FF000000"/></bottom><diagonal/></border></borders><cellStyleXfs count="1"><xf fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="3"><xf fontId="0" fillId="0" borderId="0"/><xf fontId="1" fillId="2" borderId="1" applyFont="1" applyFill="1" applyBorder="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf><xf fontId="0" fillId="0" borderId="1" applyFont="1" applyBorder="1"><alignment vertical="center" wrapText="1"/></xf></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>'],['xl/worksheets/sheet1.xml',sheet]];const enc=new TextEncoder();return window.PrintSkuZip.buildZip(files.map(([name,body])=>({name,data:enc.encode(body)})))};
+        exportButton.addEventListener('click',()=>{if(!searchItems.length)return;const rows=[['STT','UID','Batch','Roll','SKU','Ngày bắt đầu xả','Giờ bắt đầu xả','Giờ xả vải xong'],...searchItems.map((x,i)=>[String(i+1),x.groupUid,x.batchCode||'',x.rollCode||'',x.sku,fmtDate(x.startedAt),fmtTime(x.startedAt),fmtTime(x.endedAt)])],bytes=workbook(rows),blob=new Blob([bytes],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),a=document.createElement('a'),now=new Date(),pad=n=>String(n).padStart(2,'0');a.href=URL.createObjectURL(blob);a.download=`Xa_vai_${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}.xlsx`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),10000);tell(`Đã xuất ${searchItems.length} dòng theo khổ A4 ngang.`,'ok')});
+
+        const KEYBOARD_STORE='xa-vai-ban-phim';
+        let keyboardHidden=true;
+        try{keyboardHidden=localStorage.getItem(KEYBOARD_STORE)!=='hien'}catch(_){}
+        const applyKeyboard=()=>{code.inputMode=keyboardHidden?'none':'text';keyboardToggle.textContent=keyboardHidden?'Bàn phím ảo: đang ẩn — bấm để hiện':'Bàn phím ảo: đang hiện — bấm để ẩn';keyboardToggle.setAttribute('aria-pressed',String(keyboardHidden))};
+        keyboardToggle.addEventListener('click',()=>{keyboardHidden=!keyboardHidden;try{localStorage.setItem(KEYBOARD_STORE,keyboardHidden?'an':'hien')}catch(_){}applyKeyboard();code.blur();setTimeout(()=>code.focus(),60)});
+        applyKeyboard();
+
+        const typingElsewhere=()=>{const el=document.activeElement;return el===code||(el&&/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName))};
+        document.addEventListener('keydown',event=>{
+          if(screen.hidden||typingElsewhere())return;
+          if(event.ctrlKey||event.altKey||event.metaKey)return;
+          const key=event.key||'';
+          if(key.length!==1&&key!=='Unidentified'&&key!=='Process')return;
+          code.focus();
+        });
+        code.addEventListener('blur',()=>{
+          setTimeout(()=>{
+            if(screen.hidden)return;
+            const el=document.activeElement;
+            if(el&&el!==document.body&&screen.contains(el))return;
+            code.focus();
+          },0);
+        });
+
+        document.getElementById('xa-vai-back').addEventListener('click',()=>location.hash='#home');
+        const route=()=>{screen.hidden=!active();if(active()){runSearch();setTimeout(()=>code.focus(),50)}};
+        window.addEventListener('hashchange',route);renderSearch();route();
       })();
     </script>
   </body>
