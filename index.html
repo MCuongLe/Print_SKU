@@ -3452,7 +3452,7 @@ Error generating stack: `+y.message+`
           busy=true;tell(`Đang bắt đầu xả vải ${uid}…`);
           try{
             const r=await rpc('xa_vai_start',{p_group_uid:uid});
-            if(!r.ok){const extra=r.error?.code==='GROUP_UID_NOT_READY'?' Vào mục Nạp dữ liệu Group UID để cập nhật database.':'';tell((r.error?.message||'Không bắt đầu được')+extra,'error');return}
+            if(!r.ok){const extra=r.error?.code==='GROUP_UID_NOT_READY'?'. Vào mục Nạp dữ liệu Group UID để cập nhật database.':'';tell((r.error?.message||'Không bắt đầu được')+extra,'error');return}
             tell(`Đã ghi giờ bắt đầu xả vải cho ${uid}.`,'ok');
             code.value='';code.focus();
             await loadOpen({quiet:true})
