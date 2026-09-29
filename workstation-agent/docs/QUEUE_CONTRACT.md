@@ -33,6 +33,12 @@ Backend chuẩn nằm ở `supabase/print_queue_v1.sql`. Agent gọi Supabase RP
 - Job `claimed`, `rendering` hoặc `sending` hết lease phải tự quay về `queued`.
 - `nonce` phải unique để chống tạo hai job khi người dùng bấm lại.
 
+## Lỗi mạng (agent 0.8.1)
+
+- Lỗi mạng tạm thời (mất kết nối, DNS, quá 20 giây không phản hồi, HTTP 5xx/429) được thử lại sau 1s/2s/4s; lỗi nghiệp vụ (`ok:false`, ví dụ `LEASE_LOST`) không thử lại. `agent_claim` không thử lại vì vòng quét tự gọi lại.
+- Mất mạng trước `sending`: agent gọi `agent_requeue` với `code: "NETWORK_UNSTABLE"`, không gọi `agent_fail`.
+- Từ `sending` trở đi tem có thể đã ra giấy: lỗi mạng không bao giờ thành `agent_fail`. Agent ghi sổ tay `temp/sent-jobs.json`; nhận lại job còn trong sổ tay thì chỉ gọi `agent_complete` (`result.recoveredFromJournal: true`) hoặc `agent_fail` với `code: "SENT_UNCONFIRMED"`, không in lần hai.
+
 ## Khả năng agent
 
 ```json

@@ -109,3 +109,18 @@ Xem lại khi đổi khổ giấy, máy in, barcode, queue contract, thời hạ
 - `planSkuProductNames` không bao giờ sửa `entries`/`job` gốc — luôn trả về mảng mới, vì trường hợp không phải batch thì phần tử `entries[0]` chính là tham chiếu tới `job` gốc của người gọi.
 - Kiểm chứng: `tests/text-metrics.test.mjs`, `tests/text-layout.test.mjs`, `tests/text-layout-integration.test.mjs` (gồm test tái hiện đúng số liệu thật của lỗi "Zipper"), cùng kiểm chứng thật trên CLI `dry-run` với đúng tên sản phẩm của SKU [SKU_DA_XOA]: chữ/QR vẽ tới x=299 trong tổng 320px canvas (trước khi sửa là x=319, gần tràn hẳn mép phải) và QR decode lại đúng "[SKU_DA_XOA]".
 - CHƯA VERIFY: hành vi trên workstation thật khi PowerShell bị chặn bởi chính sách nhóm (Group Policy) hoặc Execution Policy khác với máy dev; độ chính xác GDI+ với font khác Arial nếu sau này đổi font tem.
+
+## Mất mạng giữa chừng (29/09/2026, agent 0.8.1)
+
+- Nguồn: 5/100 lệnh gần nhất trên `may-kho-01` báo `failed` chỉ vì mạng tới Supabase chập chờn, máy in vẫn bình thường. 2 lệnh "The operation was aborted due to timeout" (DOMException mã 23) khi còn đang dựng tem — chưa ra tem. 3 lệnh "fetch failed" khi báo hoàn tất — spooler đã nhận job (`spoolJobId` 3, 4, 11) nên tem gần như chắc đã ra giấy; ít nhất lệnh Group UID lúc 08:23 ngày 29/09 đã bị bấm in lại 3 phút sau.
+- Bản 0.8.0 await mọi `queue.progress`/`queue.complete` trong cùng một `try`, nên MỘT lần gọi mạng hỏng ở bất kỳ bước nào cũng thành `agent_fail`. Nguy hiểm hơn: nếu cả `complete` lẫn `fail` đều hỏng, lệnh kẹt ở `spooling`, hết lease bị trả về `queued` và agent TỰ in lần hai.
+- Quy tắc mới:
+  - Lỗi mạng tạm thời được thử lại 1s/2s/4s, mỗi lần tối đa 20 giây (`src/supabase-queue-client.mjs`); xấu nhất ~87 giây, vẫn dưới lease 120 giây. Lỗi nghiệp vụ không thử lại. Nhận diện lỗi ở `src/network-retry.mjs`.
+  - Tiến độ chỉ để hiển thị (dựng tem, `spooling`, nhịp chờ spooler) không bao giờ làm hỏng lệnh. Mốc `sending` là chốt chặn duy nhất trước khi gửi byte: phải báo được để chắc còn giữ lệnh.
+  - Mất mạng TRƯỚC khi gửi byte → `agent_requeue` với `NETWORK_UNSTABLE`, không báo failed; không trả được thì hết lease hàng đợi tự trả.
+  - Từ lúc bắt đầu gửi byte, lỗi mạng KHÔNG BAO GIỜ thành `failed`. Agent ghi sổ tay `temp/sent-jobs.json` (`sending` → `sent` → `printed`/`failed`) và thử báo hoàn tất giãn dần tới 30 giây/lần, ~10 phút. Báo được kết quả thì xoá mục đó; mục quá 7 ngày tự dọn.
+  - Nhận lại một lệnh còn trong sổ tay: `printed` → chỉ báo hoàn tất (`recoveredFromJournal: true`); `failed` → báo đúng lỗi đã ghi; `sending`/`sent` → báo `SENT_UNCONFIRMED` để người vận hành nhìn máy in trước khi in lại. Tuyệt đối không in lần hai.
+  - Lỗi máy in thật (`PRINTER_STALLED`, `SPOOLER_TIMEOUT`, spooler từ chối…) vẫn báo failed kèm `pagesPrinted` như cũ.
+- Sổ tay chỉ chống in trùng trên CÙNG một máy trạm. Hiện chỉ có một agent (`may-kho-01`); thêm agent thứ hai thì phải xem lại.
+- Kiểm chứng: `tests/network-resilience.test.mjs` tái hiện đúng lệnh `22f65c10` (timeout lúc dựng tem) và `706c10a6` (fetch failed lúc báo hoàn tất); thử thật lỗi `ENOTFOUND` và timeout của undici trên máy dev.
+- CHƯA VERIFY: chạy trên máy kho thật khi rút dây mạng giữa lúc in; hành vi khi antivirus khoá `temp/sent-jobs.json`.

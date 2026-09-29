@@ -2,6 +2,22 @@
 
 Agent Windows độc lập phục vụ ứng dụng Print SKU. Bản 0.7.0 dùng tem Fabric Relaxation viết tay hoàn toàn; frontend chỉ chọn số lượng tem.
 
+## Cập nhật 0.8.1 — chịu lỗi mạng
+
+Bản 0.8.0 báo lệnh "failed" mỗi khi mạng tới Supabase chập chờn, kể cả khi tem
+đã ra giấy, nên người dùng bấm in lại và ra tem trùng. Bản 0.8.1:
+
+- Tự thử lại mỗi lần gọi Supabase khi mất kết nối/quá thời gian chờ (1s, 2s, 4s).
+- Mất mạng trước khi gửi xuống máy in: trả lệnh về hàng đợi (`NETWORK_UNSTABLE`)
+  và tự in khi mạng ổn lại, người dùng không phải bấm lại.
+- Mất mạng sau khi đã gửi xuống máy in: không bao giờ báo "failed"; ghi sổ tay
+  `temp\sent-jobs.json` và thử báo hoàn tất tới khi được. Lệnh bị trả về hàng
+  đợi thì lần nhận lại chỉ báo hoàn tất, không in lần hai.
+- Log và `print_events` ghi rõ nguyên nhân mạng (ví dụ `ECONNRESET`, `ENOTFOUND`).
+
+Không cần migration Supabase và không đổi `index.html`. Cài ZIP như bình thường
+bằng `powershell/install-agent.ps1` (giữ nguyên `config/.env` và thư mục `temp`).
+
 ## Cập nhật Fabric Relaxation
 
 Chờ lệnh in hiện tại hoàn tất, dừng agent cũ rồi cài ZIP theo quy trình hiện có.
