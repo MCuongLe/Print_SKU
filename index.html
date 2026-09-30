@@ -196,7 +196,7 @@
               dialog.querySelector('h2').textContent = error ? 'Chưa tra được SKU Normal' : 'Chọn SKU Normal để in';
               dialog.querySelector('.sku-combo-lead-text').textContent = error ? 'Chưa kiểm tra được liên kết của SKU' : 'SKU Combo cần chọn mã Normal:';
               dialog.querySelector('.sku-combo-code').textContent = sku;
-              dialog.querySelector('.sku-combo-note-text').textContent = 'Chỉ đổi mã và tên sản phẩm. Số bản in, số lượng trên tem, Group UID, Lot và Roll được giữ nguyên.';
+              dialog.querySelector('.sku-combo-note-text').textContent = error ? 'Hãy thử lại khi kết nối ổn định. Nếu cần in ngay, bạn vẫn có thể tiếp tục với SKU đã nhập.' : 'Chỉ đổi mã và tên sản phẩm. Số bản in, số lượng trên tem, Group UID, Lot và Roll được giữ nguyên.';
               let finished = false;
               const finish = choice => {
                 if (finished) return;
@@ -233,7 +233,7 @@
               button('Hủy','cancel',actions,'sku-combo-action--ghost');
               dialog.addEventListener('cancel',e=>{e.preventDefault();finish('cancel');});
               document.body.append(dialog); dialog.showModal();
-              (dialog.querySelector('.sku-combo-option:not(:disabled)') || dialog.querySelector('.sku-combo-close')).focus();
+              (dialog.querySelector('.sku-combo-option:not(:disabled)') || dialog.querySelector('.sku-combo-action--primary') || dialog.querySelector('.sku-combo-close')).focus();
             });
           });
           dialogQueue=task.catch(()=>null);
