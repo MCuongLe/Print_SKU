@@ -181,7 +181,7 @@
         const nameInput = input => input.id === 'f-sku' ? document.getElementById('f-pn')
           : input.id === 'uid-bulk-sku' ? document.getElementById('uid-bulk-product')
           : input.closest('.uid-auto__row')?.querySelector('[data-field="name"]');
-        const show = (sku, rows, valid, error) => {
+        const show = (sku, rows, valid, error, note) => {
           const task = dialogQueue.then(() => {
             if (!valid()) return null;
             return new Promise(resolve => {
@@ -196,7 +196,7 @@
               dialog.querySelector('h2').textContent = error ? 'Chưa tra được SKU Normal' : 'Chọn SKU Normal để in';
               dialog.querySelector('.sku-combo-lead-text').textContent = error ? 'Chưa kiểm tra được liên kết của SKU' : 'SKU Combo cần chọn mã Normal:';
               dialog.querySelector('.sku-combo-code').textContent = sku;
-              dialog.querySelector('.sku-combo-note-text').textContent = error ? 'Hãy thử lại khi kết nối ổn định. Nếu cần in ngay, bạn vẫn có thể tiếp tục với SKU đã nhập.' : 'Chỉ đổi mã và tên sản phẩm. Số bản in, số lượng trên tem, Group UID, Lot và Roll được giữ nguyên.';
+              dialog.querySelector('.sku-combo-note-text').textContent = error ? 'Hãy thử lại khi kết nối ổn định. Nếu cần in ngay, bạn vẫn có thể tiếp tục với SKU đã nhập.' : (note || 'Chỉ đổi mã và tên sản phẩm. Số bản in, số lượng trên tem, Group UID, Lot và Roll được giữ nguyên.');
               let finished = false;
               const finish = choice => {
                 if (finished) return;
@@ -239,6 +239,31 @@
           dialogQueue=task.catch(()=>null);
           return task;
         };
+        // Looks up Combo -> Normal links and asks the user. Returns 'none' (not a Combo), 'keep',
+        // 'cancel', the chosen Normal row, or null once valid() turns false. Shared with TÌM SKU
+        // so every print path suggests Normal SKUs the same way.
+        const chooseNormal = async (sku, valid, note) => {
+          while (valid()) {
+            let rows, failed=false;
+            try {
+              const q=window.PrintSkuQueue;
+              const response=await fetch(`${q.supabaseUrl}/rest/v1/rpc/sku_combo_lookup`,{
+                method:'POST',headers:{apikey:q.publishableKey,Authorization:`Bearer ${q.publishableKey}`,'Content-Type':'application/json'},
+                body:JSON.stringify({p_sku:sku}),signal:AbortSignal.timeout(8000)
+              });
+              if (!response.ok) throw Error('Lookup failed');
+              rows=await response.json();
+              if (!Array.isArray(rows) || rows.some(r=>!r.normal_sku || !r.product_name || !Number.isFinite(Number(r.quantity)) || Number(r.quantity)<=0 || typeof r.available!=='boolean')) throw Error('Invalid response');
+            } catch (_) { rows=[]; failed=true; }
+            if (!valid()) return null;
+            if (!failed && !rows.length) return 'none';
+            const choice=await show(sku,rows,valid,failed,note);
+            if (!valid()) return null;
+            if (choice==='retry') continue;
+            return choice;
+          }
+          return null;
+        };
         const resolveInput = input => {
           const sku=input.value.trim(), route=location.hash;
           if (!sku) return Promise.resolve(true);
@@ -249,32 +274,15 @@
           const valid=()=>input.isConnected && input.value.trim()===sku && location.hash===route && states.get(input)===state;
           states.set(input,state);
           state.promise=(async()=>{
-            while (valid()) {
-              let rows, failed=false;
-              try {
-                const q=window.PrintSkuQueue;
-                const response=await fetch(`${q.supabaseUrl}/rest/v1/rpc/sku_combo_lookup`,{
-                  method:'POST',headers:{apikey:q.publishableKey,Authorization:`Bearer ${q.publishableKey}`,'Content-Type':'application/json'},
-                  body:JSON.stringify({p_sku:sku}),signal:AbortSignal.timeout(8000)
-                });
-                if (!response.ok) throw Error('Lookup failed');
-                rows=await response.json();
-                if (!Array.isArray(rows) || rows.some(r=>!r.normal_sku || !r.product_name || !Number.isFinite(Number(r.quantity)) || Number(r.quantity)<=0 || typeof r.available!=='boolean')) throw Error('Invalid response');
-              } catch (_) { rows=[]; failed=true; }
-              if (!valid()) return false;
-              if (!failed && !rows.length) return true;
-              const choice=await show(sku,rows,valid,failed);
-              if (!valid()) return false;
-              if (choice==='retry') continue;
-              if (choice==='cancel' || choice===null) { states.delete(input); return false; }
-              if (choice==='keep') return true;
-              // Pre-mark the selected Normal before dispatching input to avoid a second popup.
-              states.set(input,{sku:choice.normal_sku,route,promise:Promise.resolve(true)});
-              put(input,choice.normal_sku);
-              put(nameInput(input),choice.product_name);
-              return true;
-            }
-            return false;
+            const choice=await chooseNormal(sku,valid);
+            if (!valid()) return false;
+            if (choice==='none' || choice==='keep') return true;
+            if (choice==='cancel' || choice===null) { states.delete(input); return false; }
+            // Pre-mark the selected Normal before dispatching input to avoid a second popup.
+            states.set(input,{sku:choice.normal_sku,route,promise:Promise.resolve(true)});
+            put(input,choice.normal_sku);
+            put(nameInput(input),choice.product_name);
+            return true;
           })();
           return state.promise;
         };
@@ -312,7 +320,7 @@
             replay.add(button);try{button.click();}finally{replay.delete(button);}
           } finally { delete button.dataset.comboChecking; }
         },true);
-        window.SkuComboPicker={resolveInput};
+        window.SkuComboPicker={resolveInput,chooseNormal};
       })();
     </script>
 
@@ -989,12 +997,87 @@ Error generating stack: `+y.message+`
             <div class="barcode-home__choices">
               <button class="barcode-choice" id="barcode-inspection" type="button"><span class="barcode-choice__icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></svg></span><strong>INSPECTION</strong><span>Import PO phụ liệu, xuất Biên bản kiểm tra đầu vào.</span></button>
               <button class="barcode-choice" id="barcode-sample" type="button"><span class="barcode-choice__icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16.5 9.4 7.55 4.24"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg></span><strong>SAMPLE</strong><span>Quét SKU hàng mẫu, gom cùng SKU vào một bao.</span></button>
+              <button class="barcode-choice" id="barcode-storage-risk" type="button"><span class="barcode-choice__icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2.8 19a1.4 1.4 0 0 0 1.2 2h16a1.4 1.4 0 0 0 1.2-2Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></span><strong>RỦI RO LƯU TRỮ</strong><span>Theo dõi các quan hệ bất thường giữa SKU Combo và SKU Normal.</span></button>
             </div>
           </section>
         </div>
       </main>
     </section>
     <button class="barcode-home-trigger" id="barcode-home-trigger" type="button" hidden>← WH-MATERIAL</button>
+    <style id="storage-risk-theme">
+      .storage-risk { position: fixed; inset: 0; z-index: 75; min-height: 100vh; overflow-y: auto; color: #17251f; background: #f3f7f5; font-family: Arial, Helvetica, sans-serif; }
+      .storage-risk[hidden] { display: none; }
+      .storage-risk__top { border-bottom: 1px solid #dce7e3; background: #fff; }
+      .storage-risk__top-inner { display: flex; align-items: center; gap: 13px; max-width: 1120px; min-height: 74px; margin: auto; padding: 0 22px; }
+      .storage-risk__mark { display: grid; flex: 0 0 42px; width: 42px; height: 42px; place-items: center; border-radius: 13px; color: #fff; background: #a9252d; box-shadow: 0 8px 20px rgba(169,37,45,.2); }
+      .storage-risk__mark svg { width: 22px; height: 22px; }
+      .storage-risk__heading { min-width: 0; flex: 1; }
+      .storage-risk__heading h1 { margin: 0; color: #173129; font-size: 20px; line-height: 1.2; }
+      .storage-risk__heading p { margin: 4px 0 0; color: #6a7e77; font-size: 11px; }
+      .storage-risk__back { min-height: 40px; padding: 0 16px; border: 1px solid #d6e2de; border-radius: 11px; color: #315b4d; background: #f8faf9; font-weight: 800; cursor: pointer; }
+      .storage-risk__main { max-width: 1120px; margin: auto; padding: 28px 22px 70px; }
+      .storage-risk__intro { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 18px; }
+      .storage-risk__intro small { display: block; margin-bottom: 7px; color: #a9252d; font-size: 10px; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; }
+      .storage-risk__intro h2 { margin: 0; color: #153a2e; font-size: clamp(22px,3vw,32px); line-height: 1.16; }
+      .storage-risk__intro p { max-width: 590px; margin: 8px 0 0; color: #667a73; font-size: 13px; line-height: 1.55; }
+      .storage-risk__total { flex: 0 0 auto; padding: 14px 18px; border: 1px solid #efcfd2; border-radius: 16px; background: #fff7f7; text-align: right; }
+      .storage-risk__total span { display: block; color: #805158; font-size: 11px; font-weight: 800; }
+      .storage-risk__total strong { display: block; margin-top: 3px; color: #a9252d; font-size: 28px; font-variant-numeric: tabular-nums; }
+      .storage-risk__grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 16px; }
+      .storage-risk__card { position: relative; overflow: hidden; padding: 23px; border: 1px solid #e3d4d5; border-radius: 20px; background: #fff; box-shadow: 0 10px 28px rgba(40,65,56,.06); }
+      .storage-risk__card::before { position: absolute; inset: 0 auto 0 0; width: 5px; background: #bd3039; content: ""; }
+      .storage-risk__card--warning { border-color: #eadcbd; }
+      .storage-risk__card--warning::before { background: #b37400; }
+      .storage-risk__card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+      .storage-risk__level { display: inline-flex; align-items: center; gap: 6px; margin-bottom: 12px; padding: 5px 9px; border-radius: 999px; color: #9d2029; background: #fbe9ea; font-size: 10px; font-weight: 900; letter-spacing: .05em; text-transform: uppercase; }
+      .storage-risk__card--warning .storage-risk__level { color: #8b5a00; background: #fff3d9; }
+      .storage-risk__count { color: #a9252d; font-size: 42px; line-height: 1; font-variant-numeric: tabular-nums; }
+      .storage-risk__card--warning .storage-risk__count { color: #9a6400; }
+      .storage-risk__card h3 { margin: 0; color: #1b3b31; font-size: 18px; }
+      .storage-risk__card p { margin: 9px 0 0; color: #64776f; font-size: 13px; line-height: 1.55; }
+      .storage-risk__action { display: grid; grid-template-columns: auto 1fr; gap: 8px 12px; margin: 18px 0 0; padding: 14px; border-radius: 13px; background: #f7faf9; }
+      .storage-risk__action b { color: #173e31; font-size: 11px; }
+      .storage-risk__action span { color: #62766e; font-size: 11px; line-height: 1.45; }
+      .storage-risk__scope { display: flex; align-items: center; gap: 9px; margin: 17px 0 0; padding: 12px 14px; border: 1px solid #dde8e4; border-radius: 13px; color: #657870; background: #fff; font-size: 12px; }
+      .storage-risk__scope b { color: #254d3f; }
+      @media (max-width: 680px) {
+        .storage-risk__top-inner,.storage-risk__main { padding-left: 14px; padding-right: 14px; }
+        .storage-risk__heading p { display: none; }
+        .storage-risk__back { width: 42px; padding: 0; font-size: 0; }
+        .storage-risk__back::before { content: "←"; font-size: 16px; }
+        .storage-risk__intro { align-items: stretch; flex-direction: column; gap: 14px; }
+        .storage-risk__total { text-align: left; }
+        .storage-risk__grid { grid-template-columns: 1fr; }
+        .storage-risk__card { padding: 20px; }
+      }
+      @media print { .storage-risk { display: none!important; } }
+    </style>
+    <section class="storage-risk" id="storage-risk-screen" aria-labelledby="storage-risk-title" hidden>
+      <header class="storage-risk__top"><div class="storage-risk__top-inner">
+        <span class="storage-risk__mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2.8 19a1.4 1.4 0 0 0 1.2 2h16a1.4 1.4 0 0 0 1.2-2Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></span>
+        <div class="storage-risk__heading"><h1 id="storage-risk-title">RỦI RO LƯU TRỮ</h1><p>Kiểm soát quan hệ SKU Combo và SKU Normal</p></div>
+        <button class="storage-risk__back" id="storage-risk-back" type="button">← WH-MATERIAL</button>
+      </div></header>
+      <main class="storage-risk__main">
+        <div class="storage-risk__intro">
+          <div><small>Phần 1 · Quan hệ Normal &amp; Combo</small><h2>Các quan hệ cần rà soát</h2><p>Dashboard chỉ hiển thị trường hợp có rủi ro để người phụ trách tập trung xử lý. Quan hệ bình thường không được đưa vào danh sách.</p></div>
+          <div class="storage-risk__total"><span>Tổng trường hợp rủi ro</span><strong>62</strong></div>
+        </div>
+        <div class="storage-risk__grid">
+          <article class="storage-risk__card">
+            <div class="storage-risk__card-head"><div><span class="storage-risk__level">Ưu tiên cao</span><h3>Combo thiếu liên kết</h3></div><strong class="storage-risk__count">3</strong></div>
+            <p>SKU Combo chưa có liên kết với SKU Normal, có thể làm gián đoạn bước tra cứu hoặc chọn mã khi in.</p>
+            <div class="storage-risk__action"><b>Quy tắc</b><span>Mỗi SKU Combo phải có ít nhất một SKU Normal liên kết.</span><b>Xử lý</b><span>Bổ sung đúng SKU Normal và kiểm tra lại tên sản phẩm trước khi sử dụng.</span></div>
+          </article>
+          <article class="storage-risk__card storage-risk__card--warning">
+            <div class="storage-risk__card-head"><div><span class="storage-risk__level">Cần xác minh</span><h3>Combo có nhiều Normal</h3></div><strong class="storage-risk__count">59</strong></div>
+            <p>SKU Combo đang liên kết với nhiều hơn một SKU Normal, có nguy cơ người dùng chọn sai mã khi in.</p>
+            <div class="storage-risk__action"><b>Quy tắc</b><span>Rà soát các Combo có từ hai SKU Normal trở lên.</span><b>Xử lý</b><span>Xác nhận quan hệ hợp lệ hoặc giữ lại duy nhất SKU Normal đúng theo nghiệp vụ.</span></div>
+          </article>
+        </div>
+        <p class="storage-risk__scope"><span aria-hidden="true">ⓘ</span><span>Phạm vi kiểm tra hiện tại: <b>1.408 SKU Combo</b>. Số liệu hiển thị chỉ gồm các trường hợp rủi ro.</span></p>
+      </main>
+    </section>
     <section class="uid-screen" id="uid-screen" aria-labelledby="uid-title" hidden>
       <header class="uid-topbar">
         <div class="uid-topbar__inner">
@@ -1168,6 +1251,7 @@ Error generating stack: `+y.message+`
           const findSkuOpen = current === "find-sku";
           const insOpen = current === "inspection";
           const sampleOpen = current === "sample";
+          const storageRiskOpen = current === "storage-risk";
           const fabricOpen = current === "fabric-relaxation";
           const xaVaiOpen = current === "xa-vai";
           const homeOpen = !current || current === "home";
@@ -1182,10 +1266,12 @@ Error generating stack: `+y.message+`
           if (insScreen) insScreen.hidden = !insOpen;
           const sampleScreen = document.getElementById("sample-screen");
           if (sampleScreen) sampleScreen.hidden = !sampleOpen;
+          const storageRiskScreen = document.getElementById("storage-risk-screen");
+          if (storageRiskScreen) storageRiskScreen.hidden = !storageRiskOpen;
           home.hidden = !homeOpen;
-          homeTrigger.hidden = homeOpen || uidOpen || cutUidOpen || findSkuOpen || adminOpen || insOpen || sampleOpen || fabricOpen || xaVaiOpen;
+          homeTrigger.hidden = homeOpen || uidOpen || cutUidOpen || findSkuOpen || adminOpen || insOpen || sampleOpen || storageRiskOpen || fabricOpen || xaVaiOpen;
           const root = document.getElementById("root");
-          if (root) root.inert = uidOpen || cutUidOpen || findSkuOpen || homeOpen || insOpen || sampleOpen || fabricOpen || xaVaiOpen;
+          if (root) root.inert = uidOpen || cutUidOpen || findSkuOpen || homeOpen || insOpen || sampleOpen || storageRiskOpen || fabricOpen || xaVaiOpen;
           if (uidOpen) setTimeout(() => groupUid.focus(), 50);
         };
         printSku.addEventListener("click", () => { location.hash = "#worker"; });
@@ -1197,6 +1283,10 @@ Error generating stack: `+y.message+`
         if (inspectionChoice) inspectionChoice.addEventListener("click", () => { location.hash = "#inspection"; });
         const sampleChoice = document.getElementById("barcode-sample");
         if (sampleChoice) sampleChoice.addEventListener("click", () => { location.hash = "#sample"; });
+        const storageRiskChoice = document.getElementById("barcode-storage-risk");
+        if (storageRiskChoice) storageRiskChoice.addEventListener("click", () => { location.hash = "#storage-risk"; });
+        const storageRiskBack = document.getElementById("storage-risk-back");
+        if (storageRiskBack) storageRiskBack.addEventListener("click", () => { location.hash = "#home"; });
         const xaVaiChoice = document.getElementById("barcode-xa-vai");
         if (xaVaiChoice) xaVaiChoice.addEventListener("click", () => { location.hash = "#xa-vai"; });
         homeTrigger.addEventListener("click", () => { location.hash = "#home"; });
@@ -3513,6 +3603,8 @@ Error generating stack: `+y.message+`
     </script>
     <style id="cut-group-uid-theme">
       .cut-screen{position:fixed;inset:0;z-index:75;overflow-y:auto;min-height:100vh;color-scheme:light;background:var(--wms-bg,#f4f7f6);color:var(--wms-text,#17251f);font-family:Arial,Helvetica,sans-serif}.cut-head{position:sticky;top:0;z-index:20;background:rgba(255,255,255,.94);border-bottom:1px solid var(--wms-border,#d9e2de)}.cut-head__in{max-width:1240px;margin:auto;min-height:72px;padding:10px 20px;display:flex;align-items:center;gap:14px}.cut-head h1{font-size:22px;margin:0;letter-spacing:.02em}.cut-head p{margin:3px 0 0;color:var(--wms-muted,#60736b);font-size:12px}.cut-back{margin-left:auto;min-height:44px;padding:0 18px;border:1px solid var(--wms-border,#d9e2de);border-radius:22px;background:transparent;color:var(--wms-text,#17251f);font-weight:800;cursor:pointer}.cut-main{max-width:1240px;margin:auto;padding:22px 20px 40px}.cut-grid{display:grid;grid-template-columns:minmax(300px,.8fr) minmax(420px,1.2fr);gap:18px}.cut-card{min-width:0;background:var(--wms-surface,#fff);border:1px solid var(--wms-border,#d9e2de);border-radius:22px;padding:20px;box-shadow:0 1px 2px rgba(23,37,31,.05),0 8px 20px rgba(23,37,31,.04)}.cut-card h2{margin:0 0 16px;font-size:20px}.cut-card h2 span{display:inline-grid;place-items:center;width:30px;height:30px;margin-right:8px;border-radius:50%;background:var(--wms-brand,#005f41);color:#fff;font-size:14px}.cut-scan{display:flex;gap:10px}.cut-input{width:100%;min-height:52px;box-sizing:border-box;border:1px solid var(--wms-border,#d9e2de);border-radius:13px;background:#fff;color:var(--wms-text,#17251f);padding:0 15px;font-size:17px;outline:none}.cut-input:focus{border-color:var(--wms-brand,#005f41);box-shadow:0 0 0 3px rgba(0,95,65,.16)}.cut-primary{min-height:52px;border:0;border-radius:26px;background:var(--wms-brand,#005f41);color:white;padding:0 24px;font-size:15px;font-weight:800;cursor:pointer}.cut-primary:disabled,.cut-secondary:disabled,.cut-icon-btn:disabled{opacity:.45;cursor:not-allowed}.cut-note{font-size:13px;line-height:1.5;color:var(--wms-muted,#60736b)}.cut-message{min-height:22px;margin:12px 0 0;font-weight:700;font-size:14px;color:var(--wms-success,#16845b)}.cut-message[data-tone="error"]{color:var(--wms-danger,#c2413b)}.cut-message[data-tone="warn"]{color:var(--wms-warning,#b7791f)}.cut-last{margin-top:14px;padding:14px;border-radius:14px;background:var(--wms-bg,#f4f7f6);display:grid;gap:5px}.cut-last[hidden]{display:none}.cut-last strong{font-size:16px}.cut-last small{color:var(--wms-muted,#60736b)}.cut-searchbar{display:flex;align-items:center;gap:10px;width:100%;border:0;color:inherit;background:transparent;font:inherit;text-align:left;cursor:pointer;padding:0}.cut-scanwrap{position:relative;flex:1;min-width:0}.cut-input--scan{padding-right:56px}.cut-camera{position:absolute;right:6px;top:50%;transform:translateY(-50%);min-height:40px;height:40px;width:40px;border:0;border-radius:10px;background:rgba(0,95,65,.08);color:var(--wms-brand,#005f41);display:flex;align-items:center;justify-content:center;cursor:pointer}.cut-camera:active{background:var(--wms-brand,#005f41);color:#fff}.cut-badge{display:inline-grid;place-items:center;min-width:31px;height:31px;padding:0 8px;border-radius:16px;background:rgba(0,95,65,.08);color:var(--wms-brand,#005f41);font-weight:800}.cut-list{display:grid;gap:9px;margin-top:16px;max-height:480px;overflow:auto}.cut-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px;padding:12px;border:1px solid var(--wms-border,#d9e2de);border-radius:14px;background:var(--wms-surface,#fff)}.cut-row input{width:20px;height:20px;accent-color:#00a873}.cut-row__body{min-width:0}.cut-row__body strong,.cut-row__body span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.cut-row__body span{margin-top:3px;color:var(--wms-muted,#60736b);font-size:12px}.cut-row__body small{color:var(--wms-muted,#60736b)}.cut-empty{padding:30px 10px;text-align:center;color:var(--wms-muted,#60736b)}.cut-actions{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:14px}.cut-actions label{flex:1 1 220px;color:var(--wms-muted,#60736b);font-size:13px}.cut-actions input{accent-color:#00a873}.cut-secondary{min-height:46px;padding:0 18px;border:1px solid var(--wms-border,#d9e2de);border-radius:23px;background:var(--wms-surface,#fff);color:var(--wms-brand,#005f41);font-weight:800;cursor:pointer}.cut-searchbar{margin-bottom:14px}.cut-searchbar .cut-input{max-width:370px}.cut-table-wrap{overflow:auto;border:1px solid var(--wms-border,#d9e2de);border-radius:14px}.cut-table{width:100%;border-collapse:collapse;min-width:760px;background:var(--wms-surface,#fff)}.cut-table th,.cut-table td{padding:11px 12px;border-bottom:1px solid var(--wms-border,#d9e2de);text-align:left;font-size:13px}.cut-table th{position:sticky;top:0;background:var(--wms-bg,#f4f7f6);color:var(--wms-muted,#60736b)}.cut-table td:nth-child(1),.cut-table td:nth-child(2){font-weight:700}.cut-status{display:inline-block;padding:4px 8px;border-radius:10px;background:rgba(0,95,65,.08);color:var(--wms-brand,#005f41);font-size:11px}.cut-status[data-status="failed"]{background:rgba(194,65,59,.1);color:var(--wms-danger,#c2413b)}.cut-status[data-status="queued"]{background:rgba(183,121,31,.12);color:var(--wms-warning,#b7791f)}.cut-tabs{display:flex;gap:8px;margin-bottom:14px}.cut-tab{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;min-height:50px;border:1px solid var(--wms-border,#d9e2de);border-radius:16px;background:var(--wms-surface,#fff);color:var(--wms-muted,#60736b);font-weight:800;font-size:13px;cursor:pointer;padding:0 6px;text-align:center}.cut-tab[aria-selected="true"]{border-color:var(--wms-brand,#005f41);background:rgba(0,95,65,.08);color:var(--wms-brand,#005f41)}.cut-card[data-panel]{display:none}.cut-card[data-panel][data-active="true"]{display:block;grid-column:1/-1}.cut-link{margin-top:14px;display:inline-flex;align-items:center;min-height:44px;padding:0 18px;border:1px solid var(--wms-border,#d9e2de);border-radius:22px;background:rgba(0,95,65,.06);color:var(--wms-brand,#005f41);font-weight:800;font-size:13px;cursor:pointer}.cut-icon-btn{min-height:44px;min-width:44px;padding:0;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--wms-border,#d9e2de);border-radius:12px;background:var(--wms-surface,#fff);color:var(--wms-muted,#60736b);cursor:pointer}.cut-daterange{display:flex;align-items:center;gap:8px}.cut-daterange input{max-width:170px}.cut-daterange span{color:var(--wms-muted,#60736b);font-size:13px}.cut-th-check{width:40px;text-align:center}.cut-table thead input[type="checkbox"],.cut-table tbody input[type="checkbox"]{width:18px;height:18px;accent-color:#00a873;cursor:pointer}.cut-table tbody tr.is-selected{background:rgba(0,95,65,.06)}.cut-table tbody tr.is-selected td{color:var(--wms-text,#17251f)}.cut-selectall{display:flex;align-items:center;gap:9px;min-height:44px;padding:0 14px;border:1px solid var(--wms-border,#d9e2de);border-radius:22px;background:var(--wms-surface,#fff);color:var(--wms-text,#17251f);font-size:13px;font-weight:800;cursor:pointer;user-select:none}.cut-selectall input{width:19px;height:19px;margin:0;accent-color:#00a873}.cut-selectall input:disabled{opacity:.4}.cut-selectall em{margin-left:2px;color:var(--wms-brand,#005f41);font-size:11px;font-style:normal;font-weight:900}.cut-row[data-selected="true"]{border-color:rgba(0,95,65,.45);background:rgba(0,95,65,.07)}@media(max-width:800px){.cut-main{padding:14px}.cut-grid{grid-template-columns:1fr}.cut-card{padding:16px}.cut-scan,.cut-searchbar{align-items:stretch;flex-direction:column}.cut-searchbar .cut-input{max-width:none}.cut-primary{width:100%}.cut-actions{flex-wrap:wrap}.cut-actions label{flex-basis:100%}.cut-head__in{padding-inline:14px}.cut-head p{display:none}.cut-back{width:44px;padding:0;font-size:0}.cut-back:before{content:"←";font-size:18px}.cut-tab{font-size:11px;min-height:46px;padding:0 4px}}.cut-uid-link{background:none;border:0;padding:0;font:inherit;color:var(--wms-brand,#005f41);font-weight:700;cursor:pointer;text-decoration:underline;text-decoration-color:transparent;transition:text-decoration-color .12s ease}.cut-uid-link:hover,.cut-uid-link:focus-visible{text-decoration-color:currentColor}.cut-total-chip{display:inline-flex;align-items:center;gap:7px;margin-right:16px;color:var(--wms-text,#17251f)}.cut-total-chip strong{color:var(--wms-brand,#005f41)}.cut-copy-btn{width:26px;height:26px;padding:0;border:1px solid var(--wms-border,#d9e2de);border-radius:8px;background:#fff;color:var(--wms-muted,#60736b);cursor:pointer}.cut-copy-btn:hover{border-color:var(--wms-brand,#005f41);color:var(--wms-brand,#005f41)}.cut-total-note{color:var(--wms-muted,#60736b);font-size:12px}.cut-barcode-modal{position:fixed;inset:0;z-index:95;display:grid;place-items:center;padding:20px;background:rgba(4,12,9,.55);backdrop-filter:blur(4px)}.cut-barcode-modal[hidden]{display:none}.cut-barcode-modal__card{box-sizing:border-box;width:min(100%,360px);padding:24px;border:1px solid var(--wms-border,#d9e2de);border-radius:20px;background:#fff;box-shadow:0 30px 80px rgba(23,37,31,.25);text-align:center}.cut-barcode-modal__svg{width:100%;height:auto}.cut-barcode-modal__code{margin:14px 0 4px;font:900 18px/1.3 Arial,Helvetica,sans-serif;color:var(--wms-text,#17251f);word-break:break-all}.cut-barcode-modal__close{width:100%;margin-top:18px;min-height:48px;border:0;border-radius:999px;background:var(--wms-brand,#005f41);color:#fff;font:800 15px/1 Arial,Helvetica,sans-serif;cursor:pointer}
+      /* Điện thoại: hai ô ngày (CẮT GROUP UID, Xả vải) co vừa một hàng — trước đây mỗi ô rộng tối thiểu ~179 px nên ô thứ hai tràn khỏi màn 375 px. */
+      @media(max-width:800px){.cut-daterange input{flex:1 1 0;min-width:0;max-width:none;padding:0 10px}}
     </style>
     <section class="cut-screen" id="cut-group-uid-screen" aria-labelledby="cut-title" hidden>
       <header class="cut-head"><div class="cut-head__in"><div><h1 id="cut-title">CẮT GROUP UID</h1><p>Quét UID · lưu tem · in và tra cứu</p></div><button class="cut-back" id="cut-back" type="button">← WH-MATERIAL</button></div></header>
@@ -3525,28 +3617,29 @@ Error generating stack: `+y.message+`
         <p class="cut-message" id="cut-message" aria-live="polite" style="margin-bottom:14px"></p>
         <div class="cut-grid">
         <section class="cut-card" data-panel="scan"><h2><span>1</span>Quét Group UID</h2><form class="cut-scan" id="cut-form"><input class="cut-input" id="cut-code" autocomplete="off" inputmode="none" placeholder="Quét hoặc nhập UID…" maxlength="40" required><button class="cut-primary act-icon act-icon--add" id="cut-add" type="submit">Lưu tem</button></form><button class="cut-secondary act-icon act-icon--keyboard" id="cut-keyboard" type="button">Bàn phím ảo: đang ẩn — bấm để hiện</button><p class="cut-note">Hệ thống tự lấy SKU, tên sản phẩm, Lot và Roll từ dữ liệu Group UID. UID thiếu dữ liệu sẽ không được lưu.</p><div class="cut-last" id="cut-last" hidden></div><button class="cut-link" id="cut-goto-data" type="button">Xem trong Tra cứu →</button></section>
-        <section class="cut-card" data-panel="data"><h2><span>2</span>Tra cứu UID đã cắt</h2><form class="cut-searchbar" id="cut-search"><input class="cut-input" id="cut-sku" placeholder="Lọc theo SKU…" autocomplete="off"><input class="cut-input" id="cut-lot" style="max-width:150px" placeholder="Lọc theo Lot…" autocomplete="off"><button class="cut-secondary" type="submit">Tìm kiếm</button></form><div class="cut-actions"><button class="cut-icon-btn" id="cut-export" type="button" disabled title="Xuất Excel A4 ngang" aria-label="Xuất Excel A4 ngang"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button><button class="cut-primary act-icon act-icon--add" id="cut-push" type="button" disabled>Đưa vào hàng chờ in</button></div><p class="cut-note" id="cut-search-total" style="margin-top:10px"></p><div class="cut-table-wrap" style="margin-top:10px"><table class="cut-table"><thead><tr><th class="cut-th-check"><input id="cut-search-all" type="checkbox" aria-label="Chọn tất cả tem có thể in trong bảng"></th><th>SKU</th><th>UID</th><th>Lot</th><th>Roll</th><th>Số lượng cắt</th><th>Tên SP</th><th>Trạng thái</th><th>Thời gian cắt</th></tr></thead><tbody id="cut-results"></tbody></table></div></section>
+        <section class="cut-card" data-panel="data"><h2><span>2</span>Tra cứu UID đã cắt</h2><form class="cut-searchbar" id="cut-search"><input class="cut-input" id="cut-sku" placeholder="Lọc theo SKU…" autocomplete="off"><input class="cut-input" id="cut-lot" style="max-width:150px" placeholder="Lọc theo Lot…" autocomplete="off"><div class="cut-daterange"><input class="cut-input" id="cut-date-from" type="date" aria-label="Cắt từ ngày" title="Cắt từ ngày"><span aria-hidden="true">→</span><input class="cut-input" id="cut-date-to" type="date" aria-label="Cắt đến ngày" title="Cắt đến ngày"></div><button class="cut-secondary" type="submit">Tìm kiếm</button></form><div class="cut-actions"><button class="cut-icon-btn" id="cut-export" type="button" disabled title="Xuất Excel A4 ngang" aria-label="Xuất Excel A4 ngang"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button><button class="cut-primary act-icon act-icon--add" id="cut-push" type="button" disabled>Đưa vào hàng chờ in</button></div><p class="cut-note" id="cut-search-total" style="margin-top:10px"></p><div class="cut-table-wrap" style="margin-top:10px"><table class="cut-table"><thead><tr><th class="cut-th-check"><input id="cut-search-all" type="checkbox" aria-label="Chọn tất cả tem có thể in trong bảng"></th><th>SKU</th><th>UID</th><th>Lot</th><th>Roll</th><th>Số lượng cắt</th><th>Tên SP</th><th>Trạng thái</th><th>Thời gian cắt</th></tr></thead><tbody id="cut-results"></tbody></table></div></section>
         <section class="cut-card" data-panel="print"><h2><span>3</span>Tem chờ in</h2><button class="cut-link" id="cut-goto-data-2" type="button">← Chọn thêm ở Tra cứu</button><div class="cut-actions"><label class="cut-selectall"><input id="cut-all" type="checkbox"><span>Chọn tất cả tem có thể in</span><em id="cut-selected-count">Đã chọn 0</em></label><button class="cut-secondary act-icon act-icon--load" id="cut-reload" type="button">Tải lại</button><button class="cut-primary act-icon act-icon--print" id="cut-print" type="button" disabled>In tem đã chọn</button></div><div class="cut-list" id="cut-list"></div></section>
       </div></main>
     </section>
         <section class="cut-screen" id="find-sku-screen" aria-labelledby="fsk-title" hidden>
       <header class="cut-head"><div class="cut-head__in"><div><h1 id="fsk-title">TÌM SKU</h1><p>Quét tem nhà cung cấp · tính số lượng · in tem</p></div><button class="cut-back" id="fsk-back" type="button">← WH-MATERIAL</button></div></header>
       <main class="cut-main">
-        <div class="cut-tabs" role="tablist">
-          <button class="cut-tab" id="fsk-tab-scan" type="button" role="tab" data-tab="scan" aria-selected="true">1 · Quét nhận diện</button>
-          <button class="cut-tab" id="fsk-tab-calc" type="button" role="tab" data-tab="calc" aria-selected="false">2 · Tính toán số lượng</button>
-          <button class="cut-tab" id="fsk-tab-print" type="button" role="tab" data-tab="print" aria-selected="false">3 · Chờ in <b class="cut-badge" id="fsk-queue-count">0</b></button>
+        <div class="cut-tabs" role="tablist" aria-label="Các bước tìm SKU">
+          <button class="cut-tab" id="fsk-tab-scan" type="button" role="tab" data-tab="scan" aria-selected="true"><i class="fsk-tab-n" aria-hidden="true">1</i>Quét</button>
+          <button class="cut-tab" id="fsk-tab-calc" type="button" role="tab" data-tab="calc" aria-selected="false" aria-disabled="true"><i class="fsk-tab-n" aria-hidden="true">2</i>Số lượng</button>
+          <button class="cut-tab" id="fsk-tab-print" type="button" role="tab" data-tab="print" aria-selected="false"><i class="fsk-tab-n" aria-hidden="true">3</i>Chờ in <b class="cut-badge" id="fsk-queue-count">0</b></button>
         </div>
-        <p class="cut-message" id="fsk-message" aria-live="polite" style="margin-bottom:14px"></p>
+        <p class="cut-message fsk-message" id="fsk-message" aria-live="polite"></p>
         <div class="cut-grid">
           <section class="cut-card" data-panel="scan"><h2><span>1</span>Quét nhận diện</h2>
-            <form class="cut-scan" id="fsk-code-form"><input class="cut-input" id="fsk-code" autocomplete="off" spellcheck="false" enterkeyhint="search" placeholder="Mã trên tem, vd N0144, C3966…" maxlength="80"><button class="cut-primary" type="submit">Tìm</button></form>
-            <p class="cut-note">Bật camera và đưa tem vào khung — máy tự chụp khi ảnh nét rồi đọc chữ; mã QR/mã vạch được đọc ngay. Gõ mã in trên tem cũng được, không cần camera.</p>
-            <div class="fsk-camera" id="fsk-camera" hidden><video id="fsk-video" playsinline muted autoplay></video><div class="fsk-guide" aria-hidden="true"></div><div class="fsk-cam-status" id="fsk-cam-status">Đang mở camera…</div><div class="fsk-zoom" id="fsk-zoom"><button type="button" data-zoom="1" aria-pressed="true">1×</button><button type="button" data-zoom="2" aria-pressed="false">2×</button><button type="button" data-zoom="3" aria-pressed="false">3×</button></div></div>
+            <form class="fsk-search" id="fsk-code-form" role="search"><input class="cut-input" id="fsk-code" autocomplete="off" spellcheck="false" enterkeyhint="search" placeholder="Gõ mã trên tem, vd N0144" aria-label="Mã in trên tem" maxlength="80"><button class="cut-secondary" type="submit">Tìm</button></form>
+            <div class="fsk-cam-empty" id="fsk-cam-empty"><span class="fsk-cam-empty__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg></span><p>Đưa tem vào khung — máy tự chụp khi ảnh nét, QR/mã vạch đọc ngay.</p><button class="cut-primary" id="fsk-cam" type="button">Bật camera</button></div>
+            <div class="fsk-camera" id="fsk-camera" hidden><video id="fsk-video" playsinline muted autoplay></video><div class="fsk-guide" aria-hidden="true"></div><div class="fsk-cam-status" id="fsk-cam-status">Đang mở camera…</div><button class="fsk-cam-btn fsk-cam-off" id="fsk-cam-off" type="button" aria-label="Tắt camera">×</button><button class="fsk-cam-btn fsk-shot" id="fsk-shot" type="button">Chụp</button><div class="fsk-zoom" id="fsk-zoom"><button type="button" data-zoom="1" aria-pressed="true">1×</button><button type="button" data-zoom="2" aria-pressed="false">2×</button><button type="button" data-zoom="3" aria-pressed="false">3×</button></div></div>
+            <div class="fsk-alt"><label class="cut-secondary fsk-file">Chọn ảnh<input id="fsk-file" type="file" accept="image/*" capture="environment" hidden></label><button class="cut-secondary" id="fsk-read" type="button" hidden>Đọc lại tem</button></div>
             <img class="fsk-photo" id="fsk-photo" alt="Ảnh tem vừa chụp" hidden>
-            <div class="cut-actions"><button class="cut-primary" id="fsk-cam" type="button">Bật camera</button><button class="cut-secondary" id="fsk-shot" type="button" hidden>Chụp ngay</button><label class="cut-secondary fsk-file">Chọn ảnh<input id="fsk-file" type="file" accept="image/*" capture="environment" hidden></label><button class="cut-secondary" id="fsk-read" type="button" disabled>Đọc lại tem</button></div>
             <div class="fsk-results" id="fsk-results"><p class="cut-empty">Quét tem hoặc gõ mã để xem SKU gợi ý.</p></div>
-            <details class="fsk-more" id="fsk-more"><summary>Chữ đọc được trên tem <b class="cut-badge" id="fsk-token-count">0</b></summary>
+            <details class="fsk-more" id="fsk-more"><summary>Chi tiết xử lý <b class="cut-badge" id="fsk-token-count">0</b></summary>
+              <p class="cut-note">Chữ đọc được trên tem — bấm × để bỏ từ đọc nhầm, hoặc sửa chữ rồi bấm “Đối chiếu lại”.</p>
               <div class="fsk-tags" id="fsk-tags"></div>
               <textarea class="cut-input fsk-raw" id="fsk-raw" rows="4" placeholder="Chữ AI đọc được sẽ hiện ở đây — sửa được, rồi bấm “Đối chiếu lại”."></textarea>
               <div class="cut-actions"><button class="cut-secondary" id="fsk-match" type="button">Đối chiếu lại</button><button class="cut-secondary" id="fsk-reload" type="button">Tải lại danh mục</button><span class="cut-note" id="fsk-catalog"></span></div>
@@ -3554,12 +3647,11 @@ Error generating stack: `+y.message+`
           </section>
 
           <section class="cut-card" data-panel="calc"><h2><span>2</span>Tính toán số lượng</h2>
-            <button class="cut-link" id="fsk-goto-scan" type="button">← Chọn SKU khác</button>
-            <div class="fsk-sel" id="fsk-sel" hidden><strong id="fsk-sel-sku"></strong><span id="fsk-sel-name"></span><small id="fsk-sel-unit"></small></div>
-            <p class="cut-empty" id="fsk-sel-empty">Chưa chọn SKU — quét tem hoặc gõ mã ở bước 1 rồi bấm “Chọn”.</p>
+            <div class="fsk-sel" id="fsk-sel" hidden><div class="fsk-sel__id"><strong id="fsk-sel-sku"></strong><span class="fsk-unit-chip" id="fsk-sel-unit-chip" hidden></span><button class="fsk-link" type="button" data-goto-scan>Đổi SKU</button></div><span id="fsk-sel-name"></span><small id="fsk-sel-unit"></small><small class="fsk-sel-combo" id="fsk-sel-combo" hidden></small></div>
+            <div class="cut-empty fsk-empty" id="fsk-sel-empty"><p>Chưa chọn SKU.</p><button class="cut-primary" type="button" data-goto-scan>Quét tem</button></div>
             <div id="fsk-calc-body" hidden>
               <div class="fsk-field"><label for="fsk-qty">Số lượng in lên tem <span class="hint" id="fsk-qty-hint"></span></label><div class="fsk-inrow"><input class="cut-input" id="fsk-qty" inputmode="decimal" autocomplete="off" spellcheck="false" placeholder="ví dụ 300"><span class="fsk-unit" id="fsk-qty-unit"></span></div><div class="fsk-doc" id="fsk-qty-doc"></div></div>
-              <button class="cut-secondary" id="fsk-cd-toggle" type="button" aria-expanded="false">Tính từ cân (kg chỉ trả về → mm)</button>
+              <button class="cut-secondary" id="fsk-cd-toggle" type="button" aria-expanded="false">Tính từ cân (kg → mm)</button>
               <div class="fsk-cd" id="fsk-cd" hidden>
                 <div class="fsk-field"><label>Quy cách cuộn nguyên <span class="hint">chiều dài 1 cuộn còn nguyên kiện</span></label>
                   <div class="fsk-seg fsk-seg--wrap" id="fsk-cd-spec" role="group" aria-label="Quy cách cuộn nguyên"><button type="button" data-mm="2500000" aria-pressed="false">2.500.000 mm</button><button type="button" data-mm="3000000" aria-pressed="false">3.000.000 mm</button><button type="button" data-mm="5000000" aria-pressed="true">5.000.000 mm</button><button type="button" data-mm="0" aria-pressed="false">Khác…</button></div>
@@ -3575,16 +3667,17 @@ Error generating stack: `+y.message+`
                 <div class="fsk-steps" id="fsk-cd-steps" hidden></div>
                 <p class="cut-note" id="fsk-cd-state">Nhập <b>tổng kg</b> · <b>số cuộn</b> · <b>khối lượng lõi</b> · <b>khối lượng cuộn nguyên</b> — máy tính lại ngay mỗi lần gõ và điền vào ô số lượng.</p>
               </div>
-              <div class="fsk-field"><label for="fsk-copies">Số tem cần in</label><div class="fsk-inrow"><input class="cut-input" id="fsk-copies" type="number" min="1" max="500" step="1" value="1" inputmode="numeric"><span class="fsk-unit">tem</span></div></div>
-              <div class="cut-actions"><button class="cut-primary" id="fsk-add" type="button">Thêm vào chờ in →</button></div>
+              <div class="fsk-field"><label for="fsk-copies">Số tem cần in</label><div class="fsk-inrow"><div class="fsk-stepper"><button type="button" data-step="-1" aria-label="Bớt 1 tem">−</button><input class="cut-input" id="fsk-copies" type="number" min="1" max="500" step="1" value="1" inputmode="numeric"><button type="button" data-step="1" aria-label="Thêm 1 tem">+</button></div><span class="fsk-unit">tem</span></div></div>
+              <div class="fsk-bar" id="fsk-add-bar"><span class="fsk-bar__sum" id="fsk-add-sum"></span><button class="cut-primary act-icon act-icon--add" id="fsk-add" type="button">Thêm vào chờ in</button></div>
             </div>
           </section>
 
           <section class="cut-card" data-panel="print"><h2><span>3</span>Chờ in</h2>
-            <button class="cut-link" id="fsk-goto-scan-2" type="button">← Quét tem tiếp</button>
-            <div class="cut-actions"><label class="cut-selectall"><input id="fsk-all" type="checkbox"><span>Chọn tất cả tem có thể in</span><em id="fsk-selected-count">Đã chọn 0</em></label><button class="cut-primary act-icon act-icon--print" id="fsk-print" type="button" disabled>In tem đã chọn</button></div>
-            <p class="cut-note">Danh sách này lưu trên máy đang dùng; tem in xong tự rời khỏi danh sách. Agent in tem SKU y như màn PRINT SKU.</p>
-            <div class="cut-list" id="fsk-list"></div>
+            <label class="cut-selectall" id="fsk-all-row" hidden><input id="fsk-all" type="checkbox"><span>Chọn tất cả tem có thể in</span></label>
+            <div class="cut-list fsk-list" id="fsk-list"></div>
+            <div class="cut-empty fsk-empty" id="fsk-list-empty" hidden><p>Chưa có tem chờ in.</p><button class="cut-primary" type="button" data-goto-scan>Quét tem</button></div>
+            <p class="cut-note fsk-list-note" id="fsk-list-note" hidden><span>Lưu trên máy này · tem in xong tự rời danh sách.</span><button class="fsk-link" type="button" data-goto-scan>＋ Quét thêm tem</button></p>
+            <div class="fsk-bar" id="fsk-print-bar" hidden><span class="fsk-bar__sum" id="fsk-selected-count">Chưa chọn tem</span><button class="cut-primary act-icon act-icon--print" id="fsk-print" type="button" disabled>In tem</button></div>
           </section>
         </div>
       </main>
@@ -3593,10 +3686,10 @@ Error generating stack: `+y.message+`
       .fsk-camera{position:relative;overflow:hidden;margin-top:14px;border-radius:16px;background:#000;aspect-ratio:4/3}
       .fsk-camera video{display:block;width:100%;height:100%;object-fit:cover;transform-origin:center}
       .fsk-guide{position:absolute;left:12%;top:16%;width:76%;height:68%;border:2px solid rgba(255,255,255,.85);border-radius:12px;box-shadow:0 0 0 999px rgba(0,0,0,.28);pointer-events:none}
-      .fsk-cam-status{position:absolute;left:10px;top:10px;max-width:calc(100% - 20px);padding:5px 10px;border-radius:12px;background:rgba(0,0,0,.62);color:#fff;font-size:12px;font-weight:700}
+      .fsk-cam-status{position:absolute;left:10px;top:10px;max-width:calc(100% - 76px);padding:5px 10px;border-radius:12px;background:rgba(0,0,0,.62);color:#fff;font-size:12px;font-weight:700}
       .fsk-cam-status[data-tone="ok"]{background:rgba(0,168,115,.85)}.fsk-cam-status[data-tone="warn"]{background:rgba(183,121,31,.9)}
       .fsk-zoom{position:absolute;right:10px;bottom:10px;display:flex;gap:6px}
-      .fsk-zoom button{min-width:48px;min-height:40px;border:0;border-radius:20px;background:rgba(0,0,0,.6);color:#fff;font-weight:800;cursor:pointer}
+      .fsk-zoom button{min-width:44px;min-height:44px;border:0;border-radius:20px;background:rgba(0,0,0,.6);color:#fff;font-weight:800;cursor:pointer}
       .fsk-zoom button[aria-pressed="true"]{background:#00a873}
       .fsk-photo{display:block;max-width:100%;max-height:170px;margin-top:12px;border-radius:12px;background:var(--wms-bg,#f4f7f6)}
       .fsk-file{display:inline-flex;align-items:center;justify-content:center}
@@ -3611,8 +3704,7 @@ Error generating stack: `+y.message+`
       .fsk-tag button{min-width:30px;min-height:30px;margin:-3px -8px -3px 0;border:0;background:transparent;color:var(--wms-muted,#60736b);font-size:18px;cursor:pointer}
       .fsk-card{margin-top:12px;padding:14px;border:1px solid var(--wms-border,#d9e2de);border-radius:16px;background:var(--wms-surface,#fff)}
       .fsk-card__top{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
-      .fsk-rank{color:var(--wms-muted,#60736b)}.fsk-sku{font-size:19px;letter-spacing:.02em}
-      .fsk-pct{margin-left:auto;font-weight:800;color:var(--wms-brand,#005f41)}
+      .fsk-sku{font-size:19px;letter-spacing:.02em}
       .fsk-badge{padding:2px 8px;border-radius:10px;background:rgba(183,121,31,.12);color:var(--wms-warning,#b7791f);font-size:11px;font-weight:800}
       .fsk-name{margin:8px 0 10px;font-size:14px;line-height:1.45;overflow-wrap:anywhere}
       .fsk-pick{width:100%;margin-top:10px}
@@ -3642,10 +3734,73 @@ Error generating stack: `+y.message+`
       .fsk-step{display:grid;grid-template-columns:26px minmax(0,1fr) auto;gap:8px;align-items:center;padding:6px 8px;border-radius:8px;background:var(--wms-bg,#f4f7f6)}
       .fsk-step .n{font-weight:800;color:var(--wms-muted,#60736b)}.fsk-step .v{font-weight:800;white-space:nowrap}
       .fsk-step.tong{background:rgba(0,95,65,.08)}
-      .fsk-row-del{min-width:40px;min-height:40px;border:0;background:transparent;color:var(--wms-muted,#60736b);font-size:22px;cursor:pointer}
+      .fsk-row-del{min-width:44px;min-height:44px;border:0;background:transparent;color:var(--wms-muted,#60736b);font-size:22px;cursor:pointer}
       .fsk-row-del:disabled{opacity:.3;cursor:default}
       .cut-row[data-status="failed"] .cut-row__body small{color:var(--wms-danger,#c2413b)}
       .cut-row[data-status="queued"] .cut-row__body small{color:var(--wms-warning,#b7791f)}
+      /* Gói 1 cho điện thoại (30/09/2026): tab ngắn một dòng, ô tìm một dòng, khung camera có nút ngay trên khung,
+         thẻ kết quả nêu đơn vị + mức khớp thay cho %, thanh hành động dính đáy, hàng chờ không cuộn lồng. */
+      #find-sku-screen .cut-tab{gap:5px;min-width:0;overflow:hidden;white-space:nowrap;font-size:14px}
+      #find-sku-screen .cut-tab[aria-disabled="true"]{opacity:.55}
+      #find-sku-screen .cut-badge{min-width:22px;height:22px;padding:0 6px;font-size:12px}
+      .fsk-tab-n{display:inline-grid;flex:none;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--wms-bg,#f4f7f6);font-size:11px;font-style:normal}
+      #find-sku-screen .cut-tab[aria-selected="true"] .fsk-tab-n{background:var(--wms-brand,#005f41);color:#fff}
+      .fsk-message{min-height:0;margin:0 0 12px;padding:10px 14px;border-radius:12px;background:rgba(22,132,91,.08)}
+      .fsk-message:empty{display:none}
+      .fsk-message[data-tone="error"]{background:rgba(194,65,59,.08)}.fsk-message[data-tone="warn"]{background:rgba(183,121,31,.1)}
+      .fsk-search{display:flex;gap:8px}.fsk-search .cut-input{flex:1;min-width:0}
+      #find-sku-screen .fsk-search .cut-secondary{flex:none;width:auto;min-height:52px;padding:0 20px}
+      .fsk-cam-empty{display:grid;justify-items:center;gap:10px;margin-top:12px;padding:16px;border:1.5px dashed var(--wms-border,#d9e2de);border-radius:16px;background:var(--wms-bg,#f4f7f6);text-align:center}
+      .fsk-cam-empty[hidden]{display:none}
+      .fsk-cam-empty p{margin:0;color:var(--wms-muted,#60736b);font-size:13px;line-height:1.45}
+      .fsk-cam-empty__icon{display:grid;place-items:center;width:44px;height:44px;border-radius:14px;background:var(--wms-surface,#fff);color:var(--wms-brand,#005f41)}
+      .fsk-cam-empty__icon svg{width:24px;height:24px}
+      #find-sku-screen .fsk-cam-empty .cut-primary{width:100%;max-width:360px}
+      .fsk-camera{margin-top:12px}
+      .fsk-cam-btn{position:absolute;min-width:44px;min-height:44px;border:0;border-radius:22px;background:rgba(0,0,0,.6);color:#fff;font-weight:800;cursor:pointer}
+      .fsk-cam-off{top:8px;right:8px;font-size:24px;line-height:1}
+      .fsk-shot{left:10px;bottom:10px;padding:0 20px}
+      .fsk-alt{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.fsk-alt>*{flex:1 1 140px}.fsk-alt>[hidden]{display:none}
+      .fsk-card{cursor:pointer}
+      .fsk-card[data-best="true"]{border-color:#00a873;box-shadow:inset 0 0 0 1px #00a873}
+      .fsk-conf{padding:3px 9px;border-radius:10px;font-size:11px;font-weight:800;letter-spacing:.03em;text-transform:uppercase}
+      .fsk-conf--ok{background:rgba(0,168,115,.12);color:var(--wms-brand,#005f41)}.fsk-conf--warn{background:rgba(183,121,31,.12);color:var(--wms-warning,#b7791f)}
+      .fsk-card__id{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:8px}
+      .fsk-unit-chip{padding:2px 9px;border-radius:9px;background:var(--wms-text,#17251f);color:#fff;font-size:13px;font-weight:800}
+      .fsk-unit-chip[hidden]{display:none}
+      .fsk-card .fsk-name{margin:6px 0 4px}
+      .fsk-why{color:var(--wms-muted,#60736b);font-size:12px}
+      .fsk-why summary{display:flex;align-items:center;min-height:32px;cursor:pointer}
+      .fsk-why .fsk-tags{margin-top:4px}
+      #find-sku-screen .fsk-pick{min-height:48px;margin-top:6px}
+      .fsk-sel__id{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+      .fsk-link{min-height:44px;margin-left:auto;padding:0 10px;border:0;background:transparent;color:var(--wms-brand,#005f41);font:inherit;font-size:14px;font-weight:800;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+      .fsk-sel small.fsk-sel-combo{color:var(--wms-brand,#005f41);font-weight:700}
+      .fsk-sel-combo[hidden]{display:none}
+      .fsk-stepper{display:flex;flex:1;min-width:0;gap:6px}.fsk-stepper .cut-input{text-align:center}
+      .fsk-stepper button{flex:none;width:52px;min-height:52px;border:1px solid var(--wms-border,#d9e2de);border-radius:13px;background:var(--wms-surface,#fff);color:var(--wms-brand,#005f41);font-size:22px;font-weight:800;cursor:pointer}
+      .fsk-bar{position:sticky;bottom:0;z-index:5;display:flex;align-items:center;gap:12px;margin:18px -20px -20px;padding:12px 20px calc(12px + env(safe-area-inset-bottom));border-top:1px solid var(--wms-border,#d9e2de);border-radius:0 0 22px 22px;background:var(--wms-surface,#fff);box-shadow:0 -6px 16px rgba(23,37,31,.06)}
+      .fsk-bar[hidden]{display:none}
+      .fsk-bar__sum{flex:1;min-width:0;color:var(--wms-muted,#60736b);font-size:13px;font-weight:700;overflow-wrap:anywhere}
+      #find-sku-screen .fsk-bar .cut-primary{flex:none;width:auto}
+      #find-sku-screen.fsk-typing .fsk-bar{position:static;box-shadow:none}
+      .fsk-list{max-height:none;overflow:visible;margin-top:10px}
+      .fsk-list .cut-row{min-height:64px;cursor:pointer}
+      .fsk-list .cut-row input{width:22px;height:22px;margin:11px}
+      .cut-selectall[hidden],.fsk-list-note[hidden],.fsk-empty[hidden]{display:none}
+      .fsk-empty{display:grid;justify-items:center;gap:12px}.fsk-empty p{margin:0}
+      #find-sku-screen .fsk-empty .cut-primary{width:auto;min-width:200px}
+      .fsk-list-note{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;margin:12px 0 0}.fsk-list-note .fsk-link{margin-left:0}
+      @media(max-width:800px){
+        #find-sku-screen .cut-head__in{min-height:56px;padding-block:6px}
+        #find-sku-screen .cut-head h1{font-size:19px}
+        #find-sku-screen .cut-card h2{display:none}
+        #find-sku-screen .cut-tabs{gap:6px;margin-bottom:10px}
+        #find-sku-screen .cut-tab{min-height:46px;padding:0 4px;font-size:14px}
+        .fsk-camera{aspect-ratio:3/4;max-height:58vh}
+        .fsk-bar{margin:16px -16px -16px;padding:12px 16px calc(12px + env(safe-area-inset-bottom))}
+      }
+      @media(max-width:369px){.fsk-tab-n{display:none}}
     </style>
 <script>
 /* ===== NDS-ENGINE (bat dau) =====
@@ -5499,7 +5654,7 @@ var FSK_CORE = (function () {
         if (!screen || typeof NDS_ENGINE === "undefined" || typeof FSK_CORE === "undefined") return;
         const $ = id => document.getElementById(id);
         const message = $("fsk-message"), codeForm = $("fsk-code-form"), codeInput = $("fsk-code");
-        const camButton = $("fsk-cam"), shotButton = $("fsk-shot"), fileInput = $("fsk-file"), readButton = $("fsk-read");
+        const camButton = $("fsk-cam"), camEmpty = $("fsk-cam-empty"), shotButton = $("fsk-shot"), fileInput = $("fsk-file"), readButton = $("fsk-read");
         const cameraBox = $("fsk-camera"), video = $("fsk-video"), camStatusEl = $("fsk-cam-status"), zoomBox = $("fsk-zoom"), photo = $("fsk-photo");
         const raw = $("fsk-raw"), tags = $("fsk-tags"), tokenCount = $("fsk-token-count"), results = $("fsk-results"), catalogNote = $("fsk-catalog");
         const selBox = $("fsk-sel"), selEmpty = $("fsk-sel-empty"), calcBody = $("fsk-calc-body");
@@ -5516,8 +5671,10 @@ var FSK_CORE = (function () {
           tokens: [], removed: new Set(), rawSplit: "", cm: null, count: 0, at: 0, loading: null, run: 0,
           photo: "", reading: false,
           stream: null, track: null, zoom: 1, hardZoom: null, auto: null, scanEngine: null, raf: 0, lastSample: 0, lastScan: 0, prevGray: null,
-          selected: null, queue: [], busy: false, pollTimer: 0
+          selected: null, pickRun: 0, queue: [], busy: false, pollTimer: 0
         };
+        // Luật chung với PRINT SKU / PRINT UID (RULES.md "Gợi ý SKU Normal khi nhập SKU Combo").
+        const COMBO_NOTE = "Chọn mã Normal thì bước Số lượng tính theo đơn vị của mã Normal. Chọn “Tiếp tục với SKU Combo” nếu cần in đúng tem Combo.";
 
         const active = () => location.hash.replace(/^#/, "").split("&")[0] === "find-sku";
         const tell = (text, tone = "") => { message.textContent = text; message.dataset.tone = tone; };
@@ -5546,19 +5703,23 @@ var FSK_CORE = (function () {
           print: { btn: $("fsk-tab-print"), panel: screen.querySelector('[data-panel="print"]') }
         };
         let activeTab = storeGet("fsk-tab", "scan");
-        const setActiveTab = name => {
+        // Chỉ tự đặt con trỏ khi có chuột: trên điện thoại focus tự động bật bàn phím che mất camera.
+        const finePointer = () => window.matchMedia?.("(pointer: fine)").matches;
+        const setActiveTab = (name, fromUser = false) => {
           if (!tabs[name]) return;
-          if (name === "calc" && !state.selected) name = "scan";
+          if (name === "calc" && !state.selected) {
+            if (fromUser) tell("Chọn một SKU ở bước Quét trước — bấm “Chọn SKU này” ở kết quả.", "warn");
+            name = "scan";
+          }
           activeTab = name;
           storeSet("fsk-tab", name);
           Object.entries(tabs).forEach(([key, t]) => { const on = key === name; t.btn.setAttribute("aria-selected", String(on)); t.panel.dataset.active = String(on); });
           if (name !== "scan") stopCamera();
-          if (name === "scan") setTimeout(() => { if (active() && !state.stream) codeInput.focus(); }, 50);
-          if (name === "calc") setTimeout(() => (cdBox.hidden ? qtyInput : $("fsk-cd-total")).focus(), 50);
+          if (name === "scan") setTimeout(() => { if (active() && !state.stream && finePointer()) codeInput.focus(); }, 50);
+          if (name === "calc") setTimeout(() => { if (finePointer()) (cdBox.hidden ? qtyInput : $("fsk-cd-total")).focus(); }, 50);
         };
-        Object.entries(tabs).forEach(([key, t]) => t.btn.addEventListener("click", () => setActiveTab(key)));
-        $("fsk-goto-scan").addEventListener("click", () => setActiveTab("scan"));
-        $("fsk-goto-scan-2").addEventListener("click", () => setActiveTab("scan"));
+        Object.entries(tabs).forEach(([key, t]) => t.btn.addEventListener("click", () => setActiveTab(key, true)));
+        screen.addEventListener("click", event => { if (event.target.closest("[data-goto-scan]")) setActiveTab("scan", true); });
 
         // ---------- Danh mục SKU_Name: IndexedDB, 12 giờ tải lại ----------
         const openDb = () => new Promise((resolve, reject) => {
@@ -5689,12 +5850,19 @@ var FSK_CORE = (function () {
             ? `<div class="fsk-near"><b>Ý bạn là:</b> ${found.slice(0, 4).map(code => `<button class="cut-secondary" type="button" data-code="${esc(code)}">${esc(shown(code, "code"))} <small>${(cm.idx[code] || []).length} SKU</small></button>`).join("")}</div>`
             : "";
         };
-        const card = (r, rank) => {
+        // Thẻ gọn: mức khớp bằng chữ (không dùng % làm thông tin chính), ĐƠN VỊ nổi bật vì bản Normal và
+        // Combo cùng mã hàng thường ra cùng điểm (vd Roman N0144: "mm" và "cuộn"); % và từ khoá khớp
+        // để trong "Vì sao gợi ý". Chạm cả thẻ hay nút đều chọn.
+        const card = (r, best) => {
           const matched = ["code", "spec", "color", "brand"].flatMap(role => (r.khop?.[role] || []).map(t => `<span class="fsk-tag" data-role="${role}"><small>${ROLE_NAMES[role]}</small>${esc(shown(t, role))}</span>`)).join("");
-          return `<article class="fsk-card"><div class="fsk-card__top"><b class="fsk-rank">#${rank}</b><strong class="fsk-sku">${esc(r.sku)}</strong>` +
-            (r.type === "COMBO" ? '<span class="fsk-badge">Combo</span>' : "") + (r.status === "INACTIVE" ? '<span class="fsk-badge">Ngừng</span>' : "") +
-            `<span class="fsk-pct">${Number(r.pct) || 0}%</span></div><p class="fsk-name">${esc(r.pn)}</p>` + (matched ? `<div class="fsk-tags">${matched}</div>` : "") +
-            `<button class="cut-primary fsk-pick" type="button" data-sku="${esc(r.sku)}" data-pn="${esc(r.pn)}">Chọn · tính số lượng →</button></article>`;
+          const unit = FSK_CORE.unitOf(r.pn).raw;
+          return `<article class="fsk-card" data-sku="${esc(r.sku)}" data-pn="${esc(r.pn)}"${best ? ' data-best="true"' : ""}><div class="fsk-card__top">` +
+            ((r.khop?.code || []).length ? '<span class="fsk-conf fsk-conf--ok">Khớp mã</span>' : '<span class="fsk-conf fsk-conf--warn">Cần kiểm tra</span>') +
+            (r.type === "COMBO" ? '<span class="fsk-badge">Combo</span>' : "") + (r.status === "INACTIVE" ? '<span class="fsk-badge">Ngừng</span>' : "") + "</div>" +
+            `<div class="fsk-card__id"><strong class="fsk-sku">${esc(r.sku)}</strong>${unit ? `<span class="fsk-unit-chip" title="Đơn vị của SKU">${esc(unit)}</span>` : ""}</div>` +
+            `<p class="fsk-name">${esc(r.pn)}</p>` +
+            `<details class="fsk-why"><summary>Vì sao gợi ý · khớp ${Number(r.pct) || 0}%</summary>${matched ? `<div class="fsk-tags">${matched}</div>` : '<p class="cut-note">Không có từ khoá riêng nào khớp.</p>'}</details>` +
+            `<button class="cut-primary fsk-pick" type="button" data-sku="${esc(r.sku)}" data-pn="${esc(r.pn)}">Chọn SKU này</button></article>`;
         };
         const match = async () => {
           const run = state.run;
@@ -5727,9 +5895,9 @@ var FSK_CORE = (function () {
             results.innerHTML = `<p class="cut-empty">Không tìm được SKU nào khớp. Bỏ bớt từ khoá đọc nhầm (bấm ×), hoặc gõ mã in trên tem.</p>${nearCodes(cm)}`;
             return { found, coMaKhop: false };
           }
-          const warn = found.coMaKhop ? "" : `<div class="fsk-warn"><b>Chưa khớp được MÃ HÀNG nào.</b> Gợi ý dưới đây chỉ dựa vào chữ chung (loại hàng · hãng · màu), đừng chọn vội — gõ mã in trên tem vào ô trên cùng là ra đúng ngay.${nearCodes(cm)}</div>`;
+          const warn = found.coMaKhop ? "" : `<div class="fsk-warn"><b>Chưa khớp được mã hàng.</b> Gợi ý dưới đây chỉ dựa vào chữ chung (loại hàng · hãng · màu) — đừng chọn vội, gõ mã in trên tem vào ô tìm là ra đúng ngay.${nearCodes(cm)}</div>`;
           const note = inactive ? '<div class="fsk-warn">Không có SKU đang hoạt động nào khớp — dưới đây là SKU khớp nhất trong nhóm ngừng hoạt động.</div>' : "";
-          results.innerHTML = note + warn + found.map((r, i) => card(r, i + 1)).join("");
+          results.innerHTML = note + warn + found.map((r, i) => card(r, i === 0 && Boolean(found.coMaKhop))).join("");
           return { found, coMaKhop: Boolean(found.coMaKhop) };
         };
 
@@ -5785,7 +5953,7 @@ var FSK_CORE = (function () {
             if (state.stream) camStatus(quotaOut ? "Hết lượt đọc tem hôm nay" : "AI chưa đọc được — thử lại hoặc gõ mã", "warn");
             else codeInput.focus();
           } finally {
-            if (run === state.run) { state.reading = false; readButton.disabled = !state.photo; }
+            if (run === state.run) { state.reading = false; readButton.disabled = false; readButton.hidden = !state.photo; }
           }
         };
 
@@ -5814,7 +5982,7 @@ var FSK_CORE = (function () {
           return canvas.toDataURL("image/jpeg", 0.85);
         };
         const grab = () => { const r = frameRegion(); return scaled(video, r.sx, r.sy, r.sw, r.sh); };
-        const showPhoto = dataUrl => { state.photo = dataUrl; photo.src = dataUrl; photo.hidden = false; readButton.disabled = false; };
+        const showPhoto = dataUrl => { state.photo = dataUrl; photo.src = dataUrl; photo.hidden = false; readButton.hidden = false; };
         const usePhoto = dataUrl => { resetLabel(); showPhoto(dataUrl); readLabel(dataUrl, false); };
         const onBarcode = value => {
           stopCamera();
@@ -5867,8 +6035,7 @@ var FSK_CORE = (function () {
           if (state.stream) state.stream.getTracks().forEach(track => track.stop());
           state.stream = null; state.track = null; state.hardZoom = null; state.prevGray = null;
           video.srcObject = null; video.style.transform = "";
-          cameraBox.hidden = true; shotButton.hidden = true;
-          camButton.textContent = "Bật camera";
+          cameraBox.hidden = true; camEmpty.hidden = false;
         };
         const startCamera = async () => {
           if (!window.isSecureContext) return tell("Camera chỉ mở được trên https hoặc localhost — bấm “Chọn ảnh” hoặc gõ mã.", "error");
@@ -5885,8 +6052,7 @@ var FSK_CORE = (function () {
           if (!active() || activeTab !== "scan") return stopCamera();
           video.srcObject = state.stream;
           await video.play().catch(() => {});
-          cameraBox.hidden = false; shotButton.hidden = false;
-          camButton.textContent = "Tắt camera";
+          cameraBox.hidden = false; camEmpty.hidden = true;
           state.track = state.stream.getVideoTracks()[0] || null;
           const caps = state.track?.getCapabilities?.() || {};
           state.hardZoom = caps.zoom && caps.zoom.max > 1 ? { min: caps.zoom.min || 1, max: Math.min(caps.zoom.max, 8) } : null;
@@ -5988,20 +6154,42 @@ var FSK_CORE = (function () {
         };
         const renderSelected = () => {
           const s = state.selected;
+          tabs.calc.btn.setAttribute("aria-disabled", String(!s));
           selBox.hidden = !s; selEmpty.hidden = Boolean(s); calcBody.hidden = !s;
           if (!s) return;
           $("fsk-sel-sku").textContent = s.sku;
+          $("fsk-sel-unit-chip").textContent = s.unit.raw; $("fsk-sel-unit-chip").hidden = !s.unit.raw;
           $("fsk-sel-name").textContent = s.pn;
+          $("fsk-sel-combo").hidden = !s.combo;
+          if (s.combo) $("fsk-sel-combo").textContent = `Đổi từ SKU Combo ${s.combo.sku} · 1 Combo = ${fmt(s.combo.ratio, 3)}${s.unit.raw ? " " + s.unit.raw : ""}`;
           $("fsk-sel-unit").textContent = s.unit.raw ? `Đơn vị của SKU: ${s.unit.raw}${s.unit.isLength ? " — số lượng in lên tem tính bằng mm" : ""}` : "Tên SKU không ghi đơn vị";
           $("fsk-qty-unit").textContent = s.unit.raw || "";
           $("fsk-qty-hint").textContent = s.unit.isLength ? "tính từ cân bên dưới, hoặc gõ thẳng" : "gõ đúng số sẽ in lên tem";
+          syncAddBar();
         };
-        const choose = (sku, pn) => {
+        // Dòng tóm tắt trên thanh "Thêm vào chờ in": đúng cái sẽ in — số lượng là số in lên MỖI tem, không nhân số tem.
+        const syncAddBar = () => {
+          const s = state.selected, q = qtyInput.value.trim(), copies = Number(copiesInput.value);
+          $("fsk-add-sum").textContent = s ? `${s.sku} · ${q ? labelQuantity(q) + (s.unit.raw ? " " + s.unit.raw : "") : "không ghi số lượng"} · ${Number.isInteger(copies) && copies > 0 ? copies : "?"} tem` : "";
+        };
+        const choose = async (sku, pn) => {
           stopCamera();
+          let combo = null;
+          // SKU Combo: hỏi SKU Normal trước khi tính số lượng (đơn vị hai mã khác nhau, vd cuộn ↔ mm) —
+          // cùng hộp chọn và cùng RPC sku_combo_lookup với PRINT SKU / PRINT UID.
+          if (/^\s*\(combo\)/i.test(pn) && window.SkuComboPicker?.chooseNormal) {
+            const run = ++state.pickRun;
+            const valid = () => active() && state.pickRun === run;
+            tell(`Đang tra SKU Normal của Combo ${sku}…`);
+            const choice = await window.SkuComboPicker.chooseNormal(sku, valid, COMBO_NOTE);
+            if (!valid()) return;
+            if (choice === "cancel" || choice === null) return tell("");
+            if (choice && typeof choice === "object") { combo = { sku, pn, ratio: Number(choice.quantity) }; sku = choice.normal_sku; pn = choice.product_name; }
+          }
           // Đã chọn SKU là xong tấm tem này: khép ảnh lại để mã gõ tiếp theo là một lượt tìm mới,
           // không bị gộp với từ khoá của tem cũ. Kết quả cũ vẫn còn cho nút "Chọn SKU khác".
-          state.photo = ""; photo.hidden = true; photo.removeAttribute("src"); readButton.disabled = true;
-          state.selected = { sku, pn, unit: FSK_CORE.unitOf(pn) };
+          state.photo = ""; photo.hidden = true; photo.removeAttribute("src"); readButton.hidden = true;
+          state.selected = { sku, pn, unit: FSK_CORE.unitOf(pn), combo };
           qtyInput.value = ""; qtyDoc.textContent = ""; copiesInput.value = "1";
           renderSelected();
           if (state.selected.unit.isLength) {
@@ -6012,7 +6200,7 @@ var FSK_CORE = (function () {
             compute();
           } else openCalc(false);
           setActiveTab("calc");
-          tell(`Đã chọn SKU ${sku} — nhập số lượng và số tem.`, "ok");
+          tell(combo ? `Đã đổi SKU Combo ${combo.sku} sang SKU Normal ${sku} — nhập số lượng và số tem.` : `Đã chọn SKU ${sku} — nhập số lượng và số tem.`, "ok");
         };
         cdField.spec.addEventListener("click", event => { const b = event.target.closest("button[data-mm]"); if (b) setSpec(Number(b.dataset.mm)); });
         cdField.unit.addEventListener("click", event => { const b = event.target.closest("button[data-unit]"); if (b) setUnit(b.dataset.unit); });
@@ -6029,6 +6217,14 @@ var FSK_CORE = (function () {
         qtyInput.addEventListener("input", () => {
           const value = qtyInput.value.trim();
           qtyDoc.textContent = value ? `Trên tem sẽ in: ${labelQuantity(value)}${state.selected?.unit.isLength && /^\d+$/.test(value) ? ` mm = ${fmt(Number(value) / 1000, 1)} m` : ""}` : "";
+          syncAddBar();
+        });
+        copiesInput.addEventListener("input", syncAddBar);
+        calcBody.addEventListener("click", event => {
+          const b = event.target.closest("button[data-step]");
+          if (!b) return;
+          copiesInput.value = String(Math.min(500, Math.max(1, (parseInt(copiesInput.value, 10) || 1) + Number(b.dataset.step))));
+          syncAddBar();
         });
         cdLoad();
 
@@ -6039,9 +6235,9 @@ var FSK_CORE = (function () {
         const printable = item => item.status === "pending" || item.status === "failed";
         const renderQueue = () => {
           queueBadge.textContent = state.queue.length;
-          list.innerHTML = state.queue.length
-            ? state.queue.map(item => `<div class="cut-row" data-id="${esc(item.id)}" data-status="${esc(item.status)}"><input type="checkbox" ${printable(item) ? "checked" : "disabled"} aria-label="Chọn ${esc(item.sku)}"><div class="cut-row__body"><strong>${esc(item.sku)}</strong><span>${esc(item.pn)}</span><small>Số lượng ${esc(item.quantity ? labelQuantity(item.quantity) : "—")}${item.unit ? " " + esc(item.unit) : ""} · ${item.copies} tem · ${esc(item.status === "failed" && item.error ? `in lỗi: ${item.error}` : STATUS_TEXT[item.status] || item.status)}</small></div><button class="fsk-row-del" type="button" data-remove="${esc(item.id)}" ${item.status === "queued" ? "disabled" : ""} aria-label="Xoá ${esc(item.sku)} khỏi chờ in">×</button></div>`).join("")
-            : '<div class="cut-empty">Chưa có tem chờ in. Quét tem ở bước 1, tính số lượng ở bước 2 rồi bấm “Thêm vào chờ in”.</div>';
+          const empty = !state.queue.length;
+          $("fsk-list-empty").hidden = !empty; $("fsk-all-row").hidden = empty; $("fsk-list-note").hidden = empty; $("fsk-print-bar").hidden = empty;
+          list.innerHTML = empty ? "" : state.queue.map(item => `<div class="cut-row" data-id="${esc(item.id)}" data-status="${esc(item.status)}"><input type="checkbox" ${printable(item) ? "checked" : "disabled"} aria-label="Chọn ${esc(item.sku)}"><div class="cut-row__body"><strong>${esc(item.sku)}</strong><span>${esc(item.pn)}</span><small>Số lượng ${esc(item.quantity ? labelQuantity(item.quantity) : "—")}${item.unit ? " " + esc(item.unit) : ""} · ${item.copies} tem · ${esc(item.status === "failed" && item.error ? `in lỗi: ${item.error}` : STATUS_TEXT[item.status] || item.status)}</small></div><button class="fsk-row-del" type="button" data-remove="${esc(item.id)}" ${item.status === "queued" ? "disabled" : ""} aria-label="Xoá ${esc(item.sku)} khỏi chờ in">×</button></div>`).join("");
           syncSelection();
         };
         const selectedItems = () => [...list.querySelectorAll(".cut-row input:checked")].map(input => state.queue.find(item => item.id === input.closest(".cut-row").dataset.id)).filter(Boolean);
@@ -6050,10 +6246,11 @@ var FSK_CORE = (function () {
           selectAll.checked = boxes.length > 0 && chosen.length === boxes.length;
           selectAll.indeterminate = chosen.length > 0 && chosen.length < boxes.length;
           selectAll.disabled = !boxes.length;
-          selectedCountEl.textContent = `Đã chọn ${chosen.length}`;
+          list.querySelectorAll(".cut-row").forEach(row => { row.dataset.selected = String(Boolean(row.querySelector("input:checked"))); });
           const copies = selectedItems().reduce((n, item) => n + item.copies, 0);
+          selectedCountEl.textContent = chosen.length ? `Đã chọn ${chosen.length} SKU · ${copies} tem` : "Chưa chọn tem";
           printButton.disabled = !chosen.length || state.busy;
-          printButton.textContent = chosen.length ? `In ${copies} tem (${chosen.length} SKU)` : "In tem đã chọn";
+          printButton.textContent = chosen.length ? `In ${copies} tem` : "In tem";
         };
         const addToQueue = () => {
           const s = state.selected;
@@ -6115,6 +6312,7 @@ var FSK_CORE = (function () {
 
         // ---------- Sự kiện ----------
         camButton.addEventListener("click", () => (state.stream ? stopCamera() : startCamera()));
+        $("fsk-cam-off").addEventListener("click", stopCamera);
         shotButton.addEventListener("click", capture);
         zoomBox.addEventListener("click", event => { const b = event.target.closest("button[data-zoom]"); if (b) setZoom(Number(b.dataset.zoom)); });
         fileInput.addEventListener("change", () => {
@@ -6133,6 +6331,7 @@ var FSK_CORE = (function () {
           const value = codeInput.value.trim();
           if (!value) return codeInput.focus();
           let cm;
+          if (!state.cm) tell("Đang tải danh mục SKU lần đầu…");
           try { cm = await ensureCatalog(); } catch (_) { return tell("Chưa tải được danh mục SKU — kiểm tra mạng rồi bấm “Tải lại danh mục”.", "error"); }
           const split = NDS_ENGINE.tuVanBan(value, cm);
           const pieces = ["code", "spec", "color", "brand"].reduce((n, role) => n + (split[role] || []).length, 0);
@@ -6155,8 +6354,8 @@ var FSK_CORE = (function () {
           match();
         });
         results.addEventListener("click", event => {
-          const chooser = event.target.closest("button[data-sku]");
-          if (chooser) return choose(chooser.dataset.sku, chooser.dataset.pn);
+          const chooser = event.target.closest("button[data-sku], .fsk-card[data-sku]");
+          if (chooser && !event.target.closest(".fsk-why")) return choose(chooser.dataset.sku, chooser.dataset.pn);
           const near = event.target.closest("button[data-code]");
           if (near) {
             state.tokens = state.tokens.filter(k => k.vai !== "code" || state.cm?.idx[k.t]);
@@ -6171,9 +6370,29 @@ var FSK_CORE = (function () {
         list.addEventListener("change", syncSelection);
         list.addEventListener("click", event => {
           const b = event.target.closest("button[data-remove]");
-          if (!b || b.disabled) return;
-          state.queue = state.queue.filter(item => item.id !== b.dataset.remove);
-          saveQueue(); renderQueue();
+          if (b) {
+            if (b.disabled) return;
+            state.queue = state.queue.filter(item => item.id !== b.dataset.remove);
+            saveQueue(); renderQueue();
+            return;
+          }
+          // Chạm cả dòng để chọn/bỏ chọn — ô tick nhỏ khó bấm bằng một tay.
+          const row = event.target.closest(".cut-row"), box = row?.querySelector('input[type="checkbox"]');
+          if (!box || box.disabled || event.target === box) return;
+          box.checked = !box.checked;
+          syncSelection();
+        });
+        // Bàn phím ảo mở trên điện thoại: thanh dính đáy sẽ che ô đang gõ, nên trả nó về cuối thẻ. Bỏ lớp
+        // trễ 300 ms để cú chạm vào chính nút trên thanh không trượt khi thanh đổi chỗ.
+        let typingTimer = 0;
+        const typingField = el => Boolean(el?.matches?.('input:not([type="checkbox"]):not([type="file"]), textarea'));
+        screen.addEventListener("focusin", event => {
+          if (!typingField(event.target) || !window.matchMedia?.("(max-width: 800px)").matches) return;
+          clearTimeout(typingTimer); screen.classList.add("fsk-typing");
+        });
+        screen.addEventListener("focusout", () => {
+          clearTimeout(typingTimer);
+          typingTimer = setTimeout(() => { if (!typingField(document.activeElement)) screen.classList.remove("fsk-typing"); }, 300);
         });
         selectAll.addEventListener("change", () => { list.querySelectorAll(".cut-row input:not(:disabled)").forEach(x => { x.checked = selectAll.checked; }); syncSelection(); });
         printButton.addEventListener("click", printSelected);
@@ -6266,7 +6485,9 @@ var FSK_CORE = (function () {
         resultsBody.addEventListener('click',event=>{const btn=event.target.closest('.cut-uid-link');if(btn)openBarcodeModal(btn.dataset.uid)});
         barcodeModalClose.addEventListener('click',closeBarcodeModal);
         barcodeModal.addEventListener('click',event=>{if(event.target===barcodeModal)closeBarcodeModal()});
-        const runSearch=async()=>{try{const r=await rpc('cut_group_uid_search',{p_sku:skuFilter.value.trim(),p_lot:lotFilter.value.trim(),p_limit:5000});if(!r.ok)throw new Error(r.error?.message);searchItems=r.data?.items||[];mergeStaged(searchItems);renderSearch();renderOpen();tell(`Tìm thấy ${searchItems.length} UID đã cắt.`,'ok')}catch(e){tell(`Không tra cứu được: ${e.message}`,'error')}};
+        // Lọc theo ngày cắt, giờ Việt Nam (supabase/cut_group_uid_v4_search_date_filter.sql) — để trống là không lọc.
+        const dateFrom=document.getElementById('cut-date-from'),dateTo=document.getElementById('cut-date-to'),viDay=v=>v.split('-').reverse().join('/');
+        const runSearch=async()=>{const from=dateFrom.value||null,to=dateTo.value||null;if(from&&to&&from>to){tell('Ngày bắt đầu phải trước hoặc bằng ngày kết thúc.','error');return}try{const r=await rpc('cut_group_uid_search',{p_sku:skuFilter.value.trim(),p_lot:lotFilter.value.trim(),p_date_from:from,p_date_to:to,p_limit:5000});if(!r.ok)throw new Error(r.error?.message);searchItems=r.data?.items||[];mergeStaged(searchItems);renderSearch();renderOpen();const range=from&&to?(from===to?` ngày ${viDay(from)}`:` từ ${viDay(from)} đến ${viDay(to)}`):from?` từ ${viDay(from)}`:to?` đến ${viDay(to)}`:'';tell(`Tìm thấy ${searchItems.length} UID đã cắt${range}.`,'ok')}catch(e){tell(`Không tra cứu được: ${e.message}`,'error')}};
         form.addEventListener('submit',async event=>{event.preventDefault();const uid=code.value.trim();if(!uid||busy)return;busy=true;add.disabled=true;tell(`Đang kiểm tra ${uid}…`);try{const r=await rpc('cut_group_uid_scan',{p_group_uid:uid});if(!r.ok){const extra=r.error?.code==='GROUP_UID_NOT_READY'?' Vào mục Nạp dữ liệu Group UID để cập nhật database.':'';tell((r.error?.message||'Không lưu được UID')+extra,r.error?.code==='ALREADY_CUT'?'warn':'error');return}const d=r.data;last.hidden=false;last.innerHTML=`<strong>${esc(d.groupUid)} · ${esc(d.sku)}</strong><span>${esc(d.productName)}</span><small>Lot ${esc(d.lot||'—')} · Roll ${esc(d.roll||'—')}</small>`;code.value='';tell('Đã lưu tem. Sang Tra cứu để chọn in khi cần.','ok');await Promise.all([loadOpen({quiet:true}),runSearch()])}catch(e){tell(`Chưa rõ UID đã lưu hay chưa: ${e.message}. Đang tải lại để đối chiếu.`,'error');loadOpen({quiet:true})}finally{busy=false;add.disabled=false;syncSelection();code.focus()}});
         list.addEventListener('change',event=>{const row=event.target.closest('.cut-row');if(row&&!event.target.checked){stagedItems.delete(row.dataset.code);renderOpen();return}syncSelection()});
         selectAll.addEventListener('change',()=>{if(!selectAll.checked){stagedItems.clear();renderOpen();return}list.querySelectorAll('.cut-row input:not(:disabled)').forEach(x=>x.checked=true);syncSelection()});

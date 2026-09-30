@@ -211,8 +211,16 @@ python scripts/apply_supabase_sql.py supabase/cut_group_uid_v1.sql
 ```
 
 Danh sách chờ in nằm trên Supabase nên vẫn còn khi tải lại trang hoặc đổi thiết
-bị. Phần tra cứu lọc theo SKU và xuất `.xlsx` có thiết lập giấy A4 ngang, gồm
-SKU, UID, Lot, Roll và Tên SP.
+bị. Phần tra cứu lọc theo SKU, Lot và **ngày cắt** (từ ngày → đến ngày, giờ Việt Nam; để
+trống là không lọc) và xuất `.xlsx` có thiết lập giấy A4 ngang, gồm SKU, UID, Lot, Roll và
+Tên SP. Bộ lọc ngày cần hàm tra cứu bản v4 (đã áp dụng 30/09/2026):
+
+```powershell
+python scripts/apply_supabase_sql.py supabase/cut_group_uid_v4_search_date_filter.sql --allow-destructive
+```
+
+`--allow-destructive` chỉ vì file `drop` chữ ký hàm v3 để tạo lại với 2 tham số ngày; hai
+tham số có mặc định nên trang web cũ vẫn gọi được hàm mới.
 
 ## Tìm SKU bằng camera
 
@@ -224,7 +232,13 @@ Mở **TÌM SKU** ở WH-MATERIAL hoặc `#find-sku`. Ba bước, bố cục nh�
    (bộ quét chung với XẢ VẢI). Có thể "Chụp ngay", "Chọn ảnh", hoặc gõ mã in trên tem (`N0144`,
    `C3966 Tex 27`) — không cần AI. Bộ đối chiếu `NDS_ENGINE` (chép nguyên từ tab "Nhận diện SKU"
    của AuditFactory) gợi ý 3 SKU từ `SKU_Name` ngay trong trình duyệt; danh mục tải một lần, lưu
-   IndexedDB, 12 giờ tự tải lại.
+   IndexedDB, 12 giờ tự tải lại. Mỗi thẻ gợi ý ghi mức khớp bằng chữ ("Khớp mã" / "Cần kiểm
+   tra") và **đơn vị** của SKU — bản Normal và Combo cùng mã hàng thường ra cùng điểm, khác nhau
+   ở đơn vị (vd `mm` và `cuộn`); % và từ khoá khớp nằm trong "Vì sao gợi ý".
+   **Chọn SKU Combo** thì hiện hộp gợi ý SKU Normal — cùng hộp và cùng RPC `sku_combo_lookup`
+   với PRINT SKU / PRINT UID (`window.SkuComboPicker.chooseNormal`): chọn Normal thì bước 2
+   tính theo đơn vị của Normal và ghi "Đổi từ SKU Combo … · 1 Combo = …"; "Tiếp tục với SKU
+   Combo" giữ Combo; "Hủy" ở lại bước 1.
 2. **Tính toán số lượng** — SKU đơn vị `mm` (ô cuối tên) mở sẵn bảng **quy đổi cân → mm** theo
    đúng công thức tab "Chuyển đổi cân" của AuditFactory: quy cách cuộn nguyên (tự đọc `5000m` từ
    tên), tổng khối lượng (kg/gr), số cuộn thừa, khối lượng lõi, khối lượng cuộn nguyên (cân cả
