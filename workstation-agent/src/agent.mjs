@@ -5,8 +5,9 @@ import { renderJobTspl } from "./render.mjs";
 import { measureTextWidths } from "./text-metrics.mjs";
 import { isTransientNetworkError } from "./network-retry.mjs";
 import { createSentJournal } from "./sent-journal.mjs";
+import { createRealtimeWake } from "./realtime-wake.mjs";
 
-export const AGENT_VERSION = "0.8.3";
+export const AGENT_VERSION = "0.8.4";
 
 // Báo "hoàn tất" SAU khi tem đã ra giấy thì không được bỏ cuộc vì mạng: thử
 // lại giãn dần tới 30 giây/lần, khoảng 10 phút. Quá nữa thì để sổ tay lo — hết
@@ -15,6 +16,38 @@ const REPORT_RETRY_DELAYS_MS = [2000, 5000, 10000, 20000, 30000];
 const REPORT_MAX_ATTEMPTS = 25;
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * Nhịp hỏi hàng đợi (0.8.4). Trước đây 1 giây/lần 24/7 (~86.000 lần gọi/ngày) chiếm gần hết
+ * 1 GB nhật ký/tháng của Supabase gói Free. Nay: vừa in xong (trong activeWindowMs) vẫn hỏi
+ * nhanh để bắt các tem tiếp theo của cùng đợt; rảnh lâu thì hỏi thưa — tín hiệu Realtime
+ * (realtime-wake.mjs) sẽ đánh thức ngay khi có lệnh mới, còn nhịp thưa chỉ là dự phòng.
+ * Không có Realtime (bị tường lửa chặn, đang nối lại) thì hỏi dày hơn một chút.
+ */
+export function nextPollDelay({ now, lastJobAt, wakeConnected, config }) {
+  if (now - lastJobAt < config.activeWindowMs) return config.pollIntervalMs;
+  return wakeConnected ? config.idlePollMs : config.idlePollNoWakeMs;
+}
+
+// Chờ có thể bị đánh thức: tín hiệu tới trong lúc đang chờ thì thức ngay; tới trong lúc đang
+// in thì ghi nhớ để vòng sau không chờ nữa.
+export function createWaiter() {
+  let pending = false;
+  let release = null;
+  return {
+    wait(ms) {
+      if (pending) { pending = false; return Promise.resolve("wake"); }
+      return new Promise((resolve) => {
+        const timer = setTimeout(() => { release = null; resolve("timeout"); }, ms);
+        release = () => { clearTimeout(timer); release = null; resolve("wake"); };
+      });
+    },
+    wake() {
+      if (release) release();
+      else pending = true;
+    }
+  };
+}
 
 function publicState(config, printer) {
   return {
@@ -194,21 +227,36 @@ export async function processClaimedJob(input, dependencies) {
   return { ok: true, result, reported };
 }
 
-export async function runService(config, queue, logger, signal, lock) {
+export async function runService(config, queue, logger, signal, lock, dependencies = {}) {
   logger.info(`Agent ${config.agentId} v${AGENT_VERSION} khởi động; hỗ trợ ${CAPABILITIES.join(", ")}`);
   const journal = createSentJournal(config.tempDir, { logger });
+  const waiter = createWaiter();
+  signal?.addEventListener?.("abort", () => waiter.wake());
+  const wakeEnabled = config.realtimeWake && config.queueProvider === "supabase" && config.supabaseUrl && config.supabasePublishableKey;
+  const wake = wakeEnabled
+    ? (dependencies.createWake ?? createRealtimeWake)({ supabaseUrl: config.supabaseUrl, publishableKey: config.supabasePublishableKey, logger })
+    : null;
+  if (wake) wake.start(() => waiter.wake());
+  else logger.info(`Không dùng Realtime — hỏi hàng đợi mỗi ${config.idlePollNoWakeMs / 1000}s khi rảnh`);
+  const askPrinter = dependencies.queryPrinter ?? queryPrinter;   // chỉ thay trong test
+  let lastJobAt = 0;
   while (!signal?.aborted) {
     try {
       lock?.touch?.();
-      const printer = await queryPrinter(config);
+      const printer = await askPrinter(config);
       const state = publicState(config, printer);
       const claim = await queue.claim(state);
-      if (claim?.job) await processClaimedJob(claim.job, { config, queue, logger, signal, journal });
-      else await wait(config.pollIntervalMs);
+      if (claim?.job) {
+        lastJobAt = Date.now();
+        await processClaimedJob(claim.job, { config, queue, logger, signal, journal });
+      } else {
+        await waiter.wait(nextPollDelay({ now: Date.now(), lastJobAt, wakeConnected: Boolean(wake?.connected()), config }));
+      }
     } catch (error) {
       logger.error("Lỗi vòng quét", String(error.message || error).slice(0, 200));
       await wait(Math.max(config.pollIntervalMs, 3000));
     }
   }
+  wake?.stop();
   logger.info("Agent đã dừng an toàn");
 }

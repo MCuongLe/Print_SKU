@@ -2,6 +2,26 @@
 
 Agent Windows độc lập phục vụ ứng dụng Print SKU. Bản 0.7.0 dùng tem Fabric Relaxation viết tay hoàn toàn; frontend chỉ chọn số lượng tem.
 
+## Cập nhật 0.8.4 — Realtime đánh thức, hỏi thưa khi rảnh
+
+Bản cũ hỏi hàng đợi mỗi giây 24/7 (~86.000 lần/ngày), chiếm gần hết 1 GB nhật ký/tháng
+của Supabase gói Free. Bản 0.8.4:
+
+- Giữ một kết nối Supabase Realtime (WebSocket có sẵn của Node, không thêm thư viện); lệnh
+  vào hoặc quay về hàng đợi thì trigger `print_jobs_wake_agent` phát tín hiệu và agent hỏi
+  hàng đợi ngay (đo thật: ~1 ms sau khi lệnh được ghi).
+- Khi rảnh chỉ hỏi dự phòng mỗi 20 giây (10 giây nếu chưa nối được Realtime); trong 120 giây
+  sau mỗi lệnh vẫn hỏi 1 giây/lần để bắt các tem tiếp theo của cùng đợt. Số lần gọi giảm
+  khoảng 20 lần. Tin đầu tiên ngay sau khi Realtime khởi động đường phát có thể bị lỡ — nhịp
+  dự phòng lo phần đó, tệ nhất tem đầu chậm 20 giây.
+- Cấu hình trong `config\.env`: `AGENT_IDLE_POLL_MS`, `AGENT_IDLE_POLL_NO_WAKE_MS`,
+  `AGENT_ACTIVE_WINDOW_MS`, `REALTIME_WAKE=off` để quay về cách cũ.
+
+Cần chạy `deployment/print_queue_v5_realtime_wake.sql` một lần (đã áp dụng ngày 30/09/2026)
+và đưa `deployment/index.html` lên web: ngưỡng "Chưa rõ máy in" nâng từ 15 lên 45 giây cho
+khớp nhịp hỏi thưa. Máy trạm phải ra được `wss://<project>.supabase.co` (cổng 443); bị chặn thì
+agent tự lùi về hỏi mỗi 10 giây và ghi log "Realtime: mất kết nối".
+
 ## Cập nhật 0.8.3 — in đủ tên sản phẩm trên mọi tem
 
 - Tem Group UID chia dòng tên theo bề rộng chữ thật như tem SKU, tên dài tự thu nhỏ

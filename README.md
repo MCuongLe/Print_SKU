@@ -240,6 +240,7 @@ Triển khai một lần:
 
 ```powershell
 python scripts/apply_supabase_sql.py supabase/sku_vision_v1.sql   # bộ đếm lượt đọc tem
+python scripts/apply_supabase_sql.py supabase/print_queue_v5_realtime_wake.sql --allow-destructive   # agent 0.8.4: Realtime đánh thức (DROP chỉ là drop trigger if exists)
 python scripts/deploy_sku_vision.py                               # token cần quyền "Edge Functions: write"
 ```
 

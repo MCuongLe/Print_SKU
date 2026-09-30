@@ -39,13 +39,13 @@ Copy-Item -LiteralPath $NodePath -Destination (Join-Path $bundledNodeDir 'node.e
 
 # Include the matching static page and additive queue migration for deployment.
 $repoRoot = Split-Path -Parent $agentRoot
-$migration = Join-Path $repoRoot 'supabase\print_queue_v4_fabric_relaxation_handwritten.sql'
-if (Test-Path -LiteralPath $migration) {
-  $deploymentDir = Join-Path $stageRoot 'deployment'
-  New-Item -ItemType Directory -Path $deploymentDir -Force | Out-Null
-  Copy-Item -LiteralPath $migration -Destination $deploymentDir
-  Copy-Item -LiteralPath (Join-Path $repoRoot 'index.html') -Destination $deploymentDir
+$deploymentDir = Join-Path $stageRoot 'deployment'
+New-Item -ItemType Directory -Path $deploymentDir -Force | Out-Null
+foreach ($migration in @('supabase\print_queue_v4_fabric_relaxation_handwritten.sql', 'supabase\print_queue_v5_realtime_wake.sql')) {
+  $source = Join-Path $repoRoot $migration
+  if (Test-Path -LiteralPath $source) { Copy-Item -LiteralPath $source -Destination $deploymentDir }
 }
+Copy-Item -LiteralPath (Join-Path $repoRoot 'index.html') -Destination $deploymentDir
 
 Compress-Archive -LiteralPath $stageRoot -DestinationPath $zipPath -CompressionLevel Optimal
 Write-Output $zipPath

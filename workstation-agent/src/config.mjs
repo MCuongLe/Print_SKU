@@ -42,6 +42,11 @@ export function loadConfig(options = {}) {
     printerName: get("PRINTER_NAME", "TSC PE200 (Copy 1)"),
     agentId: get("AGENT_ID", "may-kho-01"),
     pollIntervalMs: positiveInt(get("AGENT_POLL_INTERVAL_MS"), 1000, 250, 60000),
+    // 0.8.4: hỏi thưa khi rảnh, Realtime đánh thức khi có lệnh (xem nextPollDelay ở agent.mjs).
+    idlePollMs: positiveInt(get("AGENT_IDLE_POLL_MS"), 20000, 1000, 300000),
+    idlePollNoWakeMs: positiveInt(get("AGENT_IDLE_POLL_NO_WAKE_MS"), 10000, 1000, 300000),
+    activeWindowMs: positiveInt(get("AGENT_ACTIVE_WINDOW_MS"), 120000, 0, 3600000),
+    realtimeWake: !/^(0|false|off|no)$/i.test(get("REALTIME_WAKE", "on")),
     leaseMs: positiveInt(get("AGENT_LEASE_MS"), 120000, 30000, 900000),
     spoolTimeoutMs: positiveInt(get("SPOOL_TIMEOUT_MS"), 3600000, 60000, 7200000),
     spoolStallMs: positiveInt(get("SPOOL_STALL_MS"), 600000, 15000, 1800000),

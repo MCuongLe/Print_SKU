@@ -40,7 +40,9 @@
             co: true,
             chan: Boolean(printer.blocked),
             chu: printer.message || (printer.blocked ? "Máy in chưa sẵn sàng" : "Máy in sẵn sàng"),
-            ro: !seen || Date.now() - seen > 15000
+            // 45 giây: agent 0.8.4 khi rảnh chỉ hỏi hàng đợi mỗi 20 giây (Realtime đánh thức khi có lệnh),
+            // last_seen_at vì thế cách nhau tới 20 giây; ngưỡng 15 giây cũ sẽ nhấp nháy "Chưa rõ máy in".
+            ro: !seen || Date.now() - seen > 45000
           };
         };
         const legacyResponse = value => new Response(JSON.stringify(value), {
@@ -128,17 +130,42 @@
       })();
     </script>
     <style id="sku-combo-picker-style">
-      .sku-combo-dialog { position:fixed; inset:0; box-sizing:border-box; width:min(560px,calc(100% - 24px)); max-height:85dvh; margin:auto; padding:22px; overflow:auto; border:1px solid #d9e2de; border-radius:18px; color:#17251f; background:#fff; font:14px/1.5 Arial,sans-serif; }
-      .sku-combo-dialog::backdrop { background:rgba(10,30,22,.55); }
-      .sku-combo-dialog h2 { margin:0 0 8px; font-size:20px; }
+      .sku-combo-dialog { position:fixed; inset:0; box-sizing:border-box; width:min(600px,calc(100% - 24px)); max-height:88dvh; margin:auto; padding:0; overflow:auto; border:0; border-radius:22px; color:#17251f; background:#fff; box-shadow:0 24px 70px rgba(8,38,28,.24),0 2px 8px rgba(8,38,28,.12); font:14px/1.5 Arial,sans-serif; }
+      .sku-combo-dialog::backdrop { background:rgba(13,35,28,.56); backdrop-filter:blur(3px); }
+      .sku-combo-head { display:flex; align-items:center; gap:14px; padding:20px 22px 18px; border-bottom:1px solid #dfe9e5; background:linear-gradient(135deg,#f4fbf8 0%,#e8f5f0 100%); }
+      .sku-combo-mark { display:grid; flex:0 0 46px; width:46px; height:46px; place-items:center; border-radius:14px; color:#fff; background:#005f41; box-shadow:0 8px 18px rgba(0,95,65,.22); }
+      .sku-combo-mark svg { width:24px; height:24px; }
+      .sku-combo-heading { min-width:0; flex:1; }
+      .sku-combo-eyebrow { display:block; margin-bottom:2px; color:#557068; font-size:10px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; }
+      .sku-combo-dialog h2 { margin:0; color:#173129; font-size:21px; line-height:1.25; font-weight:800; }
+      .sku-combo-close { display:grid!important; flex:0 0 40px; width:40px; min-height:40px!important; padding:0!important; place-items:center; border:0!important; border-radius:50%!important; color:#526861!important; background:rgba(255,255,255,.78)!important; font-size:22px!important; line-height:1!important; }
+      .sku-combo-close:hover { color:#173129!important; background:#fff!important; }
+      .sku-combo-dialog[data-tone="error"] .sku-combo-mark { color:#8a4b08; background:#fff1d8; box-shadow:none; }
+      .sku-combo-body { padding:20px 22px 22px; }
       .sku-combo-dialog p { overflow-wrap:anywhere; }
+      .sku-combo-lead { margin:0; color:#526861; font-size:14px; }
+      .sku-combo-code { display:inline-block; margin-left:5px; padding:3px 8px; border:1px solid #b9d8cc; border-radius:7px; color:#005f41; background:#edf8f4; font-weight:800; font-variant-numeric:tabular-nums; letter-spacing:.035em; }
       .sku-combo-options { display:grid; gap:10px; margin:16px 0; }
-      .sku-combo-dialog button { min-height:48px; padding:12px; border-radius:12px; border:1px solid #d9e2de; background:#f4f7f6; color:#17251f; font:inherit; cursor:pointer; }
-      .sku-combo-dialog button:focus-visible { outline:3px solid #005f41; outline-offset:2px; }
-      .sku-combo-options button { width:100%; text-align:left; overflow-wrap:anywhere; }
-      .sku-combo-options strong,.sku-combo-options span { display:block; }
-      .sku-combo-options button:disabled { opacity:.55; cursor:not-allowed; }
-      .sku-combo-actions { display:flex; flex-wrap:wrap; gap:8px; }
+      .sku-combo-options:empty { display:none; }
+      .sku-combo-dialog button { min-height:48px; padding:12px 14px; border-radius:12px; border:1px solid #d9e2de; background:#f4f7f6; color:#17251f; font:inherit; cursor:pointer; }
+      .sku-combo-dialog button:focus-visible { outline:3px solid #79c9ae; outline-offset:2px; }
+      .sku-combo-option { position:relative; width:100%; padding:15px 16px!important; text-align:left; overflow:hidden; border:1.5px solid #cfe0da!important; border-radius:15px!important; background:#fff!important; box-shadow:0 2px 7px rgba(10,49,36,.05); transition:border-color .15s ease,box-shadow .15s ease,transform .15s ease; }
+      .sku-combo-option:hover:not(:disabled) { border-color:#00865d!important; box-shadow:0 8px 20px rgba(0,95,65,.12); transform:translateY(-1px); }
+      .sku-combo-option__top { display:flex; align-items:center; gap:8px; padding-right:96px; }
+      .sku-combo-option strong { color:#173129; font-size:16px; font-weight:800; font-variant-numeric:tabular-nums; letter-spacing:.035em; overflow-wrap:anywhere; }
+      .sku-combo-ratio { flex:none; padding:3px 8px; border-radius:999px; color:#005f41; background:#e6f3ef; font-size:12px; font-weight:800; }
+      .sku-combo-name { display:block; margin-top:5px; padding-right:96px; color:#263d35; line-height:1.4; overflow-wrap:anywhere; }
+      .sku-combo-category { display:block; margin-top:5px; color:#6a7e77; font-size:12px; font-weight:700; }
+      .sku-combo-choose { position:absolute; right:16px; top:50%; color:#007a55; font-size:12px; font-weight:800; transform:translateY(-50%); }
+      .sku-combo-option:disabled { cursor:not-allowed; opacity:.58; background:#f4f6f5!important; box-shadow:none; }
+      .sku-combo-unavailable { display:block; margin-top:6px; color:#9a5a12; font-size:12px; font-weight:800; }
+      .sku-combo-note { display:flex; align-items:flex-start; gap:8px; margin:0 0 18px; padding:11px 13px; border:1px solid #dce8e3; border-radius:12px; color:#526861; background:#f6f9f8; font-size:12.5px; }
+      .sku-combo-note-icon { display:grid; flex:0 0 17px; width:17px; height:17px; margin-top:1px; place-items:center; border-radius:50%; color:#fff; background:#698079; font-size:11px; font-weight:800; font-style:normal; }
+      .sku-combo-actions { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:9px; }
+      .sku-combo-action--primary { border-color:#005f41!important; color:#fff!important; background:#005f41!important; font-weight:800!important; }
+      .sku-combo-action--secondary { color:#005f41!important; background:#edf8f4!important; border-color:#b9d8cc!important; font-weight:800!important; }
+      .sku-combo-action--ghost { border-color:transparent!important; color:#5e716a!important; background:transparent!important; }
+      @media (max-width:540px) { .sku-combo-dialog{width:calc(100% - 20px);max-height:calc(100dvh - 20px);border-radius:18px}.sku-combo-head{padding:16px}.sku-combo-mark{width:42px;height:42px;flex-basis:42px;border-radius:12px}.sku-combo-dialog h2{font-size:18px}.sku-combo-body{padding:16px}.sku-combo-option__top,.sku-combo-name{padding-right:0}.sku-combo-choose{position:static;display:block;margin-top:10px;transform:none}.sku-combo-actions{display:grid;grid-template-columns:1fr}.sku-combo-actions button{width:100%} }
       @media print { .sku-combo-dialog { display:none!important; } }
     </style>
     <script id="sku-combo-picker">
@@ -162,10 +189,14 @@
               const dialog = document.createElement('dialog');
               dialog.className = 'sku-combo-dialog';
               dialog.setAttribute('aria-labelledby','sku-combo-title');
-              dialog.innerHTML = '<h2 id="sku-combo-title"></h2><p class="sku-combo-lead"></p><div class="sku-combo-options"></div><p class="sku-combo-note"></p><div class="sku-combo-actions"></div>';
+              dialog.setAttribute('aria-describedby','sku-combo-note');
+              dialog.dataset.tone = error ? 'error' : 'normal';
+              dialog.innerHTML = '<header class="sku-combo-head"><span class="sku-combo-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></span><div class="sku-combo-heading"><span class="sku-combo-eyebrow"></span><h2 id="sku-combo-title"></h2></div><button class="sku-combo-close" type="button" aria-label="Đóng">×</button></header><div class="sku-combo-body"><p class="sku-combo-lead"><span class="sku-combo-lead-text"></span><strong class="sku-combo-code"></strong></p><div class="sku-combo-options"></div><p class="sku-combo-note" id="sku-combo-note"><span class="sku-combo-note-icon" aria-hidden="true">i</span><span class="sku-combo-note-text"></span></p><div class="sku-combo-actions"></div></div>';
+              dialog.querySelector('.sku-combo-eyebrow').textContent = error ? 'Kết nối dữ liệu' : 'Liên kết SKU Combo';
               dialog.querySelector('h2').textContent = error ? 'Chưa tra được SKU Normal' : 'Chọn SKU Normal để in';
-              dialog.querySelector('.sku-combo-lead').textContent = error ? `Chưa kiểm tra được liên kết của SKU ${sku}. Bạn có thể thử lại hoặc tiếp tục với mã đã nhập.` : `SKU Combo ${sku} có các SKU Normal sau:`;
-              dialog.querySelector('.sku-combo-note').textContent = 'Chỉ đổi mã và tên sản phẩm. Số bản in, số lượng trên tem, Group UID, Lot và Roll được giữ nguyên.';
+              dialog.querySelector('.sku-combo-lead-text').textContent = error ? 'Chưa kiểm tra được liên kết của SKU' : 'SKU Combo cần chọn mã Normal:';
+              dialog.querySelector('.sku-combo-code').textContent = sku;
+              dialog.querySelector('.sku-combo-note-text').textContent = 'Chỉ đổi mã và tên sản phẩm. Số bản in, số lượng trên tem, Group UID, Lot và Roll được giữ nguyên.';
               let finished = false;
               const finish = choice => {
                 if (finished) return;
@@ -176,24 +207,33 @@
                 resolve(valid() ? choice : null);
               };
               const staleTimer = setInterval(() => { if (!valid()) finish(null); }, 150);
-              const button = (label, choice, target) => {
+              dialog.querySelector('.sku-combo-close').addEventListener('click',()=>finish('cancel'));
+              const button = (label, choice, target, className='') => {
                 const b = document.createElement('button'); b.type='button'; b.textContent=label;
+                b.className=className;
                 b.addEventListener('click',()=>finish(choice)); target.append(b); return b;
               };
               for (const row of rows) {
-                const b = button('',row,dialog.querySelector('.sku-combo-options'));
-                for (const [tag,text] of [['strong',row.normal_sku],['span',row.product_name],['span',`${row.category_name} · 1 Combo = ${Number(row.quantity).toLocaleString('vi-VN')} đơn vị Normal`]]) {
-                  const element=document.createElement(tag); element.textContent=text; b.append(element);
-                }
+                const b = button('',row,dialog.querySelector('.sku-combo-options'),'sku-combo-option');
+                b.setAttribute('aria-label',`Chọn SKU Normal ${row.normal_sku}: ${row.product_name}`);
+                const top=document.createElement('span'); top.className='sku-combo-option__top';
+                const code=document.createElement('strong'); code.textContent=row.normal_sku;
+                const ratio=document.createElement('span'); ratio.className='sku-combo-ratio'; ratio.textContent=`1 Combo = ${Number(row.quantity).toLocaleString('vi-VN')}`;
+                top.append(code,ratio);
+                const name=document.createElement('span'); name.className='sku-combo-name'; name.textContent=row.product_name;
+                const category=document.createElement('span'); category.className='sku-combo-category'; category.textContent=row.category_name;
+                const choose=document.createElement('span'); choose.className='sku-combo-choose'; choose.textContent='Chọn SKU này →';
+                b.append(top,name,category,choose);
                 b.disabled = !row.available;
-                if (!row.available) { const note=document.createElement('span'); note.textContent='Không khả dụng trong danh mục in'; b.append(note); }
+                if (!row.available) { choose.remove(); const note=document.createElement('span'); note.className='sku-combo-unavailable'; note.textContent='Không khả dụng trong danh mục in'; b.append(note); }
               }
               const actions=dialog.querySelector('.sku-combo-actions');
-              if (error) button('Thử lại','retry',actions);
-              button(error ? 'Giữ SKU đã nhập' : 'Giữ SKU Combo','keep',actions);
-              button('Hủy','cancel',actions);
+              if (error) button('Thử lại','retry',actions,'sku-combo-action--primary');
+              button(error ? 'Tiếp tục với SKU đã nhập' : 'Tiếp tục với SKU Combo','keep',actions,'sku-combo-action--secondary');
+              button('Hủy','cancel',actions,'sku-combo-action--ghost');
               dialog.addEventListener('cancel',e=>{e.preventDefault();finish('cancel');});
               document.body.append(dialog); dialog.showModal();
+              (dialog.querySelector('.sku-combo-option:not(:disabled)') || dialog.querySelector('.sku-combo-close')).focus();
             });
           });
           dialogQueue=task.catch(()=>null);
@@ -1104,7 +1144,8 @@ Error generating stack: `+y.message+`
             const latest = [...agents].sort((a, b) => Date.parse(b.lastSeenAt || 0) - Date.parse(a.lastSeenAt || 0))[0];
             const seen = latest?.lastSeenAt ? Date.parse(latest.lastSeenAt) : 0;
             const printer = latest?.state?.printer || {};
-            if (!result?.ok || !seen || Date.now() - seen > 15000) {
+            // 45 giây: agent 0.8.4 khi rảnh chỉ hỏi hàng đợi mỗi 20 giây (Realtime đánh thức khi có lệnh).
+            if (!result?.ok || !seen || Date.now() - seen > 45000) {
               printerText.textContent = "Chưa rõ máy in";
               printerPill.dataset.tone = "warn";
             } else if (printer.blocked || printer.ok === false) {
