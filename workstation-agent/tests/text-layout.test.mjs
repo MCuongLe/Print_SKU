@@ -12,7 +12,8 @@ function fakeMeasure(text) {
   for (const ch of text) width += /[A-Z0-9#]/.test(ch) ? WIDE : NARROW;
   return width;
 }
-const layout = { labelHeight: 480, qrSize: 147, skuOffset: 28, lineOffset: 16, dateOffset: 28, pad: 10, bottomMargin: 17 };
+// Vạch kẻ cố định ở y=431 (xem SKU_LABEL_LAYOUT); tên vẫn tối đa 8 dòng cỡ 22.
+const layout = { qrSize: 147, skuOffset: 28, lineOffset: 12, pad: 10, lineY: 431 };
 
 test("wrapByWidth: dong toan chu hep chua duoc nhieu hon dong toan chu rong", () => {
   const narrowLine = wrapByWidth("o e l s o e l s o e l s", fakeMeasure, 200)[0];

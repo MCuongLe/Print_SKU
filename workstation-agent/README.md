@@ -2,6 +2,16 @@
 
 Agent Windows độc lập phục vụ ứng dụng Print SKU. Bản 0.7.0 dùng tem Fabric Relaxation viết tay hoàn toàn; frontend chỉ chọn số lượng tem.
 
+## Cập nhật 0.8.2 — đáy tem SKU cố định
+
+- Vạch kẻ và hàng số lượng/ngày luôn nằm cố định ở đáy tem SKU, không trôi theo độ dài tên.
+- Số lượng có dấu chấm hàng nghìn (`300000000` → `300.000.000`), chữ thường (không in đậm).
+- Số lượng và ngày được đo bằng GDI+; nếu có nguy cơ chạm nhau thì tự thu nhỏ
+  (số lượng trước, rồi ngày), luôn hiện đủ ký tự, không cắt.
+- Tem in thật dùng Arial như preview (trước đây đường in ra font mặc định có chân).
+
+Không cần migration Supabase và không đổi `index.html`. Cài ZIP như bản 0.8.1.
+
 ## Cập nhật 0.8.1 — chịu lỗi mạng
 
 Bản 0.8.0 báo lệnh "failed" mỗi khi mạng tới Supabase chập chờn, kể cả khi tem

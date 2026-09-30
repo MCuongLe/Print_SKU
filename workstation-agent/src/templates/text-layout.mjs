@@ -103,13 +103,73 @@ export function verifyLineWidths(lines, { measureWholeLine, measureToken }, maxW
 }
 
 // Số dòng tối đa còn vừa khổ tem với một cỡ chữ cho trước, suy ra từ đúng công
-// thức bố cục dùng trong sku-label.mjs (qrTop/skuY/lineY/footerY) — một nguồn
-// sự thật duy nhất, đổi hằng số bố cục ở template thì phải đổi luôn ở đây.
+// thức bố cục dùng trong sku-label.mjs (qrTop/skuY/lineY) — một nguồn sự thật
+// duy nhất, đổi hằng số bố cục ở template thì phải đổi luôn ở đây. Vạch kẻ cố
+// định ở `lineY`, nên tên + QR + số SKU phải nằm gọn phía trên nó.
 export function maxLinesForSize(fontSizePx, layout) {
-  const { labelHeight, qrSize, skuOffset, lineOffset, dateOffset, pad, bottomMargin } = layout;
+  const { lineY, qrSize, skuOffset, lineOffset, pad } = layout;
   const lineHeight = fontSizePx + 3;
-  const footer = qrSize + skuOffset + lineOffset + dateOffset + bottomMargin + pad;
-  return Math.max(1, Math.floor((labelHeight - footer - 34) / lineHeight));
+  return Math.max(1, Math.floor((lineY - lineOffset - skuOffset - qrSize - pad - 34) / lineHeight));
+}
+
+// Hàng cuối tem SKU: số lượng (canh trái x=20) và ngày (canh phải x=300)
+// cùng một hàng cố định ở đáy tem. Cả hai phải hiện ĐỦ mọi ký tự, không bao giờ
+// cắt: thu nhỏ số lượng trước (tới 18), rồi tới ngày (tới 12), rồi số lượng dưới
+// 18; vẫn không vừa thì hạ số lượng theo đúng tỷ lệ bề rộng cho tới khi vừa.
+export const FOOTER_SPAN_PX = 280; // x=20 → x=300
+export const FOOTER_GAP_PX = 10;   // khoảng trống tối thiểu giữa số lượng và ngày
+export const QUANTITY_FONT_SIZES = [40, 38, 36, 34, 32, 30, 28, 26, 24, 22, 20, 18, 16, 14, 12];
+export const DATE_FONT_SIZES = [17, 16, 15, 14, 13, 12];
+const QUANTITY_PREFERRED_MIN = 18;
+const QUANTITY_LAST_RESORT_MIN = 6;
+
+// Ước lượng bề rộng Arial khi KHÔNG đo được bằng GDI+ (preview đơn lẻ, đo lỗi):
+// chữ số 0,557em (Arial dùng chữ số rộng đều nhau), dấu câu/khoảng trắng 0,34em,
+// M/W/m/w 0,95em, chữ hoa khác 0,8em, chữ thường 0,62em, ký hiệu khác (@ % &…)
+// 1,02em — bằng ký tự rộng nhất của Arial. Đã so với GDI+ thật ngày 30/09/2026:
+// luôn ước dư. Dư thì chữ chỉ nhỏ hơn cần thiết, thiếu mới làm hai chuỗi đè nhau.
+export function estimateTextWidth(text, sizePx) {
+  let em = 0;
+  for (const char of String(text ?? "")) {
+    em += /\d/.test(char) ? 0.557
+      : /[\s.,:;/'-]/.test(char) ? 0.34
+      : /[MWmw]/.test(char) ? 0.95
+      : /\p{Lu}/u.test(char) ? 0.8
+      : /\p{L}/u.test(char) ? 0.62
+      : 1.02;
+  }
+  return em * sizePx;
+}
+
+/**
+ * Chọn cỡ chữ cho số lượng và ngày sao cho hai chuỗi không chạm nhau trên cùng
+ * một hàng. `measureQuantity(text, size)` và `measureDate(text, size)`
+ * đồng bộ, tra từ bảng đã đo sẵn hoặc dùng estimateTextWidth.
+ */
+export function fitFooter(quantity, date, { measureQuantity, measureDate }) {
+  const dateWidth = (size) => (date ? measureDate(date, size) : 0);
+  const smallestDate = DATE_FONT_SIZES[DATE_FONT_SIZES.length - 1];
+  if (!quantity) {
+    return { quantityFontSize: null, dateFontSize: DATE_FONT_SIZES.find((size) => dateWidth(size) <= FOOTER_SPAN_PX) ?? smallestDate };
+  }
+  const fits = (quantitySize, dateSize) =>
+    measureQuantity(quantity, quantitySize) + FOOTER_GAP_PX + dateWidth(dateSize) <= FOOTER_SPAN_PX;
+  for (const dateSize of DATE_FONT_SIZES) {
+    for (const quantitySize of QUANTITY_FONT_SIZES) {
+      if (quantitySize < QUANTITY_PREFERRED_MIN) break;
+      if (fits(quantitySize, dateSize)) return { quantityFontSize: quantitySize, dateFontSize: dateSize };
+    }
+  }
+  for (const quantitySize of QUANTITY_FONT_SIZES) {
+    if (quantitySize < QUANTITY_PREFERRED_MIN && fits(quantitySize, smallestDate)) {
+      return { quantityFontSize: quantitySize, dateFontSize: smallestDate };
+    }
+  }
+  // Bề rộng chữ tỷ lệ thuận với cỡ chữ: suy ra cỡ vừa khít từ số đo ở cỡ nhỏ nhất.
+  const baseSize = QUANTITY_FONT_SIZES[QUANTITY_FONT_SIZES.length - 1];
+  const available = FOOTER_SPAN_PX - FOOTER_GAP_PX - dateWidth(smallestDate);
+  const scaled = Math.floor((baseSize * available) / Math.max(1, measureQuantity(quantity, baseSize)));
+  return { quantityFontSize: Math.max(QUANTITY_LAST_RESORT_MIN, Math.min(baseSize, scaled)), dateFontSize: smallestDate };
 }
 
 /**

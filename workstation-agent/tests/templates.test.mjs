@@ -82,7 +82,7 @@ test("template SKU giữ số lượng và ngày ở cuối tem, cùng hàng v�
 test("template SKU thu nhỏ font số lượng khi nhiều ký tự", () => {
   const fontOfQuantity = (svg, quantity) => {
     const escaped = quantity.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const match = svg.match(new RegExp(`x="20" y="\\d+" font-size="(\\d+)" font-weight="700">${escaped}<`));
+    const match = svg.match(new RegExp(`x="20" y="\\d+" font-size="(\\d+)">${escaped}<`));
     assert.ok(match, `không tìm thấy ô số lượng cho "${quantity}"`);
     return Number(match[1]);
   };

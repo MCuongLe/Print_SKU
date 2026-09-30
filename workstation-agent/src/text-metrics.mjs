@@ -18,12 +18,19 @@ const execFileAsync = promisify(execFile);
  *   ký tự tiếng Việt/dấu nháy nếu truyền thẳng qua dòng lệnh).
  * @param {string[]} texts danh sách chuỗi cần đo (không cần loại trùng, hàm tự loại).
  * @param {number[]} fontSizesPx danh sách cỡ chữ (px) cần đo cho mỗi chuỗi.
- * @returns {Promise<Map<string, Map<number, number>>>} text -> (size -> width px).
- *   Trả về Map rỗng nếu `texts` rỗng, không gọi PowerShell.
+ * @param {object} [options.extra] nhóm đo thêm trong CÙNG lần gọi PowerShell,
+ *   mỗi nhóm `{ texts, sizes }` — dùng cho số lượng và ngày ở đáy tem SKU (cỡ
+ *   chữ khác tên sản phẩm), để cả lệnh in vẫn chỉ gọi PowerShell đúng hai lần.
+ * @returns {Promise<Map<string, Map<number, number>>>} text -> (size -> width px),
+ *   kèm thuộc tính `extra`: mảng Map cùng dạng, theo đúng thứ tự `options.extra`.
+ *   Không có gì để đo thì trả Map rỗng, không gọi PowerShell.
  */
-export async function measureTextWidths(config, texts, fontSizesPx, { __exec = runPowerShell } = {}) {
-  const uniqueTexts = [...new Set(texts.filter((t) => t))];
-  if (!uniqueTexts.length) return new Map();
+export async function measureTextWidths(config, texts, fontSizesPx, { __exec = runPowerShell, extra = [] } = {}) {
+  const unique = (values) => [...new Set(values.filter((t) => t))];
+  const uniqueTexts = unique(texts);
+  const extraRequests = extra.map((group) => ({ texts: unique(group.texts), sizes: group.sizes }));
+  const empty = () => Object.assign(new Map(), { extra: extraRequests.map(() => new Map()) });
+  if (!uniqueTexts.length && !extraRequests.some((group) => group.texts.length)) return empty();
 
   const tempDir = config?.tempDir ?? ".";
   fs.mkdirSync(tempDir, { recursive: true });
@@ -33,16 +40,21 @@ export async function measureTextWidths(config, texts, fontSizesPx, { __exec = r
   const scriptFile = path.join(config?.rootDir ?? ".", "powershell", "measure-text.ps1");
 
   try {
-    fs.writeFileSync(inputFile, JSON.stringify({ texts: uniqueTexts, sizes: fontSizesPx }), "utf8");
+    const request = { texts: uniqueTexts, sizes: fontSizesPx };
+    if (extraRequests.length) request.extra = extraRequests;
+    fs.writeFileSync(inputFile, JSON.stringify(request), "utf8");
     await __exec(scriptFile, inputFile, outputFile);
     const raw = fs.readFileSync(outputFile, "utf8").replace(/^﻿/, "");
     const parsed = JSON.parse(raw);
     if (!parsed.ok) throw new Error(parsed.message || "PowerShell báo lỗi khi đo chữ");
 
-    const byText = new Map();
+    const byText = empty();
     for (const row of parsed.results) {
-      if (!byText.has(row.text)) byText.set(row.text, new Map());
-      byText.get(row.text).set(row.size, row.width);
+      // Dòng có `group` thuộc nhóm đo thêm; không có là nhóm chính như trước.
+      const target = Number.isInteger(row.group) ? byText.extra[row.group] : byText;
+      if (!target) continue;
+      if (!target.has(row.text)) target.set(row.text, new Map());
+      target.get(row.text).set(row.size, row.width);
     }
     return byText;
   } finally {

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { rawToMonochrome, renderJobTspl } from "../src/render.mjs";
+import { rawToMonochrome, renderJobTspl, renderRowSvg } from "../src/render.mjs";
 
 const config = { density: 10, speed: 3 };
 
@@ -62,4 +62,12 @@ test("dựng một batch gồm nhiều SKU", async () => {
   };
   const tspl = await renderJobTspl(job, config);
   assert.equal(tspl.toString("latin1").match(/PRINT 1\r\n/g)?.length, 2);
+});
+
+test("hang 2 tem (duong in that) van dung Arial nhu preview tem don", () => {
+  // innerSvg bỏ thẻ <svg> của từng tem nên font-family phải khai báo ở gốc hàng;
+  // trước 30/09/2026 thiếu dòng này, tem in thật ra font mặc định có chân.
+  const job = { type: "sku", copies: 1, templateVersion: 1, payload: { sku: "100000001", productName: "SP", quantity: "12", printedDate: "30/09/26" } };
+  const row = renderRowSvg([job, job]);
+  assert.match(row.match(/^<svg[^>]*>/)[0], /font-family="Arial,Helvetica,sans-serif"/);
 });

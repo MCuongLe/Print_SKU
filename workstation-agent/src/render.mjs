@@ -3,8 +3,11 @@ import path from "node:path";
 import sharp from "sharp";
 import { LABEL_GAP_MM, LABEL_HEIGHT, LABEL_HEIGHT_MM, LABEL_WIDTH, ROW_GAP_MM, ROW_WIDTH } from "./templates/common.mjs";
 import { renderLabelSvg } from "./templates/index.mjs";
+import { formatDate, formatQuantity, LABEL_FONT_FAMILY } from "./templates/common.mjs";
 import { SKU_LABEL_LAYOUT, SKU_LABEL_MAX_WIDTH_PX } from "./templates/sku-label.mjs";
-import { fitProductName, maxLinesForSize, tokenize, verifyLineWidths } from "./templates/text-layout.mjs";
+import {
+  DATE_FONT_SIZES, estimateTextWidth, fitFooter, fitProductName, maxLinesForSize, QUANTITY_FONT_SIZES, tokenize, verifyLineWidths
+} from "./templates/text-layout.mjs";
 
 // Cac co chu thu theo thu tu tu lon xuong nho khi ten qua dai khong vua ngay
 // ca o co mac dinh — xem RULES.md phan "Do chu that". San 16px la con doc duoc
@@ -52,24 +55,41 @@ export async function planSkuProductNames(entries, config, measureText, logger) 
 
   const allTokens = new Set();
   for (const entry of skuEntries) for (const token of tokenize(entry.payload.productName)) allTokens.add(token);
+  // Số lượng và ngày ở đáy tem đo luôn trong lần gọi vòng 1 (cỡ chữ riêng), không
+  // thêm lần gọi PowerShell nào.
+  const footerTexts = skuEntries.map((entry) => ({
+    quantity: formatQuantity(entry.payload.quantity),
+    date: String(entry.payload.printedDate || formatDate())
+  }));
 
   let tokenWidths;
   try {
-    tokenWidths = await measureText(config, [...allTokens], PRODUCT_NAME_FONT_SIZES);
+    tokenWidths = await measureText(config, [...allTokens], PRODUCT_NAME_FONT_SIZES, {
+      extra: [
+        { texts: footerTexts.map((footer) => footer.quantity), sizes: QUANTITY_FONT_SIZES },
+        { texts: footerTexts.map((footer) => footer.date), sizes: DATE_FONT_SIZES }
+      ]
+    });
   } catch (error) {
     logger?.warn?.(`Đo chữ thật thất bại (vòng 1), dùng cách đếm ký tự cũ: ${String(error?.message || error).slice(0, 200)}`);
     return entries;
   }
   const measureAt = (text, size) =>
     tokenWidths.get(text)?.get(size) ?? text.length * AVG_CHAR_WIDTH_AT_22 * (size / 22);
+  const [quantityWidths, dateWidths] = tokenWidths.extra ?? [];
+  const measureFooter = (widths) => (text, size) => widths?.get(text)?.get(size) ?? estimateTextWidth(text, size);
 
-  const plans = skuEntries.map((entry) => ({
+  const plans = skuEntries.map((entry, index) => ({
     entry,
     fit: fitProductName(entry.payload.productName, {
       measureAt,
       maxWidthPx: SKU_LABEL_MAX_WIDTH_PX,
       fontSizes: PRODUCT_NAME_FONT_SIZES,
       layout: SKU_LABEL_LAYOUT
+    }),
+    footerFit: fitFooter(footerTexts[index].quantity, footerTexts[index].date, {
+      measureQuantity: measureFooter(quantityWidths),
+      measureDate: measureFooter(dateWidths)
     })
   }));
 
@@ -91,7 +111,7 @@ export async function planSkuProductNames(entries, config, measureText, logger) 
     return entries.map((entry) => {
       const plan = plans.find((p) => p.entry === entry);
       if (!plan) return entry;
-      return { ...entry, payload: { ...entry.payload, productNameLines: plan.fit.lines, productNameFontSize: plan.fit.fontSize } };
+      return { ...entry, payload: { ...entry.payload, productNameLines: plan.fit.lines, productNameFontSize: plan.fit.fontSize, footerFit: plan.footerFit } };
     });
   }
 
@@ -103,7 +123,7 @@ export async function planSkuProductNames(entries, config, measureText, logger) 
     const measureToken = (text) => measureAt(text, fontSize);
     const verified = verifyLineWidths(lines, { measureWholeLine, measureToken }, SKU_LABEL_MAX_WIDTH_PX)
       .slice(0, maxLinesForSize(fontSize, SKU_LABEL_LAYOUT));
-    return { ...entry, payload: { ...entry.payload, productNameLines: verified, productNameFontSize: fontSize } };
+    return { ...entry, payload: { ...entry.payload, productNameLines: verified, productNameFontSize: fontSize, footerFit: plan.footerFit } };
   });
 }
 
@@ -116,7 +136,10 @@ export function renderRowSvg(jobs, count = 2) {
   const secondX = LABEL_WIDTH + LABEL_GAP_MM * 8;
   const first = innerSvg(renderLabelSvg(pair[0]));
   const second = pair[1] ? innerSvg(renderLabelSvg(pair[1])) : "";
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${ROW_WIDTH}" height="${LABEL_HEIGHT}" viewBox="0 0 ${ROW_WIDTH} ${LABEL_HEIGHT}" shape-rendering="crispEdges"><rect width="${ROW_WIDTH}" height="${LABEL_HEIGHT}" fill="#fff"/><g>${first}</g>${second ? `<g transform="translate(${secondX},0)">${second}</g>` : ""}</svg>`;
+  // innerSvg bỏ thẻ <svg> của từng tem, mất luôn font-family của nó; phải khai
+  // báo lại ở gốc hàng, nếu không tem in thật ra font mặc định có chân (lỗi có
+  // từ bản đầu, sửa 30/09/2026) trong khi preview tem đơn vẫn là Arial.
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${ROW_WIDTH}" height="${LABEL_HEIGHT}" viewBox="0 0 ${ROW_WIDTH} ${LABEL_HEIGHT}" shape-rendering="crispEdges" font-family="${LABEL_FONT_FAMILY}"><rect width="${ROW_WIDTH}" height="${LABEL_HEIGHT}" fill="#fff"/><g>${first}</g>${second ? `<g transform="translate(${secondX},0)">${second}</g>` : ""}</svg>`;
 }
 
 export function rawToMonochrome(raw, width, height, threshold = 170) {

@@ -32,6 +32,23 @@ try {
     }
     $font.Dispose()
   }
+  # Nhom do them trong cung tien trinh (so luong, ngay o day tem SKU - co chu rieng);
+  # moi dong ket qua mang chi so nhom 'group' de phia Node tach rieng.
+  # @() boc NGOAI ca bieu thuc if: PowerShell 5.1 bung mang 1 phan tu thanh doi
+  # tuong don, .Count cua no rong nen vong lap khong chay (loi that 30/09/2026).
+  $extra = @(if ($request.PSObject.Properties['extra']) { $request.extra })
+  for ($i = 0; $i -lt $extra.Count; $i++) {
+    $group = $extra[$i]
+    if ($null -eq $group) { continue }
+    foreach ($size in @($group.sizes)) {
+      $font = New-Object System.Drawing.Font($FontFamily, [double]$size, [System.Drawing.GraphicsUnit]::Pixel)
+      foreach ($t in @($group.texts)) {
+        $measured = $g.MeasureString([string]$t, $font, [int]::MaxValue, $fmt)
+        $results.Add([PSCustomObject]@{ group = $i; text = $t; size = $size; width = [math]::Round($measured.Width, 2) })
+      }
+      $font.Dispose()
+    }
+  }
   $g.Dispose(); $bmp.Dispose()
 
   @{ ok = $true; results = $results } | ConvertTo-Json -Compress -Depth 5 |
