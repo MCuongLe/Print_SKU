@@ -213,3 +213,51 @@ python scripts/apply_supabase_sql.py supabase/cut_group_uid_v1.sql
 Danh sách chờ in nằm trên Supabase nên vẫn còn khi tải lại trang hoặc đổi thiết
 bị. Phần tra cứu lọc theo SKU và xuất `.xlsx` có thiết lập giấy A4 ngang, gồm
 SKU, UID, Lot, Roll và Tên SP.
+
+## Tìm SKU bằng camera
+
+Mở **TÌM SKU** ở WH-MATERIAL hoặc `#find-sku`. Ba bước, bố cục như CẮT GROUP UID / XẢ VẢI:
+
+1. **Quét nhận diện** — bật camera, đưa tem nhà cung cấp vào khung: máy **tự chụp** khi ảnh nét
+   và đứng yên rồi gửi Edge Function `sku-vision` (Gemini) đọc chữ; chưa khớp mã thì tự chụp lại,
+   tối đa 3 lần/phiên camera (mỗi lần 1 lượt AI). QR/mã vạch được đọc trực tiếp không tốn lượt
+   (bộ quét chung với XẢ VẢI). Có thể "Chụp ngay", "Chọn ảnh", hoặc gõ mã in trên tem (`N0144`,
+   `C3966 Tex 27`) — không cần AI. Bộ đối chiếu `NDS_ENGINE` (chép nguyên từ tab "Nhận diện SKU"
+   của AuditFactory) gợi ý 3 SKU từ `SKU_Name` ngay trong trình duyệt; danh mục tải một lần, lưu
+   IndexedDB, 12 giờ tự tải lại.
+2. **Tính toán số lượng** — SKU đơn vị `mm` (ô cuối tên) mở sẵn bảng **quy đổi cân → mm** theo
+   đúng công thức tab "Chuyển đổi cân" của AuditFactory: quy cách cuộn nguyên (tự đọc `5000m` từ
+   tên), tổng khối lượng (kg/gr), số cuộn thừa, khối lượng lõi, khối lượng cuộn nguyên (cân cả
+   lõi / chỉ riêng chỉ) → mm, kèm phiếu tính và cờ đỏ khi số liệu vô lý. Lõi và cuộn nguyên
+   được nhớ cho lô sau. Đơn vị khác (`pcs`, `cuộn`, `g`…) gõ số thẳng. Nhập số tem rồi
+   "Thêm vào chờ in". Phần logic này nằm trong `FSK_CORE` (giữa hai dấu mốc trong `index.html`).
+3. **Chờ in** — danh sách lưu trên máy đang dùng (localStorage), tick chọn rồi "In tem đã chọn":
+   gửi lệnh `sku` vào hàng đợi Supabase như PRINT SKU (tối đa 100 SKU · 500 tem/lượt), theo dõi
+   tới khi agent báo xong (tự rời danh sách) hoặc lỗi (tick lại để in lại). Gửi lại sau lỗi mạng
+   dùng cùng nonce nên không tạo lệnh trùng.
+
+Triển khai một lần:
+
+```powershell
+python scripts/apply_supabase_sql.py supabase/sku_vision_v1.sql   # bộ đếm lượt đọc tem
+python scripts/deploy_sku_vision.py                               # token cần quyền "Edge Functions: write"
+```
+
+Khoá Gemini tạo miễn phí ở Google AI Studio (nên tạo project riêng để có hạn mức riêng), người
+quản trị tự nhập ở Supabase Dashboard → Edge Functions → Secrets với tên `GEMINI_API_KEY` (không
+bao giờ nằm trong `index.html`). Tuỳ chọn: `GEMINI_MODELS` (thứ tự model thử, mặc định
+`gemini-3.1-flash-lite,gemini-3.8-flash,gemini-3.5-flash-lite` — đo 30/09/2026: bản lite đọc đúng
+2 tem thật trong ~3 giây và luôn trả được, còn 3.8-flash hay báo quá tải ở gói miễn phí; model
+lỗi/quá tải thì tự chuyển model kế tiếp), `SKU_VISION_DEVICE_DAILY` (mặc định 60 lượt/máy/ngày),
+`SKU_VISION_GLOBAL_DAILY` (mặc định 450 lượt/ngày cho cả kho — dưới hạn mức miễn phí của Gemini).
+Ngày tính theo giờ Pacific vì Gemini reset hạn mức lúc nửa đêm Pacific. Hết lượt hoặc mất mạng
+thì ô "Mã trên tem" vẫn tìm được. Lưu ý: ở gói miễn phí, Google được dùng ảnh gửi lên để cải
+thiện sản phẩm.
+
+Kiểm thử không cần mạng:
+
+```powershell
+node tests/find_sku_engine.cjs                    # bộ đối chiếu cắt ra từ index.html
+node tests/find_sku_core.cjs                      # quy đổi cân → mm, đơn vị, tự chụp
+node --test tests/sku_vision_function.mjs         # Edge Function, giả lập Deno/Supabase/Gemini
+```

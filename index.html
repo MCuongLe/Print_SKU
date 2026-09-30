@@ -940,6 +940,7 @@ Error generating stack: `+y.message+`
             <h2 class="barcode-home__group-title">Vận hành kho</h2>
             <div class="barcode-home__choices">
               <button class="barcode-choice" id="barcode-cut-uid" type="button"><span class="barcode-choice__icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><path d="M8.12 8.12 12 12"/><path d="M20 4 8.12 15.88"/><circle cx="6" cy="18" r="3"/><path d="M14.8 14.8 20 20"/></svg></span><strong>CẮT GROUP UID</strong><span>Quét UID, lưu tem chờ in và tra cứu UID đã cắt theo SKU.</span></button>
+              <button class="barcode-choice" id="barcode-find-sku" type="button"><span class="barcode-choice__icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><circle cx="11" cy="11" r="3"/><path d="m16 16-2.9-2.9"/></svg></span><strong>TÌM SKU</strong><span>Chụp tem nhà cung cấp, đọc chữ và gợi ý SKU.</span></button>
               <button class="barcode-choice" id="barcode-xa-vai" type="button"><span class="barcode-choice__icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2"/><path d="M5 3 2 6"/><path d="m22 6-3-3"/></svg></span><strong>THEO DÕI XẢ VẢI</strong><span>Quét UID, bấm bắt đầu/kết thúc xả vải, tra cứu đối chiếu.</span></button>
             </div>
           </section>
@@ -1123,6 +1124,7 @@ Error generating stack: `+y.message+`
           const current = route();
           const uidOpen = current === "group-uid";
           const cutUidOpen = current === "cut-group-uid";
+          const findSkuOpen = current === "find-sku";
           const insOpen = current === "inspection";
           const sampleOpen = current === "sample";
           const fabricOpen = current === "fabric-relaxation";
@@ -1140,14 +1142,16 @@ Error generating stack: `+y.message+`
           const sampleScreen = document.getElementById("sample-screen");
           if (sampleScreen) sampleScreen.hidden = !sampleOpen;
           home.hidden = !homeOpen;
-          homeTrigger.hidden = homeOpen || uidOpen || cutUidOpen || adminOpen || insOpen || sampleOpen || fabricOpen || xaVaiOpen;
+          homeTrigger.hidden = homeOpen || uidOpen || cutUidOpen || findSkuOpen || adminOpen || insOpen || sampleOpen || fabricOpen || xaVaiOpen;
           const root = document.getElementById("root");
-          if (root) root.inert = uidOpen || cutUidOpen || homeOpen || insOpen || sampleOpen || fabricOpen || xaVaiOpen;
+          if (root) root.inert = uidOpen || cutUidOpen || findSkuOpen || homeOpen || insOpen || sampleOpen || fabricOpen || xaVaiOpen;
           if (uidOpen) setTimeout(() => groupUid.focus(), 50);
         };
         printSku.addEventListener("click", () => { location.hash = "#worker"; });
         printUid.addEventListener("click", () => { location.hash = "#group-uid"; });
         cutUid.addEventListener("click", () => { location.hash = "#cut-group-uid"; });
+        const findSkuChoice = document.getElementById("barcode-find-sku");
+        if (findSkuChoice) findSkuChoice.addEventListener("click", () => { location.hash = "#find-sku"; });
         const inspectionChoice = document.getElementById("barcode-inspection");
         if (inspectionChoice) inspectionChoice.addEventListener("click", () => { location.hash = "#inspection"; });
         const sampleChoice = document.getElementById("barcode-sample");
@@ -3484,6 +3488,2669 @@ Error generating stack: `+y.message+`
         <section class="cut-card" data-panel="print"><h2><span>3</span>Tem chờ in</h2><button class="cut-link" id="cut-goto-data-2" type="button">← Chọn thêm ở Tra cứu</button><div class="cut-actions"><label class="cut-selectall"><input id="cut-all" type="checkbox"><span>Chọn tất cả tem có thể in</span><em id="cut-selected-count">Đã chọn 0</em></label><button class="cut-secondary act-icon act-icon--load" id="cut-reload" type="button">Tải lại</button><button class="cut-primary act-icon act-icon--print" id="cut-print" type="button" disabled>In tem đã chọn</button></div><div class="cut-list" id="cut-list"></div></section>
       </div></main>
     </section>
+        <section class="cut-screen" id="find-sku-screen" aria-labelledby="fsk-title" hidden>
+      <header class="cut-head"><div class="cut-head__in"><div><h1 id="fsk-title">TÌM SKU</h1><p>Quét tem nhà cung cấp · tính số lượng · in tem</p></div><button class="cut-back" id="fsk-back" type="button">← WH-MATERIAL</button></div></header>
+      <main class="cut-main">
+        <div class="cut-tabs" role="tablist">
+          <button class="cut-tab" id="fsk-tab-scan" type="button" role="tab" data-tab="scan" aria-selected="true">1 · Quét nhận diện</button>
+          <button class="cut-tab" id="fsk-tab-calc" type="button" role="tab" data-tab="calc" aria-selected="false">2 · Tính toán số lượng</button>
+          <button class="cut-tab" id="fsk-tab-print" type="button" role="tab" data-tab="print" aria-selected="false">3 · Chờ in <b class="cut-badge" id="fsk-queue-count">0</b></button>
+        </div>
+        <p class="cut-message" id="fsk-message" aria-live="polite" style="margin-bottom:14px"></p>
+        <div class="cut-grid">
+          <section class="cut-card" data-panel="scan"><h2><span>1</span>Quét nhận diện</h2>
+            <form class="cut-scan" id="fsk-code-form"><input class="cut-input" id="fsk-code" autocomplete="off" spellcheck="false" enterkeyhint="search" placeholder="Mã trên tem, vd N0144, C3966…" maxlength="80"><button class="cut-primary" type="submit">Tìm</button></form>
+            <p class="cut-note">Bật camera và đưa tem vào khung — máy tự chụp khi ảnh nét rồi đọc chữ; mã QR/mã vạch được đọc ngay. Gõ mã in trên tem cũng được, không cần camera.</p>
+            <div class="fsk-camera" id="fsk-camera" hidden><video id="fsk-video" playsinline muted autoplay></video><div class="fsk-guide" aria-hidden="true"></div><div class="fsk-cam-status" id="fsk-cam-status">Đang mở camera…</div><div class="fsk-zoom" id="fsk-zoom"><button type="button" data-zoom="1" aria-pressed="true">1×</button><button type="button" data-zoom="2" aria-pressed="false">2×</button><button type="button" data-zoom="3" aria-pressed="false">3×</button></div></div>
+            <img class="fsk-photo" id="fsk-photo" alt="Ảnh tem vừa chụp" hidden>
+            <div class="cut-actions"><button class="cut-primary" id="fsk-cam" type="button">Bật camera</button><button class="cut-secondary" id="fsk-shot" type="button" hidden>Chụp ngay</button><label class="cut-secondary fsk-file">Chọn ảnh<input id="fsk-file" type="file" accept="image/*" capture="environment" hidden></label><button class="cut-secondary" id="fsk-read" type="button" disabled>Đọc lại tem</button></div>
+            <div class="fsk-results" id="fsk-results"><p class="cut-empty">Quét tem hoặc gõ mã để xem SKU gợi ý.</p></div>
+            <details class="fsk-more" id="fsk-more"><summary>Chữ đọc được trên tem <b class="cut-badge" id="fsk-token-count">0</b></summary>
+              <div class="fsk-tags" id="fsk-tags"></div>
+              <textarea class="cut-input fsk-raw" id="fsk-raw" rows="4" placeholder="Chữ AI đọc được sẽ hiện ở đây — sửa được, rồi bấm “Đối chiếu lại”."></textarea>
+              <div class="cut-actions"><button class="cut-secondary" id="fsk-match" type="button">Đối chiếu lại</button><button class="cut-secondary" id="fsk-reload" type="button">Tải lại danh mục</button><span class="cut-note" id="fsk-catalog"></span></div>
+            </details>
+          </section>
+
+          <section class="cut-card" data-panel="calc"><h2><span>2</span>Tính toán số lượng</h2>
+            <button class="cut-link" id="fsk-goto-scan" type="button">← Chọn SKU khác</button>
+            <div class="fsk-sel" id="fsk-sel" hidden><strong id="fsk-sel-sku"></strong><span id="fsk-sel-name"></span><small id="fsk-sel-unit"></small></div>
+            <p class="cut-empty" id="fsk-sel-empty">Chưa chọn SKU — quét tem hoặc gõ mã ở bước 1 rồi bấm “Chọn”.</p>
+            <div id="fsk-calc-body" hidden>
+              <div class="fsk-field"><label for="fsk-qty">Số lượng in lên tem <span class="hint" id="fsk-qty-hint"></span></label><div class="fsk-inrow"><input class="cut-input" id="fsk-qty" inputmode="decimal" autocomplete="off" spellcheck="false" placeholder="ví dụ 300"><span class="fsk-unit" id="fsk-qty-unit"></span></div><div class="fsk-doc" id="fsk-qty-doc"></div></div>
+              <button class="cut-secondary" id="fsk-cd-toggle" type="button" aria-expanded="false">Tính từ cân (kg chỉ trả về → mm)</button>
+              <div class="fsk-cd" id="fsk-cd" hidden>
+                <div class="fsk-field"><label>Quy cách cuộn nguyên <span class="hint">chiều dài 1 cuộn còn nguyên kiện</span></label>
+                  <div class="fsk-seg fsk-seg--wrap" id="fsk-cd-spec" role="group" aria-label="Quy cách cuộn nguyên"><button type="button" data-mm="2500000" aria-pressed="false">2.500.000 mm</button><button type="button" data-mm="3000000" aria-pressed="false">3.000.000 mm</button><button type="button" data-mm="5000000" aria-pressed="true">5.000.000 mm</button><button type="button" data-mm="0" aria-pressed="false">Khác…</button></div>
+                  <div class="fsk-inrow" id="fsk-cd-spec-row" hidden style="margin-top:8px"><input class="cut-input" id="fsk-cd-spec-custom" inputmode="decimal" autocomplete="off" placeholder="ví dụ 1.000.000"><span class="fsk-unit">mm</span></div><div class="fsk-doc" id="fsk-cd-spec-doc"></div></div>
+                <div class="fsk-field"><label for="fsk-cd-total">Tổng khối lượng chỉ trả về <span class="hint">cân cả lô, gồm cả lõi</span></label><div class="fsk-inrow"><input class="cut-input" id="fsk-cd-total" inputmode="decimal" autocomplete="off" placeholder="ví dụ 0,9"><span class="fsk-seg" id="fsk-cd-unit" role="group" aria-label="Đơn vị cân"><button type="button" data-unit="kg" aria-pressed="true">kg</button><button type="button" data-unit="g" aria-pressed="false">gr</button></span></div><div class="fsk-doc" id="fsk-cd-total-doc"></div></div>
+                <div class="fsk-field"><label for="fsk-cd-cones">Số cuộn thừa <span class="hint">đếm đầu cuộn — dùng để trừ lõi</span></label><div class="fsk-inrow"><input class="cut-input" id="fsk-cd-cones" inputmode="numeric" autocomplete="off" placeholder="ví dụ 10"><span class="fsk-unit">cuộn</span></div><div class="fsk-doc" id="fsk-cd-cones-doc"></div></div>
+                <div class="fsk-field"><label for="fsk-cd-core">Khối lượng 1 lõi <span class="hint">lõi rỗng, không gồm chỉ</span></label><div class="fsk-inrow"><input class="cut-input" id="fsk-cd-core" inputmode="decimal" autocomplete="off" placeholder="ví dụ 50"><span class="fsk-unit">gr</span></div><div class="fsk-doc" id="fsk-cd-core-doc"></div></div>
+                <div class="fsk-field"><label for="fsk-cd-full">Khối lượng 1 cuộn nguyên <span class="hint">đúng quy cách ở trên — đây là thước đo mật độ</span></label><div class="fsk-inrow"><input class="cut-input" id="fsk-cd-full" inputmode="decimal" autocomplete="off" placeholder="ví dụ 120"><span class="fsk-unit">gr</span></div>
+                  <div class="fsk-inrow" style="margin-top:8px"><span class="fsk-seg" id="fsk-cd-full-mode" role="group" aria-label="Cách hiểu khối lượng cuộn nguyên"><button type="button" data-mode="all" aria-pressed="true" title="Đặt cả cuộn lên cân: lõi + chỉ — đúng cách kho cân (mặc định)">cân cả lõi</button><button type="button" data-mode="thread" aria-pressed="false" title="Chỉ dùng khi lấy số từ bảng quy cách nhà cung cấp: khối lượng riêng phần chỉ">chỉ riêng chỉ</button></span></div><div class="fsk-doc" id="fsk-cd-full-doc"></div></div>
+                <div class="cut-actions"><button class="cut-secondary" id="fsk-cd-next" type="button" title="Xoá tổng kg + số cuộn của lô này, giữ quy cách/lõi/cuộn nguyên cho lô sau">Lô tiếp theo</button><button class="cut-secondary" id="fsk-cd-clear" type="button">Xoá hết</button></div>
+                <div class="fsk-tiles" id="fsk-cd-tiles" hidden></div>
+                <div id="fsk-cd-note"></div>
+                <div class="fsk-steps" id="fsk-cd-steps" hidden></div>
+                <p class="cut-note" id="fsk-cd-state">Nhập <b>tổng kg</b> · <b>số cuộn</b> · <b>khối lượng lõi</b> · <b>khối lượng cuộn nguyên</b> — máy tính lại ngay mỗi lần gõ và điền vào ô số lượng.</p>
+              </div>
+              <div class="fsk-field"><label for="fsk-copies">Số tem cần in</label><div class="fsk-inrow"><input class="cut-input" id="fsk-copies" type="number" min="1" max="500" step="1" value="1" inputmode="numeric"><span class="fsk-unit">tem</span></div></div>
+              <div class="cut-actions"><button class="cut-primary" id="fsk-add" type="button">Thêm vào chờ in →</button></div>
+            </div>
+          </section>
+
+          <section class="cut-card" data-panel="print"><h2><span>3</span>Chờ in</h2>
+            <button class="cut-link" id="fsk-goto-scan-2" type="button">← Quét tem tiếp</button>
+            <div class="cut-actions"><label class="cut-selectall"><input id="fsk-all" type="checkbox"><span>Chọn tất cả tem có thể in</span><em id="fsk-selected-count">Đã chọn 0</em></label><button class="cut-primary act-icon act-icon--print" id="fsk-print" type="button" disabled>In tem đã chọn</button></div>
+            <p class="cut-note">Danh sách này lưu trên máy đang dùng; tem in xong tự rời khỏi danh sách. Agent in tem SKU y như màn PRINT SKU.</p>
+            <div class="cut-list" id="fsk-list"></div>
+          </section>
+        </div>
+      </main>
+    </section>
+    <style id="find-sku-theme">
+      .fsk-camera{position:relative;overflow:hidden;margin-top:14px;border-radius:16px;background:#000;aspect-ratio:4/3}
+      .fsk-camera video{display:block;width:100%;height:100%;object-fit:cover;transform-origin:center}
+      .fsk-guide{position:absolute;left:12%;top:16%;width:76%;height:68%;border:2px solid rgba(255,255,255,.85);border-radius:12px;box-shadow:0 0 0 999px rgba(0,0,0,.28);pointer-events:none}
+      .fsk-cam-status{position:absolute;left:10px;top:10px;max-width:calc(100% - 20px);padding:5px 10px;border-radius:12px;background:rgba(0,0,0,.62);color:#fff;font-size:12px;font-weight:700}
+      .fsk-cam-status[data-tone="ok"]{background:rgba(0,168,115,.85)}.fsk-cam-status[data-tone="warn"]{background:rgba(183,121,31,.9)}
+      .fsk-zoom{position:absolute;right:10px;bottom:10px;display:flex;gap:6px}
+      .fsk-zoom button{min-width:48px;min-height:40px;border:0;border-radius:20px;background:rgba(0,0,0,.6);color:#fff;font-weight:800;cursor:pointer}
+      .fsk-zoom button[aria-pressed="true"]{background:#00a873}
+      .fsk-photo{display:block;max-width:100%;max-height:170px;margin-top:12px;border-radius:12px;background:var(--wms-bg,#f4f7f6)}
+      .fsk-file{display:inline-flex;align-items:center;justify-content:center}
+      .fsk-results{margin-top:14px}
+      .fsk-more{margin-top:16px;padding:12px 14px;border:1px solid var(--wms-border,#d9e2de);border-radius:14px}
+      .fsk-more summary{cursor:pointer;font-weight:800;display:flex;align-items:center;gap:8px}
+      .fsk-raw{min-height:96px;margin-top:12px;padding:12px;resize:vertical;font:inherit;line-height:1.5}
+      .fsk-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+      .fsk-tag{display:inline-flex;align-items:center;gap:6px;min-height:30px;padding:3px 10px;border:1px solid var(--wms-border,#d9e2de);border-radius:15px;background:var(--wms-bg,#f4f7f6);font-size:13px;overflow-wrap:anywhere}
+      .fsk-tag small{color:var(--wms-muted,#60736b);font-size:10px;font-weight:800;text-transform:uppercase}
+      .fsk-tag[data-role="code"]{border-color:#00a873;background:rgba(0,168,115,.08)}
+      .fsk-tag button{min-width:30px;min-height:30px;margin:-3px -8px -3px 0;border:0;background:transparent;color:var(--wms-muted,#60736b);font-size:18px;cursor:pointer}
+      .fsk-card{margin-top:12px;padding:14px;border:1px solid var(--wms-border,#d9e2de);border-radius:16px;background:var(--wms-surface,#fff)}
+      .fsk-card__top{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+      .fsk-rank{color:var(--wms-muted,#60736b)}.fsk-sku{font-size:19px;letter-spacing:.02em}
+      .fsk-pct{margin-left:auto;font-weight:800;color:var(--wms-brand,#005f41)}
+      .fsk-badge{padding:2px 8px;border-radius:10px;background:rgba(183,121,31,.12);color:var(--wms-warning,#b7791f);font-size:11px;font-weight:800}
+      .fsk-name{margin:8px 0 10px;font-size:14px;line-height:1.45;overflow-wrap:anywhere}
+      .fsk-pick{width:100%;margin-top:10px}
+      .fsk-warn{margin:12px 0 0;padding:10px 12px;border-radius:12px;background:rgba(183,121,31,.12);font-size:13px;line-height:1.5}
+      .fsk-warn--bad{background:rgba(194,65,59,.1);color:var(--wms-danger,#c2413b)}
+      .fsk-near{margin-top:8px}.fsk-near .cut-secondary{min-height:40px;margin:6px 6px 0 0;padding:0 14px}
+      #fsk-catalog{flex:1 1 220px}
+      .fsk-sel{display:grid;gap:4px;padding:14px;border-radius:14px;background:var(--wms-bg,#f4f7f6)}
+      .fsk-sel strong{font-size:22px;letter-spacing:.02em}.fsk-sel span{font-size:14px;line-height:1.4;overflow-wrap:anywhere}.fsk-sel small{color:var(--wms-muted,#60736b)}
+      .fsk-field{margin-top:14px}.fsk-field label{display:block;margin-bottom:6px;font-size:13px;font-weight:800}
+      .fsk-field .hint{font-weight:400;color:var(--wms-muted,#60736b)}
+      .fsk-inrow{display:flex;align-items:center;gap:8px}.fsk-inrow .cut-input{flex:1;min-width:0}
+      .fsk-unit{min-width:36px;color:var(--wms-muted,#60736b);font-weight:800}
+      .fsk-doc{min-height:16px;margin-top:4px;font-size:12px;color:var(--wms-muted,#60736b)}.fsk-doc.xau{color:var(--wms-danger,#c2413b)}
+      .cut-input.xau{border-color:var(--wms-danger,#c2413b)}
+      .fsk-seg{display:inline-flex;flex-shrink:0;border:1px solid var(--wms-border,#d9e2de);border-radius:22px;overflow:hidden;background:var(--wms-surface,#fff)}
+      .fsk-seg button{min-height:42px;padding:0 14px;border:0;background:transparent;color:var(--wms-text,#17251f);font-weight:700;cursor:pointer}
+      .fsk-seg button[aria-pressed="true"]{background:var(--wms-brand,#005f41);color:#fff}
+      .fsk-seg--wrap{flex-wrap:wrap;border-radius:14px}
+      #fsk-cd-toggle{margin-top:14px}#fsk-cd-toggle[aria-expanded="true"]{background:rgba(0,95,65,.08)}
+      .fsk-cd{margin-top:8px;padding:0 14px 14px;border:1px dashed var(--wms-border,#d9e2de);border-radius:14px}
+      .fsk-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:14px}
+      .fsk-tile{padding:12px;border-radius:14px;background:var(--wms-bg,#f4f7f6)}
+      .fsk-tile b{display:block;font-size:22px;line-height:1.2}.fsk-tile b small{font-size:13px;font-weight:700}
+      .fsk-tile.to b{font-size:28px;color:var(--wms-brand,#005f41)}.fsk-tile span{display:block;margin-top:4px;font-size:12px;color:var(--wms-muted,#60736b)}
+      .fsk-steps{display:grid;gap:4px;margin-top:12px;font-size:13px}
+      .fsk-step{display:grid;grid-template-columns:26px minmax(0,1fr) auto;gap:8px;align-items:center;padding:6px 8px;border-radius:8px;background:var(--wms-bg,#f4f7f6)}
+      .fsk-step .n{font-weight:800;color:var(--wms-muted,#60736b)}.fsk-step .v{font-weight:800;white-space:nowrap}
+      .fsk-step.tong{background:rgba(0,95,65,.08)}
+      .fsk-row-del{min-width:40px;min-height:40px;border:0;background:transparent;color:var(--wms-muted,#60736b);font-size:22px;cursor:pointer}
+      .fsk-row-del:disabled{opacity:.3;cursor:default}
+      .cut-row[data-status="failed"] .cut-row__body small{color:var(--wms-danger,#c2413b)}
+      .cut-row[data-status="queued"] .cut-row__body small{color:var(--wms-warning,#b7791f)}
+    </style>
+<script>
+/* ===== NDS-ENGINE (bat dau) =====
+ * Bo doi chieu chu tren tem <-> danh muc SKU, chay 100% trong trinh duyet. Chep NGUYEN tu
+ * AuditFactory factory/index.html (tab "Nhan dien SKU") ngay 30/09/2026 — ghi chu ben trong
+ * ke cac su co that cua AuditFactory, giu nguyen de hieu vi sao tung luat ton tai.
+ * tests/find_sku_engine.cjs cat dung khoi giua hai dau moc nay de test; dung xoa dau moc. */
+var NDS_ENGINE = (function(){
+  "use strict";
+
+  /* ---------- 0. TỪ ĐIỂN ---------- */
+  /* Từ MÀU (vi + en) — gặp thì xếp vào vai "màu", không tính là thương hiệu */
+  var TU_MAU = ('trang den do xanh vang tim nau xam ghi hong cam be kem bac vang dong lam luc ' +
+    'navy white black red blue green yellow purple pink orange grey gray silver gold gunmetal ' +
+    'brass nickel bronze copper ivory cream beige mint lavender citrus mauve melange charcoal ' +
+    'matt mattsilver antique dark light soft dusty misty deep pale neon nhat dam ruoc reu khoi ' +
+    'ngoc olive teal maroon burgundy khaki tan taupe'
+  ).split(' ');
+  /* Từ VÔ NGHĨA cho việc đối soát (đơn vị, chữ đệm trong PRODUCTNAME của WMS) */
+  var TU_BO = ('none non null na nan nil pcs pc set roll cuon cuộn mét met kg gam gram yard yds ' +
+    'combo size cai chiec chiếc thanh phan phần main lot no brand nobrand made from and với voi ' +
+    'moi mỗi cho tam tạm tmp'
+  ).split(' ');
+  var BO_TU = Object.create(null); TU_BO.forEach(function(t){ BO_TU[t]=1; });
+  var LA_MAU = Object.create(null); TU_MAU.forEach(function(t){ LA_MAU[t]=1; });
+  /* MÀU TIẾNG VIỆT ↔ TIẾNG ANH (thêm 20/08/2026, yêu cầu user).
+   * Sự cố: thẻ mẫu ghi "Màu sắc: ĐEN", tên hàng WMS ghi "…/Black/Size XL" ⇒ rổ màu hai bên không có
+   * một chữ nào chung ⇒ màu (20% trọng số) đóng góp 0 cho CẢ dòng đúng lẫn dòng sai, nên "Coconut
+   * Milk" và "Black" cùng 61% — máy không có cách nào biết cái nào là đen.
+   * Cách nối: lúc DỰNG CHỈ MỤC, rổ màu của mỗi dòng được thêm luôn từ đồng nghĩa (dòng ghi "black"
+   * thì có thêm "den" và ngược lại). Chọn phía DANH MỤC chứ không phải phía tem vì:
+   *   · điểm mỗi vai = (max + trung bình)/2 trên các mảnh CỦA TEM — thêm mảnh vào tem là làm loãng
+   *     trung bình, thêm vào rổ của dòng thì chỉ có thể làm `khopTot` CAO HƠN, không bao giờ thấp đi;
+   *   · dựng một lần, không tốn gì mỗi lượt tra.
+   * "xanh" cố ý map sang CẢ blue lẫn green: tiếng Việt nhập nhằng thật, và khớp được chữ "xanh" vốn
+   * chỉ là bằng chứng yếu (mã màu/mã hàng mới là thứ quyết định). */
+  /* ⚠ MỘT CHIỀU ANH → VIỆT, KHÔNG LÀM NGƯỢC. Bản đầu nối hai chiều và bộ đối chứng 30 lượt OCR
+   * thật bắt ngay: nhà cung cấp **"Trang Nhã"** — bỏ dấu thành `trang`, TRÙNG ĐÚNG chữ "trắng" —
+   * nên MỌI dòng của NCC đó được cộng thêm màu `white`, và biến thể Navy tự nhận mình là trắng, đè
+   * luôn biến thể White đúng (97% → thứ tự đảo). Tên riêng tiếng Việt trùng từ màu là chuyện thường
+   * (Trang · Hồng · Ngọc · Cam), còn từ màu TIẾNG ANH thì gần như không bao giờ là tên NCC ⇒ chỉ nối
+   * chiều `black → den`, `white → trang`. Ca thật của user (tem ghi "ĐEN", tên hàng ghi "Black") nằm
+   * đúng chiều này. Chiều ngược (tem tiếng Anh, tên hàng tiếng Việt) chấp nhận bỏ — hiếm hơn nhiều
+   * và không đáng đổi bằng một lỗi âm thầm. */
+  var CAP_MAU = [['black','den'],['white','trang'],['red','do'],['yellow','vang'],['purple','tim'],
+    ['brown','nau'],['grey','xam'],['gray','xam'],['pink','hong'],['orange','cam'],['beige','be'],
+    ['cream','kem'],['silver','bac'],['copper','dong'],['blue','lam'],['green','luc'],['olive','reu'],
+    ['ivory','nguavoi'],['mint','ngoc']];
+  var DONG_NGHIA_MAU = Object.create(null);
+  CAP_MAU.forEach(function(c){ (DONG_NGHIA_MAU[c[0]] = DONG_NGHIA_MAU[c[0]] || []).push(c[1]); });
+
+  /* ---------- 1. CHUẨN HOÁ ---------- */
+  /* Dải dấu thanh/dấu phụ Unicode (U+0300–U+036F) dựng bằng fromCharCode: viết thẳng ký tự dấu
+     vào mã nguồn thì trình soạn thảo/công cụ nào chuẩn hoá NFC một cái là hỏng lặng lẽ. */
+  var RE_DAU = new RegExp('[' + String.fromCharCode(0x300) + '-' + String.fromCharCode(0x36f) + ']', 'g');
+  /* KHÔNG cờ /g: `test()` của regex có /g nhớ lastIndex, gọi lần thứ hai trên cùng chuỗi lại trả
+     false — bẫy im lặng đúng kiểu làm hỏng cả chỉ mục mà không báo lỗi. */
+  var RE_NGOAI_ASCII = /[^\x00-\x7f]/;
+  function boDau(s){
+    s = String(s==null?'':s);
+    /* ĐƯỜNG NHANH: chuỗi TOÀN ASCII thì không có dấu nào để bỏ — mọi dấu thanh tiếng Việt, kể cả
+       đ/Đ, đều nằm ngoài ASCII, nên bản cũ cũng trả về đúng chuỗi này. Đo 20/08/2026 bằng
+       --cpu-prof: `boDau` ngốn 20,5% thời gian dựng chỉ mục, trong khi phần lớn mảnh tên hàng của
+       WMS là ASCII thuần ("Polyester", "None", "8846295", "mm", "Cuộn" thì không). Kết quả trả về
+       y hệt bản cũ, chỉ bỏ được normalize('NFD') + 3 lượt replace. */
+    if (!RE_NGOAI_ASCII.test(s)) return s;
+    if (s.normalize) s = s.normalize('NFD').replace(RE_DAU,'');
+    return s.replace(/đ/g,'d').replace(/Đ/g,'D');
+  }
+  /** Chuẩn hoá 1 token: bỏ dấu, hạ chữ, gọt ký tự rác 2 đầu, thống nhất số/đơn vị.
+   *  Mọi biến thể của CÙNG một thông số phải rơi về CÙNG một chuỗi — đó là điều kiện để chữ trên
+   *  tem (Tex 27 · 60/3 · 38.0 CM) khớp được với PRODUCTNAME của WMS (Text 27-60-3 · 38cm · 58,5cm). */
+  /* NHỚ KẾT QUẢ: `chuan` chạy 12 lượt replace, mà cả danh mục 5.610 tên chỉ xoay quanh vài chục
+     nghìn mẩu lặp đi lặp lại ("polyester", "none", "100%"…). Nhớ lại rẻ hơn tính lại rất nhiều
+     (đo 19/08: chiếm phần lớn thời gian còn lại của bước dựng chỉ mục). */
+  var _chuanNho = Object.create(null), _chuanN = 0;
+  function chuan(t){
+    var k = (typeof t === 'string') ? t : String(t==null?'':t);
+    var c = _chuanNho[k];
+    if (c !== undefined) return c;
+    c = _chuanTinh(k);
+    if (_chuanN < 60000) { _chuanNho[k] = c; _chuanN++; }   // trần an toàn, khỏi phình vô hạn
+    return c;
+  }
+  function _chuanTinh(t){
+    t = boDau(t).toLowerCase();
+    t = t.replace(/\s+/g,' ').trim();
+    t = t.replace(/^[^0-9a-z#]+|[^0-9a-z%)]+$/g,'');        // gọt rác 2 đầu, giữ # đầu (dây kéo #3), % cuối
+    t = t.replace(/(\d)[,](\d)/g,'$1.$2');                  // 58,5 -> 58.5
+    t = t.replace(/(\d)\.0+\b/g,'$1');                      // 38.0 -> 38
+    t = t.replace(/\s*-\s*/g,'-');                          // "27- 60-3" -> "27-60-3"
+    t = t.replace(/(\d)\s*\/\s*(\d)/g,'$1-$2');             // 60/3 -> 60-3 (WMS ghi bằng gạch nối)
+    t = t.replace(/\s*\/\s*/g,'/');
+    t = t.replace(/\s*[*x]\s*(?=\d)/g,'x');                 // 20*58mm -> 20x58mm
+    t = t.replace(/(\d)\s+(cm|mm|m|gsm|inch|in|l|d|tex|tkt)\b/g,'$1$2');   // "38 cm" -> "38cm"
+    t = t.replace(/^(tex|text|tkt|tk|ne|nm|dtex)\s*[:.]?\s*/,function(m,u){ return u==='text'?'tex':u; });
+    t = t.replace(/\s+/g,'');
+    return t;
+  }
+  /* "f9-5284" -> "f95284". NHỚ KẾT QUẢ: hàm này bị gọi hai kiểu đều rất nhiều lượt —
+     (1) trên TỪ KHOÁ trong `diemCap`/`tuGanGiong` (hàng trăm nghìn lượt một lượt đối soát),
+     (2) trên CẢ TÊN HÀNG trong `locDong` (5.610 tên × mỗi mảnh người gõ).
+     Đo 20/08/2026 bằng --cpu-prof: `loi` + chính regex của nó chiếm 5,4% bước tra. Hàm thuần nên
+     nhớ lại cho ra đúng con số cũ. */
+  var _loiNho = Object.create(null), _loiN = 0;
+  function loi(t){
+    var k = (typeof t === 'string') ? t : String(t);
+    var c = _loiNho[k];
+    if (c !== undefined) return c;
+    c = k.replace(/[^0-9a-z]/gi,'');
+    if (_loiN < 60000) { _loiNho[k] = c; _loiN++; }   // trần an toàn, khỏi phình vô hạn
+    return c;
+  }
+
+  /* ---------- 2. BÓC TỪ KHOÁ THEO VAI ---------- */
+  /* Thứ tự CÓ CHỦ Ý: rút THÔNG SỐ trước (mẫu chặt nhất) → MÃ → MÀU → còn lại là chữ/thương hiệu.
+     Rút xong thì xoá khỏi chuỗi để mẫu sau không nhặt lại nửa vời (vd "38cm" không thành mã "38"). */
+  var RE_SPEC = [
+    /* CỠ ÁO ĐÃ DÁN NHÃN (szs · szxl · sz2xl, do RE_GHEP_CO ghép trong bocTen) — phải đứng ĐẦU vì
+       mẫu "số dính chữ l" (24L) và RE_CODE đều cắn được "2xl".
+       ⚠ Biên là KHOẢNG TRẮNG, không phải \b: RE_GHEP_CO luôn nhả ra mảnh có khoảng trắng hai đầu,
+       còn \b thì coi dấu gạch/chấm là biên — mã NCC "SZL-123" bị cắt thành "szl" + "123", tức mất
+       sạch bằng chứng định danh mà không một dấu hiệu nào. (Khoảng trắng dẫn đầu bị chuan() gọt.) */
+    { re:/(?:^|\s)sz(?:2xl|3xl|4xl|xxxl|xxl|xxs|xs|xl|free|s|m|l)(?=\s|$)/gi },
+    { re:/\b(?:tex|text|tkt|tk|ne|nm|dtex)\s*[:.]?\s*(\d+(?:[.,]\d+)?)\b/gi,       // Tex 27 · Tkt 120 · Text 27
+      sua:function(t){ t=t.replace(/^text/,'tex'); return /^(tex|tkt|tk|ne|nm|dtex)/.test(t)?t:('tex'+t); } },
+    { re:/\b(\d+(?:[.,]\d+)?)\s*(cm|mm|gsm|inch|yard|yds)\b/gi },                  // 38.0 CM · 17mm · 170gsm
+    { re:/\b(\d+)\s*[x*]\s*(\d+)\s*(mm|cm)?\b/gi },                                // 20*58mm
+    { re:/\b(\d+)\s*[-\/]\s*(\d+)\s*[-\/]\s*(\d+)\b/gi },                          // 27-60-3
+    { re:/\b(\d+)\s*[\/]\s*(\d+)\b/gi },                                           // 60/3
+    /* Cặp số nối gạch NGẮN (60-3, 20-2): phải đứng SAU 3 mẫu trên để không cắn mất "27-60-3",
+       và chặn ở 3 chữ số mỗi bên để KHÔNG nuốt mã màu Pantone kiểu 19-4117. */
+    { re:/\b(\d{1,3})-(\d{1,3})\b/g },
+    { re:/\b(\d{1,3})\s*l\b/gi },                                                  // 24L (cỡ nút)
+    { re:/#\s*(\d{1,2})\b/g, sua:function(t){ return '#'+t.replace(/[^0-9]/g,''); } }   // #3 (cỡ dây kéo)
+  ];
+  function nhanSpec(text, ra){
+    var s = ' ' + boDau(text).toLowerCase() + ' ';
+    RE_SPEC.forEach(function(m){
+      /* Dùng LẠI chính regex trong bảng, không `new RegExp(...)` mỗi lượt: `String.replace` luôn
+         quét từ đầu và tự trả lastIndex về 0, nên tái dùng là an toàn. Bản đầu biên dịch lại 8 mẫu
+         cho MỖI tên hàng = ~45.000 lượt biên dịch lúc dựng chỉ mục (đo 19/08: chiếm ~1/3 thời gian). */
+      s = s.replace(m.re, function(hit){
+        var t = chuan(hit);
+        if (m.sua) t = m.sua(t);
+        if (t.length>1) ra.push(t);
+        return ' ';
+      });
+    });
+    return s;
+  }
+  /* MÃ DÀI GHÉP TỪ NHIỀU ĐOẠN (hkm-det.tt.10-163 · sab-255lk3557-2 · nhs-h.p450.s-30-67h) — phải
+     rút TRƯỚC nhanSpec. Vì sao: mẫu thông số "số 1-3 chữ số, gạch, số 1-3 chữ số" cắn mất khúc GIỮA của mã
+     ("10-163"), phần còn lại "hkm-det.tt" không còn là mã nào của danh mục, thế là mất sạch bằng
+     chứng định danh (đo thật 19/08/2026: ca tem Thun dệt HKM-DET.TT.10-163 tụt xuống 50% và ra SKU
+     vải khác hẳn). Bẫy này chỉ lộ khi đọc CHỮ THÔ — ở đường AI cũ, AI trao nguyên chuỗi mã nên rổ
+     mã vẫn còn bản đầy đủ, còn danh mục thì cũng bị cắn y như vậy nên hai bên "cùng sai một kiểu".
+     Phân biệt MÃ với THÔNG SỐ bằng cấu tạo, không bằng độ dài: mã có ĐOẠN TOÀN CHỮ ("hkm", "det",
+     "sab"), còn thông số là số dính chữ đơn vị ("24-100d-2" = Tex 24-100D-2) — không có đoạn nào
+     toàn chữ nên vẫn đi đường thông số như cũ. */
+  var RE_MA_DAI = /[0-9a-z]+(?:[.-][0-9a-z]+){2,}/gi;
+  /* Đoạn chữ là ĐƠN VỊ/CHI SỐ thì KHÔNG tính là dấu hiệu của mã. Bẫy thật 19/08/2026: WMS ghi
+     "Text 27-60-3-Tkt 120", cụm "27-60-3-tkt" có đoạn toàn chữ ("tkt") nên bị nhận là mã dài —
+     rổ THÔNG SỐ của đúng SKU đó mất sạch "27-60-3" và "tkt120", còn SKU đối thủ ghi rời
+     ("Text 27 - 60-3- Tkt 120") thì giữ nguyên ⇒ tem chỉ Irisa F9-5284 tụt hạng, một SKU chỉ may
+     khác chiếm hạng 1 với 87%. Bộ qc-tem-vision bắt được ngay ca này. */
+  var DV_CHU = Object.create(null);
+  ('tex text tkt tk ne nm dtex cm mm dm m km gsm in inch yard yd yds l d pcs pc kg g gr gam set roll cuon ' +
+   'xs s m l xl xxl xxxl 2xl 3xl 4xl free all size sz')      // CỠ cũng không phải dấu hiệu của mã
+    .split(' ').forEach(function(t){ DV_CHU[t]=1; });
+  function nhanMaDai(text, ra){
+    return String(text).replace(RE_MA_DAI, function(hit){
+      if (!/[0-9]/.test(hit)) return hit;
+      /* Dấu hiệu của MÃ là có ĐOẠN CHỮ ĐỦ DÀI (≥3 chữ cái) và không phải đơn vị/cỡ: "hkm", "det",
+         "sab", "nhs". Bẫy thật 19/08/2026 (bắt được khi đối chứng lõi cũ/mới trên 30 lượt đọc):
+         tem nhãn care in "20-52mm-XS" — đoạn "xs" là CỠ, nhận cả cụm thành mã thì mất luôn dấu hiệu
+         tách XS/S/M/L, cả 4 cỡ cùng 69% và đúng cỡ XS rơi khỏi Top 3. */
+      var doan = hit.split(/[.-]/), coChu = false;
+      for (var i=0;i<doan.length;i++){
+        var d = doan[i];
+        if (d.length>=3 && /^[a-z]+$/i.test(d) && !DV_CHU[d.toLowerCase()]) { coChu = true; break; }
+      }
+      if (!coChu) return hit;
+      var t = chuan(hit);
+      if (t.length < 5) return hit;
+      ra.push(t);
+      var l = loi(t); if (l.length>=5 && l!==t) ra.push(l);
+      return ' ';
+    });
+  }
+  /* MÃ: có CẢ chữ lẫn số (f9-5284, jc01262, fv8820-8, sab-255lk3557-2, wkf-12473, tn035) hoặc dãy
+     số ≥5 chữ số (8846295 · 9151443 · SKU 422440680). */
+  var RE_CODE = /\b(?=[0-9a-z.\-]*[a-z])(?=[0-9a-z.\-]*\d)[0-9a-z][0-9a-z.-]{2,}\b|\b\d{5,}\b/gi;
+  function nhanCode(text, ra, raSpec){
+    /* Gạch dưới là DẤU PHÂN CÁCH của WMS ("F9-5284_Phong Việt"), không phải ký tự trong mã. Bỏ bước
+       này thì mã dính luôn tên NCC thành "f9-5284_phong" — tem in "F9-5284" chỉ khớp kiểu "chứa
+       trong" (0,88) chứ không khớp tuyệt đối, thế là mất luôn kết luận "đã khớp mã" (đo thật 18/08). */
+    text = String(text).replace(/_/g, ' ');
+    return (' '+text+' ').replace(RE_CODE, function(m){
+      var t = chuan(m);
+      if (t.length < 3) return ' ';
+      /* SỐ ĐO KHÔNG PHẢI MÃ (5000m · 12.5kg · 170gsm): RE_CODE nhận vì cũng "chữ lẫn số", nhưng để
+         nó vào rổ MÃ là phá luật cứng "CÓ MÃ" — sự cố thật 19/08/2026: tem in "5000m", cả danh mục
+         có hàng nghìn tên chứa "5000m", nhúm mã vì thế vượt trần 120 dòng nên `maKhop` bị bỏ ⇒
+         `coMaKhop` = false ⇒ giao diện cảnh báo "chưa khớp mã" trong khi mã F9-5284 khớp tuyệt đối.
+         Đưa về rổ THÔNG SỐ: cả tem lẫn tên hàng đều bóc bằng hàm này nên hai bên vẫn khớp nhau. */
+      if (RE_KHONG_LA_MA.test(t)) { if (raSpec && raSpec.indexOf(t)<0) raSpec.push(t); return ' '; }
+      ra.push(t);
+      if (/[-._]/.test(t)) { var l=loi(t); if(l.length>=4) ra.push(l); }
+      return ' ';
+    });
+  }
+  /* MÃ MÀU: dãy 3-4 số đứng riêng (345 · 366 · 074) hoặc cụm số-số kiểu 19-4117 (Pantone TCX) */
+  /* Bỏ số đi kèm dấu % ("100% Polyester") — đó là tỉ lệ chất liệu, không phải mã màu. Để lọt thì
+     rổ màu của gần như MỌI sản phẩm đều có "100", và chỉ cần một con số rác trên tem khớp với nó là
+     đủ vô hiệu hoá cơ chế bắt lệch màu (đo thật 18/08/2026). */
+  var RE_MAMAU = /(\b\d{2,4}-\d{3,4}\b|\b\d{3,4}\b)(\s*%)?/g;
+
+  /**
+   * Bóc 1 chuỗi (PRODUCTNAME của WMS hoặc chữ đọc trên tem) thành 4 rổ từ khoá theo vai.
+   * Một từ CÓ THỂ nằm ở nhiều rổ (vd "tn050" vừa giống mã vừa giống mã màu) — cố ý, vì tem và
+   * PRODUCTNAME không theo cùng quy ước, để trùng rổ thì điểm mới không bị hụt oan.
+   */
+  /* GHÉP TỈ LỆ CHẤT LIỆU thành MỘT mảnh: "100% Polyester" -> "100%polyester" (thêm 20/08/2026, soát
+   * 30 tem thật). Vì sao: tem in "100% Polyester W150cm" mà dòng sai ghi "90% Polyester 10% spandex"
+   * — bằng chứng phân biệt CÓ TRÊN TEM nhưng bị tách thành `100%` + `polyester` rời rạc, cả hai đều
+   * là chữ chung nên không tách được hai dòng. Ghép lại thì `RE_KHONG_LA_MA` (đã có mẫu số+%) đưa nó
+   * về rổ THÔNG SỐ ở CẢ hai phía, và hai bên khớp nhau đúng chỗ.
+   * Dựng bằng new RegExp, không dùng ký tự thoát (bộ soạn đã 2 lần ăn mất dấu gạch chéo). */
+  var RE_GHEP_TILE = new RegExp('([0-9]+(?:[.,][0-9]+)?)[ ]*%[ ]*([a-zA-ZÀ-ỹ]{3,})', 'g');
+  /* CỠ NÚT: "16LN" và "16L" là một (NCC ghi hai kiểu) — áp cho CẢ HAI phía trong bocTen. */
+  var RE_CO_NUT = new RegExp('([0-9]+)[ ]*[lL][nN](?![a-zA-Z])', 'g');
+  /* ═══ CỠ ÁO CÓ NHÃN "SIZE" — dán nhãn `sz…` cho CẢ HAI phía (thêm 21/08/2026) ═══
+   * Sự cố: thẻ mẫu in "Size: S", tên hàng WMS ghi "…/Size S", mà CẢ HAI bên đều đánh rơi nó —
+   * "size" nằm trong TU_BO còn "S" chỉ 1 ký tự nên bị lọc ở vòng chữ. Hai bên rơi giống nhau nên
+   * không ai sai điểm, nhưng mất sạch khả năng tách các biến thể cỡ của CÙNG một mã (CWHO0006 có
+   * XS/S/M/L/XL cùng màu). Cỡ XS/XL/2XL thì may mắn ≥2 ký tự nên còn sống — tức hôm nay S/M/L bị
+   * đối xử khác XS/XL mà không có lý do gì.
+   * Cách làm: ghép nhãn + giá trị thành MỘT mảnh (`szs`, `szxl`) rồi để nó vào rổ THÔNG SỐ — rổ đó
+   * có cơ chế XUNG ĐỘT, nên tem cỡ S gặp dòng cỡ XL thì bị trừ, đúng việc của nó.
+   * ⚠ GIỮ LẠI mảnh cỡ TRẦN bên cạnh ("xl"): tem NCC KHÔNG có nhãn Size (in "20-52mm-XS") vẫn phải
+   *   khớp được với dòng ghi "Size XS" y như trước. Đây là THÊM mảnh, không lấy đi mảnh cũ.
+   * Chỉ nhận khi CÓ NHÃN: "S" trần trên tem gần như luôn là chữ khác, đoán là hại. */
+  var CO_AO = '2xl|3xl|4xl|xxxl|xxl|xxs|xs|xl|free|s|m|l';
+  /* Biên hai đầu loại luôn "._-": không thì một mã NCC kiểu "SZL-123" hay "F9-SZM.44" bị cắt đôi
+     (danh mục hôm nay không có mã nào chứa "sz", nhưng cái giá của việc đoán sai ở đây là mất sạch
+     bằng chứng định danh, im lặng). Nhãn thật luôn đứng sau khoảng trắng hoặc dấu "/". */
+  var RE_GHEP_CO = new RegExp('(^|[^0-9a-zA-Z._-])(?:size|sz)[ .:]*(' + CO_AO + ')(?![0-9a-zA-Z._-])', 'gi');
+  var RE_HO_CO = new RegExp('^sz(?:' + CO_AO + ')$');
+  function bocTen(text){
+    var ra = { code:[], spec:[], color:[], brand:[], all:[] };
+    var s = String(text==null?'':text).replace(RE_GHEP_TILE, '$1%$2').replace(RE_CO_NUT, '$1l')
+      .replace(RE_GHEP_CO, function(m, dau, co){ return dau + ' sz' + co.toLowerCase() + ' ' + co + ' '; });
+    /* Chữ sau dấu "_" trong PRODUCTNAME là NHÀ CUNG CẤP: "F9-5284_Phong Việt" -> thương hiệu */
+    /* Chặn ở hết DÒNG (thêm 21/08/2026): tên hàng WMS không bao giờ có xuống dòng nên phía danh
+       mục không đổi gì, còn phía TEM thì một tên có gạch dưới ("Women_Hoodie_Full-zip_Anti-UV")
+       trước đây nuốt luôn mọi trường phía sau cho tới dấu "/" đầu tiên — tức nửa tấm thẻ chui vào
+       rổ thương hiệu. */
+    var ncc = s.match(/_\s*([^\/\r\n]+)/g);
+    if (ncc) ncc.forEach(function(m){
+      boDau(m.replace(/^_\s*/,'')).toLowerCase().split(/[^0-9a-z]+/).forEach(function(w){
+        if (w.length>=2 && !BO_TU[w]) ra.brand.push(w);
+      });
+    });
+    var conLai = nhanMaDai(s, ra.code);          // MÃ DÀI trước, kẻo mẫu thông số cắn mất khúc giữa
+    conLai = nhanSpec(conLai, ra.spec);
+    conLai = nhanCode(conLai, ra.code, ra.spec); // số đo lọt vào mẫu mã (5000m) thì trả về rổ thông số
+    conLai = conLai.replace(RE_MAMAU, function(m, so, phanTram){
+      if (!phanTram) ra.color.push(chuan(so));
+      return ' ';
+    });
+
+    /* Còn lại là CHỮ: màu -> rổ màu, phần khác -> rổ thương hiệu/phân loại */
+    conLai.split(/[^0-9a-z%]+/i).forEach(function(w){
+      w = chuan(w);
+      if (w.length<2 || BO_TU[w] || /^\d+$/.test(w)) return;
+      if (LA_MAU[w]) ra.color.push(w); else ra.brand.push(w);
+    });
+    /* MÃ MÀU DẠNG CHỮ-SỐ (V6S70 · TN050 · W.2817 · V8S41) — bắt theo CẤU TRÚC tên WMS, không theo
+       hình dạng: đoạn nào (giữa 2 dấu "/") có chứa TỪ MÀU thì mọi mã trong đoạn đó cũng là mã màu.
+       Không có bước này thì 102 biến thể dây kéo 8846295 chỉ khác nhau mã màu chữ-số sẽ không bị
+       cơ chế XUNG ĐỘT bắt (đo thật 18/08: 3 màu khác nhau cùng ~92%, chỉ mã màu toàn số mới bị bắt). */
+    String(s).split('/').forEach(function(doan){
+      /* Đoạn KHÔNG có chữ số nào thì bước này chắc chắn không sinh ra token nào (dưới đây chỉ nhận
+         `t` có chứa số) — thoát trước cả `boDau` để khỏi chạy lại 8 mẫu thông số + mẫu mã trên đoạn
+         đó. Đo 20/08/2026: mỗi tên hàng có 6-8 đoạn, phần lớn là chữ thuần ("Polyester", "None",
+         "pcs"). Không đổi kết quả. */
+      if (!/\d/.test(doan)) return;
+      var phang = boDau(doan).toLowerCase();
+      var coTuMau = phang.split(/[^0-9a-z]+/).some(function(w){ return LA_MAU[w]; });
+      if (!coTuMau) return;
+      var bo = [];
+      nhanCode(nhanSpec(doan, []), bo);
+      /* ⚠ ĐÃ THỬ VÀ BÁC 20/08/2026: "phía TEM thì mảnh đã nằm ở rổ MÃ đừng nhân đôi sang rổ MÀU".
+         Lý lẽ rất chắc (soát 30 tem thật: 47-51 loại mảnh bị nhân đôi, mà điểm vai màu =
+         (max+trung bình)/2 trên mảnh CỦA TEM nên mỗi mảnh mã lọt vào đó làm loãng trung bình của MỌI
+         ứng viên). ĐO THẬT: **2 tốt hơn nhưng 1 XẤU HƠN** (tem 422407140: 89% đúng → 95% SAI), tức
+         Top-1 đứng im 24/30; bỏ riêng bản vá này ra thì được **25/30 (83%), 0 xấu hơn**.
+         Nghĩa là mấy mảnh mã trong rổ màu của tem đang LÀM VIỆC: chúng khớp với mã màu chữ-số của
+         dòng đúng (V8S41 · PD00695MIM · TN114-TN006B) — đó là thứ tách 102 biến thể dây kéo cùng mã.
+         Muốn bỏ nhân đôi thì phải có cách khác bù lại phần khớp đó trước. Đừng làm lại mà không đo. */
+      bo.forEach(function(t){ if (/\d/.test(t)) ra.color.push(t); });
+    });
+    ['code','spec','color','brand'].forEach(function(k){
+      ra[k] = ra[k].filter(function(v,i,a){ return v && a.indexOf(v)===i; });
+      ra.all = ra.all.concat(ra[k]);
+    });
+    ra.all = ra.all.filter(function(v,i,a){ return a.indexOf(v)===i; });
+    return ra;
+  }
+
+  /* ---------- 3. FUZZY (Levenshtein có ngưỡng) ---------- */
+  function khoangCach(a,b,tran){
+    var la=a.length, lb=b.length;
+    if (Math.abs(la-lb)>tran) return tran+1;
+    var truoc=new Array(lb+1), nay=new Array(lb+1), i, j;
+    for (j=0;j<=lb;j++) truoc[j]=j;
+    for (i=1;i<=la;i++){
+      nay[0]=i; var min=i;
+      for (j=1;j<=lb;j++){
+        var c = a.charCodeAt(i-1)===b.charCodeAt(j-1) ? 0 : 1;
+        nay[j] = Math.min(truoc[j]+1, nay[j-1]+1, truoc[j-1]+c);
+        if (nay[j]<min) min=nay[j];
+      }
+      if (min>tran) return tran+1;      // cắt sớm: cả hàng đã vượt trần thì vô vọng
+      var t=truoc; truoc=nay; nay=t;
+    }
+    return truoc[lb];
+  }
+  /** Tỉ lệ giống nhau 0..1 (0 nếu chắc chắn không giống, để cắt sớm cho nhanh). */
+  function tyLe(a,b){
+    if (a===b) return 1;
+    var dai = Math.max(a.length,b.length);
+    if (dai<3) return 0;
+    /* Từ NGẮN (<5 ký tự) phải khớp CHÍNH XÁC — 1 ký tự sai trong 3 ký tự vẫn cho 0,67 điểm là quá
+       dễ dãi: "dài" khớp với "dây", "345" khớp với "346". Lỗi OCR của từ ngắn đã có ocr()/loi() lo. */
+    var tran = dai>=8 ? 2 : (dai>=5 ? 1 : 0);
+    var d = khoangCach(a,b,tran);
+    return d>tran ? 0 : 1 - d/dai;
+  }
+  /* Dạng "chịu lỗi OCR": ký tự hay bị đọc lẫn giữa chữ và số (O↔0, I/L↔1, S↔5, B↔8, Z↔2, G↔6).
+     Đây là lỗi PHỔ BIẾN NHẤT khi đọc mã in nhỏ trên tem bọc nylon — quy hết về dạng số thì
+     "Tkt12O" và "Tkt120", "JCO1262" và "JC01262" gặp được nhau mà không phải nới lỏng fuzzy. */
+  var _ocrNho = Object.create(null);   // nhớ kết quả: khopTot gọi hàm này hàng chục nghìn lần/lượt
+  function ocr(t){
+    var c = _ocrNho[t];
+    if (c === undefined) {
+      c = loi(t).replace(/o/g,'0').replace(/[il]/g,'1').replace(/s/g,'5').replace(/b/g,'8').replace(/z/g,'2').replace(/g/g,'6');
+      _ocrNho[t] = c;
+    }
+    return c;
+  }
+  /** Điểm khớp của MỘT cặp (từ khoá tem, từ khoá SKU) — thứ tự ưu tiên y như bản đầu.
+   *  NHỚ KẾT QUẢ theo cặp: cùng một lượt đối soát, "polyester" hay "none" được so đi so lại với
+   *  hàng nghìn dòng. Đo 19/08: đây là phần đắt nhất của cả lượt đối soát. Nhớ lại cho ra ĐÚNG
+   *  con số cũ (hàm thuần), không phải xấp xỉ. */
+  var _capNho = Object.create(null), _capN = 0;
+  function diemCap(tok, m){
+    /* Nhớ 2 TẦNG (`[tok][m]`) chứ không nối chuỗi làm khoá: nối chuỗi thì mỗi lần tra phải cấp phát
+       + băm một chuỗi mới, mà hàm này chạy hàng trăm nghìn lượt một lượt đối soát — đo 19/08: nối
+       chuỗi đắt hơn cả phép so sánh nó định tiết kiệm. Tra 2 tầng chỉ là 2 lượt tra thuộc tính. */
+    var b = _capNho[tok] || (_capNho[tok] = Object.create(null));
+    var v = b[m];
+    if (v !== undefined) return v;
+    if (m === tok) v = 1;
+    /* "CHỨA TRONG NHAU" chỉ tính khi hai chuỗi CÙNG CỠ (mẩu ngắn ≥ nửa mẩu dài). Không có điều kiện
+       này thì mọi số dài trên tem đều "khớp mã" nhờ trùng vài chữ số ngẫu nhiên: đo thật 19/08/2026
+       — số PO "4500219872" ăn 0,88 điểm vai MÃ của một SKU vải chỉ vì tên có mã màu 4 số nằm lọt
+       trong nó, thế là SKU sai chiếm hạng 1; chữ "inspector" cũng khớp "spec" y như vậy. */
+    else if (traiDaiHopNhau(tok, m) && (m.indexOf(tok)>=0 || tok.indexOf(m)>=0)) v = 0.88;
+    else {
+      var lt = loi(tok);
+      if (lt.length>=4 && loi(m)===lt) v = 0.95;
+      else {
+        var ot = ocr(tok);
+        if (ot.length>=4 && ocr(m)===ot) v = 0.9;
+        else { var r = tyLe(tok,m); v = r ? r*0.92 : 0; }
+      }
+    }
+    if (_capN > 400000) { _capNho = Object.create(null); _capN = 0; b = _capNho[tok] = Object.create(null); }
+    b[m] = v; _capN++;
+    return v;
+  }
+  /** Hai chuỗi có đáng so kiểu "chứa trong nhau" không: mẩu ngắn ≥4 ký tự VÀ ≥ nửa mẩu dài. */
+  function traiDaiHopNhau(a, b){
+    var n = a.length < b.length ? a.length : b.length, x = a.length > b.length ? a.length : b.length;
+    return n >= 4 && n*2 >= x;
+  }
+  /** Điểm khớp tốt nhất của 1 từ khoá tem với 1 rổ từ khoá của SKU (0..1). */
+  function khopTot(tok, ro){
+    if (!ro || !ro.length) return 0;
+    /* ĐƯỜNG NHANH — KHỚP TUYỆT ĐỐI: `diemCap` cũng trả về 1 cho cặp giống nhau, nên một lượt
+       `indexOf` của máy thay được cả chuỗi lượt gọi hàm + tra bộ nhớ đệm 2 tầng cho các phần tử
+       ĐỨNG TRƯỚC cái khớp. Đo 20/08/2026 (--cpu-prof, 1.380 lượt tra): `khopTot` + `diemCap` ngốn
+       39% bước tra, mà phần lớn từ khoá đọc được đều khớp tuyệt đối vì `tuVanBan` đã lọc theo danh
+       mục trước. Không đổi một con số nào của kết quả. */
+    if (ro.indexOf(tok) >= 0) return 1;
+    var best=0;
+    for (var i=0;i<ro.length;i++){
+      var v = diemCap(tok, ro[i]);
+      if (v === 1) return 1;
+      if (v > best) best = v;
+    }
+    return best;
+  }
+
+  /* ---------- 4. HỌ THÔNG SỐ (để bắt XUNG ĐỘT) ---------- */
+  /* Dây kéo 8846295 có 102 biến thể chỉ khác NHAU CHIỀU DÀI và MÀU. Nếu chỉ cộng điểm phần khớp
+     thì cả 102 dòng đều ~cùng điểm. Nên phải TRỪ khi tem nói "38cm" mà SKU ghi "60cm": cùng HỌ
+     thông số, có mặt ở cả hai bên, mà không dòng nào khớp = xung đột. */
+  function ho(t){
+    if (/^tex/.test(t)) return 'tex';
+    if (/^tkt|^tk\d/.test(t)) return 'tkt';
+    if (/cm$/.test(t)) return 'cm';
+    if (/mm$/.test(t)) return 'mm';
+    if (/gsm$/.test(t)) return 'gsm';
+    if (/^#\d/.test(t)) return 'co';
+    if (RE_HO_CO.test(t)) return 'sz';                 // cỡ áo: szs · szxl (xem RE_GHEP_CO)
+    if (/^\d+l$/.test(t)) return 'l';
+    if (/^\d+[-\/]\d/.test(t)) return 'ty';
+    return '';
+  }
+  function theoHo(ds){
+    var m={}; (ds||[]).forEach(function(t){ var h=ho(t); if(!h) return; (m[h]=m[h]||[]).push(t); });
+    return m;
+  }
+
+  /* ---------- 4b. ĐƠN VỊ TÍNH — "luôn lấy SKU có đơn vị NHỎ NHẤT" ---------- */
+  /* WMS không có trường đơn vị riêng (đã kiểm 19/08/2026: báo cáo stock-inventories có 31 trường,
+     không trường nào là unit/uom). Đơn vị nằm ở ĐOẠN CUỐI sau dấu "/" của PRODUCTNAME:
+       "Keo bonding/3914_Bemis/…/Clear/Non/mét"  ·  "…/mm"  ·  "Chỉ tơ/D300-8000m/cuộn"
+     Cùng MỘT vật tư thường có 2–3 SKU chỉ khác đơn vị (đo thật 19/08/2026 trên 5.608 SKU kho
+     nguyên liệu: 472/5.049 nhóm tên có ≥2 đơn vị — mét↔mm, yard↔mm, "cuộn 5000m"↔mm).
+     Kiểm kê đếm bằng đơn vị NHỎ NHẤT nên thẻ gợi ý phải là SKU mm/gram, còn các biến thể đơn vị
+     lớn hơn xuống dòng "cùng hàng, khác đơn vị" (vẫn chọn được, vẫn thấy ACTIVE/INACTIVE). */
+  var DV = (function(){
+    var m = {}, them = function(ho, q, ten){ ten.split(' ').forEach(function(t){ m[t]={q:q,ho:ho}; }); };
+    /* q = quy về đơn vị gốc của họ (m · kg · lít · cái). SỐ CÀNG NHỎ = ĐƠN VỊ CÀNG NHỎ. */
+    them('dai', 0.001, 'mm');           them('dai', 0.01, 'cm');       them('dai', 0.1, 'dm');
+    them('dai', 0.0254, 'inch in');     them('dai', 0.9144, 'yard yd yds');
+    them('dai', 1, 'm met');            them('dai', 1000, 'km');
+    them('kl', 0.000001, 'mg');         them('kl', 0.001, 'g gam gram gr');
+    them('kl', 1, 'kg');                them('kl', 1000, 'tan');
+    them('tt', 0.001, 'ml');            them('tt', 1, 'l lit lít');
+    /* Họ ĐẾM: quy về "cái". Bó/cuộn/thùng là đơn vị GỘP nên số phải lớn hơn hẳn mm/gram. */
+    them('dem', 1, 'pcs pc cai chiec soi tam to vien la');
+    them('dem', 2, 'doi cap pair pairs');
+    them('dem', 5, 'bo set');
+    them('dem', 50, 'cay chai lo tuyp');
+    them('dem', 100, 'cuon roll');
+    them('dem', 200, 'thung hop box bao kien bich');
+    /* CỜ "GỘP": đơn vị đóng gói nhiều món/nhiều mét vào một (cuộn · thùng · bộ · cây…). Kiểm kê
+       đếm từng đơn vị nhỏ nên các SKU này KHÔNG được đứng đầu gợi ý (luật cứng, xem timTop).
+       Đánh cờ theo TÊN đơn vị chứ không theo ngưỡng q, để đọc mã là hiểu ngay ý định. */
+    'bo set cay chai lo tuyp cuon roll thung hop box bao kien bich'.split(' ')
+      .forEach(function(t){ if (m[t]) m[t].gop = true; });
+    return m;
+  })();
+  /** PRODUCTNAME → đơn vị tính. `q` nhỏ = đơn vị nhỏ; `raw` giữ nguyên chữ WMS để hiển thị. */
+  function donVi(pn){
+    var s = String(pn==null?'':pn);
+    var raw = s.indexOf('/')>=0 ? s.slice(s.lastIndexOf('/')+1).trim() : '';
+    var best = null;
+    boDau(raw).toLowerCase().split(/[^0-9a-z]+/).forEach(function(w){
+      /* Bỏ mẩu có SỐ ("5000m" trong "cuộn 5000m, mm") — đó là QUY CÁCH cuộn, không phải đơn vị tính.
+         Nhờ vậy "cuộn 5000m, mm" ra đúng mm chứ không ra "m". */
+      if (!w || /\d/.test(w)) return;
+      var d = DV[w]; if (!d) return;
+      if (!best || d.q < best.q) best = { ma:w, q:d.q, ho:d.ho, gop:!!d.gop };
+    });
+    return { raw:raw, ma:best?best.ma:'', q:best?best.q:1, ho:best?best.ho:'', gop:best?best.gop:false };
+  }
+  /** Khoá "cùng một mặt hàng" = PRODUCTNAME BỎ đoạn đơn vị ở cuối (chuẩn hoá bỏ dấu, hạ chữ). */
+  function khoaHang(pn){
+    var s = String(pn==null?'':pn);
+    var i = s.lastIndexOf('/');
+    return boDau(i>=0 ? s.slice(0,i) : s).toLowerCase().replace(/\s+/g,' ').trim();
+  }
+
+  /* ---------- 4c. PHẦN TỬ CỦA TÊN HÀNG — lối đọc tem KHÔNG cần AI (19/08/2026) ----------
+   * PRODUCTNAME của WMS vốn LÀ một chuỗi PHẦN TỬ ghép bằng "/":
+   *   Half zipper-DÂY KÉO TRỤ: PHAO, #3 / 8916123_YKK / 100% Polyester / Xám đậm V9B11 / 29-all / pcs
+   * Tem nhà cung cấp in đúng mấy phần tử đó. Nên cách chắc nhất và nhanh nhất là: thủ kho đọc được
+   * mảnh nào thì gõ mảnh đó, máy tìm những dòng có CHỨA các mảnh ấy. Không chấm điểm mờ, không
+   * đoán, không gọi mạng — hoặc chứa hoặc không.
+   * `tachPhanTu` để hiển thị/kiểm thử; việc lọc thật thì dùng `locDong` (chạy trên `_pnc`).
+   */
+  function tachPhanTu(pn){
+    var ra = [];
+    String(pn==null?'':pn).split('/').forEach(function(d){
+      d = d.replace(/\s+/g,' ').trim();
+      if (d) ra.push(d);
+    });
+    return ra;
+  }
+  /** Chuẩn hoá một mảnh người gõ để đem đi `indexOf` trong `_pnc` (đã bỏ dấu, hạ chữ). */
+  function chuanManh(t){
+    return boDau(String(t==null?'':t)).toLowerCase().replace(/\s+/g,' ').trim();
+  }
+  /**
+   * Tìm các dòng CHỨA những mảnh đã cho. Trả [{i, n}] với n = số mảnh khớp (để xếp: khớp đủ trước).
+   * Quét `indexOf` trên 5.610 chuỗi tên — đo 19/08: ~1–3 ms/mảnh, rẻ hơn nhiều so với chấm điểm.
+   * Mảnh nào cũng thử thêm dạng BỎ HẾT ký tự ngăn ("v9b11" ~ "v9-b11", "8916123ykk" ~ "8916123_ykk")
+   * để người gõ khỏi phải canh đúng dấu gạch/gạch dưới in trên tem.
+   */
+  function locDong(manh, cm){
+    var ms = [];
+    (manh||[]).forEach(function(t){
+      var c = chuanManh(t);
+      if (c.length >= 2) ms.push({ c:c, l:loi(c) });
+    });
+    if (!ms.length) return [];
+    var ds = cm.ds, dem = Object.create(null), co = [];
+    for (var i=0;i<ds.length;i++){
+      var pnc = ds[i]._pnc || (ds[i]._pnc = boDau(ds[i].pn).toLowerCase());
+      var n = 0;
+      for (var k=0;k<ms.length;k++){
+        if (pnc.indexOf(ms[k].c) >= 0) { n++; continue; }
+        if (ms[k].l.length >= 3 && loi(pnc).indexOf(ms[k].l) >= 0) n++;
+      }
+      if (n){ dem[i]=n; co.push(i); }
+    }
+    return co.map(function(i){ return { i:i, n:dem[i] }; });
+  }
+
+  /* ---------- 5. ĐIỂM 1 SKU ---------- */
+  var W = { code:0.45, spec:0.25, color:0.20, brand:0.10 };
+  var VAI = ['code','spec','color','brand'];
+  /**
+   * @param nhan {code:[],spec:[],color:[],brand:[]} — từ khoá đọc từ TEM (đã chuẩn hoá)
+   * @param kho  kết quả bocTen(PRODUCTNAME) của 1 SKU
+   * @return {diem:0..1, khop:{vai:[từ khoá khớp]}, xungDot:[họ lệch], phu:0..1}
+   */
+  /* Gộp các từ khoá TRÙNG BẢN CHẤT trước khi chấm: "f9-5284" và "f95284" là một thứ, đếm 2 lần thì
+     một tem đọc tốt lại bị chia điểm (đúng cái bẫy đã thấy khi thử ca tem tròn: khớp hết mà chỉ 90%). */
+  function gonTu(ds){
+    var ra=[], da={};
+    (ds||[]).slice().sort(function(a,b){ return b.length-a.length; }).forEach(function(t){
+      var k=ocr(t); if (da[k]) return; da[k]=1; ra.push(t);
+    });
+    return ra;
+  }
+  /* Phần CHỈ phụ thuộc từ khoá TEM (gộp từ trùng bản chất, tổng trọng số, họ thông số, mã màu):
+     bản đầu tính lại cho TỪNG ứng viên — tức là tới 4.000 lần cho một lượt đối soát, dù kết quả y
+     hệt nhau. Nhớ theo ĐÚNG đối tượng `nhan` mà timTop truyền vào (engine không sửa nhan tại chỗ). */
+  var _nhanKey = null, _nhanNho = null, _nhanCm = null;
+  /* ═══ IDF: ĐÃ LÀM, ĐÃ ĐO, ĐANG TẮT (19/08/2026 — user đề xuất) ═══
+     Ý tưởng đúng về nguyên tắc: "polyester" (2.813 SKU, IDF 0,69) không thể nặng bằng "8209948"
+     (12 SKU, IDF 6,15). Nhưng ĐO trên dữ liệu thật thì KHÔNG hơn:
+       · 30 lượt OCR thật (tem có mã): Top-1 80% / Top-3 87% — BẬT hay TẮT y hệt nhau, vì luật cứng
+         "CÓ MÃ" đứng TRÊN điểm số nên điểm không phải thứ quyết định hạng.
+       · 17 ca mô phỏng "tem mờ không đọc ra mã" (chỗ IDF ĐÁNG LẼ phải phát huy): Top-1 TẮT 76% →
+         BẬT 71% (1 ca đổi hạng 1, và đổi sang SAI). Top-3 88% cả hai.
+     Vì sao không hơn: ba thứ đã làm sẵn việc của IDF — (1) `tuVanBan` LỌC mảnh theo danh mục nên rác
+     không vào tới bước chấm; (2) điểm mỗi vai là `(max + trung bình)/2`, phần `max` không quan tâm
+     từ chung; (3) cái tách được các dòng cùng họ là cơ chế XUNG ĐỘT (nhân điểm) chứ không phải trọng
+     số từ. IDF chỉ đổi được nửa "trung bình" của công thức.
+     GIỮ LẠI: `cm.idf` vẫn được dựng (rẻ, chỉ ~0ms trong 252ms dựng chỉ mục) và công tắc `batIdf` để
+     đo lại khi có tem thật; nhưng mặc định TẮT — không ship thứ đo ra không hơn mà lại mất 1 ca.
+     Muốn thử lại thì phải đo bằng `qc-loi-cu-moi.mjs` (cột "MỚI, tắt IDF" đã có sẵn). */
+  var DUNG_IDF = false;
+  function chuanBiNhan(nhan, cm){
+    if (_nhanKey === nhan && _nhanCm === cm) return _nhanNho;
+    var nhanG = {}, tong = 0, w = {};
+    VAI.forEach(function(v){ nhanG[v]=gonTu(nhan[v]); if (nhanG[v].length) tong += W[v]; });
+    /* Trọng số IDF của TỪNG từ khoá tem — tính MỘT LẦN cho cả lượt đối soát (không phải cho từng
+       ứng viên: cùng một bộ từ khoá chấm với hàng nghìn dòng). */
+    if (DUNG_IDF && cm && cm.idf){
+      VAI.forEach(function(v){
+        w[v] = nhanG[v].map(function(t){
+          var g = cm.idf[t];
+          if (g === undefined && t.length>=4 && cm.loiIdx){        // chỉ khác dấu ngăn
+            var ds2 = cm.loiIdx[loi(t)];
+            if (ds2 && ds2.length) g = cm.idf[ds2[0]];
+          }
+          return (g === undefined) ? cm.idfGiua : g;
+        });
+      });
+    }
+    /* MÃ CHỦ (xem docTheMau) — khoá theo dạng CHỊU LỖI OCR để còn nhận ra nó SAU khi gonTu đã gộp
+       các biến thể trùng bản chất (f9-5284 / f95284 chỉ còn giữ một cái). */
+    var mcSet = Object.create(null), coChu = false;
+    (nhan.maChu||[]).forEach(function(t){ mcSet[ocr(t)] = 1; coChu = true; });
+    _nhanKey = nhan; _nhanCm = cm;
+    _nhanNho = { nhanG:nhanG, tong:tong, hn:theoHo(nhanG.spec), w:w, mcSet:mcSet, coChu:coChu,
+      /* MÃ MÀU CỦA TEM — chỉ nhận mảnh mà DANH MỤC THẬT CÓ dùng làm màu (`cm.mauVung`, dựng lúc dựng
+         chỉ mục). Đây là bản vá đúng cho một lỗi đã cắn hai lần:
+           · tem "5000 M" ⇒ `5000` vào rổ màu ⇒ xung đột mã màu giả (5b.14);
+           · tem dây kéo SAB ⇒ `sab-255lk3557-2` và `no.3` vào rổ màu ⇒ dòng ĐÚNG (có mã màu thật
+             PD00695MIM) bị trừ 18%, nhường hạng 1 cho dòng KHÔNG có mã màu nào (soát 30 tem).
+         ⚠ ĐÃ THỬ VÀ LÙI LẠI cách khác: "mảnh nào ở rổ MÃ thì đừng tính là mã màu" — bộ đối chứng bắt
+         ngay 1 lượt xấu hơn (tem NKT189: bỏ hết mảnh trùng rổ mã thì chỉ còn `165` lấy từ "NET 165
+         KG" làm bằng chứng, sinh xung đột giả cho cả hai biến thể). Lọc theo TỪ VỰNG MÀU CỦA DANH MỤC
+         thì cả hai ca đều đúng: `tn114-tn006b` có thật trong rổ màu của dòng nên được giữ, còn `165`
+         và `sab-255lk3557-2` thì không. */
+      mm:(nhan.color||[]).filter(function(t){ return raDangMaMau(t) && (!cm || !cm.mauVung || cm.mauVung[t]); }) };
+    return _nhanNho;
+  }
+  /* CÓ RA DÁNG MÃ MÀU KHÔNG? (thêm 20/08/2026 — sự cố tem Lenio F0-1588)
+   * Mã màu thật của danh mục có 3 dạng: SỐ NGẮN ("345", "074", "#006"), số CÓ GẠCH ("19-3911"),
+   * hoặc CHỮ-SỐ ("V8S41", "PD00695MIM", "TN050"). Một dãy SỐ TRẦN từ 4 chữ số trở lên (>= 1000)
+   * gần như luôn là thứ khác: chiều dài cuộn ("5000 M" trên tem chỉ), MOQ ("MOQ: <= 1000"), mã keo
+   * Bemis ("3914"), mã vải ("92419").
+   * SỰ CỐ: tem Lenio in "5000 M" -> "5000" rơi vào rổ MÀU -> so với mã màu THẬT của dòng đúng
+   * ("19-3911", "PD00695MIM") -> XUNG ĐỘT MÃ MÀU GIẢ -> trừ 18% -> dòng ĐÚNG (422487060) tụt từ
+   * 88% xuống 59%, nhường hạng 1 cho 3 dòng "Chỉ Lenio mẫu" ghi THIẾU thông số nên không có gì
+   * để lệch. Đây đúng mặt trái đã ghi ở 5b (Morito): dòng ghi ĐỦ bị phạt, dòng ghi THIẾU thoát án.
+   * Lọc ở CẢ HAI phía (tem và danh mục) bằng cùng một hàm, không thì lại lệch nhau. */
+  function raDangMaMau(t){
+    t = String(t == null ? '' : t);
+    if (!/\d/.test(t)) return false;                 // không có số -> là TÊN màu, không phải mã
+    if (!/^\d+$/.test(t)) return true;               // có gạch / có chữ -> mã màu
+    return Number(t) < 1000;                         // số trần: chỉ 1-3 chữ số mới là mã màu
+  }
+  function diemMot(nhan, kho, cm){
+    var sn = chuanBiNhan(nhan, cm);
+    var khop={}, chiTiet={};
+    var nhanG = sn.nhanG, tong = sn.tong;
+    if (!tong) return { diem:0, khop:{}, xungDot:[], phu:0 };
+    var diem=0, soKhop=0, soTu=0;
+    VAI.forEach(function(v){
+      var ds = nhanG[v]; if (!ds.length) return;
+      khop[v]=[]; var s=0, cao=0, caoChu=0, tongW=0, wv=sn.w[v];
+      ds.forEach(function(t,iT){
+        var x = khopTot(t, kho[v]);
+        if (x < 0.6) { var y = 0.75*khopTot(t, kho.all); if (y>x) x=y; }   // sai rổ vẫn tính, có trừ
+        /* TRUNG BÌNH CÓ TRỌNG SỐ IDF: "polyester" (1.800 SKU) không được cân bằng "8209948" (12 SKU).
+           Không có IDF thì một tem in nhiều chữ chung sẽ nâng đều cả trăm dòng cùng loại hàng. */
+        var wt = wv ? wv[iT] : 1;
+        s += x*wt; tongW += wt;
+        soTu++; if (x>cao) cao=x;
+        if (v==='code' && sn.coChu && sn.mcSet[ocr(t)] && x>caoChu) caoChu=x;
+        if (x>=0.6) { khop[v].push(t); soKhop++; }
+      });
+      var tb = tongW ? s/tongW : 0;
+      /* VÌ SAO KHÔNG DÙNG THUẦN TRUNG BÌNH:
+         · MÃ — tem thường in NHIỀU mã (mã NCC + mã khách + số PO + số lô); khớp được MỘT mã là đã
+           định danh xong, các mã còn lại KHÔNG PHẢI bằng chứng ngược. Nên vai mã tính theo mã khớp
+           TỐT NHẤT (đo thật: ca dây kéo YKK có thêm mã riêng "CMOR-36" của NCC làm điểm tụt 68%).
+         · THÔNG SỐ / MÀU / LOẠI — trung bình thì phạt oan phần tem in thêm mà WMS không ghi, thuần
+           max thì mất sức phân biệt. Lấy nửa max nửa trung bình. Phần MÂU THUẪN thật sự (tem 38cm
+           mà tên 60cm) đã có cơ chế XUNG ĐỘT bên dưới trừ riêng, không dựa vào trung bình. */
+      /* VAI MÃ: bình thường lấy mã khớp TỐT NHẤT (tem in nhiều mã — mã NCC, mã khách, số PO —
+         khớp được MỘT cái là đã định danh xong). NHƯNG khi tem có MÃ CHỦ (nhãn "Mã sản phẩm" của
+         thẻ mẫu) thì vai mã chấm THEO ĐÚNG mã đó: mã vải / mã phụ liệu in trên cùng tấm thẻ không
+         được quyền nói món hàng này là gì. Đây là chỗ chữa sự cố thẻ CWHO0006 — trước đây dòng VẢI
+         chỉ khớp mã vải vẫn được 1,00 y như dòng ĐÚNG khớp cả hai mã. */
+      chiTiet[v] = (v==='code') ? (sn.coChu ? caoChu : cao) : (cao+tb)/2;
+      diem += (W[v]/tong) * chiTiet[v];
+    });
+    /* XUNG ĐỘT thông số / mã màu */
+    /* `hoSpec` / `mmColor` gắn sẵn vào rổ của SKU lúc dựng chỉ mục (xem dungChiMuc) — cũng là thứ
+       bản đầu tính lại cho từng ứng viên mỗi lượt. */
+    var xd=[], hn=sn.hn, hk=kho.hoSpec || (kho.hoSpec = theoHo(kho.spec));
+    Object.keys(hn).forEach(function(h){
+      if (!hk[h]) return;
+      var co=false;
+      /* Ngưỡng 0,75 (thấp hơn ngưỡng khớp): chỉ kết luận LỆCH khi hai giá trị khác nhau THẬT SỰ —
+         "tkt12o" vs "tkt120" là lỗi OCR, không phải hàng khác. */
+      hn[h].forEach(function(t){ if (khopTot(t, hk[h])>=0.75) co=true; });
+      if (!co) xd.push(h);
+    });
+    var mmN=sn.mm;
+    var mmK=kho.mmColor || (kho.mmColor = (kho.color||[]).filter(raDangMaMau));
+    if (mmN.length && mmK.length){
+      var co2=false;
+      mmN.forEach(function(t){ if (khopTot(t,mmK)>=0.9) co2=true; });
+      if (!co2) xd.push('mamau');
+    }
+    if (xd.length) diem *= Math.max(0, 1 - 0.18*xd.length);
+    /* ĐỦ CĂN CỨ CHƯA? — trần điểm theo LƯỢNG BẰNG CHỨNG, không chỉ theo tỉ lệ khớp.
+       Không có bước này thì tem mờ chỉ đọc được 2 chữ ("Irisa", "Hồng") vẫn ra "100% khớp" cho
+       hàng trăm cuộn chỉ hồng — con số tự tin đó nguy hiểm hơn là không có con số nào.
+         · Khớp được MÃ (mã hàng/model là thứ định danh duy nhất) -> gần như tin được: hệ số 0,88–1
+         · Không có mã -> điểm phụ thuộc BỀ RỘNG bằng chứng (tổng trọng số các vai đọc được) */
+    var coMa = (nhan.code||[]).length && (chiTiet.code||0) >= 0.9;
+    diem *= coMa ? (0.88 + 0.12*tong) : (0.55 + 0.45*tong);
+    return { diem:diem, khop:khop, xungDot:xd, phu:soTu?soKhop/soTu:0, coMa:!!coMa, dut:tong };
+  }
+
+
+  /* ═══════════════════════════════════════════════════════════════════════════════════════════════
+   *  LÕI CHẤM ĐIỂM KIỂU IDF (4 giai đoạn, yêu cầu 19/08/2026) — không gọi AI, không cần mã vạch
+   *  ---------------------------------------------------------------------------------------------
+   *  Vì sao có bản thứ hai chứ không xoá bản cũ: bản cũ (`diemMot`, trọng số theo VAI 45/25/20/10)
+   *  đang được 58 ca test lõi + 92 ca trình duyệt canh, và nó chứa những thứ mà "tổng IDF" KHÔNG
+   *  diễn đạt được (xem 3 chỗ lệch spec bên dưới). Nên bản IDF được viết thành một người chấm ĐỘC
+   *  LẬP, bật/tắt bằng `datCham()`, rồi ĐO trên cùng dữ liệu để chọn — không đổi mù.
+   *
+   *  BA CHỖ CỐ Ý LỆCH SPEC, đều có số đo:
+   *  ① `Boost ACTIVE +100 / NORMAL +50` KHÔNG cộng vào điểm. Đo trên danh mục thật: BaseScore của
+   *     một tem đọc tốt ≈ **25,8 điểm** (tổng IDF × hệ số), nên +100/+50 lớn gấp 4×/2× TOÀN BỘ bằng
+   *     chứng ⇒ xếp hạng sẽ do ACTIVE/NORMAL quyết, token chỉ còn là số lẻ. Nặng hơn: **1.306/5.053
+   *     nhóm mặt hàng (25,8%) có MỌI SKU đều là combo/cuộn** ⇒ "NORMAL +50" đẩy một phần tư danh mục
+   *     xuống dưới các dòng không liên quan — đúng sự cố C2080 vừa vá, ở quy mô 1/4 danh mục.
+   *     ⇒ Làm đúng như TIÊU ĐỀ mục 2 của spec ("khi có nhiều SKU CÙNG điểm"): ACTIVE/NORMAL là
+   *     TIE-BREAK, chạy trong bộ so sánh nghiệp vụ `soSanh` đã có, không cộng vào BaseScore.
+   *  ② `Nhóm 1` của spec là "token có cả chữ và số > 4 ký tự" — nhưng mã hàng mạnh nhất của kho lại
+   *     là **dãy số thuần** (`8846295`, `8209948`, SKU nội bộ `422440680`). Đo: IDF(8846295)=4,01 mà
+   *     theo spec nó chỉ được ×1, còn "38cm" được ×2 ⇒ số đo nặng hơn mã hàng. Đã gộp dãy ≥5 chữ số
+   *     vào Nhóm 1.
+   *  ③ GIỮ cơ chế XUNG ĐỘT. Tổng-IDF chỉ biết CỘNG khi khớp, không biết TRỪ khi trái ngược: tem ghi
+   *     18cm mà SKU ghi 60cm thì cả hai đều "không khớp" và điểm bằng nhau. Đó là thứ duy nhất tách
+   *     được 102 biến thể dây kéo 8846295 (chỉ khác nhau chiều dài + màu). Bỏ nó là mất khả năng
+   *     phân biệt biến thể — không đo cũng thấy, nhưng vẫn có ca test canh.
+   * ═══════════════════════════════════════════════════════════════════════════════════════════════ */
+
+  /* GIAI ĐOẠN 1-2 (phần bổ sung): dọn CHỮ GIẤY TỜ ở mức CHUỖI, trước khi tách token.
+     `chuan()` đã lo chuẩn hoá từng token (18.0 cm→18cm · tex 27→tex27 · tkt 120→tkt120 · 60/3→60-3);
+     phần còn thiếu là mấy tiền tố và mẩu rác chỉ có trên GIẤY TỜ của tem.
+     ⚠ CHỈ áp cho chữ đọc từ TEM, KHÔNG áp cho PRODUCTNAME: tên hàng của WMS không bao giờ chứa
+     "P/O NO"/"INSPECTOR", mà cắt bừa trên đó thì có ngày ăn mất chữ thật (vd một tên hàng có chữ
+     "Lot" trong tên riêng). Spec nói áp cho cả hai — chỗ này cố ý lệch, vì lợi ích bằng 0 mà rủi ro
+     thì thật. */
+  /* ⚠ HAI BẪY ĐÃ CẮN NGAY LÚC VIẾT KHỐI NÀY — cắt chữ thì im lặng mà hậu quả rất rộng:
+     ① nhánh `p\s*\/?\s*o` (để bắt "P/O NO") không chốt biên phải ⇒ ăn luôn "Po" trong **Polyester**
+        → "lyester", tức mất sạch rổ chất liệu của mọi tem.
+     ② `col` không chốt biên phải ⇒ "COLOR: Hong tro" → "OR: Hong tro".
+     ⇒ Mỗi tiền tố PHẢI: neo ở đầu chuỗi hoặc sau khoảng trắng/dấu ngăn, VÀ theo sau là dấu hai
+     chấm/thăng/khoảng trắng (`[:#\s]`) chứ không phải chữ. "po" chỉ nhận dạng "po no" / "po#" /
+     "p/o" — không nhận "po" trần. Có ca test khoá cả hai. */
+  var RE_TIEN_TO = /(^|[\s(,;|])(?:col|colou?r|art|item|desc(?:ription)?|spec(?:ification)?|q'?ty|quantity|net|gross|weight|lot|batch|date|inspector|insp|origin|made\s+in|p\s*\/\s*o(?:\s*no)?|po\s*no|po#)(?=[:#\s]|$)\s*[:#.]*\s*/gi;
+  var RE_NGAY = /\b\d{1,2}\s*[\/.\-]\s*\d{1,2}\s*[\/.\-]\s*\d{2,4}\b/g;   // 12/08/2026 · 12-8-26
+  /* Chữ ký nháy chỉ nhận khi ĐỨNG RIÊNG (neo khoảng trắng hai đầu) — không thì nó cắn vào giữa mã
+     dài "HKM-DET.TT.10-163" (đoạn "det.tt") rồi làm mất bằng chứng định danh. */
+  var RE_KY_NHAY = /(^|\s)[a-z]{1,3}(?:\.[a-z]{1,3}){1,3}\.?(?=\s|$)/gi;   // NG.T.H · N.T.H
+  /* Dòng và nhãn ĐỊA CHỈ (thêm 20/08/2026 — soát 30 tem thật: 20/30 tem có màu rác `tan` lấy từ
+     "ADD: LOT 24, TÂN THỚI HIỆP IP"). Dựng bằng new RegExp + fromCharCode để không có ký tự thoát
+     nào cho công cụ soạn ăn mất. */
+  var RE_DONG = new RegExp('[' + String.fromCharCode(10) + String.fromCharCode(13) + ']+');
+  var RE_DIACHI = new RegExp('(?:^|[^a-z])(?:address|add|dia chi|dia-chi)[ .:]', 'i');
+  /* ═══════════════════════════════════════════════════════════════════════════════════════════════
+   *  THẺ MẪU LÀ BIỂU MẪU, KHÔNG PHẢI TÚI CHỮ (thêm 21/08/2026 — sự cố thẻ CWHO0006)
+   *  ---------------------------------------------------------------------------------------------
+   *  SỰ CỐ THẬT (ảnh thẻ do user gửi): "THẺ THÔNG TIN MẪU" của xưởng in 10 trường, trong đó có
+   *      Mã sản phẩm  : CWHO0006          ← ĐỊNH DANH của món đang cầm (một cái áo mẫu)
+   *      Thành phần vải: Vải Single Mesh/S130413 UZM Sheico/88% Re-Polyester, 12%Spandex/170 Gsm, 152cm
+   *  Dòng "Thành phần vải" là tên NGUYÊN LIỆU dùng để may cái mẫu đó — nó chép gần như NGUYÊN VĂN
+   *  PRODUCTNAME của một SKU VẢI có thật. Đọc cả thẻ như một túi chữ thì SKU vải khớp 5/6 phần tử và
+   *  THẮNG: đo được 422423807 (vải) **93%** đứng trên 422495218 (đúng — áo mẫu) **87%**, vì
+   *    · vai MÃ chấm theo mã khớp TỐT NHẤT ⇒ "khớp mã vải" ăn điểm y như "khớp cả mã vải lẫn mã áo";
+   *    · vai THÔNG SỐ thì dòng vải còn ĂN THÊM "152cm" (khổ vải) mà áo mẫu không có ⇒ PHẠT dòng đúng.
+   *  Nghĩa là thẻ càng ghi đầy đủ về nguyên liệu thì máy càng chắc chắn trả về nguyên liệu.
+   *
+   *  CÁCH CHỮA: đọc thẻ ĐÚNG NHƯ BIỂU MẪU, không như túi chữ.
+   *    ① Trường có nhãn ĐỊNH DANH ("Mã sản phẩm", "Mã hàng", "Style") cho ra MÃ CHỦ — mã nói món
+   *       hàng này LÀ GÌ. Mọi mã khác trên thẻ (mã vải, mã phụ liệu, số PO, số lô) chỉ là bằng chứng
+   *       phụ: dòng nào không mang mã chủ thì không phải món này, khớp bao nhiêu chữ cũng vậy.
+   *    ② CHỮ NHÃN bị cắt đi. Nó là chữ của BIỂU MẪU chứ không của món hàng, và nó gây hại thật:
+   *       nhãn "Màu sắc:" cho ra mảnh `sac`, rồi bước sửa chính tả màu theo danh mục đổi `sac` thành
+   *       `bac` (BẠC) — thẻ tự dựng ra một màu không hề có trên tem.
+   *
+   *  NGUYÊN TẮC GIỮ NGUYÊN — DANH MỤC LÀM CHỨNG: mã chủ chỉ được công nhận khi có ĐÚNG NGUYÊN VĂN
+   *  trong chỉ mục (`cm.idx`). Đọc lệch một ký tự, hoặc thẻ ghi mã chưa có trong danh mục, thì
+   *  `maChu` rỗng và lõi chấm y như trước — không có đường nào để tự tin sai.
+   * ═══════════════════════════════════════════════════════════════════════════════════════════════ */
+  /* Nhãn tiếng Việt phải khớp CẢ bản có dấu lẫn bản OCR làm mất dấu, nên mẫu được DỰNG từ bảng
+     nguyên âm chứ không viết thẳng "Mã sản phẩm" vào regex: viết thẳng thì chỉ khớp đúng một cách
+     viết, mà OCR trả về đủ kiểu (đúng dấu / mất dấu / sai dấu / chữ hoa). */
+  var _NGUYEN_AM = { a:'aáàảãạăắằẳẵặâấầẩẫậ', d:'dđ', e:'eéèẻẽẹêếềểễệ', i:'iíìỉĩị',
+    o:'oóòỏõọôốồổỗộơớờởỡợ', u:'uúùủũụưứừửữự', y:'yýỳỷỹỵ' };
+  function nguonNhan(s){
+    var ra = '';
+    for (var i=0;i<s.length;i++){
+      var c = s.charAt(i);
+      if (c === ' ') { ra += '\\s+'; continue; }
+      var v = _NGUYEN_AM[c];
+      ra += v ? ('[' + v + v.toUpperCase() + ']') : c;
+    }
+    return ra;
+  }
+  /* `viec:'ma'` = nhãn ĐỊNH DANH (giá trị của nó là mã chủ) · `viec:'bo'` = chỉ cắt chữ nhãn đi.
+     ⚠ KHÔNG đưa "size" vào đây: nhãn Size còn phải để nguyên cho RE_GHEP_CO ghép thành mảnh cỡ
+     (`szs`) — cắt nhãn đi là mất luôn cỡ, vì "S" trần chỉ 1 ký tự nên bị lọc. */
+  var NHAN_TEM = [
+    { viec:'ma', ten:['ma san pham','ma hang hoa','ma hang','ma sp','ma vat tu','ma mau',
+                      'style no','style','item code','art no'] },
+    { viec:'bo', ten:['loai mau','ten san pham','ten hang','thanh phan vai','thanh phan',
+                      'nguyen phu lieu','chat lieu','phu lieu','mau sac','nv may mau',
+                      'nguoi thuc hien','ngay thuc hien','ghi chu','so luong','don vi tinh',
+                      'don vi','nha cung cap'] }
+  ];
+  /* Nhãn phải đứng ĐẦU CHUỖI hoặc sau khoảng trắng/dấu ngăn, VÀ có dấu hai chấm theo sau. Đòi dấu
+     hai chấm là chốt an toàn: không có nó thì chữ "mã hàng" trong một câu bất kỳ cũng thành nhãn. */
+  var NHAN_MOC = (function(){
+    var ds = [];
+    NHAN_TEM.forEach(function(n){ n.ten.forEach(function(t){ ds.push({ viec:n.viec, ten:t }); }); });
+    return ds.map(function(x){
+      return { viec:x.viec, ten:x.ten,
+        re:new RegExp('(^|[\\s(,;|\\[])(' + nguonNhan(x.ten) + ')\\s*[:：]', 'gi') };
+    });
+  })();
+  /**
+   * Đọc tem dạng BIỂU MẪU: cắt chữ NHÃN khỏi chuỗi và lấy giá trị của (các) trường ĐỊNH DANH.
+   * @return { maChu:[chuỗi giá trị thô], catNhan:chuỗi đã bỏ chữ nhãn }
+   */
+  function docTheMau(text){
+    var s = String(text == null ? '' : text);
+    if (s.indexOf(':') < 0 && s.indexOf('：') < 0) return { maChu:[], catNhan:s };   // không phải biểu mẫu
+    var moc = [];
+    NHAN_MOC.forEach(function(n){
+      n.re.lastIndex = 0;
+      var m;
+      while ((m = n.re.exec(s))){
+        moc.push({ d:m.index + m[1].length, c:m.index + m[0].length, viec:n.viec });
+        n.re.lastIndex = m.index + m[0].length;
+      }
+    });
+    if (!moc.length) return { maChu:[], catNhan:s };
+    /* Cùng một chỗ thì nhãn DÀI thắng: "thành phần vải" chứ không phải "thành phần". */
+    moc.sort(function(a,b){ return (a.d - b.d) || ((b.c - b.d) - (a.c - a.d)); });
+    var maChu = [], ra = '', tu = 0;
+    for (var i=0;i<moc.length;i++){
+      var x = moc[i];
+      if (x.d < tu) continue;                        // nằm lọt trong nhãn vừa cắt -> bỏ
+      ra += s.slice(tu, x.d) + ' ';                  // giữ mọi thứ TRƯỚC nhãn, bỏ chữ nhãn
+      tu = x.c;
+      if (x.viec !== 'ma') continue;
+      /* Giá trị = từ sau dấu hai chấm tới NHÃN KẾ TIẾP, và không vượt quá hết dòng. Phải chặn cả
+         hai đầu: OCR có lúc trả cả thẻ trên MỘT dòng (lúc đó nhãn kế tiếp là biên duy nhất), có
+         lúc trả đúng từng dòng (lúc đó hết dòng là biên đúng). */
+      var het = s.length;
+      for (var j=i+1;j<moc.length;j++) if (moc[j].d >= x.c) { het = moc[j].d; break; }
+      var gt = s.slice(x.c, het);
+      var nl = gt.search(RE_DONG);
+      if (nl >= 0) gt = gt.slice(0, nl);
+      maChu.push(gt);
+    }
+    ra += s.slice(tu);
+    return { maChu:maChu, catNhan:ra };
+  }
+  /** Giá trị thô của trường định danh → danh sách MÃ CHỦ đã chuẩn hoá. DANH MỤC LÀM CHỨNG: chỉ nhận
+   *  mã có ĐÚNG NGUYÊN VĂN trong chỉ mục, vì luật "không mang mã chủ = không phải món này" quá mạnh
+   *  để đặt lên một chuỗi có thể đọc lệch. Không nhận được thì lõi chấm y như trước. */
+  function locMaChu(dsGiaTri, cm){
+    var ra = [];
+    if (!cm || !cm.idx) return ra;
+    (dsGiaTri || []).forEach(function(gt){
+      bocTen(gt).code.forEach(function(t){
+        if (cm.idx[t] && laMaHinhDang(t) && ra.indexOf(t) < 0) ra.push(t);
+      });
+    });
+    return ra;
+  }
+  /** MÃ CHỦ đọc từ CHỮ THÔ của tem. Tầng giao diện phải gọi lại hàm này sau khi gom badge qua
+   *  `tuAI` — badge đã mất ngữ cảnh nhãn nên không tự biết mảnh nào là mã chủ. */
+  function maChuTem(text, cm){ return locMaChu(docTheMau(text).maChu, cm); }
+  function chuanChuoiTem(text){
+    var s = String(text == null ? '' : text);
+    s = s.replace(RE_NGAY, ' ');
+    /* LẶP TỚI KHI ĐỨNG YÊN (tối đa 3 lượt): mẫu tiền tố ăn cả khoảng trắng đứng sau nó, mà `/g` thì
+       đi tiếp trong chuỗi GỐC — nên tiền tố NGAY SAU một tiền tố khác bị bỏ qua vì mất ký tự biên.
+       Ca thật: "DATE: 12/08/2026 INSPECTOR: NG.T.H" → lượt 1 chỉ cắt được DATE, INSPECTOR còn nguyên.
+       Lặp lại trên KẾT QUẢ là xong, và dừng ngay khi không đổi nữa. */
+    for (var lp = 0; lp < 3; lp++){
+      var truoc = s;
+      s = s.replace(RE_TIEN_TO, '$1 ');    // giữ lại ký tự biên đã ngoạm, kẻo dính hai từ vào nhau
+      if (s === truoc) break;
+    }
+    s = s.replace(RE_KY_NHAY, '$1 ');
+    /* CẮT ĐOẠN ĐỊA CHỈ (thêm 20/08/2026 — soát 30 tem thật). Mọi tem của mấy NCC này đều in địa chỉ
+       nhà máy: "ADD: LOT 24, TAN THOI HIEP IP, DIST 12, HCMC". Bỏ dấu thì "TÂN" thành `tan` — TRÙNG
+       từ màu tiếng Anh trong TU_MAU ⇒ **20/30 tem thật** có một màu rác `tan` trong rổ MÀU, kéo tụt
+       điểm vai màu (điểm vai = (max+trung bình)/2 nên một mảnh không khớp làm loãng trung bình của
+       MỌI ứng viên) và là một nguồn xung đột mã màu giả. Địa chỉ không bao giờ là bằng chứng định
+       danh, nên cắt từ nhãn ADD/ADDRESS tới hết dòng. Cắt tới HẾT DÒNG chứ không cắt cả chuỗi: tem
+       thường in địa chỉ trên một dòng riêng, phần sau đó vẫn có thể là số lô/PO. */
+    /* Cắt phần sau nhãn ĐỊA CHỈ trên TỪNG DÒNG. Viết bằng String.fromCharCode + lớp [^a-z] thay vì
+       escape regex: bộ soạn từng ăn mất dấu gạch chéo của  và
+, làm regex vỡ im lặng. */
+    s = s.split(RE_DONG).map(function(d){ var k = d.search(RE_DIACHI); return k < 0 ? d : d.slice(0, k); }).join(' ');
+    /* Luật 16LN -> 16l đã CHUYỂN sang `bocTen` (20/08/2026) để áp cho CẢ tên hàng WMS: để ở đây thì
+       tem thành `16l` mà tên hàng giữ `16ln`, hai bên chỉ khớp mờ ~0,85 nên cỡ nút mất sức phân biệt. */
+    return s.replace(/\s+/g, ' ').trim();
+  }
+
+  /* GIAI ĐOẠN 3: phân nhóm trọng số của MỘT token (spec: x3 / x2 / x1 / ép 0,1) */
+  function nhomTrongSo(t){
+    if (!t) return 1;
+    if (RE_KHONG_LA_MA.test(t)) return 2;                       // số đo: 18cm · 38mm · tex27 · 24l
+    if (/[a-z]/.test(t) && /[0-9]/.test(t) && t.length > 4) return 3;   // c2080 · fv10870c · v9b11
+    if (!/[a-z]/.test(t) && t.replace(/[^0-9]/g, '').length >= 5) return 3;  // 8846295 · 422440680 (spec thiếu)
+    return 1;
+  }
+  /** Trọng số cuối của một từ khoá tem: IDF × nhóm; từ quá phổ thông thì ép xuống (spec Nhóm 4). */
+  function trongSoTu(t, cm){
+    var g = cm && cm.idf ? cm.idf[t] : undefined;
+    if (g === undefined && cm && cm.loiIdx && t.length >= 4){
+      var ds = cm.loiIdx[loi(t)];
+      if (ds && ds.length) g = cm.idf[ds[0]];
+    }
+    if (g === undefined) g = cm && cm.idfGiua ? cm.idfGiua : 1;
+    /* "Ép IDF về 0,1 cho polyester/none/pcs": làm theo SỐ LIỆU chứ không theo danh sách từ gõ tay —
+       token nào có mặt ở >5% danh mục (IDF < ln(20) ≈ 3,0) thì nó không định danh được gì.
+       Danh sách từ gõ tay là thứ dự án đã bác nhiều lần (nó chết theo nhà cung cấp mới). */
+    if (g < 3) return 0.1 * nhomTrongSo(t);
+    return g * nhomTrongSo(t);
+  }
+
+  /* GIAI ĐOẠN 4: chấm một SKU. Trả về ĐÚNG khuôn của `diemMot` để mọi tầng trên không phải biết
+     mình đang dùng người chấm nào. */
+  function chamIdf(nhan, kho, cm){
+    var sn = chuanBiNhan(nhan, cm);
+    var nhanG = sn.nhanG, khop = {}, diem = 0, tongW = 0, soKhop = 0, soTu = 0, caoMa = 0;
+    VAI.forEach(function(v){
+      var ds = nhanG[v]; if (!ds.length) return;
+      khop[v] = [];
+      /* VAI MÃ LẤY MAX, CÁC VAI KHÁC LẤY TỔNG — chỗ ghép quan trọng nhất giữa hai lối chấm.
+         Vì sao mã không được cộng dồn: tem luôn in NHIỀU mã (mã NCC + mã khách + số PO + số lô),
+         khớp được MỘT mã là đã định danh xong, mấy mã còn lại KHÔNG phải bằng chứng ngược. Cộng dồn
+         thì một dòng khớp 2 mã tầm thường lại thắng dòng khớp đúng 1 mã hàng — đo thật ở bộ 30 lượt
+         OCR: tổng-thuần cho 77% Top-1, ghép max-cho-mã cho 80%. */
+      var laMa = (v === 'code'), maAn = 0, maMax = 0;
+      for (var i = 0; i < ds.length; i++){
+        var t = ds[i], w = trongSoTu(t, cm);
+        var x = khopTot(t, kho[v]);
+        if (x < 0.6) { var y = 0.75 * khopTot(t, kho.all); if (y > x) x = y; }
+        /* Khớp tuyệt đối ăn đủ điểm; khớp GẦN (Levenshtein 1 / lẫn chữ-số của OCR) ăn nửa điểm —
+           đúng "hệ số phạt 0,5" của spec. */
+        var an = (x >= 0.999) ? 1 : (x >= 0.7 ? 0.5 : 0);
+        if (laMa){ if (w * an > maAn) maAn = w * an; if (w > maMax) maMax = w; }
+        else { diem += w * an; tongW += w; }
+        soTu++;
+        if (an) { khop[v].push(t); soKhop++; if (laMa && x > caoMa) caoMa = x; }
+      }
+      if (laMa){ diem += maAn; tongW += maMax; }
+    });
+    if (!tongW) return { diem: 0, khop: {}, xungDot: [], phu: 0 };
+    /* XUNG ĐỘT (giữ nguyên bản cũ — xem ghi chú ③ ở đầu khối) */
+    var xd = [], hn = sn.hn, hk = kho.hoSpec || (kho.hoSpec = theoHo(kho.spec));
+    Object.keys(hn).forEach(function(h){
+      if (!hk[h]) return;
+      var co = false;
+      hn[h].forEach(function(t){ if (khopTot(t, hk[h]) >= 0.75) co = true; });
+      if (!co) xd.push(h);
+    });
+    var mmN = sn.mm, mmK = kho.mmColor || (kho.mmColor = (kho.color || []).filter(raDangMaMau));
+    if (mmN.length && mmK.length){
+      var co2 = false;
+      mmN.forEach(function(t){ if (khopTot(t, mmK) >= 0.9) co2 = true; });
+      if (!co2) xd.push('mamau');
+    }
+    var ty = diem / tongW;
+    if (xd.length) ty *= Math.max(0, 1 - 0.18 * xd.length);
+    /* Boost 3 của spec — tem ghi đơn vị ("5000m", "pcs") trùng đoạn ĐVT của SKU. Không cộng 20 điểm
+       tuyệt đối (nó lớn hơn cả BaseScore của nhiều tem) mà cộng 5% tương đối, đủ để tách hai dòng
+       ngang điểm mà không lật được bằng chứng token. */
+    var dvK = (kho.dv || '');
+    if (dvK){
+      var trungDv = false;
+      VAI.forEach(function(v){ (nhanG[v] || []).forEach(function(t){ if (t === dvK || loi(t) === loi(dvK)) trungDv = true; }); });
+      if (trungDv) ty = Math.min(1, ty * 1.05);
+    }
+    /* TRẦN THEO LƯỢNG BẰNG CHỨNG — giữ tinh thần bản cũ: đọc được 2 chữ chung thì không được 100%.
+       `tongW` là tổng trọng số ĐỌC ĐƯỢC; bão hoà quanh 25 (đo: một tem đọc tốt ≈ 25,8). */
+    var coMa = caoMa >= 0.9;
+    var doRong = tongW / (tongW + 18);
+    ty *= coMa ? (0.88 + 0.12 * doRong) : (0.55 + 0.45 * doRong);
+    return { diem: ty, khop: khop, xungDot: xd, phu: soTu ? soKhop / soTu : 0, coMa: !!coMa, dut: doRong };
+  }
+
+  /* ---------- 6. CHỈ MỤC NGƯỢC + TÌM TOP ---------- */
+  /**
+   * Dựng chỉ mục 1 lần cho cả danh mục (5.600 SKU ≈ 0,3s) — nhờ nó mỗi lần đối soát chỉ chấm vài
+   * trăm ứng viên thay vì cả danh mục (fuzzy toàn bảng trên điện thoại là 5-10s).
+   * @param ds [{sku,pn,type,status,qty}]
+   */
+  function dungChiMuc(ds){
+    var viec = dungChiMucViec(ds);
+    while (!viec.buoc(1e9)) { /* chạy một hơi — đường gọi cũ, không ai phải biết chuyện chia lô */ }
+    return viec.cm;
+  }
+  /**
+   * DỰNG CHỈ MỤC THEO LÔ — để không chặn luồng UI (20/08/2026).
+   * Vì sao: đo trong Edge thật, dựng chỉ mục 5.610 SKU mất 194ms trên PC nhưng **1.360ms khi bóp
+   * CPU 4×** và **2.205ms khi bóp 6×** (đúng tầm điện thoại thủ kho cầm ngoài kho) — cả trang đứng
+   * im suốt lúc đó, không cuộn được, bấm không phản hồi. Bước TRA thì chỉ 12ms nên tối ưu tra bao
+   * nhiêu cũng không cứu được cảm giác "trang treo" này.
+   * Cách dùng: gọi `buoc(n)` nhiều lần, mỗi lần xử tối đa `n` dòng rồi trả về false khi CHƯA xong.
+   * Khi trả về true thì `.cm` là chỉ mục hoàn chỉnh — **cùng một bản mã** với đường gọi một hơi ở
+   * trên, nên không có bản sao nào để lệch nhau.
+   */
+  function dungChiMucViec(ds){
+    var idx = Object.create(null), tuVung = [], mauVung = Object.create(null), i = 0, pha = 0;
+    var viec = { tong: ds.length, xong: false, cm: null,
+      tienDo: function(){ return ds.length ? i/ds.length : 1; },
+      buoc: function(n){
+        if (pha === 0){
+          loDong(n||600);
+          if (i >= ds.length) pha = 1;
+          return false;
+        }
+        if (pha === 1){ viec.cm = hoanTat(); viec.xong = true; pha = 2; }
+        return true;
+      } };
+    function loDong(n){
+     var het = i + n; if (het > ds.length) het = ds.length;
+     for (; i<het; i++){
+      var b = bocTen(ds[i].pn); ds[i]._b = b;
+      /* NỐI MÀU VIỆT ↔ ANH ngay tại đây (20/08/2026): dòng ghi "Black" thì rổ màu có thêm "den",
+         dòng ghi "Đen" thì có thêm "black". Thêm vào rổ CỦA DÒNG (không phải của tem) nên chỉ có thể
+         làm khớp CAO HƠN, không làm loãng trung bình của tem — xem ghi chú ở DONG_NGHIA_MAU.
+         Thêm cả vào `all` để bước CHỌN ỨNG VIÊN (trần 500 dòng) cũng nhìn thấy dòng đó; từ màu không
+         có chữ số nên không bao giờ bị luật cứng "CÓ MÃ" nhận nhầm là mã hàng. */
+      for (var dm=0, mc=b.color.length; dm<mc; dm++){
+        var dsDn = DONG_NGHIA_MAU[b.color[dm]];
+        if (!dsDn) continue;
+        for (var dn=0; dn<dsDn.length; dn++){
+          if (b.color.indexOf(dsDn[dn])<0) b.color.push(dsDn[dn]);
+          if (b.all.indexOf(dsDn[dn])<0) b.all.push(dsDn[dn]);
+        }
+      }
+      /* Đơn vị + khoá mặt hàng: tính MỘT LẦN ở đây (5.600 SKU ≈ vài ms) để mỗi lượt đối soát chỉ
+         việc so `q`, không phải bóc lại chuỗi. */
+      ds[i]._dv = donVi(ds[i].pn); ds[i]._k = khoaHang(ds[i].pn);
+      b.dv = ds[i]._dv.ma;                     // ĐVT của SKU, để Boost 3 (trùng đơn vị) khỏi bóc lại
+      /* Tên đã bỏ dấu + hạ chữ, để LỌC THEO PHẦN TỬ tìm bằng `indexOf` (xem locDong bên dưới) */
+      ds[i]._pnc = boDau(ds[i].pn).toLowerCase();
+      var ss = b.all;
+      for (var j=0;j<ss.length;j++){
+        var t = ss[j];
+        var o = idx[t]; if (!o) { o = idx[t] = []; tuVung.push(t); }
+        if (o[o.length-1]!==i) o.push(i);
+      }
+      /* TỪ VỰNG MÃ MÀU của danh mục (thêm 20/08/2026): mảnh nào từng đứng ở rổ MÀU của một dòng nào
+         đó thì mới được coi là "mã màu" khi xét XUNG ĐỘT. Xem ghi chú ở `mm` trong chuanBiNhan. */
+      for (var mv=0; mv<b.color.length; mv++) mauVung[b.color[mv]] = 1;
+      var sk = String(ds[i].sku).toLowerCase();
+      if (!idx[sk]) { idx[sk]=[i]; tuVung.push(sk); } else idx[sk].push(i);
+     }
+    }
+    function hoanTat(){
+    /* CHỈ MỤC 2-GRAM CỦA TỪ VỰNG — để bước tìm ứng viên khỏi quét tuyến tính cả 9.272 từ mỗi lượt.
+       Vì sao 2-gram chứ không 3: một ký tự sai phá tối đa HAI 2-gram, mà từ dài ≥5 có ≥4 cái, nên
+       mọi cặp mà Levenshtein-có-ngưỡng chấp nhận đều còn chung ít nhất một 2-gram ⇒ rút ngắn danh
+       sách mà KHÔNG bỏ sót kết quả nào (3-gram thì "abcde" vs "abXde" mất sạch, sẽ sót). */
+    var gram = Object.create(null), loiIdx = Object.create(null), tuNgan = [];
+    for (var v=0; v<tuVung.length; v++){
+      var w = tuVung[v];
+      if (w.length < 2) { tuNgan.push(v); continue; }
+      var da = Object.create(null);
+      for (var g=0; g+2<=w.length; g++){
+        var k2 = w.substr(g,2);
+        if (da[k2]) continue;
+        da[k2] = 1;
+        (gram[k2] || (gram[k2]=[])).push(v);
+      }
+      var lw = loi(w);
+      if (lw) (loiIdx[lw] || (loiIdx[lw]=[])).push(w);
+    }
+    var theoSku = Object.create(null);
+    for (var s2=0; s2<ds.length; s2++) if (theoSku[String(ds[s2].sku)]==null) theoSku[String(ds[s2].sku)] = s2;
+    /* ═══ IDF — TRỌNG SỐ TỰ HỌC TỪ DANH MỤC (19/08/2026, theo yêu cầu của user) ═══
+       Trước đó trọng số chỉ có 4 mức theo VAI (mã 45 · thông số 25 · màu 20 · loại 10) và mọi từ
+       trong cùng một vai đều nặng bằng nhau. Nhưng "polyester" (có ở 1.800 SKU) và "8209948" (có ở
+       12 SKU) không thể nặng bằng nhau: từ nào càng ít SKU chứa thì càng định danh.
+         IDF(t) = ln(tổng số SKU / số SKU chứa t)
+       Từ mới lạ (không có trong danh mục) lấy IDF TRUNG VỊ chứ không phải vô cực: nó vẫn có thể khớp
+       nhờ fuzzy (jco1262 ~ jc01262), cho vô cực là để một từ đọc sai lái cả điểm.
+       Cái này KHÔNG thay các luật nghiệp vụ (ACTIVE → đóng gói → sổ tay → CÓ MÃ) mà chỉ đổi cách
+       tính điểm bên trong từng vai. */
+    var idf = Object.create(null), N = ds.length || 1, dsIdf = [];
+    for (var v2=0; v2<tuVung.length; v2++){
+      var tv = tuVung[v2], df = (idx[tv]||[]).length || 1;
+      var g = Math.log(N/df);
+      idf[tv] = g; dsIdf.push(g);
+    }
+    dsIdf.sort(function(a,b){ return a-b; });
+    var idfGiua = dsIdf.length ? dsIdf[dsIdf.length>>1] : 1;
+    return { idx:idx, tuVung:tuVung, mauVung:mauVung, ds:ds, gram:gram, loiIdx:loiIdx, tuNgan:tuNgan, theoSku:theoSku,
+      idf:idf, idfGiua:idfGiua, soDong:N };
+    }
+    return viec;
+  }
+  /**
+   * CHỮ KÝ của một tem — khoá tra "sổ tay tem" (thư viện tự học, xem NDS_SO ở tầng giao diện).
+   * Chỉ lấy 3 vai ĐỊNH DANH (mã · thông số · màu); cố tình BỎ vai loại/NCC vì nó quá chung
+   * ("polyester", "chi may", "none") — để vào thì hai tem khác hẳn nhau vẫn ra cùng chữ ký, sổ tay
+   * sẽ trả lời chắc nịch một SKU sai. Ít hơn 2 từ khoá thì KHÔNG đáng nhớ (trả '').
+   */
+  function chuKy(nhan){
+    var t = [];
+    ['code','spec','color'].forEach(function(v){
+      (nhan[v]||[]).forEach(function(x){ if (x && t.indexOf(x)<0) t.push(x); });
+    });
+    return t.length>=2 ? t.sort().join('·') : '';
+  }
+  /** Từ khoá tem -> các từ vựng GẦN GIỐNG, lấy qua chỉ mục 2-gram (thay cho quét cả bảng từ vựng). */
+  function tuGanGiong(t, cm){
+    if (!cm.gram) {                                   // chỉ mục cũ (không có 2-gram) -> đường quét cũ
+      var cu = [];
+      for (var q=0;q<cm.tuVung.length;q++){
+        var x = cm.tuVung[q];
+        if (traiDaiHopNhau(t,x) && (x.indexOf(t)>=0 || t.indexOf(x)>=0)) { cu.push(x); continue; }
+        if (t.length>=4 && loi(x)===loi(t)) { cu.push(x); continue; }
+        if (tyLe(t,x)>=0.82) cu.push(x);
+      }
+      return cu;
+    }
+    var ra = [], daCo = Object.create(null), lt = loi(t), i, j, ds;
+    if (t.length>=4 && cm.loiIdx[lt]) {              // loi() trùng nhau -> tra thẳng, khỏi so từng từ
+      ds = cm.loiIdx[lt];
+      for (i=0;i<ds.length;i++) if (!daCo[ds[i]]) { daCo[ds[i]]=1; ra.push(ds[i]); }
+    }
+    var ung = Object.create(null);
+    for (i=0; i+2<=t.length; i++){
+      ds = cm.gram[t.substr(i,2)];
+      if (ds) for (j=0;j<ds.length;j++) ung[ds[j]] = 1;
+    }
+    for (i=0;i<cm.tuNgan.length;i++) ung[cm.tuNgan[i]] = 1;   // từ 1 ký tự không có 2-gram
+    var ks = Object.keys(ung);
+    for (i=0;i<ks.length;i++){
+      var m = cm.tuVung[ks[i]];
+      if (daCo[m]) continue;
+      if (traiDaiHopNhau(t,m) && (m.indexOf(t)>=0 || t.indexOf(m)>=0)) { daCo[m]=1; ra.push(m); continue; }
+      if (t.length>=4 && loi(m)===lt) { daCo[m]=1; ra.push(m); continue; }
+      if (tyLe(t,m)>=0.82) { daCo[m]=1; ra.push(m); }
+    }
+    return ra;
+  }
+  /** CÓ từ vựng nào gần giống `t` không — dừng ngay khi thấy cái đầu tiên.
+   *  Vì sao tách riêng: `tuVanBan` gọi để LỌC mảnh giấy tờ (chỉ cần biết có/không), mà một tem OCR
+   *  thật có cả chục mảnh không nằm trong danh mục ("inspector", số PO, địa chỉ) — mỗi mảnh như vậy
+   *  bản cũ phải so hết mọi ứng viên 2-gram rồi mới trả về mảng rỗng. Đo 20/08/2026: bước tách token
+   *  chiếm 40% một lượt tra sau khi bước chấm điểm đã nhanh lên. Không đổi kết quả: `coThat` chỉ
+   *  đọc `.length` của mảng đó. */
+  function coTuGanGiong(t, cm){
+    if (!cm.gram) return tuGanGiong(t, cm).length > 0;
+    var lt = loi(t), i, j, ds;
+    if (t.length>=4 && cm.loiIdx[lt] && cm.loiIdx[lt].length) return true;
+    var ung = Object.create(null);
+    for (i=0; i+2<=t.length; i++){
+      ds = cm.gram[t.substr(i,2)];
+      if (ds) for (j=0;j<ds.length;j++) ung[ds[j]] = 1;
+    }
+    for (i=0;i<cm.tuNgan.length;i++) ung[cm.tuNgan[i]] = 1;
+    var ks = Object.keys(ung);
+    for (i=0;i<ks.length;i++){
+      var m = cm.tuVung[ks[i]];
+      if (traiDaiHopNhau(t,m) && (m.indexOf(t)>=0 || t.indexOf(m)>=0)) return true;
+      if (t.length>=4 && loi(m)===lt) return true;
+      if (tyLe(t,m)>=0.82) return true;
+    }
+    return false;
+  }
+  /** Từ khoá tem -> danh sách chỉ số dòng ứng viên (khớp thẳng + fuzzy trên TỪ VỰNG, không phải trên bảng). */
+  function ungVien(nhan, cm, tran){
+    var can = Object.create(null), tat = [];
+    VAI.forEach(function(v){ (nhan[v]||[]).forEach(function(t){ if (tat.indexOf(t)<0) tat.push(t); }); });
+    tat.forEach(function(t){
+      var hit = cm.idx[t] ? [t] : tuGanGiong(t, cm);
+      /* CÂN THEO ĐỘ HIẾM (IDF) THAY VÌ ĐẾM ĐẦU TỪ KHOÁ — đây là chỗ IDF thật sự đáng giá.
+         Bước cắt ứng viên là chỗ DUY NHẤT có thể mất đáp án đúng (cắt ở 4.000 dòng). Đếm đầu từ khoá
+         thì một dòng khớp 3 chữ phổ thông ("polyester", "chi", "none") xếp trên dòng khớp đúng 1 mã
+         hàng — mà mã hàng mới là thứ định danh. Cân theo IDF thì thứ tự cắt đảo lại đúng chiều.
+         Đo (20 lượt OCR thật): giữ trần 4.000 thì kết quả y nguyên, nhưng nhờ thứ tự tốt hơn mà hạ
+         trần xuống 1.200 vẫn giữ được Top-1/Top-3 — tức đổi được ~18ms xuống ~8ms mà không mất
+         chính xác. Trước đây thử hạ trần với cách đếm cũ thì Top 3 lệch 2,7% nên đã bị bác. */
+      var w = trongSoTu(t, cm);
+      hit.forEach(function(m){ (cm.idx[m]||[]).forEach(function(i){ can[i]=(can[i]||0)+w; }); });
+    });
+    var ra = Object.keys(can).map(Number);
+    if (tran && ra.length>tran) ra.sort(function(a,b){ return can[b]-can[a]; }), ra = ra.slice(0,tran);
+    return ra;
+  }
+  /**
+   * @param nhan  từ khoá tem theo vai
+   * @param cm    chỉ mục (dungChiMuc)
+   * @param opt   {soLuong:3, chiActive:true, tranUngVien:4000}
+   * @return [{i, sku, pn, type, status, qty, donVi, dv, q, khoa, diem, pct, khop, xungDot, laSku,
+   *           bienThe:[{sku,pn,donVi,dv,status,qty,q}], viDonVi}]
+   *         Mỗi phần tử là MỘT MẶT HÀNG (đã gom các SKU chỉ khác đơn vị), đại diện là SKU đơn vị
+   *         nhỏ nhất; `bienThe` là các đơn vị còn lại, `viDonVi`=true khi đã bỏ qua đơn vị lớn hơn.
+   */
+  function timTop(nhan, cm, opt){
+    opt = opt||{};
+    var soLuong = opt.soLuong||3, chiActive = opt.chiActive!==false;
+    var ds = cm.ds, ra = [];
+    /* Tem in luôn SKU nội bộ (hàng đã dán tem kho) -> khớp tuyệt đối, khỏi chấm điểm */
+    var tatCa = []; VAI.forEach(function(v){ (nhan[v]||[]).forEach(function(t){ tatCa.push(t); }); });
+    var thangSku = [];
+    tatCa.forEach(function(t){
+      var so = t.replace(/[^0-9]/g,'');
+      if (so.length<6) return;
+      for (var i=0;i<ds.length;i++) if (String(ds[i].sku)===so && thangSku.indexOf(i)<0) thangSku.push(i);
+    });
+    /* Mô tả 1 ứng viên. INACTIVE KHÔNG bị loại ở đây (khác bản đầu): còn giữ lại thì bước gom
+       biến thể phía dưới mới liệt kê được "cùng hàng, khác đơn vị" kèm trạng thái của từng cái. */
+    var moTa = function(i, r, diem, khop, xungDot, phu, laSku){
+      var dv = r._dv || (r._dv = donVi(r.pn));
+      return { i:i, sku:r.sku, pn:r.pn, type:r.type, status:r.status, qty:r.qty,
+        donVi:dv.raw, dv:dv.ma, q:dv.q, gop:!!dv.gop, coMa:!!(maKhop && maKhop[i]),
+        khoa:(r._k!=null?r._k:(r._k=khoaHang(r.pn))),
+        diem:diem, pct:Math.round(diem*100), khop:khop, xungDot:xungDot, phu:phu, laSku:laSku,
+        bienThe:[], viDonVi:false, daHoc:false };
+    };
+    /* ═══ THƯ VIỆN MÃ NCC — dùng chỉ mục mã để KHÔNG SÓT (19/08/2026) ═══
+       Mã hàng NCC in trên tem (F9-5374 · JC01262 · 8846295) là thứ định danh mạnh nhất: đo trên
+       1.839 mã của danh mục, 28% mã trỏ tới ĐÚNG 1 SKU và 60% trỏ tới ≤3. `cm.idx` vốn đã là chỉ
+       mục mã → dòng; ở đây bảo đảm mọi dòng mang ĐÚNG mã tem đọc được đều được chấm.
+
+       Vì sao cần: `ungVien` cắt ở 4.000 dòng theo số từ khoá trúng, nên có ca dòng mang đúng mã
+       (98%) bị cắt mất — bắt được khi đối chứng 400 tem mô phỏng. Đây là bản vá cho lỗi SÓT đó.
+
+       ⚠ ĐÃ THỬ VÀ BỎ: "tin mã" — mã khớp tuyệt đối + có dòng ≥85% thì chấm ĐÚNG nhúm mã rồi thôi.
+       Nhanh 2,2× thật, nhưng đo trên 800 lượt thì 142 lượt cho kết quả XẤU HƠN: dòng khớp cao nhờ
+       màu/thông số mà tên KHÔNG chứa mã đó bị đánh rơi khỏi Top 3 (ca thật: mất một dòng 96% đang
+       đứng ngang hạng nhất). Nhanh mà rơi mất đáp án đúng thì không đổi. */
+    var TRAN_MA = 120, maKhop = null;
+    /* LỌC THEO PHẦN TỬ: người gõ mảnh nào thì chỉ chấm những dòng CÓ CHỨA mảnh đó. Điểm lúc này
+       KHÔNG phải điểm đoán mà là ĐỘ PHỦ: khớp 3/3 mảnh = 100%, 2/3 = 67% — đọc thẳng, không mơ hồ.
+       Mọi luật xếp hạng phía dưới (ACTIVE · đóng gói · sổ tay · có mã · đơn vị nhỏ · gom biến thể)
+       vẫn chạy y nguyên, nên không có đường thứ hai nào để lệch hành vi. */
+    var locKq = (opt.loc && opt.loc.length) ? locDong(opt.loc, cm) : null;
+    var soManh = 0;
+    (opt.loc||[]).forEach(function(t){ if (chuanManh(t).length>=2) soManh++; });
+    /* ⚠ LỖI THẬT 19/08/2026 — "gõ phần tử khác mà gợi ý không đổi".
+       Gõ "gecko" → Tra ra 3 SKU Gài Gecko (đúng). Gõ tiếp "c3298" → Tra: không dòng nào chứa
+       "c3298" nên locDong trả về RỖNG, bản cũ coi như "không có bộ lọc" rồi rơi xuống cho điểm
+       bằng TỪ KHOÁ CŨ → hiện lại đúng 3 SKU Gecko, không một dấu hiệu nào (chỉ tụt 100%→56%).
+       Người dùng ĐÃ NÓI RÕ tem có mảnh nào: không có dòng nào chứa thì câu trả lời trung thực là
+       KHÔNG CÓ, để lớp trên hiện "Ý bạn là…" (mã gần giống) — nhánh đó viết sẵn mà trước giờ
+       không bao giờ chạy tới được. */
+    if (locKq && soManh && !locKq.length) return [];
+    var phuLoc = null;
+    if (locKq && locKq.length){
+      phuLoc = Object.create(null);
+      for (var lz=0; lz<locKq.length; lz++) phuLoc[locKq[lz].i] = locKq[lz].n / Math.max(1,soManh);
+    }
+    /* TRẦN ỨNG VIÊN 1.200 (hạ từ 4.000 — 19/08/2026, sau khi đổi cách xếp ứng viên).
+       Lịch sử: hạ trần từng bị BÁC vì Top 3 lệch 2,7% — nhưng lúc đó ứng viên xếp theo ĐẾM ĐẦU từ
+       khoá, nên cắt là cắt mất dòng mang mã hàng mà chỉ khớp 1 từ. Nay ứng viên cân theo IDF (xem
+       `ungVien`), thứ tự cắt đảo lại đúng chiều. Đo lại: **0/300 tem mô phỏng đổi Top 3** giữa trần
+       4.000 và 1.200, và trên 30 lượt OCR thật thì Top-1/Top-3 y nguyên (80%/90%) tới cả trần 400.
+       Đổi lại: p95 thời gian đối soát 17,8ms → 14,6ms (đạt mốc <15ms), trung vị 7,0 → 6,6ms.
+
+       ⇒ HẠ TIẾP 1.200 → 500 (20/08/2026). Lý do là số đo trong TRÌNH DUYỆT THẬT, không phải Node:
+       Edge bóp CPU 4× (đúng tầm điện thoại thủ kho) cho p50 **70ms/lượt**, bóp 6× cho **111ms** —
+       tức mốc "<50ms" chỉ đạt trên PC, còn trên máy người dùng thật thì trượt. Đo lại trên 30 lượt
+       OCR thật + 400 tem mô phỏng: Top-1/Top-3 **y nguyên** ở mọi trần từ 1.200 xuống 150; thẻ hạng
+       2-3 (không phải đáp án) có đổi ở 19/430 lượt tại trần 400, 10/430 tại trần 600 — nên chọn 500
+       làm chỗ đứng, đủ rộng để không đụng vùng thẻ đổi nhiều mà vẫn cắt được hơn nửa việc chấm.
+       Nhúm dòng MANG ĐÚNG MÃ TEM vẫn được thêm vào sau bước này (xem TRAN_MA) nên trần không bao giờ
+       cắt mất bằng chứng định danh. */
+    var uv = phuLoc ? locKq.map(function(x){ return x.i; }) : ungVien(nhan, cm, opt.tranUngVien||500);
+    if (opt.tat !== false){
+      var gom = Object.create(null), coMa = false;
+      (nhan.code||[]).forEach(function(t){
+        if (t.length < 4 || !/\d/.test(t) || !cm.idx[t]) return;   // chỉ nhận mã "ra dáng mã", khớp tuyệt đối
+        coMa = true;
+        var dsm = cm.idx[t];
+        for (var z=0; z<dsm.length; z++) gom[dsm[z]] = 1;
+      });
+      var km = coMa ? Object.keys(gom) : [];
+      /* NHÚM MÃ CHỦ — hẹp hơn `gom`, và là nhúm ĐÚNG khi tem là thẻ mẫu có nhãn "Mã sản phẩm"
+         (xem docTheMau). Luật cứng "CÓ MÃ" phải bám nhúm này: không thì dòng chỉ mang mã VẢI in
+         trên cùng tấm thẻ cũng được xếp ngang hàng với dòng mang mã của chính món hàng. */
+      var gomChu = Object.create(null), coChu = false;
+      (nhan.maChu||[]).forEach(function(t){
+        if (!cm.idx[t]) return;
+        coChu = true;
+        var dsc = cm.idx[t];
+        for (var zc=0; zc<dsc.length; zc++) gomChu[dsc[zc]] = 1;
+      });
+      var kc = coChu ? Object.keys(gomChu) : [];
+      var duChu = !!(kc.length && kc.length <= TRAN_MA);
+      var duMa  = !!(km.length && km.length <= TRAN_MA);
+      if (duChu) maKhop = gomChu;                      // mã chủ đứng trước mọi mã khác của tem
+      else if (duMa) maKhop = gom;
+      /* Đang LỌC THEO PHẦN TỬ thì chỉ dùng `maKhop` để XẾP HẠNG, KHÔNG kéo thêm dòng ngoài bộ
+         lọc vào — người dùng đã nói rõ tem có những mảnh nào, đừng tự ý mở rộng. */
+      if (maKhop && !phuLoc){
+        var themUv = duChu ? (duMa ? kc.concat(km) : kc) : km;
+        var daCoUv = Object.create(null);
+        for (var u2=0; u2<uv.length; u2++) daCoUv[uv[u2]] = 1;
+        for (var u3=0; u3<themUv.length; u3++){
+          var im2 = Number(themUv[u3]);
+          if (!daCoUv[im2]) { daCoUv[im2] = 1; uv.push(im2); }
+        }
+      }
+    }
+    for (var k=0;k<uv.length;k++){
+      var i = uv[k], r = ds[i];
+      var d = (KIEU_CHAM === 'idf') ? chamIdf(nhan, r._b, cm) : diemMot(nhan, r._b, cm);
+      if (phuLoc){
+        /* Đang lọc theo phần tử: điểm = ĐỘ PHỦ mảnh (hoặc chứa hoặc không, xem 4.13).
+           Nhưng gõ MỘT mảnh chung ("polyester") thì hàng trăm dòng cùng phủ 1/1 = 100% ⇒ nhóm đó
+           trước đây xếp tiếp bằng đơn vị/tồn, tức gần như tuỳ ý — thủ kho nhìn thấy "100,100,100%"
+           rồi chọn nhầm (báo 19/08/2026: "điểm bị cào bằng"). Nay giữ ĐIỂM KHỚP TEM làm THỨ TỰ
+           PHỤ (`phu`): cùng độ phủ thì dòng nào khớp thêm nhiều từ khoá của tem hơn đứng trước.
+           Không có từ khoá tem nào thì điểm khớp = 0 cho tất cả ⇒ thứ tự y như cũ, không đổi hành vi. */
+        d = { diem:phuLoc[i], khop:d.khop||{}, xungDot:[], phu:d.diem||0 };
+      }
+      if (d.diem<=0) continue;
+      ra.push(moTa(i, r, d.diem, d.khop, d.xungDot, d.phu, false));
+    }
+    thangSku.forEach(function(i){
+      var cu = null; for (var q=0;q<ra.length;q++) if (ra[q].i===i) cu=ra[q];
+      if (cu) { cu.diem=1; cu.pct=100; cu.laSku=true; cu.xungDot=[]; }
+      else ra.push(moTa(i, ds[i], 1, {}, [], 1, true));
+    });
+
+    /* GOM BIẾN THỂ CÙNG MỘT MẶT HÀNG, KHÁC ĐƠN VỊ (xem mục 4b).
+       Đại diện nhóm = đơn vị NHỎ NHẤT còn hợp phạm vi đang xem; biến thể còn lại đi kèm thẻ để
+       người dùng thấy và chọn được, kèm ACTIVE/INACTIVE của từng cái. */
+    var nhom = Object.create(null), thuTu = [];
+    for (var g=0; g<ra.length; g++){
+      var kh = ra[g].khoa || ('#' + ra[g].sku);
+      if (!nhom[kh]) { nhom[kh] = []; thuTu.push(kh); }
+      nhom[kh].push(ra[g]);
+    }
+    var got = [];
+    thuTu.forEach(function(kh){
+      var v = nhom[kh];
+      /* THỨ TỰ ƯU TIÊN (chốt 19/08/2026): ACTIVE → NORMAL → ĐƠN VỊ NHỎ NHẤT → tồn nhiều.
+         ACTIVE đứng trước đơn vị nhỏ nhất vì một SKU đã chết (0 tồn, không hàng về) thì đơn vị nhỏ
+         đến mấy cũng không kiểm kê được; NORMAL trước COMBO vì combo là cách đóng gói, không phải
+         mặt hàng để đếm. Cái bị xếp sau KHÔNG mất đi — nó xuống dòng "cùng mặt hàng, khác đơn vị". */
+      v.sort(function(a,b){
+        if (a.laSku!==b.laSku) return a.laSku?-1:1;                  // tem in ĐÚNG SKU nội bộ -> đừng đổi
+        var sa=(a.status==='INACTIVE')?1:0, sb=(b.status==='INACTIVE')?1:0;
+        if (sa!==sb) return sa-sb;
+        var ca=(a.type==='COMBO')?1:0, cb=(b.type==='COMBO')?1:0;    // COMBO xuống trước tiên
+        if (ca!==cb) return ca-cb;
+        var ga=a.gop?1:0, gb=b.gop?1:0;                              // rồi mới tới đơn vị GỘP
+        if (ga!==gb) return ga-gb;
+        if (a.q!==b.q) return a.q-b.q;                               // ĐƠN VỊ NHỎ NHẤT
+        return (Number(b.qty)||0)-(Number(a.qty)||0);
+      });
+      var hop = chiActive ? v.filter(function(x){ return x.status!=='INACTIVE'; }) : v;
+      /* CẢ NHÓM CHỈ CÒN BẢN GỘP → VẪN PHẢI GỢI Ý BẢN ĐƠN VỊ NHỎ (vá 20/08/2026, sự cố C2080 — xem
+         NHAN-DIEN-SKU.md 5b.10). Kiểm kê đếm bằng đơn vị NHỎ NHẤT, mà bản đơn vị nhỏ của một mặt
+         hàng thường mang tồn 0 (tồn được ghi hết vào bản cuộn, hoặc nó sống ở kho khác) ⇒ luật
+         "ACTIVE trước" chốt 19/08 lại che đúng cái SKU cần đếm. Chỉ mở ngoại lệ khi MỌI dòng còn
+         sống của nhóm đều là hàng đóng gói — tức không còn lựa chọn đếm được nào khác. Nhóm chết
+         hoàn toàn (không dòng nào sống) vẫn KHÔNG được gợi ý, y như cũ. */
+      var dvNhoThay = false;
+      var conSong = v.filter(function(x){ return x.status!=='INACTIVE'; });
+      if (conSong.length && conSong.every(function(x){ return x.gop || x.type==='COMBO'; })){
+        var nhoHon = v.filter(function(x){ return x.status==='INACTIVE' && x.type!=='COMBO' && !x.gop; });
+        /* v đã sắp nên nhoHon vào theo đơn vị nhỏ nhất trước. Lọc trùng vì ở chế độ "xem cả INACTIVE"
+           thì hop CHÍNH LÀ v (đã chứa mấy dòng này) — không lọc là đại diện đúng nhưng danh sách
+           biến thể mất một dòng. */
+        if (nhoHon.length){
+          hop = nhoHon.concat(hop.filter(function(x){ return nhoHon.indexOf(x)<0; }));
+          dvNhoThay = true;                                          // để thẻ nói được VÌ SAO đại diện là dòng tồn 0
+        }
+      }
+      /* ĐỊNH DANH THẮNG PHẠM VI (20/08/2026, yêu cầu user — ca thẻ mẫu SMPA01). Bộ lọc "chỉ ACTIVE"
+         là để khỏi gợi ý hàng chết, KHÔNG phải để che dòng mang ĐÚNG MÃ in trên tem. Ca thật: 2 SKU
+         mẫu mang đúng mã SMPA01 đều tồn 0 (mẫu may xong nằm đó, không ai nhập tồn) ⇒ bị loại sạch,
+         tab quay sang đưa 3 dòng chỉ khớp chữ chung "87%/13%/đen" ở 25-60%. Trả lời SAI mà trông tự
+         tin thì tệ hơn trả lời "có mã này nhưng đang tồn 0". Thẻ vẫn in huy hiệu INACTIVE nên người
+         đọc biết ngay. Chỉ mở khi nhóm KHÔNG còn dòng sống nào — nhóm nào còn hàng sống thì dòng
+         sống vẫn đại diện như cũ. */
+      if (chiActive && !hop.length){
+        var maChet = v.filter(function(x){ return x.coMa; });
+        if (maChet.length) hop = maChet;
+      }
+      if (!hop.length) return;                                       // cả nhóm đã chết -> không gợi ý
+      var dd = hop[0], diemMax = 0;
+      for (var z=0; z<v.length; z++) if (v[z].diem>diemMax) diemMax = v[z].diem;
+      dd.diem = diemMax; dd.pct = Math.round(diemMax*100);           // gộp KHÔNG được làm tụt điểm nhóm
+      dd.bienThe = v.filter(function(x){ return x!==dd; }).map(function(x){
+        return { sku:x.sku, pn:x.pn, donVi:x.donVi, dv:x.dv, status:x.status, qty:x.qty, q:x.q, gop:x.gop };
+      });
+      dd.viDonVi = dd.bienThe.some(function(x){ return x.q>dd.q; });
+      /* MẶT HÀNG còn sống hay không — không phải riêng dòng đại diện (dùng ở luật cứng ACTIVE). */
+      dd.song = v.some(function(x){ return x.status!=='INACTIVE'; });
+      dd.dvNhoThay = dvNhoThay && dd.status==='INACTIVE';
+      got.push(dd);
+    });
+    /* THỨ TỰ XẾP HẠNG — ACTIVE/NORMAL là LUẬT CỨNG, đứng TRÊN điểm số (chốt 19/08/2026).
+       Vì sao phải cứng: điểm số có thể xếp COMBO lên đầu một cách phi lý. Ca thật gặp 19/08 —
+       tem nút Morito JC01262 17mm:
+         (Combo) …/Matt Silver/none/set   61%   ← tên KHÔNG có "17mm" nên THOÁT án phạt lệch
+         …(button)/Matt Silver/17mm/pcs   54%   ← có "17mm" khác giá trị tem nên BỊ trừ 18%
+       Tức là SKU nào ghi THIẾU thông số lại được điểm cao hơn SKU ghi ĐỦ mà lệch. Chữa gốc cho
+       cơ chế xung đột thì rủi ro (nó đang là thứ tách được 102 biến thể dây kéo), nên chốt bằng
+       luật nghiệp vụ: KIỂM KÊ ĐẾM HÀNG THẬT — combo là cách đóng gói, không phải mặt hàng để đếm.
+       Combo KHÔNG bị bỏ, chỉ luôn xuống sau mọi NORMAL **có cùng bằng chứng định danh** trong Top 3.
+       THỨ TỰ CHỐT (sửa chiều muộn 19/08/2026):
+         laSku → ACTIVE → [HÀNG ĐÓNG GÓI, chỉ khi hai bên cùng mức "có mã"] → SỔ TAY → CÓ MÃ
+                → điểm → độ phủ → đơn vị nhỏ → tồn
+       Ngoại lệ duy nhất đứng trên tất cả: tem in THẲNG mã SKU nội bộ (laSku) — người ta dán mã nào
+       thì trả mã đó, kể cả mã đó là combo. */
+    got.sort(soSanh);
+    /* "Còn sống" tính theo CẢ MẶT HÀNG, không theo riêng dòng đại diện (vá 20/08/2026): khi cả nhóm
+       chỉ còn bản cuộn thì đại diện là bản đơn vị nhỏ đã chết — nếu xếp nó như SKU chết thì mọi dòng
+       ACTIVE khác, kể cả dòng 50% chỉ khớp một chữ chung, sẽ vượt lên trên nó. `song` do bước gom
+       biến thể đặt; dòng không đi qua bước đó (ghim thẳng từ sổ tay) thì đọc `status` như cũ. */
+    function chetNhom(x){ return (x.song===undefined) ? (x.status==='INACTIVE') : !x.song; }
+    function soSanh(a,b){
+      if (a.laSku!==b.laSku) return a.laSku?-1:1;
+      /* `ma1/ma2` phải tính TỪ ĐÂY vì bậc ACTIVE bên dưới cũng bị ràng vào nó (đổi 20/08/2026). */
+      var ma1=a.coMa?0:1, ma2=b.coMa?0:1;
+      /* MẶT HÀNG còn sống trước — nhưng CHỈ khi hai bên CÙNG MỨC bằng chứng định danh, đúng cái
+         ngoặc đã dùng cho luật đóng gói ở 5b.9. Vì sao phải ràng: dòng mang ĐÚNG MÃ tem mà tồn 0
+         (hàng mẫu, hàng mới nhập chưa có PO, hàng vừa hết) từng bị MỌI dòng ACTIVE vượt lên trên —
+         đo được trên ca SMPA01: dòng 82% mang đúng mã nằm hạng 344/457, nhường hạng 1 cho dòng 25%
+         chỉ khớp chữ chung. Cùng mức có mã thì ACTIVE vẫn quyết (hai dòng cùng mã, cái còn tồn
+         đứng trước) ⇒ không đổi hành vi của mọi ca tem thường. */
+      var sa=chetNhom(a)?1:0, sb=chetNhom(b)?1:0;
+      if (ma1===ma2 && sa!==sb) return sa-sb;
+      /* ═══ CÓ MÃ TEM — đứng NGAY SAU ACTIVE, TRÊN cả luật hàng đóng gói ═══
+         Hễ có MỘT mã tem khớp tuyệt đối danh mục thì mọi SKU mang mã đó phải đứng trên mọi SKU
+         KHÔNG mang, bất kể điểm. Sự cố sinh ra luật này (19/08/2026): tem in F9-5374 mà AI không
+         đọc ra mã, lõi chấm bằng chữ chung rồi trả về SKU mang mã F6-7829 — cùng dạng tên, khác
+         hẳn mã, kèm 68% trông rất tự tin.
+
+         ⚠ SỬA THỨ TỰ 19/08/2026 (chiều muộn) — trước đó luật này bị đặt DƯỚI luật hàng đóng gói,
+         trái với chính tài liệu của nó. Hậu quả thật thủ kho gặp: gõ `c2080` (mã CÓ trong danh mục,
+         3 SKU) thì **cả 3 SKU đó đều bán theo "Cuộn 5000m"** ⇒ cờ `gop` đẩy chúng xuống hạng 29-31,
+         nhường 28 dòng chỉ khớp mỗi chữ "lavender" (50%) lên trên. Người dùng thấy y như "gợi ý vẫn
+         theo lần tra trước".
+         Nguyên tắc: ĐỊNH DANH thắng ĐÓNG GÓI. Mã hàng là bằng chứng tem này là hàng gì; cuộn/combo
+         chỉ là cách hàng đó được đóng. Thà hiện bản cuộn ĐÚNG MÃ còn hơn hiện SKU SAI HÀNG. */
+      /* HÀNG ĐÓNG GÓI (COMBO · "…/Cuộn 5000m" · "…/set" · "…/thùng") — CHỈ ĐƯỢC NÓI KHI HAI BÊN CÙNG
+         MỨC BẰNG CHỨNG ĐỊNH DANH. Đây là chỗ sửa cốt lõi 19/08/2026 (chiều muộn).
+         Ý nghĩa thật của luật này luôn là "GIỮA HAI DÒNG CỦA CÙNG MỘT MẶT HÀNG thì đừng gợi ý bản
+         cuộn/combo, hãy gợi ý bản đếm được". Nhưng nó bị viết thành luật TOÀN CỤC, nên nó cũng đè
+         lên các dòng CHẲNG LIÊN QUAN GÌ tới nhau — sinh ra 2 sự cố ngược nhau:
+           · Gõ `c2080`: cả 3 SKU của mã đó đều bán theo "Cuộn 5000m" ⇒ bị đẩy xuống hạng 29-31,
+             nhường chỗ cho 28 dòng chỉ khớp chữ "lavender". Muốn chữa thì CÓ MÃ phải trên đóng gói.
+           · Nhưng nếu đưa CÓ MÃ lên trên hẳn thì SỔ TAY (người đã tự tay xác nhận cho đúng tem này)
+             lại bị một dòng "tình cờ mang mã" vượt qua — mà sổ tay tồn tại chính để xử mấy tem có mã
+             NCC không nằm trong tên SKU.
+         Ba ràng buộc đó tạo thành VÒNG (gop > sổ tay > có mã > gop) nên không thể xếp thành một dãy.
+         Cách ra khỏi vòng: trả luật đóng gói về đúng phạm vi của nó — chỉ so khi `coMa` hai bên bằng
+         nhau (cùng mang mã, hoặc cùng không mang). Lúc đó:
+           C2080: hai bên khác mức ⇒ đóng gói im, CÓ MÃ quyết  ✓
+           Morito COMBO vs NORMAL cùng mã: cùng mức ⇒ đóng gói quyết, COMBO xuống  ✓
+           Sổ tay lỡ học COMBO của cùng mặt hàng: cùng mức ⇒ COMBO vẫn xuống  ✓
+           Sổ tay chốt SKU không mang mã: khác mức ⇒ đóng gói im, SỔ TAY quyết  ✓ */
+      if (ma1===ma2){
+        /* HAI BẬC RIÊNG, COMBO TRƯỚC GỘP (vá 20/08/2026). Trước đó `(COMBO || gop)` bị gộp thành MỘT
+           bậc, nên khi hai dòng CÙNG là hàng đóng gói thì bậc này im hẳn và thứ tự rơi xuống TỒN —
+           tức COMBO tồn nhiều hơn thì COMBO lên #1, đúng thứ luật kho cấm. Ca thật đo được trên tem
+           C2080: 422266550 (Normal, "Cuộn 5000m", tồn 32) vs 422394068 ((Combo), cùng "Cuộn 5000m",
+           tồn 154 ở kho 1178) — hôm nay NORMAL thắng chỉ vì phạm vi danh mục chỉ thấy 12 của kho
+           1177; tồn đổi chiều một cái là COMBO chiếm hạng 1. `type==='COMBO'` là DỮ LIỆU của WMS,
+           `gop` là suy ra từ tên đơn vị, nên không được để chúng triệt tiêu nhau. */
+        var ca=(a.type==='COMBO')?1:0, cb=(b.type==='COMBO')?1:0;
+        if (ca!==cb) return ca-cb;
+        var ga=a.gop?1:0, gb=b.gop?1:0;
+        if (ga!==gb) return ga-gb;
+      }
+      /* SỔ TAY (người đã tự tay xác nhận cho ĐÚNG tem này) đứng trên mọi suy đoán của máy. */
+      var h1=a.daHoc?0:1, h2=b.daHoc?0:1;
+      if (h1!==h2) return h1-h2;
+      if (ma1!==ma2) return ma1-ma2;
+      if (b.diem!==a.diem) return b.diem-a.diem;
+      if (b.phu!==a.phu) return b.phu-a.phu;
+      if (a.q!==b.q) return a.q-b.q;                      // đơn vị nhỏ nhất
+      return (Number(b.qty)||0)-(Number(a.qty)||0);
+    }
+
+    /* SỔ TAY TEM: SKU mà NGƯỜI đã xác nhận cho đúng tem này (hoặc đúng mã vạch này) — cho 100% và
+       đóng dấu "đã học", nhưng KHÔNG chen thẳng lên đầu nữa (sửa 19/08/2026).
+       Vì sao đổi: bản trước `unshift` nên nó vượt qua MỌI luật xếp hạng. Kết quả thật gặp phải là
+       một SKU COMBO nằm chễm chệ hạng 1 với "100% · từ sổ tay", trong khi luật của kho là combo và
+       đơn vị gộp TUYỆT ĐỐI không được đứng đầu. Nay ghim xong thì XẾP LẠI bằng đúng bộ so sánh
+       chung, nên NORMAL/đơn vị nhỏ vẫn thắng; SKU đã học chỉ thắng khi cùng hạng. */
+    if (opt.ghim && opt.ghim.length && cm.theoSku){
+      var daGhim = false;
+      for (var gi=0; gi<opt.ghim.length; gi++){
+        var si = cm.theoSku[String(opt.ghim[gi])];
+        if (si == null) continue;
+        var rg = ds[si];
+        if (chiActive && rg.status==='INACTIVE') continue;
+        var vt = -1;
+        for (var z2=0; z2<got.length; z2++) if (got[z2].i===si) { vt=z2; break; }
+        var itg = (vt>=0) ? got[vt] : null;
+        if (!itg){ itg = moTa(si, rg, 1, {}, [], 1, false); got.push(itg); }
+        itg.diem=1; itg.pct=100; itg.daHoc=true; itg.xungDot=[];
+        daGhim = true;
+      }
+      if (daGhim) got.sort(soSanh);
+    }
+    var raCuoi = got.slice(0, soLuong);
+    /* Cờ cho tầng giao diện: lượt này có khớp được MÃ nào của danh mục không. Không có mã thì kết
+       quả chỉ dựa vào chữ chung — phải nói thẳng chứ đừng im lặng đưa ra một SKU trông tự tin. */
+    raCuoi.coMaKhop = !!maKhop;
+    return raCuoi;
+  }
+
+  /**
+   * Từ khoá AI (5 nhóm của schema sku_vision) → 4 rổ theo vai, chuẩn hoá sẵn.
+   * ĐẶT Ở ĐÂY, không đặt trong tầng giao diện, để dashboard và 2 bộ test dùng CÙNG một cách xếp vai
+   * — trước khi tách ra, bộ test xếp "others" vào vai mã và che mất một lỗi thật.
+   */
+  function tuAI(o, cm){
+    o = o || {};
+    var nhan = { code:[], spec:[], color:[], brand:[] };
+    var them = function(vai,t){ if (t && nhan[vai].indexOf(t)<0) nhan[vai].push(t); };
+    var nap = function(vai, ds){
+      (ds||[]).forEach(function(x){
+        var b = bocTen(x);
+        /* AI nói đây là "mã" mà hình dạng không ra mã (vd màu "Matt Silver") -> nhận hết mọi mảnh
+           bóc được, đừng bỏ chữ nào: vai do AI gán chỉ là gợi ý, không phải chân lý. */
+        var co = b[vai].length ? b[vai] : VAI.reduce(function(a,k){ return a.concat(b[k]); },[]);
+        co.forEach(function(t){ them(vai,t); });
+      });
+    };
+    nap('code', o.item_codes); nap('spec', o.specs); nap('color', o.colors); nap('brand', o.brands);
+    /* "others" = số lô · số PO · số lượng · ngày. Cho vào vai MÃ là tai hại (xem ghi chú ở tầng
+       giao diện): chỉ được làm bằng chứng phụ, mã-hình-dạng cũng hạ xuống vai thương hiệu/phân loại. */
+    (o.others||[]).forEach(function(x){
+      /* CHỈ vào vai thương hiệu/phân loại (10%). Đo thật 18/08: tem in "100 PCS" -> "100" chui vào
+         vai MÀU rồi khớp với rổ màu của SKU KHÁC MÀU, thế là vô hiệu hoá luôn cơ chế bắt lệch màu.
+         Số lô / số PO / số lượng không định danh MÀU, cũng không định danh HÀNG. */
+      var b = bocTen(x);
+      VAI.forEach(function(v){ b[v].forEach(function(t){ them('brand',t); }); });
+    });
+    return napBangChung(nhan, cm);
+  }
+
+  /* ---------- 7b. CHỮ THÔ (OCR) → VAI, BẰNG CHỨNG LẤY TỪ DANH MỤC (19/08/2026) ----------
+   * Vì sao có mục này: vai do AI gán KHÔNG đáng tin. Đo thật 19/08/2026 trên CÙNG một tem chỉ
+   * Irisa F9-5284: lượt thì AI trả mã ở `item_codes` (ra 97%, đúng SKU), lượt thì trả ĐÚNG chuỗi
+   * đó ở `colors` (73% + hai gợi ý sai mã) — chỉ vì vai mã nặng 45% còn vai màu 20%, và luật cứng
+   * "CÓ MÃ" chỉ nổ khi mã nằm ở vai mã. Cùng một tem, cùng một lõi, hai kết quả khác nhau.
+   * Nên: coi vai của AI là GỢI Ý, còn BẰNG CHỨNG là cái đối chiếu được với danh mục thật.
+   */
+  /* SỐ ĐO thì KHÔNG phải mã, dù cũng "chữ lẫn số": 10mm · 38cm · tex27 · 24l · 20x58mm. Thiếu
+     bảng chặn này thì "10mm" được nâng lên vai MÃ (nặng 45%) và mọi SKU nào có 10mm cũng thành
+     "khớp mã" — đo thật 19/08/2026: 3 SKU sai chen vào Top 5 với 74–81%. */
+  /* Thêm 20/08/2026 — sự cố thẻ mẫu CMTS07: TỈ LỆ CHẤT LIỆU cũng "chữ lẫn số" nên RE_CODE nhận
+     "60%cotton" / "40%poly" / "100%polyester" vào rổ MÃ (nặng 45%). Hậu quả đo được: mọi dòng chứa
+     "60% Cotton" đều được đánh dấu CÓ MÃ, nên luật cứng "CÓ MÃ" mất sạch sức phân biệt — một
+     "Áo Mẫu FT/CMPO0015" 44% (ACTIVE) leo lên hạng 1, đè 16 dòng mang ĐÚNG mã CMTS07 (61%, tồn 0).
+     Chất liệu là THÔNG SỐ, không phải định danh: cả tem lẫn tên hàng WMS đều bóc bằng hàm này nên
+     đưa về rổ thông số thì hai bên vẫn khớp nhau. */
+  var RE_KHONG_LA_MA = /^(?:[0-9]+(?:\.[0-9]+)?(?:mm|cm|dm|m|gsm|inch|in|yard|yds|l|d|kg|g|pcs)|(?:tex|text|tkt|tk|ne|nm|dtex)[0-9]+(?:\.[0-9]+)?|[0-9]+x[0-9]+(?:mm|cm)?|#[0-9]+|[0-9]+(?:[.,][0-9]+)?%.*)$/;
+  /* "Ra dáng mã" xét trên MỘT token đã chuẩn hoá (RE_CODE xét trên cả câu). */
+  function laMaHinhDang(t){
+    if (!t || t.length < 4 || RE_KHONG_LA_MA.test(t)) return false;
+    if (/[a-z]/.test(t) && /[0-9]/.test(t)) return true;     // f9-5284 · jc01262 · v9b11
+    return !/[a-z]/.test(t) && t.replace(/[^0-9]/g,'').length >= 5;   // 8846295 · 422440680
+  }
+  /** Mảnh nào RA DÁNG MÃ và CÓ THẬT trong danh mục thì phải vào vai MÃ, bất kể ai xếp nó ở đâu.
+   *  CHỈ xét rổ màu / loại-NCC: đó là hai chỗ AI hay quăng mã hàng vào (đo thật: "F9-5284" nằm ở
+   *  colors, "BEIGE PD00695MIM" cũng ở colors). Rổ THÔNG SỐ thì không xét — hai bên đều bóc bằng
+   *  cùng bộ mẫu số đo nên mã hàng không lạc vào đó, còn kéo số đo lên vai mã thì lợi bất cập hại. */
+  function napBangChung(nhan, cm){
+    if (!cm || !cm.idx) return nhan;
+    ['color','brand'].forEach(function(v){
+      (nhan[v]||[]).forEach(function(t){
+        if (cm.idx[t] && laMaHinhDang(t) && nhan.code.indexOf(t)<0) nhan.code.push(t);
+      });
+    });
+    return nhan;
+  }
+  /**
+   * CHỮ THÔ (OCR Google · người dán chữ trên tem) → 4 rổ từ khoá theo vai.
+   * Khác `tuAI`: không ai gán vai sẵn, nên vai lấy theo HÌNH DẠNG (`bocTen`) rồi LỌC bằng chính
+   * DANH MỤC. Mảnh nào cả 5.610 tên hàng không hề có thì là chữ giấy tờ — địa chỉ, số PO, ngày,
+   * "NET WEIGHT", "INSPECTOR" — giữ lại chỉ có hại:
+   *   · làm loãng điểm (vai nào cũng tính nửa trung bình);
+   *   · bắt lệch OAN — tem in "LOT 25/08-114" là đủ để engine kết luận "lệch tỉ lệ sợi" với mọi SKU
+   *     ghi 27-60-3 rồi trừ 18% của chính dòng ĐÚNG.
+   * Mảnh bị bỏ vẫn trả về ở `bo` để giao diện nói được "đã bỏ N mảnh giấy tờ".
+   * @param opt.giuHet bỏ hẳn bước lọc (chỉ dùng khi đối chứng trong test)
+   */
+  function tuVanBan(text, cm, opt){
+    opt = opt || {};
+    /* GIAI ĐOẠN 1-2: dọn chữ giấy tờ ở mức CHUỖI trước khi tách token (chuanChuoiTem) — chỉ áp cho
+       chữ đọc từ TEM, không áp cho PRODUCTNAME (xem ghi chú ở chuanChuoiTem). */
+    /* BƯỚC 0 — TEM CÓ PHẢI BIỂU MẪU? Đọc nhãn trường trước: lấy MÃ CHỦ, cắt chữ nhãn (docTheMau). */
+    var tm = docTheMau(text);
+    var b = bocTen(chuanChuoiTem(tm.catNhan)), nhan = { code:[], spec:[], color:[], brand:[] }, bo = [];
+    var them = function(v,t){ if (t && nhan[v].indexOf(t)<0) nhan[v].push(t); };
+    /* ═══ SỬA CHÍNH TẢ MÃ THEO DANH MỤC (thêm 20/08/2026 — sự cố tem COATS astra C3185) ═══
+     * Sự cố: tem in "Col C3185" nhưng OCR trả về **dính liền** ("ColC3185") hoặc đọc lệch chữ
+     * ("COIC3185" — l thành I). Token thành `colc3185`, mà `cm.idx["colc3185"]` không có ⇒ luật cứng
+     * "CÓ MÃ" không bắn ⇒ tab rơi xuống chấm bằng chữ chung và đưa ra 3 cuộn chỉ astra khác màu ở
+     * 32%, kèm banner "Chưa khớp được MÃ HÀNG nào". `coTuGanGiong` chỉ GIỮ token lại chứ không SỬA
+     * nó, nên mọi bước sau vẫn tra bằng chuỗi sai.
+     * Nguyên tắc: **danh mục làm chứng, không đoán bừa** — chỉ đổi khi bản sửa CÓ THẬT trong chỉ mục:
+     *   (1) cắt tiền tố TOÀN CHỮ ≤4 ký tự (col · coi · color · art · ref · lot …) rồi tra lại;
+     *   (2) lệch ĐÚNG MỘT ký tự, cùng độ dài, và chỉ có DUY NHẤT một ứng viên (c3186 → c3185).
+     *       Có ≥2 ứng viên là mơ hồ ⇒ KHÔNG đổi, thà không khớp còn hơn khớp sai.
+     * Chỉ áp cho mảnh RA DÁNG MÃ, và chỉ khi bản gốc KHÔNG có nguyên văn trong danh mục. */
+    var suaMaTheoDanhMuc = function(t){
+      if (!cm || !cm.idx || cm.idx[t] || !laMaHinhDang(t)) return t;
+      for (var k=1; k<=4 && k < t.length-3; k++){
+        if (/[0-9]/.test(t.charAt(k-1))) break;                      // tiền tố phải TOÀN CHỮ
+        var con = t.slice(k);
+        if (cm.idx[con] && laMaHinhDang(con)) return con;
+      }
+      if (t.length < 5 || !cm.tuVung) return t;
+      var ungVien = null, dem = 0;
+      for (var i=0; i<cm.tuVung.length; i++){
+        var w = cm.tuVung[i];
+        if (w.length !== t.length || !laMaHinhDang(w)) continue;
+        var lech = 0;
+        for (var c=0; c<w.length && lech<2; c++) if (w.charAt(c) !== t.charAt(c)) lech++;
+        if (lech === 1){ if (++dem > 1) return t; ungVien = w; }      // mơ hồ -> giữ nguyên
+      }
+      return dem === 1 ? ungVien : t;
+    };
+    /* SỬA CHÍNH TẢ TỪ MÀU THEO DANH MỤC (thêm 20/08/2026, soát 30 tem thật).
+     * Ca thật: tem in "Polyester **Riu** 16LN" — OCR đọc "Rêu" thành "Riu". `riu` không có trong danh
+     * mục nên bị coi là chữ giấy tờ và BỎ ⇒ mất luôn bằng chứng màu ⇒ máy chọn biến thể "Hồng Đất"
+     * thay vì "Rêu" (cùng mã FV10870C).
+     * Cùng nguyên tắc với `suaMaTheoDanhMuc`: chỉ đổi khi bản sửa CÓ THẬT trong TỪ VỰNG MÀU của danh
+     * mục (`cm.mauVung`) và chỉ có DUY NHẤT một ứng viên lệch 1 ký tự. Chỉ xét mảnh TOÀN CHỮ (mã màu
+     * chữ-số đã có đường riêng), dài ≥3 để "do/da/de" không nhảy loạn. */
+    var suaMauTheoDanhMuc = function(t){
+      if (!cm || !cm.mauVung || cm.idx[t] || t.length < 3 || /[0-9]/.test(t)) return t;
+      var ungVien = null, dem = 0;
+      for (var w in cm.mauVung){
+        if (w.length !== t.length || /[0-9]/.test(w)) continue;
+        var lech = 0;
+        for (var c=0; c<w.length && lech<2; c++) if (w.charAt(c) !== t.charAt(c)) lech++;
+        if (lech === 1){ if (++dem > 1) return t; ungVien = w; }
+      }
+      return dem === 1 ? ungVien : t;
+    };
+    var coThat = function(t){
+      if (opt.giuHet || !cm || !cm.idx) return true;
+      if (cm.idx[t]) return true;                                    // có nguyên văn trong tên hàng
+      var l = loi(t);
+      if (l.length>=4 && cm.loiIdx && cm.loiIdx[l]) return true;      // chỉ khác dấu ngăn (v9b11 ~ v9-b11)
+      if (t.length>=5 && coTuGanGiong(t, cm)) return true;            // chịu lỗi OCR (jco1262 ~ jc01262)
+      return false;
+    };
+    VAI.forEach(function(v){
+      (b[v]||[]).forEach(function(t0){
+        var t = (v === 'code') ? suaMaTheoDanhMuc(t0) : t0;            // sửa chính tả ở vai MÃ
+        if (coThat(t)) { them(v, t); return; }
+        /* CỨU MẢNH SẮP BỊ BỎ: sửa đúng 1 ký tự mà thành một TỪ MÀU CÓ THẬT trong danh mục thì đó là
+           màu bị OCR đọc lệch ⇒ xếp vào vai MÀU (không phải vai gốc). Ca thật: tem in "Rêu" mà OCR
+           trả "Riu" — `riu` rơi vào rổ thương hiệu rồi bị bỏ, mất luôn bằng chứng màu, nên máy chọn
+           biến thể "Hồng Đất" thay vì "Rêu" của cùng mã FV10870C. */
+        var mau = suaMauTheoDanhMuc(t0);
+        if (mau !== t0 && cm && cm.mauVung && cm.mauVung[mau]) { them('color', mau); return; }
+        if (bo.indexOf(t0)<0) bo.push(t0);
+      });
+    });
+    napBangChung(nhan, cm);
+    nhan.bo = bo;
+    nhan.maChu = locMaChu(tm.maChu, cm);
+    /* Mã chủ phải nằm trong rổ MÃ để các bước sau (gonTu · diemMot · timTop) nhìn thấy nó. Nó vốn ở
+       trong phần chữ đã giữ lại nên gần như luôn có sẵn; thêm cho chắc, không thêm trùng. */
+    nhan.maChu.forEach(function(t){ if (nhan.code.indexOf(t) < 0) nhan.code.push(t); });
+    return nhan;
+  }
+
+  /** MÃ GẦN GIỐNG trong danh mục cho một mảnh đọc được — dùng cho lời mời "Ý bạn là…" khi tem đọc
+   *  lệch mà `suaMaTheoDanhMuc` không dám tự đổi (≥2 ứng viên). Trả mã CÓ THẬT, xếp theo số dòng. */
+  function maGanGiong(t, cm, tran){
+    t = chuan(String(t==null?'':t));
+    if (!t || !cm || !cm.idx || cm.idx[t] || !laMaHinhDang(t)) return [];
+    var ra = [];
+    for (var k=1; k<=4 && k < t.length-3; k++){
+      if (/[0-9]/.test(t.charAt(k-1))) break;
+      var con = t.slice(k);
+      if (cm.idx[con] && laMaHinhDang(con) && ra.indexOf(con)<0) ra.push(con);
+    }
+    if (t.length >= 5 && cm.tuVung){
+      for (var i=0; i<cm.tuVung.length; i++){
+        var w = cm.tuVung[i];
+        if (w.length !== t.length || !laMaHinhDang(w) || ra.indexOf(w)>=0) continue;
+        var lech = 0;
+        for (var c=0; c<w.length && lech<2; c++) if (w.charAt(c) !== t.charAt(c)) lech++;
+        if (lech === 1) ra.push(w);
+      }
+    }
+    ra.sort(function(a,b){ return (cm.idx[b]||[]).length - (cm.idx[a]||[]).length; });
+    return ra.slice(0, tran||4);
+  }
+
+  /** Bật/tắt trọng số IDF trong bản chấm THEO VAI — chỉ để đối chứng. */
+  function batIdf(on){ DUNG_IDF = !!on; _nhanKey = null; _nhanCm = null; }
+  /* CHỌN NGƯỜI CHẤM: 'vai' = bản trọng số theo vai (45/25/20/10, mặc định, 58 ca test canh)
+     · 'idf' = bản 4 giai đoạn tổng-IDF. Đổi bằng datCham() rồi ĐO, đừng đổi mù. */
+  var KIEU_CHAM = 'vai';
+  function datCham(k){ KIEU_CHAM = (k === 'idf') ? 'idf' : 'vai'; _nhanKey = null; _nhanCm = null; return KIEU_CHAM; }
+  function kieuCham(){ return KIEU_CHAM; }
+  return { boDau:boDau, chuan:chuan, loi:loi, bocTen:bocTen, tuAI:tuAI, tuVanBan:tuVanBan, tyLe:tyLe, khopTot:khopTot, batIdf:batIdf,
+    diemMot:diemMot, dungChiMuc:dungChiMuc, dungChiMucViec:dungChiMucViec, timTop:timTop, donVi:donVi, khoaHang:khoaHang,
+    chuKy:chuKy, tachPhanTu:tachPhanTu, locDong:locDong, chuanManh:chuanManh, maGanGiong:maGanGiong, W:W, VAI:VAI, DV:DV,
+    docTheMau:docTheMau, maChuTem:maChuTem,
+    chamIdf:chamIdf, datCham:datCham, kieuCham:kieuCham, chuanChuoiTem:chuanChuoiTem, trongSoTu:trongSoTu };
+})();
+/* ===== NDS-ENGINE (ket thuc) ===== */
+    </script>
+    <script>
+/* ===== FSK-CORE (bat dau) =====
+ * Phan thuan logic cua trang TIM SKU: doc so, quy doi can -> mm (chep dung cong thuc tab
+ * "Chuyen doi can" cua AuditFactory), doc don vi va quy cach tu ten SKU, do net / do yen
+ * khung hinh cho tu dong chup. Khong DOM, khong I/O — tests/find_sku_core.cjs cat dung khoi
+ * giua hai dau moc nay de test; dung xoa dau moc. */
+var FSK_CORE = (function () {
+  "use strict";
+
+  // Đọc số người gõ: "1.200,5" · "1,200.5" · "10" · "5 000". Dấu phân cách CUỐI CÙNG là
+  // thập phân, trừ khi sau nó đúng 3 chữ số (1.200 = 1200, 1,5 = 1.5). Chép cdSo của AuditFactory.
+  function parseNumber(x) {
+    var t = String(x == null ? "" : x).replace(/[^\d.,-]/g, "");
+    if (!t) return NaN;
+    var negative = /-/.test(t);
+    t = t.replace(/-/g, "");
+    var i = Math.max(t.lastIndexOf(","), t.lastIndexOf("."));
+    var digits;
+    if (i < 0) digits = t;
+    else {
+      var after = t.slice(i + 1), before = t.slice(0, i).replace(/[.,]/g, "");
+      digits = after.length === 3 ? before + after : before + "." + after;
+    }
+    var v = parseFloat(digits);
+    if (!isFinite(v)) return NaN;
+    return negative ? -v : v;
+  }
+
+  function formatNumber(v, decimals) {
+    if (!isFinite(v)) return "—";
+    return new Intl.NumberFormat("vi-VN", { minimumFractionDigits: 0, maximumFractionDigits: decimals || 0 }).format(v);
+  }
+
+  /**
+   * Quy đổi cân → mm cho chỉ may (đúng tab "Chuyển đổi cân" của AuditFactory, chốt 19/08/2026):
+   *   chỉ thật trong lô      = tổng cân − số cuộn × lõi
+   *   chỉ thật 1 cuộn nguyên = cuộn nguyên (cả lõi) − lõi   (hoặc số nhà cung cấp ghi riêng phần chỉ)
+   *   mật độ                 = quy cách mm / chỉ thật 1 cuộn nguyên   (mm mỗi gram)
+   *   mm                     = chỉ thật trong lô × mật độ
+   * Trả về ok=false kèm lý do khi thiếu ô hoặc số liệu không tính được; không bao giờ trả số âm.
+   */
+  function convertWeight(input) {
+    var specMm = Number(input.specMm), total = Number(input.total), cones = Number(input.cones);
+    var coreG = Number(input.coreG), fullG = Number(input.fullG);
+    var totalG = input.unit === "g" ? total : total * 1000;
+    var missing = [];
+    if (!(specMm > 0)) missing.push("quy cách cuộn nguyên");
+    if (!(total > 0)) missing.push("tổng khối lượng");
+    if (!(cones > 0)) missing.push("số cuộn");
+    if (!(coreG >= 0) || !isFinite(coreG)) missing.push("khối lượng lõi");
+    if (!(fullG > 0)) missing.push("khối lượng cuộn nguyên");
+    if (missing.length) return { ok: false, missing: missing };
+    var coreTotalG = cones * coreG;
+    var threadG = totalG - coreTotalG;
+    var fullThreadG = input.fullIncludesCore === false ? fullG : fullG - coreG;
+    if (fullThreadG <= 0) {
+      return { ok: false, reason: "cuộn nguyên " + formatNumber(fullG, 1) + " gr mà lõi đã " + formatNumber(coreG, 1) +
+        " gr — phần chỉ còn ≤ 0. Kiểm lại: " + formatNumber(fullG, 1) + " gr là riêng phần chỉ (chọn “chỉ riêng chỉ”) hay cân lõi bị sai?" };
+    }
+    if (threadG <= 0) {
+      return { ok: false, reason: "cả lô cân " + formatNumber(totalG, 1) + " gr nhưng " + formatNumber(cones) + " lõi đã chiếm " +
+        formatNumber(coreTotalG, 1) + " gr — không còn chỉ nào. Kiểm lại số cuộn, khối lượng lõi, hoặc đơn vị kg/gr." };
+    }
+    var mmPerG = specMm / fullThreadG;
+    var mm = Math.round(threadG * mmPerG);
+    var avgMm = mm / cones;
+    var flag = null;
+    if (avgMm > specMm) flag = "impossible";          // cuộn thừa dài hơn cuộn nguyên: số liệu sai ở đâu đó
+    else if (avgMm / specMm >= 0.995) flag = "nearly_full";
+    return {
+      ok: true, mm: mm, totalG: totalG, coreTotalG: coreTotalG, threadG: threadG, fullThreadG: fullThreadG,
+      mmPerG: mmPerG, equivalentCones: mm / specMm, avgMm: avgMm, avgPct: avgMm / specMm * 100,
+      tex: fullThreadG * 1000000 / specMm, flag: flag
+    };
+  }
+
+  // Đơn vị của SKU = ô CUỐI CÙNG của tên (tách bởi "/"), đúng quy ước WMS đặt tên
+  // ("…/Be/None/5000m/mm" → mm; "…/9mm/pcs" → pcs). Bỏ dấu để so sánh.
+  function unitOf(productName) {
+    var parts = String(productName || "").split("/");
+    var raw = (parts[parts.length - 1] || "").trim();
+    var key = raw.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/đ/g, "d").replace(/[^a-z0-9]/g, "");
+    return { raw: raw, key: key, isLength: key === "mm" || key === "m" };
+  }
+
+  // Quy cách cuộn nguyên từ tên: "5000m", "3.000M", "Cuộn 5000m", "Mét 5000", "3000 m" → mm.
+  // Chỉ nhận 500–100.000 m để không bắt nhầm "180cm", "9mm", "40D".
+  function specFromName(productName) {
+    var name = String(productName || "");
+    var m = name.match(/(\d{1,3}(?:[.,]\d{3})+|\d{3,6})\s*(?:m|M)(?![a-zA-Z])/) || name.match(/(?:m[ée]t|Mét|MET)\s*(\d{1,3}(?:[.,]\d{3})+|\d{3,6})/);
+    if (!m) return null;
+    var meters = parseFloat(m[1].replace(/[.,]/g, ""));
+    if (!(meters >= 500 && meters <= 100000)) return null;
+    return meters * 1000;
+  }
+
+  // Độ nét = trung bình |đạo hàm bậc hai| theo hai chiều; độ động = trung bình |khác biệt|
+  // so với khung trước. Ảnh xám nhỏ (96×72) là đủ và rẻ.
+  function frameStats(gray, prev, w, h) {
+    var sharp = 0, n = 0, motion = 0, i, x, y;
+    for (y = 1; y < h - 1; y++) {
+      for (x = 1; x < w - 1; x++) {
+        i = y * w + x;
+        sharp += Math.abs(2 * gray[i] - gray[i - 1] - gray[i + 1]) + Math.abs(2 * gray[i] - gray[i - w] - gray[i + w]);
+        n++;
+      }
+    }
+    if (prev && prev.length === gray.length) {
+      for (i = 0; i < gray.length; i++) motion += Math.abs(gray[i] - prev[i]);
+      motion /= gray.length;
+    } else motion = 255;
+    return { sharp: n ? sharp / n : 0, motion: motion };
+  }
+
+  /**
+   * Máy tự chụp khi khung hình ĐỨNG YÊN đủ lâu và ĐỦ NÉT (so với khung nét nhất gần đây).
+   * Sau mỗi lần chụp phải thấy tem DI CHUYỂN rồi mới đứng yên lại thì mới chụp tiếp — không
+   * gửi lại cùng một khung hình. Tối đa maxAttempts lần mỗi phiên camera vì mỗi lần là 1 lượt AI.
+   */
+  function createAutoCapture(options) {
+    var o = Object.assign({ stableMs: 600, motionMax: 4, moveMin: 10, sharpMin: 6, sharpRatio: 0.75, maxAttempts: 3, cooldownMs: 1500 }, options || {});
+    var stableSince = null, bestSharp = 0, attempts = 0, needMove = false, lastAt = -Infinity, done = false;
+    return {
+      feed: function (stats, now) {
+        bestSharp = Math.max(stats.sharp, bestSharp * 0.98);
+        if (done || attempts >= o.maxAttempts) return null;
+        if (needMove) {
+          if (stats.motion > o.moveMin) needMove = false;
+          return null;
+        }
+        if (stats.motion > o.motionMax) { stableSince = null; return null; }
+        if (stableSince == null) stableSince = now;
+        if (now - stableSince < o.stableMs) return null;
+        if (now - lastAt < o.cooldownMs) return null;
+        if (stats.sharp < o.sharpMin || stats.sharp < bestSharp * o.sharpRatio) return null;
+        attempts++; lastAt = now; needMove = true; stableSince = null;
+        return "capture";
+      },
+      finish: function () { done = true; },
+      attempts: function () { return attempts; },
+      remaining: function () { return Math.max(0, o.maxAttempts - attempts); },
+      exhausted: function () { return attempts >= o.maxAttempts; }
+    };
+  }
+
+  return { parseNumber: parseNumber, formatNumber: formatNumber, convertWeight: convertWeight, unitOf: unitOf,
+    specFromName: specFromName, frameStats: frameStats, createAutoCapture: createAutoCapture };
+})();
+/* ===== FSK-CORE (ket thuc) ===== */
+    </script>
+    <script>
+      (() => {
+        // TÌM SKU (30/09/2026), ba bước như CẮT GROUP UID / XẢ VẢI:
+        //   1. Quét nhận diện — camera TỰ CHỤP khi ảnh nét và đứng yên (mỗi lần tự chụp là 1 lượt
+        //      Gemini, tối đa 3 lần/phiên camera); QR/mã vạch đọc trực tiếp không tốn lượt; hoặc chọn
+        //      ảnh / gõ mã trên tem. Edge Function sku-vision đọc chữ, NDS_ENGINE đối chiếu SKU_Name
+        //      ngay trong trình duyệt.
+        //   2. Tính toán số lượng — SKU đơn vị mm: quy đổi cân → mm (công thức "Chuyển đổi cân" của
+        //      AuditFactory, FSK_CORE.convertWeight); đơn vị khác: gõ thẳng. Kèm số tem cần in.
+        //   3. Chờ in — danh sách lưu trên máy (localStorage), in qua hàng đợi Supabase như PRINT SKU
+        //      (lệnh `sku`), theo dõi tới khi agent báo xong/lỗi.
+        const screen = document.getElementById("find-sku-screen");
+        if (!screen || typeof NDS_ENGINE === "undefined" || typeof FSK_CORE === "undefined") return;
+        const $ = id => document.getElementById(id);
+        const message = $("fsk-message"), codeForm = $("fsk-code-form"), codeInput = $("fsk-code");
+        const camButton = $("fsk-cam"), shotButton = $("fsk-shot"), fileInput = $("fsk-file"), readButton = $("fsk-read");
+        const cameraBox = $("fsk-camera"), video = $("fsk-video"), camStatusEl = $("fsk-cam-status"), zoomBox = $("fsk-zoom"), photo = $("fsk-photo");
+        const raw = $("fsk-raw"), tags = $("fsk-tags"), tokenCount = $("fsk-token-count"), results = $("fsk-results"), catalogNote = $("fsk-catalog");
+        const selBox = $("fsk-sel"), selEmpty = $("fsk-sel-empty"), calcBody = $("fsk-calc-body");
+        const qtyInput = $("fsk-qty"), qtyDoc = $("fsk-qty-doc"), copiesInput = $("fsk-copies");
+        const cdBox = $("fsk-cd"), cdToggle = $("fsk-cd-toggle");
+        const list = $("fsk-list"), selectAll = $("fsk-all"), selectedCountEl = $("fsk-selected-count"), printButton = $("fsk-print"), queueBadge = $("fsk-queue-count");
+        const ROLE_NAMES = { code: "Mã", spec: "Thông số", color: "Màu", brand: "Hãng", other: "Khác" };
+        const ROLE_KEYS = { code: "item_codes", spec: "specs", color: "colors", brand: "brands", other: "others" };
+        const CATALOG_TTL = 12 * 3600 * 1000;
+        const MAX_EDGE = 1600;        // cạnh dài ảnh gửi AI: đủ nét cho chữ nhỏ trên tem, ~300–500 KB
+        const SAMPLE_W = 96, SAMPLE_H = 72;
+        const STATUS_TEXT = { pending: "chờ in", queued: "đã gửi máy in…", failed: "in lỗi" };
+        const state = {
+          tokens: [], removed: new Set(), rawSplit: "", cm: null, count: 0, at: 0, loading: null, run: 0,
+          photo: "", reading: false,
+          stream: null, track: null, zoom: 1, hardZoom: null, auto: null, scanEngine: null, raf: 0, lastSample: 0, lastScan: 0, prevGray: null,
+          selected: null, queue: [], busy: false, pollTimer: 0
+        };
+
+        const active = () => location.hash.replace(/^#/, "").split("&")[0] === "find-sku";
+        const tell = (text, tone = "") => { message.textContent = text; message.dataset.tone = tone; };
+        const esc = value => String(value ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+        const shown = (text, role) => (role === "code" ? String(text).toUpperCase() : String(text));
+        const setCatalog = text => { catalogNote.textContent = text; };
+        const when = at => new Intl.DateTimeFormat("vi-VN", { dateStyle: "short", timeStyle: "short" }).format(new Date(at));
+        const printDate = () => new Intl.DateTimeFormat("vi-VN", { day: "2-digit", month: "2-digit", year: "2-digit" }).format(new Date());
+        const pause = () => new Promise(resolve => setTimeout(resolve, 0));
+        const nonce = () => `fsk-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+        const fmt = (v, d) => FSK_CORE.formatNumber(v, d);
+        // Số lượng trên tem in dấu chấm hàng nghìn (agent formatQuantity) — xem trước cho đúng cái sẽ in.
+        const labelQuantity = value => String(value ?? "").trim().replace(/(?<![\d\p{L}.,])\d{4,}(?!\.\d)/gu, d => (d.startsWith("0") ? d : d.replace(/\B(?=(\d{3})+(?!\d))/g, ".")));
+        const storeGet = (key, fallback) => { try { const v = JSON.parse(localStorage.getItem(key)); return v ?? fallback; } catch (_) { return fallback; } };
+        const storeSet = (key, value) => { try { localStorage.setItem(key, JSON.stringify(value)); } catch (_) { /* hết chỗ hoặc bị chặn: vẫn chạy được trong phiên */ } };
+        const deviceId = () => {
+          let id = storeGet("fsk-device", "");
+          if (!id) { id = `may-${Math.random().toString(36).slice(2, 10)}`; storeSet("fsk-device", id); }
+          return id;
+        };
+
+        // ---------- Tab ----------
+        const tabs = {
+          scan: { btn: $("fsk-tab-scan"), panel: screen.querySelector('[data-panel="scan"]') },
+          calc: { btn: $("fsk-tab-calc"), panel: screen.querySelector('[data-panel="calc"]') },
+          print: { btn: $("fsk-tab-print"), panel: screen.querySelector('[data-panel="print"]') }
+        };
+        let activeTab = storeGet("fsk-tab", "scan");
+        const setActiveTab = name => {
+          if (!tabs[name]) return;
+          if (name === "calc" && !state.selected) name = "scan";
+          activeTab = name;
+          storeSet("fsk-tab", name);
+          Object.entries(tabs).forEach(([key, t]) => { const on = key === name; t.btn.setAttribute("aria-selected", String(on)); t.panel.dataset.active = String(on); });
+          if (name !== "scan") stopCamera();
+          if (name === "scan") setTimeout(() => { if (active() && !state.stream) codeInput.focus(); }, 50);
+          if (name === "calc") setTimeout(() => (cdBox.hidden ? qtyInput : $("fsk-cd-total")).focus(), 50);
+        };
+        Object.entries(tabs).forEach(([key, t]) => t.btn.addEventListener("click", () => setActiveTab(key)));
+        $("fsk-goto-scan").addEventListener("click", () => setActiveTab("scan"));
+        $("fsk-goto-scan-2").addEventListener("click", () => setActiveTab("scan"));
+
+        // ---------- Danh mục SKU_Name: IndexedDB, 12 giờ tải lại ----------
+        const openDb = () => new Promise((resolve, reject) => {
+          const request = indexedDB.open("print-sku-find-sku", 1);
+          request.onupgradeneeded = () => request.result.createObjectStore("kv");
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = () => reject(request.error);
+        });
+        const cacheGet = async key => {
+          try {
+            const db = await openDb();
+            return await new Promise((resolve, reject) => {
+              const request = db.transaction("kv").objectStore("kv").get(key);
+              request.onsuccess = () => resolve(request.result ?? null);
+              request.onerror = () => reject(request.error);
+            });
+          } catch (_) { return null; }
+        };
+        const cachePut = async (key, value) => {
+          try {
+            const db = await openDb();
+            await new Promise((resolve, reject) => {
+              const tx = db.transaction("kv", "readwrite");
+              tx.objectStore("kv").put(value, key);
+              tx.oncomplete = resolve;
+              tx.onerror = () => reject(tx.error);
+            });
+          } catch (_) { /* không lưu được thì lần sau tải lại */ }
+        };
+        const fetchCatalog = async () => {
+          const queue = window.PrintSkuQueue;
+          const headers = { apikey: queue.publishableKey, Authorization: `Bearer ${queue.publishableKey}` };
+          const page = async (from, withCount) => {
+            const response = await fetch(`${queue.supabaseUrl}/rest/v1/SKU_Name?select=sku,product_name,status&order=sku.asc`, {
+              headers: { ...headers, Range: `${from}-${from + 999}`, ...(withCount ? { Prefer: "count=exact" } : {}) },
+              signal: AbortSignal.timeout(20000)
+            });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const total = Number(String(response.headers.get("content-range") || "").split("/")[1]) || 0;
+            return { rows: await response.json(), total };
+          };
+          const first = await page(0, true);
+          const rows = [...first.rows];
+          if (first.total > rows.length) {
+            const starts = [];
+            for (let from = 1000; from < first.total; from += 1000) starts.push(from);
+            for (let i = 0; i < starts.length; i += 4) {
+              setCatalog(`Đang tải danh mục SKU… ${Math.min(100, Math.round((1000 * (i + 1)) / first.total * 100))}%`);
+              const pages = await Promise.all(starts.slice(i, i + 4).map(from => page(from, false)));
+              pages.forEach(p => rows.push(...p.rows));
+            }
+          } else if (rows.length === 1000) {
+            for (let from = 1000; ; from += 1000) {
+              const p = await page(from, false);
+              rows.push(...p.rows);
+              if (p.rows.length < 1000) break;
+            }
+          }
+          return rows.map(row => [String(row.sku ?? ""), String(row.product_name ?? ""), String(row.status ?? "")]).filter(row => row[0]);
+        };
+        const toRow = ([sku, pn, status]) => ({ sku, pn, type: /^\s*\(combo\)/i.test(pn) ? "COMBO" : "NORMAL", status: /^(0|false|inactive)$/i.test(status.trim()) ? "INACTIVE" : "ACTIVE", qty: 0 });
+        const buildIndex = async rows => {
+          const job = NDS_ENGINE.dungChiMucViec(rows.map(toRow));
+          let step = 0;
+          while (!job.buoc(300)) {
+            if (++step % 10 === 0) setCatalog(`Đang dựng chỉ mục danh mục… ${Math.round(job.tienDo() * 100)}%`);
+            await pause();
+          }
+          return job.cm;
+        };
+        const loadCatalog = async force => {
+          const cached = force ? null : await cacheGet("catalog");
+          let rows = cached?.rows, at = cached?.at || 0;
+          if (!rows?.length) {
+            setCatalog("Đang tải danh mục SKU…");
+            rows = await fetchCatalog();
+            at = Date.now();
+            cachePut("catalog", { at, rows });
+          }
+          state.cm = await buildIndex(rows); state.count = rows.length; state.at = at;
+          setCatalog(`Danh mục ${rows.length.toLocaleString("vi-VN")} SKU · cập nhật ${when(at)}`);
+          if (!force && Date.now() - at > CATALOG_TTL) setTimeout(() => refreshCatalog(false), 1500);
+          return state.cm;
+        };
+        const ensureCatalog = (force = false) => {
+          if (state.cm && !force) return Promise.resolve(state.cm);
+          if (state.loading) return state.loading;
+          state.loading = loadCatalog(force)
+            .catch(error => { setCatalog(`Chưa tải được danh mục SKU (${error.message}) — kiểm tra mạng rồi bấm “Tải lại danh mục”.`); throw error; })
+            .finally(() => { state.loading = null; });
+          return state.loading;
+        };
+        const refreshCatalog = async announce => {
+          try {
+            await ensureCatalog(true);
+            if (announce) tell("Đã tải lại danh mục SKU.", "ok");
+            if (state.tokens.length) await match();
+          } catch (_) { if (announce) tell("Chưa tải lại được danh mục — kiểm tra mạng.", "error"); }
+        };
+
+        // ---------- Từ khoá và đối chiếu ----------
+        const addToken = (text, role, source) => {
+          const t = NDS_ENGINE.chuan(String(text ?? ""));
+          if (!t || t.length < 2 || state.removed.has(t) || state.tokens.some(k => k.t === t)) return false;
+          state.tokens.push({ t, goc: String(text).trim(), vai: ROLE_NAMES[role] ? role : "other", nguon: source });
+          return true;
+        };
+        const renderTags = () => {
+          tokenCount.textContent = state.tokens.length;
+          tags.innerHTML = state.tokens.length
+            ? state.tokens.map((k, i) => `<span class="fsk-tag" data-role="${k.vai}"><small>${esc(ROLE_NAMES[k.vai])}</small>${esc(shown(k.goc || k.t, k.vai))}<button type="button" data-remove="${i}" aria-label="Bỏ từ khoá ${esc(shown(k.goc || k.t, k.vai))}">×</button></span>`).join("")
+            : '<span class="cut-note">Chưa có từ khoá — quét tem hoặc gõ mã in trên tem.</span>';
+        };
+        const resetLabel = () => {
+          state.run += 1;
+          state.tokens = []; state.removed = new Set(); state.rawSplit = "";
+          raw.value = ""; renderTags();
+          // Kết quả của tem trước không được nằm lại trong lúc đọc tem mới — người dùng sẽ chọn nhầm.
+          results.innerHTML = '<p class="cut-empty">Đang đọc tem… kết quả sẽ hiện ở đây.</p>';
+        };
+        const nearCodes = cm => {
+          const found = [];
+          state.tokens.forEach(k => {
+            if (k.vai !== "code" || cm.idx[k.t]) return;
+            NDS_ENGINE.maGanGiong(k.t, cm, 3).forEach(code => { if (!found.includes(code)) found.push(code); });
+          });
+          return found.length
+            ? `<div class="fsk-near"><b>Ý bạn là:</b> ${found.slice(0, 4).map(code => `<button class="cut-secondary" type="button" data-code="${esc(code)}">${esc(shown(code, "code"))} <small>${(cm.idx[code] || []).length} SKU</small></button>`).join("")}</div>`
+            : "";
+        };
+        const card = (r, rank) => {
+          const matched = ["code", "spec", "color", "brand"].flatMap(role => (r.khop?.[role] || []).map(t => `<span class="fsk-tag" data-role="${role}"><small>${ROLE_NAMES[role]}</small>${esc(shown(t, role))}</span>`)).join("");
+          return `<article class="fsk-card"><div class="fsk-card__top"><b class="fsk-rank">#${rank}</b><strong class="fsk-sku">${esc(r.sku)}</strong>` +
+            (r.type === "COMBO" ? '<span class="fsk-badge">Combo</span>' : "") + (r.status === "INACTIVE" ? '<span class="fsk-badge">Ngừng</span>' : "") +
+            `<span class="fsk-pct">${Number(r.pct) || 0}%</span></div><p class="fsk-name">${esc(r.pn)}</p>` + (matched ? `<div class="fsk-tags">${matched}</div>` : "") +
+            `<button class="cut-primary fsk-pick" type="button" data-sku="${esc(r.sku)}" data-pn="${esc(r.pn)}">Chọn · tính số lượng →</button></article>`;
+        };
+        const match = async () => {
+          const run = state.run;
+          let cm;
+          try { cm = await ensureCatalog(); } catch (_) {
+            results.innerHTML = "";
+            tell("Chưa tải được danh mục SKU — kiểm tra mạng rồi bấm “Tải lại danh mục”.", "error");
+            return { found: [], coMaKhop: false };
+          }
+          if (run !== state.run) return { found: [], coMaKhop: false, stale: true };
+          const text = raw.value.trim();
+          if (text && text !== state.rawSplit) {
+            state.rawSplit = text;
+            const split = NDS_ENGINE.tuVanBan(text, cm);
+            ["code", "spec", "color", "brand"].forEach(role => (split[role] || []).forEach(t => addToken(t, role, "chu")));
+          }
+          renderTags();
+          if (!state.tokens.length) {
+            results.innerHTML = '<p class="cut-empty">Chưa có từ khoá nào để đối chiếu.</p>';
+            return { found: [], coMaKhop: false };
+          }
+          const pack = { item_codes: [], specs: [], colors: [], brands: [], others: [] };
+          state.tokens.forEach(k => pack[ROLE_KEYS[k.vai] || "others"].push(k.t));
+          const nhan = NDS_ENGINE.tuAI(pack, cm);
+          nhan.maChu = text ? NDS_ENGINE.maChuTem(text, cm).filter(t => nhan.code.includes(t)) : [];
+          let found = NDS_ENGINE.timTop(nhan, cm, { soLuong: 3, chiActive: true });
+          let inactive = false;
+          if (!found.length) { found = NDS_ENGINE.timTop(nhan, cm, { soLuong: 3, chiActive: false }); inactive = found.length > 0; }
+          if (!found.length) {
+            results.innerHTML = `<p class="cut-empty">Không tìm được SKU nào khớp. Bỏ bớt từ khoá đọc nhầm (bấm ×), hoặc gõ mã in trên tem.</p>${nearCodes(cm)}`;
+            return { found, coMaKhop: false };
+          }
+          const warn = found.coMaKhop ? "" : `<div class="fsk-warn"><b>Chưa khớp được MÃ HÀNG nào.</b> Gợi ý dưới đây chỉ dựa vào chữ chung (loại hàng · hãng · màu), đừng chọn vội — gõ mã in trên tem vào ô trên cùng là ra đúng ngay.${nearCodes(cm)}</div>`;
+          const note = inactive ? '<div class="fsk-warn">Không có SKU đang hoạt động nào khớp — dưới đây là SKU khớp nhất trong nhóm ngừng hoạt động.</div>' : "";
+          results.innerHTML = note + warn + found.map((r, i) => card(r, i + 1)).join("");
+          return { found, coMaKhop: Boolean(found.coMaKhop) };
+        };
+
+        // ---------- Đọc tem bằng AI (Edge Function sku-vision) ----------
+        const camStatus = (text, tone = "") => { camStatusEl.textContent = text; camStatusEl.dataset.tone = tone; };
+        const readLabel = async (dataUrl, auto) => {
+          if (state.reading) return;
+          const run = state.run;
+          state.reading = true; readButton.disabled = true;
+          tell(auto ? "Đã tự chụp — đang đọc tem bằng AI…" : "Đang đọc tem bằng AI…");
+          ensureCatalog().catch(() => {});
+          let quotaOut = false;
+          try {
+            const queue = window.PrintSkuQueue;
+            const response = await fetch(`${queue.supabaseUrl}/functions/v1/sku-vision`, {
+              method: "POST",
+              headers: { apikey: queue.publishableKey, Authorization: `Bearer ${queue.publishableKey}`, "Content-Type": "application/json" },
+              body: JSON.stringify({ image: dataUrl.split(",")[1], mime: "image/jpeg", device: deviceId() }),
+              signal: AbortSignal.timeout(90000)
+            });
+            const result = await response.json().catch(() => null);
+            if (run !== state.run) return;
+            quotaOut = response.status === 429;
+            if (!response.ok || !result?.ok) throw new Error(result?.message || `Máy chủ đọc tem trả HTTP ${response.status}`);
+            raw.value = String(result.text || "");
+            state.rawSplit = "";
+            const t = result.tokens || {};
+            [["code", t.item_codes], ["spec", t.specs], ["color", t.colors], ["brand", t.brands], ["other", t.others]]
+              .forEach(([role, list]) => (list || []).forEach(x => addToken(x, role, "ai")));
+            const m = await match();
+            if (m.stale) return;
+            if (m.coMaKhop) {
+              state.auto?.finish();
+              stopCamera();
+              tell("Đã đọc xong tem — bấm “Chọn” ở SKU đúng.", "ok");
+            } else if (auto && state.stream && !state.auto.exhausted()) {
+              tell(`Chưa khớp được mã trên tem — đưa tem gần hơn hoặc xoay cho rõ chữ, máy sẽ tự chụp lại (còn ${state.auto.remaining()} lần).`, "warn");
+              camStatus(`Chưa khớp mã · còn ${state.auto.remaining()} lần tự chụp — đưa tem gần hơn`, "warn");
+            } else if (auto && state.stream) {
+              tell("Hết 3 lần tự chụp mà chưa khớp mã — bấm “Chụp ngay” khi chữ rõ, hoặc gõ mã in trên tem.", "warn");
+              camStatus("Hết lượt tự chụp — bấm Chụp ngay hoặc gõ mã", "warn");
+            } else {
+              tell(result.quality === "khong_doc_duoc" ? "Không đọc được chữ trên tem — chụp gần hơn, hoặc gõ mã in trên tem."
+                : "Đã đọc tem nhưng chưa khớp mã — kiểm lại từ khoá, hoặc gõ mã in trên tem.", "warn");
+            }
+          } catch (error) {
+            if (run !== state.run) return;
+            const why = error?.name === "TimeoutError" ? "Đọc tem quá lâu (hơn 90 giây)"
+              : error instanceof TypeError ? "Không gọi được máy chủ đọc tem (mất mạng hoặc máy chủ chưa sẵn sàng)"
+              : String(error?.message || error);
+            if (quotaOut) { state.auto?.finish(); stopCamera(); }
+            tell(`${why} — gõ mã in trên tem vào ô trên cùng.`, "error");
+            if (state.stream) camStatus(quotaOut ? "Hết lượt đọc tem hôm nay" : "AI chưa đọc được — thử lại hoặc gõ mã", "warn");
+            else codeInput.focus();
+          } finally {
+            if (run === state.run) { state.reading = false; readButton.disabled = !state.photo; }
+          }
+        };
+
+        // ---------- Camera: tự chụp + QR/mã vạch ----------
+        const sampleCanvas = document.createElement("canvas");
+        sampleCanvas.width = SAMPLE_W; sampleCanvas.height = SAMPLE_H;
+        const sampleCtx = sampleCanvas.getContext("2d", { willReadFrequently: true });
+        const frameRegion = () => {
+          const w = video.videoWidth, h = video.videoHeight, z = state.hardZoom ? 1 : state.zoom;
+          const sw = Math.max(1, Math.round(w / z)), sh = Math.max(1, Math.round(h / z));
+          return { sx: Math.round((w - sw) / 2), sy: Math.round((h - sh) / 2), sw, sh };
+        };
+        const sampleGray = () => {
+          const r = frameRegion();
+          sampleCtx.drawImage(video, r.sx, r.sy, r.sw, r.sh, 0, 0, SAMPLE_W, SAMPLE_H);
+          const data = sampleCtx.getImageData(0, 0, SAMPLE_W, SAMPLE_H).data;
+          const gray = new Uint8Array(SAMPLE_W * SAMPLE_H);
+          for (let i = 0, j = 0; i < gray.length; i++, j += 4) gray[i] = (data[j] * 77 + data[j + 1] * 151 + data[j + 2] * 28) >> 8;
+          return gray;
+        };
+        const scaled = (source, sx, sy, sw, sh) => {
+          const k = Math.min(1, MAX_EDGE / Math.max(sw, sh));
+          const canvas = document.createElement("canvas");
+          canvas.width = Math.max(1, Math.round(sw * k)); canvas.height = Math.max(1, Math.round(sh * k));
+          canvas.getContext("2d").drawImage(source, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+          return canvas.toDataURL("image/jpeg", 0.85);
+        };
+        const grab = () => { const r = frameRegion(); return scaled(video, r.sx, r.sy, r.sw, r.sh); };
+        const showPhoto = dataUrl => { state.photo = dataUrl; photo.src = dataUrl; photo.hidden = false; readButton.disabled = false; };
+        const usePhoto = dataUrl => { resetLabel(); showPhoto(dataUrl); readLabel(dataUrl, false); };
+        const onBarcode = value => {
+          stopCamera();
+          const digits = value.replace(/\D/g, "");
+          const row = state.cm && digits.length >= 6 ? state.cm.ds.find(r => String(r.sku) === digits) : null;
+          if (row) { tell(`Đã đọc mã ${value} — đúng SKU ${row.sku}.`, "ok"); choose(row.sku, row.pn); return; }
+          resetLabel();
+          addToken(value, "code", "mavach");
+          tell(`Đã đọc mã ${value} trên tem — đang đối chiếu.`, "ok");
+          match();
+        };
+        const tick = async () => {
+          if (!state.stream || !active()) return;
+          const now = Date.now();
+          if (video.videoWidth && now - state.lastSample >= 200) {
+            state.lastSample = now;
+            const gray = sampleGray();
+            const stats = FSK_CORE.frameStats(gray, state.prevGray, SAMPLE_W, SAMPLE_H);
+            state.prevGray = gray;
+            if (!state.reading && !state.auto.exhausted()) {
+              if (state.auto.feed(stats, now) === "capture") {
+                const dataUrl = grab();
+                showPhoto(dataUrl);
+                camStatus(`Đã tự chụp (${state.auto.attempts()}/3) — đang đọc…`, "ok");
+                resetLabel();
+                readLabel(dataUrl, true);
+              } else if (!state.reading) camStatus(stats.motion > 4 ? "Giữ máy yên để tự chụp…" : "Đang canh nét — giữ yên tem trong khung", "");
+            }
+          }
+          if (state.scanEngine && video.videoWidth && !state.reading && now - state.lastScan >= 300) {
+            state.lastScan = now;
+            try { const r = await state.scanEngine.doc(video); if (r?.ma && state.stream) { onBarcode(String(r.ma)); return; } } catch (_) { /* khung này không có mã */ }
+          }
+          state.raf = requestAnimationFrame(tick);
+        };
+        const setZoom = async level => {
+          state.zoom = level;
+          zoomBox.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(Number(b.dataset.zoom) === level)));
+          if (state.hardZoom && state.track) {
+            try {
+              await state.track.applyConstraints({ advanced: [{ zoom: Math.min(state.hardZoom.max, Math.max(state.hardZoom.min, level)) }] });
+              video.style.transform = "";
+              return;
+            } catch (_) { state.hardZoom = null; }
+          }
+          video.style.transform = level > 1 ? `scale(${level})` : "";
+        };
+        const stopCamera = () => {
+          cancelAnimationFrame(state.raf);
+          if (state.stream) state.stream.getTracks().forEach(track => track.stop());
+          state.stream = null; state.track = null; state.hardZoom = null; state.prevGray = null;
+          video.srcObject = null; video.style.transform = "";
+          cameraBox.hidden = true; shotButton.hidden = true;
+          camButton.textContent = "Bật camera";
+        };
+        const startCamera = async () => {
+          if (!window.isSecureContext) return tell("Camera chỉ mở được trên https hoặc localhost — bấm “Chọn ảnh” hoặc gõ mã.", "error");
+          if (!navigator.mediaDevices?.getUserMedia) return tell("Trình duyệt không mở được camera — bấm “Chọn ảnh” (điện thoại sẽ mở camera) hoặc gõ mã.", "error");
+          try {
+            state.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" }, width: { ideal: 2560 }, height: { ideal: 1920 } }, audio: false });
+          } catch (error) {
+            const name = error?.name || "";
+            tell(name === "NotAllowedError" || name === "SecurityError" ? "Chưa được phép dùng camera — cho phép trong cài đặt trình duyệt, hoặc bấm “Chọn ảnh” / gõ mã."
+              : name === "NotFoundError" || name === "OverconstrainedError" || name === "NotReadableError" ? "Không mở được camera trên máy này — bấm “Chọn ảnh” hoặc gõ mã."
+              : `Không mở được camera (${name || error?.message}) — bấm “Chọn ảnh” hoặc gõ mã.`, "error");
+            return;
+          }
+          if (!active() || activeTab !== "scan") return stopCamera();
+          video.srcObject = state.stream;
+          await video.play().catch(() => {});
+          cameraBox.hidden = false; shotButton.hidden = false;
+          camButton.textContent = "Tắt camera";
+          state.track = state.stream.getVideoTracks()[0] || null;
+          const caps = state.track?.getCapabilities?.() || {};
+          state.hardZoom = caps.zoom && caps.zoom.max > 1 ? { min: caps.zoom.min || 1, max: Math.min(caps.zoom.max, 8) } : null;
+          state.auto = FSK_CORE.createAutoCapture({ maxAttempts: 3 });
+          state.prevGray = null; state.lastSample = 0; state.lastScan = 0;
+          // Bộ quét QR/mã vạch dùng chung với XẢ VẢI / PRINT SKU (native BarcodeDetector hoặc ZXing).
+          if (state.scanEngine === null) { try { state.scanEngine = (await window.PrintSkuScanner?.Jp?.()) || false; } catch (_) { state.scanEngine = false; } }
+          setZoom(1);
+          camStatus("Đưa tem vào khung, giữ yên — máy tự chụp khi nét", "");
+          tell("Đưa tem vào giữa khung, cách 10–20 cm cho nét và giữ yên — máy tự chụp. Tem nhỏ thì bấm 2× hoặc 3×.");
+          state.raf = requestAnimationFrame(tick);
+        };
+        const capture = () => {
+          if (!state.stream || !video.videoWidth) return tell("Camera chưa sẵn sàng.", "warn");
+          const dataUrl = grab();
+          stopCamera();
+          usePhoto(dataUrl);
+        };
+
+        // ---------- Bước 2: SKU đã chọn + tính số lượng ----------
+        const CD_KEY = "fsk-cd-v1";
+        const cd = { specMm: 5000000, custom: false, unit: "kg", fullIncludesCore: true };
+        const cdField = { spec: $("fsk-cd-spec"), specRow: $("fsk-cd-spec-row"), specCustom: $("fsk-cd-spec-custom"), total: $("fsk-cd-total"), unit: $("fsk-cd-unit"),
+          cones: $("fsk-cd-cones"), core: $("fsk-cd-core"), full: $("fsk-cd-full"), fullMode: $("fsk-cd-full-mode"), tiles: $("fsk-cd-tiles"), note: $("fsk-cd-note"), steps: $("fsk-cd-steps"), state: $("fsk-cd-state") };
+        const pressed = (group, attr, value) => group.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset[attr] === String(value))));
+        const doc = (id, value, suffix, decimals) => {
+          const el = $(id), input = $(id.replace(/-doc$/, ""));
+          if (!isFinite(value)) {
+            const rawText = input ? String(input.value || "").trim() : "";
+            el.className = "fsk-doc" + (rawText ? " xau" : ""); el.textContent = rawText ? `Không đọc được số từ “${rawText}”` : "";
+            input?.classList.toggle("xau", Boolean(rawText));
+            return;
+          }
+          el.className = "fsk-doc"; input?.classList.remove("xau");
+          el.textContent = `Đọc là ${fmt(value, decimals)} ${suffix || ""}`;
+        };
+        const cdSave = () => storeSet(CD_KEY, { specMm: cd.specMm, custom: cd.custom, unit: cd.unit, fullIncludesCore: cd.fullIncludesCore, core: cdField.core.value, full: cdField.full.value });
+        const setSpec = (mm, quiet) => {
+          cd.custom = mm === 0;
+          if (!cd.custom) cd.specMm = mm;
+          pressed(cdField.spec, "mm", cd.custom ? 0 : mm);
+          cdField.specRow.hidden = !cd.custom;
+          if (cd.custom) { if (!cdField.specCustom.value) cdField.specCustom.value = String(cd.specMm); if (!quiet) cdField.specCustom.focus(); }
+          compute();
+        };
+        const setUnit = unit => { cd.unit = unit; pressed(cdField.unit, "unit", unit); compute(); };
+        const setFullMode = mode => { cd.fullIncludesCore = mode !== "thread"; pressed(cdField.fullMode, "mode", mode); compute(); };
+        const openCalc = open => { cdBox.hidden = !open; cdToggle.setAttribute("aria-expanded", String(open)); if (open) compute(); };
+        const tile = (cls, value, title, sub) => `<div class="fsk-tile ${cls}"><b>${value}</b><span>${title}</span>${sub ? `<span>${sub}</span>` : ""}</div>`;
+        const step = (n, t, v, total) => `<div class="fsk-step${total ? " tong" : ""}"><span class="n">${n}</span><span class="t">${t}</span><span class="v">${v}</span></div>`;
+        const compute = () => {
+          if (cdBox.hidden) return;
+          const specMm = cd.custom ? FSK_CORE.parseNumber(cdField.specCustom.value) : cd.specMm;
+          const total = FSK_CORE.parseNumber(cdField.total.value), cones = FSK_CORE.parseNumber(cdField.cones.value);
+          const coreG = FSK_CORE.parseNumber(cdField.core.value), fullG = FSK_CORE.parseNumber(cdField.full.value);
+          if (cd.custom) doc("fsk-cd-spec-doc", specMm, `mm mỗi cuộn nguyên · ${isFinite(specMm) ? fmt(specMm / 1000) + " m" : ""}`, 0); else $("fsk-cd-spec-doc").textContent = "";
+          doc("fsk-cd-total-doc", total, cd.unit === "kg" ? `kg = ${isFinite(total) ? fmt(total * 1000, 1) : "—"} gr` : "gr", 1);
+          doc("fsk-cd-cones-doc", cones, "cuộn", 0);
+          doc("fsk-cd-core-doc", coreG, isFinite(coreG) && isFinite(cones) && cones > 0 ? `gr/lõi → ${fmt(coreG * cones, 1)} gr lõi cho cả lô` : "gr", 1);
+          doc("fsk-cd-full-doc", fullG, cd.fullIncludesCore ? (isFinite(fullG) && isFinite(coreG) ? `gr cả lõi → chỉ trong cuộn nguyên còn ${fmt(fullG - coreG, 1)} gr` : "gr (cả lõi)") : "gr riêng phần chỉ", 1);
+          const r = FSK_CORE.convertWeight({ specMm, total, unit: cd.unit, cones, coreG, fullG, fullIncludesCore: cd.fullIncludesCore });
+          cdField.tiles.hidden = !r.ok; cdField.steps.hidden = !r.ok; cdField.note.innerHTML = "";
+          if (!r.ok) {
+            cdField.state.hidden = false;
+            cdField.state.innerHTML = r.missing ? `Còn thiếu: <b>${r.missing.join("</b> · <b>")}</b>.` : `<b>Không tính được:</b> ${esc(r.reason)}`;
+            cdField.state.className = "cut-note" + (r.reason ? " fsk-doc xau" : "");
+            return;
+          }
+          cdSave();
+          cdField.state.hidden = true;
+          cdField.tiles.innerHTML =
+            tile("to", `${fmt(r.mm)} <small>mm</small>`, "Tổng số lượng quy đổi", `${fmt(cones)} cuộn thừa · mật độ ${fmt(r.mmPerG)} mm/gr · ≈ Tex ${fmt(r.tex, 1)}`) +
+            tile("", `${fmt(r.mm / 1000, 1)} <small>m</small>`, "Quy ra mét", `${fmt(r.mm / 1000000, 2)} km`) +
+            tile("", `${fmt(r.equivalentCones, 2)} <small>cuộn</small>`, "Tương đương cuộn nguyên", `${fmt(specMm)} mm mỗi cuộn`) +
+            tile("", `${fmt(r.avgMm)} <small>mm</small>`, "Trung bình 1 cuộn thừa", `${fmt(r.avgPct, 1)}% cuộn nguyên`);
+          cdField.steps.innerHTML =
+            step(1, `Cân cả lô${cd.unit === "kg" ? ` (${fmt(total, 3)} kg)` : ""}`, `${fmt(r.totalG, 1)} gr`) +
+            step(2, `Trừ lõi — ${fmt(cones)} cuộn × ${fmt(coreG, 1)} gr`, `− ${fmt(r.coreTotalG, 1)} gr`) +
+            step(3, "Còn lại là <b>chỉ thật</b>", `${fmt(r.threadG, 1)} gr`) +
+            step(4, `Cuộn nguyên ${fmt(specMm)} mm có ${fmt(r.fullThreadG, 1)} gr chỉ${cd.fullIncludesCore ? ` (${fmt(fullG, 1)} gr cả lõi − ${fmt(coreG, 1)} gr lõi)` : " (số nhà cung cấp ghi)"}`, `${fmt(r.mmPerG)} mm/gr`) +
+            step("=", `<b>${fmt(r.threadG, 1)} gr × ${fmt(r.mmPerG)} mm/gr</b>`, `${fmt(r.mm)} mm`, true);
+          if (r.flag === "impossible") {
+            cdField.note.innerHTML = `<div class="fsk-warn fsk-warn--bad"><b>Số liệu vô lý — đừng in tem ngay.</b> Mỗi cuộn thừa đang ra ${fmt(r.avgMm)} mm, <b>dài hơn cả cuộn nguyên</b> ${fmt(specMm)} mm (${fmt(r.avgPct)}%). Kiểm lại theo thứ tự: đơn vị <b>kg/gr</b> → <b>số cuộn</b> đếm đủ chưa → <b>khối lượng cuộn nguyên</b> có đúng quy cách không.</div>`;
+          } else if (r.flag === "nearly_full") {
+            cdField.note.innerHTML = `<div class="fsk-warn">Lô này gần như <b>còn nguyên</b> (${fmt(r.avgPct, 1)}% mỗi cuộn) — nếu đúng là cuộn chưa dùng thì ghi thẳng ${fmt(specMm)} mm × ${fmt(cones)} cuộn, không cần quy đổi qua cân.</div>`;
+          }
+          qtyInput.value = String(r.mm);
+          qtyInput.dispatchEvent(new Event("input"));
+        };
+        const cdLoad = () => {
+          const d = storeGet(CD_KEY, null);
+          if (!d) return;
+          if (d.core) cdField.core.value = d.core;
+          if (d.full) cdField.full.value = d.full;
+          cd.unit = d.unit === "g" ? "g" : "kg"; pressed(cdField.unit, "unit", cd.unit);
+          cd.fullIncludesCore = d.fullIncludesCore !== false; pressed(cdField.fullMode, "mode", cd.fullIncludesCore ? "all" : "thread");
+          if (d.custom && d.specMm) { cd.specMm = d.specMm; cdField.specCustom.value = String(d.specMm); setSpec(0, true); }
+          else if (d.specMm) setSpec(Number(d.specMm), true);
+        };
+        const renderSelected = () => {
+          const s = state.selected;
+          selBox.hidden = !s; selEmpty.hidden = Boolean(s); calcBody.hidden = !s;
+          if (!s) return;
+          $("fsk-sel-sku").textContent = s.sku;
+          $("fsk-sel-name").textContent = s.pn;
+          $("fsk-sel-unit").textContent = s.unit.raw ? `Đơn vị của SKU: ${s.unit.raw}${s.unit.isLength ? " — số lượng in lên tem tính bằng mm" : ""}` : "Tên SKU không ghi đơn vị";
+          $("fsk-qty-unit").textContent = s.unit.raw || "";
+          $("fsk-qty-hint").textContent = s.unit.isLength ? "tính từ cân bên dưới, hoặc gõ thẳng" : "gõ đúng số sẽ in lên tem";
+        };
+        const choose = (sku, pn) => {
+          stopCamera();
+          // Đã chọn SKU là xong tấm tem này: khép ảnh lại để mã gõ tiếp theo là một lượt tìm mới,
+          // không bị gộp với từ khoá của tem cũ. Kết quả cũ vẫn còn cho nút "Chọn SKU khác".
+          state.photo = ""; photo.hidden = true; photo.removeAttribute("src"); readButton.disabled = true;
+          state.selected = { sku, pn, unit: FSK_CORE.unitOf(pn) };
+          qtyInput.value = ""; qtyDoc.textContent = ""; copiesInput.value = "1";
+          renderSelected();
+          if (state.selected.unit.isLength) {
+            openCalc(true);
+            const spec = FSK_CORE.specFromName(pn);
+            if (spec) setSpec([2500000, 3000000, 5000000].includes(spec) ? spec : (cdField.specCustom.value = String(spec), 0), true);
+            cdField.total.value = ""; cdField.cones.value = "";
+            compute();
+          } else openCalc(false);
+          setActiveTab("calc");
+          tell(`Đã chọn SKU ${sku} — nhập số lượng và số tem.`, "ok");
+        };
+        cdField.spec.addEventListener("click", event => { const b = event.target.closest("button[data-mm]"); if (b) setSpec(Number(b.dataset.mm)); });
+        cdField.unit.addEventListener("click", event => { const b = event.target.closest("button[data-unit]"); if (b) setUnit(b.dataset.unit); });
+        cdField.fullMode.addEventListener("click", event => { const b = event.target.closest("button[data-mode]"); if (b) setFullMode(b.dataset.mode); });
+        [cdField.specCustom, cdField.total, cdField.cones, cdField.core, cdField.full].forEach(input => input.addEventListener("input", compute));
+        cdToggle.addEventListener("click", () => openCalc(cdBox.hidden));
+        $("fsk-cd-next").addEventListener("click", () => { cdField.total.value = ""; cdField.cones.value = ""; compute(); cdField.total.focus(); });
+        $("fsk-cd-clear").addEventListener("click", () => {
+          [cdField.specCustom, cdField.total, cdField.cones, cdField.core, cdField.full].forEach(input => { input.value = ""; });
+          try { localStorage.removeItem(CD_KEY); } catch (_) {}
+          cd.unit = "kg"; cd.fullIncludesCore = true; pressed(cdField.unit, "unit", "kg"); pressed(cdField.fullMode, "mode", "all");
+          setSpec(5000000, true);
+        });
+        qtyInput.addEventListener("input", () => {
+          const value = qtyInput.value.trim();
+          qtyDoc.textContent = value ? `Trên tem sẽ in: ${labelQuantity(value)}${state.selected?.unit.isLength && /^\d+$/.test(value) ? ` mm = ${fmt(Number(value) / 1000, 1)} m` : ""}` : "";
+        });
+        cdLoad();
+
+        // ---------- Bước 3: chờ in ----------
+        const QUEUE_KEY = "fsk-queue-v1";
+        state.queue = storeGet(QUEUE_KEY, []).filter(item => item && item.sku);
+        const saveQueue = () => storeSet(QUEUE_KEY, state.queue);
+        const printable = item => item.status === "pending" || item.status === "failed";
+        const renderQueue = () => {
+          queueBadge.textContent = state.queue.length;
+          list.innerHTML = state.queue.length
+            ? state.queue.map(item => `<div class="cut-row" data-id="${esc(item.id)}" data-status="${esc(item.status)}"><input type="checkbox" ${printable(item) ? "checked" : "disabled"} aria-label="Chọn ${esc(item.sku)}"><div class="cut-row__body"><strong>${esc(item.sku)}</strong><span>${esc(item.pn)}</span><small>Số lượng ${esc(item.quantity ? labelQuantity(item.quantity) : "—")}${item.unit ? " " + esc(item.unit) : ""} · ${item.copies} tem · ${esc(item.status === "failed" && item.error ? `in lỗi: ${item.error}` : STATUS_TEXT[item.status] || item.status)}</small></div><button class="fsk-row-del" type="button" data-remove="${esc(item.id)}" ${item.status === "queued" ? "disabled" : ""} aria-label="Xoá ${esc(item.sku)} khỏi chờ in">×</button></div>`).join("")
+            : '<div class="cut-empty">Chưa có tem chờ in. Quét tem ở bước 1, tính số lượng ở bước 2 rồi bấm “Thêm vào chờ in”.</div>';
+          syncSelection();
+        };
+        const selectedItems = () => [...list.querySelectorAll(".cut-row input:checked")].map(input => state.queue.find(item => item.id === input.closest(".cut-row").dataset.id)).filter(Boolean);
+        const syncSelection = () => {
+          const boxes = [...list.querySelectorAll(".cut-row input:not(:disabled)")], chosen = boxes.filter(x => x.checked);
+          selectAll.checked = boxes.length > 0 && chosen.length === boxes.length;
+          selectAll.indeterminate = chosen.length > 0 && chosen.length < boxes.length;
+          selectAll.disabled = !boxes.length;
+          selectedCountEl.textContent = `Đã chọn ${chosen.length}`;
+          const copies = selectedItems().reduce((n, item) => n + item.copies, 0);
+          printButton.disabled = !chosen.length || state.busy;
+          printButton.textContent = chosen.length ? `In ${copies} tem (${chosen.length} SKU)` : "In tem đã chọn";
+        };
+        const addToQueue = () => {
+          const s = state.selected;
+          if (!s) return tell("Chưa chọn SKU — quét tem ở bước 1.", "error");
+          const copies = Number(copiesInput.value);
+          if (!Number.isInteger(copies) || copies < 1 || copies > 500) { copiesInput.focus(); return tell("Số tem phải từ 1 đến 500.", "error"); }
+          const quantity = qtyInput.value.trim().slice(0, 40);
+          state.queue.push({ id: nonce(), sku: s.sku, pn: s.pn, unit: s.unit.raw, quantity, copies, status: "pending", jobId: null, nonce: null, error: "", addedAt: Date.now() });
+          saveQueue(); renderQueue();
+          setActiveTab("print");
+          tell(`Đã thêm ${s.sku} · ${copies} tem vào chờ in${quantity ? "" : " (không có số lượng trên tem)"}.`, "ok");
+        };
+        const printSelected = async () => {
+          const items = selectedItems();
+          if (!items.length || state.busy) return;
+          const copies = items.reduce((n, item) => n + item.copies, 0);
+          if (items.length > 100) return tell("Mỗi lượt in tối đa 100 SKU — bỏ chọn bớt.", "error");
+          if (copies > 500) return tell(`Mỗi lượt in tối đa 500 tem — đang chọn ${copies} tem, bỏ chọn bớt.`, "error");
+          // Cùng một nonce cho lần gửi lại sau lỗi mạng: hàng đợi nhận ra lệnh cũ, không tạo lệnh trùng.
+          const shared = items[0].nonce && items.every(item => item.nonce === items[0].nonce) ? items[0].nonce : nonce();
+          items.forEach(item => { item.nonce = shared; });
+          saveQueue();
+          state.busy = true; syncSelection();
+          tell(`Đang gửi ${copies} tem đến máy trạm…`);
+          try {
+            const payload = { items: items.map(item => ({ sku: item.sku, productName: item.pn, quantity: item.quantity, printedDate: printDate(), copies: item.copies })) };
+            const result = await window.PrintSkuQueue.enqueue({ type: "sku", copies, requestedBy: "web-find-sku", payload, requestNonce: shared });
+            if (!result?.ok || !result.data?.id) throw new Error(result?.error?.message || "Hàng đợi chưa nhận lệnh");
+            items.forEach(item => { item.status = "queued"; item.jobId = result.data.id; item.error = ""; });
+            saveQueue(); renderQueue();
+            tell(result.data.duplicate ? "Lệnh này vừa gửi rồi — không gửi lại để tránh in trùng." : `Đã gửi ${copies} tem · ${result.data.id}`, "ok");
+            schedulePoll(500);
+          } catch (error) {
+            tell(`Chưa gửi được lệnh in: ${error?.message || error}. Kiểm tra mạng rồi bấm in lại.`, "error");
+          } finally { state.busy = false; syncSelection(); }
+        };
+        const pollJobs = async () => {
+          clearTimeout(state.pollTimer);
+          const ids = [...new Set(state.queue.filter(item => item.status === "queued" && item.jobId).map(item => item.jobId))];
+          if (!ids.length || !active()) return;
+          for (const id of ids) {
+            try {
+              const r = await window.PrintSkuQueue.jobStatus(id), s = r?.data?.status;
+              if (s === "completed") {
+                const done = state.queue.filter(item => item.jobId === id);
+                state.queue = state.queue.filter(item => item.jobId !== id);
+                saveQueue(); renderQueue();
+                tell(`Agent đã in xong ${done.reduce((n, item) => n + item.copies, 0)} tem.`, "ok");
+              } else if (s === "failed" || s === "cancelled") {
+                state.queue.filter(item => item.jobId === id).forEach(item => { item.status = "failed"; item.error = String(r.data?.errorMessage || s).slice(0, 120); item.nonce = null; });
+                saveQueue(); renderQueue();
+                tell(`Lệnh in lỗi: ${r.data?.errorMessage || s}. Chọn lại tem rồi bấm in.`, "error");
+              }
+            } catch (_) { /* mất mạng một nhịp: lần sau hỏi lại */ }
+          }
+          schedulePoll(2500);
+        };
+        const schedulePoll = ms => { clearTimeout(state.pollTimer); if (state.queue.some(item => item.status === "queued")) state.pollTimer = setTimeout(pollJobs, ms); };
+
+        // ---------- Sự kiện ----------
+        camButton.addEventListener("click", () => (state.stream ? stopCamera() : startCamera()));
+        shotButton.addEventListener("click", capture);
+        zoomBox.addEventListener("click", event => { const b = event.target.closest("button[data-zoom]"); if (b) setZoom(Number(b.dataset.zoom)); });
+        fileInput.addEventListener("change", () => {
+          const file = fileInput.files?.[0];
+          fileInput.value = "";
+          if (!file) return;
+          stopCamera();
+          const url = URL.createObjectURL(file), image = new Image();
+          image.onload = () => { const dataUrl = scaled(image, 0, 0, image.naturalWidth, image.naturalHeight); URL.revokeObjectURL(url); usePhoto(dataUrl); };
+          image.onerror = () => { URL.revokeObjectURL(url); tell("Không mở được ảnh này — chọn ảnh JPG/PNG khác.", "error"); };
+          image.src = url;
+        });
+        readButton.addEventListener("click", () => { if (state.photo) { stopCamera(); resetLabel(); readLabel(state.photo, false); } });
+        codeForm.addEventListener("submit", async event => {
+          event.preventDefault();
+          const value = codeInput.value.trim();
+          if (!value) return codeInput.focus();
+          let cm;
+          try { cm = await ensureCatalog(); } catch (_) { return tell("Chưa tải được danh mục SKU — kiểm tra mạng rồi bấm “Tải lại danh mục”.", "error"); }
+          const split = NDS_ENGINE.tuVanBan(value, cm);
+          const pieces = ["code", "spec", "color", "brand"].reduce((n, role) => n + (split[role] || []).length, 0);
+          // Chưa có ảnh mà gõ một MÃ mới là tìm tem khác; chỉ gõ thông số/màu là thu hẹp kết quả đang xem.
+          if (!state.photo && ((split.code || []).length || !pieces)) resetLabel();
+          let added = 0;
+          ["code", "spec", "color", "brand"].forEach(role => (split[role] || []).forEach(t => { if (addToken(t, role, "tay")) added++; }));
+          if (!added) addToken(value, "code", "tay");
+          codeInput.value = "";
+          tell("");
+          await match();
+        });
+        tags.addEventListener("click", event => {
+          const b = event.target.closest("button[data-remove]");
+          if (!b) return;
+          const token = state.tokens[Number(b.dataset.remove)];
+          if (!token) return;
+          state.removed.add(token.t);
+          state.tokens = state.tokens.filter(k => k !== token);
+          match();
+        });
+        results.addEventListener("click", event => {
+          const chooser = event.target.closest("button[data-sku]");
+          if (chooser) return choose(chooser.dataset.sku, chooser.dataset.pn);
+          const near = event.target.closest("button[data-code]");
+          if (near) {
+            state.tokens = state.tokens.filter(k => k.vai !== "code" || state.cm?.idx[k.t]);
+            addToken(near.dataset.code, "code", "tay");
+            match();
+          }
+        });
+        $("fsk-match").addEventListener("click", () => match());
+        $("fsk-reload").addEventListener("click", () => refreshCatalog(true));
+        $("fsk-add").addEventListener("click", addToQueue);
+        copiesInput.addEventListener("keydown", event => { if (event.key === "Enter") { event.preventDefault(); addToQueue(); } });
+        list.addEventListener("change", syncSelection);
+        list.addEventListener("click", event => {
+          const b = event.target.closest("button[data-remove]");
+          if (!b || b.disabled) return;
+          state.queue = state.queue.filter(item => item.id !== b.dataset.remove);
+          saveQueue(); renderQueue();
+        });
+        selectAll.addEventListener("change", () => { list.querySelectorAll(".cut-row input:not(:disabled)").forEach(x => { x.checked = selectAll.checked; }); syncSelection(); });
+        printButton.addEventListener("click", printSelected);
+        $("fsk-back").addEventListener("click", () => { location.hash = "#home"; });
+
+        const render = () => {
+          const open = active();
+          screen.hidden = !open;
+          if (!open) { stopCamera(); clearTimeout(state.pollTimer); return; }
+          renderTags(); renderSelected(); renderQueue();
+          ensureCatalog().catch(() => {});
+          setActiveTab(activeTab);
+          schedulePoll(500);
+        };
+        window.addEventListener("hashchange", render);
+        render();
+      })();
+    </script>
     <div class="cut-barcode-modal" id="cut-barcode-modal" role="dialog" aria-modal="true" aria-labelledby="cut-barcode-modal-code" hidden>
       <div class="cut-barcode-modal__card">
         <svg class="cut-barcode-modal__svg" id="cut-barcode-modal-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 110" role="img" aria-label="Mã barcode"></svg>
