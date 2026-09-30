@@ -2,6 +2,14 @@
 
 Agent Windows độc lập phục vụ ứng dụng Print SKU. Bản 0.7.0 dùng tem Fabric Relaxation viết tay hoàn toàn; frontend chỉ chọn số lượng tem.
 
+## Cập nhật 0.8.5 — nhận lệnh nhanh hơn ~2 giây
+
+Khi được Realtime đánh thức (hoặc vừa in xong một lệnh), agent dùng lại kết quả kiểm tra máy in
+gần nhất nếu chưa quá 60 giây và máy đang sẵn sàng, thay vì chạy PowerShell (~2 giây) rồi mới
+nhận lệnh. Kiểm tra thật ngay trước khi gửi xuống máy in vẫn giữ nguyên; nhịp hỏi định kỳ vẫn
+kiểm tra thật để đèn trạng thái trên web đúng; máy in kẹt thì luôn kiểm tra thật. Tuỳ chọn
+`PRINTER_STATE_CACHE_MS` (mặc định 60000; 0 = luôn kiểm tra như cũ). Không cần migration.
+
 ## Cập nhật 0.8.4 — Realtime đánh thức, hỏi thưa khi rảnh
 
 Bản cũ hỏi hàng đợi mỗi giây 24/7 (~86.000 lần/ngày), chiếm gần hết 1 GB nhật ký/tháng

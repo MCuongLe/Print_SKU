@@ -7,7 +7,7 @@ import { isTransientNetworkError } from "./network-retry.mjs";
 import { createSentJournal } from "./sent-journal.mjs";
 import { createRealtimeWake } from "./realtime-wake.mjs";
 
-export const AGENT_VERSION = "0.8.4";
+export const AGENT_VERSION = "0.8.5";
 
 // Báo "hoàn tất" SAU khi tem đã ra giấy thì không được bỏ cuộc vì mạng: thử
 // lại giãn dần tới 30 giây/lần, khoảng 10 phút. Quá nữa thì để sổ tay lo — hết
@@ -141,12 +141,14 @@ export async function processClaimedJob(input, dependencies) {
   // nên người dùng bấm in lại và ra tem trùng.
   let sent = false;
   let result;
+  let lastPrinter = null;   // trạng thái máy in mới nhất — runService dùng làm bộ nhớ cho lần nhận lệnh kế tiếp
   try {
     const before = await printer.queryPrinter(config);
+    lastPrinter = before;
     if (!before.ok || before.blocked) {
       await queue.requeue(job.id, { code: before.code || "PRINTER_BLOCKED", message: before.message || "Máy in chưa sẵn sàng" });
       logger.warn(`Hoãn ${job.id}: ${before.message || before.code}`);
-      return { ok: false, requeued: true };
+      return { ok: false, requeued: true, printer: before };
     }
     await queue.progress(job.id, "rendering");
     const tspl = await render(
@@ -199,6 +201,7 @@ export async function processClaimedJob(input, dependencies) {
       }
     }
     const after = await printer.queryPrinter(config);
+    lastPrinter = after;
     if (!after.ok || after.blocked) {
       throw Object.assign(new Error(after.message || "Máy in báo lỗi sau khi nhận dữ liệu"), { code: after.code || "PRINTER_POSTCHECK_FAILED" });
     }
@@ -214,17 +217,31 @@ export async function processClaimedJob(input, dependencies) {
       const reason = { code: "NETWORK_UNSTABLE", message: `Mạng chập chờn trước khi gửi xuống máy in, agent sẽ tự in lại: ${details.message}`.slice(0, 200) };
       await queue.requeue(job.id, reason).catch((requeueError) => logger.warn(`Lệnh ${job.id}: chưa trả được về hàng đợi (${requeueError.message}); hết lease hàng đợi sẽ tự trả`));
       logger.warn(`Hoãn ${job.id} vì lỗi mạng trước khi in: ${details.message}`);
-      return { ok: false, requeued: true, error: details };
+      return { ok: false, requeued: true, error: details, printer: lastPrinter };
     }
     if (sent) journal.record(job.id, { stage: "failed", error: details });
     if (await reportFailed(job, details, context) && sent) journal.remove(job.id);
     logger.error(`Lệnh ${job.id} thất bại: ${details.message}`);
-    return { ok: false, error: details };
+    return { ok: false, error: details, printer: lastPrinter };
   }
   journal.record(job.id, { stage: "printed", result });
   const reported = await reportCompleted(job, result, context);
   logger.info(`Hoàn tất ${job.id}: ${job.copies} tem, ${result.bytes} byte${reported ? "" : " (chưa báo được về hàng đợi)"}`);
-  return { ok: true, result, reported };
+  return { ok: true, result, reported, printer: lastPrinter };
+}
+
+/**
+ * Có được bỏ bước kiểm tra máy in TRƯỚC KHI NHẬN lệnh không (0.8.5). Bước này chạy PowerShell
+ * ~2 giây trên máy trạm mà chỉ để báo trạng thái cho web và tránh nhận lệnh khi máy kẹt;
+ * processClaimedJob vẫn kiểm tra thật ngay trước khi gửi xuống máy in. Chỉ bỏ qua khi vòng
+ * này do TÍN HIỆU (hoặc vừa in xong một lệnh) và lần kiểm tra gần nhất còn mới, máy sẵn sàng.
+ * Nhịp định kỳ vẫn kiểm tra thật để đèn trạng thái trên web đúng; máy kẹt thì luôn kiểm tra
+ * thật — không thì nhận lệnh → trả về → bị đánh thức → nhận lại, lặp mãi.
+ */
+export function shouldSkipPrinterCheck({ cache, now, woken, config }) {
+  if (!woken || !cache || !(config.printerCacheMs > 0)) return false;
+  const state = cache.state;
+  return Boolean(state && state.ok && !state.blocked) && now - cache.at < config.printerCacheMs;
 }
 
 export async function runService(config, queue, logger, signal, lock, dependencies = {}) {
@@ -240,17 +257,27 @@ export async function runService(config, queue, logger, signal, lock, dependenci
   else logger.info(`Không dùng Realtime — hỏi hàng đợi mỗi ${config.idlePollNoWakeMs / 1000}s khi rảnh`);
   const askPrinter = dependencies.queryPrinter ?? queryPrinter;   // chỉ thay trong test
   let lastJobAt = 0;
+  let printerCache = null;   // { state, at } — kết quả kiểm tra máy in gần nhất
+  let woken = false;         // vòng này do tín hiệu Realtime hoặc vừa in xong, không phải nhịp định kỳ
   while (!signal?.aborted) {
     try {
       lock?.touch?.();
-      const printer = await askPrinter(config);
+      let printer;
+      if (shouldSkipPrinterCheck({ cache: printerCache, now: Date.now(), woken, config })) {
+        printer = printerCache.state;
+      } else {
+        printer = await askPrinter(config);
+        printerCache = { state: printer, at: Date.now() };
+      }
       const state = publicState(config, printer);
       const claim = await queue.claim(state);
       if (claim?.job) {
         lastJobAt = Date.now();
-        await processClaimedJob(claim.job, { config, queue, logger, signal, journal });
+        const outcome = await processClaimedJob(claim.job, { config, queue, logger, signal, journal });
+        if (outcome?.printer) printerCache = { state: outcome.printer, at: Date.now() };
+        woken = true;   // vừa in xong: lệnh cùng đợt có thể còn, nhận tiếp không cần kiểm tra lại
       } else {
-        await waiter.wait(nextPollDelay({ now: Date.now(), lastJobAt, wakeConnected: Boolean(wake?.connected()), config }));
+        woken = (await waiter.wait(nextPollDelay({ now: Date.now(), lastJobAt, wakeConnected: Boolean(wake?.connected()), config }))) === "wake";
       }
     } catch (error) {
       logger.error("Lỗi vòng quét", String(error.message || error).slice(0, 200));

@@ -47,6 +47,8 @@ export function loadConfig(options = {}) {
     idlePollNoWakeMs: positiveInt(get("AGENT_IDLE_POLL_NO_WAKE_MS"), 10000, 1000, 300000),
     activeWindowMs: positiveInt(get("AGENT_ACTIVE_WINDOW_MS"), 120000, 0, 3600000),
     realtimeWake: !/^(0|false|off|no)$/i.test(get("REALTIME_WAKE", "on")),
+    // 0.8.5: bỏ bước kiểm tra máy in trước khi nhận lệnh nếu lần kiểm tra gần nhất còn mới hơn số ms này (0 = luôn kiểm tra).
+    printerCacheMs: positiveInt(get("PRINTER_STATE_CACHE_MS"), 60000, 0, 600000),
     leaseMs: positiveInt(get("AGENT_LEASE_MS"), 120000, 30000, 900000),
     spoolTimeoutMs: positiveInt(get("SPOOL_TIMEOUT_MS"), 3600000, 60000, 7200000),
     spoolStallMs: positiveInt(get("SPOOL_STALL_MS"), 600000, 15000, 1800000),

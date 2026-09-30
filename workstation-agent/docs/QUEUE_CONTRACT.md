@@ -44,6 +44,7 @@ Backend chuẩn nằm ở `supabase/print_queue_v1.sql`. Agent gọi Supabase RP
 - Trigger `print_jobs_wake_agent` (supabase/print_queue_v5_realtime_wake.sql) phát Broadcast công khai topic `print-queue`, event `queued`, payload `{ jobId, type, copies, status }` mỗi khi một dòng `print_jobs` có `status = 'queued'` (insert, requeue, hết lease). Lỗi phát tín hiệu được nuốt — không bao giờ làm hỏng `print_enqueue`.
 - Agent nghe topic bằng publishable key; nhận tin thì gọi `agent_claim` ngay. Ngoài ra vẫn gọi `agent_claim` dự phòng mỗi 20 giây khi rảnh (10 giây nếu chưa nối được Realtime), 1 giây/lần trong 120 giây sau mỗi lệnh. Tin là "đánh thức", không phải giao lệnh: lỡ tin chỉ làm chậm ≤ 20 giây.
 - `last_seen_at` của agent vì thế có thể cách nhau 20 giây; web coi agent mất liên lạc khi quá 45 giây (trước là 15).
+- Từ 0.8.5, `state.printer` gửi kèm `agent_claim` khi được đánh thức có thể là kết quả kiểm tra cũ tới 60 giây (chỉ khi máy đang sẵn sàng); nhịp định kỳ luôn gửi kết quả mới.
 
 ## Khả năng agent
 
