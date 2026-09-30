@@ -5,8 +5,10 @@ import { LABEL_GAP_MM, LABEL_HEIGHT, LABEL_HEIGHT_MM, LABEL_WIDTH, ROW_GAP_MM, R
 import { renderLabelSvg } from "./templates/index.mjs";
 import { formatDate, formatQuantity, LABEL_FONT_FAMILY } from "./templates/common.mjs";
 import { SKU_LABEL_LAYOUT, SKU_LABEL_MAX_WIDTH_PX } from "./templates/sku-label.mjs";
+import { GROUP_UID_NAME_MAX_WIDTH_PX, groupUidMaxLines, hasGroupUidSku } from "./templates/group-uid-label.mjs";
 import {
-  DATE_FONT_SIZES, estimateTextWidth, fitFooter, fitProductName, maxLinesForSize, QUANTITY_FONT_SIZES, tokenize, verifyLineWidths
+  DATE_FONT_SIZES, estimateTextWidth, fitFooter, maxLinesForSize, productNameCandidates, QUANTITY_FONT_SIZES, tokenize, verifyLineWidths,
+  WRAP_SAFETY_FACTOR
 } from "./templates/text-layout.mjs";
 
 // Cac co chu thu theo thu tu tu lon xuong nho khi ten qua dai khong vua ngay
@@ -18,11 +20,19 @@ const PRODUCT_NAME_FONT_SIZES = [22, 20, 18, 16];
 // moi ky tu o co 22, ty le tuyen tinh theo co chu (da do that, xem RULES.md).
 const AVG_CHAR_WIDTH_AT_22 = 11;
 
+// Khung tên của từng loại tem có tên sản phẩm. Tem fabric_relaxation không in
+// tên nên không có ở đây.
+const NAME_LAYOUTS = {
+  sku: { maxWidthPx: SKU_LABEL_MAX_WIDTH_PX, maxLinesFor: () => (size) => maxLinesForSize(size, SKU_LABEL_LAYOUT) },
+  group_uid: { maxWidthPx: GROUP_UID_NAME_MAX_WIDTH_PX, maxLinesFor: (payload) => (size) => groupUidMaxLines(size, hasGroupUidSku(payload)) }
+};
+
 /**
- * Tinh truoc so dong va co chu that su cho tung tem SKU trong lo, dua theo be
- * rong chu THAT (measureText, thuong la measureTextWidths tu text-metrics.mjs)
- * thay vi dem dau nguoi 22 ky tu/dong. Gom du lieu can do va goi PowerShell
- * dung HAI LAN cho ca lo (xem RULES.md phan "Do chu that"):
+ * Tinh truoc so dong va co chu that su cho ten san pham cua moi tem co ten
+ * (SKU va Group UID) trong lo, dua theo be rong chu THAT (measureText, thuong
+ * la measureTextWidths tu text-metrics.mjs) thay vi dem dau nguoi so ky tu/dong.
+ * Gom du lieu can do va goi PowerShell dung HAI LAN cho ca lo (xem RULES.md
+ * phan "Do chu that"):
  *
  *   Vong 1 — do tung TOKEN rieng le, dung de wrap SO BO (co bien an toan
  *   WRAP_SAFETY_FACTOR, xem text-layout.mjs). Sum-token KHONG dang tin tuyet
@@ -30,44 +40,44 @@ const AVG_CHAR_WIDTH_AT_22 = 11;
  *   end/No.3 Plastic Zipper" la 294,7px, nhung do NGUYEN ca cum la 313,07px —
  *   lech 6,2% vi GDI+ bo "side bearing" o hai dau MOI LAN do doc lap, dem cang
  *   nhieu token thi sai so cang cong don. Tin thang so nay da lam mat chu "r"
- *   cuoi "Zipper" tren tem in that.
+ *   cuoi "Zipper" tren tem in that. So luong va ngay o day tem SKU do luon
+ *   trong lan goi nay (options.extra).
  *
- *   Vong 2 — do NGUYEN tung dong da wrap o vong 1, xac nhan lai bang so that.
- *   Dong nao van vuot (hiem, nho da co bien an toan) thi verifyLineWidths tach
- *   bot token cuoi xuong dong moi — an toan tuyet doi vi bot noi dung luon lam
- *   dong hep hon, khong phu thuoc dac tinh do cua GDI+.
+ *   Vong 2 — do NGUYEN tung dong da wrap o vong 1, o MOI co con lai tu co da
+ *   chon tro xuong. Dong nao van vuot thi verifyLineWidths tach bot token cuoi
+ *   xuong dong moi; neu vi vay ten vuot so dong cho phep thi chuyen sang co nho
+ *   hon (da do san), chi cat khi da o co nho nhat.
  *
- * Van CHI HAI LAN GOI PowerShell CHO CA LO (khong tang theo so tem) — ~1,6-1,8
- * giay tong cong, khong dang ke so voi thoi gian render/spool ca lo.
+ * Van CHI HAI LAN GOI PowerShell CHO CA LO (khong tang theo so tem).
  *
  * Tra ve MANG MOI, khong sua doi `entries` dau vao (mot phan tu co the la
  * chinh `job` goc khi lenh khong phai dang batch, sua tai cho se lam thay doi
  * du lieu cua nguoi goi ngoai y muon).
  *
  * `measureText` khong duoc truyen (mac dinh) thi bo qua buoc nay hoan toan —
- * cac ham renderSkuLabel se tu lui ve cach dem ky tu cu. Do la duong dung cho
- * moi test hien co va cho cac loi goi chua can nang cap.
+ * cac template se tu lui ve cach dem ky tu cu.
  */
-export async function planSkuProductNames(entries, config, measureText, logger) {
+export async function planProductNames(entries, config, measureText, logger) {
   if (!measureText) return entries;
-  const skuEntries = entries.filter((entry) => entry.type === "sku" && entry.payload?.productName);
-  if (!skuEntries.length) return entries;
+  const nameEntries = entries.filter((entry) => NAME_LAYOUTS[entry.type] && entry.payload?.productName);
+  if (!nameEntries.length) return entries;
+  const skuEntries = nameEntries.filter((entry) => entry.type === "sku");
 
   const allTokens = new Set();
-  for (const entry of skuEntries) for (const token of tokenize(entry.payload.productName)) allTokens.add(token);
-  // Số lượng và ngày ở đáy tem đo luôn trong lần gọi vòng 1 (cỡ chữ riêng), không
-  // thêm lần gọi PowerShell nào.
-  const footerTexts = skuEntries.map((entry) => ({
+  for (const entry of nameEntries) for (const token of tokenize(entry.payload.productName)) allTokens.add(token);
+  // Số lượng và ngày ở đáy tem SKU đo luôn trong lần gọi vòng 1 (cỡ chữ riêng),
+  // không thêm lần gọi PowerShell nào.
+  const footerTexts = new Map(skuEntries.map((entry) => [entry, {
     quantity: formatQuantity(entry.payload.quantity),
     date: String(entry.payload.printedDate || formatDate())
-  }));
+  }]));
 
   let tokenWidths;
   try {
     tokenWidths = await measureText(config, [...allTokens], PRODUCT_NAME_FONT_SIZES, {
       extra: [
-        { texts: footerTexts.map((footer) => footer.quantity), sizes: QUANTITY_FONT_SIZES },
-        { texts: footerTexts.map((footer) => footer.date), sizes: DATE_FONT_SIZES }
+        { texts: [...footerTexts.values()].map((footer) => footer.quantity), sizes: QUANTITY_FONT_SIZES },
+        { texts: [...footerTexts.values()].map((footer) => footer.date), sizes: DATE_FONT_SIZES }
       ]
     });
   } catch (error) {
@@ -79,26 +89,38 @@ export async function planSkuProductNames(entries, config, measureText, logger) 
   const [quantityWidths, dateWidths] = tokenWidths.extra ?? [];
   const measureFooter = (widths) => (text, size) => widths?.get(text)?.get(size) ?? estimateTextWidth(text, size);
 
-  const plans = skuEntries.map((entry, index) => ({
-    entry,
-    fit: fitProductName(entry.payload.productName, {
-      measureAt,
-      maxWidthPx: SKU_LABEL_MAX_WIDTH_PX,
-      fontSizes: PRODUCT_NAME_FONT_SIZES,
-      layout: SKU_LABEL_LAYOUT
-    }),
-    footerFit: fitFooter(footerTexts[index].quantity, footerTexts[index].date, {
-      measureQuantity: measureFooter(quantityWidths),
-      measureDate: measureFooter(dateWidths)
-    })
+  const plans = new Map(nameEntries.map((entry) => {
+    const layout = NAME_LAYOUTS[entry.type];
+    const footer = footerTexts.get(entry);
+    return [entry, {
+      maxWidthPx: layout.maxWidthPx,
+      candidates: productNameCandidates(entry.payload.productName, {
+        measureAt,
+        maxWidthPx: layout.maxWidthPx,
+        fontSizes: PRODUCT_NAME_FONT_SIZES,
+        maxLinesFor: layout.maxLinesFor(entry.payload),
+        // Dùng đủ khung trước, thận trọng sau; vòng 2 đo lại nguyên dòng nên không tràn.
+        widthFactors: [1, WRAP_SAFETY_FACTOR]
+      }),
+      footerFit: footer && fitFooter(footer.quantity, footer.date, {
+        measureQuantity: measureFooter(quantityWidths),
+        measureDate: measureFooter(dateWidths)
+      })
+    }];
   }));
+  const withPlan = (entry, lines, fontSize, plan) => ({
+    ...entry,
+    payload: { ...entry.payload, productNameLines: lines, productNameFontSize: fontSize, ...(plan.footerFit ? { footerFit: plan.footerFit } : {}) }
+  });
 
-  // Vong 2: do nguyen tung dong da wrap so bo, o dung co chu se in ra.
+  // Vong 2: do nguyen tung dong cua moi phuong an con lai, o dung co chu cua no.
   const lineTexts = new Set();
   const usedSizes = new Set();
-  for (const { fit } of plans) {
-    for (const line of fit.lines) lineTexts.add(line);
-    usedSizes.add(fit.fontSize);
+  for (const { candidates } of plans.values()) {
+    for (const candidate of candidates) {
+      for (const line of candidate.lines) lineTexts.add(line);
+      usedSizes.add(candidate.fontSize);
+    }
   }
 
   let lineWidths;
@@ -109,21 +131,37 @@ export async function planSkuProductNames(entries, config, measureText, logger) 
     // cach dem ky tu, nen dung tam ket qua vong 1 thay vi bo het.
     logger?.warn?.(`Đo chữ thật thất bại (vòng 2, xác nhận), dùng kết quả wrap sơ bộ: ${String(error?.message || error).slice(0, 200)}`);
     return entries.map((entry) => {
-      const plan = plans.find((p) => p.entry === entry);
+      const plan = plans.get(entry);
       if (!plan) return entry;
-      return { ...entry, payload: { ...entry.payload, productNameLines: plan.fit.lines, productNameFontSize: plan.fit.fontSize, footerFit: plan.footerFit } };
+      const [first] = plan.candidates;
+      return withPlan(entry, first.lines.slice(0, first.maxLines), first.fontSize, plan);
     });
   }
 
   return entries.map((entry) => {
-    const plan = plans.find((p) => p.entry === entry);
+    const plan = plans.get(entry);
     if (!plan) return entry;
-    const { fontSize, lines } = plan.fit;
-    const measureWholeLine = (text) => lineWidths.get(text)?.get(fontSize) ?? Infinity;
-    const measureToken = (text) => measureAt(text, fontSize);
-    const verified = verifyLineWidths(lines, { measureWholeLine, measureToken }, SKU_LABEL_MAX_WIDTH_PX)
-      .slice(0, maxLinesForSize(fontSize, SKU_LABEL_LAYOUT));
-    return { ...entry, payload: { ...entry.payload, productNameLines: verified, productNameFontSize: fontSize, footerFit: plan.footerFit } };
+    // Chọn phương án vừa khung ở cỡ lớn nhất; cùng cỡ thì ưu tiên phương án
+    // không phải tách dòng ở bước xác nhận (tách dòng để lại dòng ngắn lẻ).
+    let pick = null;
+    let last = null;
+    for (const candidate of plan.candidates) {
+      const { fontSize } = candidate;
+      const measureWholeLine = (text) => lineWidths.get(text)?.get(fontSize) ?? Infinity;
+      const measureToken = (text) => measureAt(text, fontSize);
+      const verified = verifyLineWidths(candidate.lines, { measureWholeLine, measureToken }, plan.maxWidthPx);
+      last = { candidate, verified };
+      if (verified.length > candidate.maxLines) continue;
+      const clean = verified.length === candidate.lines.length;
+      if (clean && (!pick || pick.candidate.fontSize === fontSize)) { pick = last; break; }
+      if (!pick) pick = last;
+      else if (pick.candidate.fontSize !== fontSize) break;
+    }
+    const { candidate: chosen, verified } = pick ?? last;
+    if (verified.length > chosen.maxLines) {
+      logger?.warn?.(`Tên sản phẩm quá dài, cỡ ${chosen.fontSize} vẫn cần ${verified.length}/${chosen.maxLines} dòng — cắt bớt: ${entry.payload.productName.slice(0, 80)}`);
+    }
+    return withPlan(entry, verified.slice(0, chosen.maxLines), chosen.fontSize, plan);
   });
 }
 
@@ -170,7 +208,7 @@ export async function renderJobTspl(job, config, onProgress = null, { measureTex
   let entries = Array.isArray(job.payload?.items)
     ? job.payload.items.map((item) => ({ ...job, copies: item.copies, payload: item }))
     : [job];
-  entries = await planSkuProductNames(entries, config, measureText, logger);
+  entries = await planProductNames(entries, config, measureText, logger);
   // Trải phẳng mọi tem của lệnh rồi ghép 2 tem liền kề (kể cả khác nội dung) vào một hàng giấy 2 tem.
   const labels = [];
   for (const entry of entries) for (let i = 0; i < entry.copies; i += 1) labels.push(entry);
@@ -192,7 +230,7 @@ export async function writePreview(job, outputFile, { config, measureText, logge
   let entries = Array.isArray(job.payload?.items)
     ? [{ ...job, payload: job.payload.items[0] }]
     : [job];
-  entries = await planSkuProductNames(entries, config, measureText, logger);
+  entries = await planProductNames(entries, config, measureText, logger);
   await sharp(Buffer.from(renderLabelSvg(entries[0]))).png().toFile(outputFile);
   return outputFile;
 }

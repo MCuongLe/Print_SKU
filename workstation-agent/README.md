@@ -2,6 +2,16 @@
 
 Agent Windows độc lập phục vụ ứng dụng Print SKU. Bản 0.7.0 dùng tem Fabric Relaxation viết tay hoàn toàn; frontend chỉ chọn số lượng tem.
 
+## Cập nhật 0.8.3 — in đủ tên sản phẩm trên mọi tem
+
+- Tem Group UID chia dòng tên theo bề rộng chữ thật như tem SKU, tên dài tự thu nhỏ
+  (22 → 20 → 18 → 16) thay vì bị cắt mất đuôi.
+- Đo chữ tính cả dấu cách cuối mỗi từ, nên tên xuống dòng đều và dùng đủ bề rộng tem.
+- Trang web (`deployment/index.html`): nút "in bằng máy này" cũng đo chữ thật; in tem Group UID
+  mà LOT và ROLL có thể đè nhau thì hỏi xác nhận trước khi gửi lệnh.
+
+Không cần migration Supabase. Cài ZIP như bản 0.8.1 và đưa `deployment/index.html` lên nơi phục vụ web.
+
 ## Cập nhật 0.8.2 — đáy tem SKU cố định
 
 - Vạch kẻ và hàng số lượng/ngày luôn nằm cố định ở đáy tem SKU, không trôi theo độ dài tên.

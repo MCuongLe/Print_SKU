@@ -18,9 +18,16 @@ export function tokenize(value) {
 // một lần ở đầu và một lần ở cuối dòng thật. Càng nhiều token trong một dòng,
 // sai số càng cộng dồn — không phải hằng số cố định.
 //
+// ĐÍNH CHÍNH 30/09/2026: nguyên nhân thật KHÔNG phải side bearing mà là
+// GenericTypographic bỏ qua khoảng trắng CUỐI chuỗi — token "Opened " bị đo như
+// "Opened". Lệch 18,37px ở ví dụ trên đúng bằng 3 dấu cách cỡ 22 (3 × 6,1px).
+// measure-text.ps1 nay bật MeasureTrailingSpaces: tổng token bằng đúng đo
+// nguyên dòng (lệch 0,0% trên dữ liệu thật). Vòng 2 vẫn giữ làm chốt chặn, và
+// hệ số dưới đây chỉ còn là phương án thận trọng dự phòng.
+//
 // Vì vậy KHÔNG được tin thẳng tổng token để quyết định tràn tem: phải dùng nó
 // làm ranh giới SƠ BỘ (với biên an toàn), rồi đo lại NGUYÊN từng dòng thật để
-// xác nhận (xem `verifyLineWidths` + planSkuProductNames ở render.mjs).
+// xác nhận (xem `verifyLineWidths` + planProductNames ở render.mjs).
 export const WRAP_SAFETY_FACTOR = 0.88; // bù cho sai số cộng dồn đã đo được (~6–12% tuỳ số token/dòng)
 
 /**
@@ -179,18 +186,42 @@ export function fitFooter(quantity, date, { measureQuantity, measureDate }) {
  *
  * `measureAt(text, size)` đồng bộ, tra từ bảng đã đo sẵn qua measureTextWidths.
  */
-export function fitProductName(value, { measureAt, maxWidthPx, fontSizes, layout }) {
+export function fitProductName(value, { measureAt, maxWidthPx, fontSizes, layout, maxLinesFor }) {
   // Dùng maxWidthPx đã bớt biên an toàn cho bước wrap sơ bộ — xem cảnh báo ở
   // WRAP_SAFETY_FACTOR. Kết quả ở đây CHƯA được xác nhận, phải qua
   // verifyLineWidths (render.mjs) trước khi in.
-  const safeWidthPx = maxWidthPx * WRAP_SAFETY_FACTOR;
-  let smallest = null;
+  // `maxLinesFor(size)` cho tem có khung tên khác tem SKU (vd Group UID); không
+  // truyền thì dùng công thức bố cục tem SKU.
+  const candidates = productNameCandidates(value, { measureAt, maxWidthPx, fontSizes, maxLinesFor: maxLinesFor ?? ((size) => maxLinesForSize(size, layout)) });
+  const chosen = candidates.find((candidate) => candidate.fits) ?? candidates[candidates.length - 1];
+  return { fontSize: chosen.fontSize, lines: chosen.lines.slice(0, chosen.maxLines), fits: chosen.fits };
+}
+
+/**
+ * Wrap sơ bộ tên ở MỌI cỡ trong `fontSizes`, bắt đầu từ cỡ lớn nhất vừa khung
+ * (hoặc chỉ cỡ nhỏ nhất nếu không cỡ nào vừa). render.mjs đo lại nguyên từng
+ * dòng của tất cả phương án trong vòng 2 rồi chọn phương án đầu tiên vẫn vừa
+ * sau khi xác nhận — nhờ vậy dòng bị tách ở bước xác nhận chuyển sang cỡ nhỏ
+ * hơn thay vì bị cắt mất đuôi tên.
+ *
+ * `widthFactors`: mỗi cỡ thử lần lượt các mức bề rộng (vd [1, WRAP_SAFETY_FACTOR]
+ * — dùng đủ khung trước, thận trọng sau). Chỉ dùng mức thận trọng thì tên vừa
+ * khít ở cỡ 22 bị coi là không vừa và thu nhỏ oan: đo thật 30/09/2026, 659/1.829
+ * tem Group UID xuống cỡ 18–20 dù chữ cỡ 22 vẫn nằm gọn khung.
+ */
+export function productNameCandidates(value, { measureAt, maxWidthPx, fontSizes, maxLinesFor, widthFactors = [WRAP_SAFETY_FACTOR] }) {
+  const all = [];
   for (const size of fontSizes) {
-    const lines = wrapByWidth(value, (t) => measureAt(t, size), safeWidthPx);
-    const cap = maxLinesForSize(size, layout);
-    const result = { fontSize: size, lines: lines.slice(0, cap), fits: lines.length <= cap };
-    if (result.fits) return result;
-    smallest = result;
+    const maxLines = maxLinesFor(size);
+    let previous = null;
+    for (const factor of widthFactors) {
+      const lines = wrapByWidth(value, (t) => measureAt(t, size), maxWidthPx * factor);
+      const key = lines.join("\n");
+      if (key === previous) continue; // hai mức cho cùng kết quả thì không đo lặp
+      previous = key;
+      all.push({ fontSize: size, lines, maxLines, fits: lines.length <= maxLines });
+    }
   }
-  return smallest;
+  const first = all.findIndex((candidate) => candidate.fits);
+  return all.slice(first === -1 ? all.length - 1 : first);
 }

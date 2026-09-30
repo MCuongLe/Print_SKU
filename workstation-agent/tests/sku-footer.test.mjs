@@ -8,7 +8,7 @@ import { QUANTITY_TOP_RATIO, renderSkuLabel, SKU_LABEL_LAYOUT } from "../src/tem
 import {
   DATE_FONT_SIZES, estimateTextWidth, fitFooter, FOOTER_GAP_PX, FOOTER_SPAN_PX, QUANTITY_FONT_SIZES
 } from "../src/templates/text-layout.mjs";
-import { planSkuProductNames } from "../src/render.mjs";
+import { planProductNames } from "../src/render.mjs";
 import { measureTextWidths } from "../src/text-metrics.mjs";
 
 // Đáy tem SKU (30/09/2026): vạch kẻ + hàng số lượng/ngày cố định, số lượng có
@@ -98,10 +98,10 @@ function fakeMeasureText(widthPerChar) {
   return fn;
 }
 
-test("planSkuProductNames do so luong va ngay trong vong 1, van dung HAI lan goi", async () => {
+test("planProductNames do so luong va ngay trong vong 1, van dung HAI lan goi", async () => {
   const measureText = fakeMeasureText(20); // rộng gấp ~3 lần Arial thật để buộc phải thu nhỏ
   const entries = [{ type: "sku", copies: 1, payload: { sku: "100000001", productName: "SP", quantity: "300000000", printedDate: "30/09/26" } }];
-  const [planned] = await planSkuProductNames(entries, {}, measureText, null);
+  const [planned] = await planProductNames(entries, {}, measureText, null);
   assert.equal(measureText.calls.length, 2);
   assert.deepEqual(measureText.calls[0].extra.map((group) => group.texts), [["300.000.000"], ["30/09/26"]]);
   assert.deepEqual(measureText.calls[0].extra.map((group) => group.sizes), [QUANTITY_FONT_SIZES, DATE_FONT_SIZES]);

@@ -21,7 +21,12 @@ try {
 
   $bmp = New-Object System.Drawing.Bitmap 1, 1
   $g = [System.Drawing.Graphics]::FromImage($bmp)
-  $fmt = [System.Drawing.StringFormat]::GenericTypographic
+  # GenericTypographic mac dinh BO QUA khoang trang cuoi chuoi: token "phu " bi
+  # do nhu "phu", tong token hut ca be rong dau cach (10-15% moi dong, do that
+  # 30/09/2026). Bat MeasureTrailingSpaces de token tinh ca dau cach; dong/so
+  # luong/ngay deu da trim nen khong doi.
+  $fmt = [System.Drawing.StringFormat]::GenericTypographic.Clone()
+  $fmt.FormatFlags = $fmt.FormatFlags -bor [System.Drawing.StringFormatFlags]::MeasureTrailingSpaces
 
   $results = New-Object System.Collections.Generic.List[object]
   foreach ($size in $sizes) {

@@ -6,7 +6,7 @@ import { measureTextWidths } from "./text-metrics.mjs";
 import { isTransientNetworkError } from "./network-retry.mjs";
 import { createSentJournal } from "./sent-journal.mjs";
 
-export const AGENT_VERSION = "0.8.2";
+export const AGENT_VERSION = "0.8.3";
 
 // Báo "hoàn tất" SAU khi tem đã ra giấy thì không được bỏ cuộc vì mạng: thử
 // lại giãn dần tới 30 giây/lần, khoảng 10 phút. Quá nữa thì để sổ tay lo — hết
