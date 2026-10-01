@@ -234,7 +234,9 @@ cũ); không có trong danh mục → giữ camera, hỏi "Vẫn dùng mã này"
 Bộ đọc dùng chung `window.PrintSkuScanner.Jp()` → `doc(video, vung?)` (cả PRINT SKU, Xả vải, TÌM SKU):
 `vung` là `{x, y, w, h}` theo tỉ lệ khung hình, nhiều mã thì lấy mã gần tâm nhất. Máy không có
 `BarcodeDetector` (iPhone/iPad, Chrome trên Windows) dùng ZXing — trước 01/10/2026 nhánh này gần như
-không đọc được QR và mã vạch ngang do lỗi đảo màu của ZXing khi đọc thẳng từ `<video>`.
+không đọc được QR và mã vạch ngang do lỗi đảo màu của ZXing khi đọc thẳng từ `<video>`, và không đọc
+được Code 128 toàn số (SKU, UID) mỗi khi bên trái mã vạch có điểm tối trên cùng hàng do lỗi
+`Code128Reader.findStartPattern` của ZXing 0.21.3 (đã vá ngay trong bundle).
 
 Ô Mã SKU có nút **"Bàn phím ảo: đang ẩn — bấm để hiện"** (như Cắt UID, Sample, Xả vải) để dùng máy
 quét cầm tay không bị bàn phím che; mặc định ẩn, nhớ theo từng máy (`print-sku-ban-phim`). Bấm
