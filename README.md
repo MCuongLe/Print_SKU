@@ -222,6 +222,24 @@ python scripts/apply_supabase_sql.py supabase/cut_group_uid_v4_search_date_filte
 `--allow-destructive` chỉ vì file `drop` chữ ký hàm v3 để tạo lại với 2 tham số ngày; hai
 tham số có mặc định nên trang web cũ vẫn gọi được hàm mới.
 
+## Quét mã ở PRINT SKU
+
+Nút camera cạnh ô **Mã SKU** mở lớp quét toàn màn hình `window.PrintSkuScanUI` (script
+`print-sku-scan-ui` trong `index.html`; component React cũ trong bundle chỉ còn là vỏ gọi nó):
+khung 4 góc, đèn pin nếu máy hỗ trợ, 1×/2×/3×, "Gõ tay mã SKU"; nút Back của điện thoại đóng lớp
+quét. Chỉ đọc mã nằm trong khung (tem có nhiều mã không bị đọc nhầm). Đọc được mã thì tra
+`SKU_Name` trước: đúng SKU → khung xanh + bíp + rung rồi điền vào ô (hộp gợi ý Combo vẫn chạy như
+cũ); không có trong danh mục → giữ camera, hỏi "Vẫn dùng mã này" / "Quét tiếp".
+
+Bộ đọc dùng chung `window.PrintSkuScanner.Jp()` → `doc(video, vung?)` (cả PRINT SKU, Xả vải, TÌM SKU):
+`vung` là `{x, y, w, h}` theo tỉ lệ khung hình, nhiều mã thì lấy mã gần tâm nhất. Máy không có
+`BarcodeDetector` (iPhone/iPad, Chrome trên Windows) dùng ZXing — trước 01/10/2026 nhánh này gần như
+không đọc được QR và mã vạch ngang do lỗi đảo màu của ZXing khi đọc thẳng từ `<video>`.
+
+Ô Mã SKU có nút **"Bàn phím ảo: đang ẩn — bấm để hiện"** (như Cắt UID, Sample, Xả vải) để dùng máy
+quét cầm tay không bị bàn phím che; mặc định ẩn, nhớ theo từng máy (`print-sku-ban-phim`). Bấm
+"Gõ tay mã SKU" trong lớp quét thì bàn phím tự bật lại.
+
 ## Tìm SKU bằng camera
 
 Mở **TÌM SKU** ở WH-MATERIAL hoặc `#find-sku`. Ba bước, bố cục như CẮT GROUP UID / XẢ VẢI:
