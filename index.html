@@ -1283,7 +1283,9 @@ Error generating stack: `+y.message+`
       .storage-risk__total span { display: block; color: #805158; font-size: 11px; font-weight: 800; }
       .storage-risk__total strong { display: block; margin-top: 3px; color: #a9252d; font-size: 28px; font-variant-numeric: tabular-nums; }
       .storage-risk__grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 16px; }
-      .storage-risk__card { position: relative; overflow: hidden; padding: 23px; border: 1px solid #e3d4d5; border-radius: 20px; background: #fff; box-shadow: 0 10px 28px rgba(40,65,56,.06); }
+      .storage-risk__card { position: relative; overflow: hidden; padding: 23px; border: 1px solid #e3d4d5; border-radius: 20px; color: inherit; background: #fff; box-shadow: 0 10px 28px rgba(40,65,56,.06); font: inherit; text-align: left; cursor: pointer; transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease; }
+      .storage-risk__card:hover { transform: translateY(-2px); border-color: #d8b7ba; box-shadow: 0 15px 34px rgba(40,65,56,.1); }
+      .storage-risk__card:focus-visible { outline: 3px solid rgba(0,95,65,.2); outline-offset: 3px; }
       .storage-risk__card::before { position: absolute; inset: 0 auto 0 0; width: 5px; background: #bd3039; content: ""; }
       .storage-risk__card--warning { border-color: #eadcbd; }
       .storage-risk__card--warning::before { background: #b37400; }
@@ -1297,8 +1299,42 @@ Error generating stack: `+y.message+`
       .storage-risk__action { display: grid; grid-template-columns: auto 1fr; gap: 8px 12px; margin: 18px 0 0; padding: 14px; border-radius: 13px; background: #f7faf9; }
       .storage-risk__action b { color: #173e31; font-size: 11px; }
       .storage-risk__action span { color: #62766e; font-size: 11px; line-height: 1.45; }
+      .storage-risk__open { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 16px; padding-top: 14px; border-top: 1px solid #e6eeeb; color: #006747; font-size: 12px; font-weight: 900; }
       .storage-risk__scope { display: flex; align-items: center; gap: 9px; margin: 17px 0 0; padding: 12px 14px; border: 1px solid #dde8e4; border-radius: 13px; color: #657870; background: #fff; font-size: 12px; }
       .storage-risk__scope b { color: #254d3f; }
+      .storage-risk__status { min-height: 20px; margin: 12px 2px 0; color: #6a7e77; font-size: 12px; }
+      .storage-risk__detail[hidden],.storage-risk__overview[hidden] { display: none; }
+      .storage-risk__detail-back { display: inline-flex; align-items: center; min-height: 42px; margin-bottom: 18px; padding: 0 14px; border: 1px solid #d7e3df; border-radius: 11px; color: #315b4d; background: #fff; font-weight: 900; cursor: pointer; }
+      .storage-risk__detail-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 22px; margin-bottom: 18px; }
+      .storage-risk__detail-head small { display: block; margin-bottom: 7px; color: #a9252d; font-size: 10px; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; }
+      .storage-risk__detail[data-kind="multiple"] .storage-risk__detail-head small { color: #946000; }
+      .storage-risk__detail-head h2 { margin: 0; color: #153a2e; font-size: clamp(22px,3vw,31px); }
+      .storage-risk__detail-head p { max-width: 680px; margin: 8px 0 0; color: #667a73; font-size: 13px; line-height: 1.55; }
+      .storage-risk__updated { flex: 0 0 auto; padding: 8px 11px; border: 1px solid #dce7e3; border-radius: 999px; color: #62766e; background: #fff; font-size: 11px; font-weight: 800; }
+      .storage-risk__kpis { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; margin-bottom: 16px; }
+      .storage-risk__kpi { padding: 16px; border: 1px solid #dce7e3; border-radius: 15px; background: #fff; box-shadow: 0 8px 22px rgba(40,65,56,.045); }
+      .storage-risk__kpi span { display: block; color: #6b7e77; font-size: 11px; font-weight: 800; }
+      .storage-risk__kpi strong { display: block; margin-top: 7px; color: #173e31; font-size: 25px; font-variant-numeric: tabular-nums; }
+      .storage-risk__toolbar { display: flex; gap: 10px; margin-bottom: 14px; padding: 12px; border: 1px solid #dce7e3; border-radius: 15px; background: #fff; }
+      .storage-risk__search { min-width: 0; flex: 1; height: 44px; padding: 0 13px; border: 1px solid #ccdcd6; border-radius: 10px; color: #17251f; background: #fff; font-size: 14px; outline: none; }
+      .storage-risk__search:focus { border-color: #087b58; box-shadow: 0 0 0 3px rgba(8,123,88,.12); }
+      .storage-risk__search-btn { min-width: 92px; height: 44px; padding: 0 16px; border: 0; border-radius: 10px; color: #fff; background: #006747; font-weight: 900; cursor: pointer; }
+      .storage-risk__results { display: grid; gap: 12px; }
+      .storage-risk__row { padding: 17px; border: 1px solid #dce7e3; border-radius: 16px; background: #fff; box-shadow: 0 7px 20px rgba(40,65,56,.04); }
+      .storage-risk__row-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 15px; }
+      .storage-risk__sku { color: #163e31; font-size: 17px; font-weight: 900; font-variant-numeric: tabular-nums; }
+      .storage-risk__name { max-width: 780px; margin: 5px 0 0; color: #526860; font-size: 12px; line-height: 1.45; }
+      .storage-risk__meta { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 11px; }
+      .storage-risk__chip { display: inline-flex; align-items: center; min-height: 28px; padding: 4px 9px; border-radius: 999px; color: #365a4d; background: #edf4f1; font-size: 10px; font-weight: 800; }
+      .storage-risk__chip--danger { color: #98232b; background: #fbe9ea; }
+      .storage-risk__chip--warning { color: #835600; background: #fff1d2; }
+      .storage-risk__normals { display: grid; gap: 8px; margin-top: 14px; padding-top: 13px; border-top: 1px solid #e6eeeb; }
+      .storage-risk__normal { display: grid; grid-template-columns: minmax(100px,auto) 1fr auto; align-items: center; gap: 10px; padding: 10px 11px; border-radius: 11px; background: #f6f9f8; }
+      .storage-risk__normal b { color: #204b3d; font-size: 12px; }
+      .storage-risk__normal span { overflow: hidden; color: #61756e; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+      .storage-risk__normal em { color: #315b4d; font-size: 10px; font-style: normal; font-weight: 900; }
+      .storage-risk__normal[data-available="false"] { background: #fff3f3; }
+      .storage-risk__empty { padding: 34px 18px; border: 1px dashed #cddbd6; border-radius: 16px; color: #667a73; background: #fff; text-align: center; }
       @media (max-width: 680px) {
         .storage-risk__top-inner,.storage-risk__main { padding-left: 14px; padding-right: 14px; }
         .storage-risk__heading p { display: none; }
@@ -1308,6 +1344,13 @@ Error generating stack: `+y.message+`
         .storage-risk__total { text-align: left; }
         .storage-risk__grid { grid-template-columns: 1fr; }
         .storage-risk__card { padding: 20px; }
+        .storage-risk__detail-head { flex-direction: column; gap: 10px; }
+        .storage-risk__kpis { grid-template-columns: 1fr; }
+        .storage-risk__toolbar { align-items: stretch; flex-direction: column; }
+        .storage-risk__search-btn { width: 100%; }
+        .storage-risk__row-head { flex-direction: column; gap: 8px; }
+        .storage-risk__normal { grid-template-columns: 1fr auto; }
+        .storage-risk__normal span { grid-column: 1 / -1; grid-row: 2; white-space: normal; }
       }
       @media print { .storage-risk { display: none!important; } }
     </style>
@@ -1318,23 +1361,42 @@ Error generating stack: `+y.message+`
         <button class="storage-risk__back" id="storage-risk-back" type="button">← WH-MATERIAL</button>
       </div></header>
       <main class="storage-risk__main">
-        <div class="storage-risk__intro">
-          <div><small>Phần 1 · Quan hệ Normal &amp; Combo</small><h2>Các quan hệ cần rà soát</h2><p>Dashboard chỉ hiển thị trường hợp có rủi ro để người phụ trách tập trung xử lý. Quan hệ bình thường không được đưa vào danh sách.</p></div>
-          <div class="storage-risk__total"><span>Tổng trường hợp rủi ro</span><strong>62</strong></div>
-        </div>
-        <div class="storage-risk__grid">
-          <article class="storage-risk__card">
-            <div class="storage-risk__card-head"><div><span class="storage-risk__level">Ưu tiên cao</span><h3>Combo thiếu liên kết</h3></div><strong class="storage-risk__count">3</strong></div>
+        <div class="storage-risk__overview" id="storage-risk-overview">
+          <div class="storage-risk__intro">
+            <div><small>Phần 1 · Quan hệ Normal &amp; Combo</small><h2>Các quan hệ cần rà soát</h2><p>Chọn một loại rủi ro để mở dashboard chi tiết, tìm SKU và xem toàn bộ quan hệ liên quan.</p></div>
+            <div class="storage-risk__total"><span>Tổng trường hợp rủi ro</span><strong id="storage-risk-total">65</strong></div>
+          </div>
+          <div class="storage-risk__grid">
+          <button class="storage-risk__card" data-storage-risk="missing" type="button">
+            <div class="storage-risk__card-head"><div><span class="storage-risk__level">Ưu tiên cao</span><h3>Combo thiếu liên kết</h3></div><strong class="storage-risk__count">6</strong></div>
             <p>SKU Combo chưa có liên kết với SKU Normal, có thể làm gián đoạn bước tra cứu hoặc chọn mã khi in.</p>
             <div class="storage-risk__action"><b>Quy tắc</b><span>Mỗi SKU Combo phải có ít nhất một SKU Normal liên kết.</span><b>Xử lý</b><span>Bổ sung đúng SKU Normal và kiểm tra lại tên sản phẩm trước khi sử dụng.</span></div>
-          </article>
-          <article class="storage-risk__card storage-risk__card--warning">
+            <span class="storage-risk__open">Mở dashboard chi tiết <span aria-hidden="true">→</span></span>
+          </button>
+          <button class="storage-risk__card storage-risk__card--warning" data-storage-risk="multiple" type="button">
             <div class="storage-risk__card-head"><div><span class="storage-risk__level">Cần xác minh</span><h3>Combo có nhiều Normal</h3></div><strong class="storage-risk__count">59</strong></div>
             <p>SKU Combo đang liên kết với nhiều hơn một SKU Normal, có nguy cơ người dùng chọn sai mã khi in.</p>
             <div class="storage-risk__action"><b>Quy tắc</b><span>Rà soát các Combo có từ hai SKU Normal trở lên.</span><b>Xử lý</b><span>Xác nhận quan hệ hợp lệ hoặc giữ lại duy nhất SKU Normal đúng theo nghiệp vụ.</span></div>
-          </article>
+            <span class="storage-risk__open">Mở dashboard chi tiết <span aria-hidden="true">→</span></span>
+          </button>
+          </div>
+          <p class="storage-risk__scope"><span aria-hidden="true">ⓘ</span><span>Phạm vi kiểm tra hiện tại: <b id="storage-risk-scope">1.660 SKU Combo</b>. Số liệu hiển thị chỉ gồm các trường hợp rủi ro.</span></p>
+          <p class="storage-risk__status" id="storage-risk-summary-status" role="status" aria-live="polite"></p>
         </div>
-        <p class="storage-risk__scope"><span aria-hidden="true">ⓘ</span><span>Phạm vi kiểm tra hiện tại: <b>1.408 SKU Combo</b>. Số liệu hiển thị chỉ gồm các trường hợp rủi ro.</span></p>
+        <section class="storage-risk__detail" id="storage-risk-detail" hidden>
+          <button class="storage-risk__detail-back" id="storage-risk-detail-back" type="button">← Tổng quan rủi ro</button>
+          <div class="storage-risk__detail-head">
+            <div><small id="storage-risk-detail-level">Dashboard rủi ro</small><h2 id="storage-risk-detail-title">Chi tiết rủi ro</h2><p id="storage-risk-detail-copy"></p></div>
+            <span class="storage-risk__updated" id="storage-risk-updated">Dữ liệu hiện tại</span>
+          </div>
+          <div class="storage-risk__kpis" id="storage-risk-kpis"></div>
+          <form class="storage-risk__toolbar" id="storage-risk-search-form">
+            <input class="storage-risk__search" id="storage-risk-search" type="search" autocomplete="off" placeholder="Tìm SKU Combo, tên sản phẩm hoặc category…" aria-label="Tìm trong dashboard rủi ro">
+            <button class="storage-risk__search-btn" type="submit">Tìm kiếm</button>
+          </form>
+          <p class="storage-risk__status" id="storage-risk-detail-status" role="status" aria-live="polite"></p>
+          <div class="storage-risk__results" id="storage-risk-results"></div>
+        </section>
       </main>
     </section>
     <section class="uid-screen" id="uid-screen" aria-labelledby="uid-title" hidden>
@@ -1503,6 +1565,137 @@ Error generating stack: `+y.message+`
           }
         };
 
+        const storageRiskOverview = document.getElementById("storage-risk-overview");
+        const storageRiskDetail = document.getElementById("storage-risk-detail");
+        const storageRiskResults = document.getElementById("storage-risk-results");
+        const storageRiskDetailStatus = document.getElementById("storage-risk-detail-status");
+        const storageRiskSummaryStatus = document.getElementById("storage-risk-summary-status");
+        const storageRiskSearch = document.getElementById("storage-risk-search");
+        let storageRiskKind = "";
+        let storageRiskSummaryLoaded = false;
+        const storageRiskNumber = new Intl.NumberFormat("vi-VN");
+        const storageRiskEscape = value => String(value ?? "")
+          .replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;").replaceAll("'", "&#039;");
+        const storageRiskApi = async (kind, search = "") => {
+          const queue = window.PrintSkuQueue;
+          if (!queue?.supabaseUrl || !queue?.publishableKey) throw new Error("Chưa có cấu hình Supabase");
+          const accessToken = kind === "summary"
+            ? window.PrintSkuAdminAccess?.peekToken()
+            : await window.PrintSkuAdminAccess?.getToken();
+          if (!accessToken) throw new Error("ADMIN_REQUIRED");
+          const response = await fetch(`${queue.supabaseUrl}/rest/v1/rpc/sku_combo_risk_dashboard`, {
+            method: "POST",
+            headers: {
+              apikey: queue.publishableKey,
+              Authorization: `Bearer ${accessToken}`,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ p_kind: kind, p_search: search, p_limit: 100, p_offset: 0 }),
+            signal: AbortSignal.timeout(12000)
+          });
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          const payload = await response.json();
+          if (!payload?.ok || !payload?.data) throw new Error("Dữ liệu dashboard không hợp lệ");
+          return payload.data;
+        };
+        const storageRiskLoadSummary = async (force = false) => {
+          if (storageRiskSummaryLoaded && !force) return;
+          storageRiskSummaryStatus.textContent = "Đang cập nhật số liệu rủi ro…";
+          try {
+            const data = await storageRiskApi("summary");
+            document.getElementById("storage-risk-total").textContent = storageRiskNumber.format(data.total || 0);
+            document.getElementById("storage-risk-scope").textContent = `${storageRiskNumber.format(data.scope || 0)} SKU Combo`;
+            const missing = document.querySelector('[data-storage-risk="missing"] .storage-risk__count');
+            const multiple = document.querySelector('[data-storage-risk="multiple"] .storage-risk__count');
+            if (missing) missing.textContent = storageRiskNumber.format(data.missing || 0);
+            if (multiple) multiple.textContent = storageRiskNumber.format(data.multiple || 0);
+            storageRiskSummaryStatus.textContent = "Số liệu được đọc trực tiếp từ dữ liệu Combo hiện tại.";
+            storageRiskSummaryLoaded = true;
+          } catch (error) {
+            storageRiskSummaryStatus.textContent = error?.message === "ADMIN_REQUIRED"
+              ? "Đăng nhập Admin khi mở dashboard chi tiết để xem số liệu mới nhất."
+              : "Chưa tải được số liệu mới. Các số đang hiển thị là lần ghi nhận gần nhất.";
+          }
+        };
+        const storageRiskKpi = (label, value) => `<div class="storage-risk__kpi"><span>${storageRiskEscape(label)}</span><strong>${storageRiskEscape(value)}</strong></div>`;
+        const storageRiskRenderItems = (kind, data) => {
+          const items = Array.isArray(data.items) ? data.items : [];
+          if (!items.length) {
+            storageRiskResults.innerHTML = '<div class="storage-risk__empty">Không có SKU phù hợp với điều kiện tìm kiếm.</div>';
+            return;
+          }
+          storageRiskResults.innerHTML = items.map(item => {
+            const sku = storageRiskEscape(item.comboSku);
+            const name = storageRiskEscape(item.comboName || "Chưa có tên sản phẩm");
+            const category = storageRiskEscape(item.categoryName || "Chưa có category");
+            if (kind === "missing") return `<article class="storage-risk__row">
+              <div class="storage-risk__row-head"><div><div class="storage-risk__sku">${sku}</div><p class="storage-risk__name">${name}</p></div><span class="storage-risk__chip storage-risk__chip--danger">Thiếu liên kết</span></div>
+              <div class="storage-risk__meta"><span class="storage-risk__chip">${category}</span><span class="storage-risk__chip">Đang hoạt động</span><span class="storage-risk__chip storage-risk__chip--danger">0 SKU Normal</span></div>
+            </article>`;
+            const normals = (Array.isArray(item.normals) ? item.normals : []).map(normal => `<div class="storage-risk__normal" data-available="${normal.available ? "true" : "false"}">
+              <b>${storageRiskEscape(normal.normalSku)}</b><span title="${storageRiskEscape(normal.normalName)}">${storageRiskEscape(normal.normalName || "Chưa có tên")}</span><em>${storageRiskEscape(normal.quantity)} đơn vị${normal.available ? "" : " · Không khả dụng"}</em>
+            </div>`).join("");
+            return `<article class="storage-risk__row">
+              <div class="storage-risk__row-head"><div><div class="storage-risk__sku">${sku}</div><p class="storage-risk__name">${name}</p></div><span class="storage-risk__chip storage-risk__chip--warning">${storageRiskNumber.format(item.normalCount || 0)} SKU Normal</span></div>
+              <div class="storage-risk__meta"><span class="storage-risk__chip">${category}</span><span class="storage-risk__chip storage-risk__chip--warning">Cần xác minh quan hệ</span></div>
+              <div class="storage-risk__normals">${normals}</div>
+            </article>`;
+          }).join("");
+        };
+        const storageRiskOpenDetail = async kind => {
+          storageRiskKind = kind;
+          storageRiskOverview.hidden = true;
+          storageRiskDetail.hidden = false;
+          storageRiskDetail.dataset.kind = kind;
+          storageRiskResults.innerHTML = "";
+          storageRiskSearch.value = "";
+          const missing = kind === "missing";
+          document.getElementById("storage-risk-detail-level").textContent = missing ? "Ưu tiên cao" : "Cần xác minh";
+          document.getElementById("storage-risk-detail-title").textContent = missing ? "Combo thiếu liên kết" : "Combo có nhiều Normal";
+          document.getElementById("storage-risk-detail-copy").textContent = missing
+            ? "Danh sách SKU Combo đang hoạt động nhưng chưa có SKU Normal để gợi ý khi in tem."
+            : "Danh sách SKU Combo có từ hai SKU Normal trở lên, kèm định mức và trạng thái từng mã để đối chiếu.";
+          await storageRiskLoadDetail();
+          document.getElementById("storage-risk-detail-back").focus();
+        };
+        const storageRiskLoadDetail = async () => {
+          if (!storageRiskKind) return;
+          storageRiskDetailStatus.textContent = "Đang tải dashboard chi tiết…";
+          storageRiskResults.setAttribute("aria-busy", "true");
+          try {
+            const data = await storageRiskApi(storageRiskKind, storageRiskSearch.value.trim());
+            const missing = storageRiskKind === "missing";
+            const ratio = data.scope ? `${((Number(data.riskTotal || 0) / Number(data.scope)) * 100).toLocaleString("vi-VN", { maximumFractionDigits: 2 })}%` : "0%";
+            document.getElementById("storage-risk-kpis").innerHTML = missing
+              ? storageRiskKpi("Combo thiếu liên kết", storageRiskNumber.format(data.riskTotal || 0)) + storageRiskKpi("Tỷ lệ trên phạm vi", ratio) + storageRiskKpi("Kết quả đang hiển thị", storageRiskNumber.format(data.filteredTotal || 0))
+              : storageRiskKpi("Combo cần xác minh", storageRiskNumber.format(data.riskTotal || 0)) + storageRiskKpi("Tổng liên kết Normal", storageRiskNumber.format(data.totalLinks || 0)) + storageRiskKpi("Nhiều nhất / Combo", storageRiskNumber.format(data.maxLinks || 0));
+            document.getElementById("storage-risk-updated").textContent = `Cập nhật ${new Date(data.generatedAt).toLocaleString("vi-VN", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" })}`;
+            storageRiskDetailStatus.textContent = `Hiển thị ${storageRiskNumber.format((data.items || []).length)} / ${storageRiskNumber.format(data.filteredTotal || 0)} trường hợp.`;
+            storageRiskRenderItems(storageRiskKind, data);
+          } catch (error) {
+            const needsAdmin = error?.message === "ADMIN_REQUIRED";
+            storageRiskDetailStatus.textContent = needsAdmin ? "Đăng nhập Admin để xem dữ liệu rủi ro chi tiết." : "Không tải được dashboard. Kiểm tra kết nối rồi thử lại.";
+            storageRiskResults.innerHTML = `<div class="storage-risk__empty">${needsAdmin ? "Dashboard đang chờ xác thực Admin." : "Dữ liệu chi tiết chưa sẵn sàng."}</div>`;
+          } finally {
+            storageRiskResults.removeAttribute("aria-busy");
+          }
+        };
+        const storageRiskCloseDetail = () => {
+          storageRiskKind = "";
+          storageRiskDetail.hidden = true;
+          storageRiskOverview.hidden = false;
+        };
+        document.querySelectorAll("[data-storage-risk]").forEach(card => card.addEventListener("click", () => storageRiskOpenDetail(card.dataset.storageRisk)));
+        document.getElementById("storage-risk-detail-back").addEventListener("click", storageRiskCloseDetail);
+        document.getElementById("storage-risk-search-form").addEventListener("submit", event => { event.preventDefault(); storageRiskLoadDetail(); });
+        window.addEventListener("print-sku-admin-ready", () => {
+          storageRiskSummaryLoaded = false;
+          if (route() !== "storage-risk") return;
+          storageRiskLoadSummary(true);
+          if (storageRiskKind) storageRiskLoadDetail();
+        });
+
         const renderRoute = () => {
           const current = route();
           const uidOpen = current === "group-uid";
@@ -1527,6 +1720,8 @@ Error generating stack: `+y.message+`
           if (sampleScreen) sampleScreen.hidden = !sampleOpen;
           const storageRiskScreen = document.getElementById("storage-risk-screen");
           if (storageRiskScreen) storageRiskScreen.hidden = !storageRiskOpen;
+          if (storageRiskOpen) storageRiskLoadSummary();
+          else storageRiskCloseDetail();
           home.hidden = !homeOpen;
           homeTrigger.hidden = homeOpen || uidOpen || cutUidOpen || findSkuOpen || adminOpen || insOpen || sampleOpen || storageRiskOpen || fabricOpen || xaVaiOpen;
           const root = document.getElementById("root");
@@ -3279,6 +3474,7 @@ Error generating stack: `+y.message+`
         };
         const openLogin = message => {
           errorBox.textContent = message || "";
+          cancelButton.textContent = /^#admin(?:\/|$)/.test(pendingHash) ? "Về màn hình in tem" : "Đóng";
           overlay.hidden = false;
           sessionControl.hidden = true;
           document.getElementById("root").inert = true;
@@ -3352,6 +3548,14 @@ Error generating stack: `+y.message+`
           openLogin();
           return false;
         };
+        window.PrintSkuAdminAccess = {
+          peekToken: () => (session || readSession())?.access_token || "",
+          getToken: async () => {
+            pendingHash = location.hash || "#home";
+            const ok = await requireAdmin();
+            return ok ? (session || readSession())?.access_token || "" : "";
+          }
+        };
 
         document.addEventListener("click", event => {
           const button = event.target.closest("button");
@@ -3411,7 +3615,8 @@ Error generating stack: `+y.message+`
         cancelButton.addEventListener("click", () => {
           closeLogin();
           setPending(false);
-          location.hash = "#worker";
+          const destination = pendingHash && !/^#admin(?:\/|$)/.test(pendingHash) ? pendingHash : "#worker";
+          if (location.hash !== destination) location.hash = destination;
         });
 
         logoutButton.addEventListener("click", async () => {
