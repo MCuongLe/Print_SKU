@@ -226,8 +226,11 @@ tham số có mặc định nên trang web cũ vẫn gọi được hàm mới.
 
 Mở **TÌM SKU** ở WH-MATERIAL hoặc `#find-sku`. Ba bước, bố cục như CẮT GROUP UID / XẢ VẢI:
 
-1. **Quét nhận diện** — bật camera, đưa tem nhà cung cấp vào khung: máy **tự chụp** khi ảnh nét
-   và đứng yên rồi gửi Edge Function `sku-vision` (Gemini) đọc chữ; chưa khớp mã thì tự chụp lại,
+1. **Quét nhận diện** — bật camera (toàn màn hình như ứng dụng quét: trên là Đóng · đèn pin nếu
+   máy hỗ trợ, giữa là khung 4 góc + dòng trạng thái, dưới là 1×/2×/3× và nút chụp tròn giữa
+   "Ảnh" (thư viện) · "Gõ mã"; nút Back của điện thoại đóng camera), đưa tem nhà cung cấp vào khung: máy **tự chụp** khi ảnh nét
+   và đứng yên rồi gửi Edge Function `sku-vision` (Gemini) đọc chữ; khớp mã thì camera tự đóng và
+   cuộn tới kết quả, chưa khớp thì hiện "Xem N gợi ý" và tự chụp lại,
    tối đa 3 lần/phiên camera (mỗi lần 1 lượt AI). QR/mã vạch được đọc trực tiếp không tốn lượt
    (bộ quét chung với XẢ VẢI). Có thể "Chụp ngay", "Chọn ảnh", hoặc gõ mã in trên tem (`N0144`,
    `C3966 Tex 27`) — không cần AI. Bộ đối chiếu `NDS_ENGINE` (chép nguyên từ tab "Nhận diện SKU"
