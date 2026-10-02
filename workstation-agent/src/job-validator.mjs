@@ -1,5 +1,7 @@
 const ASCII_BARCODE = /^[\x20-\x7E]+$/;
 const SKU_PATTERN = /^[0-9A-Za-z._-]{1,40}$/;
+// Mã vị trí kho: chữ IN HOA, số và . _ / - (Supabase warehouse_locations dùng đúng mẫu này).
+const LOCATION_PATTERN = /^[0-9A-Z][0-9A-Z._\/-]{0,39}$/;
 
 function cleanText(value, maxLength) {
   return String(value ?? "").trim().replace(/\s+/g, " ").slice(0, maxLength);
@@ -20,7 +22,7 @@ export function normalizeJob(input) {
   if (!source.id) errors.push("Thiếu id của lệnh in");
   if (!source.nonce) errors.push("Thiếu nonce chống gửi trùng");
   if (!copies) errors.push("Số tem phải từ 1 đến 500");
-  if (!['sku', 'group_uid', 'fabric_relaxation'].includes(type)) errors.push("Loại tem không được hỗ trợ");
+  if (!['sku', 'group_uid', 'fabric_relaxation', 'location'].includes(type)) errors.push("Loại tem không được hỗ trợ");
 
   let normalizedPayload = {};
   if (type === "fabric_relaxation") {
@@ -97,6 +99,25 @@ export function normalizeJob(input) {
       if (normalizedPayload.sku && !SKU_PATTERN.test(normalizedPayload.sku)) errors.push("SKU không hợp lệ");
       if (!normalizedPayload.productName) errors.push("Thiếu tên sản phẩm");
     }
+  }
+
+  if (type === "location") {
+    if (templateVersion !== 1) errors.push("Phiên bản tem vị trí không được hỗ trợ");
+    // Không cắt bớt mã/tên: mã bị cắt là in ra tem của một vị trí KHÁC — sai thì từ chối cả lệnh.
+    const items = Array.isArray(payload.items) ? payload.items.slice(0, 100).map((item) => ({
+      code: String(item?.code ?? "").trim(),
+      name: cleanText(item?.name, 200),
+      copies: validCopies(item?.copies ?? 1) || 0
+    })) : [];
+    if (!items.length) errors.push("Danh sách vị trí đang trống");
+    items.forEach((item, index) => {
+      if (!LOCATION_PATTERN.test(item.code)) errors.push(`Mã vị trí dòng ${index + 1} không hợp lệ`);
+      if (!item.name || item.name.length > 60) errors.push(`Tên vị trí dòng ${index + 1} phải có 1–60 ký tự`);
+      if (!item.copies) errors.push(`Số tem dòng ${index + 1} không hợp lệ`);
+    });
+    const totalCopies = items.reduce((sum, item) => sum + item.copies, 0);
+    if (items.length && totalCopies !== copies) errors.push("Tổng số tem vị trí không khớp lệnh in");
+    normalizedPayload = { items };
   }
 
   return {

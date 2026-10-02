@@ -773,7 +773,7 @@ Error generating stack: `+y.message+`
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
- */const R0=Ye("X",[["path",{d:"M18 6 6 18",key:"1bl5f8"}],["path",{d:"m6 6 12 12",key:"d8bk6v"}]]),jp="legacy://print-queue-shim",zp=r=>new Promise(e=>setTimeout(e,r));function M0(){return"pr-"+Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,8)}async function Js(r,e){const t={tb:e,...r};t.nonce||(t.nonce=M0());let n="";for(let i=0;i<2;i++){i&&await zp(900);let o="";try{o=await(await fetch(jp,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(t),signal:AbortSignal.timeout(45e3)})).text()}catch(l){n=String((l==null?void 0:l.message)||l);continue}const s=o.trim();if(s.startsWith("{")||s.startsWith("["))try{return JSON.parse(s)}catch{n="phản hồi không phải JSON";continue}n=/^<!DOCTYPE|^<html/i.test(s)?"Apps Script trả về trang HTML":"phản hồi lạ: "+s.slice(0,60)}throw new Error(n||"không gọi được Apps Script")}const yi=r=>{try{return localStorage.getItem(r)||""}catch{return""}},ya=(r,e)=>{try{localStorage.setItem(r,e)}catch{}};function Hp(){try{const r=(location.hash||"").match(/[#&]khoa=([^&]+)/);if(!r)return;ya("tb-khoa",decodeURIComponent(r[1]).trim()),history.replaceState(null,"",location.pathname+location.search)}catch{}}const el=()=>yi("tb-khoa"),Zc=()=>!!yi("tb-khoa");function Vp(){const r=yi("nds-mail")||yi("uidgr-mail");if(/^[a-z0-9._%+-]+@hasaki\.vn$/i.test(r))return r.toLowerCase();const e="may-"+Math.random().toString(36).slice(2,10)+"@hasaki.vn";return ya("nds-mail",e),e}const hl=()=>yi("nds-ten-may").trim()||"Máy kho",Gp=r=>ya("nds-ten-may",r.replace(/\s+/g," ").trim().slice(0,24));function bl(){try{return JSON.parse(yi("tem-sotay")||"{}")||{}}catch{return{}}}function pl(r,e){if(!r||!e)return;const t=bl();t[r]=e;const n=Object.keys(t);n.length>800&&delete t[n[0]],ya("tem-sotay",JSON.stringify(t))}const P0=r=>bl()[r]||"";function Wp(){ya("tem-sotay","{}")}const Xp=["tongquan","hangdoi","cauhinh"];function Qc(r){const e=(r||"").replace(/^#/,"").split("?")[0],[t,n]=e.split("/");return t!=="admin"?{mode:"worker",tab:"tongquan"}:{mode:"admin",tab:Xp.includes(n)?n:"tongquan"}}const $p=(r,e)=>r==="admin"?`#admin/${e}`:"#worker";var Kp=(function(){var r="11011001100110011011001100110011010010011000100100011001000100110010011001000100110001001000110010011001001000110010001001100010010010110011100100110111001001100111010111001100100111011001001110011011001110010110010111001100100111011011100100110011101001110110111011101001100111001011001110010011011101100100111001101001110011001011011011000110110001101100011011010100011000100010110001000100011010110001000100011010001000110001011010001000110001010001100010001010110111000101100011101000110111010111011000101110001101000111011011101110110110100011101100010111011011101000110111000101101110111011101011000111010001101110001011011101101000111011000101110001101011101111010110010000101111000101010100110000101000011001001011000010010000110100001011001000010011010110010000101100001001001101000010011000010100001101001000011001011000010010110010100001111011101011000010100100011110101010011110010010111100100100111101011110010010011110100100111100101111010010011110010100111100100101101101111011011110110111101101101010111100010100011110100010111101011110100010111100010111101010001111010001010111011110101111011101110101111011110101110110100001001101001000011010011100",e="1100011101011",t=104,n=105,i=99,o=103;function s(j){return j===106?e:r.substr(j*11,11)}function l(j){var G=String(j??""),V=[],ee,k;if(/^[0-9]+$/.test(G)&&G.length>=4)for(ee=0,G.length%2===1?(V.push(t),V.push(G.charCodeAt(0)-32),V.push(i),ee=1):V.push(n);ee<G.length;ee+=2)V.push(Number(G.substr(ee,2)));else for(V.push(t),ee=0;ee<G.length;ee++){if(k=G.charCodeAt(ee),k<32||k>126)return null;V.push(k-32)}var K=V[0];for(ee=1;ee<V.length;ee++)K+=ee*V[ee];return V.push(K%o),V.push(106),V}function c(j){var G=l(j);if(!G)return"";for(var V="",ee=0;ee<G.length;ee++)V+=s(G[ee]);return V}function h(j,G){G=G||{};var V=c(j);if(!V)return"";for(var ee=G.mm||.28,k=G.cao||9,K=V.length*ee,Z=0,O="";Z<V.length;)if(V[Z]==="1"){for(var F=Z;F<V.length&&V[F]==="1";)F++;O+='<rect x="'+(Z*ee).toFixed(3)+'" y="0" width="'+((F-Z)*ee).toFixed(3)+'" height="'+k+'" fill="#000"/>',Z=F}else Z++;return'<svg class="pr-bc" width="'+K.toFixed(2)+'mm" height="'+k+'mm" viewBox="0 0 '+K.toFixed(3)+" "+k+'" preserveAspectRatio="none" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg">'+O+"</svg>"}function p(j,G){G=G||{};var V=c(j);if(!V)return null;for(var ee=G.dotMm||8,k=Math.max(2,Math.round((G.mm||.25)*ee)),K=k,Z=G.cao||9,O=G.x||0,F=G.y||0,pe=0,ve="";pe<V.length;)if(V[pe]==="1"){for(var ge=pe;ge<V.length&&V[ge]==="1";)ge++;ve+='<rect x="'+(O+pe*K).toFixed(3)+'" y="'+F+'" width="'+((ge-pe)*K).toFixed(3)+'" height="'+Z+'" fill="#000"/>',pe=ge}else pe++;return{rects:ve,rong:+(V.length*K).toFixed(3),soModule:V.length,modMm:K}}function v(j,G){for(var V=String(j??""),ee=V.match(/[^\s\/]*[\/\s]|[^\s\/]+$/g)||[],k=[],K="",Z=0;Z<ee.length;Z++){for(var O=ee[Z];O.replace(/\s+$/,"").length>G;)K.trim()&&(k.push(K.replace(/\s+$/,"")),K=""),k.push(O.slice(0,G)),O=O.slice(G);(K+O).replace(/\s+$/,"").length>G?(K.trim()&&k.push(K.replace(/\s+$/,"")),K=O):K+=O}return K.trim()&&k.push(K.replace(/\s+$/,"")),k}function x(j,G,V,ee,k){ee=ee||34,k=k||7;var c=x.c===void 0?(x.c=typeof document!="undefined"&&document.createElement("canvas").getContext("2d")||null):x.c;if(!c)return xUocLuongCu(j,G,V,ee,k);var w=function(t,K){return c.font=K+"px Arial, Helvetica, sans-serif",c.measureText(t).width},b=function(K){for(var T=String(j??"").match(/[^\s\/]*[\/\s]|[^\s\/]+$/g)||[],L=[],R="",i=0;i<T.length;i++){for(var t=T[i];t.replace(/\s+$/,"").length>1&&w(t.replace(/\s+$/,""),K)>G;){R.trim()&&(L.push(R.replace(/\s+$/,"")),R="");for(var n=t.length-1;n>1&&w(t.slice(0,n),K)>G;)n--;L.push(t.slice(0,n)),t=t.slice(n)}w((R+t).replace(/\s+$/,""),K)>G&&R.trim()?(L.push(R.replace(/\s+$/,"")),R=t):R+=t}return R.trim()&&L.push(R.replace(/\s+$/,"")),L};for(var K=ee;K>=k;K--){var O=b(K);if(O.length*K*1.22<=V)return{co:K,dong:O}}return{co:k,dong:b(k).slice(0,Math.max(1,Math.floor(V/(k*1.22))))}}function xUocLuongCu(j,G,V,ee,k){ee=ee||34,k=k||7;for(var K=ee;K>=k;K--){var Z=Math.floor(G/(K*.55));if(!(Z<4)){var O=v(j,Z);if(O.length*K*1.22<=V)return{co:K,dong:O}}}var F=Math.max(4,Math.floor(G/(k*.55)));return{co:k,dong:v(j,F).slice(0,Math.max(1,Math.floor(V/(k*1.22))))}}function m(j){var G=String(j??"").trim();if(!G)return"";var V=G.match(/^(-?\d+)(?:([.,])(\d+))?(.*)$/);if(!V)return G;var ee=V[1].replace(/\B(?=(\d{3})+(?!\d))/g,"."),k=V[3]?","+V[3]:"";return ee+k+(V[4]||"")}function w(j){j=j||new Date;var G=function(V){return(V<10?"0":"")+V};return G(j.getDate())+"-"+G(j.getMonth()+1)+"-"+String(j.getFullYear()).slice(-2)}function C(j,G,V){V=V||{};var ee=W(G),k=V.dotMm||8,K=Math.round(ee.w*k),Z=Math.round(ee.h*k),O=Math.round((V.leMm||3)*k),F=Math.round((V.lechMm||0)*k),pe=V.coSku||34,ve=V.coChan||16,ge=V.caoVach||Math.round(8*k),Se=K/2-F,Te=O-F,Ie=O,Ne='<svg xmlns="http://www.w3.org/2000/svg" width="'+K+'" height="'+Z+'" viewBox="0 0 '+K+" "+Z+'" shape-rendering="crispEdges" font-family="Arial, Helvetica, sans-serif"><rect width="'+K+'" height="'+Z+'" fill="#fff"/><rect x="'+(2-F)+'" y="2" width="'+(K-4)+'" height="'+(Z-4)+'" fill="none" stroke="#000" stroke-width="2"/>',Ze=String(j.uid==null?"":j.uid).trim(),Jt=j.loai==="ug"&&!!Ze,pn=Jt?Ze:String(j.sku==null?"":j.sku),Or=K-O*2,jr=pe;Jt&&(jr=Math.max(14,Math.min(pe,Math.floor((Or-pn.length)/(pn.length*.6))))),Ne+='<text x="'+Se+'" y="'+(Ie+jr)+'" font-size="'+jr+'" font-weight="bold" text-anchor="middle" letter-spacing="1">'+N(pn)+"</text>",Ie+=jr+Math.round(.8*k);var vn=p(pn,{mm:.25,dotMm:k,cao:ge,x:0,y:Ie});if(vn&&(!Jt||vn.rong<=Or)&&(Ne+='<g transform="translate('+(Se-vn.rong/2)+',0)">'+vn.rects+"</g>",Ie+=ge+Math.round(.7*k)),Jt){var Fn=Math.round(2.6*k);Ne+='<text x="'+Te+'" y="'+(Ie+Fn)+'" font-size="'+Fn+'" font-weight="bold">'+N("SKU "+String(j.sku==null?"":j.sku))+"</text>",Ie+=Fn+Math.round(.6*k)}for(var _i=44+Math.round(1.4*k),Un=Ze&&!Jt?Math.round(2.5*k):0,Ci=Ze&&!Jt?Un+Math.round(.5*k):0,gn=Z-Ie-_i-Ci-O,er=x(String(j.pn==null?"":j.pn),Or,gn,V.coTenMax||34,V.coTenMin||7),zr=0;zr<er.dong.length;zr++)Ne+='<text x="'+Te+'" y="'+(Ie+er.co+zr*Math.round(er.co*1.22))+'" font-size="'+er.co+'">'+N(er.dong[zr])+"</text>";if(Ze&&!Jt){var Ca=T("UIDgr "+Ze,Math.max(8,Math.floor(Or/(Un*.56))));Ne+='<text x="'+Te+'" y="'+(Z-O-44-Math.round(.6*k))+'" font-size="'+Un+'" font-weight="bold" fill="#000">'+N(Ca)+"</text>"}var xn=String(j.ngay==null?"":j.ngay),yn=m(j.sl),Ei=Math.round(ve*1.05),Ai=xn?Math.round(xn.length*Ei*.56):0,jn=K-O*2-Ai-Math.round(1*k),Hr=ve;if(yn)for(var wr=44;wr>=10;wr--){if(yn.length*wr*.62<=jn){Hr=wr;break}Hr=10}var _r=Z-Math.round(1.2*k);return Ne+='<line x1="'+Te+'" y1="'+(_r-Hr-5)+'" x2="'+(K-O-F)+'" y2="'+(_r-Hr-5)+'" stroke="#000" stroke-width="1.5"/>',yn&&(Ne+='<text x="'+Te+'" y="'+_r+'" font-size="'+Hr+'" font-weight="bold">'+N(yn)+"</text>"),xn&&(Ne+='<text x="'+(K-O-F)+'" y="'+_r+'" font-size="'+Ei+'" text-anchor="end">'+N(xn)+"</text>"),Ne+"</svg>"}function S(j,G,V){V=V||{};for(var ee=W(G||z),k=V.dotMm||8,K=Math.round(ee.w*k),Z=Math.round(ee.h*k),O=Math.round((V.leMm||3)*k),F=Math.round((V.lechMm!=null?V.lechMm:2)*k),pe=O-F,ve=K/2-F,ge='<svg xmlns="http://www.w3.org/2000/svg" width="'+K+'" height="'+Z+'" viewBox="0 0 '+K+" "+Z+'" shape-rendering="crispEdges" font-family="Arial, Helvetica, sans-serif"><rect width="'+K+'" height="'+Z+'" fill="#fff"/><rect x="'+(2-F)+'" y="2" width="'+(K-4)+'" height="'+(Z-4)+'" fill="none" stroke="#000" stroke-width="4"/><rect x="'+(2-F)+'" y="2" width="'+(K-4)+'" height="'+Math.round(7*k)+'" fill="#000"/><text x="'+ve+'" y="'+Math.round(5.6*k)+'" font-size="'+Math.round(3.4*k)+'" font-weight="bold" fill="#fff" text-anchor="middle">ĐỢT IN TEM</text>',Se=Math.round(11*k),Te=Math.round(2.6*k),Ie=Math.round(Te*1.5),Ne=[["Người gửi",String(j.nguoi||"—")],["Lúc",String(j.luc||"")],["Số tem",String(j.soTem==null?"":j.soTem)],["Số SKU",String(j.soSku==null?"":j.soSku)]],Ze=0;Ze<Ne.length;Ze++)ge+='<text x="'+pe+'" y="'+Se+'" font-size="'+Math.round(Te*.8)+'" fill="#333">'+N(Ne[Ze][0])+"</text>",ge+='<text x="'+pe+'" y="'+(Se+Te+2)+'" font-size="'+Te+'" font-weight="bold">'+N(Ne[Ze][1])+"</text>",Se+=Ie+Te;return ge+='<text x="'+ve+'" y="'+(Z-Math.round(2*k))+'" font-size="'+Math.round(2*k)+'" text-anchor="middle" fill="#333">tem của đợt này in ngay bên dưới</text>',ge+"</svg>"}function N(j){return String(j??"").replace(/[&<>"']/g,function(G){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[G]})}function T(j,G){return j=String(j??""),j.length>G?j.slice(0,G-1)+"…":j}var M={soCot:2,khe:2,kheNgang:3},P={t40x60:{ten:"Tem SKU 40 × 60 mm (2 tem/hàng — giấy đang lắp)",w:40,h:60,mm:.25,cao:10,ve:function(j){return C(j,"t40x60",{lechMm:2})}},t42x62:{ten:"Tem SKU 42,5 × 62 mm (form sku.btw)",w:42.5,h:62,mm:.25,cao:10,ve:function(j){return C(j,"t42x62",{lechMm:2})}},t46x76:{ten:"Tem lớn 46 × 76 mm (TSC PE200)",w:46,h:76,mm:.26,cao:11,ve:function(j){return C(j,"t46x76",{lechMm:2})}},t42x25:{ten:"Tem ngang 42 × 25 mm (Zebra ZT230)",w:42,h:25,mm:.22,cao:6,ve:function(j){return C(j,"t42x25",{coSku:20,coChan:12,caoVach:40,coTenMax:14,leMm:2,lechMm:1})}},t22x13:{ten:"Tem mini 21,6 × 12,7 mm (chỉ mã)",w:21.6,h:12.7,mm:.15,cao:5,ve:function(j){return C(j,"t22x13",{coSku:13,coChan:9,caoVach:26,coTenMax:8,coTenMin:6,leMm:1.2,lechMm:.5})}}},z="t40x60";function W(j){return P[j]||P[z]}function $(j){var G=W(j),V=Math.max(1,M.soCot|0);return{w:+(G.w*V+M.khe*(V-1)).toFixed(2),h:G.h,cot:V,khe:M.khe,tem:G}}function X(j,G){for(var V=$(G).cot,ee=[],k=0;k<j.length;k+=V)ee.push(j.slice(k,k+V));return ee}function ie(j){var G=String(j??"").trim();return G?G.split(/[,;\/\n\t ]+/).map(function(V){return String(V).trim()}).filter(function(V){return V!==""&&/[0-9]/.test(V)}):[]}function ae(j){var G=ie(j&&j.slHang);return G.length>1?G.length:Math.max(0,Number(j&&j.sl)||0)}function Ce(j){var G=0;return(j||[]).forEach(function(V){G+=ae(V)}),G}function me(j){var G=[];return(j||[]).forEach(function(V){var ee=ie(V.slHang);if(ee.length>1){ee.forEach(function(Z){G.push({sku:V.sku,pn:V.pn,slHang:Z,mau:V.mau,uid:V.uid||"",loai:V.loai||""})});return}for(var k=Math.max(0,Number(V.sl)||0),K=0;K<k;K++)G.push({sku:V.sku,pn:V.pn,slHang:ee.length?ee[0]:V.slHang||"",mau:V.mau,uid:V.uid||"",loai:V.loai||""})}),G}function Y(j){var G={},V=[];return(j||[]).forEach(function(ee){var k=P[ee.mau]?ee.mau:z;G[k]||(G[k]=[],V.push(k)),G[k].push(ee)}),{m:G,thuTu:V}}return{maHoa:l,bit:c,svg:h,MAU:P,MAU_MAC_DINH:z,mau:W,tongTem:Ce,theoMau:Y,cat:T,GIAY:M,khoTrang:$,chiaHang:X,tachSl:ie,temCuaDong:ae,moRong:me,svgTem:C,vachRect:p,coChuVua:x,beDong:v,soGon:m,ngayTem:w,svgTemDot:S}})();const Nr=Kp,Bl=r=>({sku:r.sku,pn:r.pn,slHang:r.slHang,sl:r.ban,mau:r.mau}),vl=r=>Nr.temCuaDong(Bl(r)),qc=r=>Nr.tongTem(r.map(Bl)),Yp=r=>Nr.moRong(r.map(Bl)),Zp=(r,e)=>Nr.chiaHang(Yp(r),e),Jc=["code_128","code_39","ean_13","ean_8","upc_a","upc_e","itf","qr_code"],gl=()=>{var r;return typeof navigator<"u"&&!!((r=navigator.mediaDevices)!=null&&r.getUserMedia)},k0=()=>typeof window<"u"&&(window.isSecureContext||location.hostname==="localhost"||location.protocol==="file:");/* 01/10/2026: doc(video, vung?) — vung {x,y,w,h} theo ti le khung hinh, chi doc trong khung ngam (tem nhieu ma khong bi doc nham); nhieu ma thi lay ma gan tam nhat. ZXing: KHONG dung BrowserMultiFormatReader.decode(video) — ban nay dao mau xen ke moi lan dung anh tu video (HTMLCanvasElementLuminanceSource.FRAME_INDEX), lan thu xoay 90 do lam lech nhip nen anh thang luon bi dao: QR va ma vach ngang khong bao gio doc duoc. Tu ve khung len canvas, doc anh thuong; cu 4 lan thu 1 lan anh dao cho tem in trang tren nen den. */function __psCrop(v,g,c){const W=v.videoWidth||v.width,H=v.videoHeight||v.height;if(!W||!H)return null;const q=g&&g.w>0&&g.h>0?g:{x:0,y:0,w:1,h:1},sx=Math.max(0,Math.round(q.x*W)),sy=Math.max(0,Math.round(q.y*H)),sw=Math.max(1,Math.min(W-sx,Math.round(q.w*W))),sh=Math.max(1,Math.min(H-sy,Math.round(q.h*H))),k=Math.min(1,960/Math.max(sw,sh));c.width=Math.max(1,Math.round(sw*k));c.height=Math.max(1,Math.round(sh*k));c.getContext("2d",{willReadFrequently:!0}).drawImage(v,sx,sy,sw,sh,0,0,c.width,c.height);return c}const __psDist=(a,c)=>{const b=a.boundingBox||{x:0,y:0,width:0,height:0};return Math.hypot(b.x+b.width/2-c.width/2,b.y+b.height/2-c.height/2)};async function Qp(){var n;const r=globalThis.BarcodeDetector;if(!r)return null;let e=Jc;try{const i=await((n=r.getSupportedFormats)==null?void 0:n.call(r));if(i!=null&&i.length&&(e=Jc.filter(o=>i.includes(o))),!e.length)return null}catch{}const t=new r({formats:e}),c=document.createElement("canvas");return async(i,g)=>{const f=__psCrop(i,g,c);if(!f)return null;const o=await t.detect(f),s=(o||[]).filter(a=>a.rawValue).sort((a,b)=>__psDist(a,f)-__psDist(b,f))[0];return s?{ma:s.rawValue,dinhDang:s.format}:null}}async function qp(){try{const r=await I0(()=>Promise.resolve().then(()=>ty),void 0,import.meta.url),e=new Map;e.set(r.DecodeHintType.POSSIBLE_FORMATS,[r.BarcodeFormat.CODE_128,r.BarcodeFormat.CODE_39,r.BarcodeFormat.EAN_13,r.BarcodeFormat.EAN_8,r.BarcodeFormat.UPC_A,r.BarcodeFormat.ITF,r.BarcodeFormat.QR_CODE]),e.set(r.DecodeHintType.TRY_HARDER,!0);const t=new r.MultiFormatReader;t.setHints(e);const c=document.createElement("canvas");let k=0;return async(n,g)=>{var o;const f=__psCrop(n,g,c);if(!f)return null;try{const h=new r.HTMLCanvasElementLuminanceSource(f),s=t.decodeWithState(new r.BinaryBitmap(new r.HybridBinarizer(++k%4===0?h.invert():h))),l=s==null?void 0:s.getText();return l?{ma:l,dinhDang:String(((o=s.getBarcodeFormat)==null?void 0:o.call(s))??"")}:null}catch{return null}}}catch{return null}}async function Jp(){const r=await Qp();if(r)return{doc:r,nguon:"native"};const e=await qp();return e?{doc:e,nguon:"zxing"}:null}function ev(){return navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"},width:{ideal:1280},height:{ideal:720}},audio:!1})}window.PrintSkuScanner={gl,k0,ev,Jp};async function tv(r,e){var i;const t=r.getVideoTracks()[0];if(!t)return!1;const n=(i=t.getCapabilities)==null?void 0:i.call(t);if(!(n!=null&&n.torch))return!1;try{return await t.applyConstraints({advanced:[{torch:e}]}),!0}catch{return!1}}const rv=r=>{var e,t,n;return!!((n=(t=(e=r.getVideoTracks()[0])==null?void 0:e.getCapabilities)==null?void 0:t.call(e))!=null&&n.torch)};function e0(r){r==null||r.getTracks().forEach(e=>e.stop())}function nv({gia:r,onDoi:e,min:t=1,max:n=200,id:i,onEnter:o}){const[s,l]=we.useState(null),c=we.useRef(void 0),h=we.useRef(void 0),p=C=>e(Math.max(t,Math.min(n,C))),v=C=>{p(r+C),c.current=window.setTimeout(()=>{h.current=window.setInterval(()=>e(m.current+C>n?n:Math.max(t,m.current+C)),90)},450)},x=()=>{window.clearTimeout(c.current),window.clearInterval(h.current),c.current=void 0,h.current=void 0},m=we.useRef(r);we.useEffect(()=>{m.current=r},[r]),we.useEffect(()=>x,[]);const w="w-12 h-[46px] shrink-0 rounded-xl flex items-center justify-center transition select-none bg-brand-light text-brand active:scale-95 disabled:opacity-35 disabled:active:scale-100";return A.jsxs("div",{className:"flex items-center gap-2 rounded-xl border-[1.5px] border-slate-200 bg-white p-1.5 focus-within:border-brand",children:[A.jsx("button",{type:"button",className:w,disabled:r<=t,"aria-label":"Giảm",onPointerDown:()=>v(-1),onPointerUp:x,onPointerLeave:x,onPointerCancel:x,children:A.jsx(kp,{size:20})}),A.jsx("input",{id:i,inputMode:"numeric",pattern:"[0-9]*",className:"flex-1 min-w-0 text-center text-xl font-bold so bg-transparent outline-none",value:s??String(r),onFocus:C=>{l(String(r)),C.currentTarget.select()},onChange:C=>l(C.target.value.replace(/[^0-9]/g,"")),onBlur:()=>{p(Number(s)||t),l(null)},onKeyDown:C=>{C.key==="Enter"&&(C.preventDefault(),p(Number(s)||t),l(null),C.currentTarget.blur(),o==null||o())}}),A.jsx("button",{type:"button",className:w,disabled:r>=n,"aria-label":"Tăng",onPointerDown:()=>v(1),onPointerUp:x,onPointerLeave:x,onPointerCancel:x,children:A.jsx(O0,{size:20})})]})}const iv="https://ikzhitdqkoatlmkrxuuh.supabase.co/rest/v1",t0="sb_publishable_mBl--Ep5nNxuC4Xvyi1gfg_SLGEcRhI",Ho="SKU_Name",Bn="sku",Ll="product_name",xl=`${Bn},${Ll}`,av={apikey:t0,Authorization:"Bearer "+t0},yl=r=>({sku:String(r[Bn]??""),ten:String(r[Ll]??"")}),tl=new Map;let ov=0,r0=0,di="";async function Vo(r){try{const e=await fetch(iv+r,{headers:av,signal:AbortSignal.timeout(8e3)});if(!e.ok)throw di="HTTP "+e.status+" — "+(await e.text()).slice(0,200),new Error(di);ov=Date.now(),r0=0,di="";const t=await e.json();return Array.isArray(t)?t:[]}catch(e){return r0++,di||(di=String((e==null?void 0:e.message)||e).slice(0,200)),null}}async function uv(r){const e=r.trim();if(!e)return null;if(tl.has(e))return tl.get(e);const t=await Vo(`/${Ho}?select=${xl}&${Bn}=eq.${encodeURIComponent(e)}&limit=1`);if(t===null)return;const n=t[0]?yl(t[0]):null;return tl.set(e,n),n}async function sv(r){const e=r.trim();if(e.length<2)return[];const n=(await Vo(`/${Ho}?select=${xl}&${Bn}=like.${encodeURIComponent(e+"*")}&order=${Bn}.asc&limit=8`)??[]).map(yl);if(n.length>=8)return n;if(e.length>=3){const i=await Vo(`/${Ho}?select=${xl}&${Ll}=ilike.${encodeURIComponent("*"+e+"*")}&order=${Bn}.asc&limit=8`),o=new Set(n.map(s=>s.sku));for(const s of i??[]){const l=yl(s);if(o.has(l.sku)||n.push(l),n.length>=10)break}}return n}async function lv(){const r=await Vo(`/${Ho}?select=${Bn}&limit=1`);return r===null?{ok:!1,chu:di||"không gọi được"}:{ok:!0,chu:r.length?"đọc được danh mục":"gọi được nhưng bảng đang rỗng"}}const rl="w-full min-h-[50px] px-3.5 py-3 text-base rounded-xl bg-white border-[1.5px] border-slate-200 outline-none transition focus:border-brand focus:ring-[3px] focus:ring-brand-light",Mo="block text-[10.5px] font-bold tracking-[0.09em] uppercase text-slate-400 mb-1.5";function fv({sku:r,pn:e,slHang:t,ban:n,onDoi:i,onThem:o,goiY:s,onGoiY:l,onQuet:c,coQuet:h}){const p=we.useRef(null),v=we.useRef(null),x=we.useRef(null),m=[p,v,x],w=X=>ie=>{var ae,Ce;ie.key==="Enter"&&(ie.preventDefault(),X<m.length-1?(ae=m[X+1].current)==null||ae.focus():(Ce=document.getElementById("f-ban"))==null||Ce.focus())},[C,S]=we.useState(""),[N,T]=we.useState([]),[M,P]=we.useState(!1),[__kbH,__kbSet]=we.useState(()=>{try{return localStorage.getItem("print-sku-ban-phim")!=="hien"}catch{return!0}}),z=we.useRef(0),W=X=>{const ie=X.trim();const ae=P0(ie);i({sku:X,pn:ae||"",pnCho:!!ae});S("");ae&&l("Tên hàng lấy từ lần in trước — đang đối chiếu danh mục…")};we.useEffect(()=>{const X=r.trim();if(!X){T([]),S("");return}const ie=++z.current;S("dang");const ae=setTimeout(async()=>{const[Ce,me]=await Promise.all([uv(X),sv(X)]);if(ie===z.current){if(Ce===void 0){S("mang"),T([]),i({pn:"",pnCho:!1});return}T(me.filter(Y=>Y.sku!==X)),Ce?(S("thay"),i({pn:Ce.ten,pnCho:!1}),pl(Ce.sku,Ce.ten),l("Tên hàng lấy từ danh mục — sửa được nếu cần.")):(S("khong"),i({pn:"",pnCho:!1}))}},300);return()=>{clearTimeout(ae);z.current++}},[r]);const $=X=>{i({sku:X.sku,pn:X.ten}),pl(X.sku,X.ten),P(!1),T([]),l("Đã chọn từ danh mục."),setTimeout(()=>{var ie;return(ie=x.current)==null?void 0:ie.focus()},40)};return A.jsxs("section",{className:"bg-white rounded-2xl border border-slate-100 shadow-sm p-4 sm:p-5",children:[A.jsxs("p",{className:"flex items-baseline gap-2 mb-3",children:[A.jsx("b",{className:"text-[11px] font-extrabold text-brand tracking-wider",children:"1"}),A.jsx("span",{className:"text-[15px] font-bold text-slate-800",children:"Nhập tem"})]}),A.jsx("label",{className:Mo,htmlFor:"f-sku",children:"Mã SKU"}),A.jsxs("div",{className:"relative",children:[A.jsx("input",{id:"f-sku",ref:p,value:r,inputMode:__kbH?"none":"text",className:`${rl} so text-lg font-bold tracking-wider ${h?"pr-16":""}`,autoComplete:"off",spellCheck:!1,enterKeyHint:"next",placeholder:"Quét mã hoặc gõ tay",onChange:X=>W(X.target.value),onKeyDown:w(0),onFocus:()=>P(!0),onBlur:()=>setTimeout(()=>P(!1),150)}),h&&A.jsx("button",{type:"button",onClick:c,"aria-label":"Quét mã bằng camera",className:`absolute right-1.5 top-1/2 -translate-y-1/2 w-12 h-[42px] rounded-lg
+ */const R0=Ye("X",[["path",{d:"M18 6 6 18",key:"1bl5f8"}],["path",{d:"m6 6 12 12",key:"d8bk6v"}]]),jp="legacy://print-queue-shim",zp=r=>new Promise(e=>setTimeout(e,r));function M0(){return"pr-"+Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,8)}async function Js(r,e){const t={tb:e,...r};t.nonce||(t.nonce=M0());let n="";for(let i=0;i<2;i++){i&&await zp(900);let o="";try{o=await(await fetch(jp,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(t),signal:AbortSignal.timeout(45e3)})).text()}catch(l){n=String((l==null?void 0:l.message)||l);continue}const s=o.trim();if(s.startsWith("{")||s.startsWith("["))try{return JSON.parse(s)}catch{n="phản hồi không phải JSON";continue}n=/^<!DOCTYPE|^<html/i.test(s)?"Apps Script trả về trang HTML":"phản hồi lạ: "+s.slice(0,60)}throw new Error(n||"không gọi được Apps Script")}const yi=r=>{try{return localStorage.getItem(r)||""}catch{return""}},ya=(r,e)=>{try{localStorage.setItem(r,e)}catch{}};function Hp(){try{const r=(location.hash||"").match(/[#&]khoa=([^&]+)/);if(!r)return;ya("tb-khoa",decodeURIComponent(r[1]).trim()),history.replaceState(null,"",location.pathname+location.search)}catch{}}const el=()=>yi("tb-khoa"),Zc=()=>!!yi("tb-khoa");function Vp(){const r=yi("nds-mail")||yi("uidgr-mail");if(/^[a-z0-9._%+-]+@hasaki\.vn$/i.test(r))return r.toLowerCase();const e="may-"+Math.random().toString(36).slice(2,10)+"@hasaki.vn";return ya("nds-mail",e),e}const hl=()=>yi("nds-ten-may").trim()||"Máy kho",Gp=r=>ya("nds-ten-may",r.replace(/\s+/g," ").trim().slice(0,24));function bl(){try{return JSON.parse(yi("tem-sotay")||"{}")||{}}catch{return{}}}function pl(r,e){if(!r||!e)return;const t=bl();t[r]=e;const n=Object.keys(t);n.length>800&&delete t[n[0]],ya("tem-sotay",JSON.stringify(t))}const P0=r=>bl()[r]||"";function Wp(){ya("tem-sotay","{}")}const Xp=["tongquan","hangdoi","cauhinh"];function Qc(r){const e=(r||"").replace(/^#/,"").split("?")[0],[t,n]=e.split("/");return t!=="admin"?{mode:"worker",tab:"tongquan"}:{mode:"admin",tab:Xp.includes(n)?n:"tongquan"}}const $p=(r,e)=>r==="admin"?`#admin/${e}`:"#worker";var Kp=(function(){var r="11011001100110011011001100110011010010011000100100011001000100110010011001000100110001001000110010011001001000110010001001100010010010110011100100110111001001100111010111001100100111011001001110011011001110010110010111001100100111011011100100110011101001110110111011101001100111001011001110010011011101100100111001101001110011001011011011000110110001101100011011010100011000100010110001000100011010110001000100011010001000110001011010001000110001010001100010001010110111000101100011101000110111010111011000101110001101000111011011101110110110100011101100010111011011101000110111000101101110111011101011000111010001101110001011011101101000111011000101110001101011101111010110010000101111000101010100110000101000011001001011000010010000110100001011001000010011010110010000101100001001001101000010011000010100001101001000011001011000010010110010100001111011101011000010100100011110101010011110010010111100100100111101011110010010011110100100111100101111010010011110010100111100100101101101111011011110110111101101101010111100010100011110100010111101011110100010111100010111101010001111010001010111011110101111011101110101111011110101110110100001001101001000011010011100",e="1100011101011",t=104,n=105,i=99,o=103;function s(j){return j===106?e:r.substr(j*11,11)}function l(j){var G=String(j??""),V=[],ee,k;if(/^[0-9]+$/.test(G)&&G.length>=4)for(ee=0,G.length%2===1?(V.push(t),V.push(G.charCodeAt(0)-32),V.push(i),ee=1):V.push(n);ee<G.length;ee+=2)V.push(Number(G.substr(ee,2)));else for(V.push(t),ee=0;ee<G.length;ee++){if(k=G.charCodeAt(ee),k<32||k>126)return null;V.push(k-32)}var K=V[0];for(ee=1;ee<V.length;ee++)K+=ee*V[ee];return V.push(K%o),V.push(106),V}function c(j){var G=l(j);if(!G)return"";for(var V="",ee=0;ee<G.length;ee++)V+=s(G[ee]);return V}function h(j,G){G=G||{};var V=c(j);if(!V)return"";for(var ee=G.mm||.28,k=G.cao||9,K=V.length*ee,Z=0,O="";Z<V.length;)if(V[Z]==="1"){for(var F=Z;F<V.length&&V[F]==="1";)F++;O+='<rect x="'+(Z*ee).toFixed(3)+'" y="0" width="'+((F-Z)*ee).toFixed(3)+'" height="'+k+'" fill="#000"/>',Z=F}else Z++;return'<svg class="pr-bc" width="'+K.toFixed(2)+'mm" height="'+k+'mm" viewBox="0 0 '+K.toFixed(3)+" "+k+'" preserveAspectRatio="none" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg">'+O+"</svg>"}function p(j,G){G=G||{};var V=c(j);if(!V)return null;for(var ee=G.dotMm||8,k=Math.max(2,Math.round((G.mm||.25)*ee)),K=k,Z=G.cao||9,O=G.x||0,F=G.y||0,pe=0,ve="";pe<V.length;)if(V[pe]==="1"){for(var ge=pe;ge<V.length&&V[ge]==="1";)ge++;ve+='<rect x="'+(O+pe*K).toFixed(3)+'" y="'+F+'" width="'+((ge-pe)*K).toFixed(3)+'" height="'+Z+'" fill="#000"/>',pe=ge}else pe++;return{rects:ve,rong:+(V.length*K).toFixed(3),soModule:V.length,modMm:K}}function v(j,G){for(var V=String(j??""),ee=V.match(/[^\s\/]*[\/\s]|[^\s\/]+$/g)||[],k=[],K="",Z=0;Z<ee.length;Z++){for(var O=ee[Z];O.replace(/\s+$/,"").length>G;)K.trim()&&(k.push(K.replace(/\s+$/,"")),K=""),k.push(O.slice(0,G)),O=O.slice(G);(K+O).replace(/\s+$/,"").length>G?(K.trim()&&k.push(K.replace(/\s+$/,"")),K=O):K+=O}return K.trim()&&k.push(K.replace(/\s+$/,"")),k}function x(j,G,V,ee,k){ee=ee||34,k=k||7;var c=x.c===void 0?(x.c=typeof document!="undefined"&&document.createElement("canvas").getContext("2d")||null):x.c;if(!c)return xUocLuongCu(j,G,V,ee,k);var w=function(t,K){return c.font=K+"px Arial, Helvetica, sans-serif",c.measureText(t).width},b=function(K){for(var T=String(j??"").match(/[^\s\/]*[\/\s]|[^\s\/]+$/g)||[],L=[],R="",i=0;i<T.length;i++){for(var t=T[i];t.replace(/\s+$/,"").length>1&&w(t.replace(/\s+$/,""),K)>G;){R.trim()&&(L.push(R.replace(/\s+$/,"")),R="");for(var n=t.length-1;n>1&&w(t.slice(0,n),K)>G;)n--;L.push(t.slice(0,n)),t=t.slice(n)}w((R+t).replace(/\s+$/,""),K)>G&&R.trim()?(L.push(R.replace(/\s+$/,"")),R=t):R+=t}return R.trim()&&L.push(R.replace(/\s+$/,"")),L};for(var K=ee;K>=k;K--){var O=b(K);if(O.length*K*1.22<=V)return{co:K,dong:O}}return{co:k,dong:b(k).slice(0,Math.max(1,Math.floor(V/(k*1.22))))}}function xUocLuongCu(j,G,V,ee,k){ee=ee||34,k=k||7;for(var K=ee;K>=k;K--){var Z=Math.floor(G/(K*.55));if(!(Z<4)){var O=v(j,Z);if(O.length*K*1.22<=V)return{co:K,dong:O}}}var F=Math.max(4,Math.floor(G/(k*.55)));return{co:k,dong:v(j,F).slice(0,Math.max(1,Math.floor(V/(k*1.22))))}}function m(j){var G=String(j??"").trim();if(!G)return"";var V=G.match(/^(-?\d+)(?:([.,])(\d+))?(.*)$/);if(!V)return G;var ee=V[1].replace(/\B(?=(\d{3})+(?!\d))/g,"."),k=V[3]?","+V[3]:"";return ee+k+(V[4]||"")}function w(j){j=j||new Date;var G=function(V){return(V<10?"0":"")+V};return G(j.getDate())+"-"+G(j.getMonth()+1)+"-"+String(j.getFullYear()).slice(-2)}function C(j,G,V){V=V||{};var ee=W(G),k=V.dotMm||8,K=Math.round(ee.w*k),Z=Math.round(ee.h*k),O=Math.round((V.leMm||3)*k),F=Math.round((V.lechMm||0)*k),pe=V.coSku||34,ve=V.coChan||16,ge=V.caoVach||Math.round(8*k),Se=K/2-F,Te=O-F,Ie=O,Ne='<svg xmlns="http://www.w3.org/2000/svg" width="'+K+'" height="'+Z+'" viewBox="0 0 '+K+" "+Z+'" shape-rendering="crispEdges" font-family="Arial, Helvetica, sans-serif"><rect width="'+K+'" height="'+Z+'" fill="#fff"/><rect x="'+(2-F)+'" y="2" width="'+(K-4)+'" height="'+(Z-4)+'" fill="none" stroke="#000" stroke-width="2"/>',Ze=String(j.uid==null?"":j.uid).trim(),Jt=j.loai==="ug"&&!!Ze,pn=Jt?Ze:String(j.sku==null?"":j.sku),Or=K-O*2,jr=pe;Jt&&(jr=Math.max(14,Math.min(pe,Math.floor((Or-pn.length)/(pn.length*.6))))),Ne+='<text x="'+Se+'" y="'+(Ie+jr)+'" font-size="'+jr+'" font-weight="bold" text-anchor="middle" letter-spacing="1">'+N(pn)+"</text>",Ie+=jr+Math.round(.8*k);var vn=p(pn,{mm:.25,dotMm:k,cao:ge,x:0,y:Ie});if(vn&&(!Jt||vn.rong<=Or)&&(Ne+='<g transform="translate('+(Se-vn.rong/2)+',0)">'+vn.rects+"</g>",Ie+=ge+Math.round(.7*k)),Jt){var Fn=Math.round(2.6*k);Ne+='<text x="'+Te+'" y="'+(Ie+Fn)+'" font-size="'+Fn+'" font-weight="bold">'+N("SKU "+String(j.sku==null?"":j.sku))+"</text>",Ie+=Fn+Math.round(.6*k)}for(var _i=44+Math.round(1.4*k),Un=Ze&&!Jt?Math.round(2.5*k):0,Ci=Ze&&!Jt?Un+Math.round(.5*k):0,gn=Z-Ie-_i-Ci-O,er=x(String(j.pn==null?"":j.pn),Or,gn,V.coTenMax||34,V.coTenMin||7),zr=0;zr<er.dong.length;zr++)Ne+='<text x="'+Te+'" y="'+(Ie+er.co+zr*Math.round(er.co*1.22))+'" font-size="'+er.co+'">'+N(er.dong[zr])+"</text>";if(Ze&&!Jt){var Ca=T("UIDgr "+Ze,Math.max(8,Math.floor(Or/(Un*.56))));Ne+='<text x="'+Te+'" y="'+(Z-O-44-Math.round(.6*k))+'" font-size="'+Un+'" font-weight="bold" fill="#000">'+N(Ca)+"</text>"}var xn=String(j.ngay==null?"":j.ngay),yn=m(j.sl),Ei=Math.round(ve*1.05),Ai=xn?Math.round(xn.length*Ei*.56):0,jn=K-O*2-Ai-Math.round(1*k),Hr=ve;if(yn)for(var wr=44;wr>=10;wr--){if(yn.length*wr*.62<=jn){Hr=wr;break}Hr=10}var _r=Z-Math.round(1.2*k);return Ne+='<line x1="'+Te+'" y1="'+(_r-Hr-5)+'" x2="'+(K-O-F)+'" y2="'+(_r-Hr-5)+'" stroke="#000" stroke-width="1.5"/>',yn&&(Ne+='<text x="'+Te+'" y="'+_r+'" font-size="'+Hr+'" font-weight="bold">'+N(yn)+"</text>"),xn&&(Ne+='<text x="'+(K-O-F)+'" y="'+_r+'" font-size="'+Ei+'" text-anchor="end">'+N(xn)+"</text>"),Ne+"</svg>"}function S(j,G,V){V=V||{};for(var ee=W(G||z),k=V.dotMm||8,K=Math.round(ee.w*k),Z=Math.round(ee.h*k),O=Math.round((V.leMm||3)*k),F=Math.round((V.lechMm!=null?V.lechMm:2)*k),pe=O-F,ve=K/2-F,ge='<svg xmlns="http://www.w3.org/2000/svg" width="'+K+'" height="'+Z+'" viewBox="0 0 '+K+" "+Z+'" shape-rendering="crispEdges" font-family="Arial, Helvetica, sans-serif"><rect width="'+K+'" height="'+Z+'" fill="#fff"/><rect x="'+(2-F)+'" y="2" width="'+(K-4)+'" height="'+(Z-4)+'" fill="none" stroke="#000" stroke-width="4"/><rect x="'+(2-F)+'" y="2" width="'+(K-4)+'" height="'+Math.round(7*k)+'" fill="#000"/><text x="'+ve+'" y="'+Math.round(5.6*k)+'" font-size="'+Math.round(3.4*k)+'" font-weight="bold" fill="#fff" text-anchor="middle">ĐỢT IN TEM</text>',Se=Math.round(11*k),Te=Math.round(2.6*k),Ie=Math.round(Te*1.5),Ne=[["Người gửi",String(j.nguoi||"—")],["Lúc",String(j.luc||"")],["Số tem",String(j.soTem==null?"":j.soTem)],["Số SKU",String(j.soSku==null?"":j.soSku)]],Ze=0;Ze<Ne.length;Ze++)ge+='<text x="'+pe+'" y="'+Se+'" font-size="'+Math.round(Te*.8)+'" fill="#333">'+N(Ne[Ze][0])+"</text>",ge+='<text x="'+pe+'" y="'+(Se+Te+2)+'" font-size="'+Te+'" font-weight="bold">'+N(Ne[Ze][1])+"</text>",Se+=Ie+Te;return ge+='<text x="'+ve+'" y="'+(Z-Math.round(2*k))+'" font-size="'+Math.round(2*k)+'" text-anchor="middle" fill="#333">tem của đợt này in ngay bên dưới</text>',ge+"</svg>"}function N(j){return String(j??"").replace(/[&<>"']/g,function(G){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[G]})}function T(j,G){return j=String(j??""),j.length>G?j.slice(0,G-1)+"…":j}var M={soCot:2,khe:2,kheNgang:3},P={t40x60:{ten:"Tem SKU 40 × 60 mm (2 tem/hàng — giấy đang lắp)",w:40,h:60,mm:.25,cao:10,ve:function(j){return C(j,"t40x60",{lechMm:2})}},t42x62:{ten:"Tem SKU 42,5 × 62 mm (form sku.btw)",w:42.5,h:62,mm:.25,cao:10,ve:function(j){return C(j,"t42x62",{lechMm:2})}},t46x76:{ten:"Tem lớn 46 × 76 mm (TSC PE200)",w:46,h:76,mm:.26,cao:11,ve:function(j){return C(j,"t46x76",{lechMm:2})}},t42x25:{ten:"Tem ngang 42 × 25 mm (Zebra ZT230)",w:42,h:25,mm:.22,cao:6,ve:function(j){return C(j,"t42x25",{coSku:20,coChan:12,caoVach:40,coTenMax:14,leMm:2,lechMm:1})}},t22x13:{ten:"Tem mini 21,6 × 12,7 mm (chỉ mã)",w:21.6,h:12.7,mm:.15,cao:5,ve:function(j){return C(j,"t22x13",{coSku:13,coChan:9,caoVach:26,coTenMax:8,coTenMin:6,leMm:1.2,lechMm:.5})}}},z="t40x60";function W(j){return P[j]||P[z]}function $(j){var G=W(j),V=Math.max(1,M.soCot|0);return{w:+(G.w*V+M.khe*(V-1)).toFixed(2),h:G.h,cot:V,khe:M.khe,tem:G}}function X(j,G){for(var V=$(G).cot,ee=[],k=0;k<j.length;k+=V)ee.push(j.slice(k,k+V));return ee}function ie(j){var G=String(j??"").trim();return G?G.split(/[,;\/\n\t ]+/).map(function(V){return String(V).trim()}).filter(function(V){return V!==""&&/[0-9]/.test(V)}):[]}function ae(j){var G=ie(j&&j.slHang);return G.length>1?G.length:Math.max(0,Number(j&&j.sl)||0)}function Ce(j){var G=0;return(j||[]).forEach(function(V){G+=ae(V)}),G}function me(j){var G=[];return(j||[]).forEach(function(V){var ee=ie(V.slHang);if(ee.length>1){ee.forEach(function(Z){G.push({sku:V.sku,pn:V.pn,slHang:Z,mau:V.mau,uid:V.uid||"",loai:V.loai||""})});return}for(var k=Math.max(0,Number(V.sl)||0),K=0;K<k;K++)G.push({sku:V.sku,pn:V.pn,slHang:ee.length?ee[0]:V.slHang||"",mau:V.mau,uid:V.uid||"",loai:V.loai||""})}),G}function Y(j){var G={},V=[];return(j||[]).forEach(function(ee){var k=P[ee.mau]?ee.mau:z;G[k]||(G[k]=[],V.push(k)),G[k].push(ee)}),{m:G,thuTu:V}}return{maHoa:l,bit:c,svg:h,MAU:P,MAU_MAC_DINH:z,mau:W,tongTem:Ce,theoMau:Y,cat:T,GIAY:M,khoTrang:$,chiaHang:X,tachSl:ie,temCuaDong:ae,moRong:me,svgTem:C,vachRect:p,coChuVua:x,beDong:v,soGon:m,ngayTem:w,svgTemDot:S}})();const Nr=Kp,Bl=r=>({sku:r.sku,pn:r.pn,slHang:r.slHang,sl:r.ban,mau:r.mau}),vl=r=>Nr.temCuaDong(Bl(r)),qc=r=>Nr.tongTem(r.map(Bl)),Yp=r=>Nr.moRong(r.map(Bl)),Zp=(r,e)=>Nr.chiaHang(Yp(r),e),Jc=["code_128","code_39","ean_13","ean_8","upc_a","upc_e","itf","qr_code"],gl=()=>{var r;return typeof navigator<"u"&&!!((r=navigator.mediaDevices)!=null&&r.getUserMedia)},k0=()=>typeof window<"u"&&(window.isSecureContext||location.hostname==="localhost"||location.protocol==="file:");/* 01/10/2026: doc(video, vung?) — vung {x,y,w,h} theo ti le khung hinh, chi doc trong khung ngam (tem nhieu ma khong bi doc nham); nhieu ma thi lay ma gan tam nhat. ZXing: KHONG dung BrowserMultiFormatReader.decode(video) — ban nay dao mau xen ke moi lan dung anh tu video (HTMLCanvasElementLuminanceSource.FRAME_INDEX), lan thu xoay 90 do lam lech nhip nen anh thang luon bi dao: QR va ma vach ngang khong bao gio doc duoc. Tu ve khung len canvas, doc anh thuong; cu 4 lan thu 1 lan anh dao cho tem in trang tren nen den. */function __psCrop(v,g,c){const W=v.videoWidth||v.width,H=v.videoHeight||v.height;if(!W||!H)return null;const q=g&&g.w>0&&g.h>0?g:{x:0,y:0,w:1,h:1},sx=Math.max(0,Math.round(q.x*W)),sy=Math.max(0,Math.round(q.y*H)),sw=Math.max(1,Math.min(W-sx,Math.round(q.w*W))),sh=Math.max(1,Math.min(H-sy,Math.round(q.h*H))),k=Math.min(1,960/Math.max(sw,sh));c.width=Math.max(1,Math.round(sw*k));c.height=Math.max(1,Math.round(sh*k));c.getContext("2d",{willReadFrequently:!0}).drawImage(v,sx,sy,sw,sh,0,0,c.width,c.height);return c}const __psDist=(a,c)=>{const b=a.boundingBox||{x:0,y:0,width:0,height:0};return Math.hypot(b.x+b.width/2-c.width/2,b.y+b.height/2-c.height/2)};async function Qp(){var n;const r=globalThis.BarcodeDetector;if(!r)return null;let e=Jc;try{const i=await((n=r.getSupportedFormats)==null?void 0:n.call(r));if(i!=null&&i.length&&(e=Jc.filter(o=>i.includes(o))),!e.length)return null}catch{}const t=new r({formats:e}),c=document.createElement("canvas");return async(i,g)=>{const f=__psCrop(i,g,c);if(!f)return null;const o=await t.detect(f),s=(o||[]).filter(a=>a.rawValue).sort((a,b)=>__psDist(a,f)-__psDist(b,f))[0];return s?{ma:s.rawValue,dinhDang:s.format}:null}}async function qp(){try{const r=await I0(()=>Promise.resolve().then(()=>ty),void 0,import.meta.url),e=new Map;e.set(r.DecodeHintType.POSSIBLE_FORMATS,[r.BarcodeFormat.CODE_128,r.BarcodeFormat.CODE_39,r.BarcodeFormat.EAN_13,r.BarcodeFormat.EAN_8,r.BarcodeFormat.UPC_A,r.BarcodeFormat.ITF,r.BarcodeFormat.QR_CODE]),e.set(r.DecodeHintType.TRY_HARDER,!0);const t=new r.MultiFormatReader;t.setHints(e);const c=document.createElement("canvas");let k=0;return async(n,g)=>{var o;const f=__psCrop(n,g,c);if(!f)return null;try{const h=new r.HTMLCanvasElementLuminanceSource(f),s=t.decodeWithState(new r.BinaryBitmap(new r.HybridBinarizer(++k%4===0?h.invert():h))),l=s==null?void 0:s.getText();return l?{ma:l,dinhDang:String(((o=s.getBarcodeFormat)==null?void 0:o.call(s))??"")}:null}catch{return null}}}catch{return null}}async function Jp(){const r=await Qp();if(r)return{doc:r,nguon:"native"};const e=await qp();return e?{doc:e,nguon:"zxing"}:null}function ev(){return navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"},width:{ideal:1280},height:{ideal:720}},audio:!1})}window.PrintSkuScanner={gl,k0,ev,Jp,zxing:()=>ty};async function tv(r,e){var i;const t=r.getVideoTracks()[0];if(!t)return!1;const n=(i=t.getCapabilities)==null?void 0:i.call(t);if(!(n!=null&&n.torch))return!1;try{return await t.applyConstraints({advanced:[{torch:e}]}),!0}catch{return!1}}const rv=r=>{var e,t,n;return!!((n=(t=(e=r.getVideoTracks()[0])==null?void 0:e.getCapabilities)==null?void 0:t.call(e))!=null&&n.torch)};function e0(r){r==null||r.getTracks().forEach(e=>e.stop())}function nv({gia:r,onDoi:e,min:t=1,max:n=200,id:i,onEnter:o}){const[s,l]=we.useState(null),c=we.useRef(void 0),h=we.useRef(void 0),p=C=>e(Math.max(t,Math.min(n,C))),v=C=>{p(r+C),c.current=window.setTimeout(()=>{h.current=window.setInterval(()=>e(m.current+C>n?n:Math.max(t,m.current+C)),90)},450)},x=()=>{window.clearTimeout(c.current),window.clearInterval(h.current),c.current=void 0,h.current=void 0},m=we.useRef(r);we.useEffect(()=>{m.current=r},[r]),we.useEffect(()=>x,[]);const w="w-12 h-[46px] shrink-0 rounded-xl flex items-center justify-center transition select-none bg-brand-light text-brand active:scale-95 disabled:opacity-35 disabled:active:scale-100";return A.jsxs("div",{className:"flex items-center gap-2 rounded-xl border-[1.5px] border-slate-200 bg-white p-1.5 focus-within:border-brand",children:[A.jsx("button",{type:"button",className:w,disabled:r<=t,"aria-label":"Giảm",onPointerDown:()=>v(-1),onPointerUp:x,onPointerLeave:x,onPointerCancel:x,children:A.jsx(kp,{size:20})}),A.jsx("input",{id:i,inputMode:"numeric",pattern:"[0-9]*",className:"flex-1 min-w-0 text-center text-xl font-bold so bg-transparent outline-none",value:s??String(r),onFocus:C=>{l(String(r)),C.currentTarget.select()},onChange:C=>l(C.target.value.replace(/[^0-9]/g,"")),onBlur:()=>{p(Number(s)||t),l(null)},onKeyDown:C=>{C.key==="Enter"&&(C.preventDefault(),p(Number(s)||t),l(null),C.currentTarget.blur(),o==null||o())}}),A.jsx("button",{type:"button",className:w,disabled:r>=n,"aria-label":"Tăng",onPointerDown:()=>v(1),onPointerUp:x,onPointerLeave:x,onPointerCancel:x,children:A.jsx(O0,{size:20})})]})}const iv="https://ikzhitdqkoatlmkrxuuh.supabase.co/rest/v1",t0="sb_publishable_mBl--Ep5nNxuC4Xvyi1gfg_SLGEcRhI",Ho="SKU_Name",Bn="sku",Ll="product_name",xl=`${Bn},${Ll}`,av={apikey:t0,Authorization:"Bearer "+t0},yl=r=>({sku:String(r[Bn]??""),ten:String(r[Ll]??"")}),tl=new Map;let ov=0,r0=0,di="";async function Vo(r){try{const e=await fetch(iv+r,{headers:av,signal:AbortSignal.timeout(8e3)});if(!e.ok)throw di="HTTP "+e.status+" — "+(await e.text()).slice(0,200),new Error(di);ov=Date.now(),r0=0,di="";const t=await e.json();return Array.isArray(t)?t:[]}catch(e){return r0++,di||(di=String((e==null?void 0:e.message)||e).slice(0,200)),null}}async function uv(r){const e=r.trim();if(!e)return null;if(tl.has(e))return tl.get(e);const t=await Vo(`/${Ho}?select=${xl}&${Bn}=eq.${encodeURIComponent(e)}&limit=1`);if(t===null)return;const n=t[0]?yl(t[0]):null;return tl.set(e,n),n}async function sv(r){const e=r.trim();if(e.length<2)return[];const n=(await Vo(`/${Ho}?select=${xl}&${Bn}=like.${encodeURIComponent(e+"*")}&order=${Bn}.asc&limit=8`)??[]).map(yl);if(n.length>=8)return n;if(e.length>=3){const i=await Vo(`/${Ho}?select=${xl}&${Ll}=ilike.${encodeURIComponent("*"+e+"*")}&order=${Bn}.asc&limit=8`),o=new Set(n.map(s=>s.sku));for(const s of i??[]){const l=yl(s);if(o.has(l.sku)||n.push(l),n.length>=10)break}}return n}async function lv(){const r=await Vo(`/${Ho}?select=${Bn}&limit=1`);return r===null?{ok:!1,chu:di||"không gọi được"}:{ok:!0,chu:r.length?"đọc được danh mục":"gọi được nhưng bảng đang rỗng"}}const rl="w-full min-h-[50px] px-3.5 py-3 text-base rounded-xl bg-white border-[1.5px] border-slate-200 outline-none transition focus:border-brand focus:ring-[3px] focus:ring-brand-light",Mo="block text-[10.5px] font-bold tracking-[0.09em] uppercase text-slate-400 mb-1.5";function fv({sku:r,pn:e,slHang:t,ban:n,onDoi:i,onThem:o,goiY:s,onGoiY:l,onQuet:c,coQuet:h}){const p=we.useRef(null),v=we.useRef(null),x=we.useRef(null),m=[p,v,x],w=X=>ie=>{var ae,Ce;ie.key==="Enter"&&(ie.preventDefault(),X<m.length-1?(ae=m[X+1].current)==null||ae.focus():(Ce=document.getElementById("f-ban"))==null||Ce.focus())},[C,S]=we.useState(""),[N,T]=we.useState([]),[M,P]=we.useState(!1),[__kbH,__kbSet]=we.useState(()=>{try{return localStorage.getItem("print-sku-ban-phim")!=="hien"}catch{return!0}}),z=we.useRef(0),W=X=>{const ie=X.trim();const ae=P0(ie);i({sku:X,pn:ae||"",pnCho:!!ae});S("");ae&&l("Tên hàng lấy từ lần in trước — đang đối chiếu danh mục…")};we.useEffect(()=>{const X=r.trim();if(!X){T([]),S("");return}const ie=++z.current;S("dang");const ae=setTimeout(async()=>{const[Ce,me]=await Promise.all([uv(X),sv(X)]);if(ie===z.current){if(Ce===void 0){S("mang"),T([]),i({pn:"",pnCho:!1});return}T(me.filter(Y=>Y.sku!==X)),Ce?(S("thay"),i({pn:Ce.ten,pnCho:!1}),pl(Ce.sku,Ce.ten),l("Tên hàng lấy từ danh mục — sửa được nếu cần.")):(S("khong"),i({pn:"",pnCho:!1}))}},300);return()=>{clearTimeout(ae);z.current++}},[r]);const $=X=>{i({sku:X.sku,pn:X.ten}),pl(X.sku,X.ten),P(!1),T([]),l("Đã chọn từ danh mục."),setTimeout(()=>{var ie;return(ie=x.current)==null?void 0:ie.focus()},40)};return A.jsxs("section",{className:"bg-white rounded-2xl border border-slate-100 shadow-sm p-4 sm:p-5",children:[A.jsxs("p",{className:"flex items-baseline gap-2 mb-3",children:[A.jsx("b",{className:"text-[11px] font-extrabold text-brand tracking-wider",children:"1"}),A.jsx("span",{className:"text-[15px] font-bold text-slate-800",children:"Nhập tem"})]}),A.jsx("label",{className:Mo,htmlFor:"f-sku",children:"Mã SKU"}),A.jsxs("div",{className:"relative",children:[A.jsx("input",{id:"f-sku",ref:p,value:r,inputMode:__kbH?"none":"text",className:`${rl} so text-lg font-bold tracking-wider ${h?"pr-16":""}`,autoComplete:"off",spellCheck:!1,enterKeyHint:"next",placeholder:"Quét mã hoặc gõ tay",onChange:X=>W(X.target.value),onKeyDown:w(0),onFocus:()=>P(!0),onBlur:()=>setTimeout(()=>P(!1),150)}),h&&A.jsx("button",{type:"button",onClick:c,"aria-label":"Quét mã bằng camera",className:`absolute right-1.5 top-1/2 -translate-y-1/2 w-12 h-[42px] rounded-lg
                        bg-brand-light text-brand flex items-center justify-center
                        transition active:scale-95 hover:bg-brand hover:text-white`,children:A.jsx(bp,{size:20})})]}),M&&N.length>0&&A.jsx("ul",{className:"relative z-20 -mt-1 mb-1 rounded-xl border border-slate-200 bg-white shadow-lg overflow-hidden",children:N.map(X=>A.jsx("li",{children:A.jsxs("button",{type:"button",onMouseDown:ie=>ie.preventDefault(),onClick:()=>$(X),className:"w-full text-left px-3.5 py-2.5 hover:bg-brand-light border-b border-slate-100 last:border-0",children:[A.jsx("span",{className:"so font-bold text-slate-800",children:X.sku}),A.jsx("span",{className:"block text-[12.5px] text-slate-500 truncate",children:X.ten})]})},X.sku))}),A.jsx("button",{type:"button",id:"f-sku-kb",className:"sample-kb act-icon act-icon--keyboard","aria-controls":"f-sku","aria-pressed":String(__kbH),onClick:()=>{const v=!__kbH;__kbSet(v);try{localStorage.setItem("print-sku-ban-phim",v?"an":"hien")}catch{}const el=p.current;el&&(el.blur(),setTimeout(()=>el.focus(),60))},children:__kbH?"Bàn phím ảo: đang ẩn — bấm để hiện":"Bàn phím ảo: đang hiện — bấm để ẩn"}),A.jsxs("p",{className:"text-xs mt-1.5 flex items-start gap-1.5",children:[C==="dang"&&A.jsxs(A.Fragment,{children:[A.jsx(kl,{size:13,className:"shrink-0 mt-0.5 animate-spin text-slate-400"}),A.jsx("span",{className:"text-slate-500",children:"Đang tra danh mục…"})]}),C==="thay"&&A.jsxs(A.Fragment,{children:[A.jsx(N0,{size:13,className:"shrink-0 mt-0.5 text-tt-ok"}),A.jsx("span",{className:"text-tt-ok font-bold",children:"Có trong danh mục"})]}),C==="khong"&&A.jsxs(A.Fragment,{children:[A.jsx(zo,{size:13,className:"shrink-0 mt-0.5 text-tt-canh"}),A.jsx("span",{className:"text-tt-canh",children:"Chưa có trong danh mục — kiểm lại mã. Vẫn in được nếu bạn chắc."})]}),C==="mang"&&A.jsxs(A.Fragment,{children:[A.jsx(Ip,{size:13,className:"shrink-0 mt-0.5 text-slate-400"}),A.jsx("span",{className:"text-slate-500",children:"Không tra được danh mục — gõ tên hàng như bình thường."})]}),!C&&A.jsx("span",{className:"text-slate-500",children:s})]}),A.jsx("label",{className:`${Mo} mt-3.5`,htmlFor:"f-pn",children:"Tên hàng"}),A.jsx("input",{id:"f-pn",ref:v,className:rl,value:e,autoComplete:"off",enterKeyHint:"next",placeholder:"Vải thun cotton 4 chiều / Navy / 180gsm",onChange:X=>i({pn:X.target.value,pnCho:!1}),onKeyDown:w(1)}),A.jsxs("div",{className:"flex flex-wrap gap-2.5 mt-3.5",children:[A.jsxs("div",{className:"flex-1 min-w-[160px]",children:[A.jsx("label",{className:Mo,htmlFor:"f-sl",children:"Số lượng in lên tem"}),A.jsx("input",{id:"f-sl",ref:x,className:rl,value:t,autoComplete:"off",enterKeyHint:"next",placeholder:"1.200 m",onChange:X=>i({slHang:X.target.value}),onKeyDown:w(2)}),A.jsxs("p",{className:"text-xs text-slate-500 mt-1.5",children:["Nhiều bịch khác nhau thì gõ ",A.jsx("b",{children:"12, 14, 16"})," — ra 3 tem, mỗi tem một số."]})]}),A.jsxs("div",{className:"w-[172px] shrink-0",children:[A.jsx("label",{className:Mo,htmlFor:"f-ban",children:"Số bản in"}),A.jsx(nv,{id:"f-ban",gia:n,onDoi:X=>i({ban:X}),onEnter:()=>document.getElementById("sku-add-to-list")?.click()}),A.jsx("p",{className:"text-xs text-slate-500 mt-1.5",children:"Tem giống hệt nhau."})]})]}),A.jsxs("button",{id:"sku-add-to-list",onClick:o,className:`w-full mt-4 min-h-[50px] rounded-full bg-brand text-white font-bold text-[15px]
                    flex items-center justify-center gap-2 transition active:scale-[0.98]
@@ -1241,6 +1241,7 @@ Error generating stack: `+y.message+`
               <button class="barcode-choice" id="barcode-print-sku" type="button"><span class="barcode-choice__icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V3h12v6"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="7"/></svg></span><strong>PRINT SKU</strong><span>Nhập SKU và tạo danh sách tem cần in.</span></button>
               <button class="barcode-choice" id="barcode-print-uid" type="button"><span class="barcode-choice__icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5" fill="currentColor"/></svg></span><strong>PRINT UID</strong><span>Nhập Group UID, tự tra thông tin tem rồi xác nhận in.</span></button>
               <button class="barcode-choice" id="barcode-fabric" type="button"><span class="barcode-choice__icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></svg></span><strong>FABRIC RELAXATION</strong><span>In tem xả vải, để trống Ngày, Giờ và Lot để ghi tay.</span></button>
+              <button class="barcode-choice" id="barcode-location" type="button"><span class="barcode-choice__icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg></span><strong>MÃ VỊ TRÍ</strong><span>Lưu mã và tên vị trí kho, in tem QR dán kệ.</span></button>
             </div>
           </section>
           <section class="barcode-home__group">
@@ -1706,6 +1707,7 @@ Error generating stack: `+y.message+`
           const storageRiskOpen = current === "storage-risk";
           const fabricOpen = current === "fabric-relaxation";
           const xaVaiOpen = current === "xa-vai";
+          const locationOpen = current === "location";
           const homeOpen = !current || current === "home";
           const adminOpen = /^admin(?:\/|$)/.test(current);
           clearInterval(printerTimer);
@@ -1723,9 +1725,9 @@ Error generating stack: `+y.message+`
           if (storageRiskOpen) storageRiskLoadSummary();
           else storageRiskCloseDetail();
           home.hidden = !homeOpen;
-          homeTrigger.hidden = homeOpen || uidOpen || cutUidOpen || findSkuOpen || adminOpen || insOpen || sampleOpen || storageRiskOpen || fabricOpen || xaVaiOpen;
+          homeTrigger.hidden = homeOpen || uidOpen || cutUidOpen || findSkuOpen || adminOpen || insOpen || sampleOpen || storageRiskOpen || fabricOpen || xaVaiOpen || locationOpen;
           const root = document.getElementById("root");
-          if (root) root.inert = uidOpen || cutUidOpen || findSkuOpen || homeOpen || insOpen || sampleOpen || storageRiskOpen || fabricOpen || xaVaiOpen;
+          if (root) root.inert = uidOpen || cutUidOpen || findSkuOpen || homeOpen || insOpen || sampleOpen || storageRiskOpen || fabricOpen || xaVaiOpen || locationOpen;
           if (uidOpen) setTimeout(() => groupUid.focus(), 50);
         };
         printSku.addEventListener("click", () => { location.hash = "#worker"; });
@@ -7371,6 +7373,476 @@ var FSK_CORE = (function () {
         document.getElementById('xa-vai-back').addEventListener('click',()=>location.hash='#home');
         const route=()=>{screen.hidden=!active();if(active()){loadOpen({quiet:true});runSearch();scheduleRefresh();if(activeTab==='scan')setTimeout(()=>code.focus(),50)}else{clearTimeout(refreshTimer)}};
         window.addEventListener('hashchange',route);renderSearch();route();
+      })();
+    </script>
+    <style id="location-theme">
+      /* MÃ VỊ TRÍ (#location): dùng lại khung .cut-* của CẮT GROUP UID; chỉ thêm phần riêng ở đây. */
+      .loc-form label{display:block;margin:16px 0 7px;color:var(--wms-muted,#60736b);font-size:13px;font-weight:800}
+      .loc-form label:first-of-type{margin-top:0}
+      .loc-form label small{font-weight:400}
+      .loc-form .cut-input{font-weight:700}
+      .loc-code{text-transform:uppercase;letter-spacing:.02em}
+      .loc-code::placeholder{text-transform:none;letter-spacing:0}
+      .loc-hint{min-height:18px;margin:6px 0 0;color:var(--wms-muted,#60736b);font-size:12px;line-height:1.5}
+      .loc-hint[data-tone="warn"]{color:var(--wms-warning,#b7791f);font-weight:700}
+      .loc-hint[data-tone="error"]{color:var(--wms-danger,#c2413b);font-weight:700}
+      .loc-form .cut-primary{width:100%;margin-top:18px}
+      .loc-preview{display:flex;flex-direction:column;align-items:center;gap:8px;margin-top:18px;padding:16px;border-radius:16px;background:var(--wms-bg,#f4f7f6)}
+      .loc-preview svg{display:block;width:176px;height:auto;border-radius:6px;background:#fff;box-shadow:0 1px 2px rgba(23,37,31,.12),0 6px 16px rgba(23,37,31,.08)}
+      .loc-preview .cut-note{margin:0}
+      .loc-bulk{margin-top:18px;padding-top:6px;border-top:1px solid var(--wms-border,#d9e2de)}
+      .loc-bulk summary{display:flex;align-items:center;min-height:46px;color:var(--wms-brand,#005f41);font-weight:800;cursor:pointer}
+      .loc-bulk textarea{min-height:150px;padding:12px 15px;font:14px/1.55 Arial,Helvetica,sans-serif;resize:vertical}
+      .loc-bulk .cut-secondary{margin-top:10px}
+      .loc-toolbar{display:flex;gap:10px;margin-bottom:4px}
+      .loc-toolbar .cut-input{flex:1;min-width:0}
+      .loc-copies{display:flex;align-items:center;gap:8px;flex:0 1 auto!important;font-weight:800}
+      .loc-copies input{width:84px;min-height:44px;padding:0 10px;text-align:center}
+      .loc-table{min-width:560px}
+      .loc-table td:nth-child(2){white-space:nowrap}
+      .loc-table td:nth-child(3){font-weight:400}
+      .loc-table td:last-child{width:96px;text-align:right;white-space:nowrap}
+      .loc-table .cut-icon-btn{min-height:38px;min-width:38px}
+      .loc-table .cut-icon-btn+.cut-icon-btn{margin-left:6px}
+      .loc-table .cut-icon-btn:hover{border-color:var(--wms-brand,#005f41);color:var(--wms-brand,#005f41)}
+      .loc-table .cut-icon-btn[data-act="archive"]:hover{border-color:var(--wms-danger,#c2413b);color:var(--wms-danger,#c2413b)}
+      .loc-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+      .loc-printed{color:var(--wms-muted,#60736b);font-size:12px;white-space:nowrap}
+      .loc-printed b{color:var(--wms-brand,#005f41)}
+      @media(max-width:800px){.loc-toolbar{flex-direction:row}.loc-copies{flex:1 1 100%!important}.loc-copies input{flex:1;width:auto}}
+    </style>
+    <section class="cut-screen" id="location-screen" aria-labelledby="loc-title" hidden>
+      <header class="cut-head"><div class="cut-head__in"><div><h1 id="loc-title">MÃ VỊ TRÍ</h1><p>Lưu mã và tên vị trí kho · in tem QR dán kệ</p></div><button class="cut-back" id="loc-back" type="button">← WH-MATERIAL</button></div></header>
+      <main class="cut-main">
+        <p class="cut-message" id="loc-message" aria-live="polite" style="margin:0 0 14px"></p>
+        <div class="cut-grid">
+          <section class="cut-card" aria-labelledby="loc-input-title"><h2 id="loc-input-title"><span>1</span>Nhập vị trí</h2>
+            <form class="loc-form" id="loc-form" novalidate>
+              <label for="loc-code">Mã vị trí <small>— QR trên tem chứa đúng mã này</small></label>
+              <input class="cut-input loc-code" id="loc-code" autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="next" maxlength="40" placeholder="Ví dụ F01-A05-503-01-01-01" aria-describedby="loc-code-hint" required>
+              <p class="loc-hint" id="loc-code-hint">Chữ không dấu, số và . _ / - (tối đa 40 ký tự).</p>
+              <label for="loc-name">Tên vị trí</label>
+              <input class="cut-input" id="loc-name" autocomplete="off" enterkeyhint="done" maxlength="60" placeholder="Ví dụ Khu vực Sơ chế" required>
+              <button class="cut-primary act-icon act-icon--add" id="loc-save" type="submit">Lưu vị trí</button>
+            </form>
+            <div class="loc-preview"><svg id="loc-preview" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 480" role="img" aria-label="Xem trước tem vị trí"></svg><p class="cut-note">Xem trước tem 40 × 60 mm · font Arial</p><p class="loc-hint" id="loc-fit-hint" aria-live="polite"></p></div>
+            <details class="loc-bulk" id="loc-bulk-box"><summary>Nhập nhiều vị trí từ Excel</summary>
+              <p class="cut-note">Copy 2 cột <b>Mã vị trí</b> và <b>Tên vị trí</b> trong Excel rồi dán vào đây — mỗi dòng một vị trí, tối đa 500 dòng. Mã đã có sẽ được cập nhật tên.</p>
+              <textarea class="cut-input" id="loc-bulk" rows="6" spellcheck="false" aria-describedby="loc-bulk-hint" placeholder="F01-A05-503-01-01-01&#9;Khu vực Sơ chế"></textarea>
+              <p class="loc-hint" id="loc-bulk-hint"></p>
+              <button class="cut-secondary act-icon act-icon--import" id="loc-bulk-save" type="button" disabled>Lưu các dòng đã dán</button>
+            </details>
+          </section>
+          <section class="cut-card" aria-labelledby="loc-list-title"><h2 id="loc-list-title"><span>2</span>Danh sách vị trí <b class="cut-badge" id="loc-total">0</b></h2>
+            <form class="loc-toolbar" id="loc-search-form" role="search"><input class="cut-input" id="loc-search" type="search" autocomplete="off" spellcheck="false" placeholder="Tìm mã hoặc tên vị trí…" aria-label="Tìm mã hoặc tên vị trí"><button class="cut-secondary act-icon act-icon--load" id="loc-reload" type="button">Tải lại</button></form>
+            <div class="cut-actions">
+              <label class="cut-selectall"><input id="loc-all" type="checkbox"><span>Chọn tất cả</span><em id="loc-selected">Đã chọn 0</em></label>
+              <label class="loc-copies" for="loc-copies">Số tem mỗi vị trí <input class="cut-input" id="loc-copies" type="number" min="1" max="500" step="1" value="1" inputmode="numeric"></label>
+              <button class="cut-primary act-icon act-icon--print" id="loc-print" type="button" disabled>In tem đã chọn</button>
+            </div>
+            <p class="cut-note" id="loc-count-note" style="margin:10px 0"></p>
+            <div class="cut-table-wrap"><table class="cut-table loc-table"><thead><tr><th class="cut-th-check"><span class="loc-sr">Chọn</span></th><th>Mã vị trí</th><th>Tên vị trí</th><th>Đã in</th><th><span class="loc-sr">Thao tác</span></th></tr></thead><tbody id="loc-rows"></tbody></table></div>
+          </section>
+        </div>
+      </main>
+    </section>
+    <script>
+      (() => {
+        const $ = id => document.getElementById(id);
+        const screen = $("location-screen"), form = $("loc-form"), codeInput = $("loc-code"), nameInput = $("loc-name");
+        const saveButton = $("loc-save"), codeHint = $("loc-code-hint"), preview = $("loc-preview"), fitHint = $("loc-fit-hint"), message = $("loc-message");
+        const bulkBox = $("loc-bulk-box"), bulkText = $("loc-bulk"), bulkHint = $("loc-bulk-hint"), bulkSave = $("loc-bulk-save");
+        const searchInput = $("loc-search"), allBox = $("loc-all"), selectedLabel = $("loc-selected"), copiesInput = $("loc-copies");
+        const printButton = $("loc-print"), countNote = $("loc-count-note"), rowsBody = $("loc-rows"), totalBadge = $("loc-total");
+        // Cùng mẫu với CHECK của public.warehouse_locations và job-validator của agent.
+        const CODE_PATTERN = /^[0-9A-Z][0-9A-Z._\/-]{0,39}$/;
+        const MAX_LOCATIONS_PER_JOB = 100, MAX_LABELS_PER_JOB = 500;
+        const STATUS_TEXT = { queued: "Đang chờ agent máy trạm", claimed: "Agent đã nhận lệnh", rendering: "Đang dựng tem", sending: "Đang gửi máy in", spooling: "Đang in", completed: "Agent đã in xong", failed: "In không thành công", cancelled: "Lệnh in đã hủy" };
+        let items = [];
+        const selected = new Map();
+        let busy = false, searchTimer = 0, searchSeq = 0, lookupTimer = 0, lookupSeq = 0, pollTimer = 0, trackedJob = "", pendingPrint = null;
+        let existing = null, nameFromExisting = false;
+
+        const active = () => location.hash.split("&")[0] === "#location";
+        const tell = (text, tone = "") => { message.textContent = text; message.dataset.tone = tone; };
+        const escapeHtml = value => String(value ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+        const cleanCode = value => String(value ?? "").trim().toUpperCase();
+        const cleanName = value => String(value ?? "").normalize("NFC").replace(/\s+/g, " ").trim();
+        const codeProblem = code => !code ? "Chưa nhập mã vị trí."
+          : code.length > 40 ? "Mã vị trí tối đa 40 ký tự."
+          : CODE_PATTERN.test(code) ? "" : "Mã chỉ gồm chữ không dấu, số và . _ / - , bắt đầu bằng chữ hoặc số.";
+        const nameProblem = name => !name ? "Chưa nhập tên vị trí." : name.length > 60 ? "Tên vị trí tối đa 60 ký tự." : "";
+        const rpc = async (name, args = {}) => {
+          const queue = window.PrintSkuQueue;
+          const response = await fetch(`${queue.supabaseUrl}/rest/v1/rpc/${name}`, {
+            method: "POST",
+            headers: { apikey: queue.publishableKey, Authorization: `Bearer ${queue.publishableKey}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ p_access_token: queue.accessToken(), ...args }),
+            signal: AbortSignal.timeout(15000)
+          });
+          const data = await response.json().catch(() => null);
+          if (response.status === 404) throw new Error("Supabase chưa có chức năng Mã vị trí (chưa chạy supabase/warehouse_location_v1.sql).");
+          if (!response.ok || !data) throw new Error(data?.message || `Supabase HTTP ${response.status}`);
+          return data;
+        };
+
+        // ---- Xem trước tem: cùng bố cục và cùng cách đo chữ với workstation-agent/src/templates/location-label.mjs ----
+        // Font Arial cho mọi chữ trên tem. Không bao giờ bỏ ký tự: mã dài thì ép ngang, tên dài thì
+        // xuống dòng/giảm cỡ, dòng nào vẫn rộng quá thì ép ngang riêng dòng đó.
+        const LAYOUT = { qrTop: 40, qrBox: 224, codeGap: 36, maxWidth: 296, codeFontSizes: [44, 40, 36, 32, 28, 24], minCondense: 0.6, nameGap: 18, nameFontSizes: [30, 28, 26, 24, 22, 20, 18, 16, 14, 12], nameBottom: 464 };
+        const FONT = "Arial,Helvetica,sans-serif";
+        // Bề rộng ký tự Arial Bold (phần nghìn cỡ chữ) của mọi ký tự được phép trong mã — đã đối chiếu GDI+.
+        const ARIAL_BOLD = { "0": 556, "1": 556, "2": 556, "3": 556, "4": 556, "5": 556, "6": 556, "7": 556, "8": 556, "9": 556, A: 722, B: 722, C: 722, D: 722, E: 667, F: 611, G: 778, H: 722, I: 278, J: 556, K: 722, L: 611, M: 833, N: 722, O: 778, P: 667, Q: 778, R: 722, S: 667, T: 611, U: 722, V: 667, W: 944, X: 667, Y: 667, Z: 611, ".": 278, "_": 556, "/": 278, "-": 333 };
+        const codeWidth = (code, size) => [...code].reduce((sum, c) => sum + (ARIAL_BOLD[c] ?? 1000), 0) / 1000 * size * 1.01;
+        const estimate = (text, size) => { let em = 0; for (const c of String(text)) em += /\d/.test(c) ? 0.557 : /[\s.,:;/'-]/.test(c) ? 0.34 : /[MWmw]/.test(c) ? 0.95 : /\p{Lu}/u.test(c) ? 0.8 : /\p{L}/u.test(c) ? 0.62 : 1.02; return em * size; };
+        // Tên đo bằng canvas khi máy có đúng font Arial (kiểm bằng bề rộng chuẩn của W và i), bỏ
+        // kerning như GDI+ của agent. Máy không có Arial (đa số điện thoại) thì ước lượng như agent
+        // khi chưa đo được — agent luôn đo lại bằng GDI+ trước khi in.
+        const nameCanvas = document.createElement("canvas").getContext("2d");
+        if (nameCanvas && "fontKerning" in nameCanvas) nameCanvas.fontKerning = "none";
+        const hasArial = (() => {
+          if (!nameCanvas) return false;
+          nameCanvas.font = "1000px Arial";
+          return Math.abs(nameCanvas.measureText("W").width - 944) < 6 && Math.abs(nameCanvas.measureText("i").width - 222) < 6;
+        })();
+        const nameWidth = (text, size) => { if (!hasArial) return estimate(text, size); nameCanvas.font = `${size}px Arial`; return nameCanvas.measureText(text).width; };
+        const NAME_SAFETY = hasArial ? 0.98 : 0.95;
+        const fitCode = code => {
+          for (const size of LAYOUT.codeFontSizes) { const scale = Math.min(1, LAYOUT.maxWidth / codeWidth(code, size)); if (scale >= LAYOUT.minCondense) return { size, scale }; }
+          const size = LAYOUT.codeFontSizes.at(-1); return { size, scale: Math.min(1, LAYOUT.maxWidth / codeWidth(code, size)) };
+        };
+        const wrap = (text, size, max) => {
+          const tokens = String(text).trim().match(/[^\s/]*[\s/]|[^\s/]+$/g) || [];
+          const lines = []; let line = "", width = 0;
+          for (let token of tokens) {
+            let w = nameWidth(token, size);
+            while (w > max && token.trim().length > 1) {
+              if (line.trim()) { lines.push(line.trimEnd()); line = ""; width = 0; }
+              const t = token.trimEnd(), cut = Math.max(1, Math.min(t.length - 1, Math.floor(t.length * (max / w) * 0.9)));
+              lines.push(t.slice(0, cut)); token = token.slice(cut); w = nameWidth(token, size);
+            }
+            if (width + w > max && line.trim()) { lines.push(line.trimEnd()); line = token; width = w; } else { line += token; width += w; }
+          }
+          if (line.trim()) lines.push(line.trimEnd());
+          return lines;
+        };
+        const fitName = (name, top) => {
+          const max = LAYOUT.maxWidth * NAME_SAFETY;
+          const plans = LAYOUT.nameFontSizes.map(size => {
+            const lineHeight = Math.round(size * 1.2), lines = nameWidth(name, size) <= max ? [name] : wrap(name, size, max);
+            return { size, lineHeight, lines, widths: lines.map(line => nameWidth(line, size)), fits: top + size + (lines.length - 1) * lineHeight + Math.ceil(size * 0.22) <= LAYOUT.nameBottom };
+          });
+          for (const [maxLines, minSize] of [[1, 24], [2, 22], [Infinity, 0]]) {
+            const found = plans.find(p => p.fits && p.lines.length <= maxLines && p.size >= minSize);
+            if (found) return found;
+          }
+          return plans.at(-1);
+        };
+        const centered = (text, y, size, width, extra) => {
+          const scale = width > LAYOUT.maxWidth ? LAYOUT.maxWidth / width : 1;
+          const placement = scale < 1 ? `transform="translate(160 ${y}) scale(${scale.toFixed(3)} 1)" x="0" y="0"` : `x="160" y="${y}"`;
+          return `<text ${placement} font-size="${size}" text-anchor="middle" font-family="${FONT}"${extra}>${escapeHtml(text)}</text>`;
+        };
+        // Khung QR đúng như agent in: version nhỏ nhất theo qrcode-generator (mức M, chế độ Alphanumeric
+        // nếu mã chỉ gồm ký tự chữ-số, ngược lại Byte), module = floor(224 / số module). ZXing-js tự
+        // chọn có khi lớn hơn 1 version (chia không làm tròn trong willFit: mã vừa khít version 1 bị
+        // đẩy lên version 2) — khi đó vẽ ma trận ZXing co vào đúng khung của agent để chữ bên dưới
+        // xếp y hệt bản in. Nội dung QR vẫn là đúng mã vị trí.
+        const qrVersion = code => {
+          const alnum = /^[0-9A-Z $%*+\-./:]+$/.test(code), capacity = [16, 28, 44, 64, 86, 108, 124, 154, 182, 216];
+          const dataBits = alnum ? 11 * Math.floor(code.length / 2) + 6 * (code.length % 2) : 8 * code.length;
+          for (let version = 1; version <= capacity.length; version++) {
+            if (4 + (alnum ? 9 : 8) + dataBits <= capacity[version - 1] * 8) return version;
+          }
+          return 0;
+        };
+        const qrRects = code => {
+          try {
+            const zx = window.PrintSkuScanner?.zxing?.();
+            if (!zx || !code) return null;
+            const version = qrVersion(code), M = zx.QRCodeDecoderErrorCorrectionLevel.M;
+            let matrix;
+            try { matrix = zx.QRCodeEncoder.encode(code, M, new Map([[zx.EncodeHintType.QR_VERSION, version]])).getMatrix(); }
+            catch (_) { matrix = zx.QRCodeEncoder.encode(code, M).getMatrix(); }
+            const agentCount = 17 + 4 * (version || 1), size = Math.max(4, Math.floor(LAYOUT.qrBox / agentCount)) * agentCount;
+            const count = matrix.getWidth(), module = size / count, x0 = Math.round(160 - size / 2), at = v => +(v * module).toFixed(2);
+            let rects = "";
+            for (let y = 0; y < count; y++) for (let x = 0; x < count; x++) {
+              if (matrix.get(x, y) !== 1) continue;
+              let end = x; while (end + 1 < count && matrix.get(end + 1, y) === 1) end++;
+              rects += `<rect x="${+(x0 + at(x)).toFixed(2)}" y="${+(LAYOUT.qrTop + at(y)).toFixed(2)}" width="${at(end - x + 1)}" height="${+module.toFixed(2)}"/>`;
+              x = end;
+            }
+            return { rects, size };
+          } catch (_) { return null; }
+        };
+        const renderPreview = () => {
+          const code = cleanCode(codeInput.value), name = cleanName(nameInput.value);
+          const showCode = code && !codeProblem(code) ? code : "", showName = name || "Tên vị trí";
+          const qr = qrRects(showCode) || { rects: `<rect x="55" y="${LAYOUT.qrTop}" width="210" height="210" rx="12" fill="none" stroke="#c4cfca" stroke-width="3" stroke-dasharray="10 8"/><text x="160" y="${LAYOUT.qrTop + 115}" font-size="28" fill="#9aa9a2" text-anchor="middle" font-family="${FONT}">QR</text>`, size: 210 };
+          const codeText = showCode || "MÃ VỊ TRÍ", fit = fitCode(showCode || "MA-VI-TRI");
+          const codeY = LAYOUT.qrTop + qr.size + LAYOUT.codeGap + Math.round(fit.size * 0.72);
+          const nameFit = fitName(showName, codeY + LAYOUT.nameGap);
+          const muted = value => value ? "" : ' fill="#9aa9a2"';
+          preview.innerHTML = `<rect width="320" height="480" fill="#fff"/><g fill="#000" shape-rendering="crispEdges">${qr.rects}</g>` +
+            centered(codeText, codeY, fit.size, codeWidth(showCode || "MA-VI-TRI", fit.size), ` font-weight="700"${muted(showCode)}`) +
+            nameFit.lines.map((line, i) => centered(line, codeY + LAYOUT.nameGap + nameFit.size + i * nameFit.lineHeight, nameFit.size, nameFit.widths[i], muted(name))).join("");
+          preview.setAttribute("aria-label", showCode ? `Xem trước tem ${showCode} ${name}` : "Xem trước tem vị trí (chưa nhập mã)");
+          // Báo trước khi lưu/in nếu chữ trên tem sẽ bị ép hẹp hoặc nhỏ — tem luôn in đủ ký tự.
+          const notes = [];
+          if (showCode && fit.scale < LAYOUT.minCondense) notes.push(`Mã dài: chữ mã bị ép còn ${Math.round(fit.scale * 100)}% bề ngang.`);
+          if (name && nameFit.widths.some(width => width > LAYOUT.maxWidth)) notes.push("Tên có đoạn dài không ngắt được: dòng đó bị ép ngang.");
+          if (name && nameFit.size < 20) notes.push(`Tên dài: chữ tên nhỏ (cỡ ${nameFit.size} px ≈ ${(nameFit.size / 8).toFixed(1).replace(".", ",")} mm).`);
+          fitHint.dataset.tone = notes.length ? "warn" : "";
+          fitHint.textContent = !showCode || !name ? ""
+            : notes.length ? `${notes.join(" ")} Tem vẫn in đủ ký tự.`
+            : `Vừa tem, đủ ký tự: mã cỡ ${fit.size}, tên ${nameFit.lines.length} dòng cỡ ${nameFit.size}.${hasArial ? "" : " (Máy này không có font Arial — xem trước gần đúng, agent đo lại khi in.)"}`;
+        };
+
+        // ---- Nhập một vị trí ----
+        const setCodeHint = () => {
+          const code = cleanCode(codeInput.value), problem = code ? codeProblem(code) : "";
+          if (problem) { codeHint.textContent = problem; codeHint.dataset.tone = "error"; }
+          else if (existing && existing.code === code) { codeHint.textContent = `Mã đã có: “${existing.name}”. Lưu sẽ cập nhật tên.`; codeHint.dataset.tone = "warn"; }
+          else { codeHint.textContent = code ? "Mã mới — chưa có trong danh sách." : "Chữ không dấu, số và . _ / - (tối đa 40 ký tự)."; codeHint.dataset.tone = ""; }
+          saveButton.textContent = existing && existing.code === code ? "Cập nhật tên" : "Lưu vị trí";
+        };
+        const lookupExisting = async () => {
+          const code = cleanCode(codeInput.value), seq = ++lookupSeq;
+          existing = items.find(item => item.code === code) || null;
+          if (!existing && code && !codeProblem(code)) {
+            try {
+              const result = await rpc("warehouse_location_search", { p_query: code, p_limit: 20 });
+              if (seq !== lookupSeq) return;
+              existing = (result?.data?.items || []).find(item => item.code === code) || null;
+            } catch (_) { if (seq !== lookupSeq) return; }
+          }
+          if (existing && (!cleanName(nameInput.value) || nameFromExisting)) { nameInput.value = existing.name; nameFromExisting = true; }
+          else if (!existing && nameFromExisting) { nameInput.value = ""; nameFromExisting = false; }
+          setCodeHint(); renderPreview();
+        };
+        codeInput.addEventListener("input", () => {
+          existing = null; setCodeHint(); renderPreview();
+          clearTimeout(lookupTimer); lookupTimer = setTimeout(lookupExisting, 300);
+        });
+        codeInput.addEventListener("keydown", event => { if (event.key === "Enter") { event.preventDefault(); clearTimeout(lookupTimer); lookupExisting(); nameInput.focus(); } });
+        nameInput.addEventListener("input", () => { nameFromExisting = false; renderPreview(); });
+        form.addEventListener("submit", async event => {
+          event.preventDefault();
+          if (busy) return;
+          const code = cleanCode(codeInput.value), name = cleanName(nameInput.value);
+          const problem = codeProblem(code) || nameProblem(name);
+          if (problem) { tell(problem, "error"); (codeProblem(code) ? codeInput : nameInput).focus(); return; }
+          busy = true; saveButton.disabled = true; syncPrint();
+          try {
+            const result = await rpc("warehouse_location_upsert", { p_items: [{ code, name }] });
+            if (!result.ok) throw new Error(result.error?.message || "Chưa lưu được vị trí.");
+            const { created, updated } = result.data;
+            selected.set(code, { code, name });
+            tell(`${created ? "Đã lưu vị trí mới" : updated ? "Đã cập nhật tên vị trí" : "Vị trí không đổi"} ${code} · đã chọn để in.`, "ok");
+            codeInput.value = ""; nameInput.value = ""; existing = null; nameFromExisting = false;
+            setCodeHint(); renderPreview(); codeInput.focus();
+            await load({ quiet: true });
+          } catch (error) { tell(`Chưa lưu được: ${error.message}`, "error"); }
+          finally { busy = false; saveButton.disabled = false; syncPrint(); }
+        });
+
+        // ---- Dán nhiều vị trí từ Excel ----
+        const parseBulk = text => {
+          const rows = [], errors = [], seen = new Map();
+          String(text).split(/\r?\n/).forEach((raw, index) => {
+            if (!raw.trim()) return;
+            let code, name;
+            if (raw.includes("\t")) [code, name = ""] = raw.split("\t");
+            else { const match = raw.trim().match(/^(\S+)\s+(.+)$/); code = match ? match[1] : raw; name = match ? match[2] : ""; }
+            code = cleanCode(code); name = cleanName(name);
+            // Bỏ dòng tiêu đề "Mã vị trí | Tên vị trí" nếu copy kèm.
+            if (!rows.length && !errors.length && /^m[ãa]\s*v[ịi]\s*tr[íi]$/i.test(String(raw.split("\t")[0]).trim())) return;
+            const problem = codeProblem(code) || nameProblem(name);
+            if (problem) { errors.push(`Dòng ${index + 1}: ${problem}`); return; }
+            if (seen.has(code)) { errors.push(`Dòng ${index + 1}: mã ${code} trùng dòng ${seen.get(code)}.`); return; }
+            seen.set(code, index + 1); rows.push({ code, name });
+          });
+          if (rows.length > 500) errors.unshift(`Mỗi lần tối đa 500 vị trí (đang có ${rows.length}).`);
+          return { rows, errors };
+        };
+        const updateBulkHint = () => {
+          const { rows, errors } = parseBulk(bulkText.value);
+          if (errors.length) { bulkHint.textContent = errors.slice(0, 3).join(" ") + (errors.length > 3 ? ` … và ${errors.length - 3} lỗi khác.` : ""); bulkHint.dataset.tone = "error"; }
+          else { bulkHint.textContent = rows.length ? `${rows.length} vị trí hợp lệ, sẵn sàng lưu.` : ""; bulkHint.dataset.tone = ""; }
+          bulkSave.disabled = busy || !rows.length || errors.length > 0;
+          bulkSave.textContent = rows.length && !errors.length ? `Lưu ${rows.length} vị trí đã dán` : "Lưu các dòng đã dán";
+        };
+        bulkText.addEventListener("input", updateBulkHint);
+        bulkSave.addEventListener("click", async () => {
+          const { rows, errors } = parseBulk(bulkText.value);
+          if (busy || !rows.length || errors.length) return;
+          busy = true; bulkSave.disabled = true; syncPrint();
+          try {
+            const result = await rpc("warehouse_location_upsert", { p_items: rows });
+            if (!result.ok) throw new Error(result.error?.message || "Chưa lưu được danh sách.");
+            const { created, updated, unchanged } = result.data;
+            rows.forEach(row => selected.set(row.code, row));
+            tell(`Đã lưu ${rows.length} vị trí: ${created} mới, ${updated} cập nhật tên, ${unchanged} không đổi · đã chọn cả ${rows.length} để in.`, "ok");
+            bulkText.value = ""; searchInput.value = "";
+            await load({ quiet: true });
+          } catch (error) { tell(`Chưa lưu được danh sách: ${error.message}`, "error"); }
+          finally { busy = false; updateBulkHint(); syncPrint(); }
+        });
+
+        // ---- Danh sách + chọn để in ----
+        const printedText = item => {
+          if (!item.printCount) return '<span class="loc-printed">Chưa in</span>';
+          const when = item.lastPrintedAt ? new Intl.DateTimeFormat("vi-VN", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" }).format(new Date(item.lastPrintedAt)) : "";
+          return `<span class="loc-printed"><b>${item.printCount} tem</b>${when ? ` · ${escapeHtml(when)}` : ""}</span>`;
+        };
+        const icon = path => `<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${path}</svg>`;
+        const EDIT_ICON = icon('<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>');
+        const ARCHIVE_ICON = icon('<path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/>');
+        const renderRows = () => {
+          if (!items.length) {
+            rowsBody.innerHTML = `<tr><td colspan="5" class="cut-empty">${searchInput.value.trim() ? "Không có vị trí khớp từ khoá." : "Chưa có vị trí nào. Nhập mã và tên ở bên trái để bắt đầu."}</td></tr>`;
+          } else {
+            rowsBody.innerHTML = items.map(item => {
+              const on = selected.has(item.code), code = escapeHtml(item.code);
+              return `<tr class="${on ? "is-selected" : ""}" data-code="${code}">` +
+                `<td class="cut-th-check"><input type="checkbox" data-act="pick" ${on ? "checked" : ""} aria-label="Chọn in ${code}"></td>` +
+                `<td>${code}</td><td>${escapeHtml(item.name)}</td><td>${printedText(item)}</td>` +
+                `<td><button class="cut-icon-btn" type="button" data-act="edit" title="Sửa tên" aria-label="Sửa tên ${code}">${EDIT_ICON}</button><button class="cut-icon-btn" type="button" data-act="archive" title="Xoá khỏi danh sách" aria-label="Xoá ${code}">${ARCHIVE_ICON}</button></td></tr>`;
+            }).join("");
+          }
+          syncPrint();
+        };
+        const syncPrint = () => {
+          const count = selected.size, copies = Number(copiesInput.value);
+          const visibleOn = items.filter(item => selected.has(item.code)).length;
+          allBox.checked = items.length > 0 && visibleOn === items.length;
+          allBox.indeterminate = visibleOn > 0 && visibleOn < items.length;
+          allBox.disabled = !items.length;
+          selectedLabel.textContent = `Đã chọn ${count}`;
+          const labels = Number.isInteger(copies) && copies > 0 ? count * copies : 0;
+          printButton.disabled = busy || !count || !labels;
+          printButton.textContent = trackedJob ? "Đang in…" : count && labels ? `In ${labels} tem` : "In tem đã chọn";
+        };
+        const load = async ({ quiet = false } = {}) => {
+          const seq = ++searchSeq;
+          if (!quiet) countNote.textContent = "Đang tải danh sách…";
+          try {
+            const result = await rpc("warehouse_location_search", { p_query: searchInput.value.trim(), p_limit: 300 });
+            if (seq !== searchSeq) return;
+            if (!result.ok) throw new Error(result.error?.message || "Không đọc được danh sách vị trí.");
+            const data = result.data || {};
+            items = data.items || [];
+            items.forEach(item => { if (selected.has(item.code)) selected.set(item.code, item); });
+            totalBadge.textContent = String(data.total ?? items.length);
+            countNote.textContent = data.matched > items.length
+              ? `Hiển thị ${items.length}/${data.matched} vị trí — gõ thêm để lọc.`
+              : searchInput.value.trim() ? `${items.length} vị trí khớp từ khoá.` : `${items.length} vị trí.`;
+            renderRows();
+          } catch (error) {
+            if (seq !== searchSeq) return;
+            countNote.textContent = "";
+            tell(`Không đọc được danh sách vị trí: ${error.message}`, "error");
+            if (!items.length) renderRows();
+          }
+        };
+        searchInput.addEventListener("input", () => { clearTimeout(searchTimer); searchTimer = setTimeout(load, 250); });
+        $("loc-search-form").addEventListener("submit", event => { event.preventDefault(); clearTimeout(searchTimer); load(); });
+        $("loc-reload").addEventListener("click", () => load());
+        copiesInput.addEventListener("input", syncPrint);
+        allBox.addEventListener("change", () => {
+          items.forEach(item => allBox.checked ? selected.set(item.code, item) : selected.delete(item.code));
+          renderRows();
+        });
+        rowsBody.addEventListener("click", async event => {
+          const target = event.target.closest("[data-act]"), row = event.target.closest("tr[data-code]");
+          if (!target || !row) return;
+          const item = items.find(entry => entry.code === row.dataset.code);
+          if (!item) return;
+          if (target.dataset.act === "pick") { target.checked ? selected.set(item.code, item) : selected.delete(item.code); row.classList.toggle("is-selected", target.checked); syncPrint(); return; }
+          if (target.dataset.act === "edit") {
+            codeInput.value = item.code; nameInput.value = item.name; existing = item; nameFromExisting = false;
+            setCodeHint(); renderPreview();
+            form.scrollIntoView({ behavior: "smooth", block: "start" });
+            nameInput.focus(); nameInput.select();
+            return;
+          }
+          if (target.dataset.act === "archive") {
+            if (busy || !confirm(`Xoá vị trí ${item.code} — ${item.name} khỏi danh sách?\n\nVị trí đã xoá không in được nữa. Lưu lại đúng mã này sẽ khôi phục.`)) return;
+            busy = true; syncPrint();
+            try {
+              const result = await rpc("warehouse_location_archive", { p_code: item.code });
+              if (!result.ok) throw new Error(result.error?.message || "Chưa xoá được vị trí.");
+              selected.delete(item.code);
+              tell(`Đã xoá ${item.code} khỏi danh sách. Lưu lại mã này để khôi phục.`, "ok");
+              await load({ quiet: true });
+            } catch (error) { tell(`Chưa xoá được: ${error.message}`, "error"); }
+            finally { busy = false; syncPrint(); }
+          }
+        });
+
+        // ---- In qua hàng đợi → agent máy trạm (giống CẮT GROUP UID / FABRIC RELAXATION) ----
+        const poll = async () => {
+          clearTimeout(pollTimer);
+          if (!trackedJob || !active()) return;
+          const id = trackedJob;
+          try {
+            const result = await window.PrintSkuQueue.jobStatus(id);
+            if (id !== trackedJob) return;
+            if (!result?.ok) throw new Error(result?.error?.message || "Không đọc được trạng thái lệnh in.");
+            const job = result.data;
+            const done = ["completed", "failed", "cancelled"].includes(job.status);
+            tell(`${STATUS_TEXT[job.status] || job.status} · ${id}${job.errorMessage ? " · " + job.errorMessage : ""}`, job.status === "completed" ? "ok" : done ? "error" : "");
+            if (done) { trackedJob = ""; syncPrint(); if (job.status === "completed") load({ quiet: true }); return; }
+          } catch (error) { if (id === trackedJob) tell(`Đã gửi lệnh ${id}. Chưa đọc được trạng thái: ${error.message}`, "error"); }
+          if (trackedJob && active()) pollTimer = setTimeout(poll, 2500);
+        };
+        printButton.addEventListener("click", async () => {
+          if (busy || !selected.size) return;
+          const copies = Number(copiesInput.value);
+          const chosen = [...selected.values()].sort((a, b) => a.code.localeCompare(b.code));
+          if (!Number.isInteger(copies) || copies < 1 || copies > 500) { tell("Số tem mỗi vị trí phải từ 1 đến 500.", "error"); copiesInput.focus(); return; }
+          if (chosen.length > MAX_LOCATIONS_PER_JOB) { tell(`Mỗi lượt in tối đa ${MAX_LOCATIONS_PER_JOB} vị trí (đang chọn ${chosen.length}). Hãy bỏ chọn bớt.`, "error"); return; }
+          const total = chosen.length * copies;
+          if (total > MAX_LABELS_PER_JOB) { tell(`Mỗi lượt in tối đa ${MAX_LABELS_PER_JOB} tem (đang là ${total}). Giảm số vị trí hoặc số tem.`, "error"); return; }
+          busy = true; syncPrint(); tell(`Đang gửi ${total} tem đến agent…`);
+          try {
+            const status = await window.PrintSkuQueue.queueStatus();
+            if (!status?.ok) throw new Error(status?.error?.message || "Không đọc được trạng thái hàng đợi in.");
+            const agents = status.data?.agents || [];
+            if (!agents.some(agent => (agent.capabilities || []).includes("location:v1"))) {
+              tell("Agent máy trạm chưa hỗ trợ tem vị trí — cần cập nhật agent (bản có location:v1) rồi in lại. Chưa gửi lệnh nào.", "error");
+              return;
+            }
+            const payload = { items: chosen.map(item => ({ code: item.code, name: item.name, copies })) };
+            const signature = JSON.stringify(payload);
+            if (!pendingPrint || pendingPrint.signature !== signature) pendingPrint = { signature, nonce: `location-${crypto.randomUUID()}` };
+            const result = await window.PrintSkuQueue.enqueue({ type: "location", templateVersion: 1, payload, copies: total, requestedBy: "web-location", requestNonce: pendingPrint.nonce });
+            if (!result?.ok || !result.data?.id) {
+              if (result?.error?.code === "LOCATION_NOT_FOUND") load({ quiet: true });
+              throw new Error(result?.error?.message || "Hàng đợi chưa nhận lệnh in.");
+            }
+            pendingPrint = null; trackedJob = result.data.id; selected.clear(); renderRows();
+            tell(`Đã gửi ${total} tem (${chosen.length} vị trí) đến agent máy trạm · ${trackedJob}`, "ok");
+            pollTimer = setTimeout(poll, 1500);
+          } catch (error) { tell(`Chưa xác nhận được lệnh in: ${error.message} Bấm In lại với cùng lựa chọn để kiểm tra/gửi lại, không tạo lệnh trùng.`, "error"); }
+          finally { busy = false; syncPrint(); }
+        });
+
+        $("barcode-location").addEventListener("click", () => { location.hash = "#location"; });
+        $("loc-back").addEventListener("click", () => { location.hash = "#home"; });
+        let loaded = false;
+        const route = () => {
+          screen.hidden = !active();
+          clearTimeout(pollTimer);
+          if (!active()) return;
+          if (!loaded) { loaded = true; renderPreview(); setCodeHint(); }
+          load();
+          if (trackedJob) poll();
+          setTimeout(() => codeInput.focus(), 50);
+        };
+        window.addEventListener("hashchange", route);
+        route();
       })();
     </script>
     <style id="wms-design-system">

@@ -41,7 +41,7 @@ Copy-Item -LiteralPath $NodePath -Destination (Join-Path $bundledNodeDir 'node.e
 $repoRoot = Split-Path -Parent $agentRoot
 $deploymentDir = Join-Path $stageRoot 'deployment'
 New-Item -ItemType Directory -Path $deploymentDir -Force | Out-Null
-foreach ($migration in @('supabase\print_queue_v4_fabric_relaxation_handwritten.sql', 'supabase\print_queue_v5_realtime_wake.sql')) {
+foreach ($migration in @('supabase\print_queue_v4_fabric_relaxation_handwritten.sql', 'supabase\print_queue_v5_realtime_wake.sql', 'supabase\warehouse_location_v1.sql')) {
   $source = Join-Path $repoRoot $migration
   if (Test-Path -LiteralPath $source) { Copy-Item -LiteralPath $source -Destination $deploymentDir }
 }

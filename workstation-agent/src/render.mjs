@@ -3,6 +3,7 @@ import path from "node:path";
 import sharp from "sharp";
 import { LABEL_GAP_MM, LABEL_HEIGHT, LABEL_HEIGHT_MM, LABEL_WIDTH, ROW_GAP_MM, ROW_WIDTH } from "./templates/common.mjs";
 import { renderLabelSvg } from "./templates/index.mjs";
+import { planLocationLabels } from "./location-plan.mjs";
 import { formatDate, formatQuantity, LABEL_FONT_FAMILY } from "./templates/common.mjs";
 import { SKU_LABEL_LAYOUT, SKU_LABEL_MAX_WIDTH_PX } from "./templates/sku-label.mjs";
 import { GROUP_UID_NAME_MAX_WIDTH_PX, groupUidMaxLines, hasGroupUidSku } from "./templates/group-uid-label.mjs";
@@ -223,6 +224,7 @@ export async function renderJobTspl(job, config, onProgress = null, { measureTex
     ? job.payload.items.map((item) => ({ ...job, copies: item.copies, payload: item }))
     : [job];
   entries = await planProductNames(entries, config, measureText, logger);
+  entries = await planLocationLabels(entries, config, measureText, logger);
   // Trải phẳng mọi tem của lệnh rồi ghép 2 tem liền kề (kể cả khác nội dung) vào một hàng giấy 2 tem.
   const labels = [];
   for (const entry of entries) for (let i = 0; i < entry.copies; i += 1) labels.push(entry);
@@ -245,6 +247,7 @@ export async function writePreview(job, outputFile, { config, measureText, logge
     ? [{ ...job, payload: job.payload.items[0] }]
     : [job];
   entries = await planProductNames(entries, config, measureText, logger);
+  entries = await planLocationLabels(entries, config, measureText, logger);
   await sharp(Buffer.from(renderLabelSvg(entries[0]))).png().toFile(outputFile);
   return outputFile;
 }

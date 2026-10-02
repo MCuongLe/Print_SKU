@@ -2,6 +2,25 @@
 
 Agent Windows độc lập phục vụ ứng dụng Print SKU. Bản 0.7.0 dùng tem Fabric Relaxation viết tay hoàn toàn; frontend chỉ chọn số lượng tem.
 
+## Cập nhật 0.8.7 — tem mã vị trí (`location:v1`)
+
+Agent báo thêm capability `location:v1` và in tem màn **MÃ VỊ TRÍ** (`#location` trên web): giấy 40 × 60 mm
+đang lắp, 2 tem/hàng như tem SKU. Template `src/templates/location-label.mjs`:
+
+- **QR** chứa đúng mã vị trí (mức M, chế độ chữ-số khi mã chỉ gồm 0-9 A-Z . / - nên QR nhỏ nhất, module
+  to nhất), rộng ~26 mm, lề trắng trên 5 mm (4 module). QR tem SKU giữ nguyên chế độ Byte như cũ.
+- **Mã vị trí** Arial đậm cỡ 44 → 24, đo theo bảng bề rộng ký tự Arial Bold (đã đối chiếu GDI+ từng ký
+  tự); mã dài thì ép ngang chữ quanh tâm tem.
+- **Tên vị trí** Arial thường, đo bề rộng THẬT bằng GDI+ (`src/location-plan.mjs`, cùng `measureText` và
+  cache với tên sản phẩm) — một lần cho cả lệnh; một dòng nếu vừa, dài thì xuống dòng/giảm cỡ 30 → 12.
+- **Không bao giờ bỏ ký tự**: không cắt "…"; dòng nào vẫn rộng hơn vùng chữ 296 dot thì ép ngang dòng đó.
+  Đo lỗi thì dùng ước lượng (vẫn đủ ký tự). Kiểm tra thật: 6 tên khó in đủ ký tự, không điểm ảnh nào ra
+  ngoài vùng chữ, QR đọc lại đúng bằng ZBar.
+
+Lên phiên bản agent mới nên cache đo chữ làm lại và danh mục SKU đo lại nền (~1,5–3 phút khi rảnh) như
+mỗi lần nâng cấp. Cần migration `supabase/warehouse_location_v1.sql` (bảng `warehouse_locations` + mở
+hàng đợi cho loại tem `location`); agent cũ vẫn chạy bình thường, chỉ không nhận lệnh tem vị trí.
+
 ## Cập nhật 0.8.6 — in nhanh hơn: chờ spooler ngắn lại, cache đo chữ, danh mục SKU đo sẵn
 
 Đo 40 lệnh gần nhất (01/10/2026): trung vị 16,2 giây từ lúc bấm In tới lúc web báo xong, trong đó
