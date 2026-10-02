@@ -112,7 +112,8 @@ export function normalizeJob(input) {
     if (!items.length) errors.push("Danh sách vị trí đang trống");
     items.forEach((item, index) => {
       if (!LOCATION_PATTERN.test(item.code)) errors.push(`Mã vị trí dòng ${index + 1} không hợp lệ`);
-      if (!item.name || item.name.length > 60) errors.push(`Tên vị trí dòng ${index + 1} phải có 1–60 ký tự`);
+      // Tên là tùy chọn (02/10/2026): trống thì tem chỉ in QR + mã.
+      if (item.name.length > 60) errors.push(`Tên vị trí dòng ${index + 1} tối đa 60 ký tự`);
       if (!item.copies) errors.push(`Số tem dòng ${index + 1} không hợp lệ`);
     });
     const totalCopies = items.reduce((sum, item) => sum + item.copies, 0);

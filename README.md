@@ -200,7 +200,8 @@ Browser test: `node tests/fabric_relaxation_browser.cjs` khi server local chạy
 ## Mã vị trí — tem QR dán kệ
 
 Mở **MÃ VỊ TRÍ** ở WH-MATERIAL (nhóm In tem) hoặc `#location`. Nhập **Mã vị trí** (chữ hoa không dấu,
-số và `. _ / -`, tối đa 40 ký tự — gõ chữ thường tự đổi hoa) và **Tên vị trí** (1–60 ký tự), bấm Lưu.
+số và `. _ / -`, tối đa 40 ký tự — gõ chữ thường tự đổi hoa) và **Tên vị trí** (tối đa 60 ký tự, **không bắt buộc**:
+trống thì tem chỉ in QR và mã), bấm Lưu.
 Gõ lại mã đã có thì web báo trước, tự điền tên cũ và nút đổi thành "Cập nhật tên". Nhập nhiều vị trí:
 mở "Nhập nhiều vị trí từ Excel", copy 2 cột Mã/Tên rồi dán (tối đa 500 dòng; dòng tiêu đề tự bỏ;
 lỗi/trùng mã báo theo số dòng và không lưu dòng nào). Vị trí vừa lưu được chọn sẵn để in.
@@ -228,6 +229,10 @@ Triển khai theo đúng thứ tự:
    ```
 
    `--allow-destructive` chỉ vì thay CHECK constraint loại tem và `drop trigger if exists`; không xoá dữ liệu.
+   Tên không bắt buộc cần thêm `supabase/warehouse_location_v2_optional_name.sql` (cùng cờ `--allow-destructive`, chỉ
+   vì thay CHECK của cột tên) và **agent 0.8.8** (capability `location:name-optional`); web không gửi lệnh có vị trí
+   không tên khi chưa có agent đó. Dán nhiều dòng từ Excel: dòng chỉ có mã thì **giữ nguyên tên đang có** (mã mới
+   thì không có tên); muốn xoá tên của một vị trí, sửa riêng ở ô nhập rồi để trống tên.
 2. Cập nhật agent máy trạm lên **0.8.7** (capability `location:v1`), giữ nguyên `config\.env`.
    Agent cũ vẫn in SKU/UID/Fabric bình thường; web kiểm tra capability và **không gửi** lệnh tem vị
    trí khi chưa có agent hỗ trợ (tránh lệnh nằm chờ mãi trong hàng đợi).

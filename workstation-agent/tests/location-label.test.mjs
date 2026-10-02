@@ -11,8 +11,10 @@ import { renderJobTspl } from "../src/render.mjs";
 const item = (code, name = "Khu vực kiểm thử", copies = 1) => ({ code, name, copies });
 const job = { id: "test-location", nonce: "test-location-1", type: "location", templateVersion: 1, copies: 3, payload: { items: [item("Z99-T01-001-01-01-01", "Khu vực kiểm thử", 2), item("Z99.T02/01_A")] } };
 
-test("agent báo hỗ trợ tem vị trí location:v1", () => {
+test("agent báo hỗ trợ tem vị trí location:v1 và tên tùy chọn (location:name-optional)", () => {
   assert.ok(CAPABILITIES.includes("location:v1"));
+  // Web chỉ gửi vị trí không tên khi thấy capability này; agent cũ (0.8.7) từ chối tên trống.
+  assert.ok(CAPABILITIES.includes("location:name-optional"));
 });
 
 test("lệnh tem vị trí: nhận nhiều vị trí, tổng số tem phải khớp", () => {
@@ -25,7 +27,7 @@ test("lệnh tem vị trí: nhận nhiều vị trí, tổng số tem phải kh�
   assert.equal(normalizeJob({ ...job, payload: { code: "Z99", name: "Thiếu items" } }).ok, false);
 });
 
-test("lệnh tem vị trí: chặn mã sai mẫu và tên trống", () => {
+test("lệnh tem vị trí: chặn mã sai mẫu; tên là tùy chọn (trống hợp lệ) nhưng tối đa 60 ký tự", () => {
   const one = (entry) => normalizeJob({ ...job, copies: 1, payload: { items: [entry] } });
   for (const code of ["", "z99-t01", "-Z99", "Z99 T01", "Z99#1", "A".repeat(41), "Ô01"]) {
     assert.equal(one(item(code)).ok, false, `mã ${JSON.stringify(code)} phải bị chặn`);
@@ -33,7 +35,13 @@ test("lệnh tem vị trí: chặn mã sai mẫu và tên trống", () => {
   for (const code of ["A", "9", "Z99-T01-001-01-01-01", "A.B_C/D-E", "A".repeat(40)]) {
     assert.equal(one(item(code)).ok, true, `mã ${JSON.stringify(code)} phải hợp lệ`);
   }
-  assert.equal(one(item("Z99", "   ")).ok, false);
+  // Tên tùy chọn: trống/khoảng trắng/thiếu hẳn đều hợp lệ và được chuẩn hoá về chuỗi rỗng.
+  for (const name of ["", "   ", undefined, null]) {
+    const result = one({ code: "Z99", name, copies: 1 });
+    assert.equal(result.ok, true, `tên ${JSON.stringify(name)} phải hợp lệ: ${result.errors?.join("; ")}`);
+    assert.equal(result.job.payload.items[0].name, "");
+  }
+  assert.equal(one(item("", "")).ok, false, "tên trống KHÔNG làm mã trống được phép");
   assert.equal(one(item("Z99", "Đ".repeat(61))).ok, false);
   assert.equal(one(item("Z99", "Đ".repeat(60))).ok, true);
   assert.equal(one(item("Z99", "Tên", 0)).ok, false);
@@ -53,6 +61,36 @@ test("template vị trí: QR chứa đúng mã, mã Arial đậm dưới QR, tê
   const [code, name, extra] = texts(svg);
   assert.deepEqual([code.text, code.bold, name.text, name.bold, extra], ["Z99-T01-001-01-01-01", true, "Khu vực kiểm thử", false, undefined]);
   assert.equal(renderLabelSvg({ type: "location", payload: { code: "A1", name: "Kệ A" } }), renderLocationLabel({ code: "A1", name: "Kệ A" }));
+});
+
+test("tem vị trí không có tên: chỉ có QR và mã, QR/mã đúng chỗ như tem có tên", () => {
+  const code = "Z99-T01-001-01-01-01";
+  const bare = renderLocationLabel({ code, name: "" });
+  const named = renderLocationLabel({ code, name: "Khu vực kiểm thử" });
+  assert.equal(texts(bare).length, 1, "chỉ còn đúng một thẻ chữ (mã)");
+  assert.deepEqual([texts(bare)[0].text, texts(bare)[0].bold], [code, true]);
+  assert.equal(texts(bare)[0].y, texts(named)[0].y, "mã nằm đúng vị trí như tem có tên");
+  assert.equal((bare.match(/<rect /g) || []).length, (named.match(/<rect /g) || []).length, "cùng QR");
+  assert.equal(renderLocationLabel({ code }), bare, "thiếu hẳn trường name cũng như tên trống");
+  assert.equal(renderLocationLabel({ code, name: "   " }), bare, "toàn khoảng trắng cũng như tên trống");
+});
+
+test("agent không đo chữ cho tên trống (không gọi PowerShell) và dựng đủ TSPL cho lệnh trộn có/không tên", async () => {
+  const calls = [];
+  const measureText = async (config, textsToMeasure, sizes) => {
+    calls.push([...textsToMeasure]);
+    return new Map(textsToMeasure.map((text) => [text, new Map(sizes.map((size) => [size, text.length * size * 0.5]))]));
+  };
+  const entries = [
+    { type: "location", copies: 1, payload: { code: "A1", name: "" } },
+    { type: "location", copies: 1, payload: { code: "A2", name: "Kệ A2" } }
+  ];
+  const planned = await planLocationLabels(entries, {}, measureText, null);
+  assert.equal(planned[0].payload.nameFit, undefined, "không tên thì không có nameFit");
+  assert.ok(planned[1].payload.nameFit, "có tên thì vẫn đo");
+  assert.ok(calls.length === 1 && !calls[0].includes(""), "chỉ đo tên có chữ");
+  const tspl = await renderJobTspl({ id: "j", nonce: "n", type: "location", templateVersion: 1, copies: 2, payload: { items: entries.map((e) => ({ ...e.payload, copies: 1 })) } }, { density: 10, speed: 3 }, null, { measureText, logger: null });
+  assert.ok(tspl.length > 1000, "dựng được cả lệnh trộn tem có tên và không tên");
 });
 
 test("bề rộng mã đo theo Arial Bold thật; mã dài được ép ngang, không mất ký tự", () => {

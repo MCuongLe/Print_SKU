@@ -99,12 +99,14 @@ function centeredText(text, y, fontSize, width, maxWidth, weight = "") {
 export function renderLocationLabel(payload, layout = LOCATION_LABEL_LAYOUT) {
   const code = String(payload.code ?? "");
   const { qr, codeFit, codeY, nameTop } = locationGeometry(code, layout);
-  const nameFit = payload.nameFit ?? fitLocationName(payload.name, nameTop, { layout });
   const codeWidth = measureLocationCode(code, codeFit.fontSize);
-  const nameLines = nameFit.lines.map((line, index) => centeredText(
+  // Tên là tùy chọn: không có tên thì chỉ in QR + mã (vị trí QR/mã giữ y như tem có tên để dán thẳng hàng).
+  const hasName = String(payload.name ?? "").trim() !== "";
+  const nameFit = hasName ? (payload.nameFit ?? fitLocationName(payload.name, nameTop, { layout })) : null;
+  const nameLines = nameFit ? nameFit.lines.map((line, index) => centeredText(
     line, nameTop + nameFit.fontSize + index * nameFit.lineHeight, nameFit.fontSize,
     nameFit.widths?.[index] ?? estimateTextWidth(line, nameFit.fontSize), layout.maxWidth
-  )).join("");
+  )).join("") : "";
   return svgDocument(
     qr.rects +
     centeredText(code, codeY, codeFit.fontSize, codeWidth, layout.maxWidth, ' font-weight="700"') +

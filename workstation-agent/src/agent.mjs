@@ -11,7 +11,7 @@ import { cachedMeasure, createTextCache } from "./text-cache.mjs";
 import { createSkuCatalog } from "./sku-catalog.mjs";
 import { LABEL_FONT_FAMILY } from "./templates/common.mjs";
 
-export const AGENT_VERSION = "0.8.7";
+export const AGENT_VERSION = "0.8.8";
 
 // Báo "hoàn tất" SAU khi tem đã ra giấy thì không được bỏ cuộc vì mạng: thử
 // lại giãn dần tới 30 giây/lần, khoảng 10 phút. Quá nữa thì để sổ tay lo — hết

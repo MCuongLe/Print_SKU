@@ -2,6 +2,13 @@
 
 Agent Windows độc lập phục vụ ứng dụng Print SKU. Bản 0.7.0 dùng tem Fabric Relaxation viết tay hoàn toàn; frontend chỉ chọn số lượng tem.
 
+## Cập nhật 0.8.8 — tên vị trí không bắt buộc
+
+Vị trí chỉ có mã thì tem in **QR + mã**, không in tên (QR và mã nằm đúng chỗ như tem có tên để dán thẳng
+hàng). Agent báo thêm capability `location:name-optional`; lệnh có tên trống được nhận, tên tối đa 60 ký tự
+như trước, và tên trống không tốn lần đo chữ. Web chỉ gửi vị trí không tên khi thấy capability này (agent
+0.8.7 từ chối tên trống). Cần migration `supabase/warehouse_location_v2_optional_name.sql`.
+
 ## Cập nhật 0.8.7 — tem mã vị trí (`location:v1`)
 
 Agent báo thêm capability `location:v1` và in tem màn **MÃ VỊ TRÍ** (`#location` trên web): giấy 40 × 60 mm

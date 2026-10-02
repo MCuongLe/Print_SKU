@@ -7421,13 +7421,13 @@ var FSK_CORE = (function () {
               <label for="loc-code">Mã vị trí <small>— QR trên tem chứa đúng mã này</small></label>
               <input class="cut-input loc-code" id="loc-code" autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="next" maxlength="40" placeholder="Ví dụ F01-A05-503-01-01-01" aria-describedby="loc-code-hint" required>
               <p class="loc-hint" id="loc-code-hint">Chữ không dấu, số và . _ / - (tối đa 40 ký tự).</p>
-              <label for="loc-name">Tên vị trí</label>
-              <input class="cut-input" id="loc-name" autocomplete="off" enterkeyhint="done" maxlength="60" placeholder="Ví dụ Khu vực Sơ chế" required>
+              <label for="loc-name">Tên vị trí <small>— không bắt buộc, để trống thì tem chỉ in QR và mã</small></label>
+              <input class="cut-input" id="loc-name" autocomplete="off" enterkeyhint="done" maxlength="60" placeholder="Ví dụ Khu vực Sơ chế (có thể bỏ trống)">
               <button class="cut-primary act-icon act-icon--add" id="loc-save" type="submit">Lưu vị trí</button>
             </form>
             <div class="loc-preview"><svg id="loc-preview" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 480" role="img" aria-label="Xem trước tem vị trí"></svg><p class="cut-note">Xem trước tem 40 × 60 mm · font Arial</p><p class="loc-hint" id="loc-fit-hint" aria-live="polite"></p></div>
             <details class="loc-bulk" id="loc-bulk-box"><summary>Nhập nhiều vị trí từ Excel</summary>
-              <p class="cut-note">Copy 2 cột <b>Mã vị trí</b> và <b>Tên vị trí</b> trong Excel rồi dán vào đây — mỗi dòng một vị trí, tối đa 500 dòng. Mã đã có sẽ được cập nhật tên.</p>
+              <p class="cut-note">Copy cột <b>Mã vị trí</b> (và cột <b>Tên vị trí</b> nếu có) trong Excel rồi dán vào đây — mỗi dòng một vị trí, tối đa 500 dòng. Dòng không có tên thì <b>giữ nguyên tên đang có</b> (mã mới thì không có tên); muốn xoá tên của một vị trí, sửa riêng ở ô bên trên.</p>
               <textarea class="cut-input" id="loc-bulk" rows="6" spellcheck="false" aria-describedby="loc-bulk-hint" placeholder="F01-A05-503-01-01-01&#9;Khu vực Sơ chế"></textarea>
               <p class="loc-hint" id="loc-bulk-hint"></p>
               <button class="cut-secondary act-icon act-icon--import" id="loc-bulk-save" type="button" disabled>Lưu các dòng đã dán</button>
@@ -7471,7 +7471,8 @@ var FSK_CORE = (function () {
         const codeProblem = code => !code ? "Chưa nhập mã vị trí."
           : code.length > 40 ? "Mã vị trí tối đa 40 ký tự."
           : CODE_PATTERN.test(code) ? "" : "Mã chỉ gồm chữ không dấu, số và . _ / - , bắt đầu bằng chữ hoặc số.";
-        const nameProblem = name => !name ? "Chưa nhập tên vị trí." : name.length > 60 ? "Tên vị trí tối đa 60 ký tự." : "";
+        // Tên là tùy chọn: trống thì tem chỉ in QR + mã.
+        const nameProblem = name => name.length > 60 ? "Tên vị trí tối đa 60 ký tự." : "";
         const rpc = async (name, args = {}) => {
           const queue = window.PrintSkuQueue;
           const response = await fetch(`${queue.supabaseUrl}/rest/v1/rpc/${name}`, {
@@ -7578,15 +7579,15 @@ var FSK_CORE = (function () {
         };
         const renderPreview = () => {
           const code = cleanCode(codeInput.value), name = cleanName(nameInput.value);
-          const showCode = code && !codeProblem(code) ? code : "", showName = name || "Tên vị trí";
+          const showCode = code && !codeProblem(code) ? code : "", showName = name;
           const qr = qrRects(showCode) || { rects: `<rect x="55" y="${LAYOUT.qrTop}" width="210" height="210" rx="12" fill="none" stroke="#c4cfca" stroke-width="3" stroke-dasharray="10 8"/><text x="160" y="${LAYOUT.qrTop + 115}" font-size="28" fill="#9aa9a2" text-anchor="middle" font-family="${FONT}">QR</text>`, size: 210 };
           const codeText = showCode || "MÃ VỊ TRÍ", fit = fitCode(showCode || "MA-VI-TRI");
           const codeY = LAYOUT.qrTop + qr.size + LAYOUT.codeGap + Math.round(fit.size * 0.72);
-          const nameFit = fitName(showName, codeY + LAYOUT.nameGap);
+          const nameFit = showName ? fitName(showName, codeY + LAYOUT.nameGap) : { size: 0, lineHeight: 0, lines: [], widths: [] };
           const muted = value => value ? "" : ' fill="#9aa9a2"';
           preview.innerHTML = `<rect width="320" height="480" fill="#fff"/><g fill="#000" shape-rendering="crispEdges">${qr.rects}</g>` +
             centered(codeText, codeY, fit.size, codeWidth(showCode || "MA-VI-TRI", fit.size), ` font-weight="700"${muted(showCode)}`) +
-            nameFit.lines.map((line, i) => centered(line, codeY + LAYOUT.nameGap + nameFit.size + i * nameFit.lineHeight, nameFit.size, nameFit.widths[i], muted(name))).join("");
+            nameFit.lines.map((line, i) => centered(line, codeY + LAYOUT.nameGap + nameFit.size + i * nameFit.lineHeight, nameFit.size, nameFit.widths[i], "")).join("");
           preview.setAttribute("aria-label", showCode ? `Xem trước tem ${showCode} ${name}` : "Xem trước tem vị trí (chưa nhập mã)");
           // Báo trước khi lưu/in nếu chữ trên tem sẽ bị ép hẹp hoặc nhỏ — tem luôn in đủ ký tự.
           const notes = [];
@@ -7594,7 +7595,8 @@ var FSK_CORE = (function () {
           if (name && nameFit.widths.some(width => width > LAYOUT.maxWidth)) notes.push("Tên có đoạn dài không ngắt được: dòng đó bị ép ngang.");
           if (name && nameFit.size < 20) notes.push(`Tên dài: chữ tên nhỏ (cỡ ${nameFit.size} px ≈ ${(nameFit.size / 8).toFixed(1).replace(".", ",")} mm).`);
           fitHint.dataset.tone = notes.length ? "warn" : "";
-          fitHint.textContent = !showCode || !name ? ""
+          fitHint.textContent = !showCode ? ""
+            : !name ? (notes.length ? `${notes.join(" ")} Tem vẫn in đủ ký tự.` : "Không có tên: tem chỉ in QR và mã.")
             : notes.length ? `${notes.join(" ")} Tem vẫn in đủ ký tự.`
             : `Vừa tem, đủ ký tự: mã cỡ ${fit.size}, tên ${nameFit.lines.length} dòng cỡ ${nameFit.size}.${hasArial ? "" : " (Máy này không có font Arial — xem trước gần đúng, agent đo lại khi in.)"}`;
         };
@@ -7603,7 +7605,13 @@ var FSK_CORE = (function () {
         const setCodeHint = () => {
           const code = cleanCode(codeInput.value), problem = code ? codeProblem(code) : "";
           if (problem) { codeHint.textContent = problem; codeHint.dataset.tone = "error"; }
-          else if (existing && existing.code === code) { codeHint.textContent = `Mã đã có: “${existing.name}”. Lưu sẽ cập nhật tên.`; codeHint.dataset.tone = "warn"; }
+          else if (existing && existing.code === code) {
+            const typed = cleanName(nameInput.value);
+            codeHint.textContent = !existing.name ? "Mã đã có (chưa có tên). Lưu sẽ cập nhật."
+              : !typed ? `Mã đã có: “${existing.name}”. Để trống tên rồi Lưu sẽ XOÁ tên này.`
+              : `Mã đã có: “${existing.name}”. Lưu sẽ cập nhật tên.`;
+            codeHint.dataset.tone = "warn";
+          }
           else { codeHint.textContent = code ? "Mã mới — chưa có trong danh sách." : "Chữ không dấu, số và . _ / - (tối đa 40 ký tự)."; codeHint.dataset.tone = ""; }
           saveButton.textContent = existing && existing.code === code ? "Cập nhật tên" : "Lưu vị trí";
         };
@@ -7626,7 +7634,7 @@ var FSK_CORE = (function () {
           clearTimeout(lookupTimer); lookupTimer = setTimeout(lookupExisting, 300);
         });
         codeInput.addEventListener("keydown", event => { if (event.key === "Enter") { event.preventDefault(); clearTimeout(lookupTimer); lookupExisting(); nameInput.focus(); } });
-        nameInput.addEventListener("input", () => { nameFromExisting = false; renderPreview(); });
+        nameInput.addEventListener("input", () => { nameFromExisting = false; setCodeHint(); renderPreview(); });
         form.addEventListener("submit", async event => {
           event.preventDefault();
           if (busy) return;
@@ -7639,7 +7647,7 @@ var FSK_CORE = (function () {
             if (!result.ok) throw new Error(result.error?.message || "Chưa lưu được vị trí.");
             const { created, updated } = result.data;
             selected.set(code, { code, name });
-            tell(`${created ? "Đã lưu vị trí mới" : updated ? "Đã cập nhật tên vị trí" : "Vị trí không đổi"} ${code} · đã chọn để in.`, "ok");
+            tell(`${created ? "Đã lưu vị trí mới" : updated ? "Đã cập nhật tên vị trí" : "Vị trí không đổi"} ${code}${name ? "" : " (không có tên)"} · đã chọn để in.`, "ok");
             codeInput.value = ""; nameInput.value = ""; existing = null; nameFromExisting = false;
             setCodeHint(); renderPreview(); codeInput.focus();
             await load({ quiet: true });
@@ -7679,7 +7687,7 @@ var FSK_CORE = (function () {
           if (busy || !rows.length || errors.length) return;
           busy = true; bulkSave.disabled = true; syncPrint();
           try {
-            const result = await rpc("warehouse_location_upsert", { p_items: rows });
+            const result = await rpc("warehouse_location_upsert", { p_items: rows.map(row => (row.name ? { code: row.code, name: row.name } : { code: row.code })) });
             if (!result.ok) throw new Error(result.error?.message || "Chưa lưu được danh sách.");
             const { created, updated, unchanged } = result.data;
             rows.forEach(row => selected.set(row.code, row));
@@ -7701,13 +7709,13 @@ var FSK_CORE = (function () {
         const ARCHIVE_ICON = icon('<path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/>');
         const renderRows = () => {
           if (!items.length) {
-            rowsBody.innerHTML = `<tr><td colspan="5" class="cut-empty">${searchInput.value.trim() ? "Không có vị trí khớp từ khoá." : "Chưa có vị trí nào. Nhập mã và tên ở bên trái để bắt đầu."}</td></tr>`;
+            rowsBody.innerHTML = `<tr><td colspan="5" class="cut-empty">${searchInput.value.trim() ? "Không có vị trí khớp từ khoá." : "Chưa có vị trí nào. Nhập mã (và tên nếu cần) ở bên trái để bắt đầu."}</td></tr>`;
           } else {
             rowsBody.innerHTML = items.map(item => {
               const on = selected.has(item.code), code = escapeHtml(item.code);
               return `<tr class="${on ? "is-selected" : ""}" data-code="${code}">` +
                 `<td class="cut-th-check"><input type="checkbox" data-act="pick" ${on ? "checked" : ""} aria-label="Chọn in ${code}"></td>` +
-                `<td>${code}</td><td>${escapeHtml(item.name)}</td><td>${printedText(item)}</td>` +
+                `<td>${code}</td><td>${item.name ? escapeHtml(item.name) : '<span class="loc-printed">—</span>'}</td><td>${printedText(item)}</td>` +
                 `<td><button class="cut-icon-btn" type="button" data-act="edit" title="Sửa tên" aria-label="Sửa tên ${code}">${EDIT_ICON}</button><button class="cut-icon-btn" type="button" data-act="archive" title="Xoá khỏi danh sách" aria-label="Xoá ${code}">${ARCHIVE_ICON}</button></td></tr>`;
             }).join("");
           }
@@ -7768,7 +7776,7 @@ var FSK_CORE = (function () {
             return;
           }
           if (target.dataset.act === "archive") {
-            if (busy || !confirm(`Xoá vị trí ${item.code} — ${item.name} khỏi danh sách?\n\nVị trí đã xoá không in được nữa. Lưu lại đúng mã này sẽ khôi phục.`)) return;
+            if (busy || !confirm(`Xoá vị trí ${item.code}${item.name ? ` — ${item.name}` : ""} khỏi danh sách?\n\nVị trí đã xoá không in được nữa. Lưu lại đúng mã này sẽ khôi phục.`)) return;
             busy = true; syncPrint();
             try {
               const result = await rpc("warehouse_location_archive", { p_code: item.code });
@@ -7812,6 +7820,10 @@ var FSK_CORE = (function () {
             const agents = status.data?.agents || [];
             if (!agents.some(agent => (agent.capabilities || []).includes("location:v1"))) {
               tell("Agent máy trạm chưa hỗ trợ tem vị trí — cần cập nhật agent (bản có location:v1) rồi in lại. Chưa gửi lệnh nào.", "error");
+              return;
+            }
+            if (chosen.some(item => !item.name) && !agents.some(agent => (agent.capabilities || []).includes("location:name-optional"))) {
+              tell("Có vị trí không có tên — agent máy trạm cần bản 0.8.8 trở lên mới in được tem không tên. Cập nhật agent rồi in lại, hoặc đặt tên cho vị trí đó. Chưa gửi lệnh nào.", "error");
               return;
             }
             const payload = { items: chosen.map(item => ({ code: item.code, name: item.name, copies })) };
