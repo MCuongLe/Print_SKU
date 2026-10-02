@@ -177,7 +177,7 @@ python scripts/sync_sku_to_supabase.py --database data/sku.db
 
 ## Fabric Relaxation — tem xả vải
 
-Mở **FABRIC RELAXATION** ở WH-MATERIAL hoặc `#fabric-relaxation`.
+Mở **TEM XẢ VẢI** (trước đây tên FABRIC RELAXATION) ở WH-MATERIAL hoặc `#fabric-relaxation`.
 Chỉ nhập số tem (1–500), xem trước rồi bấm In. Mã hàng, Lot, Ngày và Giờ
 đều để trống để ghi tay; Lot nằm dưới Mã hàng và cách khoảng hai dòng. Sử dụng agent SKU/UID,
 giấy 40 × 60 mm, hai tem mỗi hàng; số lẻ để trắng tem bên phải hàng cuối.
