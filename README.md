@@ -222,6 +222,19 @@ python scripts/apply_supabase_sql.py supabase/cut_group_uid_v4_search_date_filte
 `--allow-destructive` chỉ vì file `drop` chữ ký hàm v3 để tạo lại với 2 tham số ngày; hai
 tham số có mặc định nên trang web cũ vẫn gọi được hàm mới.
 
+**Đã xuất ADJ.** Bấm UID ở bảng Tra cứu để mở popup barcode, quét mã trên màn hình vào phiếu ADJ
+trên WMS rồi tick **Đã xuất ADJ xong** — cột `cut_group_uids.adj_exported_at` ghi thời điểm tick
+(bỏ tick phải xác nhận, trả về trống). Bảng có cột **ADJ** và bộ lọc *ADJ: Tất cả / Chưa xuất ADJ /
+Đã xuất ADJ*. Cần migration v5 (thêm cột, RPC `cut_group_uid_mark_adj`, tham số `p_adj` cho hàm
+tra cứu); chạy migration **trước** khi cập nhật `index.html`:
+
+```powershell
+python scripts/apply_supabase_sql.py supabase/cut_group_uid_v5_adj_export.sql --allow-destructive
+```
+
+`--allow-destructive` chỉ vì file `drop` chữ ký hàm tra cứu v4 để tạo lại với `p_adj` (có mặc định,
+trang web cũ vẫn gọi được). Web chỉ gửi `p_adj` khi có chọn lọc ADJ.
+
 ## Quét mã ở PRINT SKU
 
 Nút camera cạnh ô **Mã SKU** mở lớp quét toàn màn hình `window.PrintSkuScanUI` (script
