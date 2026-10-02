@@ -49,10 +49,16 @@ export function loadConfig(options = {}) {
     realtimeWake: !/^(0|false|off|no)$/i.test(get("REALTIME_WAKE", "on")),
     // 0.8.5: bỏ bước kiểm tra máy in trước khi nhận lệnh nếu lần kiểm tra gần nhất còn mới hơn số ms này (0 = luôn kiểm tra).
     printerCacheMs: positiveInt(get("PRINTER_STATE_CACHE_MS"), 60000, 0, 600000),
+    // 0.8.6: cache đo chữ (temp/text-metrics-cache.json) và danh mục SKU đo sẵn (temp/sku-catalog.json).
+    textCache: !/^(0|false|off|no)$/i.test(get("TEXT_CACHE", "on")),
+    skuCache: !/^(0|false|off|no)$/i.test(get("SKU_CACHE", "on")),
+    skuCacheCheckMs: positiveInt(get("SKU_CACHE_CHECK_MS"), 900000, 60000, 86400000),
     leaseMs: positiveInt(get("AGENT_LEASE_MS"), 120000, 30000, 900000),
     spoolTimeoutMs: positiveInt(get("SPOOL_TIMEOUT_MS"), 3600000, 60000, 7200000),
     spoolStallMs: positiveInt(get("SPOOL_STALL_MS"), 600000, 15000, 1800000),
-    spoolAppearMs: positiveInt(get("SPOOL_APPEAR_MS"), 8000, 2000, 120000),
+    // 0.8.6: 8s -> 2,5s. TSC PE200 đẩy byte thẳng ra USB, job khoẻ biến mất trước nhịp quét đầu; job kẹt
+    // (hết giấy, bung nắp) nằm lại hàng đợi hàng phút nên 2 nhịp quét (~3s) là đủ thấy (RULES.md).
+    spoolAppearMs: positiveInt(get("SPOOL_APPEAR_MS"), 2500, 2000, 120000),
     spoolRequireConfirm: /^(1|true|yes)$/i.test(get("SPOOL_REQUIRE_CONFIRM", "")),
     dpi: positiveInt(get("LABEL_DPI"), 203, 150, 600),
     density: positiveInt(get("LABEL_DENSITY"), 12, 0, 15),

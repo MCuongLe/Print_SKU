@@ -59,7 +59,7 @@ export async function sendRaw(config, buffer, jobId) {
 export async function waitForSpooler(config, jobId, options = {}) {
   const {
     timeoutMs = 3600000,     // trần tuyệt đối; phải rộng hơn stallMs nhiều lần
-    appearMs = 8000,         // chờ job hiện ra; mọi lệnh đều phải trả phí này
+    appearMs = 2500,         // chờ job hiện ra; mọi lệnh đều phải trả phí này (0.8.6: 8000 -> 2500)
     stallMs = 600000,        // kiên nhẫn chờ người vận hành thay giấy
     pollMs = 1000,
     requireConfirm = false,  // máy in không để lộ job thì đừng coi là lỗi

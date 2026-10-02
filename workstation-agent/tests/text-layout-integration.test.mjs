@@ -6,8 +6,7 @@ import { planProductNames } from "../src/render.mjs";
 // don gian de kiem tra logic wiring, khong can PowerShell that.
 function fakeMeasureText(sizes = [22, 20, 18, 16]) {
   const calls = [];
-  const fn = async (config, texts, requestedSizes) => {
-    calls.push({ texts: [...texts], sizes: [...requestedSizes] });
+  const table = (texts, requestedSizes) => {
     const map = new Map();
     for (const text of texts) {
       const bySize = new Map();
@@ -15,6 +14,12 @@ function fakeMeasureText(sizes = [22, 20, 18, 16]) {
       map.set(text, bySize);
     }
     return map;
+  };
+  // Hỗ trợ nhóm đo thêm (extra) giống measureTextWidths thật; `texts` ghi gộp mọi nhóm.
+  const fn = async (config, texts, requestedSizes, options = {}) => {
+    const extra = options.extra || [];
+    calls.push({ texts: [...texts, ...extra.flatMap((group) => group.texts)], sizes: [...requestedSizes], extra });
+    return Object.assign(table(texts, requestedSizes), { extra: extra.map((group) => table(group.texts, group.sizes)) });
   };
   fn.calls = calls;
   return fn;
@@ -95,8 +100,7 @@ test("planProductNames: vong 2 phat hien dong con vuot thi tach bot, khong de tr
   const REAL_LINE_WIDTH_AT_22 = { "Opened end/No.3 Plastic Zipper": 313.07 };
 
   const calls = [];
-  const measureText = async (config, texts) => {
-    calls.push([...texts]);
+  const table = (texts) => {
     const map = new Map();
     for (const text of texts) {
       const bySize = new Map();
@@ -105,6 +109,10 @@ test("planProductNames: vong 2 phat hien dong con vuot thi tach bot, khong de tr
       map.set(text, bySize);
     }
     return map;
+  };
+  const measureText = async (config, texts, sizes, options = {}) => {
+    calls.push([...texts]);
+    return Object.assign(table(texts), { extra: (options.extra || []).map((group) => table(group.texts)) });
   };
 
   const productName = "Opened end/No.3 Plastic Zipper";

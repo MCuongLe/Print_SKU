@@ -113,19 +113,33 @@ export async function planProductNames(entries, config, measureText, logger) {
     payload: { ...entry.payload, productNameLines: lines, productNameFontSize: fontSize, ...(plan.footerFit ? { footerFit: plan.footerFit } : {}) }
   });
 
-  // Vong 2: do nguyen tung dong cua moi phuong an con lai, o dung co chu cua no.
-  const lineTexts = new Set();
-  const usedSizes = new Set();
+  // Vong 2: do nguyen tung dong cua moi phuong an con lai, o DUNG co chu cua phuong an do.
+  // 0.8.6: truoc day do moi dong o moi co dang dung (buoc chon chi doc dong o co cua chinh no)
+  // — gap ~4 lan so phep do va so muc text-cache phai luu. Moi co la mot nhom do them (extra)
+  // trong CUNG mot lan goi PowerShell, nen van dung hai lan goi cho ca lo.
+  const linesBySize = new Map();
   for (const { candidates } of plans.values()) {
     for (const candidate of candidates) {
-      for (const line of candidate.lines) lineTexts.add(line);
-      usedSizes.add(candidate.fontSize);
+      const lines = linesBySize.get(candidate.fontSize) ?? new Set();
+      for (const line of candidate.lines) lines.add(line);
+      linesBySize.set(candidate.fontSize, lines);
     }
   }
 
   let lineWidths;
   try {
-    lineWidths = await measureText(config, [...lineTexts], [...usedSizes]);
+    const [[firstSize, firstLines], ...otherSizes] = [...linesBySize.entries()];
+    const measured = await measureText(config, [...firstLines], [firstSize], {
+      extra: otherSizes.map(([size, lines]) => ({ texts: [...lines], sizes: [size] }))
+    });
+    lineWidths = new Map();
+    for (const group of [measured, ...(measured?.extra ?? [])]) {
+      for (const [text, bySize] of group ?? []) {
+        const row = lineWidths.get(text) ?? new Map();
+        for (const [size, width] of bySize) row.set(size, width);
+        lineWidths.set(text, row);
+      }
+    }
   } catch (error) {
     // Vong 1 da co (an toan hon ban cu), nhung chua xac nhan — van hon han
     // cach dem ky tu, nen dung tam ket qua vong 1 thay vi bo het.

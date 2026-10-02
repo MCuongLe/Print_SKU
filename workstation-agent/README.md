@@ -2,6 +2,27 @@
 
 Agent Windows độc lập phục vụ ứng dụng Print SKU. Bản 0.7.0 dùng tem Fabric Relaxation viết tay hoàn toàn; frontend chỉ chọn số lượng tem.
 
+## Cập nhật 0.8.6 — in nhanh hơn: chờ spooler ngắn lại, cache đo chữ, danh mục SKU đo sẵn
+
+Đo 40 lệnh gần nhất (01/10/2026): trung vị 16,2 giây từ lúc bấm In tới lúc web báo xong, trong đó
+**10,3 giây là chờ spooler** và 1,7 giây dựng tem (chủ yếu mở PowerShell đo chữ).
+
+- **Chờ spooler 8s → 2,5s** (`SPOOL_APPEAR_MS`). TSC PE200 đẩy byte thẳng ra USB, lệnh khoẻ biến mất
+  trước nhịp quét đầu nên 8 giây chờ chưa từng thu được gì (`spoolConfirmed: false` ở mọi lệnh); lệnh
+  kẹt (hết giấy, bung nắp) nằm lại hàng đợi hàng phút nên 2 nhịp quét vẫn thấy và agent vẫn chờ như cũ.
+- **Cache đo chữ** `temp\text-metrics-cache.json`: trùng tên/dòng đã đo thì không mở PowerShell. Khởi
+  động đo lại chuỗi mẫu, khác số cũ (Windows đổi font) thì xoá; lên phiên bản agent mới thì làm lại.
+- **Danh mục SKU đo sẵn** `temp\sku-catalog.json`: 15 phút/lần hỏi `updated_at` mới nhất của
+  `SKU_Name`; đồng bộ SKU buổi sáng xong thì tải lại (~4 MB, ~7 giây) và chỉ đo các tên mới. Lần đầu
+  (và sau mỗi lần nâng cấp agent) đo toàn bộ ~21,6 nghìn tên: ~1,5–3 phút, chạy nền, chỉ khi rảnh
+  ≥ 2 phút, có lệnh in thì dừng chờ; tắt agent giữa chừng thì lần sau đo tiếp.
+- Vòng 2 đo chữ chỉ đo mỗi dòng ở đúng cỡ của phương án — kết quả ngắt dòng giống hệt bản cũ (so 600
+  tem từ 300 tên thật), ít phép đo và ít mục cache hơn ~4 lần.
+
+Tắt từng phần trong `config\.env`: `TEXT_CACHE=off`, `SKU_CACHE=off`, `SPOOL_APPEAR_MS=8000`. Agent
+dùng thêm khoảng 60–70 MB RAM khi đã có cache đầy đủ (đo thật: 54 → 112 MB; đỉnh +90 MB khoảng 0,4 giây
+lúc khởi động đọc file cache, +34 MB lúc ghi lại file). Không cần migration Supabase, không đổi web.
+
 ## Cập nhật 0.8.5 — nhận lệnh nhanh hơn ~2 giây
 
 Khi được Realtime đánh thức (hoặc vừa in xong một lệnh), agent dùng lại kết quả kiểm tra máy in

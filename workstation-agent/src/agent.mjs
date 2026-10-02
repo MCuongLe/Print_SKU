@@ -1,3 +1,4 @@
+import path from "node:path";
 import { normalizeJob } from "./job-validator.mjs";
 import { CAPABILITIES } from "./templates/index.mjs";
 import { queryPrinter, sendRaw, waitForSpooler } from "./printer.mjs";
@@ -6,8 +7,11 @@ import { measureTextWidths } from "./text-metrics.mjs";
 import { isTransientNetworkError } from "./network-retry.mjs";
 import { createSentJournal } from "./sent-journal.mjs";
 import { createRealtimeWake } from "./realtime-wake.mjs";
+import { cachedMeasure, createTextCache } from "./text-cache.mjs";
+import { createSkuCatalog } from "./sku-catalog.mjs";
+import { LABEL_FONT_FAMILY } from "./templates/common.mjs";
 
-export const AGENT_VERSION = "0.8.5";
+export const AGENT_VERSION = "0.8.6";
 
 // Báo "hoàn tất" SAU khi tem đã ra giấy thì không được bỏ cuộc vì mạng: thử
 // lại giãn dần tới 30 giây/lần, khoảng 10 phút. Quá nữa thì để sổ tay lo — hết
@@ -158,7 +162,7 @@ export async function processClaimedJob(input, dependencies) {
       (rendered, total) => queue
         .progress(job.id, "rendering", { rendered, total }, { retry: false })
         .catch((error) => logger.warn(`Lệnh ${job.id}: không báo được tiến độ dựng tem (${error.message})`)),
-      { measureText: measureTextWidths, logger }
+      { measureText: dependencies.measureText ?? measureTextWidths, logger }
     );
     // Chốt chặn cuối trước khi gửi: phải báo được "sending" để chắc agent còn
     // giữ lệnh. Lỗi mạng ở đây trả lệnh về hàng đợi — chưa có tem nào ra giấy.
@@ -257,6 +261,23 @@ export async function runService(config, queue, logger, signal, lock, dependenci
   else logger.info(`Không dùng Realtime — hỏi hàng đợi mỗi ${config.idlePollNoWakeMs / 1000}s khi rảnh`);
   const askPrinter = dependencies.queryPrinter ?? queryPrinter;   // chỉ thay trong test
   let lastJobAt = 0;
+  // 0.8.6: cache đo chữ trên máy trạm + danh mục SKU đo sẵn (text-cache.mjs, sku-catalog.mjs).
+  const textCache = config.textCache && config.tempDir
+    ? createTextCache({ file: path.join(config.tempDir, "text-metrics-cache.json"), version: `${AGENT_VERSION}|${LABEL_FONT_FAMILY}`, logger })
+    : null;
+  const measureText = dependencies.measureText ?? (textCache ? cachedMeasure(measureTextWidths, textCache) : measureTextWidths);
+  textCache?.ensureValid(measureTextWidths, config);
+  let printing = false;
+  const catalogEnabled = textCache && config.skuCache && config.queueProvider === "supabase" && config.supabaseUrl && config.supabasePublishableKey;
+  const catalog = catalogEnabled
+    ? (dependencies.createSkuCatalog ?? createSkuCatalog)({
+      config, measureText, textCache, baseMeasure: measureTextWidths, logger,
+      file: path.join(config.tempDir, "sku-catalog.json"), checkMs: config.skuCacheCheckMs,
+      // Chỉ đo sẵn khi rảnh hẳn: không in và đã qua cửa sổ "vừa in xong" (lệnh cùng đợt hay tới tiếp).
+      isBusy: () => printing || Date.now() - lastJobAt < config.activeWindowMs
+    })
+    : null;
+  catalog?.start(signal);
   let printerCache = null;   // { state, at } — kết quả kiểm tra máy in gần nhất
   let woken = false;         // vòng này do tín hiệu Realtime hoặc vừa in xong, không phải nhịp định kỳ
   while (!signal?.aborted) {
@@ -273,7 +294,9 @@ export async function runService(config, queue, logger, signal, lock, dependenci
       const claim = await queue.claim(state);
       if (claim?.job) {
         lastJobAt = Date.now();
-        const outcome = await processClaimedJob(claim.job, { config, queue, logger, signal, journal });
+        printing = true;
+        const outcome = await processClaimedJob(claim.job, { config, queue, logger, signal, journal, measureText })
+          .finally(() => { printing = false; lastJobAt = Date.now(); });
         if (outcome?.printer) printerCache = { state: outcome.printer, at: Date.now() };
         woken = true;   // vừa in xong: lệnh cùng đợt có thể còn, nhận tiếp không cần kiểm tra lại
       } else {
@@ -285,5 +308,6 @@ export async function runService(config, queue, logger, signal, lock, dependenci
     }
   }
   wake?.stop();
+  textCache?.flush();
   logger.info("Agent đã dừng an toàn");
 }
