@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { getPowerShellHost } from "./ps-host.mjs";
 
 const execFileAsync = promisify(execFile);
 
@@ -65,6 +66,14 @@ export async function measureTextWidths(config, texts, fontSizesPx, { __exec = r
 }
 
 async function runPowerShell(scriptFile, inputFile, outputFile) {
+  // Đo chữ là việc lặp lại được: host lỗi kiểu nào cũng rơi về cách cũ (mở PowerShell mới).
+  const host = getPowerShellHost();
+  if (host) {
+    try {
+      await host.runScript(path.basename(scriptFile), { InputFile: inputFile, OutputFile: outputFile }, { timeoutMs: 15000 });
+      return;
+    } catch { /* rơi về cách cũ */ }
+  }
   await execFileAsync(
     "powershell.exe",
     ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", scriptFile, "-InputFile", inputFile, "-OutputFile", outputFile],

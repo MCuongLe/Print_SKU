@@ -12,16 +12,20 @@ const emptyEnv = () => {
   return file;
 };
 
-test("0.8.6: mặc định chờ spooler 2,5s, bật cache đo chữ và danh mục SKU (15 phút/lần); tắt được bằng .env", () => {
+test("0.8.6/0.8.8: mặc định chờ spooler 1,5s dò mỗi 0,5s, PowerShell thường trực, cache đo chữ và danh mục SKU; tắt được bằng .env", () => {
   const config = loadConfig({ envFile: emptyEnv() });
-  assert.equal(config.spoolAppearMs, 2500);
+  assert.equal(config.spoolAppearMs, 1500);
+  assert.equal(config.spoolPollMs, 500);
+  assert.equal(config.psHost, true);
   assert.equal(config.textCache, true);
   assert.equal(config.skuCache, true);
   assert.equal(config.skuCacheCheckMs, 900000);
   const file = emptyEnv();
-  fs.appendFileSync(file, "TEXT_CACHE=off\nSKU_CACHE=off\nSPOOL_APPEAR_MS=8000\n");
+  fs.appendFileSync(file, "TEXT_CACHE=off\nSKU_CACHE=off\nSPOOL_APPEAR_MS=8000\nSPOOL_POLL_MS=1000\nPS_HOST=off\n");
   const off = loadConfig({ envFile: file });
   assert.equal(off.textCache, false);
+  assert.equal(off.psHost, false);
+  assert.equal(off.spoolPollMs, 1000);
   assert.equal(off.skuCache, false);
   assert.equal(off.spoolAppearMs, 8000, "quay lại mức cũ chỉ bằng một dòng trong config\\.env");
 });

@@ -1,4 +1,4 @@
-param(
+﻿param(
   [Parameter(Mandatory = $true)][string]$File,
   [Parameter(Mandatory = $true)][string]$Printer
 )
@@ -7,23 +7,8 @@ $ErrorActionPreference = 'Stop'
 $OutputEncoding = [Console]::OutputEncoding
 if (-not (Test-Path -LiteralPath $File)) { throw "Không tìm thấy file TSPL" }
 
-if (-not ('HasakiRawPrinter' -as [type])) {
-  Add-Type -TypeDefinition @'
-using System;
-using System.Runtime.InteropServices;
-public static class HasakiRawPrinter {
-  [StructLayout(LayoutKind.Sequential, CharSet=CharSet.Unicode)]
-  public class DOCINFO { public string pDocName; public string pOutputFile; public string pDataType; }
-  [DllImport("winspool.drv", SetLastError=true, CharSet=CharSet.Unicode)] public static extern bool OpenPrinter(string name, out IntPtr handle, IntPtr defaults);
-  [DllImport("winspool.drv", SetLastError=true)] public static extern bool ClosePrinter(IntPtr handle);
-  [DllImport("winspool.drv", SetLastError=true, CharSet=CharSet.Unicode)] public static extern int StartDocPrinter(IntPtr handle, int level, [In] DOCINFO info);
-  [DllImport("winspool.drv", SetLastError=true)] public static extern bool EndDocPrinter(IntPtr handle);
-  [DllImport("winspool.drv", SetLastError=true)] public static extern bool StartPagePrinter(IntPtr handle);
-  [DllImport("winspool.drv", SetLastError=true)] public static extern bool EndPagePrinter(IntPtr handle);
-  [DllImport("winspool.drv", SetLastError=true)] public static extern bool WritePrinter(IntPtr handle, byte[] bytes, int count, out int written);
-}
-'@
-}
+# Lop gui du lieu: xem raw-printer-type.ps1 (tach rieng de host.ps1 nap san).
+. (Join-Path $PSScriptRoot 'raw-printer-type.ps1')
 
 $handle = [IntPtr]::Zero
 $jobId = 0

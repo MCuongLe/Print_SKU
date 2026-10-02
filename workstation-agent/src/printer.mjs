@@ -2,10 +2,35 @@ import fs from "node:fs";
 import path from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { getPowerShellHost } from "./ps-host.mjs";
 
 const execFileAsync = promisify(execFile);
 
+/**
+ * Chạy một script qua PowerShell thường trực (ps-host.mjs) nếu agent đang giữ một tiến trình; không có
+ * hoặc host lỗi thì báo `used: false` để gọi cách cũ (mở PowerShell mới).
+ *  - idempotent (kiểm tra máy in): host lỗi kiểu nào cũng rơi về cách cũ.
+ *  - KHÔNG idempotent (gửi dữ liệu xuống máy in): chỉ rơi về cách cũ khi yêu cầu CHƯA tới tiến trình
+ *    (requestStarted = false). Đã gửi đi mà tiến trình chết/quá hạn thì ném lỗi — gọi lại là in trùng tem.
+ */
+async function runViaHost(script, args, { timeoutMs, idempotent }) {
+  const host = getPowerShellHost();
+  if (!host) return { used: false };
+  try {
+    return { used: true, stdout: await host.runScript(script, args, { timeoutMs }) };
+  } catch (error) {
+    if (!idempotent && error?.requestStarted) throw error;
+    return { used: false, hostError: error };
+  }
+}
+
 export async function queryPrinter(config, jobId = null) {
+  const hosted = await runViaHost("printer-status.ps1", { Printer: config.printerName, ...(jobId ? { JobId: Number(jobId) } : {}) }, { timeoutMs: 20000, idempotent: true });
+  if (hosted.used) {
+    try { return JSON.parse(hosted.stdout.trim()); } catch {
+      return { ok: false, blocked: true, code: "STATUS_UNAVAILABLE", message: "PowerShell thường trực trả kết quả không đọc được" };
+    }
+  }
   const script = path.join(config.rootDir, "powershell", "printer-status.ps1");
   try {
     const args = ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", script, "-Printer", config.printerName];
@@ -28,7 +53,9 @@ export async function sendRaw(config, buffer, jobId) {
   const script = path.join(config.rootDir, "powershell", "raw-print.ps1");
   try {
     let stdout = "";
-    try {
+    const hosted = await runViaHost("raw-print.ps1", { File: file, Printer: config.printerName }, { timeoutMs: 45000, idempotent: false });
+    if (hosted.used) stdout = hosted.stdout;
+    else try {
       ({ stdout } = await execFileAsync("powershell.exe", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", script, "-File", file, "-Printer", config.printerName], { windowsHide: true, timeout: 45000 }));
     } catch (error) {
       stdout = String(error?.stdout || "");

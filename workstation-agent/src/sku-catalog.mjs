@@ -29,9 +29,8 @@ const sleepFor = (ms, signal) => new Promise((resolve) => {
 export function createSkuCatalog({
   config, measureText, textCache, baseMeasure, logger, file,
   fetchImpl = globalThis.fetch, isBusy = () => false, checkMs = 900000, initialDelayMs = 30000,
-  chunkSize = 300, pageSize = 1000, busyPollMs = 5000, sleep = sleepFor
+  chunkSize = 100, pageSize = 1000, busyPollMs = 5000, sleep = sleepFor
 } = {}) {
-  const quiet = { info() {}, warn() {}, error() {} };   // tên quá dài khi đo sẵn: không cần ghi log
   let state = { format: SKU_CATALOG_FORMAT, updatedAt: null, fetchedAt: null, rows: [], generation: null, warmed: [] };
   try {
     const data = JSON.parse(fs.readFileSync(file, "utf8"));
@@ -105,7 +104,13 @@ export function createSkuCatalog({
         { type: "sku", copies: 1, payload: { sku: "0", productName, quantity: "", printedDate: "" } },
         { type: "group_uid", copies: 1, payload: { sku: "0", productName } }
       ]);
-      await planProductNames(entries, config, measureText, quiet);
+      // planProductNames NUỐT lỗi đo (chỉ ghi cảnh báo, trả lại entries không đổi) nên phải tự phát hiện:
+      // PowerShell hỏng giữa chừng thì KHÔNG được đánh dấu "đã đo" (lỗi thật 02/10/2026: tên bị bỏ qua mãi mãi).
+      // Cảnh báo "tên quá dài" cũng đi qua logger này nhưng không phải lỗi đo.
+      let measureFailed = "";
+      const watch = { info() {}, error() {}, warn: (line) => { if (/^Đo chữ thật thất bại/.test(String(line))) measureFailed = String(line); } };
+      await planProductNames(entries, config, measureText, watch);
+      if (measureFailed) throw new Error(measureFailed.slice(0, 160));
       if (state.generation !== textCache.generation) return done;   // bộ đo bị làm lại giữa chừng: vòng sau đo lại
       for (const name of chunk) warmed.add(name);
       done += chunk.length;

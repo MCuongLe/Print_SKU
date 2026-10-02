@@ -7,8 +7,10 @@ import { measureTextWidths } from "./text-metrics.mjs";
 import { isTransientNetworkError } from "./network-retry.mjs";
 import { createSentJournal } from "./sent-journal.mjs";
 import { createRealtimeWake } from "./realtime-wake.mjs";
-import { cachedMeasure, createTextCache } from "./text-cache.mjs";
+import { cachedMeasure, createTextCache, seedFooterPatterns } from "./text-cache.mjs";
+import { DATE_FONT_SIZES, QUANTITY_FONT_SIZES } from "./templates/text-layout.mjs";
 import { createSkuCatalog } from "./sku-catalog.mjs";
+import { createPowerShellHost, setPowerShellHost } from "./ps-host.mjs";
 import { LABEL_FONT_FAMILY } from "./templates/common.mjs";
 
 export const AGENT_VERSION = "0.8.8";
@@ -147,14 +149,19 @@ export async function processClaimedJob(input, dependencies) {
   let result;
   let lastPrinter = null;   // trạng thái máy in mới nhất — runService dùng làm bộ nhớ cho lần nhận lệnh kế tiếp
   try {
+    // 0.8.8: báo "rendering" chạy SONG SONG với kiểm tra máy in và dựng tem (trước đây nối tiếp: ~0,5s
+    // chờ mạng trước khi làm gì). Không mất an toàn: phải báo xong VÀ thành công trước khi báo "sending"
+    // (chốt chặn bên dưới), nên lỗi (vd mất lease) vẫn dừng lệnh trước khi gửi byte nào xuống máy in.
+    const renderingReport = queue.progress(job.id, "rendering");
+    renderingReport.catch(() => { /* lỗi được ném lại ở await phía dưới */ });
     const before = await printer.queryPrinter(config);
     lastPrinter = before;
     if (!before.ok || before.blocked) {
+      await renderingReport.catch(() => {});   // giữ đúng thứ tự sự kiện: rendering rồi mới requeue
       await queue.requeue(job.id, { code: before.code || "PRINTER_BLOCKED", message: before.message || "Máy in chưa sẵn sàng" });
       logger.warn(`Hoãn ${job.id}: ${before.message || before.code}`);
       return { ok: false, requeued: true, printer: before };
     }
-    await queue.progress(job.id, "rendering");
     const tspl = await render(
       job,
       config,
@@ -164,6 +171,7 @@ export async function processClaimedJob(input, dependencies) {
         .catch((error) => logger.warn(`Lệnh ${job.id}: không báo được tiến độ dựng tem (${error.message})`)),
       { measureText: dependencies.measureText ?? measureTextWidths, logger }
     );
+    await renderingReport;
     // Chốt chặn cuối trước khi gửi: phải báo được "sending" để chắc agent còn
     // giữ lệnh. Lỗi mạng ở đây trả lệnh về hàng đợi — chưa có tem nào ra giấy.
     await queue.progress(job.id, "sending", { bytes: tspl.length });
@@ -171,7 +179,9 @@ export async function processClaimedJob(input, dependencies) {
     sent = true;
     const spool = await printer.sendRaw(config, tspl, job.id);
     journal.record(job.id, { stage: "sent", spoolJobId: spool.jobId ?? null });
-    await queue
+    // 0.8.8: chỉ để hiển thị (retry: false, lỗi bị nuốt) nên không chờ nó trước khi dò spooler (~0,5s);
+    // được chờ lại ngay trước khi báo hoàn tất để "spooling" không bao giờ đến SAU "completed".
+    const spoolingReport = queue
       .progress(job.id, "spooling", { spoolJobId: spool.jobId ?? null }, { retry: false })
       .catch((error) => logger.warn(`Lệnh ${job.id}: không báo được trạng thái đang in (${error.message})`));
     let pagesPrinted = null;
@@ -181,6 +191,7 @@ export async function processClaimedJob(input, dependencies) {
         timeoutMs: config.spoolTimeoutMs,
         stallMs: config.spoolStallMs,
         appearMs: config.spoolAppearMs,
+        pollMs: config.spoolPollMs,
         requireConfirm: config.spoolRequireConfirm,
         onHeartbeat: (pages) => {
           queue
@@ -209,6 +220,7 @@ export async function processClaimedJob(input, dependencies) {
     if (!after.ok || after.blocked) {
       throw Object.assign(new Error(after.message || "Máy in báo lỗi sau khi nhận dữ liệu"), { code: after.code || "PRINTER_POSTCHECK_FAILED" });
     }
+    await spoolingReport;
     result = { copies: job.copies, bytes: tspl.length, spoolJobId: spool.jobId ?? null, pagesPrinted, spoolConfirmed, templateVersion: job.templateVersion };
   } catch (error) {
     const details = { code: error.code || "PRINT_FAILED", message: String(error.message || error).slice(0, 200) };
@@ -260,13 +272,27 @@ export async function runService(config, queue, logger, signal, lock, dependenci
   if (wake) wake.start(() => waiter.wake());
   else logger.info(`Không dùng Realtime — hỏi hàng đợi mỗi ${config.idlePollNoWakeMs / 1000}s khi rảnh`);
   const askPrinter = dependencies.queryPrinter ?? queryPrinter;   // chỉ thay trong test
+  // 0.8.8: một tiến trình PowerShell chạy thường trực cho kiểm tra máy in / đo chữ / gửi dữ liệu (ps-host.mjs).
+  // Nạp sẵn module in + System.Drawing + kiểu gửi dữ liệu ngay lúc khởi động (nền, ~2s) để lệnh in đầu tiên
+  // không phải trả phí đó. Host lỗi/tạm tắt thì mọi nơi tự dùng cách cũ (mở PowerShell mới cho từng việc).
+  const psHost = config.psHost && config.rootDir && process.platform === "win32"
+    ? (dependencies.createPsHost ?? createPowerShellHost)({ rootDir: config.rootDir, logger })
+    : null;
+  if (psHost) {
+    setPowerShellHost(psHost);
+    psHost.init().then(() => logger.info("PowerShell thường trực đã sẵn sàng"), (error) => logger.warn(`PowerShell thường trực chưa nạp được, dùng cách mở mới từng việc: ${String(error?.message || error).slice(0, 160)}`));
+  } else logger.info("Không dùng PowerShell thường trực — mở PowerShell mới cho từng việc");
   let lastJobAt = 0;
   // 0.8.6: cache đo chữ trên máy trạm + danh mục SKU đo sẵn (text-cache.mjs, sku-catalog.mjs).
   const textCache = config.textCache && config.tempDir
     ? createTextCache({ file: path.join(config.tempDir, "text-metrics-cache.json"), version: `${AGENT_VERSION}|${LABEL_FONT_FAMILY}`, logger })
     : null;
   const measureText = dependencies.measureText ?? (textCache ? cachedMeasure(measureTextWidths, textCache) : measureTextWidths);
-  textCache?.ensureValid(measureTextWidths, config);
+  textCache?.ensureValid(measureTextWidths, config).then((ok) => {
+    if (ok && !dependencies.measureText) {
+      return seedFooterPatterns(measureText, config, { quantitySizes: QUANTITY_FONT_SIZES, dateSizes: DATE_FONT_SIZES });
+    }
+  }).catch((error) => logger.warn(`Chưa nạp sẵn mẫu số lượng/ngày vào cache đo chữ: ${String(error?.message || error).slice(0, 160)}`));
   let printing = false;
   const catalogEnabled = textCache && config.skuCache && config.queueProvider === "supabase" && config.supabaseUrl && config.supabasePublishableKey;
   const catalog = catalogEnabled
@@ -309,5 +335,6 @@ export async function runService(config, queue, logger, signal, lock, dependenci
   }
   wake?.stop();
   textCache?.flush();
+  if (psHost) { setPowerShellHost(null); psHost.stop(); }
   logger.info("Agent đã dừng an toàn");
 }

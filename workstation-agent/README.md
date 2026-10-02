@@ -2,7 +2,38 @@
 
 Agent Windows độc lập phục vụ ứng dụng Print SKU. Bản 0.7.0 dùng tem Fabric Relaxation viết tay hoàn toàn; frontend chỉ chọn số lượng tem.
 
-## Cập nhật 0.8.8 — tên vị trí không bắt buộc
+## Cập nhật 0.8.8 — in nhanh hơn (PowerShell thường trực) và tên vị trí không bắt buộc
+
+### In nhanh hơn
+
+Đo 4 lệnh trên máy trạm với 0.8.6: tổng trung vị 10,6 giây, mỗi lệnh mở PowerShell mới 4–5 lần
+(kiểm tra máy in, đo chữ, gửi dữ liệu, 2 lần dò spooler, kiểm tra sau in — mỗi lần ~0,5–1,9 giây chỉ để
+khởi động). Bản này giảm các khoản đó, không đổi cách tem được dựng hay cách xác nhận in:
+
+- **PowerShell thường trực** (`src/ps-host.mjs` + `powershell/host.ps1`): một tiến trình giữ sẵn module in,
+  System.Drawing và kiểu gửi dữ liệu. Đo trên máy phát triển: kiểm tra máy in ~60 ms (trước ~1,8 s), phần
+  khởi động của bước gửi dữ liệu ~10–80 ms (trước ~0,5 s; đo với máy in giả, không in gì). Tiến trình
+  lỗi/quá hạn/tạm tắt thì mọi nơi tự dùng cách mở mới như 0.8.7. **Gửi dữ liệu ra máy in không bao giờ bị
+  gọi lại bằng cách khác** sau khi yêu cầu đã tới tiến trình (tránh in trùng). `PS_HOST=off` để tắt.
+- **Cache đo chữ gộp chữ số**: Arial đo mọi chữ số rộng bằng nhau nên số lượng/ngày ("28.571.429",
+  "02/10/26") dùng chung khoá với "00.000.000", "00/00/00". Agent đo lại 10 chữ số mỗi lần khởi động; font
+  không còn chữ số đều nhau thì tự tắt cách gộp. Các mẫu số lượng/ngày phổ biến được nạp sẵn một lần, nên
+  lệnh in đầu tiên sau nâng cấp cũng không phải mở PowerShell đo chữ.
+- **Song song hoá các lần báo không nằm đường găng**: báo "rendering" chạy cùng lúc với kiểm tra máy in và
+  dựng tem, báo "spooling" chạy cùng lúc với dò spooler. Báo "sending" vẫn phải đợi "rendering" xong và
+  vẫn đứng trước khi gửi dữ liệu (mất lease thì dừng, không in).
+- **Dò spooler** `SPOOL_APPEAR_MS` 2,5 s → **1,5 s**, dò mỗi `SPOOL_POLL_MS` **0,5 s** (trước 1 s): mỗi lần
+  dò chỉ còn ~60 ms nên được ~4 lần quan sát trong ~1,7 s thay vì 2 lần trong 2,8 s. Lệnh kẹt vẫn nằm lại
+  hàng đợi nên vẫn bị phát hiện và agent vẫn chờ tới khi in xong.
+- **Sửa lỗi**: đo sẵn danh mục SKU từng đánh dấu "đã đo" cả những tên mà PowerShell đo hỏng (tên bị bỏ qua
+  mãi); nay đo hỏng thì không đánh dấu và đo lại vòng sau. Đợt đo sẵn 300 → 100 tên cho nhẹ hơn.
+- Script có chữ tiếng Việt (`printer-status.ps1`, `raw-print.ps1`) có BOM UTF-8 để PowerShell 5.1 không
+  đọc sai thành "sáºµn sÃ ng"; `host.ps1` và `raw-printer-type.ps1` thuần ASCII.
+- Tuỳ chọn `.env`: `PS_HOST`, `SPOOL_POLL_MS`, `SPOOL_APPEAR_MS=1500` (xem `.env.example`). **Máy đã có
+  `config\.env` thì trình cài KHÔNG ghi đè** — dòng `SPOOL_APPEAR_MS=2500` (hoặc `8000`) chép từ bản cũ sẽ
+  giữ nguyên mức cũ; đổi sang `1500` hoặc xoá dòng đó để dùng mặc định mới.
+
+### Tên vị trí không bắt buộc
 
 Vị trí chỉ có mã thì tem in **QR + mã**, không in tên (QR và mã nằm đúng chỗ như tem có tên để dán thẳng
 hàng). Agent báo thêm capability `location:name-optional`; lệnh có tên trống được nhận, tên tối đa 60 ký tự

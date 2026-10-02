@@ -38,14 +38,14 @@ test("cachedMeasure: thiếu một phần thì chỉ đo đúng phần thiếu, 
   const base = fakeBase();
   const cache = createTextCache({ file: tempFile(), version: "t1" });
   const measure = cachedMeasure(base, cache);
-  await measure({}, ["A ", "B "], [22], { extra: [{ texts: ["1"], sizes: [40] }] });
-  const result = await measure({}, ["A ", "C "], [22], { extra: [{ texts: ["1", "2"], sizes: [40] }] });
+  await measure({}, ["A ", "B "], [22], { extra: [{ texts: ["x"], sizes: [40] }] });
+  const result = await measure({}, ["A ", "C "], [22], { extra: [{ texts: ["x", "y"], sizes: [40] }] });
   const calls = realCalls(base);
   assert.equal(calls.length, 2);
   assert.deepEqual(calls[1].texts, ["C "], "chỉ đo chữ chưa có");
-  assert.deepEqual(calls[1].extra.map((group) => group.texts), [["2"]]);
+  assert.deepEqual(calls[1].extra.map((group) => group.texts), [["y"]]);
   assert.equal(result.get("A ").get(22), 2 * 22 * 0.5);
-  assert.equal(result.extra[0].get("2").get(40), 1 * 40 * 0.5);
+  assert.equal(result.extra[0].get("y").get(40), 1 * 40 * 0.5);
 });
 
 test("Lưu xuống đĩa rồi mở lại (khởi động lại agent): dùng tiếp cache, không đo lại", async () => {
@@ -101,8 +101,10 @@ test("File hỏng hoặc chưa đối chiếu được chuỗi mẫu: không v�
 test("Vượt trần số mục thì bỏ bớt mục cũ nhất, mục mới vẫn còn", async () => {
   const cache = createTextCache({ file: tempFile(), version: "t1", maxEntries: 10 });
   const measure = cachedMeasure(fakeBase(), cache);
-  for (let i = 0; i < 30; i += 1) await measure({}, [`chu${i} `], [22]);
+  // Tên chỉ gồm chữ cái (chữ số bị gộp khoá từ 0.8.8): "AA ", "BA ", ... đều khác nhau.
+  const name = (i) => `${String.fromCharCode(65 + (i % 26))}${String.fromCharCode(65 + Math.floor(i / 26))} `;
+  for (let i = 0; i < 30; i += 1) await measure({}, [name(i)], [22]);
   assert.ok(cache.size <= 10);
-  assert.ok(cache.get("chu29 ", 22) !== undefined, "mục mới nhất phải còn");
-  assert.equal(cache.get("chu0 ", 22), undefined, "mục cũ nhất bị bỏ");
+  assert.ok(cache.get(name(29), 22) !== undefined, "mục mới nhất phải còn");
+  assert.equal(cache.get(name(0), 22), undefined, "mục cũ nhất bị bỏ");
 });

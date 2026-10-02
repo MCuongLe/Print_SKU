@@ -57,8 +57,13 @@ export function loadConfig(options = {}) {
     spoolTimeoutMs: positiveInt(get("SPOOL_TIMEOUT_MS"), 3600000, 60000, 7200000),
     spoolStallMs: positiveInt(get("SPOOL_STALL_MS"), 600000, 15000, 1800000),
     // 0.8.6: 8s -> 2,5s. TSC PE200 đẩy byte thẳng ra USB, job khoẻ biến mất trước nhịp quét đầu; job kẹt
-    // (hết giấy, bung nắp) nằm lại hàng đợi hàng phút nên 2 nhịp quét (~3s) là đủ thấy (RULES.md).
-    spoolAppearMs: positiveInt(get("SPOOL_APPEAR_MS"), 2500, 2000, 120000),
+    // (hết giấy, bung nắp) nằm lại hàng đợi hàng phút nên nhìn thấy ở MỌI lần dò. 0.8.8: 2,5s -> 1,5s kèm
+    // dò mỗi 0,5s (trước 1s): mỗi lần dò chỉ còn ~60ms nhờ PowerShell thường trực nên ~4 lần dò trong 1,7s
+    // thay vì 2 lần trong 2,8s — nhiều lần quan sát hơn trong thời gian ngắn hơn (RULES.md).
+    spoolAppearMs: positiveInt(get("SPOOL_APPEAR_MS"), 1500, 500, 120000),
+    spoolPollMs: positiveInt(get("SPOOL_POLL_MS"), 500, 100, 5000),
+    // 0.8.8: giữ MỘT tiến trình PowerShell thay vì mở mới 4–5 lần mỗi lệnh (src/ps-host.mjs). off để quay về cách cũ.
+    psHost: !/^(0|false|off|no)$/i.test(get("PS_HOST", "on")),
     spoolRequireConfirm: /^(1|true|yes)$/i.test(get("SPOOL_REQUIRE_CONFIRM", "")),
     dpi: positiveInt(get("LABEL_DPI"), 203, 150, 600),
     density: positiveInt(get("LABEL_DENSITY"), 12, 0, 15),
