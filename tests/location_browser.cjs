@@ -1,155 +1,191 @@
 // MÃ VỊ TRÍ (#location): kiểm tra giao diện local. Mọi kết nối ra ngoài bị giả lập — không
-// ghi Supabase thật, không in thật. Chạy khi có server: python -m http.server 8000
+// ghi Supabase thật, không in thật. File Excel tạo ngay trong test bằng dữ liệu giả.
+// Chạy khi có server: python -m http.server 8000
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const assert = require('node:assert/strict');
+const zlib = require('node:zlib');
+
+// .xlsx tối thiểu (zip không nén). rows: mảng hàng, mỗi ô là chuỗi hoặc { formula, value } như cột Code của template WMS.
+const xlsx = rows => {
+  const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const col = i => String.fromCharCode(65 + i);
+  const sheetRows = rows.map((row, r) => `<row r="${r + 1}">${row.map((cell, c) => {
+    const ref = `${col(c)}${r + 1}`;
+    if (cell && typeof cell === 'object') return `<c r="${ref}" t="str"><f>${esc(cell.formula)}</f><v>${esc(cell.value)}</v></c>`;
+    return cell === '' ? '' : `<c r="${ref}" t="inlineStr"><is><t>${esc(cell)}</t></is></c>`;
+  }).join('')}</row>`).join('');
+  const files = {
+    '[Content_Types].xml': '<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"/>',
+    'xl/workbook.xml': '<?xml version="1.0"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Template import" sheetId="1" r:id="rId7"/><sheet name="Khác" sheetId="2" r:id="rId8"/></sheets></workbook>',
+    'xl/_rels/workbook.xml.rels': '<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId8" Target="worksheets/sheet1.xml"/><Relationship Id="rId7" Target="worksheets/sheet2.xml"/></Relationships>',
+    // sheet1.xml là sheet THỨ HAI trong workbook: đọc phải theo thứ tự workbook, không theo tên file.
+    'xl/worksheets/sheet1.xml': '<?xml version="1.0"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData><row r="1"><c r="A1" t="inlineStr"><is><t>Code</t></is></c></row><row r="2"><c r="A2" t="inlineStr"><is><t>SAI-SHEET</t></is></c></row></sheetData></worksheet>',
+    'xl/worksheets/sheet2.xml': `<?xml version="1.0"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>${sheetRows}</sheetData></worksheet>`,
+  };
+  const locals = [], centrals = [];
+  let offset = 0;
+  for (const [name, text] of Object.entries(files)) {
+    const data = Buffer.from(text, 'utf8'), nameBytes = Buffer.from(name, 'utf8'), crc = zlib.crc32(data);
+    const local = Buffer.alloc(30); local.writeUInt32LE(0x04034b50, 0); local.writeUInt16LE(20, 4); local.writeUInt32LE(crc, 14); local.writeUInt32LE(data.length, 18); local.writeUInt32LE(data.length, 22); local.writeUInt16LE(nameBytes.length, 26);
+    const central = Buffer.alloc(46); central.writeUInt32LE(0x02014b50, 0); central.writeUInt16LE(20, 4); central.writeUInt16LE(20, 6); central.writeUInt32LE(crc, 16); central.writeUInt32LE(data.length, 20); central.writeUInt32LE(data.length, 24); central.writeUInt16LE(nameBytes.length, 28); central.writeUInt32LE(offset, 42);
+    locals.push(local, nameBytes, data); centrals.push(central, nameBytes);
+    offset += 30 + nameBytes.length + data.length;
+  }
+  const dir = Buffer.concat(centrals), end = Buffer.alloc(22);
+  end.writeUInt32LE(0x06054b50, 0); end.writeUInt16LE(Object.keys(files).length, 8); end.writeUInt16LE(Object.keys(files).length, 10); end.writeUInt32LE(dir.length, 12); end.writeUInt32LE(offset, 16);
+  return Buffer.concat([...locals, dir, end]);
+};
+const HEAD = ['Warehouse Code', 'Floor', 'Area', 'Aisle', 'Rack', 'Shelf', 'Bin', 'Code', 'Type', 'Purpose Type', 'Storage Type', 'Floor Description', 'Area Description', 'Aisle Description', 'Rack Description', 'Shelf Description', 'Bin Description', 'Bin Location Description'];
+const wmsRow = (parts, name, cached = parts.join('-')) => ['9999', ...parts, { formula: 'B2&"-"&C2&"-"&D2&"-"&E2&"-"&F2&"-"&G2', value: cached }, '1', 'Lưu trữ (ST)', 'Hàng lẻ', '', '', '', '', '', '', name];
+const WMS_FILE = xlsx([
+  HEAD,
+  wmsRow(['Z9', 'TEST', 'AA', '01', '01', '01'], 'Kệ thử 01'),
+  wmsRow(['Z9', 'TEST', 'AA', '01', '01', '02'], 'Mô tả mã vị trí'),          // chữ mẫu của template → coi như không tên
+  wmsRow(['Z9', 'TEST', 'AA', '01', '01', '01'], 'Trùng mã'),                 // trùng dòng 2
+  wmsRow(['Z9', 'TÊST', 'AA', '01', '01', '03'], 'Mã có dấu'),               // sai mã → bỏ, báo số dòng
+  wmsRow(['', '', '', '', '', ''], '', '-----'),                              // dòng công thức trống → bỏ qua im lặng
+  wmsRow(['Z9', 'TEST', 'AA', '01', '01', '04'], 'Kệ thử 04', ''),           // Code chưa tính → ghép từ Floor…Bin
+]);
+const SIMPLE_FILE = xlsx([
+  ['Lầu', 'Khu vực', 'Dãy', 'Kệ', 'Mâm', 'Ô', 'Location', 'Description'],
+  ['Z8', 'B1', '401', '01', '01', '01', 'Z8-B1-401-01-01-01', 'Phòng thử - Dãy 401 - ô số 01'],
+  ['Z8', 'B1', '401', '01', '01', '02', 'Z8-B1-401-01-01-02', 'Phòng thử - Dãy 401 - ô số 02'],
+]);
+const XLSX_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
 (async () => {
   const browser = await chromium.launch({ channel: 'chrome', headless: true });
   try {
     for (const width of [1280, 375]) {
-      const page = await browser.newPage({ viewport: { width, height: 900 } });
+      const context = await browser.newContext({ viewport: { width, height: 900 } });
+      const page = await context.newPage();
       const errors = [];
-      const calls = [];
-      const state = { capabilities: ['sku:v1', 'group_uid:v1'], enqueueFailOnce: true, jobs: [] };
+      const state = { capabilities: ['sku:v1', 'group_uid:v1'], failOnce: true, jobs: [], status: 'queued' };
       page.on('pageerror', error => errors.push(error.message));
+      page.on('dialog', dialog => dialog.accept());
       await page.route('**/*', async route => {
         const request = route.request(), url = request.url();
         if (url.startsWith('http://127.0.0.1:8000/')) return route.continue();
         const rpc = url.split('/rpc/')[1] || '';
         const body = request.postDataJSON?.() || {};
-        calls.push(rpc);
         let result = { ok: true, data: {} };
-        if (rpc === 'print_queue_status') {
-          result = { ok: true, data: { agents: [{ id: 'test-agent', capabilities: state.capabilities, lastSeenAt: new Date().toISOString() }] } };
-        } else if (rpc === 'print_enqueue') {
+        if (rpc === 'print_queue_status') result = { ok: true, data: { agents: [{ id: 'test-agent', capabilities: state.capabilities, lastSeenAt: new Date().toISOString() }] } };
+        else if (rpc === 'print_enqueue') {
           state.jobs.push(body);
-          if (state.enqueueFailOnce) { state.enqueueFailOnce = false; return route.abort('failed'); }
+          if (state.failOnce && state.jobs.length === 2) { state.failOnce = false; return route.abort('failed'); }
           result = { ok: true, data: { id: `job-${state.jobs.length}`, status: 'queued', duplicate: false } };
         } else if (rpc === 'print_job_status') {
-          result = { ok: true, data: { id: body.p_job_id, status: 'completed' } };
+          // job-1 in lỗi ở agent khi state.status = 'failed'; mọi lệnh khác theo state.status (failed → coi như xong).
+          const status = state.status === 'failed' ? (body.p_job_id === 'job-1' ? 'failed' : 'completed') : state.status;
+          result = { ok: true, data: { id: body.p_job_id, status, errorMessage: status === 'failed' ? 'Hết giấy' : null } };
         }
         return route.fulfill({ contentType: 'application/json', body: JSON.stringify(result) });
       });
-
-      const message = () => page.locator('#loc-message').textContent();
       const waitMessage = text => page.waitForFunction(t => document.querySelector('#loc-message').textContent.includes(t), text);
-      const previewTexts = () => page.locator('#loc-preview text').allTextContents();
+      const rows = () => page.locator('#loc-list .loc-row');
+      const codes = () => page.locator('#loc-list .loc-row strong').allTextContents();
 
       await page.goto('http://127.0.0.1:8000/#home');
       await page.locator('#barcode-location').click();
-      assert.equal(page.url().endsWith('#location'), true);
       await page.locator('#location-screen').waitFor({ state: 'visible' });
-      assert.equal(await page.locator('#barcode-home').isVisible(), false);
-      // Không còn danh mục: không danh sách, không dán Excel, không gọi hàm lưu/tìm vị trí nào.
-      for (const id of ['#loc-rows', '#loc-bulk', '#loc-search', '#loc-save']) assert.equal(await page.locator(id).count(), 0, id);
       await page.waitForFunction(() => document.activeElement.id === 'loc-code');
+      assert.equal(await page.locator('#loc-preview').count(), 0, 'không còn xem trước');
+      assert.equal(await page.locator('#loc-empty').isVisible(), true);
+      assert.equal(await page.locator('#loc-printbar').isVisible(), false);
 
-      // Mã gõ chữ thường được chuẩn hoá chữ hoa; xem trước có QR thật và mã, font Arial.
-      await page.locator('#loc-code').fill('z99-t01-001-01-01-01');
-      assert.ok(await page.locator('#loc-preview rect').count() > 50, 'xem trước phải có QR');
-      assert.equal((await previewTexts())[0], 'Z99-T01-001-01-01-01');
-      assert.equal(await page.locator('#loc-preview text[font-family="Arial,Helvetica,sans-serif"]').count(), await page.locator('#loc-preview text').count());
-      // QR xem trước: khung đúng như agent in cho mã này (version 1 = 21 module × 10 dot = 210 dot,
-      // qrcode-generator chế độ chữ-số mức M) và vẽ đúng từng ô ma trận của bộ mã hoá. Không đối
-      // chiếu bằng bộ ĐỌC ZXing 0.21.3: nó không đọc được một số QR hợp lệ (đúng chuỗi này ở mức M —
-      // đã so khớp với thư viện segno, ma trận giống hệt), còn bộ MÃ HOÁ thì đúng.
-      const mismatches = await page.evaluate(() => {
-        const zx = window.PrintSkuScanner.zxing(), M = zx.QRCodeDecoderErrorCorrectionLevel.M;
-        let matrix;
-        try { matrix = zx.QRCodeEncoder.encode('Z99-T01-001-01-01-01', M, new Map([[zx.EncodeHintType.QR_VERSION, 1]])).getMatrix(); }
-        catch (_) { matrix = zx.QRCodeEncoder.encode('Z99-T01-001-01-01-01', M).getMatrix(); }
-        const n = matrix.getWidth(), rects = [...document.querySelectorAll('#loc-preview g rect')].map(r => ['x', 'y', 'width', 'height'].map(k => +r.getAttribute(k)));
-        const x0 = Math.min(...rects.map(r => r[0])), y0 = Math.min(...rects.map(r => r[1]));
-        const outer = Math.max(...rects.map(r => r[0] + r[2])) - x0, module = outer / n;
-        const drawn = new Set();
-        for (const [x, y, w] of rects) for (let k = 0; k < Math.round(w / module); k++) drawn.add(`${Math.round((x - x0) / module) + k},${Math.round((y - y0) / module)}`);
-        let bad = Math.abs(outer - 210) < 0.5 && y0 === 40 ? 0 : 1000;
-        for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) if ((matrix.get(x, y) === 1) !== drawn.has(`${x},${y}`)) bad++;
-        return bad;
-      });
-      assert.equal(mismatches, 0);
-
-      // Đo chữ: tên dài vẫn đủ ký tự; mã dài bị ép ngang thì báo ngắn.
-      await page.locator('#loc-name').fill('W'.repeat(60));
-      assert.equal((await previewTexts()).slice(1).join(''), 'W'.repeat(60));
-      assert.equal(await page.locator('#loc-fit-hint').textContent(), '');
-      await page.locator('#loc-code').fill('W'.repeat(40));
-      assert.match(await page.locator('#loc-fit-hint').textContent(), /^Mã ép ngang \d+%$/);
-      assert.equal((await previewTexts())[0], 'W'.repeat(40));
-
-      // Mã có dấu / ký tự lạ: báo lỗi ngay, bấm In không gửi gì.
-      await page.locator('#loc-code').fill('Ô01#');
+      // Nhập tay: mã sai bị chặn; Enter ở ô mã (máy quét) chỉ chuyển sang ô tên.
+      await page.locator('#loc-code').fill('ô01#');
       assert.match(await page.locator('#loc-code-hint').textContent(), /Mã chỉ gồm/);
-      await page.locator('#loc-print').click();
-      assert.match(await message(), /Mã chỉ gồm/);
-      assert.equal(state.jobs.length, 0);
-
-      // Enter ở ô mã (máy quét) chuyển sang ô tên, không in.
+      await page.locator('#loc-add').click();
+      assert.equal(await rows().count(), 0);
       await page.locator('#loc-code').fill('z99-t01-001-01-01-01');
       await page.locator('#loc-code').press('Enter');
       assert.equal(await page.evaluate(() => document.activeElement.id), 'loc-name');
-      assert.equal(state.jobs.length, 0);
-
-      // Số tem: nút ± và nhãn nút In.
+      assert.equal(await rows().count(), 0);
+      // Mã chữ thường → chữ hoa, tên gộp khoảng trắng, Enter ở ô tên thêm vào hàng đợi.
       await page.locator('#loc-name').fill('  Khu vực   kiểm thử ');
       await page.locator('#loc-form [data-step="1"]').click();
-      assert.equal(await page.locator('#loc-copies').inputValue(), '2');
-      assert.equal(await page.locator('#loc-print').textContent(), 'In 2 tem');
-      await page.locator('#loc-form [data-step="-1"]').click();
-      await page.locator('#loc-form [data-step="-1"]').click();
-      assert.equal(await page.locator('#loc-copies').inputValue(), '1');
-      await page.locator('#loc-copies').fill('2');
+      await page.locator('#loc-name').press('Enter');
+      await waitMessage('Đã thêm Z99-T01-001-01-01-01 · 2 tem');
+      assert.deepEqual(await codes(), ['Z99-T01-001-01-01-01']);
+      assert.match(await rows().first().innerText(), /Khu vực kiểm thử/);
+      assert.equal(await page.locator('#loc-code').inputValue(), '');
+      // Thêm lại cùng mã → cập nhật, không thêm dòng trùng.
+      await page.locator('#loc-code').fill('Z99-T01-001-01-01-01');
+      await page.locator('#loc-name').fill('Tên mới');
+      await page.locator('#loc-add').click();
+      await waitMessage('Đã cập nhật Z99-T01-001-01-01-01');
+      assert.equal(await rows().count(), 1);
+      assert.match(await rows().first().innerText(), /Tên mới/);
 
-      // Agent chưa có location:v1 → không gửi lệnh.
+      // Nhập Excel template WMS: sheet đầu theo workbook, cột Code (công thức), bỏ chữ mẫu, trùng, mã sai, dòng trống.
+      await page.locator('#loc-copies').fill('1');
+      await page.locator('#loc-file').setInputFiles({ name: 'template_thu.xlsx', mimeType: XLSX_TYPE, buffer: WMS_FILE });
+      await waitMessage('template_thu.xlsx: thêm 3 vị trí · 1 tem/vị trí');
+      assert.match(await page.locator('#loc-message').textContent(), /bỏ 1 mã trùng · bỏ 1 dòng sai \(dòng 5\)/);
+      assert.deepEqual(await codes(), ['Z99-T01-001-01-01-01', 'Z9-TEST-AA-01-01-01', 'Z9-TEST-AA-01-01-02', 'Z9-TEST-AA-01-01-04']);
+      assert.match(await rows().nth(2).innerText(), /—/, 'chữ mẫu "Mô tả mã vị trí" không in lên tem');
+      // Dạng Location / Description; số tem lấy theo ô Số tem.
+      await page.locator('#loc-copies').fill('300');
+      await page.locator('#loc-file').setInputFiles({ name: 'phong_thu.xlsx', mimeType: XLSX_TYPE, buffer: SIMPLE_FILE });
+      await waitMessage('phong_thu.xlsx: thêm 2 vị trí · 300 tem/vị trí');
+      assert.equal(await rows().count(), 6);
+      await page.locator('#loc-file').setInputFiles({ name: 'sai.xlsx', mimeType: 'text/plain', buffer: Buffer.from('không phải excel') });
+      await waitMessage('Không đọc được sai.xlsx: chỉ đọc được file .xlsx');
+
+      // Sửa số tem, bỏ chọn, xoá dòng.
+      await rows().nth(1).locator('[data-act="copies"]').fill('3');
+      await rows().nth(1).locator('[data-act="copies"]').dispatchEvent('change');
+      await rows().nth(3).locator('[data-act="pick"]').uncheck();
+      assert.equal(await page.locator('#loc-sum').textContent(), '5 vị trí · 606 tem');
+      await rows().nth(3).locator('[data-act="remove"]').click();
+      assert.equal(await rows().count(), 5);
+      assert.equal(await page.locator('#loc-sum').textContent(), '5 vị trí · 606 tem');
+
+      // Hàng đợi lưu trên máy: còn sau khi tải lại trang.
+      await page.reload();
+      await page.locator('#location-screen').waitFor({ state: 'visible' });
+      assert.equal(await rows().count(), 5);
+
+      // Agent cũ / thiếu name-optional → không gửi lệnh nào.
       await page.locator('#loc-print').click();
       await waitMessage('chưa hỗ trợ tem vị trí');
       assert.equal(state.jobs.length, 0);
-
-      // Lỗi mạng lần đầu → bấm lại dùng cùng nonce; payload đúng loại tem location, tên đã chuẩn hoá.
       state.capabilities = ['sku:v1', 'location:v1'];
       await page.locator('#loc-print').click();
-      await waitMessage('Chưa xác nhận được lệnh in');
-      await page.locator('#loc-name').press('Enter');
-      await waitMessage('Agent đã in xong');
-      assert.equal(state.jobs.length, 2);
-      assert.equal(state.jobs[0].p_nonce, state.jobs[1].p_nonce);
-      const job = state.jobs[1];
-      assert.equal(job.p_type, 'location');
-      assert.equal(job.p_template_version, 1);
-      assert.equal(job.p_copies, 2);
-      assert.equal(job.p_requested_by, 'web-location');
-      assert.deepEqual(job.p_payload, { items: [{ code: 'Z99-T01-001-01-01-01', name: 'Khu vực kiểm thử', copies: 2 }] });
-      // Sau khi gửi: giữ nội dung, bôi đen mã để quét vị trí kế tiếp.
-      assert.equal(await page.locator('#loc-code').inputValue(), 'z99-t01-001-01-01-01');
-      assert.equal(await page.evaluate(() => document.activeElement.id === 'loc-code' && document.activeElement.selectionEnd - document.activeElement.selectionStart), 20);
-
-      // In lại cùng nội dung sau khi đã gửi thành công = lệnh mới (nonce mới).
-      await page.locator('#loc-print').click();
-      await waitMessage('job-3');
-      assert.notEqual(state.jobs[2].p_nonce, state.jobs[1].p_nonce);
-
-      // Tem không tên: cần agent có location:name-optional.
-      await page.locator('#loc-name').fill('');
-      await page.locator('#loc-print').click();
       await waitMessage('Tem không tên cần agent 0.8.8');
-      assert.equal(state.jobs.length, 3);
+      assert.equal(state.jobs.length, 0);
       state.capabilities.push('location:name-optional');
+
+      // 2 + 3 + 1 + 300 + 300 = 606 tem > 500/lệnh nên tự chia 2 lệnh (306 + 300).
+      // Lệnh thứ 2 lỗi mạng lần đầu: bấm lại chỉ gửi phần còn lại, dùng đúng nonce cũ.
       await page.locator('#loc-print').click();
-      await waitMessage('job-4');
-      assert.deepEqual(state.jobs[3].p_payload.items[0], { code: 'Z99-T01-001-01-01-01', name: '', copies: 2 });
-      assert.equal((await previewTexts()).length, 1, 'tem không tên chỉ có mã');
+      await waitMessage('Đã gửi 306 tem; chưa gửi được phần còn lại');
+      await page.locator('#loc-print').click();
+      await waitMessage('Đã gửi 300 tem · 1 vị trí');
+      assert.equal(state.jobs.length, 3);
+      assert.ok(state.jobs.every(job => job.p_type === 'location' && job.p_template_version === 1 && job.p_copies <= 500 && job.p_requested_by === 'web-location'));
+      assert.equal(state.jobs[1].p_nonce, state.jobs[2].p_nonce, 'gửi lại dùng cùng nonce');
+      assert.notEqual(state.jobs[0].p_nonce, state.jobs[1].p_nonce);
+      assert.deepEqual(state.jobs[0].p_payload.items.map(item => [item.code, item.copies]), [['Z99-T01-001-01-01-01', 2], ['Z9-TEST-AA-01-01-01', 3], ['Z9-TEST-AA-01-01-02', 1], ['Z8-B1-401-01-01-01', 300]]);
+      assert.deepEqual(state.jobs[0].p_payload.items[0], { code: 'Z99-T01-001-01-01-01', name: 'Tên mới', copies: 2 });
+      assert.deepEqual(state.jobs[2].p_payload.items, [{ code: 'Z8-B1-401-01-01-02', name: 'Phòng thử - Dãy 401 - ô số 02', copies: 300 }]);
+      assert.equal(await page.locator('#loc-list .loc-row[data-status="queued"]').count(), 5);
+      assert.equal(await page.locator('#loc-list .loc-row[data-status="queued"] [data-act="remove"]:disabled').count(), 5);
 
-      // Chỉ gọi hàng đợi in, không gọi RPC nào khác.
-      assert.deepEqual([...new Set(calls)].sort(), ['print_enqueue', 'print_job_status', 'print_queue_status']);
+      // job-1 lỗi ở agent → 4 dòng của nó thành "In lỗi", chọn lại được; lệnh còn lại xong → rời hàng đợi.
+      state.status = 'failed';
+      await page.waitForFunction(() => document.querySelectorAll('#loc-list .loc-row[data-status="failed"]').length === 4 && !document.querySelector('#loc-list .loc-row[data-status="queued"]'));
+      assert.equal(await rows().count(), 4);
+      assert.equal(await page.locator('#loc-list .loc-row[data-status="failed"] [data-act="pick"]:not(:disabled)').count(), 4);
+      assert.match(await rows().first().innerText(), /In lỗi: Hết giấy/);
 
-      // Không tràn ngang; quay về trang chủ.
       assert.equal(await page.evaluate(() => document.querySelector('#location-screen').scrollWidth <= innerWidth), true);
       await page.locator('#loc-back').click();
       await page.locator('#barcode-home').waitFor({ state: 'visible' });
-      assert.equal(await page.locator('#location-screen').isVisible(), false);
       assert.deepEqual(errors, []);
-      console.log(`PASS ${width}px: một vị trí → xem trước → in, không danh mục, QR đúng ma trận, đo chữ Arial đủ ký tự, chặn agent cũ/tem không tên, nonce gửi lại`);
-      await page.close();
+      console.log(`PASS ${width}px: nhập tay + Excel (template WMS, Location/Description), hàng đợi lưu trên máy, chia lệnh ≤500 tem, nonce gửi lại, chặn agent cũ, lỗi/xong theo lệnh`);
+      await context.close();
     }
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

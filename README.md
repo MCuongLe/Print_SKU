@@ -209,21 +209,33 @@ Browser test: `node tests/fabric_relaxation_browser.cjs` khi server local chạy
 
 ## Mã vị trí — tem QR dán kệ
 
-Mở **MÃ VỊ TRÍ** ở WH-MATERIAL (nhóm In tem) hoặc `#location`. Nhập **Mã vị trí** (chữ hoa không dấu,
-số và `. _ / -`, tối đa 40 ký tự — gõ chữ thường tự đổi hoa), **Tên vị trí** (tối đa 60 ký tự, không bắt
-buộc: trống thì tem chỉ in QR và mã) và **Số tem** (1–500), xem trước rồi bấm In. Enter ở ô mã (máy quét
-cầm tay) chuyển sang ô tên, không in ngay. In xong nội dung vẫn giữ, ô mã được bôi đen để gõ/quét vị trí kế tiếp.
+Mở **MÃ VỊ TRÍ** ở WH-MATERIAL (nhóm In tem) hoặc `#location`. Hai mục:
 
-**Không lưu danh mục vị trí** (03/10/2026 — người dùng hiếm khi in lại một vị trí): không có danh sách,
-không nhập Excel, không bảng riêng trên Supabase. Web gửi thẳng lệnh `location` (mã + tên + số tem) vào
-hàng đợi in như các màn khác; `print_enqueue` kiểm tra định dạng. Không giữ lịch sử vị trí (bảng
-`print_jobs` cũng có lúc được dọn). Gửi lại sau lỗi mạng với đúng nội dung dùng cùng nonce, không tạo lệnh trùng.
+1. **Thông tin tem** — nhập **Mã vị trí** (chữ hoa không dấu, số và `. _ / -`, tối đa 40 ký tự — gõ chữ
+   thường tự đổi hoa), **Tên vị trí** (tối đa 60 ký tự, không bắt buộc: trống thì tem chỉ in QR và mã),
+   **Số tem** (1–500) rồi **Thêm vào hàng đợi**. Enter ở ô mã (máy quét cầm tay) chỉ chuyển sang ô tên.
+   **Nhập file Excel** (.xlsx, đọc sheet đầu tiên theo thứ tự trong workbook):
+   - template import vị trí của WMS: mã lấy cột **Code** (công thức `Floor-Area-Aisle-Rack-Shelf-Bin`; ô
+     chưa tính thì tự ghép từ 6 cột đó), tên lấy cột **Bin Location Description** — chữ mẫu "Mô tả mã vị
+     trí" của template coi như không tên;
+   - bảng **Location / Description** (hoặc Mã vị trí / Tên vị trí; không có cột mã thì ghép Lầu-Khu vực-
+     Dãy-Kệ-Mâm-Ô).
+   Mỗi vị trí nhận số tem đang đặt ở ô Số tem. Dòng trống bỏ qua; mã trùng và dòng sai mã/tên bị bỏ, báo
+   số dòng.
+2. **Hàng đợi in** — lưu trên máy đang dùng (localStorage, tối đa 500 vị trí), còn sau khi tải lại trang.
+   Tick chọn, sửa số tem từng dòng, xoá dòng hoặc Xoá hết; **In N tem** gửi mọi dòng đã chọn. Quá 100 vị
+   trí hoặc 500 tem thì tự chia nhiều lệnh. In xong vị trí tự rời hàng đợi; in lỗi thì giữ lại, ghi lỗi
+   để in lại. Gửi lại sau lỗi mạng dùng đúng nonce cũ, không in trùng.
+
+**Không lưu danh mục vị trí trên Supabase** (03/10/2026 — người dùng hiếm khi in lại một vị trí): web gửi
+thẳng lệnh `location` (mã + tên + số tem) vào hàng đợi in như các màn khác; `print_enqueue` kiểm tra định
+dạng. Không có lịch sử vị trí (bảng `print_jobs` cũng có lúc được dọn).
 
 Tem 40 × 60 mm (giấy đang lắp, 2 tem/hàng): QR chứa đúng mã vị trí ở trên, mã Arial đậm, tên Arial
 thường. Chữ được **đo thật** để không tràn tem và không mất ký tự: agent đo tên bằng GDI+ (cùng bộ đo
 và cache với tên sản phẩm), mã đo theo bảng bề rộng Arial Bold; mã dài thì ép ngang, tên dài thì xuống
-dòng/giảm cỡ, không bao giờ cắt bớt. Ô xem trước trên web dựng đúng bố cục đó (đo bằng canvas khi máy
-có font Arial) và báo ngắn khi chữ bị ép hẹp. Chi tiết: `workstation-agent/README.md` mục 0.8.7–0.8.8.
+dòng/giảm cỡ, không bao giờ cắt bớt. Web không có ô xem trước (03/10/2026). Chi tiết:
+`workstation-agent/README.md` mục 0.8.7–0.8.8.
 
 Triển khai theo đúng thứ tự:
 
