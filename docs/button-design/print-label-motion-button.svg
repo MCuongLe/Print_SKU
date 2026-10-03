@@ -1,0 +1,213 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1420" viewBox="0 0 1800 1420">
+  <defs>
+    <linearGradient id="brand" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#087655"/>
+      <stop offset="1" stop-color="#005F41"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-30%" width="140%" height="180%">
+      <feDropShadow dx="0" dy="10" stdDeviation="18" flood-color="#173C30" flood-opacity="0.12"/>
+    </filter>
+    <style>
+      .t{font-family:Inter,Segoe UI,Arial,sans-serif;fill:#17251F}
+      .m{font-family:Inter,Segoe UI,Arial,sans-serif;fill:#60736B}
+      .w{font-family:Inter,Segoe UI,Arial,sans-serif;fill:#FFFFFF}
+      .l{font-family:Inter,Segoe UI,Arial,sans-serif;fill:#005F41;font-weight:750;letter-spacing:1.4px}
+    </style>
+  </defs>
+
+  <rect width="1800" height="1420" fill="#F1F5F3"/>
+  <rect width="1800" height="138" fill="url(#brand)"/>
+  <rect x="54" y="37" width="64" height="64" rx="19" fill="#FFFFFF" fill-opacity="0.14"/>
+  <path d="M71 75h30v17H71zM76 53h20v22M77 85h18" fill="none" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="96" cy="79" r="2.5" fill="#80E0B9"/>
+  <text x="144" y="63" class="w" font-size="29" font-weight="780">BUTTON IN TEM CHUYỂN ĐỘNG</text>
+  <text x="144" y="94" fill="#CFE8DF" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15">Tem di chuyển vào máy in · phản hồi đúng trạng thái hàng đợi · không gây nhiễu</text>
+  <rect x="1548" y="47" width="198" height="42" rx="21" fill="#FFFFFF" fill-opacity="0.12" stroke="#FFFFFF" stroke-opacity="0.25"/>
+  <circle cx="1574" cy="68" r="5" fill="#80E0B9"/>
+  <text x="1588" y="73" class="w" font-size="13" font-weight="700">DESIGN CONCEPT · V1</text>
+
+  <!-- Hero -->
+  <rect x="54" y="180" width="1692" height="300" rx="28" fill="#FFFFFF" stroke="#D9E2DE" filter="url(#shadow)"/>
+  <text x="92" y="224" class="l" font-size="13">CONCEPT ĐỀ XUẤT</text>
+  <text x="92" y="261" class="t" font-size="27" font-weight="760">Máy in đứng yên, các tờ tem chạy vào khe nhận giấy</text>
+  <text x="92" y="291" class="m" font-size="15">Chuyển động chỉ dùng trong giai đoạn gửi lệnh. Khi server nhận lệnh, chuyển ngay sang dấu xác nhận.</text>
+
+  <rect x="92" y="326" width="696" height="92" rx="46" fill="url(#brand)"/>
+  <g transform="translate(136 344)">
+    <rect x="0" y="12" width="31" height="24" rx="4" fill="#FFFFFF"/>
+    <path d="M7 19h17M7 25h12M7 31h15" stroke="#005F41" stroke-width="2" stroke-linecap="round"/>
+    <rect x="30" y="8" width="31" height="30" rx="7" fill="#FFFFFF" fill-opacity="0.18" stroke="#FFFFFF" stroke-width="2"/>
+    <path d="M37 12h17v10H37zM40 29h12v12H40z" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linejoin="round"/>
+    <circle cx="53" cy="25" r="2" fill="#80E0B9"/>
+  </g>
+  <text x="244" y="382" class="w" font-size="20" font-weight="760">Đang gửi 12 tem…</text>
+  <text x="622" y="382" text-anchor="end" fill="#CFE8DF" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" font-weight="650">KHÔNG BẤM LẠI</text>
+
+  <path d="M847 368h79" fill="none" stroke="#B9CAC3" stroke-width="2" stroke-dasharray="6 7"/>
+  <path d="M914 360l14 8-14 8" fill="none" stroke="#B9CAC3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <rect x="980" y="326" width="696" height="92" rx="46" fill="#EAF7F1" stroke="#B9DECf"/>
+  <circle cx="1040" cy="372" r="25" fill="#16865D"/>
+  <path d="M1029 372l8 8 15-17" fill="none" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="1082" y="367" fill="#075C40" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="19" font-weight="760">Đã gửi 12 tem</text>
+  <text x="1082" y="392" fill="#4F7868" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" font-weight="600">Lệnh đã vào hàng đợi</text>
+  <text x="1640" y="378" text-anchor="end" fill="#16865D" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">700 MS</text>
+
+  <!-- Storyboard -->
+  <text x="54" y="548" class="l" font-size="13">STORYBOARD · 5 TRẠNG THÁI</text>
+  <text x="54" y="582" class="t" font-size="23" font-weight="750">Một lần nhấn, một chuỗi phản hồi rõ ràng</text>
+
+  <g transform="translate(54 614)">
+    <rect width="316" height="270" rx="22" fill="#FFFFFF" stroke="#D9E2DE"/>
+    <circle cx="34" cy="34" r="16" fill="#E6F3EF"/>
+    <text x="34" y="39" text-anchor="middle" fill="#005F41" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" font-weight="800">01</text>
+    <text x="60" y="39" class="t" font-size="14" font-weight="740">SẴN SÀNG</text>
+    <rect x="26" y="80" width="264" height="66" rx="33" fill="#005F41"/>
+    <g transform="translate(62 96)" stroke="#FFFFFF" stroke-width="2.3" fill="none" stroke-linejoin="round">
+      <path d="M3 15V3h24v12M4 31H2a4 4 0 0 1-4-4V17a4 4 0 0 1 4-4h26a4 4 0 0 1 4 4v10a4 4 0 0 1-4 4h-2"/>
+      <rect x="5" y="25" width="20" height="15" rx="2"/>
+    </g>
+    <text x="116" y="121" class="w" font-size="16" font-weight="730">In 12 tem</text>
+    <text x="26" y="185" class="m" font-size="12">Icon máy in + số lượng thực tế.</text>
+    <text x="26" y="208" class="m" font-size="12">Không có chuyển động khi đang chờ.</text>
+    <rect x="26" y="230" width="102" height="25" rx="12.5" fill="#F1F5F3"/>
+    <text x="77" y="247" text-anchor="middle" class="m" font-size="10" font-weight="700">0 MS · IDLE</text>
+  </g>
+
+  <g transform="translate(392 614)">
+    <rect width="316" height="270" rx="22" fill="#FFFFFF" stroke="#D9E2DE"/>
+    <circle cx="34" cy="34" r="16" fill="#E6F3EF"/>
+    <text x="34" y="39" text-anchor="middle" fill="#005F41" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" font-weight="800">02</text>
+    <text x="60" y="39" class="t" font-size="14" font-weight="740">NHẤN</text>
+    <rect x="30" y="83" width="256" height="60" rx="30" fill="#004D36"/>
+    <g transform="translate(69 98)">
+      <rect x="0" y="12" width="27" height="20" rx="3" fill="#FFFFFF"/>
+      <path d="M6 19h15M6 25h11" stroke="#005F41" stroke-width="2" stroke-linecap="round"/>
+      <rect x="27" y="8" width="28" height="27" rx="6" fill="#FFFFFF" fill-opacity="0.16" stroke="#FFFFFF" stroke-width="2"/>
+      <path d="M33 12h16v9H33zM36 26h10v11H36z" fill="none" stroke="#FFFFFF" stroke-width="2"/>
+    </g>
+    <text x="140" y="121" class="w" font-size="15" font-weight="730">Đang gửi…</text>
+    <text x="26" y="185" class="m" font-size="12">Button thu nhẹ 0,98× rồi trở lại.</text>
+    <text x="26" y="208" class="m" font-size="12">Khóa nhấn lặp ngay khi bắt đầu.</text>
+    <rect x="26" y="230" width="110" height="25" rx="12.5" fill="#F1F5F3"/>
+    <text x="81" y="247" text-anchor="middle" class="m" font-size="10" font-weight="700">0–120 MS</text>
+  </g>
+
+  <g transform="translate(730 614)">
+    <rect width="316" height="270" rx="22" fill="#FFFFFF" stroke="#D9E2DE"/>
+    <circle cx="34" cy="34" r="16" fill="#E6F3EF"/>
+    <text x="34" y="39" text-anchor="middle" fill="#005F41" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" font-weight="800">03</text>
+    <text x="60" y="39" class="t" font-size="14" font-weight="740">TEM ĐI VÀO MÁY</text>
+    <rect x="26" y="80" width="264" height="66" rx="33" fill="#005F41"/>
+    <g transform="translate(49 96)">
+      <rect x="0" y="13" width="24" height="18" rx="3" fill="#FFFFFF" opacity="0.38"/>
+      <rect x="12" y="11" width="26" height="20" rx="3" fill="#FFFFFF" opacity="0.7"/>
+      <path d="M18 17h14M18 23h10" stroke="#005F41" stroke-width="1.7" stroke-linecap="round"/>
+      <rect x="39" y="7" width="31" height="30" rx="7" fill="#FFFFFF" fill-opacity="0.16" stroke="#FFFFFF" stroke-width="2"/>
+      <path d="M45 11h18v10H45zM48 28h12v11H48z" fill="none" stroke="#FFFFFF" stroke-width="2"/>
+      <circle cx="63" cy="24" r="2" fill="#80E0B9"/>
+    </g>
+    <text x="140" y="121" class="w" font-size="15" font-weight="730">Đang gửi…</text>
+    <text x="26" y="185" class="m" font-size="12">3 tem lệch nhau 110 ms.</text>
+    <text x="26" y="208" class="m" font-size="12">Chỉ transform + opacity.</text>
+    <rect x="26" y="230" width="138" height="25" rx="12.5" fill="#F1F5F3"/>
+    <text x="95" y="247" text-anchor="middle" class="m" font-size="10" font-weight="700">120–900 MS</text>
+  </g>
+
+  <g transform="translate(1068 614)">
+    <rect width="316" height="270" rx="22" fill="#FFFFFF" stroke="#D9E2DE"/>
+    <circle cx="34" cy="34" r="16" fill="#E6F3EF"/>
+    <text x="34" y="39" text-anchor="middle" fill="#005F41" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" font-weight="800">04</text>
+    <text x="60" y="39" class="t" font-size="14" font-weight="740">ĐÃ NHẬN LỆNH</text>
+    <rect x="26" y="80" width="264" height="66" rx="33" fill="#EAF7F1" stroke="#B9DECF"/>
+    <circle cx="67" cy="113" r="19" fill="#16865D"/>
+    <path d="M58 113l6 6 12-14" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="100" y="118" fill="#075C40" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" font-weight="740">Đã gửi 12 tem</text>
+    <text x="26" y="185" class="m" font-size="12">Dấu kiểm xác nhận server đã nhận.</text>
+    <text x="26" y="208" class="m" font-size="12">Không đồng nghĩa “đã in xong”.</text>
+    <rect x="26" y="230" width="148" height="25" rx="12.5" fill="#F1F5F3"/>
+    <text x="100" y="247" text-anchor="middle" class="m" font-size="10" font-weight="700">GIỮ 700 MS</text>
+  </g>
+
+  <g transform="translate(1406 614)">
+    <rect width="340" height="270" rx="22" fill="#FFFFFF" stroke="#D9E2DE"/>
+    <circle cx="34" cy="34" r="16" fill="#FDEDEC"/>
+    <text x="34" y="39" text-anchor="middle" fill="#C2413B" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" font-weight="800">05</text>
+    <text x="60" y="39" class="t" font-size="14" font-weight="740">LỖI / GỬI LẠI</text>
+    <rect x="26" y="80" width="288" height="66" rx="33" fill="#FFFFFF" stroke="#C2413B" stroke-width="2"/>
+    <circle cx="67" cy="113" r="18" fill="#FDEDEC"/>
+    <path d="M60 106l14 14M74 106l-14 14" fill="none" stroke="#C2413B" stroke-width="3" stroke-linecap="round"/>
+    <text x="100" y="118" fill="#9D342F" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" font-weight="740">Gửi lại lệnh in</text>
+    <text x="26" y="185" class="m" font-size="12">Rung ngang tối đa 160 ms, một lần.</text>
+    <text x="26" y="208" class="m" font-size="12">Lỗi chi tiết hiển thị dưới nút.</text>
+    <rect x="26" y="230" width="142" height="25" rx="12.5" fill="#FDEDEC"/>
+    <text x="97" y="247" text-anchor="middle" fill="#9D342F" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="10" font-weight="700">ACTION LẠI</text>
+  </g>
+
+  <!-- Motion and specs -->
+  <rect x="54" y="930" width="1090" height="424" rx="24" fill="#FFFFFF" stroke="#D9E2DE"/>
+  <text x="88" y="974" class="l" font-size="13">MOTION SPEC</text>
+  <text x="88" y="1008" class="t" font-size="22" font-weight="750">Quỹ đạo ngắn, đọc được ở kích thước nhỏ</text>
+
+  <line x1="128" y1="1081" x2="702" y2="1081" stroke="#D9E2DE" stroke-width="3"/>
+  <circle cx="128" cy="1081" r="8" fill="#005F41"/>
+  <circle cx="298" cy="1081" r="8" fill="#16865D"/>
+  <circle cx="494" cy="1081" r="8" fill="#16865D"/>
+  <circle cx="702" cy="1081" r="8" fill="#005F41"/>
+  <text x="128" y="1053" text-anchor="middle" class="t" font-size="12" font-weight="700">0</text>
+  <text x="298" y="1053" text-anchor="middle" class="t" font-size="12" font-weight="700">120</text>
+  <text x="494" y="1053" text-anchor="middle" class="t" font-size="12" font-weight="700">520</text>
+  <text x="702" y="1053" text-anchor="middle" class="t" font-size="12" font-weight="700">900 ms</text>
+  <text x="128" y="1112" text-anchor="middle" class="m" font-size="11">Press</text>
+  <text x="298" y="1112" text-anchor="middle" class="m" font-size="11">Tem 1</text>
+  <text x="494" y="1112" text-anchor="middle" class="m" font-size="11">Tem 2–3</text>
+  <text x="702" y="1112" text-anchor="middle" class="m" font-size="11">Accepted</text>
+
+  <rect x="88" y="1150" width="482" height="166" rx="18" fill="#F7F9F8"/>
+  <text x="112" y="1182" class="t" font-size="14" font-weight="740">Chuyển động tem</text>
+  <text x="112" y="1214" class="m" font-size="13">translateX</text>
+  <text x="240" y="1214" class="t" font-size="13" font-weight="700">−12 → 31 px</text>
+  <text x="112" y="1243" class="m" font-size="13">scale</text>
+  <text x="240" y="1243" class="t" font-size="13" font-weight="700">1 → 0,72</text>
+  <text x="112" y="1272" class="m" font-size="13">opacity</text>
+  <text x="240" y="1272" class="t" font-size="13" font-weight="700">1 → 0 tại khe máy in</text>
+  <text x="112" y="1301" class="m" font-size="13">easing</text>
+  <text x="240" y="1301" class="t" font-size="13" font-weight="700">cubic-bezier(.2,.8,.2,1)</text>
+
+  <rect x="590" y="1150" width="518" height="166" rx="18" fill="#F7F9F8"/>
+  <text x="614" y="1182" class="t" font-size="14" font-weight="740">Kích thước &amp; bố cục</text>
+  <text x="614" y="1214" class="m" font-size="13">Mobile</text>
+  <text x="744" y="1214" class="t" font-size="13" font-weight="700">rộng 100% · cao 56–60 px</text>
+  <text x="614" y="1243" class="m" font-size="13">Desktop</text>
+  <text x="744" y="1243" class="t" font-size="13" font-weight="700">min 220 px · cao 52–56 px</text>
+  <text x="614" y="1272" class="m" font-size="13">Animation stage</text>
+  <text x="744" y="1272" class="t" font-size="13" font-weight="700">72 × 40 px · overflow hidden</text>
+  <text x="614" y="1301" class="m" font-size="13">Touch target</text>
+  <text x="744" y="1301" class="t" font-size="13" font-weight="700">tối thiểu 48 px</text>
+
+  <rect x="1170" y="930" width="576" height="424" rx="24" fill="#FFFFFF" stroke="#D9E2DE"/>
+  <text x="1204" y="974" class="l" font-size="13">NGUYÊN TẮC SỬ DỤNG</text>
+  <text x="1204" y="1008" class="t" font-size="22" font-weight="750">Đẹp nhưng không đánh đổi sự rõ ràng</text>
+
+  <circle cx="1223" cy="1056" r="13" fill="#E6F3EF"/>
+  <path d="M1217 1056l4 4 8-9" fill="none" stroke="#005F41" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="1250" y="1061" class="t" font-size="14" font-weight="700">Chỉ chạy sau thao tác nhấn của người dùng</text>
+  <text x="1250" y="1084" class="m" font-size="12">Không tự chạy ở trạng thái nghỉ.</text>
+
+  <circle cx="1223" cy="1127" r="13" fill="#E6F3EF"/>
+  <path d="M1217 1127l4 4 8-9" fill="none" stroke="#005F41" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="1250" y="1132" class="t" font-size="14" font-weight="700">Khóa double-click, giữ nguyên số lượng</text>
+  <text x="1250" y="1155" class="m" font-size="12">Ví dụ: “Đang gửi 12 tem…” thay vì thông báo chung.</text>
+
+  <circle cx="1223" cy="1198" r="13" fill="#E6F3EF"/>
+  <path d="M1217 1198l4 4 8-9" fill="none" stroke="#005F41" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="1250" y="1203" class="t" font-size="14" font-weight="700">Reduced motion: đổi trạng thái bằng crossfade</text>
+  <text x="1250" y="1226" class="m" font-size="12">Không cho tem chạy khi hệ điều hành yêu cầu giảm chuyển động.</text>
+
+  <circle cx="1223" cy="1269" r="13" fill="#E6F3EF"/>
+  <path d="M1217 1269l4 4 8-9" fill="none" stroke="#005F41" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="1250" y="1274" class="t" font-size="14" font-weight="700">Thông báo hàng đợi nằm ngoài button</text>
+  <text x="1250" y="1297" class="m" font-size="12">Button không thay thế trạng thái máy in và thông báo lỗi chi tiết.</text>
+
+  <text x="54" y="1391" class="m" font-size="12">PRINT SKU · Bộ màu dùng chung: #005F41 · #16865D · #C2413B · #17251F · #60736B · #D9E2DE</text>
+</svg>

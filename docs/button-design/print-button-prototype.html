@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nút In tem đơn giản — prototype chạy thật</title>
+<script id="wms-print-button">
+/* Cùng mã với window.WmsPrint trong index.html: nút đổi icon quay + đường load chạy dưới nút tới khi lệnh in xong. */
+(() => {
+  const MIN = 700, FAST = 1000, SLOW = 2500, MAX_MS = 5 * 60 * 1000, MAX_ERRORS = 10;
+  const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+  const info = new WeakMap();
+  const get = btn => {
+    let s = info.get(btn);
+    if (!s) { s = { sending: false, jobs: new Set(), polling: false, t0: 0, sticky: false, stickyKey: null, stickyLabel: '', label: btn.textContent.trim(), disabled: false, key: null }; info.set(btn, s); }
+    return s;
+  };
+  const apply = (btn, state, blocked) => { btn.dataset.printState = state; btn.setAttribute('aria-disabled', String(blocked)); };
+  function paint(btn) {
+    const s = get(btn);
+    if (s.sending) return;
+    if (s.sticky) { apply(btn, 'failed', false); btn.textContent = s.stickyLabel; return; }
+    if (s.jobs.size) { apply(btn, 'working', s.disabled); btn.textContent = s.disabled ? 'Đang in…' : s.label; return; }
+    apply(btn, s.disabled ? 'disabled' : 'idle', s.disabled);
+    btn.textContent = s.label;
+  }
+  function render(btn, o) {
+    const s = get(btn);
+    s.label = o.label; s.disabled = !!o.disabled;
+    if (s.sticky && s.stickyKey !== o.key) s.sticky = false;
+    s.key = o.key;
+    paint(btn);
+  }
+  function begin(btn, text) {
+    const s = get(btn);
+    s.sending = true; s.sticky = false; s.t0 = performance.now();
+    apply(btn, 'working', true);
+    btn.textContent = text;
+  }
+  function progress(btn, text) { const s = get(btn); if (s.sending) btn.textContent = text; }
+  function sent(btn, ids) {
+    const s = get(btn);
+    s.sending = false;
+    (ids || []).forEach(id => { if (id) s.jobs.add(id); });
+    paint(btn);
+    if (s.jobs.size && !s.polling) poll(btn, s);
+  }
+  async function poll(btn, s) {
+    s.polling = true;
+    const started = performance.now();
+    let errors = 0, round = 0;
+    while (s.jobs.size && performance.now() - started < MAX_MS && errors < MAX_ERRORS) {
+      await sleep(round++ < 6 ? FAST : SLOW);
+      for (const id of [...s.jobs]) {
+        try {
+          const result = await window.PrintSkuQueue.jobStatus(id);
+          const status = result && result.data && result.data.status;
+          if (status === 'completed' || status === 'failed' || status === 'cancelled') s.jobs.delete(id);
+          errors = 0;
+        } catch (_) { errors += 1; }
+      }
+    }
+    s.jobs.clear();
+    const wait = MIN - (performance.now() - s.t0);
+    if (wait > 0) await sleep(wait);
+    s.polling = false;
+    paint(btn);
+  }
+  function fail(btn, text, opts) {
+    const s = get(btn);
+    s.sending = false; s.sticky = true; s.stickyKey = opts ? opts.key : null; s.stickyLabel = text;
+    paint(btn);
+  }
+  function settle(btn) { const s = get(btn); if (s.sending) { s.sending = false; paint(btn); } }
+  window.WmsPrint = { render, begin, progress, sent, fail, settle };
+})();
+</script>
+<style>
+:root {
+  --brand: #005f41; --brand-sub: #e6f3ef; --text: #17251f; --muted: #60736b; --line: #d9e2de; --bg: #f4f7f6; --danger: #c2413b;
+  --i-printer: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6'/%3E%3Crect x='6' y='14' width='12' height='8' rx='1'/%3E%3C/svg%3E");
+  --i-refresh: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8M21 3v5h-5M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16M8 16H3v5'/%3E%3C/svg%3E");
+  --i-alert: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3M12 9v4M12 17h.01'/%3E%3C/svg%3E");
+  --i-dots: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='1'/%3E%3Ccircle cx='19' cy='12' r='1'/%3E%3Ccircle cx='5' cy='12' r='1'/%3E%3C/svg%3E");
+  --pb-icon-work: var(--i-refresh); --pb-spin: pbtn-spin .9s linear infinite; --pb-line: pbtn-line 1.15s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) { :root { --pb-icon-work: var(--i-dots); --pb-spin: none; --pb-line: none; } }
+/* Chỉ ở prototype: ép chế độ chuyển động để xem thử. */
+[data-motion="reduce"] { --pb-icon-work: var(--i-dots); --pb-spin: none; --pb-line: none; }
+[data-motion="full"] { --pb-icon-work: var(--i-refresh); --pb-spin: pbtn-spin .9s linear infinite; --pb-line: pbtn-line 1.15s ease-in-out infinite; }
+
+* { box-sizing: border-box; }
+html { color-scheme: light; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.45 Arial, Helvetica, sans-serif; }
+.top { padding: 18px 20px 16px; color: #fff; background: var(--brand); }
+.top h1 { margin: 0; font-size: 19px; }
+.top p { margin: 4px 0 0; font-size: 13px; opacity: .85; }
+.wrap { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; max-width: 1000px; margin: 0 auto; padding: 18px 16px 60px; }
+.card { padding: 16px 18px; border: 1px solid var(--line); border-radius: 18px; background: #fff; }
+.card h2 { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; font-size: 15px; }
+.tag { padding: 3px 9px; border-radius: 999px; color: var(--brand); background: var(--brand-sub); font-size: 11px; font-weight: 800; letter-spacing: .04em; }
+.ctls { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px 22px; }
+.ctl { display: grid; gap: 6px; align-content: start; min-width: 0; border: 0; padding: 0; margin: 0; }
+.ctl__t { color: var(--muted); font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.seg { display: flex; flex-wrap: wrap; gap: 6px; }
+.seg label { position: relative; }
+.seg input { position: absolute; inset: 0; margin: 0; opacity: 0; cursor: pointer; }
+.seg span { display: inline-flex; align-items: center; min-height: 40px; padding: 0 14px; border: 1px solid var(--line); border-radius: 999px; color: #315248; background: #fff; font-size: 13px; font-weight: 700; }
+.seg input:checked + span { color: var(--brand); border-color: var(--brand); background: var(--brand-sub); }
+.seg input:focus-visible + span { outline: 3px solid var(--brand); outline-offset: 2px; }
+.range { display: flex; align-items: center; gap: 12px; min-height: 40px; }
+.range input { flex: 1; min-width: 0; accent-color: var(--brand); }
+.range output { min-width: 56px; font-weight: 800; text-align: right; font-variant-numeric: tabular-nums; }
+.ibtn { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 14px; border: 1px solid var(--line); border-radius: 12px; color: var(--brand); background: #fff; font: 800 13px/1 Arial, Helvetica, sans-serif; cursor: pointer; }
+.frame { max-width: var(--fw, 100%); margin: 0 auto; padding: 14px 14px 22px; border: 1px dashed #b7c6bf; border-radius: 16px; background: var(--bg); transition: max-width .2s ease; }
+.bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px 18px; border: 1px solid var(--line); border-radius: 16px; background: #fff; }
+.bar__sum b { display: block; font-size: 17px; font-variant-numeric: tabular-nums; }
+.bar__sum span { color: var(--muted); font-size: 13px; }
+.pstat { min-height: 20px; margin: 14px 2px 0; font-size: 13px; font-weight: 700; color: var(--muted); }
+.gal { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px 14px; }
+.gal__i { display: grid; gap: 16px; align-content: start; padding: 12px 12px 22px; border: 1px solid var(--line); border-radius: 14px; background: #fbfdfc; }
+.gal__i small { color: var(--muted); font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.log { height: 190px; margin: 0; padding: 8px 12px; overflow: auto; list-style: none; border-radius: 12px; background: #17251f; color: #cfe8df; font: 12px/1.6 Consolas, "Courier New", monospace; }
+pre { margin: 0; padding: 12px 14px; overflow: auto; border-radius: 12px; background: #17251f; color: #cfe8df; font: 12px/1.6 Consolas, "Courier New", monospace; }
+
+/* ---------- Component (giống hệt #wms-print-button trong index.html) ---------- */
+.act-icon { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.act-icon::before { content: ""; width: 20px; height: 20px; flex: none; background-color: currentColor; -webkit-mask: var(--i-printer) center / contain no-repeat; mask: var(--i-printer) center / contain no-repeat; }
+.pbtn {
+  --h: 56px; box-sizing: border-box; min-height: var(--h); padding: 0 22px; border: 0; border-radius: 999px;
+  color: #fff; background-color: var(--brand); font: 800 16px/1.1 Arial, Helvetica, sans-serif; font-variant-numeric: tabular-nums;
+  cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+  transition: background-color .2s ease, color .2s ease, box-shadow .2s ease;
+}
+.pbtn--block { width: 100%; }
+.pbtn--compact { --h: 50px; min-width: 150px; padding: 0 18px; font-size: 15px; }
+.pbtn:active:not([aria-disabled="true"]) { transform: scale(.98); }
+.pbtn:focus-visible, .lite:focus-visible { outline: 3px solid var(--brand); outline-offset: 3px; }
+.pbtn[aria-disabled="true"] { cursor: default; }
+.pbtn[data-print-state="disabled"] { color: #899a93; background-color: #e8efec; cursor: not-allowed; }
+.lite { min-height: 48px; padding: 0 18px; border: 1px solid var(--line); border-radius: 999px; color: var(--brand); background: #fff; font: 800 15px/1 Arial, Helvetica, sans-serif; cursor: pointer; }
+.act-icon--print[data-print-state="working"] { position: relative; }
+.act-icon--print[data-print-state="working"], .act-icon--print[data-print-state="working"]:disabled { opacity: 1; background-color: #06704f; color: #fff; }
+.act-icon--print[data-print-state="working"]::before { -webkit-mask-image: var(--pb-icon-work); mask-image: var(--pb-icon-work); animation: var(--pb-spin); }
+.act-icon--print[data-print-state="working"]::after {
+  content: ""; position: absolute; left: 10px; right: 10px; top: calc(100% + 5px); height: 3px; border-radius: 3px; pointer-events: none;
+  background: linear-gradient(90deg, rgba(22, 134, 93, 0), #16865d 50%, rgba(22, 134, 93, 0)) no-repeat, rgba(0, 95, 65, .16);
+  background-size: 45% 100%, 100% 100%; background-position: 50% 0, 0 0;
+  animation: var(--pb-line);
+}
+.act-icon--print[data-print-state="failed"]::before { -webkit-mask-image: var(--i-alert); mask-image: var(--i-alert); }
+.act-icon--print[data-print-state="failed"] { color: #9d342f; background-color: #fff; box-shadow: inset 0 0 0 2px #c2413b; }
+@keyframes pbtn-spin { to { transform: rotate(360deg); } }
+@keyframes pbtn-line { from { background-position: -60% 0, 0 0; } to { background-position: 160% 0, 0 0; } }
+@media (forced-colors: active) {
+  .pbtn { border: 2px solid ButtonText; color: ButtonText; background: ButtonFace; }
+  .act-icon--print[data-print-state="working"]::after { background: Highlight; }
+  .act-icon--print[data-print-state="failed"] { border: 2px dashed ButtonText; }
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>Nút In tem đơn giản · prototype chạy thật</h1>
+  <p>Bấm nút: icon quay + đường load chạy dưới nút, chạy tới khi lệnh in xong thì dừng. Hàng đợi và máy in là giả lập.</p>
+</header>
+<main class="wrap">
+  <section class="card" aria-labelledby="h-ctl">
+    <h2 id="h-ctl"><span class="tag">ĐIỀU KHIỂN</span> Kịch bản thử</h2>
+    <div class="ctls">
+      <div class="ctl"><span class="ctl__t" id="l-print">Máy in in xong sau</span>
+        <div class="range"><input id="print-s" type="range" min="1" max="30" step="1" value="6" aria-labelledby="l-print"><output id="print-out" for="print-s">6 giây</output></div></div>
+      <fieldset class="ctl"><legend class="ctl__t">Kết quả lần gửi tới</legend>
+        <div class="seg">
+          <label><input type="radio" name="outcome" value="success" checked><span>Thành công</span></label>
+          <label><input type="radio" name="outcome" value="fail"><span>Lỗi mạng</span></label>
+          <label><input type="radio" name="outcome" value="partial"><span>Gửi một phần (nút B)</span></label>
+        </div></fieldset>
+      <fieldset class="ctl"><legend class="ctl__t">Chuyển động</legend>
+        <div class="seg">
+          <label><input type="radio" name="motion" value="auto" checked><span>Theo hệ thống</span></label>
+          <label><input type="radio" name="motion" value="reduce"><span>Giảm</span></label>
+          <label><input type="radio" name="motion" value="full"><span>Đầy đủ</span></label>
+        </div></fieldset>
+      <fieldset class="ctl"><legend class="ctl__t">Khổ màn hình thử</legend>
+        <div class="seg">
+          <label><input type="radio" name="fw" value="320px"><span>320</span></label>
+          <label><input type="radio" name="fw" value="390px"><span>390</span></label>
+          <label><input type="radio" name="fw" value="100%" checked><span>Rộng</span></label>
+        </div></fieldset>
+      <div class="ctl"><span class="ctl__t">Đặt lại</span><div><button class="ibtn" type="button" id="reset">Nạp lại danh sách</button></div></div>
+    </div>
+  </section>
+
+  <section class="card" aria-labelledby="h-a">
+    <h2 id="h-a"><span class="tag">A</span> Thanh đáy · IN TEM SKU (nút gọn)</h2>
+    <div class="frame" data-frame>
+      <div class="bar"><div class="bar__sum"><b id="sum-a">12 tem</b><span>3 SKU trong danh sách</span></div><button class="pbtn pbtn--compact act-icon act-icon--print" id="btn-a" type="button">In 12 tem</button></div>
+      <p class="pstat" id="stat-a"></p>
+    </div>
+  </section>
+
+  <section class="card" aria-labelledby="h-b">
+    <h2 id="h-b"><span class="tag">B</span> Full-width · Xác nhận in UID (120 tem, chia 3 lô × 40 — hiện số thật)</h2>
+    <div class="frame" data-frame>
+      <button class="pbtn pbtn--block act-icon act-icon--print" id="btn-b" type="button">Xác nhận in 120 tem</button>
+      <p class="pstat" id="stat-b"></p>
+    </div>
+  </section>
+
+  <section class="card" aria-labelledby="h-c">
+    <h2 id="h-c"><span class="tag">C</span> Nút phụ (Cắt UID, Tem xả vải, Mã vị trí, TÌM SKU)</h2>
+    <div class="frame" data-frame>
+      <button class="lite act-icon act-icon--print" id="btn-c" type="button">In 1 tem</button>
+      <p class="pstat" id="stat-c"></p>
+    </div>
+  </section>
+
+  <section class="card" aria-labelledby="h-g">
+    <h2 id="h-g"><span class="tag">CÁC TRẠNG THÁI</span> Cạnh nhau (tĩnh; "đang in" tự chạy để xem)</h2>
+    <div class="gal">
+      <div class="gal__i"><small>Sẵn sàng</small><button class="pbtn pbtn--compact act-icon act-icon--print" type="button" data-print-state="idle">In 12 tem</button></div>
+      <div class="gal__i"><small>Đang gửi / đang in</small><button class="pbtn pbtn--compact act-icon act-icon--print" type="button" data-print-state="working" aria-disabled="true">Đang in…</button></div>
+      <div class="gal__i"><small>Lỗi · thử lại</small><button class="pbtn pbtn--compact act-icon act-icon--print" type="button" data-print-state="failed">Thử lại</button></div>
+      <div class="gal__i"><small>Không có tem</small><button class="pbtn pbtn--compact act-icon act-icon--print" type="button" data-print-state="disabled" aria-disabled="true">In tem</button></div>
+      <div class="gal__i"><small>Bản nhẹ · đang in</small><button class="lite act-icon act-icon--print" type="button" data-print-state="working" aria-disabled="true">In 1 tem</button></div>
+      <div class="gal__i"><small>Bản nhẹ · lỗi</small><button class="lite act-icon act-icon--print" type="button" data-print-state="failed">Thử lại</button></div>
+    </div>
+  </section>
+
+  <section class="card" aria-labelledby="h-l">
+    <h2 id="h-l"><span class="tag">NHẬT KÝ</span> Chuyển trạng thái</h2>
+    <ol class="log" id="log" aria-live="off"></ol>
+  </section>
+
+  <section class="card" aria-labelledby="h-i">
+    <h2 id="h-i"><span class="tag">GHÉP VÀO APP</span> Chỉ bọc lời gọi gửi hiện có</h2>
+<pre>WmsPrint.begin(btn, "Đang gửi…");               // bấm
+const result = await enqueue(payload);            // lời gọi gửi sẵn có, không đổi
+WmsPrint.sent(btn, [result.data.id]);             // hàng đợi nhận → đường load chạy tới khi job xong
+// lỗi: WmsPrint.fail(btn, "Thử lại", { key });   finally: WmsPrint.settle(btn);</pre>
+  </section>
+</main>
+<script>
+(() => {
+  'use strict';
+  const $ = (selector, scope = document) => scope.querySelector(selector);
+  const $$ = (selector, scope = document) => [...scope.querySelectorAll(selector)];
+  const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+  const root = document.documentElement;
+  const S = { printMs: 6000, outcome: 'success', count: 12 };
+  const t0 = performance.now();
+  const logEl = $('#log');
+  const log = text => {
+    const item = document.createElement('li');
+    item.textContent = String(Math.round(performance.now() - t0)).padStart(6, ' ') + ' ms  ' + text;
+    logEl.prepend(item);
+    while (logEl.children.length > 60) logEl.lastChild.remove();
+  };
+  // Hàng đợi giả: job "in xong" sau S.printMs kể từ lúc được nhận.
+  const accepted = new Map();
+  let seq = 0;
+  window.PrintSkuQueue = { jobStatus: async id => ({ ok: true, data: { status: performance.now() - accepted.get(id) >= S.printMs ? 'completed' : 'queued' } }) };
+  const enqueue = async () => { await sleep(300); const id = 'J' + (++seq); accepted.set(id, performance.now()); log('hàng đợi: nhận ' + id); return id; };
+
+  const ctxs = {};
+  function make(id, total, chunk, labelOf) {
+    const btn = $('#btn-' + id), stat = $('#stat-' + id);
+    const ctx = { id, btn, stat, total, base: total, chunk, labelOf, sent: 0, doneChunks: 0, ids: [], busy: false };
+    new MutationObserver(() => log(id.toUpperCase() + ': ' + btn.dataset.printState + ' · ' + btn.textContent.trim())).observe(btn, { attributes: true, attributeFilter: ['data-print-state'] });
+    btn.addEventListener('click', () => press(ctx));
+    ctxs[id] = ctx;
+    draw(ctx);
+    return ctx;
+  }
+  const key = ctx => ctx.total;
+  function draw(ctx) { WmsPrint.render(ctx.btn, { label: ctx.labelOf(ctx.total), disabled: ctx.total === 0, key: key(ctx) }); }
+  async function press(ctx) {
+    if (ctx.busy || ctx.btn.getAttribute('aria-disabled') === 'true' || !ctx.total) return;
+    ctx.busy = true;
+    const chunks = Math.ceil(ctx.total / ctx.chunk), ids = [];
+    let sentCount = ctx.sent;
+    WmsPrint.begin(ctx.btn, ctx.chunk < ctx.total ? 'Đang gửi ' + sentCount + '/' + ctx.total + '…' : 'Đang gửi…');
+    try {
+      for (let i = ctx.doneChunks; i < chunks; i++) {
+        if (S.outcome === 'fail' || (S.outcome === 'partial' && i >= 1)) { const wasPartial = sentCount > 0; S.outcome = 'success'; $('input[name="outcome"][value="success"]').checked = true; throw { partial: wasPartial }; }
+        const id = await enqueue();
+        ids.push(id);
+        ctx.doneChunks = i + 1;
+        sentCount += Math.min(ctx.chunk, ctx.total - i * ctx.chunk);
+        ctx.sent = sentCount;
+        WmsPrint.progress(ctx.btn, 'Đang gửi ' + sentCount + '/' + ctx.total + '…');
+      }
+      ctx.total = 0; ctx.sent = 0; ctx.doneChunks = 0;     // danh sách đã gửi hết
+      if (ids.length) WmsPrint.sent(ctx.btn, ids);
+      ctx.stat.textContent = '';
+    } catch (error) {
+      if (ids.length) WmsPrint.sent(ctx.btn, ids);
+      const rest = ctx.total - ctx.sent;
+      if (ctx.sent > 0) ctx.total = rest, ctx.sent = 0, ctx.doneChunks = 0;
+      WmsPrint.fail(ctx.btn, error && error.partial ? 'Thử lại ' + ctx.total + ' tem' : 'Thử lại', { key: ctx.total });
+      ctx.stat.textContent = error && error.partial ? 'Đã gửi một phần; còn ' + ctx.total + ' tem.' : 'Chưa gửi được lệnh in.';
+    } finally { ctx.busy = false; WmsPrint.settle(ctx.btn); draw(ctx); }
+  }
+  make('a', 12, 12, n => n ? 'In ' + n + ' tem' : 'In tem');
+  make('b', 120, 40, n => n ? 'Xác nhận in ' + n + ' tem' : 'Xác nhận in');
+  make('c', 1, 1, n => n ? 'In ' + n + ' tem' : 'In tem');
+  const updateSum = () => { const a = ctxs.a; $('#sum-a').textContent = a.total + ' tem'; };
+  const obsA = new MutationObserver(updateSum); obsA.observe(ctxs.a.btn, { childList: true, characterData: true, subtree: true });
+
+  $('#print-s').addEventListener('input', event => { S.printMs = Number(event.target.value) * 1000; $('#print-out').textContent = event.target.value + ' giây'; });
+  $$('input[name="outcome"]').forEach(input => input.addEventListener('change', () => { S.outcome = input.value; }));
+  $$('input[name="motion"]').forEach(input => input.addEventListener('change', () => { if (input.value === 'auto') delete root.dataset.motion; else root.dataset.motion = input.value; }));
+  $$('input[name="fw"]').forEach(input => input.addEventListener('change', () => { $$('[data-frame]').forEach(frame => frame.style.setProperty('--fw', input.value)); }));
+  $('#reset').addEventListener('click', () => { Object.values(ctxs).forEach(ctx => { ctx.total = ctx.base; ctx.sent = 0; ctx.doneChunks = 0; ctx.stat.textContent = ''; draw(ctx); }); updateSum(); });
+  log('sẵn sàng — bấm một nút để thử');
+})();
+</script>
+</body>
+</html>

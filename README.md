@@ -37,6 +37,16 @@ Source agent Windows độc lập dành cho ứng dụng này nằm trong [`work
 
 Agent hỗ trợ preview PNG, dựng TSPL không in, kiểm tra dữ liệu, kiểm tra máy in và hàng đợi Supabase có lease. Web chuyển các lệnh SKU sang queue mới và có màn hình `#group-uid`; SKU trong tem Group UID là tùy chọn, tên sản phẩm có thể tra tự động từ Supabase hoặc nhập thủ công.
 
+## Nút In tem (animation khi đang in)
+
+Kiểu đơn giản: bấm in thì nút đổi icon máy in thành vòng quay và hiện một **đường load chạy ngay dưới nút**, chạy tới khi **lệnh in xong** (hàng đợi báo `completed`/`failed`/`cancelled`) thì dừng. Không còn dòng báo "mất N giây" / "(12s)" ở IN TEM SKU. Thiết kế: [`docs/THIET_KE_BUTTON_IN_TEM_CHUYEN_DONG.md`](docs/THIET_KE_BUTTON_IN_TEM_CHUYEN_DONG.md); prototype: `docs/button-design/print-button-prototype.html`.
+
+Mọi nút gửi lệnh in là một `.act-icon--print` (IN TEM SKU và Xác nhận in của UID thêm `.pbtn`), điều khiển bằng `data-print-state` = `idle | working | failed | disabled`; `working` gồm cả lúc đang gửi và lúc máy in đang in. Các màn chỉ bọc lời gọi gửi sẵn có bằng `window.WmsPrint` (không đổi hàng đợi hay nonce): `begin()` khi bấm, `progress()` cập nhật nhãn (UID hiện `Đang gửi 100/125…`), `sent(btn, [jobId…])` khi hàng đợi nhận lệnh — từ đây nút theo dõi job bằng `PrintSkuQueue.jobStatus` (1 giây/lần, sau đó 2,5 giây/lần, tối đa 5 phút) rồi dừng animation; `fail()` khi gửi lỗi (nút đỏ "Thử lại", giữ tới khi bấm lại hoặc danh sách đổi); `render()` thay cho việc ghi nhãn; `settle()` ở `finally` để nút không kẹt. IN TEM SKU (React) tự theo dõi bằng vòng `X` có sẵn nên không gọi `WmsPrint`.
+
+- Đang in mà vẫn còn tem để in thì nút giữ nhãn "In N tem" và bấm tiếp được; hết tem thì nút ghi "Đang in…" và khoá cho tới khi in xong.
+- Giảm chuyển động (`prefers-reduced-motion`): icon ba chấm đứng yên và đường load đứng yên (vẫn thấy "đang in").
+- Khi test tự động: IN TEM SKU (React) và Xác nhận in (UID) dùng `aria-disabled` thay cho `disabled`; các nút còn lại vẫn `disabled` thật khi không có gì để in. Nút giữ trạng thái `working` cho tới khi `PrintSkuQueue.jobStatus` báo xong — test cần mock `jobStatus` trả `completed` rồi đợi `data-print-state` về `idle`/`disabled` trước khi so nhãn.
+
 ## Màn Sample — gom hàng mẫu vào bao
 
 Màn `#sample` quét mã QR SKU trên hàng mẫu, gom các mẫu cùng SKU vào một bao và báo SKU inactive.
