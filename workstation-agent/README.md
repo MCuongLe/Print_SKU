@@ -38,7 +38,8 @@ khởi động). Bản này giảm các khoản đó, không đổi cách tem đ
 Vị trí chỉ có mã thì tem in **QR + mã**, không in tên (QR và mã nằm đúng chỗ như tem có tên để dán thẳng
 hàng). Agent báo thêm capability `location:name-optional`; lệnh có tên trống được nhận, tên tối đa 60 ký tự
 như trước, và tên trống không tốn lần đo chữ. Web chỉ gửi vị trí không tên khi thấy capability này (agent
-0.8.7 từ chối tên trống). Cần migration `supabase/warehouse_location_v2_optional_name.sql`.
+0.8.7 từ chối tên trống). Migration: `supabase/warehouse_location_v3_no_table.sql` (03/10/2026 — thay v1/v2,
+không còn bảng danh mục vị trí; web gửi thẳng mã + tên trong lệnh in).
 
 ## Cập nhật 0.8.7 — tem mã vị trí (`location:v1`)
 
@@ -56,8 +57,9 @@ Agent báo thêm capability `location:v1` và in tem màn **MÃ VỊ TRÍ** (`#l
   ngoài vùng chữ, QR đọc lại đúng bằng ZBar.
 
 Lên phiên bản agent mới nên cache đo chữ làm lại và danh mục SKU đo lại nền (~1,5–3 phút khi rảnh) như
-mỗi lần nâng cấp. Cần migration `supabase/warehouse_location_v1.sql` (bảng `warehouse_locations` + mở
-hàng đợi cho loại tem `location`); agent cũ vẫn chạy bình thường, chỉ không nhận lệnh tem vị trí.
+mỗi lần nâng cấp. Cần migration mở hàng đợi cho loại tem `location` — nay là
+`supabase/warehouse_location_v3_no_table.sql` (không còn bảng `warehouse_locations`); agent cũ vẫn chạy
+bình thường, chỉ không nhận lệnh tem vị trí.
 
 ## Cập nhật 0.8.6 — in nhanh hơn: chờ spooler ngắn lại, cache đo chữ, danh mục SKU đo sẵn
 

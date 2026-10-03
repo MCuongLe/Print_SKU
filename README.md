@@ -200,42 +200,36 @@ Browser test: `node tests/fabric_relaxation_browser.cjs` khi server local chạy
 ## Mã vị trí — tem QR dán kệ
 
 Mở **MÃ VỊ TRÍ** ở WH-MATERIAL (nhóm In tem) hoặc `#location`. Nhập **Mã vị trí** (chữ hoa không dấu,
-số và `. _ / -`, tối đa 40 ký tự — gõ chữ thường tự đổi hoa) và **Tên vị trí** (tối đa 60 ký tự, **không bắt buộc**:
-trống thì tem chỉ in QR và mã), bấm Lưu.
-Gõ lại mã đã có thì web báo trước, tự điền tên cũ và nút đổi thành "Cập nhật tên". Nhập nhiều vị trí:
-mở "Nhập nhiều vị trí từ Excel", copy 2 cột Mã/Tên rồi dán (tối đa 500 dòng; dòng tiêu đề tự bỏ;
-lỗi/trùng mã báo theo số dòng và không lưu dòng nào). Vị trí vừa lưu được chọn sẵn để in.
+số và `. _ / -`, tối đa 40 ký tự — gõ chữ thường tự đổi hoa), **Tên vị trí** (tối đa 60 ký tự, không bắt
+buộc: trống thì tem chỉ in QR và mã) và **Số tem** (1–500), xem trước rồi bấm In. Enter ở ô mã (máy quét
+cầm tay) chuyển sang ô tên, không in ngay. In xong nội dung vẫn giữ, ô mã được bôi đen để gõ/quét vị trí kế tiếp.
 
-Danh sách lưu trên Supabase (`public.warehouse_locations`), tìm theo mã hoặc tên không cần gõ dấu,
-hiện số tem đã in và lần in cuối. "Xoá" chỉ ẩn vị trí (không in được nữa); lưu lại đúng mã đó là khôi
-phục — web không có quyền xoá cứng. In: chọn vị trí, nhập số tem mỗi vị trí, bấm In → lệnh `location`
-vào hàng đợi in như các màn khác (tối đa 100 vị trí · 500 tem/lượt, gửi lại sau lỗi mạng dùng cùng
-nonce). Tên in lên tem lấy từ database theo mã, không lấy từ trình duyệt. Agent báo xong thì trigger
-cộng số tem đã in.
+**Không lưu danh mục vị trí** (03/10/2026 — người dùng hiếm khi in lại một vị trí): không có danh sách,
+không nhập Excel, không bảng riêng trên Supabase. Web gửi thẳng lệnh `location` (mã + tên + số tem) vào
+hàng đợi in như các màn khác; `print_enqueue` kiểm tra định dạng, nội dung đã in vẫn nằm trong
+`print_jobs.payload`. Gửi lại sau lỗi mạng với đúng nội dung dùng cùng nonce, không tạo lệnh trùng.
 
 Tem 40 × 60 mm (giấy đang lắp, 2 tem/hàng): QR chứa đúng mã vị trí ở trên, mã Arial đậm, tên Arial
 thường. Chữ được **đo thật** để không tràn tem và không mất ký tự: agent đo tên bằng GDI+ (cùng bộ đo
 và cache với tên sản phẩm), mã đo theo bảng bề rộng Arial Bold; mã dài thì ép ngang, tên dài thì xuống
 dòng/giảm cỡ, không bao giờ cắt bớt. Ô xem trước trên web dựng đúng bố cục đó (đo bằng canvas khi máy
-có font Arial) và báo trước nếu chữ sẽ bị ép hẹp. Chi tiết: `workstation-agent/README.md` mục 0.8.7.
+có font Arial) và báo ngắn khi chữ bị ép hẹp. Chi tiết: `workstation-agent/README.md` mục 0.8.7–0.8.8.
 
 Triển khai theo đúng thứ tự:
 
-1. Áp dụng migration (bảng + RPC `warehouse_location_upsert/search/archive`, trigger đếm tem đã in, mở
-   `print_enqueue`/`print_agent_claim` cho loại tem `location`; các loại tem cũ giữ nguyên từng dòng):
+1. Áp dụng migration — `print_enqueue` nhận mã/tên trực tiếp (các loại tem khác giữ nguyên từng dòng),
+   bỏ trigger đếm tem và 6 hàm của danh mục vị trí, xoá bảng `warehouse_locations` **chỉ khi** mọi mã
+   trong bảng đã có trong một lệnh in (còn mã chưa từng in thì cả migration dừng, không đổi gì):
 
    ```powershell
-   python scripts/apply_supabase_sql.py supabase/warehouse_location_v1.sql --allow-destructive
+   python scripts/apply_supabase_sql.py supabase/warehouse_location_v3_no_table.sql --allow-destructive
    ```
 
-   `--allow-destructive` chỉ vì thay CHECK constraint loại tem và `drop trigger if exists`; không xoá dữ liệu.
-   Tên không bắt buộc cần thêm `supabase/warehouse_location_v2_optional_name.sql` (cùng cờ `--allow-destructive`, chỉ
-   vì thay CHECK của cột tên) và **agent 0.8.8** (capability `location:name-optional`); web không gửi lệnh có vị trí
-   không tên khi chưa có agent đó. Dán nhiều dòng từ Excel: dòng chỉ có mã thì **giữ nguyên tên đang có** (mã mới
-   thì không có tên); muốn xoá tên của một vị trí, sửa riêng ở ô nhập rồi để trống tên.
-2. Cập nhật agent máy trạm lên **0.8.7** (capability `location:v1`), giữ nguyên `config\.env`.
-   Agent cũ vẫn in SKU/UID/Fabric bình thường; web kiểm tra capability và **không gửi** lệnh tem vị
-   trí khi chưa có agent hỗ trợ (tránh lệnh nằm chờ mãi trong hàng đợi).
+   Phải chạy **trước** khi cập nhật `index.html` (print_enqueue cũ chỉ in mã có trong bảng). Từ lúc chạy
+   tới lúc cập nhật web, màn MÃ VỊ TRÍ bản cũ báo lỗi đọc danh sách; các màn khác không ảnh hưởng.
+   Dự án mới chỉ cần file này — `warehouse_location_v1/v2` là lịch sử bản có danh mục.
+2. Agent máy trạm **0.8.7** trở lên (capability `location:v1`); tem không tên cần **0.8.8**
+   (`location:name-optional`). Web kiểm tra capability và **không gửi** lệnh khi chưa có agent phù hợp.
 3. Cập nhật `index.html`. In thử 1–3 tem và quét QR bằng máy quét WMS.
 
 Kiểm thử không cần mạng: `node --test` trong `workstation-agent` (tem, đo chữ, lệnh in) và

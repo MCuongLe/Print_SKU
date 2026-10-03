@@ -1,6 +1,6 @@
 const ASCII_BARCODE = /^[\x20-\x7E]+$/;
 const SKU_PATTERN = /^[0-9A-Za-z._-]{1,40}$/;
-// Mã vị trí kho: chữ IN HOA, số và . _ / - (Supabase warehouse_locations dùng đúng mẫu này).
+// Mã vị trí kho: chữ IN HOA, số và . _ / - (print_enqueue trên Supabase dùng đúng mẫu này).
 const LOCATION_PATTERN = /^[0-9A-Z][0-9A-Z._\/-]{0,39}$/;
 
 function cleanText(value, maxLength) {
