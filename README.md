@@ -206,8 +206,8 @@ cầm tay) chuyển sang ô tên, không in ngay. In xong nội dung vẫn giữ
 
 **Không lưu danh mục vị trí** (03/10/2026 — người dùng hiếm khi in lại một vị trí): không có danh sách,
 không nhập Excel, không bảng riêng trên Supabase. Web gửi thẳng lệnh `location` (mã + tên + số tem) vào
-hàng đợi in như các màn khác; `print_enqueue` kiểm tra định dạng, nội dung đã in vẫn nằm trong
-`print_jobs.payload`. Gửi lại sau lỗi mạng với đúng nội dung dùng cùng nonce, không tạo lệnh trùng.
+hàng đợi in như các màn khác; `print_enqueue` kiểm tra định dạng. Không giữ lịch sử vị trí (bảng
+`print_jobs` cũng có lúc được dọn). Gửi lại sau lỗi mạng với đúng nội dung dùng cùng nonce, không tạo lệnh trùng.
 
 Tem 40 × 60 mm (giấy đang lắp, 2 tem/hàng): QR chứa đúng mã vị trí ở trên, mã Arial đậm, tên Arial
 thường. Chữ được **đo thật** để không tràn tem và không mất ký tự: agent đo tên bằng GDI+ (cùng bộ đo
@@ -218,16 +218,15 @@ có font Arial) và báo ngắn khi chữ bị ép hẹp. Chi tiết: `workstati
 Triển khai theo đúng thứ tự:
 
 1. Áp dụng migration — `print_enqueue` nhận mã/tên trực tiếp (các loại tem khác giữ nguyên từng dòng),
-   bỏ trigger đếm tem và 6 hàm của danh mục vị trí, xoá bảng `warehouse_locations` **chỉ khi** mọi mã
-   trong bảng đã có trong một lệnh in (còn mã chưa từng in thì cả migration dừng, không đổi gì):
+   bỏ trigger đếm tem, 6 hàm và bảng `warehouse_locations` của danh mục vị trí. **Đã chạy trên Supabase
+   03/10/2026** (bảng lúc đó còn 2 mã, người dùng đồng ý xoá); dự án mới thì chạy:
 
    ```powershell
    python scripts/apply_supabase_sql.py supabase/warehouse_location_v3_no_table.sql --allow-destructive
    ```
 
-   Phải chạy **trước** khi cập nhật `index.html` (print_enqueue cũ chỉ in mã có trong bảng). Từ lúc chạy
-   tới lúc cập nhật web, màn MÃ VỊ TRÍ bản cũ báo lỗi đọc danh sách; các màn khác không ảnh hưởng.
-   Dự án mới chỉ cần file này — `warehouse_location_v1/v2` là lịch sử bản có danh mục.
+   Chạy **trước** khi đưa `index.html` lên (print_enqueue cũ chỉ in mã có trong bảng). Dự án mới chỉ cần
+   file này — `warehouse_location_v1/v2` là lịch sử bản có danh mục.
 2. Agent máy trạm **0.8.7** trở lên (capability `location:v1`); tem không tên cần **0.8.8**
    (`location:name-optional`). Web kiểm tra capability và **không gửi** lệnh khi chưa có agent phù hợp.
 3. Cập nhật `index.html`. In thử 1–3 tem và quét QR bằng máy quét WMS.

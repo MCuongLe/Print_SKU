@@ -1,13 +1,14 @@
 -- Mã vị trí KHÔNG lưu danh mục nữa (03/10/2026): người dùng hiếm khi in lại một vị trí, nên bỏ bảng
 -- warehouse_locations cùng các hàm lưu/tìm/xoá và trigger đếm số tem đã in (v1, v2). Web nhập mã + tên
--- rồi gửi thẳng lệnh in; nội dung đã in vẫn nằm trong print_jobs.payload như mọi loại tem khác.
+-- rồi gửi thẳng lệnh in. Không giữ lịch sử vị trí: print_jobs cũng có lúc được dọn (03/10/2026 chỉ còn
+-- lệnh trong ngày), nên đừng coi print_jobs.payload là nơi lưu.
 --
 -- print_enqueue (loại `location`): kiểm tra và chuẩn hoá đúng mã/tên trong lệnh — mã chữ hoa
 -- [0-9A-Z._/-] 1–40 ký tự, tên không bắt buộc tối đa 60 ký tự, số tem 1–500 khớp tổng lệnh. Các loại
 -- tem khác giữ nguyên từng dòng. print_agent_claim không đổi (vẫn cần capability `location:v1`).
 --
--- Bảng chỉ bị xoá khi MỌI mã trong bảng đã có trong một lệnh in `location` (không mất thông tin);
--- còn mã chưa từng in thì cả migration dừng lại, không đổi gì — xem danh sách rồi quyết định.
+-- Xoá bảng cùng dữ liệu trong đó (người dùng đồng ý 03/10/2026; lúc đó bảng còn 2 mã:
+-- F01-WH2-501-01-01-01 "Sân chứa VLXD" và F0-TF-00-00-00-02 "TF-02" đã ẩn).
 --
 -- Chạy TRƯỚC khi cập nhật index.html (web mới gửi mã chưa có trong bảng, print_enqueue cũ sẽ từ chối):
 --   python scripts/apply_supabase_sql.py supabase/warehouse_location_v3_no_table.sql --allow-destructive
@@ -85,19 +86,7 @@ drop function if exists public.warehouse_location_archive(text,text);
 drop function if exists public.warehouse_location_parse(jsonb);
 drop function if exists public.warehouse_location_fold(text);
 
-do $$
-declare v_missing text;
-begin
-  if to_regclass('public.warehouse_locations') is null then return; end if;
-  select string_agg(l.location_code, ', ' order by l.location_code) into v_missing
-    from public.warehouse_locations l
-   where not exists(select 1 from public.print_jobs j, jsonb_array_elements(case when jsonb_typeof(j.payload->'items')='array' then j.payload->'items' else '[]'::jsonb end) i
-                     where j.type='location' and i->>'code'=l.location_code);
-  if v_missing is not null then
-    raise exception 'Dừng, chưa đổi gì: các mã vị trí sau chưa từng in, xoá bảng sẽ mất: %', v_missing;
-  end if;
-  drop table public.warehouse_locations;
-end$$;
+drop table if exists public.warehouse_locations;
 
 commit;
 notify pgrst,'reload schema';
