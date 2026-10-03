@@ -295,7 +295,7 @@ không đọc được QR và mã vạch ngang do lỗi đảo màu của ZXing 
 được Code 128 toàn số (SKU, UID) mỗi khi bên trái mã vạch có điểm tối trên cùng hàng do lỗi
 `Code128Reader.findStartPattern` của ZXing 0.21.3 (đã vá ngay trong bundle).
 
-Ô Mã SKU có nút **"Bàn phím ảo: đang ẩn — bấm để hiện"** (như Cắt UID, Sample, Xả vải) để dùng máy
+Ô Mã SKU có nút **"Hiện bàn phím" / "Ẩn bàn phím"** (icon Keyboard / KeyboardOff; như Cắt UID, Sample, Xả vải) để dùng máy
 quét cầm tay không bị bàn phím che; mặc định ẩn, nhớ theo từng máy (`print-sku-ban-phim`). Bấm
 "Gõ tay mã SKU" trong lớp quét thì bàn phím tự bật lại.
 
