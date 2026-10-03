@@ -53,6 +53,8 @@ const assert = require('node:assert/strict');
       await empty.locator('input').check();
       await page.locator('#uid-bulk-product').fill('Tên bổ sung');
       await page.locator('#uid-apply-mapping').click();
+      // Bộ chọn SKU Combo phát lại click bất đồng bộ, nên phải chờ tem sang danh sách sẵn sàng.
+      await page.waitForFunction(() => document.querySelector('#uid-ready-count').textContent === '1');
       assert.match(await page.locator('#uid-ready').innerText(), /LOT-01.*007/);
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
       assert.deepEqual(errors, []);

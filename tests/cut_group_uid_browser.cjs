@@ -49,12 +49,26 @@ const fs = require('node:fs');
       await scan('MISSING');
       await page.waitForFunction(() => document.querySelector('#cut-message').textContent.includes('cập nhật'));
       await scan('UID-0001');
-      await page.waitForFunction(() => document.querySelector('#cut-count').textContent === '1');
-      assert.match(await page.locator('#cut-list').innerText(), /SKU-001.*Vải thử nghiệm/s);
+      // Quét chỉ lưu tem; thông báo "Đã lưu tem" bị ghi đè ngay khi tra cứu tự chạy nên chờ thẻ UID vừa quét.
+      await page.waitForFunction(() => {
+        const last = document.querySelector('#cut-last');
+        return !last.hidden && last.textContent.includes('UID-0001') && !document.querySelector('#cut-add').disabled;
+      });
+      assert.equal(await page.locator('#cut-count').textContent(), '0');
       await scan('UID-0001');
       await page.waitForFunction(() => document.querySelector('#cut-message').textContent.includes('đã được cắt'));
+      // Tem chỉ vào hàng chờ in sau khi chọn ở Tra cứu và đưa vào hàng chờ.
+      await page.locator('#cut-tab-data').click();
+      await page.locator('#cut-search').evaluate(form => form.requestSubmit());
+      await page.waitForFunction(() => document.querySelector('#cut-found').textContent === '1');
+      await page.locator('#cut-search-all').check();
+      await page.locator('#cut-push').click();
+      await page.waitForFunction(() => document.querySelector('#cut-count').textContent === '1');
+      assert.match(await page.locator('#cut-list').innerText(), /SKU-001.*Vải thử nghiệm/s);
       await page.locator('#cut-print').click();
       await page.waitForFunction(() => document.querySelector('#cut-count').textContent === '0');
+      // Nút In tem chỉ dừng animation khi lệnh in xong (jobStatus = completed).
+      await page.waitForFunction(() => ['idle', 'disabled'].includes(document.querySelector('#cut-print').dataset.printState));
       const jobs = await page.evaluate(() => window.testJobs);
       assert.equal(jobs.length, 1);
       assert.deepEqual(jobs[0].payload.items[0], { groupUid: 'UID-0001', sku: 'SKU-001', productName: 'Vải thử nghiệm', lot: 'LOT-7', roll: 'ROLL-2', copies: 1 });
@@ -63,6 +77,7 @@ const fs = require('node:fs');
         productName: 'Vải thử nghiệm có tên dài để kiểm tra tự xuống dòng trong packing list',
         lot: 'LOT-7', roll: String(number), printStatus: 'printed', cutAt: new Date().toISOString()
       });
+      await page.locator('#cut-tab-data').click();
       await page.locator('#cut-sku').fill('SKU-001');
       await page.locator('#cut-search').evaluate(form => form.requestSubmit());
       await page.waitForFunction(() => document.querySelector('#cut-found').textContent === '80');
