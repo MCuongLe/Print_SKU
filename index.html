@@ -4138,12 +4138,21 @@ Error generating stack: `+y.message+`
           <button class="cut-tab" id="cut-tab-scan" type="button" role="tab" data-tab="scan" aria-selected="true">1 · Quét Group UID</button>
           <button class="cut-tab" id="cut-tab-data" type="button" role="tab" data-tab="data" aria-selected="false">2 · Tra cứu UID đã cắt <b class="cut-badge" id="cut-found">0</b></button>
           <button class="cut-tab" id="cut-tab-print" type="button" role="tab" data-tab="print" aria-selected="false">3 · Tem chờ in <b class="cut-badge" id="cut-count">0</b></button>
+          <button class="cut-tab" id="cut-tab-adj" type="button" role="tab" data-tab="adj" aria-selected="false">4 · Đối chiếu <b class="cut-badge" id="cut-adj-issues">0</b></button>
         </div>
         <p class="cut-message" id="cut-message" aria-live="polite" style="margin-bottom:14px"></p>
         <div class="cut-grid">
         <section class="cut-card" data-panel="scan"><h2><span>1</span>Quét Group UID</h2><form class="cut-scan" id="cut-form"><input class="cut-input" id="cut-code" autocomplete="off" inputmode="none" placeholder="Quét hoặc nhập UID…" maxlength="40" required><button class="act-icon act-icon--keyboard" id="cut-keyboard" type="button" aria-label="Hiện bàn phím" title="Hiện bàn phím" aria-pressed="true"></button><button class="cut-primary act-icon act-icon--add" id="cut-add" type="submit">Lưu tem</button></form><div class="cut-last" id="cut-last" hidden></div><button class="cut-link" id="cut-goto-data" type="button">Xem trong Tra cứu →</button></section>
         <section class="cut-card" data-panel="data"><h2><span>2</span>Tra cứu UID đã cắt</h2><form class="cut-searchbar" id="cut-search"><input class="cut-input" id="cut-sku" placeholder="Lọc theo SKU…" autocomplete="off"><input class="cut-input" id="cut-lot" style="max-width:150px" placeholder="Lọc theo Lot…" autocomplete="off"><div class="cut-daterange"><input class="cut-input" id="cut-date-from" type="date" aria-label="Cắt từ ngày" title="Cắt từ ngày"><span aria-hidden="true">→</span><input class="cut-input" id="cut-date-to" type="date" aria-label="Cắt đến ngày" title="Cắt đến ngày"></div><div class="cut-searchbar__end"><select class="cut-input cut-adj-filter" id="cut-adj" aria-label="Lọc theo trạng thái xuất ADJ" title="Lọc theo trạng thái xuất ADJ"><option value="">ADJ: Tất cả</option><option value="pending">Chưa xuất ADJ</option><option value="done">Đã xuất ADJ</option></select><button class="cut-secondary act-icon act-icon--search" type="submit">Tìm kiếm</button></div></form><div class="cut-actions"><button class="cut-icon-btn" id="cut-export" type="button" disabled title="Xuất Excel A4 ngang" aria-label="Xuất Excel A4 ngang"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button><button class="cut-primary act-icon act-icon--add" id="cut-push" type="button" disabled>Đưa vào hàng chờ in</button></div><p class="cut-note" id="cut-search-total" style="margin-top:10px"></p><div class="cut-table-wrap" style="margin-top:10px"><table class="cut-table"><thead><tr><th class="cut-th-check"><input id="cut-search-all" type="checkbox" aria-label="Chọn tất cả tem có thể in trong bảng"></th><th>SKU</th><th>UID</th><th>Lot</th><th>Roll</th><th>Số lượng cắt</th><th>Tên SP</th><th>Trạng thái</th><th>ADJ</th><th>Thời gian cắt</th></tr></thead><tbody id="cut-results"></tbody></table></div></section>
         <section class="cut-card" data-panel="print"><h2><span>3</span>Tem chờ in</h2><button class="cut-link cut-link--back" id="cut-goto-data-2" type="button">Chọn thêm ở Tra cứu</button><div class="cut-actions"><label class="cut-selectall"><input id="cut-all" type="checkbox"><span>Chọn tất cả tem có thể in</span><em id="cut-selected-count">Đã chọn 0</em></label><button class="cut-secondary act-icon act-icon--load" id="cut-reload" type="button">Tải lại</button><button class="cut-primary act-icon act-icon--print" id="cut-print" type="button" disabled>In tem đã chọn</button></div><div class="cut-list" id="cut-list"></div></section>
+        <section class="cut-card" data-panel="adj" id="cut-adj-panel"><h2><span>4</span>Đối chiếu ADJ</h2>
+          <div class="cut-adj-bar"><input id="cut-adj-file" type="file" accept=".zip,.xlsx,application/zip,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden><button class="cut-secondary act-icon act-icon--import" id="cut-adj-upload" type="button">Tải file zip WMS</button><button class="cut-icon-btn act-icon act-icon--load" id="cut-adj-reload" type="button" aria-label="Tải lại" title="Tải lại"></button><span class="cut-adj-cov" id="cut-adj-cov"></span></div>
+          <div class="cut-adj-kpis" id="cut-adj-kpis" role="group" aria-label="Lọc theo trạng thái đối chiếu"></div>
+          <form class="cut-searchbar" id="cut-adj-form"><input class="cut-input" id="cut-adj-sku" placeholder="Lọc theo SKU…" autocomplete="off"><input class="cut-input" id="cut-adj-lot" style="max-width:150px" placeholder="Lọc theo Lot…" autocomplete="off"><div class="cut-daterange"><input class="cut-input" id="cut-adj-date-from" type="date" aria-label="Cắt từ ngày" title="Cắt từ ngày"><span aria-hidden="true">→</span><input class="cut-input" id="cut-adj-date-to" type="date" aria-label="Cắt đến ngày" title="Cắt đến ngày"></div><div class="cut-searchbar__end"><button class="cut-secondary act-icon act-icon--search" type="submit">Tìm kiếm</button></div></form>
+          <div class="cut-actions"><button class="cut-icon-btn" id="cut-adj-export" type="button" disabled title="Xuất Excel các dòng đang hiện" aria-label="Xuất Excel các dòng đang hiện"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button><button class="cut-primary act-icon act-icon--check" id="cut-adj-tick" type="button" disabled>Tick giúp</button></div>
+          <p class="cut-note" id="cut-adj-total" style="margin-top:10px"></p>
+          <div class="cut-table-wrap" style="margin-top:10px"><table class="cut-table"><thead><tr><th class="cut-th-check"><input id="cut-adj-all" type="checkbox" aria-label="Chọn tất cả UID quên tick" disabled></th><th>UID</th><th>SKU</th><th>Lot</th><th>Chuẩn</th><th>WMS</th><th>Tick ADJ</th><th>Trạng thái</th></tr></thead><tbody id="cut-adj-rows"><tr><td colspan="8" class="cut-empty">Đang tải…</td></tr></tbody></table></div>
+        </section>
       </div></main>
     </section>
         <section class="cut-screen" id="find-sku-screen" aria-labelledby="fsk-title" hidden>
@@ -7120,7 +7129,7 @@ var FSK_CORE = (function () {
         print.addEventListener('click',async()=>{const items=selected();if(!items.length||busy)return;if(items.length>100){tell('Mỗi lượt in tối đa 100 tem. Hãy bỏ chọn bớt.','error');return}if(!window.PrintSkuQueue.confirmLotRoll(items))return;busy=true;WmsPrint.begin(print,'Đang gửi…');syncSelection();tell(`Đang gửi ${items.length} tem đến agent…`);try{const payload={items:items.map(x=>({groupUid:x.groupUid,sku:x.sku,productName:x.productName,lot:x.lot||'',roll:x.roll||'',copies:1}))};const queued=await window.PrintSkuQueue.enqueue({type:'group_uid',copies:items.length,requestedBy:'web-cut-group-uid',payload});if(!queued?.ok||!queued.data?.id)throw new Error(queued?.error?.message||'Hàng đợi chưa nhận lệnh');const saved=await rpc('cut_group_uid_mark_queued',{p_codes:items.map(x=>x.groupUid),p_job_id:queued.data.id});if(!saved.ok)throw new Error(saved.error?.message);tell(`Đã gửi ${items.length} tem · ${queued.data.id}`,'ok');WmsPrint.sent(print,[queued.data.id]);await loadOpen({quiet:true})}catch(e){tell(`Chưa xác nhận được lệnh in: ${e.message}. Hãy tải lại trước khi thử lại.`,'error');WmsPrint.fail(print,'Thử lại',{key:selected().length})}finally{busy=false;WmsPrint.settle(print);syncSelection()}});
         reload.addEventListener('click',()=>Promise.all([loadOpen(),runSearch()]));searchForm.addEventListener('submit',event=>{event.preventDefault();runSearch()});
         const xml=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));const col=i=>{let n=i+1,s='';while(n){const r=(n-1)%26;s=String.fromCharCode(65+r)+s;n=Math.floor((n-1)/26)}return s};const cell=(ref,v,style=0)=>`<c r="${ref}" s="${style}" t="inlineStr"><is><t xml:space="preserve">${xml(v)}</t></is></c>`;
-        const workbook=rows=>{const data=rows.map((row,ri)=>`<row r="${ri+1}" ht="${ri===0?28:36}" customHeight="1">${row.map((v,ci)=>cell(col(ci)+(ri+1),v,ri===0?1:2)).join('')}</row>`).join('');const sheet=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetPr><pageSetUpPr fitToPage="1"/></sheetPr><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols><col min="1" max="1" width="16" customWidth="1"/><col min="2" max="2" width="26" customWidth="1"/><col min="3" max="4" width="10" customWidth="1"/><col min="5" max="5" width="62" customWidth="1"/></cols><sheetData>${data}</sheetData><autoFilter ref="A1:E${rows.length}"/><printOptions horizontalCentered="0" verticalCentered="0"/><pageMargins left="0.25" right="0.25" top="0.35" bottom="0.35" header="0.1" footer="0.1"/><pageSetup orientation="landscape" paperSize="9" fitToWidth="1" fitToHeight="0" pageOrder="downThenOver"/></worksheet>`;const files=[['[Content_Types].xml','<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>'],['_rels/.rels','<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>'],['xl/workbook.xml','<?xml version="1.0" encoding="UTF-8"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="UID da cat" sheetId="1" r:id="rId1"/></sheets><definedNames><definedName name="_xlnm.Print_Titles" localSheetId="0">&apos;UID da cat&apos;!$1:$1</definedName></definedNames></workbook>'],['xl/_rels/workbook.xml.rels','<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>'],['xl/styles.xml','<?xml version="1.0" encoding="UTF-8"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="12"/><name val="Arial"/></font><font><b/><color rgb="FFFFFFFF"/><sz val="12"/><name val="Arial"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF1F4E78"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border><border><left style="thin"><color rgb="FF000000"/></left><right style="thin"><color rgb="FF000000"/></right><top style="thin"><color rgb="FF000000"/></top><bottom style="thin"><color rgb="FF000000"/></bottom><diagonal/></border></borders><cellStyleXfs count="1"><xf fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="3"><xf fontId="0" fillId="0" borderId="0"/><xf fontId="1" fillId="2" borderId="1" applyFont="1" applyFill="1" applyBorder="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf><xf fontId="0" fillId="0" borderId="1" applyFont="1" applyBorder="1"><alignment vertical="center" wrapText="1"/></xf></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>'],['xl/worksheets/sheet1.xml',sheet]];const enc=new TextEncoder();return window.PrintSkuZip.buildZip(files.map(([name,body])=>({name,data:enc.encode(body)})))};
+        const workbook=(rows,widths)=>{const data=rows.map((row,ri)=>`<row r="${ri+1}" ht="${ri===0?28:36}" customHeight="1">${row.map((v,ci)=>cell(col(ci)+(ri+1),v,ri===0?1:2)).join('')}</row>`).join('');const sheet=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetPr><pageSetUpPr fitToPage="1"/></sheetPr><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols>${widths?widths.map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join(''):'<col min="1" max="1" width="16" customWidth="1"/><col min="2" max="2" width="26" customWidth="1"/><col min="3" max="4" width="10" customWidth="1"/><col min="5" max="5" width="62" customWidth="1"/>'}</cols><sheetData>${data}</sheetData><autoFilter ref="A1:${col(((rows[0]||[]).length||5)-1)}${rows.length}"/><printOptions horizontalCentered="0" verticalCentered="0"/><pageMargins left="0.25" right="0.25" top="0.35" bottom="0.35" header="0.1" footer="0.1"/><pageSetup orientation="landscape" paperSize="9" fitToWidth="1" fitToHeight="0" pageOrder="downThenOver"/></worksheet>`;const files=[['[Content_Types].xml','<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>'],['_rels/.rels','<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>'],['xl/workbook.xml','<?xml version="1.0" encoding="UTF-8"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="UID da cat" sheetId="1" r:id="rId1"/></sheets><definedNames><definedName name="_xlnm.Print_Titles" localSheetId="0">&apos;UID da cat&apos;!$1:$1</definedName></definedNames></workbook>'],['xl/_rels/workbook.xml.rels','<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>'],['xl/styles.xml','<?xml version="1.0" encoding="UTF-8"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="12"/><name val="Arial"/></font><font><b/><color rgb="FFFFFFFF"/><sz val="12"/><name val="Arial"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF1F4E78"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border><border><left style="thin"><color rgb="FF000000"/></left><right style="thin"><color rgb="FF000000"/></right><top style="thin"><color rgb="FF000000"/></top><bottom style="thin"><color rgb="FF000000"/></bottom><diagonal/></border></borders><cellStyleXfs count="1"><xf fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="3"><xf fontId="0" fillId="0" borderId="0"/><xf fontId="1" fillId="2" borderId="1" applyFont="1" applyFill="1" applyBorder="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf><xf fontId="0" fillId="0" borderId="1" applyFont="1" applyBorder="1"><alignment vertical="center" wrapText="1"/></xf></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>'],['xl/worksheets/sheet1.xml',sheet]];const enc=new TextEncoder();return window.PrintSkuZip.buildZip(files.map(([name,body])=>({name,data:enc.encode(body)})))};
         exportButton.addEventListener('click',()=>{if(!searchItems.length)return;const rows=[['SKU','UID','Lot','Roll','Tên SP'],...searchItems.map(x=>[x.sku,x.groupUid,x.lot,x.roll,x.productName])],bytes=workbook(rows),blob=new Blob([bytes],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),a=document.createElement('a'),now=new Date(),pad=n=>String(n).padStart(2,'0');a.href=URL.createObjectURL(blob);a.download=`Group_UID_da_cat_${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}.xlsx`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),10000);tell(`Đã xuất ${searchItems.length} UID theo khổ A4 ngang.`,'ok')});
         // Bàn phím ảo Android che mất màn hình khi quét — cùng lý do và cách xử lý đã dùng ở #sample.
         // inputmode="none" giấu bàn phím mà vẫn giữ ô nhận chữ; máy quét chế độ Keyboard gõ qua IME
@@ -7139,7 +7148,7 @@ var FSK_CORE = (function () {
 
         // 3 cụm Scan/Data/Print, mỗi lần chỉ hiện đúng 1 cụm (giống tab) — bấm vào tiêu đề cụm
         // hoặc bấm nút "→" cuối mỗi cụm để nhảy sang cụm khác. Nhớ cụm đang mở theo localStorage.
-        const cutTabs={scan:{btn:tabScan,panel:screen.querySelector('.cut-card[data-panel="scan"]')},data:{btn:tabData,panel:screen.querySelector('.cut-card[data-panel="data"]')},print:{btn:tabPrint,panel:screen.querySelector('.cut-card[data-panel="print"]')}};
+        const cutTabs={scan:{btn:tabScan,panel:screen.querySelector('.cut-card[data-panel="scan"]')},data:{btn:tabData,panel:screen.querySelector('.cut-card[data-panel="data"]')},print:{btn:tabPrint,panel:screen.querySelector('.cut-card[data-panel="print"]')},adj:{btn:document.getElementById('cut-tab-adj'),panel:screen.querySelector('.cut-card[data-panel="adj"]')}};
         const TAB_STORE='cut-cum-dang-mo';
         let activeTab='scan';
         try{const saved=localStorage.getItem(TAB_STORE);if(saved&&cutTabs[saved])activeTab=saved}catch(_){}
@@ -7153,6 +7162,7 @@ var FSK_CORE = (function () {
         tabScan.addEventListener('click',()=>setActiveTab('scan'));
         tabData.addEventListener('click',()=>setActiveTab('data'));
         tabPrint.addEventListener('click',()=>setActiveTab('print'));
+        cutTabs.adj.btn.addEventListener('click',()=>setActiveTab('adj'));
         gotoData.addEventListener('click',()=>setActiveTab('data'));
         gotoData2.addEventListener('click',()=>setActiveTab('data'));
         setActiveTab(activeTab);
@@ -7181,7 +7191,287 @@ var FSK_CORE = (function () {
           },0);
         });
 
-        document.getElementById('cut-back').addEventListener('click',()=>location.hash='#home');const route=()=>{screen.hidden=!active();clearTimeout(pollTimer);if(active()){Promise.all([loadOpen({quiet:true}),runSearch()]);if(activeTab==='scan')setTimeout(focusScan,50)}};window.addEventListener('hashchange',route);renderSearch();route();
+        window.PrintSkuCutUi={rpc,tell,esc,fmt,computeCutQty,fmtQty,workbook,setActiveTab,isActive:active};document.getElementById('cut-back').addEventListener('click',()=>location.hash='#home');const route=()=>{screen.hidden=!active();clearTimeout(pollTimer);if(active()){Promise.all([loadOpen({quiet:true}),runSearch()]);if(activeTab==='scan')setTimeout(focusScan,50)}};window.addEventListener('hashchange',route);renderSearch();route();
+      })();
+    </script>
+    <style id="cut-adj-theme">
+      .cut-adj-bar{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:14px}
+      .cut-adj-bar .cut-secondary{flex:none}
+      .cut-adj-cov{display:inline-flex;align-items:center;gap:6px;flex:1 1 200px;min-width:0;color:var(--wms-muted,#60736b);font-size:13px;font-weight:700}
+      .cut-adj-cov svg{flex:none}
+      .cut-adj-cov[data-tone="warn"]{color:var(--wms-warning,#b7791f)}
+      .cut-adj-kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:14px}
+      .cut-adj-kpi{display:flex;align-items:center;gap:10px;min-height:56px;padding:8px 12px;border:1px solid var(--wms-border,#d9e2de);border-radius:14px;background:var(--wms-surface,#fff);color:var(--wms-muted,#60736b);font:inherit;font-size:13px;font-weight:800;text-align:left;cursor:pointer}
+      .cut-adj-kpi svg{flex:none;width:22px;height:22px}
+      .cut-adj-kpi span{min-width:0;line-height:1.25}
+      .cut-adj-kpi b{margin-left:auto;font-size:20px;color:var(--wms-text,#17251f)}
+      .cut-adj-kpi[data-tone="good"]{color:var(--wms-brand,#005f41)}
+      .cut-adj-kpi[data-tone="warn"]{color:#8a5a00}
+      .cut-adj-kpi[data-tone="bad"]{color:var(--wms-danger,#b42318)}
+      .cut-adj-kpi[aria-pressed="true"]{border-color:var(--wms-brand,#005f41);box-shadow:0 0 0 2px rgba(0,95,65,.18)}
+      .cut-adj-st{display:inline-block;padding:4px 8px;border-radius:10px;font-size:11px;font-weight:800;white-space:nowrap}
+      .cut-adj-st[data-st="ok"]{background:rgba(0,95,65,.1);color:var(--wms-brand,#005f41)}
+      .cut-adj-st[data-st="forgot"]{background:rgba(183,121,31,.16);color:#8a5a00}
+      .cut-adj-st[data-st="wrong"],.cut-adj-st[data-st="missing"],.cut-adj-st[data-st="multi"]{background:rgba(180,35,24,.1);color:var(--wms-danger,#b42318)}
+      .cut-adj-st[data-st="pending"],.cut-adj-st[data-st="wait"]{background:rgba(96,115,107,.14);color:var(--wms-muted,#60736b)}
+      #cut-adj-rows small{display:block;color:var(--wms-muted,#60736b);font-size:11px}
+      #cut-adj-rows .cut-adj-q[data-bad="true"]{color:var(--wms-danger,#b42318);font-weight:800}
+      @media(max-width:800px){.cut-adj-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.cut-adj-kpi{min-height:52px;padding:8px 10px}}
+    </style>
+    <script id="cut-adj-reconcile">
+      // Đối chiếu UID đã cắt với file "Group UID History" của WMS (supabase/cut_group_uid_v6_wms_reconcile.sql).
+      // Dòng Action = Cut trong history chính là lệnh ADJ; so với adj_exported_at (tick) và số lượng chuẩn 1 m
+      // (computeCutQty dùng chung với bảng Tra cứu). Chỉ Admin nạp file; ai dùng màn Cắt UID cũng xem được.
+      (()=>{
+        const ui=window.PrintSkuCutUi;if(!ui)return;
+        const {rpc,tell,esc,fmt,computeCutQty,fmtQty,workbook,setActiveTab,isActive}=ui;
+        const $=id=>document.getElementById(id);
+        const rowsEl=$('cut-adj-rows'),kpisEl=$('cut-adj-kpis'),covEl=$('cut-adj-cov'),totalEl=$('cut-adj-total'),fileEl=$('cut-adj-file'),uploadBtn=$('cut-adj-upload'),reloadBtn=$('cut-adj-reload'),form=$('cut-adj-form'),allBox=$('cut-adj-all'),tickBtn=$('cut-adj-tick'),exportBtn=$('cut-adj-export'),issuesEl=$('cut-adj-issues'),tabBtn=$('cut-tab-adj');
+        const svg=(inner,size=22)=>`<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${inner}</svg>`;
+        // Icon Lucide; thứ tự = mức ưu tiên xử lý (lệch nặng lên đầu bảng).
+        const STATES={
+          wrong:{label:'Sai số lượng',tone:'bad',icon:'<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>'},
+          missing:{label:'Tick, WMS không có',tone:'bad',icon:'<circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/>'},
+          multi:{label:'Cut nhiều lần',tone:'bad',icon:'<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>'},
+          forgot:{label:'Quên tick',tone:'warn',icon:'<path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"/>'},
+          pending:{label:'Chưa ADJ',tone:'mute',icon:'<circle cx="12" cy="12" r="10"/><path d="M8 12h8"/>'},
+          wait:{label:'Chờ dữ liệu WMS',tone:'mute',icon:'<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>'},
+          ok:{label:'Khớp',tone:'good',icon:'<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>'}
+        };
+        const ORDER=Object.keys(STATES),ISSUES=['wrong','missing','multi','forgot'];
+        const ALL_ICON='<line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>';
+        const CAL_ICON='<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/>';
+        const QTY_TOLERANCE=1; // WMS làm tròn số lượng về số nguyên
+        const MAX_AGE_MS=24*3600*1000;
+        const nf=new Intl.NumberFormat('vi-VN',{maximumFractionDigits:2});
+        const num=v=>nf.format(Number(v));
+        const day=value=>{const d=new Date(value);return Number.isNaN(d.getTime())?'':new Intl.DateTimeFormat('vi-VN',{dateStyle:'short'}).format(d)};
+        let items=[],cov=null,rows=[],filter='',loading=false,uploading=false,pending=null;
+        const picked=new Set();
+
+        // Trạng thái của một UID đã cắt, so với các dòng Cut của WMS.
+        const classify=(item,until)=>{
+          const cuts=item.wmsCuts||[],std=computeCutQty(item.productName),tick=item.adjExportedAt?Date.parse(item.adjExportedAt):NaN;
+          let state;
+          if(!cuts.length)state=!item.adjExportedAt?'pending':(Number.isFinite(until)&&tick>until?'wait':'missing');
+          else if(cuts.length>1)state='multi';
+          else if(std&&Math.abs(Number(cuts[0].qty)-std.value)>QTY_TOLERANCE)state='wrong';
+          else state=item.adjExportedAt?'ok':'forgot';
+          return {item,state,std,cuts};
+        };
+        const visible=()=>rows.filter(r=>!filter||r.state===filter);
+
+        const renderKpis=counts=>{
+          const tile=(key,label,tone,icon,count)=>`<button class="cut-adj-kpi" type="button" data-st="${key}" data-tone="${tone}" aria-pressed="${filter===key}">${svg(icon)}<span>${esc(label)}</span><b>${count}</b></button>`;
+          kpisEl.innerHTML=tile('','Tất cả','mute',ALL_ICON,rows.length)+ORDER.map(key=>tile(key,STATES[key].label,STATES[key].tone,STATES[key].icon,counts[key]||0)).join('');
+          kpisEl.querySelector('[data-st=""]').setAttribute('aria-pressed',String(!filter));
+        };
+        const rowHtml=r=>{
+          const {item,state,std,cuts}=r,unit=std?` ${std.unit}`:'';
+          const wms=cuts.length?cuts.map(c=>`<span class="cut-adj-q" data-bad="${state==='wrong'}">${num(c.qty)}${esc(unit)}</span><small>${esc(fmt(c.cutAt))}</small>`).join(''):'—';
+          const tick=item.adjExportedAt?`<span class="cut-adj-chip">Đã xuất ADJ</span><small>${esc(fmt(item.adjExportedAt))}</small>`:'<span class="cut-adj-none">Chưa</span>';
+          const box=state==='forgot'?`<input type="checkbox" ${picked.has(item.groupUid)?'checked':''} aria-label="Chọn ${esc(item.groupUid)}">`:'';
+          return `<tr data-code="${esc(item.groupUid)}"${picked.has(item.groupUid)?' class="is-selected"':''}><td>${box}</td><td data-label="UID">${esc(item.groupUid)}</td><td data-label="SKU">${esc(item.sku)}</td><td data-label="Lot">${esc(item.lot||'—')}</td><td data-label="Chuẩn">${std?esc(fmtQty(std)):'—'}</td><td data-label="WMS"><div>${wms}</div></td><td data-label="Tick ADJ"><div>${tick}</div></td><td data-label="Trạng thái"><span class="cut-adj-st" data-st="${state}">${esc(STATES[state].label)}</span></td></tr>`;
+        };
+        const syncTick=()=>{
+          const boxes=[...rowsEl.querySelectorAll('input[type=checkbox]')],chosen=boxes.filter(x=>x.checked);
+          boxes.forEach(x=>x.closest('tr').classList.toggle('is-selected',x.checked));
+          allBox.disabled=!boxes.length;allBox.checked=boxes.length>0&&chosen.length===boxes.length;allBox.indeterminate=chosen.length>0&&chosen.length<boxes.length;
+          tickBtn.disabled=!picked.size||uploading;tickBtn.textContent=picked.size?`Tick giúp ${picked.size}`:'Tick giúp';
+        };
+        const render=()=>{
+          const until=cov?Date.parse(cov.until):NaN,old=Number.isFinite(until)&&Date.now()-until>MAX_AGE_MS;
+          rows=cov?items.map(x=>classify(x,until)).sort((a,b)=>ORDER.indexOf(a.state)-ORDER.indexOf(b.state)):[];
+          const counts={};rows.forEach(r=>{counts[r.state]=(counts[r.state]||0)+1});
+          issuesEl.textContent=ISSUES.reduce((sum,key)=>sum+(counts[key]||0),0);
+          covEl.dataset.tone=!cov||old?'warn':'';
+          covEl.innerHTML=cov?`${svg(CAL_ICON,18)}<span title="Nạp lúc ${esc(fmt(cov.importedAt))}">WMS ${esc(day(cov.from))} → ${esc(fmt(cov.until))}</span>`:`${svg(CAL_ICON,18)}<span>Chưa nạp dữ liệu WMS</span>`;
+          for(const code of [...picked])if(!rows.some(r=>r.item.groupUid===code&&r.state==='forgot'))picked.delete(code);
+          renderKpis(counts);
+          const shown=visible();
+          exportBtn.disabled=!shown.length;
+          totalEl.textContent=cov?`${shown.length} / ${rows.length} UID`:'';
+          rowsEl.innerHTML=!cov?'<tr><td colspan="8" class="cut-empty">Chưa nạp dữ liệu WMS.</td></tr>':shown.length?shown.map(rowHtml).join(''):'<tr><td colspan="8" class="cut-empty">Không có UID.</td></tr>';
+          syncTick();
+        };
+
+        const load=async()=>{
+          if(loading)return;loading=true;reloadBtn.disabled=true;
+          try{
+            const args={p_sku:$('cut-adj-sku').value.trim(),p_lot:$('cut-adj-lot').value.trim()};
+            if($('cut-adj-date-from').value)args.p_date_from=$('cut-adj-date-from').value;
+            if($('cut-adj-date-to').value)args.p_date_to=$('cut-adj-date-to').value;
+            const r=await rpc('cut_group_uid_reconcile',args);
+            if(!r.ok)throw new Error(r.error?.message||'Không đọc được dữ liệu');
+            items=r.data?.items||[];cov=r.data?.coverage||null;render();
+          }catch(e){tell(`Không tải được đối chiếu ADJ: ${e.message}`,'error')}
+          finally{loading=false;reloadBtn.disabled=false}
+        };
+
+        // ---- Nạp file zip/xlsx "Group UID History" ----
+        const cellColumn=ref=>String(ref||'').replace(/\d+$/,'');
+        const normalizeHeader=v=>String(v||'').replace(/\s+/g,' ').trim().toLowerCase();
+        const toIso=v=>{
+          const t=String(v||'').trim();if(!t)return '';
+          if(/^\d+(\.\d+)?$/.test(t)){const d=new Date(Math.round((Number(t)-25569)*86400000));return Number.isNaN(d.getTime())?'':`${d.toISOString().slice(0,19)}+07:00`}
+          const m=t.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})/);
+          return m?`${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}+07:00`:'';
+        };
+        const NOTE=/^Cut\s+([\d.,]+)\s+out of group\s+(\S+)\s+\(remaining\s+([\d.,]+)\)\s*$/i;
+        const COLUMNS={uid:'group uid code',action:'action',sku:'sku',qty:'quantity',note:'note',by:'updated by',date:'updated date'};
+        const parseHistory=async file=>{
+          const zip=window.PrintSkuZip;
+          if(!zip)throw new Error('Bộ đọc Excel chưa sẵn sàng. Hãy tải lại trang.');
+          if(file.size>15*1024*1024)throw new Error('File lớn hơn 15 MB');
+          if(!window.crypto?.subtle)throw new Error('Trình duyệt cần https hoặc localhost để đọc file');
+          let bytes=new Uint8Array(await file.arrayBuffer()),entries;
+          try{entries=zip.readZipEntries(bytes)}catch(_){throw new Error('Không đọc được file zip/xlsx')}
+          if(!entries['xl/workbook.xml']){
+            const inner=Object.keys(entries).find(n=>/\.xlsx$/i.test(n)&&!/^__MACOSX/.test(n));
+            if(!inner)throw new Error('Trong file zip không có file .xlsx');
+            bytes=await zip.inflateZipEntry(bytes,entries[inner]);
+            try{entries=zip.readZipEntries(bytes)}catch(_){throw new Error('File .xlsx trong zip bị hỏng')}
+            if(!entries['xl/workbook.xml'])throw new Error('File .xlsx trong zip bị hỏng');
+          }
+          const sha256=[...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(b=>b.toString(16).padStart(2,'0')).join('');
+          const sheetName=Object.keys(entries).filter(n=>/^xl\/worksheets\/sheet\d+\.xml$/.test(n)).sort()[0];
+          if(!sheetName)throw new Error('Không tìm thấy worksheet trong file');
+          const decoder=new TextDecoder(),parser=new DOMParser(),shared=[];
+          if(entries['xl/sharedStrings.xml']){
+            const xml=parser.parseFromString(decoder.decode(await zip.inflateZipEntry(bytes,entries['xl/sharedStrings.xml'])),'application/xml');
+            xml.querySelectorAll('si').forEach(si=>shared.push(si.textContent||''));
+          }
+          const sheet=parser.parseFromString(decoder.decode(await zip.inflateZipEntry(bytes,entries[sheetName])),'application/xml');
+          if(sheet.querySelector('parsererror'))throw new Error('Worksheet XML không hợp lệ');
+          const valueOf=cell=>{
+            const type=cell.getAttribute('t');
+            if(type==='inlineStr')return cell.querySelector('is')?.textContent||'';
+            const value=cell.querySelector('v')?.textContent||'';
+            if(type==='s')return shared[Number(value)]??'';
+            return value;
+          };
+          const sheetRows=[...sheet.querySelectorAll('sheetData > row')];
+          if(!sheetRows.length)throw new Error('File không có dữ liệu');
+          const header=new Map();
+          sheetRows[0].querySelectorAll('c').forEach(c=>header.set(cellColumn(c.getAttribute('r')),normalizeHeader(valueOf(c))));
+          const columns={};
+          for(const [key,name] of Object.entries(COLUMNS)){
+            const found=[...header].filter(([,v])=>v===name);
+            if(found.length!==1)throw new Error(`Thiếu hoặc trùng cột: ${name}. Đây có phải file Group UID History?`);
+            columns[found[0][0]]=key;
+          }
+          const warehouseCol=[...header].find(([,v])=>v==='warehouse')?.[0];
+          const cuts=[],errors=[];let total=0,from='',until='';
+          for(const [offset,row] of sheetRows.slice(1).entries()){
+            const rowNo=Number(row.getAttribute('r'))||offset+2,raw={};
+            row.querySelectorAll('c').forEach(c=>{
+              const col=cellColumn(c.getAttribute('r')),key=columns[col];
+              if(key)raw[key]=String(valueOf(c)).replace(/\s+/g,' ').trim();
+              else if(col===warehouseCol)raw.warehouse=String(valueOf(c)).trim();
+            });
+            if(!Object.values(raw).some(Boolean))continue;
+            total+=1;
+            const at=toIso(raw.date);
+            if(at){if(!from||at<from)from=at;if(!until||at>until)until=at}
+            if((raw.action||'').toLowerCase()!=='cut')continue;
+            const qtyText=(raw.qty||'').replace(/,/g,''),qty=Number(qtyText),match=NOTE.exec(raw.note||'');
+            const problems=[];
+            if(!raw.uid||raw.uid.length>40||/e\+/i.test(raw.uid))problems.push('Group UID Code không hợp lệ');
+            if(!at)problems.push('Updated Date không hợp lệ');
+            if(!Number.isFinite(qty)||qty<0||qtyText==='')problems.push('Quantity không hợp lệ');
+            if(problems.length){errors.push({rowNo,message:problems.join('; ')});continue}
+            cuts.push({group_uid_code:raw.uid,cut_at:at,qty:qtyText,remaining_qty:match?match[3].replace(/,/g,''):null,sku:raw.sku||null,cut_by:raw.by||null,warehouse:raw.warehouse||null});
+          }
+          if(errors.length)throw new Error(`${errors.length} dòng Cut lỗi, ví dụ dòng ${errors[0].rowNo}: ${errors[0].message}`);
+          if(!from)throw new Error('Không có dòng nào có Updated Date hợp lệ');
+          if(cuts.length>5000)throw new Error(`File có ${cuts.length} dòng Cut, tối đa 5.000. Hãy xuất khoảng ngày ngắn hơn.`);
+          return {fileName:file.name.slice(0,240),sha256,totalRows:total,cuts,from,until};
+        };
+        const adminToken=async()=>{
+          try{return await window.PrintSkuAdminAuth.accessToken()}catch(_){}
+          try{await window.PrintSkuAdminAccess.getToken()}catch(_){}   // mở lớp đăng nhập Admin nếu chưa có phiên
+          return '';
+        };
+        const sendImport=async(parsed,token)=>{
+          const q=window.PrintSkuQueue;
+          const response=await fetch(`${q.supabaseUrl}/rest/v1/rpc/wms_group_uid_cut_import`,{method:'POST',headers:{apikey:q.publishableKey,Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({p_file_name:parsed.fileName,p_file_sha256:parsed.sha256,p_total_rows:parsed.totalRows,p_data_from:parsed.from,p_data_until:parsed.until,p_rows:parsed.cuts}),signal:AbortSignal.timeout(60000)});
+          const data=await response.json().catch(()=>null);
+          if(!response.ok||!data)throw new Error(data?.message||`Supabase HTTP ${response.status}`);
+          if(!data.ok)throw new Error(data.error?.message||'Không nạp được file');
+          return data.data;
+        };
+        const finishUpload=async()=>{
+          if(!pending||uploading)return;
+          const token=await adminToken();
+          if(!token){tell('Đăng nhập Admin để nạp file WMS.','warn');return}
+          const parsed=pending;pending=null;uploading=true;uploadBtn.disabled=true;syncTick();
+          try{
+            tell(`Đang nạp ${parsed.cuts.length} dòng Cut…`);
+            const r=await sendImport(parsed,token);
+            tell(`Đã nạp ${r.cutRows} dòng Cut: ${r.newRows} mới, ${r.changedRows} đổi, ${r.unchangedRows} giữ nguyên.`,'ok');
+            await load();
+          }catch(e){tell(`Không nạp được file: ${e.message}`,'error')}
+          finally{uploading=false;uploadBtn.disabled=false;syncTick()}
+        };
+        uploadBtn.addEventListener('click',()=>fileEl.click());
+        fileEl.addEventListener('change',async()=>{
+          const file=fileEl.files?.[0];fileEl.value='';
+          if(!file)return;
+          try{tell(`Đang đọc ${file.name}…`);pending=await parseHistory(file);await finishUpload()}
+          catch(e){pending=null;tell(`Không đọc được file: ${e.message}`,'error')}
+        });
+        // Đăng nhập Admin xong thì nạp tiếp file đang chờ.
+        window.addEventListener('print-sku-admin-ready',()=>{if(pending)finishUpload()});
+
+        // ---- Tick giúp, xuất Excel, lọc ----
+        tickBtn.addEventListener('click',async()=>{
+          const codes=[...picked];
+          if(!codes.length||uploading)return;
+          if(!confirm(`Đánh dấu ${codes.length} UID đã xuất ADJ theo giờ Cut trên WMS?`))return;
+          uploading=true;tickBtn.disabled=true;
+          try{
+            let updated=0,skipped=0;
+            for(let i=0;i<codes.length;i+=200){
+              const r=await rpc('cut_group_uid_adj_from_wms',{p_codes:codes.slice(i,i+200)});
+              if(!r.ok)throw new Error(r.error?.message||'Không lưu được');
+              updated+=r.data?.updated||0;skipped+=r.data?.skipped||0;
+            }
+            picked.clear();
+            tell(`Đã tick ${updated} UID${skipped?`, bỏ qua ${skipped}`:''}.`,updated?'ok':'error');
+          }catch(e){tell(`Chưa tick được: ${e.message}`,'error')}
+          finally{uploading=false;await load()}
+        });
+        rowsEl.addEventListener('change',event=>{
+          const box=event.target.closest('input[type=checkbox]');if(!box)return;
+          const code=box.closest('tr').dataset.code;
+          if(box.checked)picked.add(code);else picked.delete(code);
+          syncTick();
+        });
+        allBox.addEventListener('change',()=>{
+          const shown=visible().filter(r=>r.state==='forgot');
+          shown.forEach(r=>allBox.checked?picked.add(r.item.groupUid):picked.delete(r.item.groupUid));
+          rowsEl.querySelectorAll('input[type=checkbox]').forEach(x=>{x.checked=allBox.checked});
+          syncTick();
+        });
+        kpisEl.addEventListener('click',event=>{
+          const button=event.target.closest('[data-st]');if(!button)return;
+          const key=button.dataset.st;filter=key&&filter===key?'':key;render();
+        });
+        exportBtn.addEventListener('click',()=>{
+          const shown=visible();if(!shown.length)return;
+          const head=['Trạng thái','UID','SKU','Lot','Cắt lúc','SL chuẩn','SL WMS','Giờ Cut WMS','Tick ADJ'];
+          const data=shown.map(({item,state,std,cuts})=>[STATES[state].label,item.groupUid,item.sku,item.lot,fmt(item.cutAt),std?fmtQty(std):'',cuts.map(c=>num(c.qty)).join(' + '),cuts.map(c=>fmt(c.cutAt)).join(' + '),item.adjExportedAt?fmt(item.adjExportedAt):'Chưa']);
+          const bytes=workbook([head,...data],[20,22,14,10,18,14,14,22,18]),blob=new Blob([bytes],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),a=document.createElement('a'),now=new Date(),pad=n=>String(n).padStart(2,'0');
+          a.href=URL.createObjectURL(blob);a.download=`Doi_chieu_ADJ_${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}.xlsx`;
+          document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),10000);
+          tell(`Đã xuất ${shown.length} UID.`,'ok');
+        });
+        form.addEventListener('submit',event=>{event.preventDefault();load()});
+        reloadBtn.addEventListener('click',load);
+        tabBtn.addEventListener('click',load);
+        const onRoute=()=>{if(isActive())load()};
+        window.addEventListener('hashchange',onRoute);
+        onRoute();
       })();
     </script>
     <section class="cut-screen" id="xa-vai-screen" aria-labelledby="xa-vai-title" hidden>

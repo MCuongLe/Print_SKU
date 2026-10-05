@@ -299,6 +299,22 @@ python scripts/apply_supabase_sql.py supabase/cut_group_uid_v5_adj_export.sql --
 `--allow-destructive` chỉ vì file `drop` chữ ký hàm tra cứu v4 để tạo lại với `p_adj` (có mặc định,
 trang web cũ vẫn gọi được). Web chỉ gửi `p_adj` khi có chọn lọc ADJ.
 
+**Đối chiếu ADJ với lịch sử WMS.** Tab **4 · Đối chiếu** so UID đã cắt với file zip *Group UID History*
+tải từ WMS (dòng `Action = Cut` là lệnh ADJ). Bấm **Tải file zip WMS** (cần đăng nhập Admin; chưa có phiên thì
+hiện lớp đăng nhập rồi tự nạp tiếp), app mở zip → xlsx ngay trên trình duyệt và chỉ gửi các dòng `Cut`; nạp chồng
+nhiều file không nhân đôi. Dashboard chia UID thành: *Khớp*, *Quên tick* (đã ADJ nhưng chưa tick), *Sai số lượng*
+(so với chuẩn 1 m như cột số lượng ở Tra cứu), *Tick, WMS không có*, *Cut nhiều lần*, *Chưa ADJ*, *Chờ dữ liệu WMS*
+— bấm thẻ để lọc, lọc thêm theo SKU / Lot / ngày cắt, xuất Excel các dòng đang hiện. Nút **Tick giúp** tick hàng
+loạt các dòng *Quên tick* theo giờ Cut trên WMS. Cần migration v6 (chỉ thêm bảng và hàm, không `drop`; chạy
+**trước** khi cập nhật `index.html`):
+
+```powershell
+python scripts/apply_supabase_sql.py supabase/cut_group_uid_v6_wms_reconcile.sql
+```
+
+Kiểm thử không cần mạng (file zip/xlsx tự dựng trong test, mọi kết nối Supabase được giả lập): với server local cổng 8000,
+`node tests/cut_adj_reconcile_browser.cjs` (đặt `PLAYWRIGHT_MODULE` nếu Playwright không nằm trong `node_modules`).
+
 ## Quét mã ở PRINT SKU
 
 Nút camera cạnh ô **Mã SKU** mở lớp quét toàn màn hình `window.PrintSkuScanUI` (script
