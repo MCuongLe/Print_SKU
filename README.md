@@ -263,6 +263,11 @@ UID, hệ thống tra `group_uid_details` và `SKU_Name`, rồi lưu snapshot SK
 Lot, Roll và tên sản phẩm vào danh sách tem chờ in. Màn này dùng lại đúng lệnh
 `group_uid:v1`, vì vậy agent 0.6.1 hiện tại không cần cập nhật.
 
+Ô quét `#cut-code` mặc định ẩn bàn phím ảo (`inputmode="none"`); nút bàn phím **chỉ còn icon nhỏ** cùng hàng bên phải ô quét
+(`#cut-keyboard`, `aria-label`/`title` "Hiện bàn phím" / "Ẩn bàn phím", nhớ theo từng máy ở khoá `cut-ban-phim`). Sau mỗi lần lưu tem, app chỉ
+focus lại ô quét khi ô chưa giữ focus (Chrome Android coi mỗi lần `focus()` thành công là yêu cầu hiện bàn phím, kể cả với ô đang focus) và
+khi đang ở chế độ ẩn thì gọi `navigator.virtualKeyboard.hide()` nếu trình duyệt có.
+
 Áp dụng backend một lần trước khi sử dụng:
 
 ```powershell
@@ -310,7 +315,7 @@ không đọc được QR và mã vạch ngang do lỗi đảo màu của ZXing 
 được Code 128 toàn số (SKU, UID) mỗi khi bên trái mã vạch có điểm tối trên cùng hàng do lỗi
 `Code128Reader.findStartPattern` của ZXing 0.21.3 (đã vá ngay trong bundle).
 
-Ô Mã SKU có nút bàn phím **chỉ còn icon** (Keyboard / KeyboardOff; `aria-label` và `title` là "Hiện bàn phím" / "Ẩn bàn phím"), nằm cùng hàng bên phải ô Mã SKU — như Cắt UID, Sample, Xả vải — để dùng máy
+Ô Mã SKU có nút bàn phím **chỉ còn icon** (Keyboard / KeyboardOff; `aria-label` và `title` là "Hiện bàn phím" / "Ẩn bàn phím"), nằm cùng hàng bên phải ô Mã SKU (cùng cách ẩn bàn phím như Cắt UID, Sample, Xả vải) — để dùng máy
 quét cầm tay không bị bàn phím che; mặc định ẩn, nhớ theo từng máy (`print-sku-ban-phim`). Công tắc áp dụng cho cả bốn ô của form
 (Mã SKU, Tên hàng, Số lượng in lên tem, Số bản in): khi ẩn, sau lần quét focus nhảy sang ô kế tiếp cũng không bật bàn phím ảo; muốn gõ tay
 thì bấm nút icon để hiện. Bấm "Gõ tay mã SKU" trong lớp quét thì bàn phím tự bật lại. Số lượng in lên tem và Số bản in luôn nằm một hàng (bộ tăng giảm

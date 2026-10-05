@@ -4141,7 +4141,7 @@ Error generating stack: `+y.message+`
         </div>
         <p class="cut-message" id="cut-message" aria-live="polite" style="margin-bottom:14px"></p>
         <div class="cut-grid">
-        <section class="cut-card" data-panel="scan"><h2><span>1</span>Quét Group UID</h2><form class="cut-scan" id="cut-form"><input class="cut-input" id="cut-code" autocomplete="off" inputmode="none" placeholder="Quét hoặc nhập UID…" maxlength="40" required><button class="cut-primary act-icon act-icon--add" id="cut-add" type="submit">Lưu tem</button></form><button class="cut-secondary act-icon act-icon--keyboard" id="cut-keyboard" type="button">Hiện bàn phím</button><div class="cut-last" id="cut-last" hidden></div><button class="cut-link" id="cut-goto-data" type="button">Xem trong Tra cứu →</button></section>
+        <section class="cut-card" data-panel="scan"><h2><span>1</span>Quét Group UID</h2><form class="cut-scan" id="cut-form"><input class="cut-input" id="cut-code" autocomplete="off" inputmode="none" placeholder="Quét hoặc nhập UID…" maxlength="40" required><button class="act-icon act-icon--keyboard" id="cut-keyboard" type="button" aria-label="Hiện bàn phím" title="Hiện bàn phím" aria-pressed="true"></button><button class="cut-primary act-icon act-icon--add" id="cut-add" type="submit">Lưu tem</button></form><div class="cut-last" id="cut-last" hidden></div><button class="cut-link" id="cut-goto-data" type="button">Xem trong Tra cứu →</button></section>
         <section class="cut-card" data-panel="data"><h2><span>2</span>Tra cứu UID đã cắt</h2><form class="cut-searchbar" id="cut-search"><input class="cut-input" id="cut-sku" placeholder="Lọc theo SKU…" autocomplete="off"><input class="cut-input" id="cut-lot" style="max-width:150px" placeholder="Lọc theo Lot…" autocomplete="off"><div class="cut-daterange"><input class="cut-input" id="cut-date-from" type="date" aria-label="Cắt từ ngày" title="Cắt từ ngày"><span aria-hidden="true">→</span><input class="cut-input" id="cut-date-to" type="date" aria-label="Cắt đến ngày" title="Cắt đến ngày"></div><div class="cut-searchbar__end"><select class="cut-input cut-adj-filter" id="cut-adj" aria-label="Lọc theo trạng thái xuất ADJ" title="Lọc theo trạng thái xuất ADJ"><option value="">ADJ: Tất cả</option><option value="pending">Chưa xuất ADJ</option><option value="done">Đã xuất ADJ</option></select><button class="cut-secondary act-icon act-icon--search" type="submit">Tìm kiếm</button></div></form><div class="cut-actions"><button class="cut-icon-btn" id="cut-export" type="button" disabled title="Xuất Excel A4 ngang" aria-label="Xuất Excel A4 ngang"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button><button class="cut-primary act-icon act-icon--add" id="cut-push" type="button" disabled>Đưa vào hàng chờ in</button></div><p class="cut-note" id="cut-search-total" style="margin-top:10px"></p><div class="cut-table-wrap" style="margin-top:10px"><table class="cut-table"><thead><tr><th class="cut-th-check"><input id="cut-search-all" type="checkbox" aria-label="Chọn tất cả tem có thể in trong bảng"></th><th>SKU</th><th>UID</th><th>Lot</th><th>Roll</th><th>Số lượng cắt</th><th>Tên SP</th><th>Trạng thái</th><th>ADJ</th><th>Thời gian cắt</th></tr></thead><tbody id="cut-results"></tbody></table></div></section>
         <section class="cut-card" data-panel="print"><h2><span>3</span>Tem chờ in</h2><button class="cut-link cut-link--back" id="cut-goto-data-2" type="button">Chọn thêm ở Tra cứu</button><div class="cut-actions"><label class="cut-selectall"><input id="cut-all" type="checkbox"><span>Chọn tất cả tem có thể in</span><em id="cut-selected-count">Đã chọn 0</em></label><button class="cut-secondary act-icon act-icon--load" id="cut-reload" type="button">Tải lại</button><button class="cut-primary act-icon act-icon--print" id="cut-print" type="button" disabled>In tem đã chọn</button></div><div class="cut-list" id="cut-list"></div></section>
       </div></main>
@@ -7099,7 +7099,7 @@ var FSK_CORE = (function () {
         // p_adj chỉ gửi khi có chọn lọc ADJ, để tra cứu thường vẫn chạy được với hàm tra cứu bản v4 (chưa có tham số này).
         const runSearch=async()=>{const from=dateFrom.value||null,to=dateTo.value||null,adj=adjFilter.value;if(from&&to&&from>to){tell('Ngày bắt đầu phải trước hoặc bằng ngày kết thúc.','error');return}try{const r=await rpc('cut_group_uid_search',{p_sku:skuFilter.value.trim(),p_lot:lotFilter.value.trim(),p_date_from:from,p_date_to:to,...(adj?{p_adj:adj}:{}),p_limit:5000});if(!r.ok)throw new Error(r.error?.message);searchItems=r.data?.items||[];mergeStaged(searchItems);renderSearch();renderOpen();const range=from&&to?(from===to?` ngày ${viDay(from)}`:` từ ${viDay(from)} đến ${viDay(to)}`):from?` từ ${viDay(from)}`:to?` đến ${viDay(to)}`:'';tell(`Tìm thấy ${searchItems.length} UID đã cắt${range}${adj==='done'?' · đã xuất ADJ':adj==='pending'?' · chưa xuất ADJ':''}.`,'ok')}catch(e){tell(`Không tra cứu được: ${e.message}`,'error')}};
         adjFilter.addEventListener('change',runSearch);
-        form.addEventListener('submit',async event=>{event.preventDefault();const uid=code.value.trim();if(!uid||busy)return;busy=true;add.disabled=true;tell(`Đang kiểm tra ${uid}…`);try{const r=await rpc('cut_group_uid_scan',{p_group_uid:uid});if(!r.ok){const extra=r.error?.code==='GROUP_UID_NOT_READY'?' Vào mục Nạp dữ liệu Group UID để cập nhật database.':'';tell((r.error?.message||'Không lưu được UID')+extra,r.error?.code==='ALREADY_CUT'?'warn':'error');return}const d=r.data;last.hidden=false;last.innerHTML=`<strong>${esc(d.groupUid)} · ${esc(d.sku)}</strong><span>${esc(d.productName)}</span><small>Lot ${esc(d.lot||'—')} · Roll ${esc(d.roll||'—')}</small>`;code.value='';tell('Đã lưu tem. Sang Tra cứu để chọn in khi cần.','ok');await Promise.all([loadOpen({quiet:true}),runSearch()])}catch(e){tell(`Chưa rõ UID đã lưu hay chưa: ${e.message}. Đang tải lại để đối chiếu.`,'error');loadOpen({quiet:true})}finally{busy=false;add.disabled=false;syncSelection();code.focus()}});
+        form.addEventListener('submit',async event=>{event.preventDefault();const uid=code.value.trim();if(!uid||busy)return;busy=true;add.disabled=true;tell(`Đang kiểm tra ${uid}…`);try{const r=await rpc('cut_group_uid_scan',{p_group_uid:uid});if(!r.ok){const extra=r.error?.code==='GROUP_UID_NOT_READY'?' Vào mục Nạp dữ liệu Group UID để cập nhật database.':'';tell((r.error?.message||'Không lưu được UID')+extra,r.error?.code==='ALREADY_CUT'?'warn':'error');return}const d=r.data;last.hidden=false;last.innerHTML=`<strong>${esc(d.groupUid)} · ${esc(d.sku)}</strong><span>${esc(d.productName)}</span><small>Lot ${esc(d.lot||'—')} · Roll ${esc(d.roll||'—')}</small>`;code.value='';tell('Đã lưu tem. Sang Tra cứu để chọn in khi cần.','ok');await Promise.all([loadOpen({quiet:true}),runSearch()])}catch(e){tell(`Chưa rõ UID đã lưu hay chưa: ${e.message}. Đang tải lại để đối chiếu.`,'error');loadOpen({quiet:true})}finally{busy=false;add.disabled=false;syncSelection();focusScan()}});
         list.addEventListener('change',event=>{const row=event.target.closest('.cut-row');if(row&&!event.target.checked){stagedItems.delete(row.dataset.code);renderOpen();return}syncSelection()});
         selectAll.addEventListener('change',()=>{if(!selectAll.checked){stagedItems.clear();renderOpen();return}list.querySelectorAll('.cut-row input:not(:disabled)').forEach(x=>x.checked=true);syncSelection()});
         resultsBody.addEventListener('change',syncSearchSelection);
@@ -7129,8 +7129,12 @@ var FSK_CORE = (function () {
         const keyboardToggle=document.getElementById('cut-keyboard');
         let keyboardHidden=true;
         try{keyboardHidden=localStorage.getItem(KEYBOARD_STORE)!=='hien'}catch(_){}
-        const applyKeyboard=()=>{code.inputMode=keyboardHidden?'none':'text';keyboardToggle.textContent=keyboardHidden?'Hiện bàn phím':'Ẩn bàn phím';keyboardToggle.setAttribute('aria-pressed',String(keyboardHidden))};
-        keyboardToggle.addEventListener('click',()=>{keyboardHidden=!keyboardHidden;try{localStorage.setItem(KEYBOARD_STORE,keyboardHidden?'an':'hien')}catch(_){}applyKeyboard();code.blur();setTimeout(()=>code.focus(),60)});
+        const hideKeyboardNow=()=>{if(!keyboardHidden)return;try{navigator.virtualKeyboard?.hide?.()}catch(_){}};
+        // Chrome Android coi mọi lần focus() thành công là yêu cầu hiện bàn phím, kể cả khi ô đã đang focus (giữ focus sau mỗi lần quét).
+        // Nên chỉ focus khi ô chưa giữ focus, và khi đang ẩn bàn phím thì chủ động hạ bàn phím xuống sau đó.
+        const focusScan=()=>{if(document.activeElement!==code)code.focus();hideKeyboardNow()};
+        const applyKeyboard=()=>{const label=keyboardHidden?'Hiện bàn phím':'Ẩn bàn phím';code.inputMode=keyboardHidden?'none':'text';keyboardToggle.setAttribute('aria-label',label);keyboardToggle.title=label;keyboardToggle.setAttribute('aria-pressed',String(keyboardHidden))};
+        keyboardToggle.addEventListener('click',()=>{keyboardHidden=!keyboardHidden;try{localStorage.setItem(KEYBOARD_STORE,keyboardHidden?'an':'hien')}catch(_){}applyKeyboard();code.blur();setTimeout(()=>{code.focus();hideKeyboardNow()},60)});
         applyKeyboard();
 
         // 3 cụm Scan/Data/Print, mỗi lần chỉ hiện đúng 1 cụm (giống tab) — bấm vào tiêu đề cụm
@@ -7144,7 +7148,7 @@ var FSK_CORE = (function () {
           activeTab=name;
           try{localStorage.setItem(TAB_STORE,name)}catch(_){}
           Object.entries(cutTabs).forEach(([key,t])=>{const on=key===name;t.btn.setAttribute('aria-selected',String(on));t.panel.dataset.active=String(on)});
-          if(name==='scan')setTimeout(()=>code.focus(),50);
+          if(name==='scan')setTimeout(focusScan,50);
         };
         tabScan.addEventListener('click',()=>setActiveTab('scan'));
         tabData.addEventListener('click',()=>setActiveTab('data'));
@@ -7166,18 +7170,18 @@ var FSK_CORE = (function () {
           if(event.ctrlKey||event.altKey||event.metaKey)return;
           const key=event.key||'';
           if(key.length!==1&&key!=='Unidentified'&&key!=='Process')return;
-          code.focus();
+          focusScan();
         });
         code.addEventListener('blur',()=>{
           setTimeout(()=>{
             if(screen.hidden)return;
             const el=document.activeElement;
             if(el&&el!==document.body&&screen.contains(el))return;
-            code.focus();
+            focusScan();
           },0);
         });
 
-        document.getElementById('cut-back').addEventListener('click',()=>location.hash='#home');const route=()=>{screen.hidden=!active();clearTimeout(pollTimer);if(active()){Promise.all([loadOpen({quiet:true}),runSearch()]);if(activeTab==='scan')setTimeout(()=>code.focus(),50)}};window.addEventListener('hashchange',route);renderSearch();route();
+        document.getElementById('cut-back').addEventListener('click',()=>location.hash='#home');const route=()=>{screen.hidden=!active();clearTimeout(pollTimer);if(active()){Promise.all([loadOpen({quiet:true}),runSearch()]);if(activeTab==='scan')setTimeout(focusScan,50)}};window.addEventListener('hashchange',route);renderSearch();route();
       })();
     </script>
     <section class="cut-screen" id="xa-vai-screen" aria-labelledby="xa-vai-title" hidden>
@@ -7912,6 +7916,15 @@ var FSK_CORE = (function () {
       #root .sku-pair #f-ban { flex: none; width: 40px; height: var(--target-min); padding: 0; }
       /* Hai nhãn cùng hàng: bớt giãn chữ để "Số lượng in lên tem" không xuống dòng ở màn 360 px. */
       #root .sku-pair label { letter-spacing: .02em; }
+      /* CẮT UID: nút bàn phím chỉ còn icon nhỏ cùng hàng với ô quét (≤ 800 px: ô quét + icon một hàng, "Lưu tem" hàng dưới). */
+      #cut-form #cut-keyboard { flex: none; width: 52px; min-width: 52px; min-height: 52px; margin: 0; padding: 0; border: 1px solid var(--wms-border, #d9e2de); border-radius: 13px; background: #fff; color: var(--wms-muted, #60736b); cursor: pointer; }
+      #cut-form #cut-keyboard[aria-pressed="false"] { border-color: rgba(0, 95, 65, .35); background: rgba(0, 95, 65, .07); color: var(--wms-brand, #005f41); }
+      #cut-form #cut-keyboard::before { width: 22px; height: 22px; }
+      #cut-form .cut-primary { flex: none; white-space: nowrap; }
+      @media (max-width: 800px) {
+        #cut-form { display: grid; grid-template-columns: minmax(0, 1fr) auto; }
+        #cut-form .cut-primary { grid-column: 1 / -1; }
+      }
       #root section button[aria-label^="Bỏ "] { width: var(--target-min); height: var(--target-min); }
       #root main p button.underline { display: inline-flex; align-items: center; justify-content: center; min-width: var(--target-min); min-height: var(--target-min); }
 
