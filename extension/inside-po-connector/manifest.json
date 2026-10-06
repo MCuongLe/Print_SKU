@@ -1,0 +1,38 @@
+{
+  "manifest_version": 3,
+  "name": "HASAKI Inside PO Connector",
+  "version": "0.2.0",
+  "description": "Cầu nối chỉ đọc giữa màn Kiểm tra đầu vào của Print SKU và phiên Inside đang đăng nhập.",
+  "permissions": [
+    "tabs",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://inside.mastige.vn/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "http://localhost/*",
+        "http://127.0.0.1/*",
+        "https://mcuongle.github.io/Print_SKU/*"
+      ],
+      "js": [
+        "app-bridge.js"
+      ],
+      "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "https://inside.mastige.vn/*"
+      ],
+      "js": [
+        "inside-bridge.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}

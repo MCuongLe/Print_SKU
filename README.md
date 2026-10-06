@@ -2,6 +2,12 @@
 
 Ứng dụng in tem SKU chạy trực tiếp từ `index.html`.
 
+## Kiểm tra đầu vào — lấy PO từ Inside
+
+Màn `#inspection` có thể lấy PO/SKU trực tiếp từ một tab Inside đã đăng nhập qua Chrome extension chỉ đọc nằm tại [`extension/inside-po-connector`](extension/inside-po-connector/README.md).
+
+Chrome không cho website tự cài extension. Với bản nội bộ, mỗi người dùng cài một lần bằng **Load unpacked**; khi triển khai rộng nên phát hành bản **Chrome Web Store Unlisted** hoặc để IT cài tập trung bằng **Chrome Enterprise Policy**. Import PO bằng `.xls/.xlsx` vẫn hoạt động khi chưa cài extension.
+
 ## Database SKU
 
 Xuất danh sách sản phẩm từ Mastige Inside bằng menu **Download → File**, sau đó nhập file XLSX vào SQLite:
