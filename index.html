@@ -2301,10 +2301,9 @@ Error generating stack: `+y.message+`
             <div class="ins-po-lookup">
               <label for="ins-po-lookup">Mã PO</label>
               <div class="ins-po-lookup__row">
-                <input id="ins-po-lookup" autocomplete="off" inputmode="text" placeholder="Nhập hoặc quét mã PO" aria-describedby="ins-po-help">
+                <input id="ins-po-lookup" autocomplete="off" inputmode="text" placeholder="Nhập hoặc quét mã PO">
                 <button class="uid-add__btn" id="ins-fetch-po" type="button">Lấy từ Inside</button>
               </div>
-              <p class="uid-help" id="ins-po-help">Mở một tab Inside đã đăng nhập và cài tiện ích kết nối. App chỉ đọc thông tin PO/SKU, không lưu tài khoản hoặc phiên đăng nhập. <a href="https://github.com/MCuongLe/Print_SKU/tree/main/extension/inside-po-connector" target="_blank" rel="noopener noreferrer">Hướng dẫn cài tiện ích</a></p>
             </div>
             <div class="ins-import-fallback"><span>Hoặc dùng file</span></div>
             <input type="file" id="ins-file" accept=".xls,.xlsx" hidden>
@@ -2898,25 +2897,30 @@ Error generating stack: `+y.message+`
             const sheetFile = files.find(file => file.name === "xl/worksheets/sheet1.xml");
             const decoder = new TextDecoder();
             const encoder = new TextEncoder();
-            // Nâng cỡ chữ vùng dữ liệu lên 12: font Times New Roman index 4 và 7 (đang 10pt) mà các ô A–H dùng.
+            // Trình bày chuẩn in: mọi font là Arial (template trộn Times New Roman/Arial/Calibri), cỡ 10 (tiêu đề 14, chân trang 11),
+            // dữ liệu không in nghiêng, viền mảnh thay cho viền dày, căn giữa theo chiều dọc để ô nhiều dòng không lệch.
+            const FONT_SIZE = { 5: 14, 9: 11, 10: 11, 11: 11 };
+            const NO_ITALIC = new Set([7, 9, 10, 11]);
             const stylesFile = files.find(file => file.name === "xl/styles.xml");
             if (stylesFile) {
               let fontIndex = -1;
               const stylesXml = decoder.decode(stylesFile.data).replace(/<font>[\s\S]*?<\/font>/g, block => {
                 fontIndex += 1;
-                if ((fontIndex === 4 || fontIndex === 7) && /Times New Roman/.test(block)) return block.replace(/<sz val="10"\/>/, '<sz val="12"/>');
-                return block;
-              });
+                const color = (block.match(/<color [^>]*\/>/) || [""])[0];
+                const italic = /<i\/>/.test(block) && !NO_ITALIC.has(fontIndex) ? "<i/>" : "";
+                return `<font>${/<b\/>/.test(block) ? "<b/>" : ""}${italic}<sz val="${FONT_SIZE[fontIndex] || 10}"/>${color}<name val="Arial"/><family val="2"/></font>`;
+              }).replace(/style="medium"/g, 'style="thin"')
+                .replace(/<alignment (?![^>]*vertical)/g, '<alignment vertical="center" ');
               stylesFile.data = encoder.encode(stylesXml);
             }
             let xml = decoder.decode(sheetFile.data);
             const escapeXmlValue = value => String(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-            const setCell = (ref, value, numeric) => {
+            const setCell = (ref, value, numeric, styleOverride) => {
               const pattern = new RegExp(`<c r="${ref}"([^>]*?)(?:/>|>[\\s\\S]*?</c>)`);
               const match = xml.match(pattern);
               const attrs = match ? match[1] : "";
               const styleMatch = attrs.match(/s="(\d+)"/);
-              const style = styleMatch ? ` s="${styleMatch[1]}"` : "";
+              const style = styleOverride != null ? ` s="${styleOverride}"` : styleMatch ? ` s="${styleMatch[1]}"` : "";
               let cellXml;
               if (value === null || value === "" || value === undefined) cellXml = `<c r="${ref}"${style}/>`;
               else if (numeric) cellXml = `<c r="${ref}"${style}><v>${Number(value)}</v></c>`;
@@ -2949,20 +2953,72 @@ Error generating stack: `+y.message+`
             for (let row = DATA_ROW_FIRST; row <= DATA_ROW_LAST; row += 1) {
               const item = items[row - DATA_ROW_FIRST];
               if (item) {
-                write("A" + row, item.sku);
-                write("B" + row, item.name);
-                write("C" + row, item.supplier);
-                write("D" + row, item.colour);
+                setCell("A" + row, String(item.sku ?? "").trim() || null, false, 6); // SKU là chữ, không bị đổi thành 4.22E+08 hay mất số 0 đầu
+                writeText("B" + row, item.name);
+                writeText("C" + row, item.supplier);
+                writeText("D" + row, item.colour);
                 const rowQty = Math.floor(Number(item.qty)) || 0;
-                setCell("E" + row, rowQty, true);
-                setCell("F" + row, rowQty, true);
-                setCell("H" + row, aqlSample(rowQty), true);
+                setCell("E" + row, rowQty, true, 14);
+                setCell("F" + row, rowQty, true, 14);
+                setCell("H" + row, aqlSample(rowQty), true, 14);
               } else {
                 for (const col of ["A", "B", "C", "D", "E", "F", "H"]) setCell(col + row, null);
               }
             }
+            // ---- Trang in A4 ngang, vừa khít chiều rộng; lặp dòng tiêu đề bảng ở mọi trang; đánh số trang ----
+            const COLS = [11.5, 40, 17, 17, 20.5, 11.5, 9, 10, 9, 8, 8, 9.5, 11, 9.5, 16]; // độ rộng cột A..O (ký tự)
+            xml = xml
+              .replace("<dimension", '<sheetPr><pageSetUpPr fitToPage="1"/></sheetPr><dimension')
+              .replace(/<sheetViews>[\s\S]*?<\/sheetViews>/, '<sheetViews><sheetView tabSelected="1" zoomScale="85" zoomScaleNormal="85" workbookViewId="0"><selection activeCell="A1" sqref="A1"/></sheetView></sheetViews>')
+              .replace(/<cols>[\s\S]*?<\/cols>/, `<cols>${COLS.map((width, index) => `<col min="${index + 1}" max="${index + 1}" width="${width}" customWidth="1"/>`).join("")}</cols>`)
+              .replace(/<pageMargins[^>]*\/>\s*<pageSetup[^>]*\/>/, '<printOptions horizontalCentered="1"/><pageMargins left="0.4" right="0.4" top="0.5" bottom="0.6" header="0.25" footer="0.3"/>'
+                + '<pageSetup paperSize="9" orientation="landscape" fitToWidth="1" fitToHeight="0"/>'
+                + '<headerFooter><oddFooter>&amp;C&amp;"Arial,Regular"&amp;8Trang &amp;P / &amp;N</oddFooter></headerFooter>'
+                + `<ignoredErrors><ignoredError sqref="A${DATA_ROW_FIRST}:A${DATA_ROW_LAST}" numberStoredAsText="1"/></ignoredErrors>`);
+            // ---- Chiều cao hàng: ước lượng số dòng chữ sẽ xuống dòng (Arial 10, ngắt sau dấu cách hoặc dấu gạch nối như Excel) ----
+            const ARIAL_EM = { " ": .278, i: .222, l: .222, j: .222, f: .278, t: .278, r: .333, m: .833, w: .722, c: .5, k: .5, s: .5, v: .5, x: .5, y: .5, z: .5,
+              I: .278, J: .5, F: .611, L: .556, M: .833, T: .611, W: .944, ".": .278, ",": .278, ":": .278, ";": .278, "/": .278, "-": .333, "(": .333, ")": .333, "%": .889 };
+            const glyphEm = ch => {
+              const base = ch === "đ" ? "d" : ch === "Đ" ? "D" : ch.normalize("NFD")[0];
+              return ARIAL_EM[base] ?? (/[A-Z]/.test(base) ? .69 : .556);
+            };
+            const wrappedLines = (text, widthChars) => {
+              const available = widthChars * 7 - 8;           // px chữ khả dụng sau lề ô
+              const em = 10 * 96 / 72 * 1.04;                   // px mỗi em của Arial 10, dư 4% để không bao giờ thiếu dòng
+              const measure = value => [...value].reduce((sum, ch) => sum + glyphEm(ch), 0) * em;
+              let lines = 1, used = 0;
+              for (const part of String(text ?? "").match(/[^ -]*[ -]|[^ -]+$/g) || []) {
+                const width = measure(part.replace(/ $/, ""));
+                if (used + width <= available) { used += measure(part); continue; }
+                if (used > 0) { lines += 1; used = 0; }
+                if (width <= available) { used = measure(part); continue; }
+                for (const ch of part) { const w = glyphEm(ch) * em; if (used + w > available) { lines += 1; used = 0; } used += w; }
+              }
+              return lines;
+            };
+            const setRow = (row, height, hidden) => {
+              xml = xml.replace(new RegExp(`<row r="${row}"([^>]*)>`), (_, attrs) => `<row r="${row}"${attrs.replace(/\s(?:ht|customHeight|hidden)="[^"]*"/g, "")}${height ? ` ht="${height}" customHeight="1"` : ""}${hidden ? ' hidden="1"' : ""}>`);
+            };
+            for (let row = 1; row < 13; row += 1) setCell("O" + row, null, false, 15);
+            setRow(3, 42);
+            setRow(13, 58);
+            if (quantityTotals.size > 1) setRow(9, Math.max(21, Math.ceil(wrappedLines([...quantityTotals.entries()].map(([unit, total]) => `${total} ${unit}`).join(" + "), COLS[2]) * 12.75 + 6)));
+            for (let row = DATA_ROW_FIRST; row <= DATA_ROW_LAST; row += 1) {
+              const item = items[row - DATA_ROW_FIRST];
+              if (!item) { setRow(row, 0, true); continue; }  // hàng không dùng: ẩn để bản in gọn, không có khung trống
+              const lines = Math.max(wrappedLines(item.sku, COLS[0]), wrappedLines(item.name, COLS[1]), wrappedLines(item.supplier, COLS[2]), wrappedLines(item.colour, COLS[3]));
+              setRow(row, Math.max(24, Math.ceil(lines * 12.75 + 6)));
+            }
+            // ---- Gói tệp: tên sheet, vùng in + dòng lặp, bỏ cài đặt máy in HP của người tạo template ----
+            const patchPart = (name, change) => { const part = files.find(file => file.name === name); if (part) part.data = encoder.encode(change(decoder.decode(part.data))); };
+            const SHEET_NAME = "Biên bản";
+            patchPart("xl/workbook.xml", text => text.replace('<sheet name="Sheet1"', `<sheet name="${SHEET_NAME}"`)
+              .replace("<calcPr", `<definedNames><definedName name="_xlnm.Print_Area" localSheetId="0">'${SHEET_NAME}'!$A$1:$O$53</definedName><definedName name="_xlnm.Print_Titles" localSheetId="0">'${SHEET_NAME}'!$13:$13</definedName></definedNames><calcPr`));
+            patchPart("docProps/app.xml", text => text.replace("<vt:lpstr>Sheet1</vt:lpstr>", `<vt:lpstr>${SHEET_NAME}</vt:lpstr>`));
+            patchPart("[Content_Types].xml", text => text.replace(/<Default Extension="bin"[^>]*\/>/, ""));
+            const dropParts = new Set(["xl/printerSettings/printerSettings1.bin", "xl/worksheets/_rels/sheet1.xml.rels"]);
             sheetFile.data = encoder.encode(xml);
-            const zipBytes = buildZip(files);
+            const zipBytes = buildZip(files.filter(file => !dropParts.has(file.name)));
             const blob = new Blob([zipBytes], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
             const link = document.createElement("a");
             link.href = URL.createObjectURL(blob);
