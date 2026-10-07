@@ -584,7 +584,12 @@
           })();
           return () => finish(null, true);
         };
-        window.PrintSkuScanUI = { open, region };
+        // Quét Group UID (CẮT UID, XẢ VẢI, IN TEM GROUP UID): không tra SKU_Name. Group UID luôn 16 chữ số (28.418/28.418 mã,
+        // 07/10/2026) nên đọc phải mã khác trên tem (vd SKU 9 số) thì hỏi "Vẫn dùng mã này" / "Quét tiếp".
+        const openGroupUid = ({ onCode, typeFocus = "" } = {}) => open({ title: "Quét Group UID", typeLabel: "Gõ tay mã UID", notFound: "Mã này không phải Group UID", check: code => /^\d{16}$/.test(code) ? { sku: code, ten: "" } : null, onCode, typeFocus });
+        // Nút camera chỉ hiện khi trình duyệt mở được camera (https hoặc localhost).
+        const canOpen = () => Boolean(navigator.mediaDevices?.getUserMedia && window.isSecureContext);
+        window.PrintSkuScanUI = { open, region, openGroupUid, canOpen };
       })();
     </script>
 
@@ -1191,6 +1196,14 @@ Error generating stack: `+y.message+`
       .uid-add__row input:focus { border-color: var(--wms-brand, #005f41); box-shadow: 0 0 0 3px rgba(0,95,65,.16); }
       .uid-add__btn { flex: 0 0 auto; min-height: 50px; padding: 0 24px; border: 0; border-radius: 13px; color: #fff; background: #005f41; font: 800 15px/1 Arial, Helvetica, sans-serif; cursor: pointer; }
       .uid-add .uid-help { margin-top: 8px; }
+      /* Nút quét Group UID bằng camera (cùng kiểu CẮT UID); chỉ hiện khi máy mở được camera. */
+      .uid-add__cam { flex: none; width: 50px; min-height: 50px; padding: 0; border: 1.5px solid rgba(0,95,65,.35); border-radius: 13px; color: var(--wms-brand, #005f41); background: rgba(0,95,65,.07); cursor: pointer; }
+      .uid-add__cam::before { width: 22px; height: 22px; }
+      .uid-add__cam[hidden] { display: none; }
+      @media (max-width: 620px) {
+        #uid-form .uid-add__row.has-camera { display: grid; grid-template-columns: minmax(0, 1fr) auto; }
+        #uid-form .uid-add__row.has-camera .uid-add__btn { grid-column: 1 / -1; }
+      }
       .uid-help { min-height: 16px; margin: 0; color: var(--wms-muted, #60736b); font-size: 12px; line-height: 1.45; }
       .uid-help[data-tone="ok"] { color: var(--wms-success, #16845b); }
       .uid-help[data-tone="warn"] { color: var(--wms-warning, #b7791f); }
@@ -1483,6 +1496,7 @@ Error generating stack: `+y.message+`
               <div class="uid-panel__head"><b class="uid-panel__num">1</b><h2>Thêm Group UID</h2></div>
               <div class="uid-add__row">
                 <input id="uid-code" autocomplete="off" placeholder="Quét hoặc nhập Group UID…" required>
+                <button class="uid-add__cam act-icon act-icon--camera" id="uid-camera" type="button" aria-label="Quét bằng camera" title="Quét bằng camera" hidden></button>
                 <button class="uid-add__btn act-icon act-icon--add" id="uid-add" type="submit">Thêm</button>
               </div>
               <button class="uid-import" id="uid-import" type="button">
@@ -2232,6 +2246,13 @@ Error generating stack: `+y.message+`
           groupUid.focus();
           setStatus(`Đang tra Group UID ${code}…`);
           await addGroupUids([code]);
+        });
+        // Quét Group UID bằng camera điện thoại (lớp quét chung PrintSkuScanUI.openGroupUid, chỉ nhận mã 16 số):
+        // đọc được thì điền ô và bấm Thêm như máy quét cầm tay.
+        const cameraButton = document.getElementById("uid-camera");
+        if (window.PrintSkuScanUI?.canOpen()) { cameraButton.hidden = false; cameraButton.parentElement.classList.add("has-camera"); }
+        cameraButton.addEventListener("click", () => {
+          if (!printing) window.PrintSkuScanUI.openGroupUid({ typeFocus: "#uid-code", onCode: code => { groupUid.value = code; form.requestSubmit(); } });
         });
 
         printAll.addEventListener("click", async () => {
@@ -7418,12 +7439,11 @@ var FSK_CORE = (function () {
         const applyKeyboard=()=>{const label=keyboardHidden?'Hiện bàn phím':'Ẩn bàn phím';code.inputMode=keyboardHidden?'none':'text';keyboardToggle.setAttribute('aria-label',label);keyboardToggle.title=label;keyboardToggle.setAttribute('aria-pressed',String(keyboardHidden))};
         keyboardToggle.addEventListener('click',()=>{keyboardHidden=!keyboardHidden;try{localStorage.setItem(KEYBOARD_STORE,keyboardHidden?'an':'hien')}catch(_){}applyKeyboard();code.blur();setTimeout(()=>{code.focus();hideKeyboardNow()},60)});
         applyKeyboard();
-        // Quét UID bằng camera điện thoại: lớp quét chung của PRINT SKU (khung ngắm, đèn, 1×/2×/3×, nút Back đóng) nhưng
-        // không tra danh mục SKU. Group UID luôn 16 chữ số (28.418/28.418 mã, 07/10/2026) — đọc phải mã khác trên tem (vd SKU
-        // 9 số) thì hỏi "Vẫn dùng mã này" / "Quét tiếp". Đọc được thì điền ô quét và lưu tem như máy quét cầm tay.
+        // Quét UID bằng camera điện thoại: lớp quét chung (PrintSkuScanUI.openGroupUid — khung ngắm, đèn, 1×/2×/3×, nút Back
+        // đóng, chỉ nhận mã 16 số). Đọc được thì điền ô quét và lưu tem như máy quét cầm tay.
         const cameraBtn=document.getElementById('cut-camera');
-        if(window.PrintSkuScanUI&&navigator.mediaDevices?.getUserMedia&&window.isSecureContext){cameraBtn.hidden=false;form.classList.add('has-camera')}
-        cameraBtn.addEventListener('click',()=>{if(busy)return;window.PrintSkuScanUI.open({title:'Quét Group UID',typeLabel:'Gõ tay mã UID',typeFocus:'#cut-code',notFound:'Mã này không phải Group UID',check:c=>/^\d{16}$/.test(c)?{sku:c,ten:''}:null,onCode:c=>{code.value=c;form.requestSubmit()}})});
+        if(window.PrintSkuScanUI?.canOpen()){cameraBtn.hidden=false;form.classList.add('has-camera')}
+        cameraBtn.addEventListener('click',()=>{if(busy)return;window.PrintSkuScanUI.openGroupUid({typeFocus:'#cut-code',onCode:c=>{code.value=c;form.requestSubmit()}})});
 
         // 3 cụm Scan/Data/Print, mỗi lần chỉ hiện đúng 1 cụm (giống tab) — bấm vào tiêu đề cụm
         // hoặc bấm nút "→" cuối mỗi cụm để nhảy sang cụm khác. Nhớ cụm đang mở theo localStorage.
@@ -7763,7 +7783,7 @@ var FSK_CORE = (function () {
         </div>
         <p class="cut-message" id="xa-vai-message" aria-live="polite" style="margin-bottom:14px"></p>
         <div class="cut-grid">
-        <section class="cut-card" data-panel="scan"><h2><span>1</span>Quét Group UID</h2><form class="cut-scan" id="xa-vai-form"><div class="cut-scanwrap"><input class="cut-input cut-input--scan" id="xa-vai-code" autocomplete="off" inputmode="none" placeholder="Quét hoặc nhập UID…" maxlength="40" required><button class="cut-camera" id="xa-vai-camera" type="button" title="Quét mã bằng camera" hidden><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 12h10"/></svg></button></div><button class="cut-primary act-icon act-icon--play" type="submit">Bắt đầu xả vải</button></form><button class="cut-secondary act-icon act-icon--keyboard" id="xa-vai-keyboard" type="button">Hiện bàn phím</button><button class="cut-link" id="xa-vai-goto-open" type="button">Xem đang xả →</button></section>
+        <section class="cut-card" data-panel="scan"><h2><span>1</span>Quét Group UID</h2><form class="cut-scan" id="xa-vai-form"><div class="cut-scanwrap"><input class="cut-input cut-input--scan" id="xa-vai-code" autocomplete="off" inputmode="none" placeholder="Quét hoặc nhập UID…" maxlength="40" required><button class="cut-camera" id="xa-vai-camera" type="button" title="Quét mã bằng camera" hidden><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 12h10"/></svg></button></div><button class="cut-primary act-icon act-icon--play" type="submit">Bắt đầu xả vải</button></form><button class="cut-secondary act-icon act-icon--keyboard" id="xa-vai-keyboard" type="button" aria-controls="xa-vai-code">Hiện bàn phím</button><button class="cut-link" id="xa-vai-goto-open" type="button">Xem đang xả →</button></section>
         <section class="cut-card" data-panel="open"><h2><span>2</span>Đang xả vải</h2><div class="cut-actions"><button class="cut-secondary act-icon act-icon--load" id="xa-vai-open-reload" type="button">Tải lại</button></div><div class="cut-list" id="xa-vai-open-list"></div></section>
         <section class="cut-card" data-panel="done"><h2><span>3</span>Đã xả xong</h2><form class="cut-searchbar" id="xa-vai-search"><input class="cut-input" id="xa-vai-sku" placeholder="Lọc theo SKU…" autocomplete="off"><div class="cut-daterange"><input class="cut-input" id="xa-vai-date-from" type="date"><span aria-hidden="true">→</span><input class="cut-input" id="xa-vai-date-to" type="date"></div><button class="cut-secondary act-icon act-icon--search" type="submit">Tìm kiếm</button></form><div class="cut-actions"><button class="cut-icon-btn" id="xa-vai-export" type="button" disabled title="Xuất Excel A4 ngang" aria-label="Xuất Excel A4 ngang"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button></div><div class="cut-table-wrap"><table class="cut-table"><thead><tr><th>STT</th><th>UID</th><th>Batch</th><th>Roll</th><th>SKU</th><th>Ngày bắt đầu xả</th><th>Giờ bắt đầu xả</th><th>Giờ xả vải xong</th></tr></thead><tbody id="xa-vai-results"></tbody></table></div></section>
       </div></main>
@@ -7820,110 +7840,12 @@ var FSK_CORE = (function () {
           finally{busy=false}
         });
 
-        // Quét bằng camera điện thoại — dùng lại đúng engine dò mã của màn PRINT SKU
-        // (window.PrintSkuScanner, lộ ra từ bundle React đã có sẵn ZXing dự phòng), KHÔNG tự
-        // viết engine riêng chỉ dựa BarcodeDetector gốc — Safari/iOS không có BarcodeDetector,
-        // viết riêng sẽ vô dụng trên iPhone. Dùng chung nên có luôn cả hai đường (native +
-        // ZXing) và đúng thông số camera đã kiểm chứng của màn kia.
+        // Quét UID bằng camera điện thoại: lớp quét chung (PrintSkuScanUI.openGroupUid — khung ngắm, đèn, 1×/2×/3×, nút Back
+        // đóng, ZXing cho iPhone, chỉ nhận mã 16 số) thay cho lớp camera tự viết trước đây (07/10/2026). Đọc được thì điền ô
+        // quét và bắt đầu xả như máy quét cầm tay.
         const cameraBtn=document.getElementById('xa-vai-camera');
-        const hasCamera=()=>typeof navigator!=='undefined'&&!!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia);
-        const isSecure=()=>typeof window!=='undefined'&&(window.isSecureContext||location.hostname==='localhost');
-        if(hasCamera()&&isSecure())cameraBtn.hidden=false;
-        let cameraStream=null,cropVideo=null,cropCanvas=null,cropCtx=null,cropReady=false,cropTried=false;
-        const stopCamera=()=>{
-          if(cameraStream){cameraStream.getTracks().forEach(t=>t.stop());cameraStream=null}
-          if(cropVideo){cropVideo.srcObject&&cropVideo.srcObject.getTracks().forEach(t=>t.stop());cropVideo=null}
-          cropCanvas=null;cropCtx=null;cropReady=false;cropTried=false;
-          const overlay=document.getElementById('xa-vai-cam-overlay');if(overlay)overlay.remove();
-        };
-        cameraBtn.addEventListener('click',async()=>{
-          if(document.getElementById('xa-vai-cam-overlay'))return;
-          const scanner=window.PrintSkuScanner;
-          if(!scanner){tell('Chưa tải xong bộ quét mã, thử lại sau vài giây.','error');return}
-          const overlay=document.createElement('div');
-          overlay.id='xa-vai-cam-overlay';
-          overlay.style.cssText='position:fixed;inset:0;background:#000;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;box-sizing:border-box';
-          // Khung 50% giua video (kieu spotlight giong man PRINT SKU) - CHỈ la goi y hinh
-          // anh cho nguoi dung; vung thuc su duoc dua vao bo doc ma la anh da cat rieng
-          // ben duoi (drawCrop/cropCanvas), khong phai video goc.
-          const videoWrap=document.createElement('div');
-          videoWrap.style.cssText='position:relative;display:inline-block;line-height:0';
-          const video=document.createElement('video');
-          video.setAttribute('playsinline','');video.muted=true;
-          video.style.cssText='display:block;max-width:100%;max-height:65vh;border-radius:12px';
-          const guide=document.createElement('div');
-          guide.style.cssText='position:absolute;left:25%;top:25%;width:50%;height:50%;border:2px solid rgba(255,255,255,.85);border-radius:10px;box-shadow:0 0 0 100vmax rgba(0,0,0,.45);pointer-events:none';
-          videoWrap.append(video,guide);
-          const hint=document.createElement('p');
-          hint.textContent='Đang mở camera…';
-          hint.style.cssText='color:#eafff7;margin:14px 0 6px;font-size:14px;text-align:center';
-          // Dong chan doan hien ngay tren man hinh (engine dang dung, kich thuoc video, so lan
-          // da quet thu) - de biet chinh xac iOS ket o buoc nao thay vi im lang "khong nhan
-          // duoc", vi khong co thiet bi iOS that de tu debug truc tiep.
-          const debug=document.createElement('p');
-          debug.style.cssText='color:#6b8f80;margin:0 0 6px;font-size:11px;text-align:center';
-          const cropLabel=document.createElement('p');
-          cropLabel.textContent='Ảnh đã cắt 50% đưa vào bộ đọc:';
-          cropLabel.style.cssText='color:#6b8f80;margin:6px 0 4px;font-size:11px;text-align:center';
-          const closeBtn=document.createElement('button');
-          closeBtn.type='button';closeBtn.className='cut-secondary';closeBtn.textContent='Đóng';
-          overlay.append(videoWrap,hint,debug,cropLabel,closeBtn);
-          document.body.appendChild(overlay);
-          closeBtn.addEventListener('click',stopCamera);
-          // Chi dua vao bo doc vung 50% chinh giua khung hinh (tranh quet nham sang UID/nhan
-          // khac nam canh ben "quet lan") - dung canvas.captureStream() tao 1 video "ao" chi
-          // chua vung da cat, roi feed video ao do vao engine (engine yeu cau HTMLVideoElement
-          // that, khong nhan canvas truc tiep). Anh da cat cung duoc hien luon tren man (o
-          // cropLabel ben tren) de tu kiem tra co bi den/dung hinh khong tren may that. Neu may
-          // khong ho tro captureStream, tu dong quay ve quet full khung hinh nhu truoc, KHONG
-          // lam hong tinh nang cu.
-          const drawCrop=()=>{
-            if(!cropCtx||!video.videoWidth)return;
-            const sw=Math.round(video.videoWidth*0.5),sh=Math.round(video.videoHeight*0.5);
-            const sx=Math.round((video.videoWidth-sw)/2),sy=Math.round((video.videoHeight-sh)/2);
-            if(cropCanvas.width!==sw||cropCanvas.height!==sh){cropCanvas.width=sw;cropCanvas.height=sh}
-            cropCtx.drawImage(video,sx,sy,sw,sh,0,0,sw,sh);
-          };
-          const setupCrop=async()=>{
-            cropTried=true;
-            try{
-              cropCanvas=document.createElement('canvas');
-              cropCanvas.style.cssText='width:120px;height:80px;border-radius:8px;border:1px solid #234;background:#000;display:block;margin:0 auto 8px';
-              cropCtx=cropCanvas.getContext('2d');
-              overlay.insertBefore(cropCanvas,closeBtn);
-              drawCrop();
-              if(typeof cropCanvas.captureStream!=='function')return;
-              const stream=cropCanvas.captureStream();
-              cropVideo=document.createElement('video');
-              cropVideo.setAttribute('playsinline','');cropVideo.muted=true;
-              cropVideo.srcObject=stream;
-              await cropVideo.play();
-              const until=Date.now()+800;
-              while(Date.now()<until&&!cropVideo.videoWidth)await new Promise(res=>setTimeout(res,50));
-              cropReady=!!cropVideo.videoWidth;
-            }catch{cropReady=false}
-          };
-          try{
-            const engine=await scanner.Jp();
-            if(!engine){hint.textContent='Trình duyệt này không hỗ trợ quét mã bằng camera.';return}
-            debug.textContent=`Engine: ${engine.nguon}`;
-            cameraStream=await scanner.ev();
-            video.srcObject=cameraStream;await video.play();
-            hint.textContent='Đưa mã vạch UID vào giữa khung hình…';
-            let ticks=0;
-            const tick=async()=>{
-              if(!cameraStream)return;
-              ticks++;
-              if(video.videoWidth&&!cropTried)await setupCrop();
-              if(cropCtx)drawCrop();
-              const src=cropReady?cropVideo:video;
-              debug.textContent=`Engine: ${engine.nguon} · ${cropReady?'đã thu 50%':'quét full khung hình'} ${src.videoWidth||0}x${src.videoHeight||0} · đã quét thử ${ticks} lần`;
-              try{const r=await engine.doc(src);if(r&&r.ma){const value=r.ma;stopCamera();code.value=value;form.requestSubmit();return}}catch(_){}
-              requestAnimationFrame(tick);
-            };
-            requestAnimationFrame(tick);
-          }catch(e){hint.textContent=`Không mở được camera: ${e.message}`}
-        });
+        if(window.PrintSkuScanUI?.canOpen())cameraBtn.hidden=false;
+        cameraBtn.addEventListener('click',()=>{if(busy)return;window.PrintSkuScanUI.openGroupUid({typeFocus:'#xa-vai-code',onCode:c=>{code.value=c;form.requestSubmit()}})});
 
         form.addEventListener('submit',async event=>{
           event.preventDefault();
@@ -8766,8 +8688,6 @@ var FSK_CORE = (function () {
           document.querySelectorAll('.pss [data-act="close"]').forEach(button => button.click());
           const findSku = document.getElementById("fsk-camera");
           if (findSku && !findSku.hidden) { const off = document.getElementById("fsk-cam-off"); if (off) off.click(); }
-          const xaVai = document.getElementById("xa-vai-cam-overlay");
-          if (xaVai) { const close = xaVai.querySelector("button"); if (close) close.click(); }
         };
         document.addEventListener("visibilitychange", () => { if (document.hidden) stopScanners(); });
         window.addEventListener("pagehide", stopScanners);
