@@ -8,6 +8,9 @@
 | Quan hệ Normal–Combo | Combo, Normal, số lượng, trạng thái | Inside qua Extension | Hai SKU có category trong database; số lượng > 0 | Đúng phạm vi → OK; ngoài phạm vi → bỏ qua |
 | Lượt đồng bộ | Nguồn, thay đổi, người chạy, thời gian | Edge Function | Phải tạo bản xem trước trước khi cập nhật | Có preview → OK; gọi ghi trực tiếp → NG |
 | Xác minh | SKU và quan hệ vừa ghi | Đọc lại Supabase | Khớp toàn bộ trường vừa ghi | Khớp → hoàn tất; lệch → failed |
+| Combo thừa | Quan hệ có trong database nhưng không còn trong nguồn | Đối chiếu toàn bộ nguồn Combo với `sku_combo_links` | Chỉ báo, không xóa: "Thành phần không còn" (Combo còn nhưng đổi thành phần) hoặc "Combo không còn" (cả Combo vắng) | Có → Admin xem; xóa chạy quy trình riêng |
+| Thiếu SKU | Quan hệ bị loại vì chỉ một đầu có trong database | Edge Function | Liệt kê tối đa 1.000 dòng; cả hai đầu thiếu hoặc ngoài category chỉ đếm | Có → kiểm tra SKU chưa vào database |
+| Lỗi nguồn | Quan hệ không hợp lệ, mô tả sai dạng `Combo A=B+C`, thành phần không đọc được | Extension | Lưu cùng lượt (tối đa 1.000 dòng, đếm đủ); không chặn bản xem trước | Có → xem lại dữ liệu trên Inside |
 | Bản xem trước | Thời điểm tạo | Edge Function | Chỉ áp dụng trong 30 phút và khi chưa có lượt khác hoàn tất sau khi tạo | Quá hạn hoặc có lượt mới hơn → `STALE_PREVIEW`, phải kiểm tra lại |
 | Mốc đọc tiếp theo | `source_generated_at` | Lượt `completed` gần nhất | Mốc cắt = thời điểm đọc nguồn của lượt đó − 1 ngày; không dùng lúc bấm cập nhật | Chưa có lượt hoàn tất → đọc 7 ngày gần nhất |
 

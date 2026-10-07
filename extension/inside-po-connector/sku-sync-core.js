@@ -7,19 +7,26 @@
     return clean(value).toLowerCase() === "active" ? "1" : "0";
   }
 
-  function parseComboDescriptions(value) {
+  // matched=false: không có dạng "Combo A=..."; rejected: thành phần không đọc được (bị bỏ khỏi relations).
+  function parseComboDetail(value) {
     const text = clean(value);
     const equation = text.match(/\bCombo\s+([^\s=]+)\s*=\s*(.+)$/i);
-    if (!equation) return [];
+    if (!equation) return { matched: false, relations: [], rejected: [] };
     const comboSku = clean(equation[1]);
-    return equation[2].split("+").map(part => {
+    const relations = [], rejected = [];
+    for (const part of equation[2].split("+")) {
       const component = clean(part);
+      if (!component) continue;
       const match = component.match(/^([^\s,;+]+?)(?:\s*[xX×]\s*([0-9][0-9.,]*))?$/);
-      if (!match) return null;
-      const quantity = match[2] ? Number(match[2].replace(/,/g, "")) : 1;
-      if (!Number.isFinite(quantity) || quantity <= 0) return null;
-      return { comboSku, normalSku: clean(match[1]), quantity };
-    }).filter(Boolean);
+      const quantity = match ? (match[2] ? Number(match[2].replace(/,/g, "")) : 1) : NaN;
+      if (!Number.isFinite(quantity) || quantity <= 0) { rejected.push(component); continue; }
+      relations.push({ comboSku, normalSku: clean(match[1]), quantity });
+    }
+    return { matched: true, relations, rejected };
+  }
+
+  function parseComboDescriptions(value) {
+    return parseComboDetail(value).relations;
   }
 
   function parseComboDescription(value) {
@@ -36,5 +43,5 @@
     return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}:${parts.second}`;
   }
 
-  globalThis.HasakiSkuSyncCore = Object.freeze({ clean, statusCode, parseComboDescription, parseComboDescriptions, cutoffKey });
+  globalThis.HasakiSkuSyncCore = Object.freeze({ clean, statusCode, parseComboDetail, parseComboDescription, parseComboDescriptions, cutoffKey });
 })();

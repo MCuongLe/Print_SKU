@@ -1,4 +1,5 @@
 // Lối vào Admin nằm ở trang chủ (ô QUẢN TRỊ), không còn trong IN TEM SKU.
+// Thanh admin nổi (tên + Dữ liệu UID/Đồng bộ SKU/Đăng xuất) đã bỏ; Đăng xuất nằm trong thanh bên Admin (desktop) và hàng tiêu đề (điện thoại).
 // Run against python -m http.server 8000. Supabase/auth được giả lập; không ghi dữ liệu.
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const assert = require('node:assert/strict');
@@ -63,7 +64,7 @@ const mockRoutes = async page => page.route('**/*', async route => {
         const openAdmin = async () => {
           await page.goto(BASE + '#home');
           await page.locator('#barcode-admin').click();
-          await page.locator('#admin-session').waitFor({ state: 'visible' });
+          await page.locator('#root header h1', { hasText: 'Quản trị' }).waitFor({ state: 'visible' });
           assert.equal(await page.locator('#admin-auth').isVisible(), false);
           assert.equal(await page.evaluate(() => location.hash), '#admin/tongquan');
           assert.equal((await page.locator('#root header h1').innerText()).trim(), 'Quản trị');
@@ -79,11 +80,22 @@ const mockRoutes = async page => page.route('**/*', async route => {
         }
         await page.waitForFunction(() => location.hash === '#home');
         assert.equal(await page.locator('#barcode-home').isVisible(), true);
-        assert.equal(await page.locator('#admin-session').isVisible(), false);
+
+        // Không còn thanh admin nổi, nút Dữ liệu UID và màn nạp Excel; Đăng xuất có đúng một nút trong thanh điều hướng
+        await openAdmin();
+        for (const id of ['#admin-session', '#admin-uid-data', '#admin-sku-sync', '#group-uid-import-screen']) assert.equal(await page.locator(id).count(), 0, id + ' đã bị xóa');
+        const logout = page.locator(width >= 768 ? '#root aside button[data-admin-logout]' : '#root header button[data-admin-logout]');
+        await logout.waitFor({ state: 'visible' });
+        assert.equal(await page.locator('[data-admin-logout]:visible').count(), 1);
+        assert.equal(width >= 768 ? (await logout.innerText()).trim() : await logout.getAttribute('aria-label'), 'Đăng xuất');
+        if (width >= 768) assert.equal(await page.locator('#root aside nav button', { hasText: 'Đồng bộ SKU' }).count(), 1);
+        await page.goto(BASE + '#admin/group-uid-data');
+        await page.locator('#root header h1', { hasText: 'Quản trị' }).waitFor({ state: 'visible' });
+        assert.equal(await page.locator('#group-uid-import-screen').count(), 0);
 
         // Đăng xuất → trang chủ, phiên bị xóa
         await openAdmin();
-        await page.locator('#admin-session-logout').click();
+        await logout.click();
         await page.waitForFunction(() => location.hash === '#home');
         assert.equal(await page.evaluate(key => sessionStorage.getItem(key), SESSION_KEY), null);
         assert.equal(await page.locator('#barcode-home').isVisible(), true);

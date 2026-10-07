@@ -190,3 +190,90 @@ test("preview: thời điểm đọc nguồn sai định dạng không làm hỏ
   assert.equal(result.status, 200, JSON.stringify(result.body));
   assert.ok(Number.isFinite(Date.parse(runs[0].source_generated_at)));
 });
+
+function remoteLink(comboSku, normalSku, over = {}) {
+  return { combo_sku: comboSku, normal_sku: normalSku, quantity: 1, combo_name: `Combo ${comboSku}`, ...over };
+}
+function remoteSku(sku, categoryId = "954") {
+  return { sku, product_name: `SKU ${sku}`, category_id: categoryId, category_name: "x", status: "1" };
+}
+
+test("preview: quan hệ có trong database nhưng không còn trong nguồn được báo là Combo thừa, không bị xóa", async () => {
+  links.push(
+    remoteLink("C0", "N0"), // vẫn còn trong nguồn
+    remoteLink("C0", "OLD", { quantity: 2 }), // Combo C0 còn nhưng đổi thành phần
+    remoteLink("GONE", "N5"), // cả Combo vắng khỏi nguồn
+  );
+  const result = await call({ action: "preview", snapshot: snapshot(iso(-1 * MIN)) });
+  assert.equal(result.status, 200, JSON.stringify(result.body));
+  assert.equal(result.body.data.changeCounts.comboOrphaned, 2);
+  assert.deepEqual(result.body.data.changes.combos.orphaned.map(row => [row.comboSku, row.normalSku, row.reason]), [
+    ["C0", "OLD", "component_removed"],
+    ["GONE", "N5", "combo_missing"],
+  ]);
+  assert.equal(links.length, 3, "xem trước không được ghi hay xóa quan hệ nào");
+  assert.equal(runs[0].change_counts.comboOrphaned, 2, "báo cáo được lưu cùng lượt");
+});
+
+test("preview: không có quan hệ thừa thì không báo gì", async () => {
+  const result = await call({ action: "preview", snapshot: snapshot(iso(-1 * MIN)) });
+  assert.equal(result.body.data.changeCounts.comboOrphaned, 0);
+  assert.deepEqual(result.body.data.changes.combos.orphaned, []);
+});
+
+test("preview: quan hệ bị loại được phân loại, chỉ liệt kê trường hợp thiếu một đầu", async () => {
+  skus.push(remoteSku("N1"), remoteSku("C2"), remoteSku("N2", "959"), remoteSku("C3"), remoteSku("N3"));
+  const result = await call({ action: "preview", snapshot: snapshot(iso(-1 * MIN)) });
+  assert.equal(result.status, 200, JSON.stringify(result.body));
+  const counts = result.body.data.sourceCounts;
+  assert.deepEqual(counts.excludedBreakdown, { bothMissing: 997, oneMissing: 1, outOfCategory: 1 });
+  assert.equal(counts.excludedComboLinks, 999);
+  assert.equal(counts.selectedComboLinks, 1);
+  assert.deepEqual(result.body.data.changes.combos.excluded, [{ comboSku: "C1", normalSku: "N1", quantity: 1, missing: "combo" }]);
+});
+
+test("preview: lỗi nguồn từ Extension được làm sạch, đếm đủ và lưu kèm lượt", async () => {
+  const issues = [
+    { type: "unparsed_combo_description", combo_sku: "C9", combo_name: "Combo chín", description: "Ghi chú tự do", reason: "Mô tả không đúng dạng Combo A=B+C" },
+    { type: "invalid_combo_relation", combo_sku: "C8", normal_sku: "C8", quantity: -1, reason: "SKU Combo tự tham chiếu" },
+    { type: "loai-la", combo_sku: `  C7${"x".repeat(100)}  `, quantity: "abc" },
+    null,
+  ];
+  const result = await call({ action: "preview", snapshot: { ...snapshot(iso(-1 * MIN)), sourceIssues: issues } });
+  assert.equal(result.status, 200, JSON.stringify(result.body));
+  assert.equal(result.body.data.sourceCounts.sourceIssues, 4);
+  const stored = result.body.data.changes.sourceIssues;
+  assert.equal(stored.length, 4);
+  assert.equal(stored[0].type, "unparsed_combo_description");
+  assert.equal(stored[0].description, "Ghi chú tự do");
+  assert.equal(stored[1].quantity, -1);
+  assert.equal(stored[2].type, "unknown");
+  assert.equal(stored[2].quantity, null);
+  assert.equal(stored[2].combo_sku.length, 64);
+  assert.equal(stored[3].type, "unknown");
+  assert.deepEqual(runs[0].changes.sourceIssues, stored, "lưu cùng lượt để xem lại trong lịch sử");
+});
+
+test("preview: lỗi nguồn nhiều hơn giới hạn thì lưu 1.000 dòng nhưng đếm đủ", async () => {
+  const issues = Array.from({ length: 1500 }, (_, index) => ({ type: "unparsed_combo_description", combo_sku: `X${index}` }));
+  const result = await call({ action: "preview", snapshot: { ...snapshot(iso(-1 * MIN)), sourceIssues: issues } });
+  assert.equal(result.body.data.sourceCounts.sourceIssues, 1500);
+  assert.equal(result.body.data.changes.sourceIssues.length, 1000);
+});
+
+test("preview: Extension cũ không gửi lỗi nguồn vẫn dùng được", async () => {
+  const result = await call({ action: "preview", snapshot: snapshot(iso(-1 * MIN)) });
+  assert.equal(result.status, 200);
+  assert.equal(result.body.data.sourceCounts.sourceIssues, 0);
+  assert.deepEqual(result.body.data.changes.sourceIssues, []);
+});
+
+test("detail: báo cáo cảnh báo xem lại được từ lịch sử", async () => {
+  links.push(remoteLink("GONE", "N5"));
+  const created = await call({ action: "preview", snapshot: { ...snapshot(iso(-1 * MIN)), sourceIssues: [{ type: "partial_combo_description", combo_sku: "C4", reason: "Bỏ qua thành phần: B 1" }] } });
+  const result = await call({ action: "detail", runId: created.body.data.runId });
+  assert.equal(result.status, 200);
+  assert.equal(result.body.data.changes.combos.orphaned[0].comboSku, "GONE");
+  assert.equal(result.body.data.changes.sourceIssues[0].type, "partial_combo_description");
+  assert.equal(result.body.data.change_counts.comboOrphaned, 1);
+});

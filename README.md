@@ -63,9 +63,9 @@ camera/scanner giữ kiểu riêng. Thiết kế: [`docs/THIET_KE_HEADER_UI.md`]
 
 ## Quản trị (Admin)
 
-Giao diện Admin (`#admin/tongquan`, `#admin/hangdoi`, `#admin/cauhinh`, `#admin/group-uid-data`) vào từ ô **QUẢN TRỊ** (nhóm "Quản trị", cuối trang chủ) — không còn
+Giao diện Admin (`#admin/tongquan`, `#admin/hangdoi`, `#admin/cauhinh`, `#admin/sku-sync`) vào từ ô **QUẢN TRỊ** (nhóm "Quản trị", cuối trang chủ) — không còn
 nút bánh răng trong header IN TEM SKU. Chưa có phiên thì hiện hộp thoại đăng nhập Supabase (tài khoản có vai trò `admin`); **Hủy**, **Về trang chủ** và **Đăng xuất**
-đều quay về `#home`. Thương hiệu trong Admin và hộp thoại đăng nhập là "WH-MATERIAL" (trước đây là "In tem SKU"). Test: `tests/admin_entry_browser.cjs`.
+đều quay về `#home`. **Đăng xuất** nằm ở cuối thanh bên Admin (desktop) hoặc là icon ở hàng tiêu đề (điện thoại); không còn thanh nổi hiện tên Admin. Thương hiệu trong Admin và hộp thoại đăng nhập là "WH-MATERIAL" (trước đây là "In tem SKU"). Test: `tests/admin_entry_browser.cjs`.
 
 ## Màn Sample — gom hàng mẫu vào bao
 
@@ -158,33 +158,6 @@ Migration v3 xóa cột `product` và sửa RPC để chỉ dùng tên từ `SKU
 Các UID có SKU chưa có tên trong `SKU_Name` sẽ chờ gán tên thủ công.
 Đã kiểm tra frontend với RPC thật: UID có dữ liệu tự chuyển sang Sẵn sàng in,
 đủ SKU, tên sản phẩm, lot và roll. Frontend báo lỗi và cho gán tay nếu RPC không truy cập được.
-
-### Nạp Excel Group UID trên Admin
-
-Admin mở `#admin/group-uid-data`, chọn file `.xlsx` xuất từ WMS rồi xem trước số
-dòng thêm mới, cập nhật, không thay đổi, dữ liệu cũ, SKU trống và SKU chưa có trong
-`SKU_Name`. Khi bấm **Cập nhật database**, dữ liệu đã kiểm tra mới được upsert;
-không xóa Group UID vắng mặt trong file.
-
-Sau khi kiểm tra, ô **Cập nhật** có thể bấm để xem danh sách UID và từng trường
-sẽ đổi theo dạng giá trị hiện tại → giá trị từ file. Danh sách có tìm kiếm theo
-Group UID/SKU và phân trang 25 UID; backend chỉ trả dữ liệu thuộc lượt nạp của Admin.
-
-Backend nằm trong `supabase/group_uid_v4_admin_import.sql`: bảng staging, lịch sử
-và năm RPC `start/chunk/validate/commit/history`. RPC chỉ cấp cho `authenticated`
-và tự kiểm tra `auth.uid()` có role `admin`; web không có quyền ghi trực tiếp vào
-bảng chính hoặc bảng staging. File chia lô 500 dòng, tối đa 10 MB / 50.000 dòng.
-Product Name trong Excel bị bỏ qua, ngày không có múi giờ được hiểu là UTC+07:00.
-
-Triển khai hoặc cập nhật backend bằng migration:
-
-```powershell
-python scripts/apply_supabase_sql.py supabase/group_uid_v4_admin_import.sql
-python scripts/apply_supabase_sql.py supabase/group_uid_v5_update_details.sql
-```
-
-Tài liệu kiến trúc và quy tắc phục hồi nằm tại
-[`docs/GROUP_UID_ADMIN_IMPORT_DESIGN.md`](docs/GROUP_UID_ADMIN_IMPORT_DESIGN.md).
 
 ## Đồng bộ danh mục SKU lên Supabase
 

@@ -1105,28 +1105,9 @@ Error generating stack: `+y.message+`
       .admin-auth__submit:disabled { opacity: .55; cursor: wait; }
       .admin-auth__cancel { margin-top: 9px; border: 1px solid rgba(145, 186, 171, .2); color: #9fb9b0; background: transparent; }
       .admin-auth__note { margin: 16px 4px 0; color: #667f76; font-size: 11px; line-height: 1.5; text-align: center; }
-      .admin-session {
-        position: fixed;
-        bottom: 72px;
-        left: 22px;
-        z-index: 80;
-        display: flex;
-        align-items: center;
-        gap: 9px;
-        padding: 7px 8px 7px 12px;
-        border: 1px solid rgba(145, 186, 171, .17);
-        border-radius: 999px;
-        color: #9fc4b7;
-        background: rgba(7, 17, 14, .94);
-        box-shadow: 0 12px 30px rgba(0,0,0,.25);
-        font: 700 12px/1 Arial, Helvetica, sans-serif;
-      }
-      .admin-session[hidden] { display: none; }
-      .admin-session button { min-height: 34px; padding: 0 12px; border: 0; border-radius: 999px; color: white; background: #005f41; font-weight: 700; cursor: pointer; }
       @media (max-width: 767px) {
         .admin-auth { align-items: start; padding-top: max(28px, env(safe-area-inset-top)); overflow-y: auto; }
         .admin-auth__card { padding: 23px 20px; border-radius: 20px; }
-        .admin-session { right: 14px; bottom: 14px; left: auto; }
       }
     </style>
     <style>
@@ -3621,139 +3602,7 @@ Error generating stack: `+y.message+`
         if (route() === "sample") window.dispatchEvent(new HashChangeEvent("hashchange"));
       })();
     </script>
-    <style id="group-uid-import-theme">
-      .gui-screen { min-height: 100vh; background: #f3f6f5; color: #17251f; font-family: Arial, Helvetica, sans-serif; }
-      .gui-screen[hidden] { display: none; }
-      .gui-top { position: sticky; top: 0; z-index: 20; border-bottom: 1px solid #dce6e2; background: rgba(255,255,255,.95); backdrop-filter: blur(12px); }
-      .gui-top__in { max-width: 1120px; margin: auto; padding: 15px 22px; display: flex; align-items: center; gap: 14px; }
-      .gui-mark { width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; color: white; background: #005f41; font-weight: 900; }
-      .gui-top h1 { margin: 0; font-size: 19px; }
-      .gui-top p { margin: 3px 0 0; color: #6a7f77; font-size: 12px; }
-      .gui-back { margin-left: auto; min-height: 42px; padding: 0 16px; border: 1px solid #d5e1dd; border-radius: 999px; background: white; color: #315248; font-weight: 800; cursor: pointer; }
-      .gui-main { max-width: 1120px; margin: auto; padding: 25px 22px 70px; }
-      .gui-grid { display: grid; grid-template-columns: minmax(0,1.15fr) minmax(320px,.85fr); gap: 18px; align-items: start; }
-      .gui-card { border: 1px solid #e0e9e6; border-radius: 20px; background: white; box-shadow: 0 10px 30px rgba(27,61,49,.05); padding: 21px; }
-      .gui-card + .gui-card { margin-top: 18px; }
-      .gui-title { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
-      .gui-title b { width: 28px; height: 28px; border-radius: 9px; display: grid; place-items: center; color: #006747; background: #daf3e9; }
-      .gui-title h2 { margin: 0; font-size: 16px; }
-      .gui-drop { display: block; padding: 26px 18px; border: 1.5px dashed #9db9af; border-radius: 16px; text-align: center; background: #f8fbfa; cursor: pointer; }
-      .gui-drop strong { display: block; color: #006747; font-size: 16px; }
-      .gui-drop span { display: block; margin-top: 6px; color: #70837c; font-size: 12px; line-height: 1.5; }
-      .gui-file { margin-top: 13px; padding: 12px 14px; border-radius: 12px; background: #eef5f2; font-size: 12px; color: #476158; word-break: break-word; }
-      .gui-status { min-height: 21px; margin: 13px 2px 0; color: #64766f; font-size: 13px; line-height: 1.5; }
-      .gui-status[data-tone="ok"] { color: #087b58; }
-      .gui-status[data-tone="error"] { color: #b32929; }
-      .gui-progress { height: 8px; margin-top: 12px; overflow: hidden; border-radius: 999px; background: #e8efed; }
-      .gui-progress i { display: block; width: 0; height: 100%; border-radius: inherit; background: #0a8b61; transition: width .18s ease; }
-      .gui-metrics { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 10px; }
-      .gui-metric { padding: 13px; border: 1px solid #e3ebe8; border-radius: 13px; background: #fbfcfc; }
-      .gui-metric span { display: block; min-height: 28px; color: #70817b; font-size: 11px; line-height: 1.3; }
-      .gui-metric strong { display: block; margin-top: 7px; color: #17382d; font-size: 22px; }
-      .gui-metric[data-tone="warn"] strong { color: #9b6500; }
-      .gui-metric[data-tone="error"] strong { color: #b32929; }
-      .gui-metric-button { width: 100%; color: inherit; font: inherit; text-align: left; cursor: pointer; }
-      .gui-metric-button:not(:disabled):hover { border-color: #60aa91; background: #f1faf7; box-shadow: 0 5px 16px rgba(0,103,71,.08); }
-      .gui-metric-button:not(:disabled) span::after { content: "Xem chi tiết →"; display: block; margin-top: 3px; color: #087b58; font-size: 9px; font-weight: 800; }
-      .gui-metric-button:disabled { cursor: default; }
-      .gui-apply { width: 100%; min-height: 50px; margin-top: 16px; border: 0; border-radius: 14px; background: #006747; color: white; font-size: 15px; font-weight: 900; cursor: pointer; }
-      .gui-apply:disabled { opacity: .38; cursor: not-allowed; }
-      .gui-note { margin: 11px 0 0; color: #76867f; font-size: 11px; line-height: 1.55; }
-      .gui-errors { max-height: 250px; overflow: auto; margin-top: 13px; border: 1px solid #f0dddd; border-radius: 12px; }
-      .gui-errors[hidden] { display: none; }
-      .gui-error { padding: 9px 11px; border-bottom: 1px solid #f3e7e7; color: #873737; font-size: 12px; }
-      .gui-error:last-child { border-bottom: 0; }
-      .gui-history { width: 100%; border-collapse: collapse; font-size: 12px; }
-      .gui-history th { padding: 9px 8px; color: #72817c; text-align: left; border-bottom: 1px solid #dfe8e5; }
-      .gui-history td { padding: 10px 8px; vertical-align: top; border-bottom: 1px solid #edf1f0; }
-      .gui-history code { color: #215a48; font-size: 11px; }
-      .gui-pill { display: inline-block; padding: 4px 7px; border-radius: 999px; background: #e7f3ef; color: #176248; font-size: 10px; font-weight: 800; }
-      .gui-modal[hidden] { display: none; }
-      .gui-modal { position: fixed; inset: 0; z-index: 10040; display: grid; place-items: center; padding: 18px; background: rgba(4,28,21,.58); }
-      .gui-modal__panel { width: min(920px,100%); max-height: min(780px,calc(100vh - 36px)); overflow: hidden; border-radius: 22px; background: #fff; box-shadow: 0 24px 70px rgba(0,0,0,.24); }
-      .gui-modal__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 20px 22px 14px; border-bottom: 1px solid #e3ebe8; }
-      .gui-modal__head h2 { margin: 0; color: #12392d; font-size: 20px; }
-      .gui-modal__head p { margin: 5px 0 0; color: #6b7f77; font-size: 12px; }
-      .gui-modal__close { flex: 0 0 auto; width: 38px; height: 38px; border: 1px solid #dce7e3; border-radius: 11px; background: #f7faf9; color: #315b4d; font-size: 20px; cursor: pointer; }
-      .gui-modal__tools { display: flex; gap: 10px; padding: 14px 22px; background: #f7faf9; }
-      .gui-modal__search { flex: 1; min-width: 0; height: 42px; padding: 0 13px; border: 1px solid #ceddd8; border-radius: 11px; background: #fff; font: inherit; }
-      .gui-modal__body { max-height: calc(100vh - 245px); overflow: auto; padding: 0 22px 18px; }
-      .gui-change { margin-top: 12px; overflow: hidden; border: 1px solid #deebe6; border-radius: 14px; }
-      .gui-change__title { display: flex; justify-content: space-between; gap: 12px; padding: 10px 12px; background: #edf7f3; color: #164f3c; font-size: 12px; }
-      .gui-change__title code { font-weight: 900; }
-      .gui-change__row { display: grid; grid-template-columns: 130px minmax(0,1fr) 24px minmax(0,1fr); gap: 8px; align-items: start; padding: 9px 12px; border-top: 1px solid #edf2f0; font-size: 12px; }
-      .gui-change__field { color: #60756d; font-weight: 800; }
-      .gui-change__old { color: #9b3535; word-break: break-word; }
-      .gui-change__new { color: #087b58; font-weight: 700; word-break: break-word; }
-      .gui-change__arrow { color: #8b9a95; text-align: center; }
-      .gui-modal__foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 22px; border-top: 1px solid #e3ebe8; }
-      .gui-modal__foot span { color: #647970; font-size: 12px; }
-      .gui-page { min-height: 36px; padding: 0 13px; border: 1px solid #cbdcd6; border-radius: 10px; background: #fff; color: #176248; font-weight: 800; cursor: pointer; }
-      .gui-page:disabled { opacity: .4; cursor: default; }
-      .admin-session { flex-wrap: wrap; }
-      @media(max-width:760px) {
-        .gui-top__in,.gui-main { padding-left: 14px; padding-right: 14px; }
-        .gui-grid { grid-template-columns: 1fr; }
-        .gui-metrics { grid-template-columns: repeat(2,minmax(0,1fr)); }
-        .gui-card { padding: 16px; border-radius: 17px; }
-        .gui-back { padding: 0 12px; }
-        .gui-history th:nth-child(2),.gui-history td:nth-child(2) { display: none; }
-        .gui-modal { padding: 0; place-items: end center; }
-        .gui-modal__panel { max-height: 92vh; border-radius: 20px 20px 0 0; }
-        .gui-modal__head,.gui-modal__tools,.gui-modal__foot { padding-left: 14px; padding-right: 14px; }
-        .gui-modal__body { padding-left: 14px; padding-right: 14px; }
-        .gui-change__row { grid-template-columns: 1fr; gap: 3px; }
-        .gui-change__arrow { display: none; }
-        .gui-change__old::before { content: "Cũ: "; color: #8b9a95; }
-        .gui-change__new::before { content: "Mới: "; color: #8b9a95; font-weight: 400; }
-      }
-    </style>
-    <section class="gui-screen" id="group-uid-import-screen" aria-labelledby="gui-heading" hidden>
-      <header class="uid-topbar"><div class="uid-topbar__inner"><button class="uid-back" id="gui-back" type="button" aria-label="Quay lại Tổng quan">Tổng quan</button><span class="uid-topbar__mark" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M8 13h2M14 13h2M8 17h2M14 17h2"/></svg></span><div class="uid-topbar__name"><h1 id="gui-heading">Nạp dữ liệu Group UID</h1><span>Admin · Excel WMS → Supabase</span></div></div></header>
-      <main class="gui-main">
-        <div class="gui-grid">
-          <div>
-            <section class="gui-card">
-              <div class="gui-title"><b>1</b><h2>Chọn file Excel WMS</h2></div>
-              <label class="gui-drop" for="gui-file"><strong>Chọn file GROUP_UID_DETAIL.xlsx</strong><span>Tối đa 10 MB và 50.000 dòng. Product Name được bỏ qua; tên sản phẩm lấy từ SKU_Name.</span></label>
-              <input id="gui-file" type="file" accept=".xlsx" hidden>
-              <div class="gui-file" id="gui-file-meta" hidden></div>
-              <div class="gui-progress" aria-hidden="true"><i id="gui-progress"></i></div>
-              <p class="gui-status" id="gui-status" aria-live="polite">Chọn file để bắt đầu kiểm tra.</p>
-              <div class="gui-errors" id="gui-errors" hidden></div>
-            </section>
-            <section class="gui-card">
-              <div class="gui-title"><b>2</b><h2>Kết quả kiểm tra</h2></div>
-              <div class="gui-metrics">
-                <div class="gui-metric"><span>Tổng dòng</span><strong id="gui-total">0</strong></div>
-                <div class="gui-metric"><span>Thêm mới</span><strong id="gui-new">0</strong></div>
-                <button class="gui-metric gui-metric-button" id="gui-update-open" type="button" disabled aria-haspopup="dialog"><span>Cập nhật</span><strong id="gui-update">0</strong></button>
-                <div class="gui-metric"><span>Không thay đổi</span><strong id="gui-unchanged">0</strong></div>
-                <div class="gui-metric"><span>Bỏ qua dữ liệu cũ</span><strong id="gui-stale">0</strong></div>
-                <div class="gui-metric" data-tone="warn"><span>SKU trống</span><strong id="gui-blank-sku">0</strong></div>
-                <div class="gui-metric" data-tone="warn"><span>SKU chưa có tên</span><strong id="gui-unknown-sku">0</strong></div>
-                <div class="gui-metric" data-tone="error"><span>Dòng trùng / lỗi</span><strong id="gui-invalid">0</strong></div>
-              </div>
-              <button class="gui-apply" id="gui-apply" type="button" disabled>Cập nhật database</button>
-              <p class="gui-note">Chỉ thêm hoặc cập nhật theo Group UID Code. Không xóa mã vắng mặt trong file. Dữ liệu có Updated Date cũ hơn database sẽ được bỏ qua.</p>
-            </section>
-          </div>
-          <aside class="gui-card">
-            <div class="gui-title"><b>3</b><h2>Lịch sử nạp gần nhất</h2></div>
-            <div style="overflow:auto"><table class="gui-history"><thead><tr><th>File</th><th>Người nạp</th><th>Kết quả</th></tr></thead><tbody id="gui-history"><tr><td colspan="3">Đang tải…</td></tr></tbody></table></div>
-          </aside>
-        </div>
-      </main>
-    </section>
-    <div class="gui-modal" id="gui-update-modal" role="dialog" aria-modal="true" aria-labelledby="gui-update-title" hidden>
-      <div class="gui-modal__panel">
-        <div class="gui-modal__head"><div><h2 id="gui-update-title">Chi tiết dữ liệu cập nhật</h2><p>Xem trường nào sẽ đổi từ database sang giá trị trong file WMS.</p></div><button class="gui-modal__close" id="gui-update-close" type="button" aria-label="Đóng">×</button></div>
-        <div class="gui-modal__tools"><input class="gui-modal__search" id="gui-update-search" type="search" placeholder="Tìm Group UID hoặc SKU…" autocomplete="off"></div>
-        <div class="gui-modal__body" id="gui-update-list"><p class="gui-status">Đang tải chi tiết…</p></div>
-        <div class="gui-modal__foot"><span id="gui-update-page">0 kết quả</span><div><button class="gui-page" id="gui-update-prev" type="button">Trước</button> <button class="gui-page" id="gui-update-next" type="button">Sau</button></div></div>
-      </div>
-    </div>
-    <section class="admin-auth" id="admin-auth" role="dialog" aria-modal="true" aria-labelledby="admin-auth-title" hidden>
+<section class="admin-auth" id="admin-auth" role="dialog" aria-modal="true" aria-labelledby="admin-auth-title" hidden>
       <form class="admin-auth__card" id="admin-auth-form" novalidate>
         <div class="admin-auth__brand">
           <div class="admin-auth__mark" aria-hidden="true">H</div>
@@ -3771,12 +3620,6 @@ Error generating stack: `+y.message+`
         <p class="admin-auth__note">Mật khẩu không được lưu trong ứng dụng. Phiên quản trị kết thúc khi đóng tab.</p>
       </form>
     </section>
-    <div class="admin-session" id="admin-session" hidden>
-      <span id="admin-session-name">Admin</span>
-      <button id="admin-uid-data" type="button">Dữ liệu UID</button>
-      <button id="admin-sku-sync" type="button">Đồng bộ SKU</button>
-      <button id="admin-session-logout" type="button">Đăng xuất</button>
-    </div>
     <script>
       (() => {
         const SUPABASE_URL = "https://ikzhitdqkoatlmkrxuuh.supabase.co";
@@ -3789,9 +3632,6 @@ Error generating stack: `+y.message+`
         const errorBox = document.getElementById("admin-auth-error");
         const submitButton = document.getElementById("admin-auth-submit");
         const cancelButton = document.getElementById("admin-auth-cancel");
-        const sessionControl = document.getElementById("admin-session");
-        const sessionName = document.getElementById("admin-session-name");
-        const logoutButton = document.getElementById("admin-session-logout");
         let authorized = false;
         let session = null;
         let pendingHash = "#admin/tongquan";
@@ -3823,7 +3663,6 @@ Error generating stack: `+y.message+`
           errorBox.textContent = message || "";
           cancelButton.textContent = /^#admin(?:\/|$)/.test(pendingHash) ? "Về trang chủ" : "Đóng";
           overlay.hidden = false;
-          sessionControl.hidden = true;
           document.getElementById("root").inert = true;
           document.documentElement.classList.add("admin-auth-lock");
           setTimeout(() => emailInput.focus(), 60);
@@ -3834,10 +3673,6 @@ Error generating stack: `+y.message+`
           document.documentElement.classList.remove("admin-auth-lock");
           errorBox.textContent = "";
           passwordInput.value = "";
-        };
-        const showSession = username => {
-          sessionName.textContent = username || "Admin";
-          sessionControl.hidden = !isAdminHash();
         };
         const refreshSession = async current => {
           if (!current?.refresh_token) return null;
@@ -3871,7 +3706,6 @@ Error generating stack: `+y.message+`
           const becameAuthorized = !authorized;
           authorized = true;
           saveSession(active);
-          showSession(roles[0].username || "Admin");
           if (becameAuthorized) window.dispatchEvent(new CustomEvent("print-sku-admin-ready"));
           return roles[0];
         };
@@ -3916,12 +3750,9 @@ Error generating stack: `+y.message+`
         }, true);
 
         window.addEventListener("hashchange", () => {
-          if (!isAdminHash()) {
-            sessionControl.hidden = true;
-            return;
-          }
+          if (!isAdminHash()) return;
           if (authorized) {
-            sessionControl.hidden = false;
+            addLogoutButtons();
             return;
           }
           pendingHash = location.hash;
@@ -3966,7 +3797,7 @@ Error generating stack: `+y.message+`
           if (location.hash !== destination) location.hash = destination;
         });
 
-        logoutButton.addEventListener("click", async () => {
+        const logout = () => {
           const current = session || readSession();
           if (current?.access_token) {
             fetch(`${SUPABASE_URL}/auth/v1/logout`, {
@@ -3975,9 +3806,39 @@ Error generating stack: `+y.message+`
             }).catch(() => {});
           }
           clearSession();
-          sessionControl.hidden = true;
           location.hash = "#home";
+        };
+        document.addEventListener("click", event => {
+          if (event.target.closest("[data-admin-logout]")) logout();
         });
+
+        // Nút Đăng xuất nằm trong thanh bên Admin (desktop) và hàng tiêu đề (điện thoại); giao diện React không có chỗ này nên chèn thêm.
+        const LOGOUT_ICON = size => `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>`;
+        const addLogoutButtons = () => {
+          if (!authorized || !isAdminHash()) return;
+          const root = document.getElementById("root");
+          const home = [...root.querySelectorAll("aside button")].find(button => button.textContent.trim() === "Về trang chủ");
+          if (home && !home.parentElement.querySelector("[data-admin-logout]")) {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.dataset.adminLogout = "true";
+            button.className = home.className;
+            button.innerHTML = `${LOGOUT_ICON(18)} Đăng xuất`;
+            home.after(button);
+          }
+          const bar = root.querySelector("header h1")?.parentElement;
+          if (bar && !bar.querySelector("[data-admin-logout]")) {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.dataset.adminLogout = "true";
+            button.className = "md:hidden text-slate-500 shrink-0";
+            button.setAttribute("aria-label", "Đăng xuất");
+            button.innerHTML = LOGOUT_ICON(20);
+            bar.append(button);
+          }
+        };
+        new MutationObserver(addLogoutButtons).observe(document.getElementById("root"), { childList: true, subtree: true });
+        window.addEventListener("print-sku-admin-ready", addLogoutButtons);
 
         window.PrintSkuAdminAuth = {
           async accessToken() {
@@ -3992,332 +3853,6 @@ Error generating stack: `+y.message+`
           pendingHash = location.hash;
           requireAdmin();
         }
-      })();
-    </script>
-    <script>
-      (() => {
-        const screen = document.getElementById("group-uid-import-screen");
-        const root = document.getElementById("root");
-        const openButton = document.getElementById("admin-uid-data");
-        const backButton = document.getElementById("gui-back");
-        const fileInput = document.getElementById("gui-file");
-        const fileMeta = document.getElementById("gui-file-meta");
-        const status = document.getElementById("gui-status");
-        const progress = document.getElementById("gui-progress");
-        const errorsBox = document.getElementById("gui-errors");
-        const applyButton = document.getElementById("gui-apply");
-        const historyBody = document.getElementById("gui-history");
-        const updateOpen = document.getElementById("gui-update-open");
-        const updateModal = document.getElementById("gui-update-modal");
-        const updateClose = document.getElementById("gui-update-close");
-        const updateSearch = document.getElementById("gui-update-search");
-        const updateList = document.getElementById("gui-update-list");
-        const updatePage = document.getElementById("gui-update-page");
-        const updatePrev = document.getElementById("gui-update-prev");
-        const updateNext = document.getElementById("gui-update-next");
-        const metricIds = {
-          totalRows: "gui-total", newRows: "gui-new", updatedRows: "gui-update",
-          unchangedRows: "gui-unchanged", staleRows: "gui-stale", blankSkuRows: "gui-blank-sku",
-          unknownSkuRows: "gui-unknown-sku", invalidRows: "gui-invalid"
-        };
-        const API_URL = "https://ikzhitdqkoatlmkrxuuh.supabase.co";
-        const API_KEY = "sb_publishable_mBl--Ep5nNxuC4Xvyi1gfg_SLGEcRhI";
-        const REQUIRED = {
-          "group uid code": "group_uid_code", "batch code": "batch_code", "roll code": "roll_code",
-          "warehouse": "warehouse", "location": "location", "sku": "sku", "qty": "qty",
-          "updated by": "updated_by", "updated date": "updated_date", "status": "status"
-        };
-        let currentRun = null;
-        let busy = false;
-        let detailOffset = 0;
-        let detailTotal = 0;
-        let detailTimer = 0;
-        const DETAIL_LIMIT = 25;
-        const FIELD_LABELS = {
-          batchCode: "Batch Code / Lot", rollCode: "Roll Code", warehouse: "Warehouse",
-          location: "Location", sku: "SKU", qty: "Qty", updatedBy: "Updated By",
-          updatedDate: "Updated Date", status: "Status"
-        };
-
-        const escapeHtml = value => String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
-        const setStatus = (message, tone = "") => { status.textContent = message; status.dataset.tone = tone; };
-        const setProgress = value => { progress.style.width = `${Math.max(0, Math.min(100, value))}%`; };
-        const setMetrics = data => {
-          for (const [key, id] of Object.entries(metricIds)) document.getElementById(id).textContent = Number(data?.[key] || 0).toLocaleString("vi-VN");
-        };
-        const showErrors = items => {
-          const rows = (items || []).slice(0, 50);
-          errorsBox.hidden = !rows.length;
-          errorsBox.innerHTML = rows.map(item => `<div class="gui-error"><b>Dòng ${escapeHtml(item.rowNo || "—")}</b> · ${escapeHtml(item.message || item.groupUidCode || "Dữ liệu không hợp lệ")}</div>`).join("");
-        };
-        const displayValue = (field, value) => {
-          if (value === null || value === undefined || value === "") return "(trống)";
-          if (field === "updatedDate") {
-            const date = new Date(value);
-            if (!Number.isNaN(date.getTime())) return date.toLocaleString("vi-VN");
-          }
-          return String(value);
-        };
-        const normalizeHeader = value => String(value || "").replace(/\s+/g, " ").trim().toLowerCase();
-        const cellColumn = reference => (reference || "").replace(/\d+$/, "");
-        const normalizeDate = value => {
-          const text = String(value || "").trim();
-          if (!text) return "";
-          const base = text.replace(" ", "T");
-          const iso = /(Z|[+-]\d{2}:?\d{2})$/i.test(base) ? base : `${base}+07:00`;
-          return Number.isNaN(Date.parse(iso)) ? "" : iso;
-        };
-        const hashHex = async buffer => [...new Uint8Array(await crypto.subtle.digest("SHA-256", buffer))].map(value => value.toString(16).padStart(2, "0")).join("");
-
-        const rpc = async (name, body) => {
-          const token = await window.PrintSkuAdminAuth.accessToken();
-          const response = await fetch(`${API_URL}/rest/v1/rpc/${name}`, {
-            method: "POST",
-            headers: { apikey: API_KEY, Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-            body: JSON.stringify(body), signal: AbortSignal.timeout(120000)
-          });
-          let result = null;
-          try { result = await response.json(); } catch (_) {}
-          if (!response.ok) throw new Error(result?.message || `Supabase HTTP ${response.status}`);
-          return result;
-        };
-
-        const closeUpdateDetails = () => {
-          updateModal.hidden = true;
-          document.body.style.overflow = "";
-        };
-        const loadUpdateDetails = async () => {
-          if (!currentRun) return;
-          updateList.innerHTML = '<p class="gui-status">Đang tải chi tiết…</p>';
-          updatePrev.disabled = true; updateNext.disabled = true;
-          try {
-            const result = await rpc("group_uid_import_update_details", {
-              p_run_id: currentRun.id, p_search: updateSearch.value.trim() || null,
-              p_offset: detailOffset, p_limit: DETAIL_LIMIT
-            });
-            if (!result?.ok) throw new Error(result?.error?.message || "Không đọc được chi tiết cập nhật");
-            const data = result.data || {};
-            const items = data.items || [];
-            detailTotal = Number(data.total || 0);
-            updateList.innerHTML = items.length ? items.map(item => `<section class="gui-change"><div class="gui-change__title"><code>${escapeHtml(item.groupUidCode)}</code><span>${item.sku ? `SKU ${escapeHtml(item.sku)}` : "SKU trống"}</span></div>${(item.changes || []).map(change => `<div class="gui-change__row"><div class="gui-change__field">${escapeHtml(FIELD_LABELS[change.field] || change.field)}</div><div class="gui-change__old">${escapeHtml(displayValue(change.field,change.oldValue))}</div><div class="gui-change__arrow">→</div><div class="gui-change__new">${escapeHtml(displayValue(change.field,change.newValue))}</div></div>`).join("")}</section>`).join("") : '<p class="gui-status">Không có UID phù hợp.</p>';
-            const first = detailTotal ? detailOffset + 1 : 0;
-            const last = Math.min(detailOffset + items.length, detailTotal);
-            updatePage.textContent = `${first.toLocaleString("vi-VN")}–${last.toLocaleString("vi-VN")} / ${detailTotal.toLocaleString("vi-VN")} UID`;
-            updatePrev.disabled = detailOffset === 0;
-            updateNext.disabled = detailOffset + DETAIL_LIMIT >= detailTotal;
-          } catch (error) {
-            updateList.innerHTML = `<p class="gui-status" data-tone="error">${escapeHtml(error.message || "Không đọc được chi tiết cập nhật.")}</p>`;
-            updatePage.textContent = "Không tải được dữ liệu";
-          }
-        };
-        const openUpdateDetails = () => {
-          if (!currentRun || Number(currentRun.summary?.updatedRows || 0) < 1) return;
-          detailOffset = 0; updateSearch.value = "";
-          updateModal.hidden = false;
-          document.body.style.overflow = "hidden";
-          loadUpdateDetails();
-          updateClose.focus();
-        };
-
-        const readWorkbook = async (file, buffer) => {
-          const bytes = new Uint8Array(buffer);
-          const zip = window.PrintSkuZip;
-          if (!zip) throw new Error("Bộ đọc Excel chưa sẵn sàng. Hãy tải lại trang.");
-          const entries = zip.readZipEntries(bytes);
-          const sheetName = Object.keys(entries).filter(name => /^xl\/worksheets\/sheet\d+\.xml$/.test(name)).sort()[0];
-          if (!sheetName) throw new Error("Không tìm thấy worksheet trong file.");
-          const decoder = new TextDecoder();
-          const parser = new DOMParser();
-          const shared = [];
-          if (entries["xl/sharedStrings.xml"]) {
-            const xml = parser.parseFromString(decoder.decode(await zip.inflateZipEntry(bytes, entries["xl/sharedStrings.xml"])), "application/xml");
-            xml.querySelectorAll("si").forEach(item => shared.push(item.textContent || ""));
-          }
-          const sheet = parser.parseFromString(decoder.decode(await zip.inflateZipEntry(bytes, entries[sheetName])), "application/xml");
-          if (sheet.querySelector("parsererror")) throw new Error("Worksheet XML không hợp lệ.");
-          const valueOf = cell => {
-            const type = cell.getAttribute("t");
-            if (type === "inlineStr") return cell.querySelector("is")?.textContent || "";
-            const value = cell.querySelector("v")?.textContent || "";
-            if (type === "s") return shared[Number(value)] ?? "";
-            if (type === "b") return value === "1" ? "TRUE" : "FALSE";
-            return value;
-          };
-          const rows = [...sheet.querySelectorAll("sheetData > row")];
-          if (!rows.length) throw new Error("File không có dữ liệu.");
-          const headerByColumn = new Map();
-          rows[0].querySelectorAll("c").forEach(cell => headerByColumn.set(cellColumn(cell.getAttribute("r")), normalizeHeader(valueOf(cell))));
-          const columns = {};
-          for (const [header, field] of Object.entries(REQUIRED)) {
-            const matches = [...headerByColumn].filter(([, value]) => value === header);
-            if (matches.length !== 1) throw new Error(`Thiếu hoặc trùng cột: ${header}`);
-            columns[matches[0][0]] = field;
-          }
-          const parsed = [], errors = [], seen = new Map();
-          for (const [offset, row] of rows.slice(1).entries()) {
-            const rowNo = Number(row.getAttribute("r")) || offset + 2;
-            const raw = {};
-            row.querySelectorAll("c").forEach(cell => {
-              const field = columns[cellColumn(cell.getAttribute("r"))];
-              if (field) raw[field] = String(valueOf(cell)).replace(/\s+/g, " ").trim();
-            });
-            if (!Object.values(raw).some(Boolean)) continue;
-            const code = raw.group_uid_code || "";
-            const qtyText = (raw.qty || "").replace(/,/g, "");
-            const qty = Number(qtyText);
-            const updatedDate = normalizeDate(raw.updated_date);
-            const rowErrors = [];
-            if (!code || code.length > 40) rowErrors.push("Group UID Code trống hoặc dài quá 40 ký tự");
-            if (!Number.isFinite(qty) || qty < 0 || qtyText === "") rowErrors.push("Qty không hợp lệ");
-            if (!updatedDate) rowErrors.push("Updated Date không hợp lệ");
-            if (!raw.status) rowErrors.push("Status đang trống");
-            if (seen.has(code)) rowErrors.push(`Group UID trùng với dòng ${seen.get(code)}`);
-            else if (code) seen.set(code, rowNo);
-            if (rowErrors.length) {
-              errors.push({ rowNo, message: rowErrors.join("; ") });
-              continue;
-            }
-            parsed.push({
-              row_no: rowNo, group_uid_code: code, batch_code: raw.batch_code || null,
-              roll_code: raw.roll_code || null, warehouse: raw.warehouse || null,
-              location: raw.location || null, sku: raw.sku || null, qty: qtyText,
-              updated_by: raw.updated_by || null, updated_date: updatedDate, status: raw.status
-            });
-            if (parsed.length > 50000) throw new Error("File vượt quá 50.000 dòng.");
-          }
-          if (!parsed.length && !errors.length) throw new Error("Không có dòng Group UID nào trong file.");
-          return { rows: parsed, errors };
-        };
-
-        const formatTime = value => value ? new Date(value).toLocaleString("vi-VN") : "—";
-        const loadHistory = async () => {
-          if (location.hash !== "#admin/group-uid-data") return;
-          try {
-            const result = await rpc("group_uid_import_history", { p_limit: 10 });
-            const rows = result?.data?.runs || [];
-            historyBody.innerHTML = rows.length ? rows.map(row => {
-              const counts = row.counts || {};
-              const resultText = row.status === "completed" ? `${Number(counts.writtenRows || 0).toLocaleString("vi-VN")} dòng` : row.status;
-              return `<tr><td><b>${escapeHtml(row.fileName)}</b><br><code>${formatTime(row.createdAt)}</code></td><td>${escapeHtml(row.username || "Admin")}</td><td><span class="gui-pill">${escapeHtml(resultText)}</span>${row.errorMessage ? `<br>${escapeHtml(row.errorMessage)}` : ""}</td></tr>`;
-            }).join("") : '<tr><td colspan="3">Chưa có lịch sử nạp.</td></tr>';
-          } catch (error) {
-            historyBody.innerHTML = `<tr><td colspan="3">${escapeHtml(error.message)}</td></tr>`;
-          }
-        };
-
-        const handleFile = async file => {
-          if (busy || !file) return;
-          currentRun = null;
-          applyButton.disabled = true;
-          updateOpen.disabled = true;
-          setMetrics({}); showErrors([]); setProgress(2);
-          if (!/\.xlsx$/i.test(file.name)) return setStatus("Chỉ nhận file .xlsx xuất từ WMS.", "error");
-          if (file.size < 1 || file.size > 10 * 1024 * 1024) return setStatus("File phải nhỏ hơn hoặc bằng 10 MB.", "error");
-          busy = true; fileInput.disabled = true;
-          try {
-            setStatus("Đang đọc và kiểm tra file…");
-            const buffer = await file.arrayBuffer();
-            const [content, sha256] = await Promise.all([readWorkbook(file, buffer), hashHex(buffer)]);
-            fileMeta.hidden = false;
-            fileMeta.innerHTML = `<b>${escapeHtml(file.name)}</b> · ${(file.size / 1024).toLocaleString("vi-VN", {maximumFractionDigits:1})} KB<br>SHA-256: <code>${sha256.slice(0,16)}…</code>`;
-            setMetrics({ totalRows: content.rows.length, invalidRows: content.errors.length });
-            showErrors(content.errors);
-            if (content.errors.length) {
-              setProgress(0);
-              return setStatus(`File có ${content.errors.length.toLocaleString("vi-VN")} dòng lỗi. Sửa file rồi chọn lại.`, "error");
-            }
-            setStatus(`Đã đọc ${content.rows.length.toLocaleString("vi-VN")} dòng. Đang tạo lượt nạp…`);
-            const started = await rpc("group_uid_import_start", {
-              p_file_name: file.name, p_file_size: file.size, p_file_sha256: sha256, p_expected_rows: content.rows.length
-            });
-            if (!started?.ok) throw new Error(started?.error?.message || "Không tạo được lượt nạp");
-            const runId = started.data.runId;
-            for (let start = 0; start < content.rows.length; start += 500) {
-              const chunk = content.rows.slice(start, start + 500);
-              const result = await rpc("group_uid_import_chunk", { p_run_id: runId, p_rows: chunk });
-              if (!result?.ok) throw new Error(result?.error?.message || "Không tải được lô dữ liệu");
-              const done = Math.min(content.rows.length, start + chunk.length);
-              setProgress(done / content.rows.length * 85);
-              setStatus(`Đang tải vùng kiểm tra: ${done.toLocaleString("vi-VN")}/${content.rows.length.toLocaleString("vi-VN")} dòng…`);
-            }
-            setStatus("Đang đối chiếu với database…");
-            const checked = await rpc("group_uid_import_validate", { p_run_id: runId });
-            const summary = checked?.data || {};
-            setMetrics({ ...summary, invalidRows: Number(summary.duplicateRows || 0) });
-            if (!checked?.ok) {
-              showErrors((summary.duplicateCodes || []).map(item => ({ message: `Group UID ${item.groupUidCode} xuất hiện ${item.count} lần` })));
-              setProgress(0);
-              throw new Error(checked?.error?.message || "File chưa đạt kiểm tra");
-            }
-            currentRun = { id: runId, summary, fileName: file.name };
-            applyButton.disabled = false;
-            updateOpen.disabled = Number(summary.updatedRows || 0) < 1;
-            setProgress(100);
-            const repeated = Number(started.data.previousImports || 0);
-            setStatus(`File hợp lệ và chưa thay đổi database.${repeated ? ` File này đã được nạp ${repeated} lần trước.` : ""}`, repeated ? "" : "ok");
-          } catch (error) {
-            setProgress(0);
-            setStatus(error.message || "Không kiểm tra được file.", "error");
-          } finally {
-            busy = false; fileInput.disabled = false; fileInput.value = "";
-          }
-        };
-
-        fileInput.addEventListener("change", () => handleFile(fileInput.files?.[0]));
-        applyButton.addEventListener("click", async () => {
-          if (!currentRun || busy) return;
-          const s = currentRun.summary;
-          const message = `Cập nhật database từ ${currentRun.fileName}?\n\nThêm mới: ${s.newRows || 0}\nCập nhật: ${s.updatedRows || 0}\nKhông thay đổi: ${s.unchangedRows || 0}\nBỏ qua dữ liệu cũ: ${s.staleRows || 0}\n\nKhông xóa Group UID vắng mặt trong file.`;
-          if (!confirm(message)) return;
-          busy = true; applyButton.disabled = true; fileInput.disabled = true;
-          try {
-            setProgress(35); setStatus("Đang áp dụng vào database…");
-            const result = await rpc("group_uid_import_commit", { p_run_id: currentRun.id });
-            if (!result?.ok) throw new Error(result?.error?.message || "Database không nhận dữ liệu");
-            setProgress(100);
-            setStatus(`Đã cập nhật ${Number(result.data.writtenRows || 0).toLocaleString("vi-VN")} dòng Group UID.`, "ok");
-            closeUpdateDetails();
-            updateOpen.disabled = true;
-            currentRun = null;
-            await loadHistory();
-          } catch (error) {
-            applyButton.disabled = false;
-            setProgress(0); setStatus(error.message || "Không cập nhật được database.", "error");
-          } finally {
-            busy = false; fileInput.disabled = false;
-          }
-        });
-
-        updateOpen.addEventListener("click", openUpdateDetails);
-        updateClose.addEventListener("click", closeUpdateDetails);
-        updateModal.addEventListener("click", event => { if (event.target === updateModal) closeUpdateDetails(); });
-        document.addEventListener("keydown", event => { if (event.key === "Escape" && !updateModal.hidden) closeUpdateDetails(); });
-        updateSearch.addEventListener("input", () => {
-          clearTimeout(detailTimer);
-          detailTimer = setTimeout(() => { detailOffset = 0; loadUpdateDetails(); }, 300);
-        });
-        updatePrev.addEventListener("click", () => { detailOffset = Math.max(0,detailOffset-DETAIL_LIMIT); loadUpdateDetails(); });
-        updateNext.addEventListener("click", () => { if (detailOffset+DETAIL_LIMIT<detailTotal) { detailOffset += DETAIL_LIMIT; loadUpdateDetails(); } });
-
-        let routeSequence = 0;
-        const renderRoute = async () => {
-          const sequence = ++routeSequence;
-          const active = location.hash === "#admin/group-uid-data";
-          root.hidden = active;
-          screen.hidden = true;
-          if (!active) return;
-          try {
-            await window.PrintSkuAdminAuth.accessToken();
-            if (sequence !== routeSequence || location.hash !== "#admin/group-uid-data") return;
-            screen.hidden = false;
-            loadHistory();
-          } catch (_) { /* lớp đăng nhập Admin đang hiển thị */ }
-        };
-        openButton.addEventListener("click", () => { location.hash = "#admin/group-uid-data"; });
-        backButton.addEventListener("click", () => { location.hash = "#admin/tongquan"; });
-        window.addEventListener("hashchange", renderRoute);
-        window.addEventListener("print-sku-admin-ready", renderRoute);
-        renderRoute();
       })();
     </script>
     <style id="fabric-theme">
@@ -8362,7 +7897,7 @@ var FSK_CORE = (function () {
 
       /* 2. Cuộn tới control không bị header/thanh hành động dính che. */
       html { scroll-padding-top: 76px; scroll-padding-bottom: 120px; }
-      .barcode-home, .uid-screen, .cut-screen, .storage-risk, .gui-screen { scroll-padding-top: 76px; scroll-padding-bottom: 96px; }
+      .barcode-home, .uid-screen, .cut-screen, .storage-risk { scroll-padding-top: 76px; scroll-padding-bottom: 96px; }
 
       /* 3. Bấm liên tiếp (+/−) không bị trễ hoặc phóng to do double-tap. */
       a, button, summary, label, select, [role="button"], [role="tab"],
@@ -8380,8 +7915,6 @@ var FSK_CORE = (function () {
       .uid-auto__qty button { width: var(--target-min); min-width: var(--target-min); height: var(--target-min); }
       .uid-auto__qty input { min-height: var(--target-min); }
       .uid-auto__add { min-height: var(--target-min); }
-      .gui-back, .gui-modal__search, .gui-page { min-height: var(--target-min); }
-      .gui-modal__close { width: var(--target-min); height: var(--target-min); }
       .cut-camera { width: var(--target-min); height: var(--target-min); min-height: var(--target-min); }
       .cut-screen summary { min-height: var(--target-min); }
       /* Bảng tra cứu: ô tick tối thiểu 24 px (WCAG 2.5.8) và nhấn vào cả ô chứa nó cũng tick được (script #wms-table-labels);
@@ -8464,9 +7997,9 @@ var FSK_CORE = (function () {
          nên chữ chỉ bị ẩn (font-size:0), tên truy cập không đổi; icon vẽ bằng ::before + mask nên theo màu nút.
          Đỏ chỉ dùng cho Trash2 (xóa); X đóng dialog và Minus/Plus giữ màu trung tính/xanh. */
       .uid-row__icon--remove, .fsk-row-del, [data-action="unmap"], .uid-row__icon[data-act="minus"],
-      .uid-auto__qty > button, .fsk-stepper > button, .sku-combo-close, .gui-modal__close, .fsk-tag button { font-size: 0 !important; line-height: 0 !important; align-content: center; }
+      .uid-auto__qty > button, .fsk-stepper > button, .sku-combo-close, .fsk-tag button { font-size: 0 !important; line-height: 0 !important; align-content: center; }
       .uid-row__icon--remove::before, .fsk-row-del::before, [data-action="unmap"]::before, .uid-row__icon[data-act="minus"]::before,
-      .uid-auto__qty > button::before, .fsk-stepper > button::before, .sku-combo-close::before, .gui-modal__close::before, .fsk-tag button::before {
+      .uid-auto__qty > button::before, .fsk-stepper > button::before, .sku-combo-close::before, .fsk-tag button::before {
         content: ""; display: block; flex: none; width: 20px; height: 20px; margin: auto; background-color: currentColor;
         -webkit-mask: var(--ico) center / contain no-repeat; mask: var(--ico) center / contain no-repeat;
       }
@@ -8475,12 +8008,12 @@ var FSK_CORE = (function () {
       [data-action="unmap"] { --ico: var(--i-undo); }
       .uid-auto__qty > button[data-action="dec"], .uid-row__icon[data-act="minus"], .fsk-stepper > button[data-step="-1"] { --ico: var(--i-minus); }
       .uid-auto__qty > button[data-action="inc"], .fsk-stepper > button[data-step="1"] { --ico: var(--i-plus); }
-      .sku-combo-close, .gui-modal__close, .fsk-tag button { --ico: var(--i-x); }
+      .sku-combo-close, .fsk-tag button { --ico: var(--i-x); }
       .uid-row__icon--remove, .fsk-row-del { color: var(--wms-danger); border: 1px solid rgba(194, 65, 59, .28); border-radius: var(--radius-control); background: #fbeceb; }
       #root section button[aria-label^="Bỏ "] { color: var(--wms-danger); border-color: rgba(194, 65, 59, .28) !important; background: #fbeceb; }
       /* ArrowLeft thay ký tự ← ở mọi nút quay lại (chữ giữ nguyên, mobile ẩn chữ bằng font-size:0 sẵn có). */
-      .uid-back, .cut-back, .storage-risk__back, .storage-risk__detail-back, .gui-back { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
-      .uid-back::before, .uid-topbar .uid-back::before, .cut-back::before, .storage-risk__back::before, .storage-risk__detail-back::before, .gui-back::before, .cut-link--back::before {
+      .uid-back, .cut-back, .storage-risk__back, .storage-risk__detail-back { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+      .uid-back::before, .uid-topbar .uid-back::before, .cut-back::before, .storage-risk__back::before, .storage-risk__detail-back::before, .cut-link--back::before {
         content: ""; flex: none; width: 20px; height: 20px; background-color: currentColor;
         -webkit-mask: var(--i-arrow-left) center / contain no-repeat; mask: var(--i-arrow-left) center / contain no-repeat;
       }
@@ -8492,11 +8025,10 @@ var FSK_CORE = (function () {
          tiêu đề đậm + phụ đề chữ hoa nhỏ + (nếu có) trạng thái máy in. Bề rộng bám bề rộng nội dung từng màn; ≤ 760 px Back chỉ còn
          icon, ẩn icon module và phụ đề — cùng ngưỡng với header React của IN TEM SKU. Mọi màn cao 64 px + viền 1 px. */
       .uid-topbar { z-index: 20; }
-      #gui-heading { text-transform: uppercase; }
       .cut-screen .uid-topbar__inner { width: min(1200px, calc(100% - 40px)); }
-      .storage-risk .uid-topbar__inner, .gui-screen .uid-topbar__inner { width: min(1076px, calc(100% - 44px)); }
+      .storage-risk .uid-topbar__inner { width: min(1076px, calc(100% - 44px)); }
       @media (max-width: 800px) {
-        .cut-screen .uid-topbar__inner, .storage-risk .uid-topbar__inner, .gui-screen .uid-topbar__inner { width: calc(100% - 28px); }
+        .cut-screen .uid-topbar__inner, .storage-risk .uid-topbar__inner { width: calc(100% - 28px); }
       }
       @media (max-width: 760px) {
         .uid-topbar .uid-back { width: var(--target-min); min-width: var(--target-min); min-height: var(--target-min); padding: 0; font-size: 0; }
@@ -8638,7 +8170,7 @@ var FSK_CORE = (function () {
          bắt buộc bấm Xác nhận) thì Escape không làm gì. */
       (() => {
         const DIALOG = '[role="dialog"][aria-modal="true"]';
-        const CLOSE = { "gui-update-modal": "#gui-update-close", "admin-auth": "#admin-auth-cancel", "cut-barcode-modal": "#cut-barcode-modal-close", "fsk-camera": "#fsk-cam-off" };
+        const CLOSE = { "admin-auth": "#admin-auth-cancel", "cut-barcode-modal": "#cut-barcode-modal-close", "fsk-camera": "#fsk-cam-off" };
         const FIRST = { "cut-barcode-modal": "#cut-barcode-modal-close" };
         const TABBABLE = 'a[href], button, input, select, textarea, summary, [tabindex]:not([tabindex="-1"])';
         const openers = new Map();
@@ -8720,14 +8252,14 @@ var FSK_CORE = (function () {
       })();
     </script>
     <style id="sku-sync-admin-style">
-      .ss-screen{min-height:100vh;background:#f4f8f6;color:#17251f;font-family:Arial,Helvetica,sans-serif}.ss-shell{display:grid;grid-template-columns:276px minmax(0,1fr);min-height:100vh}.ss-side{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;border-right:1px solid #dce7e3;background:#fff}.ss-brand{display:flex;align-items:center;gap:14px;min-height:86px;padding:0 20px;border-bottom:1px solid #edf2f0;color:#005f41;font-size:20px;font-weight:900}.ss-brand b{display:grid;width:42px;height:42px;place-items:center;border-radius:12px;background:#006747;color:#fff}.ss-nav{display:grid;gap:5px;padding:20px 12px}.ss-nav button{display:flex;align-items:center;gap:10px;width:100%;min-height:50px;padding:0 16px;border:0;border-left:4px solid transparent;border-radius:13px;background:transparent;color:#65766f;font-weight:700;text-align:left;cursor:pointer}.ss-nav button:hover{background:#f3f8f6;color:#005f41}.ss-nav button[aria-current=page]{border-left-color:#007754;background:#e5f2ee;color:#005f41}.ss-side-foot{margin-top:auto;padding:18px 22px 30px;border-top:1px solid #edf2f0}.ss-side-foot button{min-height:44px;border:0;background:none;color:#60756d;font-weight:700;cursor:pointer}.ss-main{min-width:0}.ss-top{display:flex;align-items:center;justify-content:space-between;min-height:64px;padding:0 28px;border-bottom:1px solid #dce7e3;background:#fff}.ss-top h1{margin:0;color:#17382d;font-size:19px}.ss-connection{display:inline-flex;align-items:center;gap:8px;min-height:34px;padding:0 14px;border-radius:999px;background:#e6f3ee;color:#146146;font-size:12px;font-weight:800}.ss-connection:before{content:"";width:7px;height:7px;border-radius:50%;background:#31a779}.ss-connection[data-state=error]{background:#fff0ee;color:#9d3029}.ss-connection[data-state=error]:before{background:#d95b4f}.ss-content{width:min(1220px,calc(100% - 40px));margin:auto;padding:26px 0 56px}.ss-hero{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:24px 26px;border:1px solid #dbe7e3;border-radius:20px;background:linear-gradient(135deg,#fff 55%,#eaf5f1);box-shadow:0 9px 30px rgba(13,71,52,.07)}.ss-hero h2{margin:0;color:#123b2e;font-size:22px}.ss-hero p{max-width:680px;margin:8px 0 0;color:#6c7d76;font-size:13px;line-height:1.55}.ss-primary,.ss-secondary{min-height:48px;padding:0 20px;border-radius:999px;font-size:14px;font-weight:900;white-space:nowrap;cursor:pointer}.ss-primary{border:0;background:#006747;color:#fff;box-shadow:0 8px 20px rgba(0,103,71,.2)}.ss-secondary{border:1px solid #cbdcd6;background:#fff;color:#176248}.ss-primary:disabled,.ss-secondary:disabled{opacity:.4;cursor:not-allowed;box-shadow:none}.ss-progress{height:5px;margin-top:14px;overflow:hidden;border-radius:999px;background:#dceae5}.ss-progress i{display:block;width:0;height:100%;border-radius:inherit;background:#00a878}.ss-progress[data-busy=true] i{width:38%;animation:ss-load 1.2s ease-in-out infinite alternate}@keyframes ss-load{to{transform:translateX(165%)}}.ss-status{margin:10px 2px 0;color:#64776f;font-size:12px}.ss-metrics{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px;margin-top:18px}.ss-metric{min-width:0;min-height:112px;padding:17px;border:1px solid #dce7e3;border-radius:16px;background:#fff;text-align:left;box-shadow:0 5px 17px rgba(13,71,52,.05)}button.ss-metric{cursor:pointer}button.ss-metric:hover,button.ss-metric[aria-pressed=true]{border-color:#42a282;background:#f0faf6}.ss-metric span{display:block;min-height:30px;color:#74847e;font-size:11px;font-weight:800;text-transform:uppercase}.ss-metric strong{display:block;color:#163a2e;font-size:25px}.ss-panel{margin-top:18px;padding:22px;border:1px solid #dce7e3;border-radius:20px;background:#fff;box-shadow:0 6px 22px rgba(13,71,52,.05)}.ss-panel-head{display:flex;justify-content:space-between;gap:20px;margin-bottom:16px}.ss-panel h2{margin:0;color:#17382d;font-size:17px}.ss-panel p{margin:6px 0 0;color:#74847e;font-size:12px}.ss-table-wrap{overflow:auto;border:1px solid #e1eae7;border-radius:14px}.ss-table{width:100%;border-collapse:collapse;font-size:12px}.ss-table th{padding:11px 12px;background:#f6faf8;color:#6b7d76;text-align:left;white-space:nowrap}.ss-table td{padding:12px;border-top:1px solid #edf2f0;vertical-align:top}.ss-table code{color:#075f44;font-weight:800}.ss-table tr[data-run]{cursor:pointer}.ss-table tr[data-run]:hover{background:#f3faf7}.ss-badge{display:inline-flex;align-items:center;min-height:25px;padding:0 9px;border-radius:999px;background:#e9f5f0;color:#126348;font-size:10px;font-weight:900}.ss-badge[data-status=failed]{background:#fff0ee;color:#a53730}.ss-badge[data-status=expired]{background:#eef1f0;color:#60756d}.ss-badge[data-status=previewed],.ss-badge[data-status=applying]{background:#fff6dc;color:#8b6100}.ss-actions{display:flex;align-items:center;justify-content:flex-end;gap:12px;margin-top:18px}.ss-note{margin-right:auto;color:#71837b;font-size:11px;line-height:1.5}.ss-empty{padding:28px 16px!important;color:#7b8a85;text-align:center}
+      .ss-screen{min-height:100vh;background:#f4f8f6;color:#17251f;font-family:Arial,Helvetica,sans-serif}.ss-shell{display:grid;grid-template-columns:276px minmax(0,1fr);min-height:100vh}.ss-side{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;border-right:1px solid #dce7e3;background:#fff}.ss-brand{display:flex;align-items:center;gap:14px;min-height:86px;padding:0 20px;border-bottom:1px solid #edf2f0;color:#005f41;font-size:20px;font-weight:900}.ss-brand b{display:grid;width:42px;height:42px;place-items:center;border-radius:12px;background:#006747;color:#fff}.ss-nav{display:grid;gap:5px;padding:20px 12px}.ss-nav button{display:flex;align-items:center;gap:10px;width:100%;min-height:50px;padding:0 16px;border:0;border-left:4px solid transparent;border-radius:13px;background:transparent;color:#65766f;font-weight:700;text-align:left;cursor:pointer}.ss-nav button:hover{background:#f3f8f6;color:#005f41}.ss-nav button[aria-current=page]{border-left-color:#007754;background:#e5f2ee;color:#005f41}.ss-side-foot{margin-top:auto;padding:18px 22px 30px;border-top:1px solid #edf2f0}.ss-side-foot{display:grid;justify-items:start}.ss-side-foot button{min-height:44px;border:0;background:none;color:#60756d;font-weight:700;cursor:pointer}.ss-side-foot svg{display:inline-block;width:16px;height:16px;margin:0 8px -3px 0;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}.ss-main{min-width:0}.ss-top{display:flex;align-items:center;justify-content:space-between;min-height:64px;padding:0 28px;border-bottom:1px solid #dce7e3;background:#fff}.ss-top h1{margin:0;color:#17382d;font-size:19px}.ss-connection{display:inline-flex;align-items:center;gap:8px;min-height:34px;padding:0 14px;border-radius:999px;background:#e6f3ee;color:#146146;font-size:12px;font-weight:800}.ss-connection:before{content:"";width:7px;height:7px;border-radius:50%;background:#31a779}.ss-connection[data-state=error]{background:#fff0ee;color:#9d3029}.ss-connection[data-state=error]:before{background:#d95b4f}.ss-content{width:min(1220px,calc(100% - 40px));margin:auto;padding:26px 0 56px}.ss-hero{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:24px 26px;border:1px solid #dbe7e3;border-radius:20px;background:linear-gradient(135deg,#fff 55%,#eaf5f1);box-shadow:0 9px 30px rgba(13,71,52,.07)}.ss-hero h2{margin:0;color:#123b2e;font-size:22px}.ss-hero p{max-width:680px;margin:8px 0 0;color:#6c7d76;font-size:13px;line-height:1.55}.ss-primary,.ss-secondary{min-height:48px;padding:0 20px;border-radius:999px;font-size:14px;font-weight:900;white-space:nowrap;cursor:pointer}.ss-primary{border:0;background:#006747;color:#fff;box-shadow:0 8px 20px rgba(0,103,71,.2)}.ss-secondary{border:1px solid #cbdcd6;background:#fff;color:#176248}.ss-primary:disabled,.ss-secondary:disabled{opacity:.4;cursor:not-allowed;box-shadow:none}.ss-progress{height:5px;margin-top:14px;overflow:hidden;border-radius:999px;background:#dceae5}.ss-progress i{display:block;width:0;height:100%;border-radius:inherit;background:#00a878}.ss-progress[data-busy=true] i{width:38%;animation:ss-load 1.2s ease-in-out infinite alternate}@keyframes ss-load{to{transform:translateX(165%)}}.ss-status{margin:10px 2px 0;color:#64776f;font-size:12px}.ss-metrics{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px;margin-top:18px}.ss-metric{min-width:0;min-height:112px;padding:17px;border:1px solid #dce7e3;border-radius:16px;background:#fff;text-align:left;box-shadow:0 5px 17px rgba(13,71,52,.05)}button.ss-metric{cursor:pointer}button.ss-metric:hover,button.ss-metric[aria-pressed=true]{border-color:#42a282;background:#f0faf6}.ss-metric span{display:block;min-height:30px;color:#74847e;font-size:11px;font-weight:800;text-transform:uppercase}.ss-metric strong{display:block;color:#163a2e;font-size:25px}.ss-panel{margin-top:18px;padding:22px;border:1px solid #dce7e3;border-radius:20px;background:#fff;box-shadow:0 6px 22px rgba(13,71,52,.05)}.ss-panel-head{display:flex;justify-content:space-between;gap:20px;margin-bottom:16px}.ss-panel h2{margin:0;color:#17382d;font-size:17px}.ss-panel p{margin:6px 0 0;color:#74847e;font-size:12px}.ss-table-wrap{overflow:auto;border:1px solid #e1eae7;border-radius:14px}.ss-table{width:100%;border-collapse:collapse;font-size:12px}.ss-table th{padding:11px 12px;background:#f6faf8;color:#6b7d76;text-align:left;white-space:nowrap}.ss-table td{padding:12px;border-top:1px solid #edf2f0;vertical-align:top}.ss-table code{color:#075f44;font-weight:800}.ss-table tr[data-run]{cursor:pointer}.ss-table tr[data-run]:hover{background:#f3faf7}.ss-badge{display:inline-flex;align-items:center;min-height:25px;padding:0 9px;border-radius:999px;background:#e9f5f0;color:#126348;font-size:10px;font-weight:900}.ss-badge[data-status=failed]{background:#fff0ee;color:#a53730}.ss-badge[data-status=expired]{background:#eef1f0;color:#60756d}.ss-alerts{margin-top:12px}.ss-alerts svg{display:inline-block;width:14px;height:14px;margin:0 5px -2px 0;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}.ss-metric[data-alert=true]{border-color:#e3b64d;background:#fffaeb}.ss-metric[data-alert=true] strong{color:#8b6100}.ss-badge[data-status=previewed],.ss-badge[data-status=applying]{background:#fff6dc;color:#8b6100}.ss-actions{display:flex;align-items:center;justify-content:flex-end;gap:12px;margin-top:18px}.ss-note{margin-right:auto;color:#71837b;font-size:11px;line-height:1.5}.ss-empty{padding:28px 16px!important;color:#7b8a85;text-align:center}
       @media(max-width:1050px){.ss-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:760px){.ss-shell{display:block}.ss-side{position:static;height:auto;border-right:0;border-bottom:1px solid #dce7e3}.ss-brand{min-height:64px;padding:0 15px;font-size:17px}.ss-brand b{width:36px;height:36px}.ss-nav{display:flex;padding:8px 10px 10px;overflow-x:auto}.ss-nav button{flex:0 0 auto;width:auto;min-height:44px;padding:0 13px;border-left:0;border-bottom:3px solid transparent}.ss-nav button[aria-current=page]{border-left:0;border-bottom-color:#007754}.ss-side-foot{display:none}.ss-top{min-height:58px;padding:0 14px}.ss-content{width:calc(100% - 24px);padding-top:14px}.ss-hero,.ss-panel-head,.ss-actions{align-items:stretch;flex-direction:column}.ss-hero{padding:18px;border-radius:17px}.ss-primary,.ss-secondary{width:100%}.ss-metrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.ss-metric{min-height:100px;padding:14px}.ss-panel{padding:16px;border-radius:17px}.ss-table th:nth-child(3),.ss-table td:nth-child(3){display:none}}@media print{.ss-screen{display:none!important}}
     </style>
     <section class="ss-screen" id="sku-sync-screen" aria-labelledby="sku-sync-heading" hidden>
-      <div class="ss-shell"><aside class="ss-side"><div class="ss-brand"><b>H</b><span>WH-MATERIAL</span></div><nav class="ss-nav" aria-label="Điều hướng Quản trị"><button type="button" data-admin-hash="#admin/tongquan">▦ Tổng quan</button><button type="button" data-admin-hash="#admin/hangdoi">☷ Đợt đã gửi</button><button type="button" data-admin-hash="#admin/cauhinh">⚙ Cấu hình</button><button type="button" data-admin-hash="#admin/sku-sync" aria-current="page">⇄ Đồng bộ SKU</button></nav><div class="ss-side-foot"><button type="button" data-admin-hash="#home">← Về trang chủ</button></div></aside>
+      <div class="ss-shell"><aside class="ss-side"><div class="ss-brand"><b>H</b><span>WH-MATERIAL</span></div><nav class="ss-nav" aria-label="Điều hướng Quản trị"><button type="button" data-admin-hash="#admin/tongquan">▦ Tổng quan</button><button type="button" data-admin-hash="#admin/hangdoi">☷ Đợt đã gửi</button><button type="button" data-admin-hash="#admin/cauhinh">⚙ Cấu hình</button><button type="button" data-admin-hash="#admin/sku-sync" aria-current="page">⇄ Đồng bộ SKU</button></nav><div class="ss-side-foot"><button type="button" data-admin-hash="#home">← Về trang chủ</button><button type="button" data-admin-logout><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>Đăng xuất</button></div></aside>
         <div class="ss-main"><header class="ss-top"><h1 id="sku-sync-heading">Đồng bộ SKU</h1><span class="ss-connection" id="sku-sync-connection">Đang kiểm tra Extension</span></header><main class="ss-content">
           <section class="ss-hero"><div><h2>SKU và quan hệ Normal–Combo</h2><p>Extension đọc phiên Inside đang đăng nhập. Edge Function đối chiếu với Supabase và tạo báo cáo trước khi Admin cập nhật.</p></div><button class="ss-primary" id="sku-sync-preview" type="button">Kiểm tra dữ liệu Inside</button></section><div class="ss-progress" id="sku-sync-progress" aria-hidden="true"><i></i></div><p class="ss-status" id="sku-sync-status" aria-live="polite">Sẵn sàng kiểm tra dữ liệu.</p>
-          <section class="ss-metrics" aria-label="Kết quả đối chiếu"><div class="ss-metric"><span>SKU nguồn</span><strong id="ss-source-sku">0</strong></div><button class="ss-metric" type="button" data-change-kind="sku-added"><span>SKU mới</span><strong id="ss-sku-added">0</strong></button><button class="ss-metric" type="button" data-change-kind="sku-updated"><span>SKU cập nhật</span><strong id="ss-sku-updated">0</strong></button><div class="ss-metric"><span>Quan hệ trong phạm vi</span><strong id="ss-source-combo">0</strong></div><button class="ss-metric" type="button" data-change-kind="combo-added"><span>Combo mới</span><strong id="ss-combo-added">0</strong></button><button class="ss-metric" type="button" data-change-kind="combo-updated"><span>Combo cập nhật</span><strong id="ss-combo-updated">0</strong></button></section>
+          <section class="ss-metrics" aria-label="Kết quả đối chiếu"><div class="ss-metric"><span>SKU nguồn</span><strong id="ss-source-sku">0</strong></div><button class="ss-metric" type="button" data-change-kind="sku-added"><span>SKU mới</span><strong id="ss-sku-added">0</strong></button><button class="ss-metric" type="button" data-change-kind="sku-updated"><span>SKU cập nhật</span><strong id="ss-sku-updated">0</strong></button><div class="ss-metric"><span>Quan hệ trong phạm vi</span><strong id="ss-source-combo">0</strong></div><button class="ss-metric" type="button" data-change-kind="combo-added"><span>Combo mới</span><strong id="ss-combo-added">0</strong></button><button class="ss-metric" type="button" data-change-kind="combo-updated"><span>Combo cập nhật</span><strong id="ss-combo-updated">0</strong></button></section><section class="ss-metrics ss-alerts" aria-label="Cảnh báo đối chiếu"><button class="ss-metric" type="button" data-change-kind="combo-orphaned"><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m18.84 12.25 1.72-1.71h-.02a5.004 5.004 0 0 0-.12-7.07 5.006 5.006 0 0 0-6.95 0l-1.72 1.71"/><path d="m5.17 11.75-1.71 1.71a5.004 5.004 0 0 0 .12 7.07 5.006 5.006 0 0 0 6.95 0l1.71-1.71"/><line x1="8" x2="8" y1="2" y2="5"/><line x1="2" x2="5" y1="8" y2="8"/><line x1="16" x2="16" y1="19" y2="22"/><line x1="19" x2="22" y1="16" y2="16"/></svg>Combo thừa</span><strong id="ss-combo-orphaned">0</strong></button><button class="ss-metric" type="button" data-change-kind="combo-excluded"><span><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/></svg>Thiếu SKU</span><strong id="ss-combo-excluded">0</strong></button><button class="ss-metric" type="button" data-change-kind="source-issues"><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>Lỗi nguồn</span><strong id="ss-source-issues">0</strong></button></section>
           <section class="ss-panel"><div class="ss-panel-head"><div><h2 id="ss-change-title">Chi tiết thay đổi</h2><p id="ss-change-note">Bấm “Kiểm tra dữ liệu Inside” để tạo báo cáo.</p></div></div><div class="ss-table-wrap"><table class="ss-table"><thead><tr><th>Mã</th><th>Loại thay đổi</th><th>Giá trị cũ</th><th>Giá trị mới</th></tr></thead><tbody id="ss-change-body"><tr><td colspan="4" class="ss-empty">Chưa có dữ liệu đối chiếu.</td></tr></tbody></table></div><div class="ss-actions"><span class="ss-note">Không tự xóa SKU hoặc quan hệ vắng mặt trong nguồn. Mỗi lượt cập nhật đều được đọc lại để xác minh.</span><button class="ss-secondary" id="ss-refresh" type="button">Tải lại lịch sử</button><button class="ss-primary" id="ss-apply" type="button" disabled>Cập nhật Supabase</button></div></section>
           <section class="ss-panel"><div class="ss-panel-head"><div><h2>Lịch sử đồng bộ</h2><p>Chọn một lượt để xem báo cáo và kết quả xác minh.</p></div></div><div class="ss-table-wrap"><table class="ss-table"><thead><tr><th>Thời gian</th><th>Trạng thái</th><th>SKU</th><th>Normal–Combo</th></tr></thead><tbody id="ss-history"><tr><td colspan="4" class="ss-empty">Đang tải lịch sử…</td></tr></tbody></table></div></section>
         </main></div></div>
@@ -8740,19 +8272,19 @@ var FSK_CORE = (function () {
         function setBusy(value,message){busy=value;previewBtn.disabled=value;applyBtn.disabled=value||!canApply();refreshBtn.disabled=value;progress.dataset.busy=value?"true":"false";if(message)status.textContent=message}
         function extensionRequest(type,payload={},timeout=210000){return new Promise((resolve,reject)=>{const requestId=`sku-sync-${Date.now()}-${Math.random().toString(36).slice(2)}`,timer=setTimeout(()=>{removeEventListener("message",listener);reject(new Error("Extension phản hồi quá lâu; kiểm tra tab Inside rồi thử lại"))},timeout),listener=event=>{const response=event.data;if(event.source!==window||event.origin!==location.origin||response?.source!=="HASAKI_INSIDE_CONNECTOR"||response.requestId!==requestId)return;clearTimeout(timer);removeEventListener("message",listener);response.ok?resolve(response.data):reject(new Error(response.error?.message||"Extension không trả dữ liệu"))};addEventListener("message",listener);postMessage({source:"PRINT_SKU_APP",requestId,type,payload},location.origin)})}
         async function edge(action,payload={}){const token=await window.PrintSkuAdminAuth.accessToken(),response=await fetch(`${API}/functions/v1/sku-sync`,{method:"POST",headers:{apikey:KEY,Authorization:`Bearer ${token}`,"Content-Type":"application/json"},body:JSON.stringify({action,...payload})}),result=await response.json().catch(()=>({}));if(!response.ok||!result.ok){const failure=new Error(result.error?.message||`Edge Function trả HTTP ${response.status}`);failure.code=result.error?.code;throw failure}return result.data}
-        function metrics(data){const s=data?.sourceCounts||{},c=data?.changeCounts||{};$("ss-source-sku").textContent=num(s.normalRows);$("ss-sku-added").textContent=num(c.skuAdded);$("ss-sku-updated").textContent=num(c.skuUpdated);$("ss-source-combo").textContent=num(s.selectedComboLinks);$("ss-combo-added").textContent=num(c.comboAdded);$("ss-combo-updated").textContent=num(c.comboUpdated)}
-        function rowsFor(data,kind){const c=data?.changes||{};if(kind==="sku-added")return(c.skus?.added||[]).map(x=>({code:x.sku,type:"SKU mới",before:"—",after:`${x.after?.product_name||""} · ${x.after?.category_name||""}`}));if(kind==="sku-updated")return(c.skus?.updated||[]).map(x=>changeRow(x.sku,"SKU cập nhật",x.fields));if(kind==="combo-added")return(c.combos?.added||[]).map(x=>({code:`${x.comboSku} → ${x.normalSku}`,type:"Quan hệ mới",before:"—",after:`Số lượng: ${x.after?.quantity??"—"}`}));return(c.combos?.updated||[]).map(x=>changeRow(`${x.comboSku} → ${x.normalSku}`,"Quan hệ cập nhật",x.fields))}
+        function metrics(data){const s=data?.sourceCounts||{},c=data?.changeCounts||{};$("ss-source-sku").textContent=num(s.normalRows);$("ss-sku-added").textContent=num(c.skuAdded);$("ss-sku-updated").textContent=num(c.skuUpdated);$("ss-source-combo").textContent=num(s.selectedComboLinks);$("ss-combo-added").textContent=num(c.comboAdded);$("ss-combo-updated").textContent=num(c.comboUpdated);[["ss-combo-orphaned",c.comboOrphaned],["ss-combo-excluded",s.excludedBreakdown?.oneMissing],["ss-source-issues",s.sourceIssues]].forEach(([id,n])=>{$(id).textContent=num(n);$(id).closest(".ss-metric").dataset.alert=String(Number(n||0)>0)})}
+        function rowsFor(data,kind){const c=data?.changes||{};if(kind==="combo-orphaned")return(c.combos?.orphaned||[]).map(x=>({code:`${x.comboSku} → ${x.normalSku}`,type:({component_removed:"Thành phần không còn",combo_missing:"Combo không còn"})[x.reason]||x.reason,before:`Số lượng: ${x.quantity??"—"}${x.comboName?` · ${x.comboName}`:""}`,after:"Không còn trong nguồn"}));if(kind==="combo-excluded")return(c.combos?.excluded||[]).map(x=>({code:`${x.comboSku} → ${x.normalSku}`,type:"Thiếu SKU",before:`Số lượng: ${x.quantity??"—"}`,after:`${x.missing==="combo"?"Combo":"Normal"} chưa có trong database`}));if(kind==="source-issues")return(c.sourceIssues||[]).map(x=>({code:x.combo_sku?(x.normal_sku?`${x.combo_sku} → ${x.normal_sku}`:x.combo_sku):"—",type:({invalid_combo_relation:"Quan hệ không hợp lệ",unparsed_combo_description:"Mô tả sai dạng",partial_combo_description:"Thiếu thành phần"})[x.type]||x.type,before:x.description||x.combo_name||"—",after:x.reason||"—"}));if(kind==="sku-added")return(c.skus?.added||[]).map(x=>({code:x.sku,type:"SKU mới",before:"—",after:`${x.after?.product_name||""} · ${x.after?.category_name||""}`}));if(kind==="sku-updated")return(c.skus?.updated||[]).map(x=>changeRow(x.sku,"SKU cập nhật",x.fields));if(kind==="combo-added")return(c.combos?.added||[]).map(x=>({code:`${x.comboSku} → ${x.normalSku}`,type:"Quan hệ mới",before:"—",after:`Số lượng: ${x.after?.quantity??"—"}`}));return(c.combos?.updated||[]).map(x=>changeRow(`${x.comboSku} → ${x.normalSku}`,"Quan hệ cập nhật",x.fields))}
         function changeRow(code,type,fields){return{code,type,before:Object.entries(fields||{}).map(([k,v])=>`${k}: ${v.before??"—"}`).join(" | "),after:Object.entries(fields||{}).map(([k,v])=>`${k}: ${v.after??"—"}`).join(" | ")}}
-        function renderChanges(kind="sku-added"){document.querySelectorAll("[data-change-kind]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.changeKind===kind)));const labels={"sku-added":"SKU mới","sku-updated":"SKU cập nhật","combo-added":"Quan hệ Combo mới","combo-updated":"Quan hệ Combo cập nhật"},rows=rowsFor(activeRun,kind);changeTitle.textContent=labels[kind];changeNote.textContent=`${num(rows.length)} thay đổi trong lượt đang xem.`;changeBody.innerHTML=rows.length?rows.map(r=>`<tr><td><code>${esc(r.code)}</code></td><td>${esc(r.type)}</td><td>${esc(r.before)}</td><td>${esc(r.after)}</td></tr>`).join(""):'<tr><td colspan="4" class="ss-empty">Không có thay đổi thuộc nhóm này.</td></tr>'}
-        function renderRun(data,kind){activeRun=data;metrics(data);renderChanges(kind||["sku-added","sku-updated","combo-added","combo-updated"].find(k=>rowsFor(data,k).length)||"sku-added");applyBtn.disabled=busy||!canApply()}
+        function renderChanges(kind="sku-added"){document.querySelectorAll("[data-change-kind]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.changeKind===kind)));const labels={"sku-added":"SKU mới","sku-updated":"SKU cập nhật","combo-added":"Quan hệ Combo mới","combo-updated":"Quan hệ Combo cập nhật","combo-orphaned":"Combo thừa","combo-excluded":"Thiếu SKU","source-issues":"Lỗi nguồn"},rows=rowsFor(activeRun,kind),alertKind=["combo-orphaned","combo-excluded","source-issues"].includes(kind),total=Number(({"combo-orphaned":activeRun?.changeCounts?.comboOrphaned,"combo-excluded":activeRun?.sourceCounts?.excludedBreakdown?.oneMissing,"source-issues":activeRun?.sourceCounts?.sourceIssues})[kind]??rows.length);changeTitle.textContent=labels[kind];changeNote.textContent=`${num(rows.length)}${total>rows.length?` / ${num(total)}`:""} ${alertKind?"dòng":"thay đổi trong lượt đang xem"}.`;changeBody.innerHTML=rows.length?rows.map(r=>`<tr><td><code>${esc(r.code)}</code></td><td>${esc(r.type)}</td><td>${esc(r.before)}</td><td>${esc(r.after)}</td></tr>`).join(""):'<tr><td colspan="4" class="ss-empty">Không có thay đổi thuộc nhóm này.</td></tr>'}
+        function renderRun(data,kind){activeRun=data;metrics(data);renderChanges(kind||["sku-added","sku-updated","combo-added","combo-updated","combo-orphaned","source-issues","combo-excluded"].find(k=>rowsFor(data,k).length)||"sku-added");applyBtn.disabled=busy||!canApply()}
         async function loadHistory(){const data=await edge("history",{limit:20});syncedFrom=data.lastSnapshotAt||data.lastSuccessAt;lastDoneAt=Date.parse(data.lastSuccessAt)||0;historyBody.innerHTML=(data.runs||[]).length?data.runs.map(r=>{const c=r.change_counts||{},st=isStale(r)?"expired":r.status;return`<tr data-run="${esc(r.id)}"><td>${esc(dt(r.created_at))}</td><td><span class="ss-badge" data-status="${esc(st)}">${esc(statusName(st))}</span></td><td>+${num(c.skuAdded)} · sửa ${num(c.skuUpdated)}</td><td>+${num(c.comboAdded)} · sửa ${num(c.comboUpdated)}</td></tr>`}).join(""):'<tr><td colspan="4" class="ss-empty">Chưa có lượt đồng bộ nào.</td></tr>'}
         async function checkExtension(){try{const data=await extensionRequest("PING",{},6000);connection.dataset.state="ok";connection.textContent=`Extension v${data.version} sẵn sàng`;return true}catch(_){connection.dataset.state="error";connection.textContent="Chưa kết nối Extension";return false}}
-        async function preview(){if(busy)return;let snapshot=null;setBusy(true,"Đang đọc SKU và quan hệ Combo từ tab Inside…");try{if(!await checkExtension())throw new Error("Hãy Reload extension, mở tab Inside và đăng nhập trước");const cutoff=syncedFrom?new Date(new Date(syncedFrom).getTime()-86400000).toISOString():new Date(Date.now()-7*86400000).toISOString();snapshot=await extensionRequest("GET_SKU_SYNC_DATA",{cutoff});$("ss-source-sku").textContent=num(snapshot.sourceCounts?.normalRows);status.textContent=`Đã đọc ${num(snapshot.sourceCounts?.normalRows)} SKU và ${num(snapshot.sourceCounts?.comboRows)} quan hệ. Đang đối chiếu Supabase…`;const data=await edge("preview",{snapshot});renderRun(data);await loadHistory();const count=["skuAdded","skuUpdated","comboAdded","comboUpdated"].reduce((n,k)=>n+Number(data.changeCounts?.[k]||0),0),skipped=Number(snapshot.sourceCounts?.skippedInvalidComboRows||0),warning=skipped?` Đã bỏ qua ${num(skipped)} quan hệ tự tham chiếu không hợp lệ từ Inside.`:"";status.textContent=(count?`Đối chiếu xong: ${num(count)} dòng cần cập nhật. Xem chi tiết trước khi áp dụng.`:"Đối chiếu xong: Supabase đã khớp dữ liệu Inside.")+warning}catch(error){activeRun=null;applyBtn.disabled=true;status.textContent=error.message||"Không kiểm tra được dữ liệu.";changeTitle.textContent="Lỗi đối chiếu dữ liệu";changeNote.textContent="Chi tiết lỗi được giữ lại để kiểm tra.";changeBody.innerHTML=`<tr><td><code>Nguồn Inside</code></td><td>Lỗi dữ liệu</td><td>${snapshot?`${num(snapshot.sourceCounts?.normalRows)} SKU · ${num(snapshot.sourceCounts?.comboRows)} quan hệ`:"Chưa đọc xong"}</td><td>${esc(error.message||"Không kiểm tra được dữ liệu.")}</td></tr>`}finally{setBusy(false)}}
+        async function preview(){if(busy)return;let snapshot=null;setBusy(true,"Đang đọc SKU và quan hệ Combo từ tab Inside…");try{if(!await checkExtension())throw new Error("Hãy Reload extension, mở tab Inside và đăng nhập trước");const cutoff=syncedFrom?new Date(new Date(syncedFrom).getTime()-86400000).toISOString():new Date(Date.now()-7*86400000).toISOString();snapshot=await extensionRequest("GET_SKU_SYNC_DATA",{cutoff});$("ss-source-sku").textContent=num(snapshot.sourceCounts?.normalRows);status.textContent=`Đã đọc ${num(snapshot.sourceCounts?.normalRows)} SKU và ${num(snapshot.sourceCounts?.comboRows)} quan hệ. Đang đối chiếu Supabase…`;const data=await edge("preview",{snapshot});renderRun(data);await loadHistory();const count=["skuAdded","skuUpdated","comboAdded","comboUpdated"].reduce((n,k)=>n+Number(data.changeCounts?.[k]||0),0),warned=Number(data.changeCounts?.comboOrphaned||0)+Number(data.sourceCounts?.excludedBreakdown?.oneMissing||0)+Number(data.sourceCounts?.sourceIssues||0),warning=warned?` Có ${num(warned)} cảnh báo.`:"";status.textContent=(count?`Đối chiếu xong: ${num(count)} dòng cần cập nhật. Xem chi tiết trước khi áp dụng.`:"Đối chiếu xong: Supabase đã khớp dữ liệu Inside.")+warning}catch(error){activeRun=null;applyBtn.disabled=true;status.textContent=error.message||"Không kiểm tra được dữ liệu.";changeTitle.textContent="Lỗi đối chiếu dữ liệu";changeNote.textContent="Chi tiết lỗi được giữ lại để kiểm tra.";changeBody.innerHTML=`<tr><td><code>Nguồn Inside</code></td><td>Lỗi dữ liệu</td><td>${snapshot?`${num(snapshot.sourceCounts?.normalRows)} SKU · ${num(snapshot.sourceCounts?.comboRows)} quan hệ`:"Chưa đọc xong"}</td><td>${esc(error.message||"Không kiểm tra được dữ liệu.")}</td></tr>`}finally{setBusy(false)}}
         async function apply(){if(busy||!canApply())return;setBusy(true,"Đang cập nhật và đọc lại Supabase để xác minh…");try{const data=await edge("apply",{runId:activeRun.runId});activeRun.status=data.status;activeRun.verification=data.verification;applyBtn.disabled=true;status.textContent=`Hoàn tất: xác minh ${num(data.verification?.skuVerified)} SKU và ${num(data.verification?.comboVerified)} quan hệ; database có ${num(data.verification?.skuCount)} SKU.`;await loadHistory()}catch(error){if(error.code==="STALE_PREVIEW")activeRun.status="expired";status.textContent=error.message||"Cập nhật chưa hoàn tất."}finally{setBusy(false)}}
         async function openHistory(runId){if(busy)return;setBusy(true,"Đang tải báo cáo lượt đồng bộ…");try{const data=await edge("detail",{runId});data.runId=data.id;data.sourceCounts=data.source_counts||{};data.changeCounts=data.change_counts||{};renderRun(data);status.textContent=data.status==="completed"?`Lượt ${dt(data.completed_at)} đã hoàn tất và được xác minh.`:data.error_message||`Lượt đang ở trạng thái ${statusName(data.status)}.`}catch(error){status.textContent=error.message||"Không tải được báo cáo."}finally{setBusy(false)}}
         function addNav(){const nav=[...root.querySelectorAll("nav")].find(e=>e.textContent.includes("Tổng quan")&&e.textContent.includes("Cấu hình"));if(!nav||nav.querySelector("[data-sku-sync-nav]"))return;const ref=[...nav.querySelectorAll("button")].find(b=>b.textContent.trim()==="Cấu hình");if(!ref)return;const b=document.createElement("button");b.type="button";b.dataset.skuSyncNav="true";b.className=ref.className;b.innerHTML='<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7h-9M17 4l3 3-3 3M4 17h9M7 14l-3 3 3 3"/></svg><span class="text-sm">Đồng bộ SKU</span>';b.onclick=()=>location.hash="#admin/sku-sync";ref.after(b)}
         async function route(){if(location.hash!=="#admin/sku-sync"){screen.hidden=true;root.hidden=false;loaded=false;setTimeout(addNav,50);return}const token=await window.PrintSkuAdminAccess?.getToken?.();if(!token)return;root.hidden=true;screen.hidden=false;if(!loaded){loaded=true;setBusy(true,"Đang kiểm tra Extension và tải lịch sử…");try{await Promise.all([checkExtension(),loadHistory()]);status.textContent="Sẵn sàng kiểm tra dữ liệu."}catch(error){status.textContent=error.message||"Không tải được dữ liệu quản trị."}finally{setBusy(false)}}}
-        $("admin-sku-sync").onclick=()=>location.hash="#admin/sku-sync";previewBtn.onclick=preview;applyBtn.onclick=apply;refreshBtn.onclick=async()=>{if(!busy){setBusy(true,"Đang tải lại lịch sử…");try{await loadHistory();status.textContent="Đã tải lại lịch sử."}catch(error){status.textContent=error.message}finally{setBusy(false)}}};document.querySelectorAll("[data-change-kind]").forEach(b=>b.onclick=()=>activeRun&&renderChanges(b.dataset.changeKind));screen.querySelectorAll("[data-admin-hash]").forEach(b=>b.onclick=()=>location.hash=b.dataset.adminHash);historyBody.onclick=e=>{const row=e.target.closest("tr[data-run]");if(row)openHistory(row.dataset.run)};new MutationObserver(addNav).observe(root,{childList:true,subtree:true});addEventListener("hashchange",route);addEventListener("print-sku-admin-ready",route);addNav();route();
+        previewBtn.onclick=preview;applyBtn.onclick=apply;refreshBtn.onclick=async()=>{if(!busy){setBusy(true,"Đang tải lại lịch sử…");try{await loadHistory();status.textContent="Đã tải lại lịch sử."}catch(error){status.textContent=error.message}finally{setBusy(false)}}};document.querySelectorAll("[data-change-kind]").forEach(b=>b.onclick=()=>activeRun&&renderChanges(b.dataset.changeKind));screen.querySelectorAll("[data-admin-hash]").forEach(b=>b.onclick=()=>location.hash=b.dataset.adminHash);historyBody.onclick=e=>{const row=e.target.closest("tr[data-run]");if(row)openHistory(row.dataset.run)};new MutationObserver(addNav).observe(root,{childList:true,subtree:true});addEventListener("hashchange",route);addEventListener("print-sku-admin-ready",route);addNav();route();
       })();
     </script>
   </body>

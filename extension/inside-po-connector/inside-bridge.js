@@ -80,18 +80,32 @@
   function parseComboPage(doc) {
     const indexes = tableIndexes(doc, { sku: "sku", name: "name", description: "description", modified: "modified", status: "status" });
     const sourceRows = [...doc.querySelectorAll("table tbody tr")];
+    const issues = [];
     const rows = sourceRows.flatMap(row => {
       const cells = [...row.cells];
-      return skuCore.parseComboDescriptions(text(cells[indexes.description])).map(relation => ({
+      const description = text(cells[indexes.description]);
+      const detail = skuCore.parseComboDetail(description);
+      const info = {
+        combo_sku: text(cells[indexes.sku]),
+        combo_name: text(cells[indexes.name]),
+        description: description.slice(0, 300),
+        source_modified_at: text(cells[indexes.modified])
+      };
+      if (!detail.matched) {
+        if (info.combo_sku || description) issues.push({ type: "unparsed_combo_description", ...info, reason: "Mô tả không đúng dạng Combo A=B+C" });
+      } else if (detail.rejected.length) {
+        issues.push({ type: "partial_combo_description", ...info, reason: `Bỏ qua thành phần: ${detail.rejected.join(", ").slice(0, 150)}` });
+      }
+      return detail.relations.map(relation => ({
         combo_sku: relation.comboSku,
         normal_sku: relation.normalSku,
         quantity: relation.quantity,
-        combo_name: text(cells[indexes.name]),
+        combo_name: info.combo_name,
         combo_status: text(cells[indexes.status]),
-        source_modified_at: text(cells[indexes.modified])
+        source_modified_at: info.source_modified_at
       }));
     });
-    return { rows, sourceRowCount: sourceRows.length };
+    return { rows, issues, sourceRowCount: sourceRows.length };
   }
 
   async function fetchComboPage(page) {
@@ -103,17 +117,21 @@
 
   async function fetchAllComboLinks() {
     const result = [];
+    const issueByKey = new Map();
+    const addIssue = issue => issueByKey.set([issue.type, issue.combo_sku, issue.normal_sku, issue.description, issue.reason].join("\u0000"), issue);
     const batchSize = 8;
     for (let first = 1; first <= 300; first += batchSize) {
       const pages = await Promise.all(Array.from({ length: batchSize }, (_, index) => fetchComboPage(first + index)));
-      for (const page of pages) result.push(...page.rows);
+      for (const page of pages) {
+        result.push(...page.rows);
+        page.issues.forEach(addIssue);
+      }
       if (pages.some(page => page.sourceRowCount < 50)) break;
     }
     const unique = new Map();
-    const sourceIssues = [];
     result.forEach(row => {
       if (!row.combo_sku || !row.normal_sku || row.combo_sku === row.normal_sku || !Number.isFinite(row.quantity) || row.quantity <= 0) {
-        sourceIssues.push({
+        addIssue({
           type: "invalid_combo_relation",
           combo_sku: row.combo_sku,
           normal_sku: row.normal_sku,
@@ -126,7 +144,7 @@
       }
       unique.set(`${row.combo_sku}\u0000${row.normal_sku}`, row);
     });
-    return { rows: [...unique.values()], sourceIssues };
+    return { rows: [...unique.values()], sourceIssues: [...issueByKey.values()] };
   }
 
   async function getSkuSyncData(payload) {
@@ -144,7 +162,7 @@
       normalRows: [...normalBySku.values()],
       comboRows,
       sourceIssues: comboData.sourceIssues,
-      sourceCounts: { normalRows: normalBySku.size, comboRows: comboRows.length, skippedInvalidComboRows: comboData.sourceIssues.length }
+      sourceCounts: { normalRows: normalBySku.size, comboRows: comboRows.length, skippedInvalidComboRows: comboData.sourceIssues.filter(issue => issue.type === "invalid_combo_relation").length, sourceIssues: comboData.sourceIssues.length }
     };
   }
 

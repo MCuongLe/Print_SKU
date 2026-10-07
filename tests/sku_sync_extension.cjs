@@ -28,7 +28,23 @@ assert.equal(core.statusCode(" Active "), "1");
 assert.equal(core.statusCode("In-Active"), "0");
 assert.match(core.cutoffKey("2026-10-07T01:02:03+07:00"), /^26-10-07 01:02:03$/);
 
+const detail = text => JSON.parse(JSON.stringify(core.parseComboDetail(text)));
+assert.deepEqual(detail("Combo C1=A1x2+B1"), {
+  matched: true,
+  relations: [{ comboSku: "C1", normalSku: "A1", quantity: 2 }, { comboSku: "C1", normalSku: "B1", quantity: 1 }],
+  rejected: []
+});
+// Thành phần không đọc được phải được báo, không bị bỏ lặng lẽ; phần đọc được vẫn giữ.
+assert.deepEqual(detail("Combo C1=A1 + B 1 + C1x0"), {
+  matched: true,
+  relations: [{ comboSku: "C1", normalSku: "A1", quantity: 1 }],
+  rejected: ["B 1", "C1x0"]
+});
+assert.deepEqual(detail("Combo C1=A1+"), { matched: true, relations: [{ comboSku: "C1", normalSku: "A1", quantity: 1 }], rejected: [] });
+assert.deepEqual(detail("Mô tả tự do"), { matched: false, relations: [], rejected: [] });
+assert.deepEqual(detail(""), { matched: false, relations: [], rejected: [] });
+
 const manifest = JSON.parse(fs.readFileSync("extension/inside-po-connector/manifest.json", "utf8"));
-assert.equal(manifest.version, "0.3.2");
+assert.equal(manifest.version, "0.3.3");
 assert.deepEqual(manifest.content_scripts[1].js, ["sku-sync-core.js", "inside-bridge.js"]);
 console.log("sku_sync_extension: ok");

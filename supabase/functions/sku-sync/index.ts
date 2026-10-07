@@ -18,6 +18,8 @@ const COMBO_FIELDS = [
 ];
 const MAX_WRITES = 2000;
 const PREVIEW_TTL_MS = 30 * 60 * 1000;
+const DETAIL_LIMIT = 1000;
+const SOURCE_ISSUE_TYPES = new Set(["invalid_combo_relation", "unparsed_combo_description", "partial_combo_description"]);
 
 type Json = Record<string, unknown>;
 
@@ -127,6 +129,20 @@ function normalRows(value: unknown): Json[] {
     return { sku, product_name: productName, category_id: categoryId, category_name: CATEGORIES.get(categoryId), status: String(row.status) === "1" ? "1" : "0" };
   });
 }
+// Lỗi nguồn do Extension báo: giữ để Admin xem, không chặn bản xem trước. Phiên bản Extension cũ không gửi trường này.
+function sourceIssueRows(value: unknown): { total: number; items: Json[] } {
+  if (!Array.isArray(value)) return { total: 0, items: [] };
+  const items = value.slice(0, DETAIL_LIMIT).map(raw => {
+    const row = (raw ?? {}) as Json;
+    const quantity = row.quantity === null || row.quantity === undefined ? NaN : Number(row.quantity);
+    return {
+      type: SOURCE_ISSUE_TYPES.has(String(row.type)) ? String(row.type) : "unknown",
+      combo_sku: clean(row.combo_sku, 64), normal_sku: clean(row.normal_sku, 64), quantity: Number.isFinite(quantity) ? quantity : null,
+      combo_name: clean(row.combo_name, 200), description: clean(row.description, 300), reason: clean(row.reason, 200),
+    };
+  });
+  return { total: value.length, items };
+}
 function comboRows(value: unknown): Json[] {
   if (!Array.isArray(value) || value.length < 1000 || value.length > 12000) throw new Error("Dữ liệu Combo thiếu hoặc vượt giới hạn an toàn 1.000–12.000 dòng");
   const seen = new Set<string>();
@@ -178,14 +194,32 @@ async function preview(request: Request, user: { id: string; username: string },
   const remoteLinkByPair = new Map(remoteLinks.map(row => [`${row.combo_sku}\u0000${row.normal_sku}`, row]));
   const componentCounts = new Map<string, number>();
   combos.forEach(row => componentCounts.set(String(row.combo_sku), (componentCounts.get(String(row.combo_sku)) ?? 0) + 1));
+  // Quan hệ có trong database nhưng không còn trong nguồn (Combo đổi thành phần hoặc bị bỏ): không tự xóa, chỉ báo để Admin xử lý.
+  const sourcePairs = new Set(combos.map(row => `${row.combo_sku}\u0000${row.normal_sku}`));
+  const orphanedAll = remoteLinks
+    .filter(row => !sourcePairs.has(`${row.combo_sku}\u0000${row.normal_sku}`))
+    .map(row => ({
+      comboSku: row.combo_sku, normalSku: row.normal_sku, quantity: row.quantity, comboName: row.combo_name,
+      reason: componentCounts.has(String(row.combo_sku)) ? "component_removed" : "combo_missing",
+    }))
+    .sort((left, right) => left.reason === right.reason ? 0 : left.reason === "component_removed" ? -1 : 1);
   const candidates: Json[] = [];
-  let excluded = 0;
+  // Bị loại: cả hai SKU thiếu hoặc ngoài category thường là ngoài phạm vi; chỉ thiếu MỘT đầu là dấu hiệu SKU chưa vào database nên liệt kê.
+  const excludedCounts = { bothMissing: 0, oneMissing: 0, outOfCategory: 0 };
+  const excludedMissing: Json[] = [];
   for (const sourceRow of combos) {
     const key = `${sourceRow.combo_sku}\u0000${sourceRow.normal_sku}`;
     const previous = remoteLinkByPair.get(key);
     const parent = productByCode.get(String(sourceRow.combo_sku));
     const child = productByCode.get(String(sourceRow.normal_sku));
-    if ((!parent || !child) && !previous) { excluded += 1; continue; }
+    if ((!parent || !child) && !previous) {
+      if (!parent && !child) excludedCounts.bothMissing += 1;
+      else {
+        excludedCounts.oneMissing += 1;
+        if (excludedMissing.length < DETAIL_LIMIT) excludedMissing.push({ comboSku: sourceRow.combo_sku, normalSku: sourceRow.normal_sku, quantity: sourceRow.quantity, missing: parent ? "normal" : "combo" });
+      }
+      continue;
+    }
     const row: Json = { ...(previous ?? {}), ...sourceRow };
     if (parent) Object.assign(row, {
       combo_name: parent.product_name, combo_category_id: parent.category_id, combo_category_name: parent.category_name,
@@ -195,7 +229,7 @@ async function preview(request: Request, user: { id: string; username: string },
       normal_name: child.product_name, normal_category_id: child.category_id, normal_category_name: child.category_name,
       normal_product_status: child.status === "1" ? "Active" : "Inactive",
     });
-    if (!CATEGORIES.has(String(row.combo_category_id)) || !CATEGORIES.has(String(row.normal_category_id))) { excluded += 1; continue; }
+    if (!CATEGORIES.has(String(row.combo_category_id)) || !CATEGORIES.has(String(row.normal_category_id))) { excludedCounts.outOfCategory += 1; continue; }
     row.source_component_count = componentCounts.get(String(row.combo_sku));
     candidates.push(row);
   }
@@ -214,9 +248,15 @@ async function preview(request: Request, user: { id: string; username: string },
     else comboUnchanged += 1;
   }
   if (stagedSkus.length > MAX_WRITES || stagedLinks.length > MAX_WRITES) return fail(request, 409, "SAFETY_LIMIT", "Số dòng thay đổi vượt ngưỡng 2.000; cần kiểm tra nguồn trước khi cập nhật");
-  const sourceCounts = { normalRows: skus.length, comboRows: combos.length, selectedComboLinks: candidates.length, excludedComboLinks: excluded };
-  const changeCounts = { skuAdded: skuAdded.length, skuUpdated: skuUpdated.length, skuUnchanged, comboAdded: comboAdded.length, comboUpdated: comboUpdated.length, comboUnchanged };
-  const changes = { skus: { added: skuAdded, updated: skuUpdated }, combos: { added: comboAdded, updated: comboUpdated } };
+  const issues = sourceIssueRows(source.sourceIssues);
+  const excluded = excludedCounts.bothMissing + excludedCounts.oneMissing + excludedCounts.outOfCategory;
+  const sourceCounts = { normalRows: skus.length, comboRows: combos.length, selectedComboLinks: candidates.length, excludedComboLinks: excluded, excludedBreakdown: excludedCounts, sourceIssues: issues.total };
+  const changeCounts = { skuAdded: skuAdded.length, skuUpdated: skuUpdated.length, skuUnchanged, comboAdded: comboAdded.length, comboUpdated: comboUpdated.length, comboUnchanged, comboOrphaned: orphanedAll.length };
+  const changes = {
+    skus: { added: skuAdded, updated: skuUpdated },
+    combos: { added: comboAdded, updated: comboUpdated, orphaned: orphanedAll.slice(0, DETAIL_LIMIT), excluded: excludedMissing },
+    sourceIssues: issues.items,
+  };
   const run = await insertRun({
     status: "previewed", source: "inside-extension", cutoff: clean(source.cutoff, 40), source_generated_at: sourceTime(source.generatedAt),
     source_counts: sourceCounts, change_counts: changeCounts, changes, staged_skus: stagedSkus,
