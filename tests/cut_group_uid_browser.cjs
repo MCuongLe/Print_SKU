@@ -10,6 +10,7 @@ const fs = require('node:fs');
       const page = await browser.newPage({ viewport: { width, height: 900 }, acceptDownloads: true });
       const errors = [];
       const records = [];
+      const comboLookups = [];
       page.on('pageerror', error => errors.push(error.message));
       await page.route('**/*', async route => {
         const request = route.request(), url = request.url();
@@ -30,6 +31,11 @@ const fs = require('node:fs');
         else if (rpc === 'cut_group_uid_mark_result') { records.filter(x => x.printJobId === body.p_job_id).forEach(x => x.printStatus = body.p_status); result = { ok: true, data: { count: 1 } }; }
         else if (rpc === 'cut_group_uid_remove') { const i = records.findIndex(x => x.groupUid === body.p_group_uid); if (i >= 0) records.splice(i, 1); result = { ok: true, data: {} }; }
         else if (rpc === 'print_queue_status') result = { ok: true, data: { agents: [] } };
+        // RPC trả mảng như PostgREST; mảng rỗng = không phải SKU Combo. COMBO-001 là mã Combo giả của SKU-001.
+        else if (rpc === 'sku_combo_lookup') {
+          comboLookups.push(body.p_sku);
+          result = body.p_sku === 'COMBO-001' ? [{ normal_sku: 'SKU-001', product_name: 'Vải thử nghiệm', category_name: 'Thời Trang (NVL)', quantity: 1000, available: true }] : [];
+        }
         return route.fulfill({ contentType: 'application/json', body: JSON.stringify(result) });
       });
       await page.goto('http://127.0.0.1:8000/#home');
@@ -82,6 +88,20 @@ const fs = require('node:fs');
       await page.locator('#cut-search').evaluate(form => form.requestSubmit());
       await page.waitForFunction(() => document.querySelector('#cut-found').textContent === '80');
       assert.match(await page.locator('#cut-results').innerText(), /SKU-001.*UID-0001.*LOT-7.*ROLL-2.*Vải thử nghiệm/s);
+      // Gõ mã SKU Combo: hỏi SKU Normal bằng hộp chọn dùng chung, chọn xong ô lọc đổi sang mã Normal rồi mới tìm.
+      await page.locator('#cut-sku').fill('COMBO-001');
+      await page.locator('#cut-search').evaluate(form => form.requestSubmit());
+      const comboDialog = page.locator('dialog.sku-combo-dialog');
+      await comboDialog.waitFor({ state: 'visible' });
+      assert.equal(await comboDialog.locator('h2').textContent(), 'Chọn SKU Normal để tra cứu');
+      await comboDialog.locator('.sku-combo-option').click();
+      await page.waitForFunction(() => document.querySelector('#cut-message').textContent.includes('SKU Combo COMBO-001 → SKU Normal SKU-001'));
+      assert.equal(await page.locator('#cut-sku').inputValue(), 'SKU-001');
+      assert.equal(await page.locator('#cut-found').textContent(), '80');
+      // Chỉ tra Combo khi người dùng bấm tìm (không ở các lượt tải lại tự động); mã Normal vừa chọn không tra lại.
+      await page.locator('#cut-search').evaluate(form => form.requestSubmit());
+      await page.waitForFunction(() => /^Tìm thấy 80 UID/.test(document.querySelector('#cut-message').textContent));
+      assert.deepEqual(comboLookups, ['SKU-001', 'COMBO-001']);
       const downloadPromise = page.waitForEvent('download');
       await page.locator('#cut-export').click();
       const download = await downloadPromise, path = await download.path();
@@ -100,7 +120,7 @@ const fs = require('node:fs');
       for (const header of ['SKU', 'UID', 'Lot', 'Roll', 'Tên SP']) assert.equal(xlsx.includes(Buffer.from(header)), true);
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
       assert.deepEqual(errors, []);
-      console.log(`PASS ${width}px: route, missing/duplicate UID, persistence, current label payload, status polling, SKU filter, A4 landscape XLSX, no overflow/errors`);
+      console.log(`PASS ${width}px: route, missing/duplicate UID, persistence, current label payload, status polling, SKU filter, combo→normal SKU filter, A4 landscape XLSX, no overflow/errors`);
       await page.close();
     }
   } finally { await browser.close(); }
