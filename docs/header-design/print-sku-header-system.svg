@@ -1,0 +1,196 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1650" viewBox="0 0 1800 1650">
+  <defs>
+    <filter id="shadow" x="-20%" y="-30%" width="140%" height="180%">
+      <feDropShadow dx="0" dy="8" stdDeviation="14" flood-color="#173C30" flood-opacity="0.10"/>
+    </filter>
+    <linearGradient id="brand" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#006B49"/>
+      <stop offset="1" stop-color="#004D36"/>
+    </linearGradient>
+    <style>
+      .title{font-family:Inter,Segoe UI,Arial,sans-serif;font-weight:750;fill:#17251F}
+      .body{font-family:Inter,Segoe UI,Arial,sans-serif;font-weight:500;fill:#60736B}
+      .label{font-family:Inter,Segoe UI,Arial,sans-serif;font-weight:700;fill:#005F41;letter-spacing:1.5px}
+      .white{fill:#FFFFFF}
+      .stroke{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+    </style>
+  </defs>
+
+  <rect width="1800" height="1650" fill="#F1F5F3"/>
+  <rect width="1800" height="132" fill="url(#brand)"/>
+  <rect x="52" y="36" width="60" height="60" rx="18" fill="#FFFFFF" fill-opacity="0.14"/>
+  <path d="M72 54v24M92 54v24M72 66h20" fill="none" stroke="#FFFFFF" stroke-width="5" stroke-linecap="round"/>
+  <text x="136" y="60" class="white" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="28" font-weight="750">HỆ THỐNG HEADER · PRINT SKU</text>
+  <text x="136" y="88" fill="#CFE8DF" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" font-weight="500">Một ngôn ngữ thị giác thống nhất cho desktop, mobile, quản trị và máy quét</text>
+  <rect x="1552" y="43" width="196" height="42" rx="21" fill="#FFFFFF" fill-opacity="0.12" stroke="#FFFFFF" stroke-opacity="0.24"/>
+  <circle cx="1580" cy="64" r="5" fill="#80E0B9"/>
+  <text x="1595" y="69" fill="#FFFFFF" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" font-weight="650">DESIGN ONLY · V1</text>
+
+  <!-- Home header -->
+  <text x="52" y="178" class="label" font-size="13">01 / TRANG CHỦ</text>
+  <text x="52" y="206" class="title" font-size="22">Nhận diện thương hiệu rõ, trạng thái hệ thống gọn</text>
+  <rect x="52" y="228" width="1100" height="138" rx="22" fill="#FFFFFF" filter="url(#shadow)"/>
+  <rect x="70" y="246" width="1064" height="102" rx="16" fill="url(#brand)"/>
+  <rect x="94" y="269" width="56" height="56" rx="16" fill="#FFFFFF" fill-opacity="0.14"/>
+  <path d="M113 284v26M131 284v26M113 297h18" fill="none" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round"/>
+  <text x="168" y="291" fill="#BDE1D3" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" font-weight="750" letter-spacing="1.3">KHO NGUYÊN PHỤ LIỆU</text>
+  <text x="168" y="318" class="white" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="22" font-weight="750">WH-MATERIAL</text>
+  <rect x="845" y="276" width="156" height="42" rx="21" fill="#FFFFFF" fill-opacity="0.12"/>
+  <circle cx="870" cy="297" r="5" fill="#80E0B9"/>
+  <text x="884" y="302" class="white" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" font-weight="650">Hệ thống ổn định</text>
+  <rect x="1013" y="275" width="96" height="44" rx="14" fill="#FFFFFF" fill-opacity="0.12"/>
+  <circle cx="1038" cy="297" r="10" fill="none" stroke="#FFFFFF" stroke-width="2"/>
+  <path d="M1034 297l3 3 6-7" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="1056" y="302" class="white" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" font-weight="650">Online</text>
+  <text x="74" y="389" class="body" font-size="12">DESKTOP · CAO 72 PX · NỀN BRAND CHỈ DÙNG CHO TRANG CHỦ</text>
+
+  <rect x="1200" y="228" width="548" height="138" rx="22" fill="#FFFFFF" filter="url(#shadow)"/>
+  <rect x="1218" y="246" width="512" height="102" rx="16" fill="url(#brand)"/>
+  <rect x="1236" y="269" width="48" height="48" rx="14" fill="#FFFFFF" fill-opacity="0.14"/>
+  <path d="M1252 282v22M1268 282v22M1252 293h16" fill="none" stroke="#FFFFFF" stroke-width="3.5" stroke-linecap="round"/>
+  <text x="1298" y="292" fill="#CFE8DF" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="10" font-weight="750" letter-spacing="1">KHO NGUYÊN PHỤ LIỆU</text>
+  <text x="1298" y="316" class="white" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="19" font-weight="750">WH-MATERIAL</text>
+  <circle cx="1695" cy="297" r="17" fill="#FFFFFF" fill-opacity="0.12"/>
+  <circle cx="1695" cy="297" r="5" fill="#80E0B9"/>
+  <text x="1222" y="389" class="body" font-size="12">MOBILE · 64 PX + SAFE AREA · CHỈ GIỮ TRẠNG THÁI DẠNG CHẤM</text>
+
+  <!-- Worker header -->
+  <text x="52" y="452" class="label" font-size="13">02 / TÁC NGHIỆP</text>
+  <text x="52" y="480" class="title" font-size="22">Điều hướng, ngữ cảnh công việc và thiết bị trong một hàng</text>
+  <rect x="52" y="502" width="1100" height="138" rx="22" fill="#FFFFFF" filter="url(#shadow)"/>
+  <rect x="70" y="520" width="1064" height="102" rx="16" fill="#FFFFFF" stroke="#D9E2DE"/>
+  <rect x="90" y="549" width="44" height="44" rx="13" fill="#F2F6F4" stroke="#D9E2DE"/>
+  <path d="M119 560l-11 11 11 11M109 571h20" fill="none" stroke="#173C30" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="148" y="549" width="44" height="44" rx="13" fill="#E6F3EF"/>
+  <rect x="159" y="561" width="22" height="15" rx="2" fill="none" stroke="#005F41" stroke-width="2"/>
+  <path d="M163 557h14v6M163 576v8h14v-8" fill="none" stroke="#005F41" stroke-width="2" stroke-linejoin="round"/>
+  <text x="208" y="558" class="label" font-size="10">WH-MATERIAL / IN TEM</text>
+  <text x="208" y="584" class="title" font-size="20">IN TEM SKU</text>
+  <rect x="751" y="550" width="171" height="42" rx="21" fill="#EAF7F1" stroke="#CFE8DF"/>
+  <circle cx="777" cy="571" r="5" fill="#16865D"/>
+  <text x="791" y="576" fill="#075C40" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" font-weight="650">Máy in sẵn sàng</text>
+  <rect x="934" y="550" width="107" height="42" rx="14" fill="#F2F6F4"/>
+  <text x="955" y="576" class="body" font-size="13">Hàng đợi</text>
+  <circle cx="1020" cy="571" r="13" fill="#005F41"/>
+  <text x="1020" y="576" text-anchor="middle" class="white" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" font-weight="750">3</text>
+  <rect x="1053" y="549" width="44" height="44" rx="13" fill="#F2F6F4" stroke="#D9E2DE"/>
+  <circle cx="1075" cy="571" r="7" fill="none" stroke="#173C30" stroke-width="2"/>
+  <path d="M1075 559v4M1075 579v4M1063 571h4M1083 571h4M1067 563l3 3M1080 576l3 3M1083 563l-3 3M1070 576l-3 3" fill="none" stroke="#173C30" stroke-width="2" stroke-linecap="round"/>
+  <text x="74" y="663" class="body" font-size="12">DESKTOP · BACK NẰM TRONG HEADER · STATUS CÓ CHẤM + CHỮ · TỐI ĐA 2 ACTION</text>
+
+  <rect x="1200" y="502" width="548" height="138" rx="22" fill="#FFFFFF" filter="url(#shadow)"/>
+  <rect x="1218" y="520" width="512" height="102" rx="16" fill="#FFFFFF" stroke="#D9E2DE"/>
+  <rect x="1234" y="549" width="44" height="44" rx="13" fill="#F2F6F4"/>
+  <path d="M1263 560l-11 11 11 11M1253 571h18" fill="none" stroke="#173C30" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="1294" y="558" class="label" font-size="9">IN TEM</text>
+  <text x="1294" y="581" class="title" font-size="17">IN TEM SKU</text>
+  <circle cx="1416" cy="577" r="5" fill="#16865D"/>
+  <text x="1428" y="582" fill="#075C40" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" font-weight="650">Máy in rảnh</text>
+  <rect x="1666" y="549" width="44" height="44" rx="13" fill="#F2F6F4"/>
+  <circle cx="1688" cy="571" r="7" fill="none" stroke="#173C30" stroke-width="2"/>
+  <path d="M1688 559v4M1688 579v4M1676 571h4M1696 571h4" fill="none" stroke="#173C30" stroke-width="2" stroke-linecap="round"/>
+  <text x="1222" y="663" class="body" font-size="12">MOBILE · TITLE 1 DÒNG · STATUS RÚT GỌN · ACTION 44 × 44</text>
+
+  <!-- Admin -->
+  <text x="52" y="726" class="label" font-size="13">03 / QUẢN TRỊ</text>
+  <text x="52" y="754" class="title" font-size="22">Phân biệt vai trò bằng ngữ cảnh, không tạo một kiểu header mới</text>
+  <rect x="52" y="776" width="1100" height="138" rx="22" fill="#FFFFFF" filter="url(#shadow)"/>
+  <rect x="70" y="794" width="1064" height="102" rx="16" fill="#FFFFFF" stroke="#D9E2DE"/>
+  <rect x="70" y="794" width="6" height="102" rx="3" fill="#005F41"/>
+  <rect x="94" y="823" width="44" height="44" rx="13" fill="#E6F3EF"/>
+  <path d="M116 833l11 5v8c0 8-5 13-11 16-6-3-11-8-11-16v-8l11-5z" fill="none" stroke="#005F41" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M111 847l4 4 7-8" fill="none" stroke="#005F41" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="154" y="832" class="label" font-size="10">WH-MATERIAL / QUẢN TRỊ</text>
+  <text x="154" y="858" class="title" font-size="20">Quản trị vận hành</text>
+  <rect x="767" y="824" width="155" height="42" rx="21" fill="#EAF7F1" stroke="#CFE8DF"/>
+  <circle cx="792" cy="845" r="5" fill="#16865D"/>
+  <text x="806" y="850" fill="#075C40" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" font-weight="650">Đã đồng bộ</text>
+  <rect x="934" y="824" width="163" height="42" rx="14" fill="#F2F6F4"/>
+  <circle cx="958" cy="845" r="13" fill="#D6EAE2"/>
+  <text x="958" y="849" text-anchor="middle" fill="#005F41" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="10" font-weight="800">AD</text>
+  <text x="980" y="850" class="title" font-size="13">Quản trị viên</text>
+  <text x="74" y="937" class="body" font-size="12">DESKTOP · CÙNG GRID TÁC NGHIỆP · ROLE HIỂN THỊ Ở VÙNG PHẢI</text>
+
+  <rect x="1200" y="776" width="548" height="138" rx="22" fill="#FFFFFF" filter="url(#shadow)"/>
+  <rect x="1218" y="794" width="512" height="102" rx="16" fill="#FFFFFF" stroke="#D9E2DE"/>
+  <rect x="1218" y="794" width="5" height="102" rx="2.5" fill="#005F41"/>
+  <rect x="1238" y="823" width="44" height="44" rx="13" fill="#E6F3EF"/>
+  <path d="M1260 833l10 5v8c0 7-4 12-10 15-6-3-10-8-10-15v-8l10-5z" fill="none" stroke="#005F41" stroke-width="2"/>
+  <text x="1298" y="832" class="label" font-size="9">QUẢN TRỊ</text>
+  <text x="1298" y="857" class="title" font-size="17">Quản trị vận hành</text>
+  <circle cx="1687" cy="845" r="22" fill="#E6F3EF"/>
+  <text x="1687" y="850" text-anchor="middle" fill="#005F41" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" font-weight="800">AD</text>
+  <text x="1222" y="937" class="body" font-size="12">MOBILE · ẨN BREADCRUMB DÀI · AVATAR THAY CHO ROLE PILL</text>
+
+  <!-- Scanner -->
+  <text x="52" y="1000" class="label" font-size="13">04 / CAMERA &amp; SCANNER</text>
+  <text x="52" y="1028" class="title" font-size="22">Tối ưu độ tương phản trên camera, giữ thao tác một tay</text>
+  <rect x="52" y="1050" width="1696" height="192" rx="22" fill="#FFFFFF" filter="url(#shadow)"/>
+  <rect x="70" y="1068" width="1064" height="156" rx="16" fill="#18211E"/>
+  <rect x="70" y="1068" width="1064" height="82" rx="16" fill="#0D1512" fill-opacity="0.92"/>
+  <rect x="90" y="1087" width="44" height="44" rx="13" fill="#FFFFFF" fill-opacity="0.10"/>
+  <path d="M105 1102l14 14M119 1102l-14 14" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round"/>
+  <text x="602" y="1106" text-anchor="middle" fill="#AFC2BA" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="10" font-weight="750" letter-spacing="1.2">MÁY QUÉT</text>
+  <text x="602" y="1128" text-anchor="middle" class="white" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="18" font-weight="750">QUÉT MÃ SKU</text>
+  <rect x="1070" y="1087" width="44" height="44" rx="13" fill="#FFFFFF" fill-opacity="0.10"/>
+  <path d="M1093 1097l-10 17h9l-2 12 11-18h-9z" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linejoin="round"/>
+  <text x="602" y="1191" text-anchor="middle" fill="#AFC2BA" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13">Đưa mã vào giữa khung để quét tự động</text>
+  <text x="74" y="1266" class="body" font-size="12">DESKTOP / TABLET · NỀN ĐEN 92% · CLOSE TRÁI · TORCH PHẢI · TITLE CĂN GIỮA TUYỆT ĐỐI</text>
+
+  <rect x="1200" y="1068" width="530" height="156" rx="16" fill="#18211E"/>
+  <rect x="1200" y="1068" width="530" height="82" rx="16" fill="#0D1512" fill-opacity="0.92"/>
+  <rect x="1218" y="1087" width="44" height="44" rx="13" fill="#FFFFFF" fill-opacity="0.10"/>
+  <path d="M1233 1102l14 14M1247 1102l-14 14" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round"/>
+  <text x="1465" y="1106" text-anchor="middle" fill="#AFC2BA" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="9" font-weight="750" letter-spacing="1.1">MÁY QUÉT</text>
+  <text x="1465" y="1128" text-anchor="middle" class="white" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="17" font-weight="750">QUÉT MÃ SKU</text>
+  <rect x="1668" y="1087" width="44" height="44" rx="13" fill="#FFFFFF" fill-opacity="0.10"/>
+  <path d="M1691 1097l-10 17h9l-2 12 11-18h-9z" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linejoin="round"/>
+  <text x="1465" y="1191" text-anchor="middle" fill="#AFC2BA" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12">Đưa mã vào giữa khung</text>
+  <text x="1222" y="1266" class="body" font-size="12">MOBILE · GIỮ 44 PX TOUCH TARGET · HỖ TRỢ SAFE AREA</text>
+
+  <!-- Rules -->
+  <rect x="52" y="1310" width="1696" height="288" rx="24" fill="#FFFFFF" stroke="#D9E2DE"/>
+  <text x="84" y="1356" class="label" font-size="13">ANATOMY &amp; QUY TẮC DÙNG CHUNG</text>
+  <text x="84" y="1390" class="title" font-size="22">64–72 px · 4 vùng cố định · trạng thái không phụ thuộc màu</text>
+
+  <rect x="84" y="1420" width="1018" height="70" rx="16" fill="#F7F9F8" stroke="#D9E2DE"/>
+  <rect x="100" y="1433" width="44" height="44" rx="12" fill="#E8EFEC"/>
+  <text x="122" y="1459" text-anchor="middle" class="title" font-size="13">1</text>
+  <text x="158" y="1449" class="title" font-size="13">START</text>
+  <text x="158" y="1469" class="body" font-size="12">Back / logo</text>
+  <line x1="277" y1="1434" x2="277" y2="1476" stroke="#D9E2DE"/>
+  <rect x="295" y="1433" width="44" height="44" rx="12" fill="#E6F3EF"/>
+  <text x="317" y="1459" text-anchor="middle" fill="#005F41" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" font-weight="750">2</text>
+  <text x="353" y="1449" class="title" font-size="13">IDENTITY</text>
+  <text x="353" y="1469" class="body" font-size="12">Eyebrow + title</text>
+  <line x1="518" y1="1434" x2="518" y2="1476" stroke="#D9E2DE"/>
+  <rect x="536" y="1433" width="44" height="44" rx="12" fill="#EAF7F1"/>
+  <text x="558" y="1459" text-anchor="middle" fill="#075C40" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" font-weight="750">3</text>
+  <text x="594" y="1449" class="title" font-size="13">STATUS</text>
+  <text x="594" y="1469" class="body" font-size="12">Dot + text</text>
+  <line x1="750" y1="1434" x2="750" y2="1476" stroke="#D9E2DE"/>
+  <rect x="768" y="1433" width="44" height="44" rx="12" fill="#E8EFEC"/>
+  <text x="790" y="1459" text-anchor="middle" class="title" font-size="13">4</text>
+  <text x="826" y="1449" class="title" font-size="13">ACTIONS</text>
+  <text x="826" y="1469" class="body" font-size="12">Tối đa 2 nút</text>
+
+  <text x="84" y="1534" class="body" font-size="13">DESKTOP</text>
+  <text x="164" y="1534" class="title" font-size="13">72 px · padding 24 px · title 18–20 px</text>
+  <text x="84" y="1564" class="body" font-size="13">MOBILE</text>
+  <text x="164" y="1564" class="title" font-size="13">64 px + safe area · padding 16 px · title 16–18 px</text>
+
+  <rect x="1150" y="1408" width="566" height="162" rx="18" fill="#F7F9F8"/>
+  <text x="1176" y="1440" class="title" font-size="14">Trạng thái chuẩn</text>
+  <rect x="1176" y="1455" width="150" height="38" rx="19" fill="#EAF7F1" stroke="#CFE8DF"/>
+  <circle cx="1200" cy="1474" r="5" fill="#16865D"/>
+  <text x="1214" y="1479" fill="#075C40" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" font-weight="650">Sẵn sàng</text>
+  <rect x="1338" y="1455" width="150" height="38" rx="19" fill="#FFF5DF" stroke="#F1D395"/>
+  <circle cx="1362" cy="1474" r="5" fill="#B7791F"/>
+  <text x="1376" y="1479" fill="#80530F" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" font-weight="650">Đang bận</text>
+  <rect x="1500" y="1455" width="190" height="38" rx="19" fill="#FDEDEC" stroke="#E7B6B3"/>
+  <circle cx="1524" cy="1474" r="5" fill="#C2413B"/>
+  <text x="1538" y="1479" fill="#8F2F2A" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" font-weight="650">Mất kết nối</text>
+  <text x="1176" y="1527" class="body" font-size="12">Mỗi trạng thái luôn có:</text>
+  <text x="1305" y="1527" class="title" font-size="12">màu + biểu tượng/chấm + nhãn chữ</text>
+  <text x="1176" y="1551" class="body" font-size="12">Focus ring: 2 px #238A67 · khoảng cách tối thiểu: 8 px</text>
+</svg>

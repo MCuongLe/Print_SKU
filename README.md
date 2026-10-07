@@ -53,6 +53,14 @@ Mọi nút gửi lệnh in là một `.act-icon--print` (IN TEM SKU và Xác nh�
 - Giảm chuyển động (`prefers-reduced-motion`): icon ba chấm đứng yên và đường load đứng yên (vẫn thấy "đang in").
 - Khi test tự động: IN TEM SKU (React) và Xác nhận in (UID) dùng `aria-disabled` thay cho `disabled`; các nút còn lại vẫn `disabled` thật khi không có gì để in. Nút giữ trạng thái `working` cho tới khi `PrintSkuQueue.jobStatus` báo xong — test cần mock `jobStatus` trả `completed` rồi đợi `data-print-state` về `idle`/`disabled` trước khi so nhãn.
 
+## Header các màn hình
+
+Mọi màn con dùng một kiểu header theo IN TEM SKU (`.uid-topbar`): nút Back dạng pill (nhãn "WH-MATERIAL"; riêng màn Nạp dữ liệu Group UID là "Tổng quan"),
+icon module 32 px (đúng icon ô trang chủ), tiêu đề đậm 16 px, phụ đề chữ hoa 10 px và — nếu màn có máy in — pill trạng thái máy in (hiện có ở IN TEM SKU và
+IN TEM GROUP UID). Cao 64 px + viền 1 px, dính đầu màn; từ 760 px trở xuống Back chỉ còn icon 44 px, ẩn icon module và phụ đề. Bề rộng header bám bề rộng nội dung
+của từng màn. Màn mới chỉ cần dùng markup `.uid-topbar` (Back là phần tử đầu để thứ tự Tab khớp thứ tự nhìn). Trang chủ (nền xanh), Quản trị (React) và lớp
+camera/scanner giữ kiểu riêng. Thiết kế: [`docs/THIET_KE_HEADER_UI.md`](docs/THIET_KE_HEADER_UI.md).
+
 ## Màn Sample — gom hàng mẫu vào bao
 
 Màn `#sample` quét mã QR SKU trên hàng mẫu, gom các mẫu cùng SKU vào một bao và báo SKU inactive.
