@@ -16,7 +16,7 @@ async function sendToInside(tab, message) {
   try {
     return await chrome.tabs.sendMessage(tab.id, message);
   } catch {
-    await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["inside-bridge.js"] });
+    await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["sku-sync-core.js", "inside-bridge.js"] });
     return chrome.tabs.sendMessage(tab.id, message);
   }
 }
@@ -27,7 +27,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     sendResponse(errorResponse("FORBIDDEN_ORIGIN", "Ứng dụng không nằm trên địa chỉ Print SKU được cho phép"));
     return false;
   }
-  if (!message || !["PING", "GET_PO"].includes(message.type)) {
+  if (!message || !["PING", "GET_PO", "GET_SKU_SYNC_DATA"].includes(message.type)) {
     sendResponse(errorResponse("INVALID_REQUEST", "Yêu cầu kết nối không hợp lệ"));
     return false;
   }
@@ -37,20 +37,22 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   (async () => {
-    const poCode = String(message.payload?.poCode || "").trim();
-    if (!/^[A-Za-z0-9._/-]{3,50}$/.test(poCode)) {
-      return errorResponse("INVALID_PO", "Mã PO không hợp lệ");
-    }
     const insideTab = await findInsideTab();
     if (!insideTab) {
       return errorResponse("INSIDE_TAB_MISSING", "Hãy mở một tab Inside và đăng nhập trước");
     }
     try {
-      const result = await sendToInside(insideTab, { type: "GET_PO", payload: { poCode } });
-      return result?.ok ? result : errorResponse(result?.error?.code || "INSIDE_ERROR", result?.error?.message || "Inside không trả dữ liệu PO");
+      if (message.type === "GET_PO") {
+        const poCode = String(message.payload?.poCode || "").trim();
+        if (!/^[A-Za-z0-9._/-]{3,50}$/.test(poCode)) return errorResponse("INVALID_PO", "Mã PO không hợp lệ");
+        const result = await sendToInside(insideTab, { type: "GET_PO", payload: { poCode } });
+        return result?.ok ? result : errorResponse(result?.error?.code || "INSIDE_ERROR", result?.error?.message || "Inside không trả dữ liệu PO");
+      }
+      const result = await sendToInside(insideTab, { type: "GET_SKU_SYNC_DATA", payload: message.payload || {} });
+      return result?.ok ? result : errorResponse(result?.error?.code || "INSIDE_ERROR", result?.error?.message || "Inside không trả dữ liệu SKU");
     } catch {
       return errorResponse("INSIDE_BRIDGE_ERROR", "Không kết nối được tab Inside; hãy tải lại tab Inside rồi thử lại");
     }
-  })().then(sendResponse).catch(() => sendResponse(errorResponse("CONNECTOR_ERROR", "Tiện ích gặp lỗi khi lấy PO")));
+  })().then(sendResponse).catch(() => sendResponse(errorResponse("CONNECTOR_ERROR", "Tiện ích gặp lỗi khi đọc dữ liệu Inside")));
   return true;
 });

@@ -16,6 +16,16 @@
     if (short) return `20${short[1]}-${short[2]}-${short[3]}`;
     return raw;
   };
+  const skuCore = globalThis.HasakiSkuSyncCore;
+  const SKU_CATEGORIES = [
+    { id: "954", name: "Thời Trang (Phụ Liệu)" },
+    { id: "957", name: "Thời Trang (NVL)" },
+    { id: "960", name: "Thời Trang" },
+    { id: "961", name: "Thực phẩm" },
+    { id: "962", name: "Mẫu Thời Trang" },
+    { id: "963", name: "Nhận hàng gia công" },
+    { id: "964", name: "Nguyên liệu nhận Gia công" }
+  ];
 
   async function fetchDocument(url) {
     const response = await fetch(url, { credentials: "include" });
@@ -25,6 +35,100 @@
     const loginForm = doc.querySelector('input[type="password"], form[action*="login"], #login-form');
     if (loginForm || /login|sign in/i.test(doc.title || "")) throw new Error("Phiên Inside đã hết hạn; hãy đăng nhập lại");
     return doc;
+  }
+
+  function tableIndexes(doc, required) {
+    const headers = [...doc.querySelectorAll("table thead th")].map(cell => clean(cell.textContent).toLowerCase());
+    const indexes = {};
+    for (const [key, label] of Object.entries(required)) {
+      indexes[key] = headers.indexOf(label);
+      if (indexes[key] < 0) throw new Error(`Inside đã đổi cấu trúc: không thấy cột ${label}`);
+    }
+    return indexes;
+  }
+
+  function parseProductPage(doc, category) {
+    const indexes = tableIndexes(doc, { sku: "sku", name: "product name", status: "status", modified: "modified" });
+    return [...doc.querySelectorAll("table tbody tr")].map(row => {
+      const cells = [...row.cells];
+      const productCell = cells[indexes.name];
+      return {
+        sku: text(cells[indexes.sku]),
+        product_name: text(productCell?.querySelector("a"), text(productCell)),
+        category_id: category.id,
+        category_name: category.name,
+        status: skuCore.statusCode(text(cells[indexes.status])),
+        modified: text(cells[indexes.modified])
+      };
+    }).filter(row => row.sku && row.product_name && row.modified);
+  }
+
+  async function fetchChangedProducts(category, cutoff) {
+    const result = [];
+    for (let page = 1; page <= 200; page += 1) {
+      const url = new URL("/sales/product", location.origin);
+      Object.entries({ kw: "", category_id: category.id, barcode: "0", status: "", type: "0", pushweb: "", config: "", stocking_status: "0", hide_kw: "", limit: "200", page: String(page) })
+        .forEach(([key, value]) => url.searchParams.set(key, value));
+      const rows = parseProductPage(await fetchDocument(url), category);
+      if (!rows.length) break;
+      result.push(...rows.filter(row => row.modified >= cutoff));
+      if (rows.some(row => row.modified < cutoff)) break;
+    }
+    return result;
+  }
+
+  function parseComboPage(doc) {
+    const indexes = tableIndexes(doc, { sku: "sku", name: "name", description: "description", modified: "modified", status: "status" });
+    return [...doc.querySelectorAll("table tbody tr")].map(row => {
+      const cells = [...row.cells];
+      const relation = skuCore.parseComboDescription(text(cells[indexes.description]));
+      if (!relation) return null;
+      return {
+        combo_sku: relation.comboSku,
+        normal_sku: relation.normalSku,
+        quantity: relation.quantity,
+        combo_name: text(cells[indexes.name]),
+        combo_status: text(cells[indexes.status]),
+        source_modified_at: text(cells[indexes.modified])
+      };
+    }).filter(Boolean);
+  }
+
+  async function fetchComboPage(page) {
+    const url = new URL("/sales/product/combo", location.origin);
+    Object.entries({ offset: "0", limit: "50", type: "2", page: String(page) })
+      .forEach(([key, value]) => url.searchParams.set(key, value));
+    return parseComboPage(await fetchDocument(url));
+  }
+
+  async function fetchAllComboLinks() {
+    const result = [];
+    const batchSize = 8;
+    for (let first = 1; first <= 300; first += batchSize) {
+      const pages = await Promise.all(Array.from({ length: batchSize }, (_, index) => fetchComboPage(first + index)));
+      for (const rows of pages) result.push(...rows);
+      if (pages.some(rows => rows.length < 50)) break;
+    }
+    const unique = new Map();
+    result.forEach(row => unique.set(`${row.combo_sku}\u0000${row.normal_sku}`, row));
+    return [...unique.values()];
+  }
+
+  async function getSkuSyncData(payload) {
+    if (!skuCore) throw new Error("Extension chưa tải bộ đọc SKU; hãy Reload extension rồi thử lại");
+    const cutoff = skuCore.cutoffKey(payload?.cutoff);
+    const groups = await Promise.all(SKU_CATEGORIES.map(category => fetchChangedProducts(category, cutoff)));
+    const normalBySku = new Map();
+    groups.flat().forEach(row => normalBySku.set(row.sku, row));
+    const comboRows = await fetchAllComboLinks();
+    return {
+      generatedAt: new Date().toISOString(),
+      cutoff,
+      categories: SKU_CATEGORIES,
+      normalRows: [...normalBySku.values()],
+      comboRows,
+      sourceCounts: { normalRows: normalBySku.size, comboRows: comboRows.length }
+    };
   }
 
   function findPoRow(doc, poCode) {
@@ -78,7 +182,13 @@
   }
 
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    if (sender.id !== chrome.runtime.id || message?.type !== "GET_PO") return false;
+    if (sender.id !== chrome.runtime.id || !["GET_PO", "GET_SKU_SYNC_DATA"].includes(message?.type)) return false;
+    if (message.type === "GET_SKU_SYNC_DATA") {
+      getSkuSyncData(message.payload || {})
+        .then(data => sendResponse({ ok: true, data }))
+        .catch(error => sendResponse({ ok: false, error: { code: "SKU_SYNC_READ_FAILED", message: clean(error?.message || error) } }));
+      return true;
+    }
     const poCode = clean(message.payload?.poCode);
     if (!/^[A-Za-z0-9._/-]{3,50}$/.test(poCode)) {
       sendResponse({ ok: false, error: { code: "INVALID_PO", message: "Mã PO không hợp lệ" } });

@@ -1,6 +1,6 @@
 # HASAKI Inside PO Connector
 
-Tiện ích Chrome chỉ đọc, dùng phiên Inside đã đăng nhập để lấy PO/SKU cho màn `#inspection` của Print SKU.
+Tiện ích Chrome chỉ đọc, dùng phiên Inside đã đăng nhập để lấy PO/SKU cho màn `#inspection` và lấy dữ liệu SKU/Combo cho màn `#admin/sku-sync` của Print SKU.
 
 ## Người dùng có phải tự cài không?
 
@@ -24,6 +24,15 @@ Sau khi repository được cập nhật, mở `chrome://extensions` và bấm *
    - `https://mcuongle.github.io/Print_SKU/#inspection`
 3. Nhập mã PO và bấm **Lấy từ Inside**.
 
+Đồng bộ SKU dành cho Admin:
+
+1. Mở tab Inside và đăng nhập.
+2. Vào `#admin/sku-sync` trong Print SKU.
+3. Bấm **Kiểm tra dữ liệu Inside** để xem trước thay đổi.
+4. Xem danh sách SKU và quan hệ Normal–Combo, sau đó bấm **Cập nhật Supabase**.
+
+Extension chỉ đọc Inside. Mọi ghi dữ liệu chạy trong Edge Function `sku-sync`, yêu cầu phiên Supabase có vai trò `admin` và luôn xác minh lại sau khi upsert.
+
 ## Triển khai cho nhiều người
 
 - Giai đoạn thử nghiệm: gửi repository và để từng máy dùng **Load unpacked**.
@@ -37,6 +46,7 @@ Không thể tạo nút trên `index.html` để bỏ qua màn xác nhận cài 
 - Chỉ đọc dữ liệu PO/SKU; không ghi ngược vào Inside.
 - Không đọc hoặc lưu cookie/token. Request chạy trong tab Inside đã đăng nhập.
 - App chỉ nhận dữ liệu đã chuẩn hóa: PO, kho, NCC, ngày giao và các dòng SKU.
+- Extension không chứa Supabase secret/service-role key.
 - Chỉ kết nối với Inside và các địa chỉ Print SKU đã khai báo trong `manifest.json`.
 - Import `.xls/.xlsx` vẫn là phương án dự phòng.
 

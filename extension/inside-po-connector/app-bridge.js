@@ -9,7 +9,7 @@
   window.addEventListener("message", event => {
     if (event.source !== window || event.origin !== location.origin) return;
     const request = event.data;
-    if (!request || request.source !== "PRINT_SKU_APP" || !["PING", "GET_PO"].includes(request.type) || !request.requestId) return;
+    if (!request || request.source !== "PRINT_SKU_APP" || !["PING", "GET_PO", "GET_SKU_SYNC_DATA"].includes(request.type) || !request.requestId) return;
 
     chrome.runtime.sendMessage({ type: request.type, payload: request.payload || {} })
       .then(response => {
