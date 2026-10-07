@@ -420,7 +420,9 @@
           } catch (_) { /* không có âm thanh thì vẫn còn khung xanh + rung */ }
         };
 
-        const open = ({ onCode, onClose, onType, typeFocus = "", title = "Quét mã SKU" } = {}) => {
+        // check (tuỳ chọn): kiểm tra mã riêng thay cho tra SKU_Name, trả { sku: mã, ten } hoặc null → hỏi
+        // "Vẫn dùng mã này" / "Quét tiếp" với tiêu đề notFound. CẮT UID dùng để nhận Group UID.
+        const open = ({ onCode, onClose, onType, typeFocus = "", title = "Quét mã SKU", typeLabel = "Gõ tay mã SKU", check = null, notFound = "" } = {}) => {
           let closed = false, pushed = false, stream = null, track = null, eng = null, raf = 0, last = 0, busy = false, paused = false;
           let pending = null, ignore = null, hardZoom = null, torch = false;
           const root = document.createElement("div");
@@ -436,6 +438,7 @@
           const $ = selector => root.querySelector(selector);
           const video = $("video"), guide = $(".pss-guide"), statusEl = $(".pss-status"), card = $(".pss-card"), torchBtn = $('[data-act="torch"]'), zoomBox = $(".pss-zoom"), typeBtn = $(".pss-type");
           $(".pss-title").textContent = title;
+          typeBtn.querySelector("span").textContent = typeLabel;
           const status = (text, tone = "") => { statusEl.textContent = text; statusEl.dataset.tone = tone; };
           const state = name => { root.dataset.state = name; };
 
@@ -470,6 +473,7 @@
             state("error"); zoomBox.hidden = true; typeBtn.hidden = true; statusEl.hidden = true;
             card.innerHTML = '<b>Không mở được camera</b><p></p><div class="pss-acts"><button class="pss-primary" type="button" data-act="type">Gõ tay mã SKU</button></div>';
             card.querySelector("p").textContent = text;
+            card.querySelector('[data-act="type"]').textContent = typeLabel;
             card.hidden = false;
           };
           const setZoom = async level => {
@@ -497,10 +501,11 @@
           };
           const reject = (code, offline) => {
             pending = code; state("warn");
-            status(offline ? "Chưa kiểm tra được danh mục SKU" : "Mã không có trong danh mục SKU", "warn");
-            card.innerHTML = `<b>${offline ? "Chưa kiểm tra được danh mục SKU" : "Mã này không có trong danh mục SKU"}</b><code></code>` +
-              `<p>${offline ? "Mạng đang chập chờn. Nếu chắc đây là mã SKU thì vẫn dùng được — tên hàng sẽ tra lại sau." : "Có thể là mã vạch nhà cung cấp hoặc mã UID. Đưa đúng mã SKU trên tem vào khung, hoặc dùng mã này nếu chắc chắn."}</p>` +
+            status(check ? notFound : offline ? "Chưa kiểm tra được danh mục SKU" : "Mã không có trong danh mục SKU", "warn");
+            card.innerHTML = `<b></b><code></code>` +
+              (check ? "" : `<p>${offline ? "Mạng đang chập chờn. Nếu chắc đây là mã SKU thì vẫn dùng được — tên hàng sẽ tra lại sau." : "Có thể là mã vạch nhà cung cấp hoặc mã UID. Đưa đúng mã SKU trên tem vào khung, hoặc dùng mã này nếu chắc chắn."}</p>`) +
               '<div class="pss-acts"><button class="pss-secondary" type="button" data-act="use">Vẫn dùng mã này</button><button class="pss-primary" type="button" data-act="again">Quét tiếp</button></div>';
+            card.querySelector("b").textContent = check ? notFound : offline ? "Chưa kiểm tra được danh mục SKU" : "Mã này không có trong danh mục SKU";
             card.querySelector("code").textContent = code;
             card.hidden = false; zoomBox.hidden = true; typeBtn.hidden = true;
           };
@@ -508,7 +513,7 @@
             if (!code || (ignore && ignore.code === code && performance.now() < ignore.until)) return;
             paused = true; state("checking"); status(`Đang kiểm tra ${code}…`);
             let hit = null, offline = false;
-            try { hit = await lookup(code); } catch (_) { offline = true; }
+            try { hit = await (check || lookup)(code); } catch (_) { offline = true; }
             if (closed) return;
             if (hit) accept(hit.sku, hit.ten);
             else reject(code, offline);
@@ -4397,7 +4402,7 @@ Error generating stack: `+y.message+`
         </div>
         <p class="cut-message" id="cut-message" aria-live="polite" style="margin-bottom:14px"></p>
         <div class="cut-grid">
-        <section class="cut-card" data-panel="scan"><h2><span>1</span>Quét Group UID</h2><form class="cut-scan" id="cut-form"><input class="cut-input" id="cut-code" autocomplete="off" inputmode="none" placeholder="Quét hoặc nhập UID…" maxlength="40" required><button class="act-icon act-icon--keyboard" id="cut-keyboard" type="button" aria-label="Hiện bàn phím" title="Hiện bàn phím" aria-pressed="true"></button><button class="cut-primary act-icon act-icon--add" id="cut-add" type="submit">Lưu tem</button></form><div class="cut-last" id="cut-last" hidden></div><button class="cut-link" id="cut-goto-data" type="button">Xem trong Tra cứu →</button></section>
+        <section class="cut-card" data-panel="scan"><h2><span>1</span>Quét Group UID</h2><form class="cut-scan" id="cut-form"><input class="cut-input" id="cut-code" autocomplete="off" inputmode="none" placeholder="Quét hoặc nhập UID…" maxlength="40" required><button class="act-icon act-icon--camera" id="cut-camera" type="button" aria-label="Quét bằng camera" title="Quét bằng camera" hidden></button><button class="act-icon act-icon--keyboard" id="cut-keyboard" type="button" aria-controls="cut-code" aria-label="Hiện bàn phím" title="Hiện bàn phím" aria-pressed="true"></button><button class="cut-primary act-icon act-icon--add" id="cut-add" type="submit">Lưu tem</button></form><div class="cut-last" id="cut-last" hidden></div><button class="cut-link" id="cut-goto-data" type="button">Xem trong Tra cứu →</button></section>
         <section class="cut-card" data-panel="data"><h2><span>2</span>Tra cứu UID đã cắt</h2><form class="cut-searchbar" id="cut-search"><input class="cut-input" id="cut-sku" placeholder="Lọc theo SKU…" autocomplete="off"><input class="cut-input" id="cut-lot" style="max-width:150px" placeholder="Lọc theo Lot…" autocomplete="off"><div class="cut-daterange"><input class="cut-input" id="cut-date-from" type="date" aria-label="Cắt từ ngày" title="Cắt từ ngày"><span aria-hidden="true">→</span><input class="cut-input" id="cut-date-to" type="date" aria-label="Cắt đến ngày" title="Cắt đến ngày"></div><div class="cut-searchbar__end"><select class="cut-input cut-adj-filter" id="cut-adj" aria-label="Lọc theo trạng thái xuất ADJ" title="Lọc theo trạng thái xuất ADJ"><option value="">ADJ: Tất cả</option><option value="pending">Chưa xuất ADJ</option><option value="done">Đã xuất ADJ</option></select><button class="cut-secondary act-icon act-icon--search" type="submit">Tìm kiếm</button></div></form><div class="cut-actions"><button class="cut-icon-btn" id="cut-export" type="button" disabled title="Xuất Excel A4 ngang" aria-label="Xuất Excel A4 ngang"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button><button class="cut-primary act-icon act-icon--add" id="cut-push" type="button" disabled>Đưa vào hàng chờ in</button></div><p class="cut-note" id="cut-search-total" style="margin-top:10px"></p><div class="cut-table-wrap" style="margin-top:10px"><table class="cut-table"><thead><tr><th class="cut-th-check"><input id="cut-search-all" type="checkbox" aria-label="Chọn tất cả tem có thể in trong bảng"></th><th>SKU</th><th>UID</th><th>Lot</th><th>Roll</th><th>Số lượng cắt</th><th>Tên SP</th><th>Trạng thái</th><th>ADJ</th><th>Thời gian cắt</th></tr></thead><tbody id="cut-results"></tbody></table></div></section>
         <section class="cut-card" data-panel="print"><h2><span>3</span>Tem chờ in</h2><button class="cut-link cut-link--back" id="cut-goto-data-2" type="button">Chọn thêm ở Tra cứu</button><div class="cut-actions"><label class="cut-selectall"><input id="cut-all" type="checkbox"><span>Chọn tất cả tem có thể in</span><em id="cut-selected-count">Đã chọn 0</em></label><button class="cut-secondary act-icon act-icon--load" id="cut-reload" type="button">Tải lại</button><button class="cut-primary act-icon act-icon--print" id="cut-print" type="button" disabled>In tem đã chọn</button></div><div class="cut-list" id="cut-list"></div></section>
         <section class="cut-card" data-panel="adj" id="cut-adj-panel"><h2><span>4</span>Đối chiếu ADJ</h2>
@@ -7406,6 +7411,12 @@ var FSK_CORE = (function () {
         const applyKeyboard=()=>{const label=keyboardHidden?'Hiện bàn phím':'Ẩn bàn phím';code.inputMode=keyboardHidden?'none':'text';keyboardToggle.setAttribute('aria-label',label);keyboardToggle.title=label;keyboardToggle.setAttribute('aria-pressed',String(keyboardHidden))};
         keyboardToggle.addEventListener('click',()=>{keyboardHidden=!keyboardHidden;try{localStorage.setItem(KEYBOARD_STORE,keyboardHidden?'an':'hien')}catch(_){}applyKeyboard();code.blur();setTimeout(()=>{code.focus();hideKeyboardNow()},60)});
         applyKeyboard();
+        // Quét UID bằng camera điện thoại: lớp quét chung của PRINT SKU (khung ngắm, đèn, 1×/2×/3×, nút Back đóng) nhưng
+        // không tra danh mục SKU. Group UID luôn 16 chữ số (28.418/28.418 mã, 07/10/2026) — đọc phải mã khác trên tem (vd SKU
+        // 9 số) thì hỏi "Vẫn dùng mã này" / "Quét tiếp". Đọc được thì điền ô quét và lưu tem như máy quét cầm tay.
+        const cameraBtn=document.getElementById('cut-camera');
+        if(window.PrintSkuScanUI&&navigator.mediaDevices?.getUserMedia&&window.isSecureContext){cameraBtn.hidden=false;form.classList.add('has-camera')}
+        cameraBtn.addEventListener('click',()=>{if(busy)return;window.PrintSkuScanUI.open({title:'Quét Group UID',typeLabel:'Gõ tay mã UID',typeFocus:'#cut-code',notFound:'Mã này không phải Group UID',check:c=>/^\d{16}$/.test(c)?{sku:c,ten:''}:null,onCode:c=>{code.value=c;form.requestSubmit()}})});
 
         // 3 cụm Scan/Data/Print, mỗi lần chỉ hiện đúng 1 cụm (giống tab) — bấm vào tiêu đề cụm
         // hoặc bấm nút "→" cuối mỗi cụm để nhảy sang cụm khác. Nhớ cụm đang mở theo localStorage.
@@ -8472,8 +8483,13 @@ var FSK_CORE = (function () {
       #cut-form #cut-keyboard[aria-pressed="false"] { border-color: rgba(0, 95, 65, .35); background: rgba(0, 95, 65, .07); color: var(--wms-brand, #005f41); }
       #cut-form #cut-keyboard::before { width: 22px; height: 22px; }
       #cut-form .cut-primary { flex: none; white-space: nowrap; }
+      /* CẮT UID: nút camera cùng cỡ nút bàn phím, tô xanh vì là cách quét chính trên điện thoại; chỉ hiện khi máy mở được camera. */
+      #cut-form #cut-camera { flex: none; width: 52px; min-width: 52px; min-height: 52px; margin: 0; padding: 0; border: 1px solid rgba(0, 95, 65, .35); border-radius: 13px; background: rgba(0, 95, 65, .07); color: var(--wms-brand, #005f41); cursor: pointer; }
+      #cut-form #cut-camera::before { width: 22px; height: 22px; }
+      #cut-form #cut-camera[hidden] { display: none; }
       @media (max-width: 800px) {
         #cut-form { display: grid; grid-template-columns: minmax(0, 1fr) auto; }
+        #cut-form.has-camera { grid-template-columns: minmax(0, 1fr) auto auto; }
         #cut-form .cut-primary { grid-column: 1 / -1; }
       }
       #root section button[aria-label^="Bỏ "] { width: var(--target-min); height: var(--target-min); }

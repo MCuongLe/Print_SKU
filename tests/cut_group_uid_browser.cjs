@@ -119,8 +119,28 @@ const fs = require('node:fs');
       assert.equal(xlsx.includes(Buffer.from('ref="A1:E81"')), true);
       for (const header of ['SKU', 'UID', 'Lot', 'Roll', 'Tên SP']) assert.equal(xlsx.includes(Buffer.from(header)), true);
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+      // Quét UID bằng camera điện thoại: giả lập camera + bộ đọc mã. Mã 9 số (SKU trên cùng tem) bị hỏi lại, mã 16 số được lưu.
+      await page.locator('#cut-tab-scan').click();
+      assert.equal(await page.locator('#cut-camera').isVisible(), true);
+      await page.evaluate(() => {
+        const canvas = document.createElement('canvas'); canvas.width = 320; canvas.height = 240;
+        const ctx = canvas.getContext('2d'); setInterval(() => { ctx.fillStyle = '#345'; ctx.fillRect(0, 0, 320, 240); }, 100);
+        window.testNextCode = '422467418';
+        window.PrintSkuScanner = { ...window.PrintSkuScanner, gl: () => true, k0: () => true, Jp: async () => ({ doc: async () => ({ ma: window.testNextCode }) }), ev: async () => canvas.captureStream(10) };
+      });
+      await page.locator('#cut-camera').click();
+      const scanner = page.locator('.pss');
+      await page.waitForFunction(() => document.querySelector('.pss')?.dataset.state === 'warn');
+      assert.match(await scanner.locator('.pss-card').innerText(), /Mã này không phải Group UID.*422467418/s);
+      assert.equal(await scanner.locator('.pss-type span').textContent(), 'Gõ tay mã UID');
+      await page.evaluate(() => { window.testNextCode = '1028269999000001'; });
+      await scanner.locator('[data-act="again"]').click();
+      await scanner.waitFor({ state: 'detached' });
+      await page.waitForFunction(() => document.querySelector('#cut-last').textContent.includes('1028269999000001'));
+      assert.equal(records.some(x => x.groupUid === '1028269999000001'), true);
+      assert.equal(records.some(x => x.groupUid === '422467418'), false);
       assert.deepEqual(errors, []);
-      console.log(`PASS ${width}px: route, missing/duplicate UID, persistence, current label payload, status polling, SKU filter, combo→normal SKU filter, A4 landscape XLSX, no overflow/errors`);
+      console.log(`PASS ${width}px: route, missing/duplicate UID, persistence, current label payload, status polling, SKU filter, combo→normal SKU filter, A4 landscape XLSX, camera UID scan, no overflow/errors`);
       await page.close();
     }
   } finally { await browser.close(); }
