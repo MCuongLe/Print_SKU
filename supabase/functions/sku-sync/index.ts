@@ -17,6 +17,7 @@ const COMBO_FIELDS = [
   "combo_status", "source_modified_at", "source_component_count", "combo_scope_complete",
 ];
 const MAX_WRITES = 2000;
+const PREVIEW_TTL_MS = 30 * 60 * 1000;
 
 type Json = Record<string, unknown>;
 
@@ -97,6 +98,12 @@ function normalizeSourceDate(value: unknown): string {
   const date = new Date(`${match[1]}-${match[2]}-${match[3]}T${match[4]}:${match[5]}:${match[6]}+07:00`);
   if (!Number.isFinite(date.getTime())) throw new Error(`Ngày cập nhật Combo không hợp lệ: ${raw}`);
   return date.toISOString();
+}
+// Mốc đọc nguồn không được ở tương lai (đồng hồ máy lệch) vì nó quyết định mốc cắt của lượt sau.
+function sourceTime(value: unknown): string {
+  const parsed = new Date(String(value ?? "")).getTime();
+  const now = Date.now();
+  return new Date(Number.isFinite(parsed) && parsed <= now ? parsed : now).toISOString();
 }
 function sameValue(field: string, left: unknown, right: unknown): boolean {
   if (field === "quantity") return Number(left) === Number(right);
@@ -211,7 +218,7 @@ async function preview(request: Request, user: { id: string; username: string },
   const changeCounts = { skuAdded: skuAdded.length, skuUpdated: skuUpdated.length, skuUnchanged, comboAdded: comboAdded.length, comboUpdated: comboUpdated.length, comboUnchanged };
   const changes = { skus: { added: skuAdded, updated: skuUpdated }, combos: { added: comboAdded, updated: comboUpdated } };
   const run = await insertRun({
-    status: "previewed", source: "inside-extension", cutoff: clean(source.cutoff, 40), source_generated_at: source.generatedAt,
+    status: "previewed", source: "inside-extension", cutoff: clean(source.cutoff, 40), source_generated_at: sourceTime(source.generatedAt),
     source_counts: sourceCounts, change_counts: changeCounts, changes, staged_skus: stagedSkus,
     staged_combo_links: stagedLinks, created_by: user.id,
   });
@@ -231,6 +238,14 @@ async function countTable(table: string): Promise<number> {
   const match = (response.headers.get("content-range") ?? "").match(/\/(\d+)$/);
   return match ? Number(match[1]) : 0;
 }
+// Bản xem trước chỉ đúng với database tại lúc tạo: quá hạn hoặc đã có lượt khác hoàn tất sau đó thì ghi sẽ đè dữ liệu mới bằng dữ liệu cũ.
+async function staleReason(run: Json): Promise<string | null> {
+  const createdAt = new Date(String(run.created_at)).getTime();
+  if (!Number.isFinite(createdAt)) return "Bản xem trước thiếu thời gian tạo; hãy kiểm tra lại dữ liệu Inside";
+  if (Date.now() - createdAt > PREVIEW_TTL_MS) return "Bản xem trước đã quá 30 phút; hãy kiểm tra lại dữ liệu Inside";
+  const newer = await fetchAll(`sku_sync_runs?select=id&status=eq.completed&completed_at=gt.${encodeURIComponent(new Date(createdAt).toISOString())}&limit=1`);
+  return newer.length ? "Đã có lượt đồng bộ hoàn tất sau bản xem trước này; hãy kiểm tra lại dữ liệu Inside" : null;
+}
 async function apply(request: Request, body: Json): Promise<Response> {
   const runId = clean(body.runId, 80);
   if (!/^[0-9a-f-]{36}$/i.test(runId)) return fail(request, 400, "INVALID_RUN", "Mã lượt đồng bộ không hợp lệ");
@@ -239,6 +254,8 @@ async function apply(request: Request, body: Json): Promise<Response> {
   if (!run) return fail(request, 404, "NOT_FOUND", "Không thấy lượt đồng bộ");
   if (run.status === "completed") return reply(request, 200, { ok: true, data: { runId, status: "completed", changeCounts: run.change_counts, verification: run.verification, alreadyCompleted: true } });
   if (run.status !== "previewed") return fail(request, 409, "NOT_READY", "Lượt đồng bộ không còn ở trạng thái chờ cập nhật");
+  const stale = await staleReason(run);
+  if (stale) return fail(request, 409, "STALE_PREVIEW", stale);
   const claimed = await updateRun(runId, { status: "applying", applied_at: new Date().toISOString(), error_message: null }, "previewed");
   if (!claimed) return fail(request, 409, "ALREADY_RUNNING", "Lượt đồng bộ đang được xử lý ở nơi khác");
   const stagedSkus = run.staged_skus as Json[], stagedLinks = run.staged_combo_links as Json[];
@@ -274,7 +291,9 @@ async function apply(request: Request, body: Json): Promise<Response> {
 async function history(request: Request, body: Json): Promise<Response> {
   const limit = Math.min(Math.max(Number(body.limit) || 20, 1), 50);
   const runs = await fetchAll(`sku_sync_runs?select=id,status,cutoff,source_counts,change_counts,verification,error_message,created_at,completed_at,created_by&order=created_at.desc&limit=${limit}`);
-  return reply(request, 200, { ok: true, data: { runs, lastSuccessAt: runs.find(row => row.status === "completed")?.completed_at ?? null }, meta: { updatedAt: new Date().toISOString(), schemaVersion: 1 } });
+  // Mốc đọc tiếp theo tính từ lúc đọc nguồn của lượt hoàn tất gần nhất, không phải lúc bấm cập nhật; truy vấn riêng để không phụ thuộc 20 lượt gần nhất.
+  const latest = (await fetchAll("sku_sync_runs?select=source_generated_at,completed_at&status=eq.completed&order=source_generated_at.desc&limit=1"))[0];
+  return reply(request, 200, { ok: true, data: { runs, lastSuccessAt: latest?.completed_at ?? null, lastSnapshotAt: latest?.source_generated_at ?? null }, meta: { updatedAt: new Date().toISOString(), schemaVersion: 1 } });
 }
 async function detail(request: Request, body: Json): Promise<Response> {
   const runId = clean(body.runId, 80);

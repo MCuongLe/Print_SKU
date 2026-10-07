@@ -8,6 +8,8 @@
 | Quan hệ Normal–Combo | Combo, Normal, số lượng, trạng thái | Inside qua Extension | Hai SKU có category trong database; số lượng > 0 | Đúng phạm vi → OK; ngoài phạm vi → bỏ qua |
 | Lượt đồng bộ | Nguồn, thay đổi, người chạy, thời gian | Edge Function | Phải tạo bản xem trước trước khi cập nhật | Có preview → OK; gọi ghi trực tiếp → NG |
 | Xác minh | SKU và quan hệ vừa ghi | Đọc lại Supabase | Khớp toàn bộ trường vừa ghi | Khớp → hoàn tất; lệch → failed |
+| Bản xem trước | Thời điểm tạo | Edge Function | Chỉ áp dụng trong 30 phút và khi chưa có lượt khác hoàn tất sau khi tạo | Quá hạn hoặc có lượt mới hơn → `STALE_PREVIEW`, phải kiểm tra lại |
+| Mốc đọc tiếp theo | `source_generated_at` | Lượt `completed` gần nhất | Mốc cắt = thời điểm đọc nguồn của lượt đó − 1 ngày; không dùng lúc bấm cập nhật | Chưa có lượt hoàn tất → đọc 7 ngày gần nhất |
 
 ## Quy tắc vận hành
 
@@ -17,6 +19,8 @@
 - Không tự xóa SKU hoặc quan hệ vắng mặt trong dữ liệu nguồn.
 - Từ chối nguồn Combo dưới 1.000 hoặc trên 12.000 dòng.
 - Từ chối lượt có trên 2.000 SKU hoặc 2.000 quan hệ cần ghi.
+- Bản xem trước phản ánh database tại lúc tạo; ghi bản cũ sẽ đè dữ liệu mới bằng dữ liệu cũ nên Edge Function từ chối khi quá 30 phút hoặc đã có lượt hoàn tất sau đó. Giao diện hiển thị lượt đó là "Hết hạn" và khóa nút cập nhật.
+- Mốc đọc của lượt sau tính từ thời điểm đọc nguồn (không phải lúc áp dụng), lấy bằng truy vấn riêng nên không phụ thuộc 20 lượt gần nhất; thời điểm ở tương lai (đồng hồ máy lệch) bị đưa về hiện tại.
 - Chỉ cập nhật các dòng mới hoặc thay đổi; luôn đọc lại sau upsert.
 - Mỗi lượt lưu lịch sử, số lượng nguồn, số thay đổi, chi tiết cũ/mới và kết quả xác minh.
 
