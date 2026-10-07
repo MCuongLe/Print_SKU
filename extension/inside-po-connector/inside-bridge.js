@@ -110,8 +110,23 @@
       if (pages.some(page => page.sourceRowCount < 50)) break;
     }
     const unique = new Map();
-    result.forEach(row => unique.set(`${row.combo_sku}\u0000${row.normal_sku}`, row));
-    return [...unique.values()];
+    const sourceIssues = [];
+    result.forEach(row => {
+      if (!row.combo_sku || !row.normal_sku || row.combo_sku === row.normal_sku || !Number.isFinite(row.quantity) || row.quantity <= 0) {
+        sourceIssues.push({
+          type: "invalid_combo_relation",
+          combo_sku: row.combo_sku,
+          normal_sku: row.normal_sku,
+          quantity: row.quantity,
+          combo_name: row.combo_name,
+          source_modified_at: row.source_modified_at,
+          reason: row.combo_sku === row.normal_sku ? "SKU Combo tự tham chiếu" : "Quan hệ thiếu mã hoặc số lượng không hợp lệ"
+        });
+        return;
+      }
+      unique.set(`${row.combo_sku}\u0000${row.normal_sku}`, row);
+    });
+    return { rows: [...unique.values()], sourceIssues };
   }
 
   async function getSkuSyncData(payload) {
@@ -120,14 +135,16 @@
     const groups = await Promise.all(SKU_CATEGORIES.map(category => fetchChangedProducts(category, cutoff)));
     const normalBySku = new Map();
     groups.flat().forEach(row => normalBySku.set(row.sku, row));
-    const comboRows = await fetchAllComboLinks();
+    const comboData = await fetchAllComboLinks();
+    const comboRows = comboData.rows;
     return {
       generatedAt: new Date().toISOString(),
       cutoff,
       categories: SKU_CATEGORIES,
       normalRows: [...normalBySku.values()],
       comboRows,
-      sourceCounts: { normalRows: normalBySku.size, comboRows: comboRows.length }
+      sourceIssues: comboData.sourceIssues,
+      sourceCounts: { normalRows: normalBySku.size, comboRows: comboRows.length, skippedInvalidComboRows: comboData.sourceIssues.length }
     };
   }
 

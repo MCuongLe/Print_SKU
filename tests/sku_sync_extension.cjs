@@ -29,6 +29,6 @@ assert.equal(core.statusCode("In-Active"), "0");
 assert.match(core.cutoffKey("2026-10-07T01:02:03+07:00"), /^26-10-07 01:02:03$/);
 
 const manifest = JSON.parse(fs.readFileSync("extension/inside-po-connector/manifest.json", "utf8"));
-assert.equal(manifest.version, "0.3.1");
+assert.equal(manifest.version, "0.3.2");
 assert.deepEqual(manifest.content_scripts[1].js, ["sku-sync-core.js", "inside-bridge.js"]);
 console.log("sku_sync_extension: ok");

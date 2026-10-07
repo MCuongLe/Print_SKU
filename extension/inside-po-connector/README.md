@@ -33,7 +33,7 @@ Sau khi repository được cập nhật, mở `chrome://extensions` và bấm *
 
 Extension chỉ đọc Inside. Mọi ghi dữ liệu chạy trong Edge Function `sku-sync`, yêu cầu phiên Supabase có vai trò `admin` và luôn xác minh lại sau khi upsert.
 
-Phiên bản 0.3.1 đọc đầy đủ Combo nhiều thành phần dạng `Combo A=B+C` và chỉ kết thúc phân trang theo số dòng gốc từ Inside.
+Phiên bản 0.3.2 đọc đầy đủ Combo nhiều thành phần dạng `Combo A=B+C`, chỉ kết thúc phân trang theo số dòng gốc và báo cáo riêng các quan hệ tự tham chiếu không hợp lệ từ Inside.
 
 ## Triển khai cho nhiều người
 
