@@ -7,13 +7,23 @@
     return clean(value).toLowerCase() === "active" ? "1" : "0";
   }
 
-  function parseComboDescription(value) {
+  function parseComboDescriptions(value) {
     const text = clean(value);
-    const match = text.match(/\bCombo\s+([^\s=]+)\s*=\s*([^\s,;+]+?)\s*[xX×]\s*([0-9][0-9.,]*)\b/i);
-    if (!match) return null;
-    const quantity = Number(match[3].replace(/,/g, ""));
-    if (!Number.isFinite(quantity) || quantity <= 0) return null;
-    return { comboSku: clean(match[1]), normalSku: clean(match[2]), quantity };
+    const equation = text.match(/\bCombo\s+([^\s=]+)\s*=\s*(.+)$/i);
+    if (!equation) return [];
+    const comboSku = clean(equation[1]);
+    return equation[2].split("+").map(part => {
+      const component = clean(part);
+      const match = component.match(/^([^\s,;+]+?)(?:\s*[xX×]\s*([0-9][0-9.,]*))?$/);
+      if (!match) return null;
+      const quantity = match[2] ? Number(match[2].replace(/,/g, "")) : 1;
+      if (!Number.isFinite(quantity) || quantity <= 0) return null;
+      return { comboSku, normalSku: clean(match[1]), quantity };
+    }).filter(Boolean);
+  }
+
+  function parseComboDescription(value) {
+    return parseComboDescriptions(value)[0] || null;
   }
 
   function cutoffKey(value) {
@@ -26,5 +36,5 @@
     return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}:${parts.second}`;
   }
 
-  globalThis.HasakiSkuSyncCore = Object.freeze({ clean, statusCode, parseComboDescription, cutoffKey });
+  globalThis.HasakiSkuSyncCore = Object.freeze({ clean, statusCode, parseComboDescription, parseComboDescriptions, cutoffKey });
 })();

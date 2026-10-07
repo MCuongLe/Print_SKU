@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "HASAKI Inside PO Connector",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Cầu nối chỉ đọc để lấy PO, danh mục SKU và quan hệ Combo từ phiên Inside đang đăng nhập.",
   "permissions": [
     "tabs",

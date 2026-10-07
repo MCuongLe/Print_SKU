@@ -14,7 +14,7 @@
 | PO item | `unit` | Tên SKU hoặc dữ liệu Inside | Chuẩn hóa `yard`, `pcs`, `m`, `kg`, `cuộn`; nếu không có thì lấy trường cuối trong tên SKU | Không nhận diện được → mặc định `pcs` |
 | Inspection | `sampleQty` | App | `min(lotQty, AQL sample)` | Lô 3 yard → kiểm 3 yard |
 | SKU | `sku`, `product_name`, `category_id`, `status` | Inside `/sales/product` | Thuộc đúng 1 trong 7 category được quản lý; mã và tên không rỗng | Sai cấu trúc hoặc trùng mã → NG, dừng xem trước |
-| Combo link | `combo_sku`, `normal_sku`, `quantity` | Inside `/sales/product/combo` | Hai đầu quan hệ có category trong database; số lượng lớn hơn 0 | Ngoài phạm vi → bỏ qua; dữ liệu nguồn dưới 1.000 dòng → NG |
+| Combo link | `combo_sku`, `normal_sku`, `quantity` | Inside `/sales/product/combo` | Tách đủ từng thành phần trong `Combo A=B+C`; nếu không ghi số lượng thì mặc định 1. Hai đầu quan hệ có category trong database | Ngoài phạm vi → bỏ qua; dữ liệu nguồn dưới 1.000 dòng → NG |
 | Sync run | `changes`, `status`, `verification` | Edge Function `sku-sync` | Admin xem trước rồi mới áp dụng; tối đa 2.000 dòng ghi mỗi nhóm | Vượt ngưỡng hoặc đọc lại không khớp → NG |
 
 ## Origin được phép

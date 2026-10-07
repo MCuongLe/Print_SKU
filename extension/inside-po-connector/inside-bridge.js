@@ -79,19 +79,19 @@
 
   function parseComboPage(doc) {
     const indexes = tableIndexes(doc, { sku: "sku", name: "name", description: "description", modified: "modified", status: "status" });
-    return [...doc.querySelectorAll("table tbody tr")].map(row => {
+    const sourceRows = [...doc.querySelectorAll("table tbody tr")];
+    const rows = sourceRows.flatMap(row => {
       const cells = [...row.cells];
-      const relation = skuCore.parseComboDescription(text(cells[indexes.description]));
-      if (!relation) return null;
-      return {
+      return skuCore.parseComboDescriptions(text(cells[indexes.description])).map(relation => ({
         combo_sku: relation.comboSku,
         normal_sku: relation.normalSku,
         quantity: relation.quantity,
         combo_name: text(cells[indexes.name]),
         combo_status: text(cells[indexes.status]),
         source_modified_at: text(cells[indexes.modified])
-      };
-    }).filter(Boolean);
+      }));
+    });
+    return { rows, sourceRowCount: sourceRows.length };
   }
 
   async function fetchComboPage(page) {
@@ -106,8 +106,8 @@
     const batchSize = 8;
     for (let first = 1; first <= 300; first += batchSize) {
       const pages = await Promise.all(Array.from({ length: batchSize }, (_, index) => fetchComboPage(first + index)));
-      for (const rows of pages) result.push(...rows);
-      if (pages.some(rows => rows.length < 50)) break;
+      for (const page of pages) result.push(...page.rows);
+      if (pages.some(page => page.sourceRowCount < 50)) break;
     }
     const unique = new Map();
     result.forEach(row => unique.set(`${row.combo_sku}\u0000${row.normal_sku}`, row));
