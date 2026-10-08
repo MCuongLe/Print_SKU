@@ -21,6 +21,7 @@ Hai chế độ dùng chung quy trình kiểm tra, upsert, xác minh và lịch 
 - Loại trùng theo `group_uid_code`; nếu một UID xuất hiện nhiều lần thì giữ bản có `updated_at` mới nhất.
 - Giữ một dòng cha cho mỗi UID trong `group_uid_details`; toàn bộ SKU thành phần và số lượng được lưu trong `group_uid_products` để không mất dữ liệu khi một UID chứa nhiều SKU.
 - Chỉ ghi dữ liệu nguồn mới hơn hoặc bằng `group_uid_details.updated_date`.
+- Nguồn không trả sản phẩm nào thì giữ SKU và các dòng `group_uid_products` đã biết (v3); UID nhiều SKU để `group_uid_details.sku` trống.
 - Không tự xóa UID vắng mặt trong nguồn. UID thiếu chỉ được đưa vào báo cáo đối chiếu.
 - Chỉ cập nhật mốc đồng bộ sau khi lấy đủ trang, upsert và đọc lại Supabase thành công.
 - Nếu phiên thất bại, giữ nguyên mốc cũ để lần sau tự lấy lại dữ liệu.
@@ -109,7 +110,8 @@ Thêm mục **Đồng bộ Group UID** trong khu vực Quản trị, cùng cấp
 
 - **Kiểm tra thay đổi**: chạy preview theo watermark.
 - **Đối chiếu toàn bộ**: đọc toàn bộ WMS, không làm mất luồng tăng dần.
-- Hai nút chỉ tạo preview trước. Nút **Cập nhật Supabase** nằm ở phần kết quả.
+- Hai nút chỉ tạo preview trước. Nút **Cập nhật Supabase** và **Hủy xem trước** nằm ở phần kết quả; hủy giải phóng khóa phiên ngay thay vì chờ 30 phút.
+- Ô cảnh báo hiện khi xem trước: tổng UID giảm từ 2% (đối chiếu toàn bộ), có UID thiếu trên WMS, có UID nguồn cũ hơn database, hoặc trên 5.000 UID cập nhật. Chỉ cảnh báo, không chặn.
 - Khi đang chạy, khóa cả hai nút để tránh hai phiên chồng nhau.
 
 ### 5.3. Thẻ tổng quan phiên hiện tại

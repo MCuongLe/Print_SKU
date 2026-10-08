@@ -18,6 +18,7 @@
 | Sync run | `changes`, `status`, `verification` | Edge Function `sku-sync` | Admin xem trước rồi mới áp dụng; tối đa 2.000 dòng ghi mỗi nhóm | Vượt ngưỡng hoặc đọc lại không khớp → NG |
 | Group UID | Mã, SKU, số lượng, trạng thái, `updated_date` | WMS `/api/v1/wms/group-uid-infos` | Mã 6–40 chữ số; số lượng không âm; trạng thái và ngày cập nhật bắt buộc | Sai một dòng → NG, dừng phiên |
 | Group UID sync run | `mode`, khoảng thời gian, trang, thay đổi, xác minh | Edge Function `group-uid-sync` | Incremental lùi watermark 30 phút; full đọc toàn bộ; 500 dòng/trang; chỉ một phiên hoạt động | Thiếu trang, lệch tổng hoặc xác minh sai → NG, không cập nhật watermark |
+| Group UID | `sku`, `products` | WMS `group-uid-infos` | Một SKU → `sku` của UID; nhiều SKU → `sku` để trống, từng SKU ở `group_uid_products`; WMS không trả sản phẩm → GIỮ SKU và sản phẩm đã biết (migration `group_uid_sync_v3_keep_sku.sql`) | Không ghi đè SKU đang có bằng trống |
 
 ## Origin được phép
 
