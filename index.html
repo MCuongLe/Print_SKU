@@ -1409,6 +1409,7 @@ Error generating stack: `+y.message+`
             <div class="barcode-home__choices">
               <button class="barcode-choice" id="barcode-cut-uid" type="button"><span class="barcode-choice__icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5.42 9.42 8 12M14 6l-8.58 8.58M10.8 14.8 14 18M16 12h-2M22 12h-2"/><circle cx="4" cy="8" r="2"/><circle cx="4" cy="16" r="2"/></svg></span><strong>CẮT GROUP UID</strong></button>
               <button class="barcode-choice" id="barcode-find-sku" type="button"><span class="barcode-choice__icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2M16 16l-1.9-1.9"/><circle cx="12" cy="12" r="3"/></svg></span><strong>TÌM SKU</strong></button>
+              <button class="barcode-choice" id="barcode-unit-converter" type="button"><span class="barcode-choice__icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M7 4 4 7l3 3M20 17H4m13-3 3 3-3 3"/><path d="M9 12h6"/></svg></span><strong>CHUYỂN ĐỔI ĐƠN VỊ</strong></button>
               <button class="barcode-choice" id="barcode-xa-vai" type="button"><span class="barcode-choice__icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2h4M12 14v-4M4 13a8 8 0 0 1 8-7 8 8 0 1 1-5.3 14L4 17.6M9 17H4v5"/></svg></span><strong>THEO DÕI XẢ VẢI</strong></button>
             </div>
           </section>
@@ -1855,6 +1856,7 @@ Error generating stack: `+y.message+`
           const uidOpen = current === "group-uid";
           const cutUidOpen = current === "cut-group-uid";
           const findSkuOpen = current === "find-sku";
+           const unitConverterOpen = current === "unit-converter";
           const insOpen = current === "inspection";
           const sampleOpen = current === "sample";
           const storageRiskOpen = current === "storage-risk";
@@ -1879,7 +1881,7 @@ Error generating stack: `+y.message+`
           else storageRiskCloseDetail();
           home.hidden = !homeOpen;
           const root = document.getElementById("root");
-          if (root) root.inert = uidOpen || cutUidOpen || findSkuOpen || homeOpen || insOpen || sampleOpen || storageRiskOpen || fabricOpen || xaVaiOpen || locationOpen;
+          if (root) root.inert = uidOpen || cutUidOpen || findSkuOpen || unitConverterOpen || homeOpen || insOpen || sampleOpen || storageRiskOpen || fabricOpen || xaVaiOpen || locationOpen;
           if (uidOpen) setTimeout(() => groupUid.focus(), 50);
         };
         printSku.addEventListener("click", () => { location.hash = "#worker"; });
@@ -1887,6 +1889,8 @@ Error generating stack: `+y.message+`
         cutUid.addEventListener("click", () => { location.hash = "#cut-group-uid"; });
         const findSkuChoice = document.getElementById("barcode-find-sku");
         if (findSkuChoice) findSkuChoice.addEventListener("click", () => { location.hash = "#find-sku"; });
+         const unitConverterChoice = document.getElementById("barcode-unit-converter");
+         if (unitConverterChoice) unitConverterChoice.addEventListener("click", () => { location.hash = "#unit-converter"; });
         const inspectionChoice = document.getElementById("barcode-inspection");
         if (inspectionChoice) inspectionChoice.addEventListener("click", () => { location.hash = "#inspection"; });
         const sampleChoice = document.getElementById("barcode-sample");
@@ -4105,7 +4109,8 @@ Error generating stack: `+y.message+`
             <div class="cut-empty fsk-empty" id="fsk-sel-empty"><p>Chưa chọn SKU.</p><button class="cut-primary" type="button" data-goto-scan>Quét tem</button></div>
             <div id="fsk-calc-body" hidden>
               <div class="fsk-field"><label for="fsk-qty">Số lượng in lên tem <span class="hint" id="fsk-qty-hint"></span></label><div class="fsk-inrow"><input class="cut-input" id="fsk-qty" inputmode="decimal" autocomplete="off" spellcheck="false" placeholder="ví dụ 300"><span class="fsk-unit" id="fsk-qty-unit"></span></div><div class="fsk-doc" id="fsk-qty-doc"></div></div>
-              <button class="cut-secondary" id="fsk-cd-toggle" type="button" aria-expanded="false">Tính từ cân (kg → mm)</button>
+              <div class="fsk-convert" id="fsk-convert" hidden><button class="cut-primary" id="fsk-open-converter" type="button">Tính số mm ở Chuyển đổi đơn vị</button><small>Bạn cũng có thể gõ thẳng số lượng ở ô trên để in tem ngay.</small></div>
+              <button class="cut-secondary" id="fsk-cd-toggle" type="button" aria-expanded="false" hidden>Tính nhanh tại đây</button>
               <div class="fsk-cd" id="fsk-cd" hidden>
                 <div class="fsk-field"><label>Quy cách cuộn nguyên <span class="hint">chiều dài 1 cuộn còn nguyên kiện</span></label>
                   <div class="fsk-seg fsk-seg--wrap" id="fsk-cd-spec" role="group" aria-label="Quy cách cuộn nguyên"><button type="button" data-mm="2500000" aria-pressed="false">2.500.000 mm</button><button type="button" data-mm="3000000" aria-pressed="false">3.000.000 mm</button><button type="button" data-mm="5000000" aria-pressed="true">5.000.000 mm</button><button type="button" data-mm="0" aria-pressed="false">Khác…</button></div>
@@ -4136,6 +4141,71 @@ Error generating stack: `+y.message+`
         </div>
       </main>
     </section>
+    <section class="cut-screen uc-screen" id="unit-converter-screen" aria-labelledby="uc-title" hidden>
+      <header class="uid-topbar"><div class="uid-topbar__inner"><button class="uid-back" id="uc-back" type="button" aria-label="Quay lại">WH-MATERIAL</button><span class="uid-topbar__mark" aria-hidden="true"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M7 4 4 7l3 3M20 17H4m13-3 3 3-3 3"/><path d="M9 12h6"/></svg></span><div class="uid-topbar__name"><h1 id="uc-title">CHUYỂN ĐỔI ĐƠN VỊ</h1><span>Cân hàng · quy đổi chiều dài · đưa sang in tem</span></div></div></header>
+      <main class="cut-main uc-main">
+        <div class="uc-kind" role="group" aria-label="Loại hàng"><button type="button" data-uc-kind="thread" aria-pressed="true">Chỉ</button><button type="button" data-uc-kind="fabric" aria-pressed="false">Vải</button></div>
+        <p class="cut-message" id="uc-message" aria-live="polite"></p>
+        <div class="uc-layout">
+          <div class="uc-inputs">
+            <section class="cut-card uc-lookup"><h2><span>1</span>Nhận diện hàng <small>không bắt buộc</small></h2>
+              <form class="uc-code-row" id="uc-code-form"><input class="cut-input" id="uc-code" autocomplete="off" inputmode="text" placeholder="Quét hoặc nhập SKU / Group UID…" aria-label="SKU hoặc Group UID"><button class="act-icon act-icon--camera" id="uc-camera" type="button" aria-label="Quét bằng camera" title="Quét bằng camera"></button><button class="cut-secondary act-icon act-icon--search" type="submit">Tra thông số</button></form>
+              <div class="uc-picked" id="uc-picked" hidden><strong id="uc-picked-code"></strong><span id="uc-picked-name"></span><small id="uc-picked-spec"></small></div>
+              <p class="cut-note">Có thể bỏ qua bước này và nhập thông số bằng tay.</p>
+            </section>
+
+            <section class="cut-card uc-data"><h2><span>2</span>Số liệu cân</h2>
+              <div class="fsk-field"><label for="uc-total">Tổng khối lượng trả về <span class="hint">cân cả lô</span></label><div class="fsk-inrow"><input class="cut-input" id="uc-total" inputmode="decimal" autocomplete="off" placeholder="ví dụ 0,9"><span class="fsk-seg" id="uc-weight-unit" role="group" aria-label="Đơn vị cân"><button type="button" data-unit="kg" aria-pressed="true">kg</button><button type="button" data-unit="g" aria-pressed="false">gr</button></span></div><div class="fsk-doc" id="uc-total-doc"></div></div>
+
+              <div id="uc-thread-fields">
+                <div class="uc-two">
+                  <div class="fsk-field"><label for="uc-thread-spec">Quy cách cuộn nguyên</label><div class="fsk-inrow"><input class="cut-input" id="uc-thread-spec" inputmode="decimal" autocomplete="off" placeholder="ví dụ 5000"><span class="fsk-seg" id="uc-thread-spec-unit" role="group" aria-label="Đơn vị quy cách"><button type="button" data-unit="m" aria-pressed="true">m</button><button type="button" data-unit="yard" aria-pressed="false">yard</button></span></div></div>
+                  <div class="fsk-field"><label for="uc-thread-tex">Chỉ số Tex <span class="hint">trên tem</span></label><div class="fsk-inrow"><input class="cut-input" id="uc-thread-tex" inputmode="decimal" autocomplete="off" placeholder="ví dụ 27"><span class="fsk-unit">Tex</span></div></div>
+                </div>
+                <div class="uc-two">
+                  <div class="fsk-field"><label for="uc-thread-cones">Số cuộn thừa</label><div class="fsk-inrow"><input class="cut-input" id="uc-thread-cones" inputmode="numeric" autocomplete="off" placeholder="ví dụ 10"><span class="fsk-unit">cuộn</span></div></div>
+                  <div class="fsk-field"><label for="uc-thread-core">Khối lượng 1 lõi</label><div class="fsk-inrow"><input class="cut-input" id="uc-thread-core" inputmode="decimal" autocomplete="off" placeholder="ví dụ 14"><span class="fsk-unit">gr</span></div></div>
+                </div>
+                <div class="fsk-field"><label for="uc-thread-full">Khối lượng 1 cuộn nguyên <span class="hint">không bắt buộc nếu đã có Tex</span></label><div class="fsk-inrow"><input class="cut-input" id="uc-thread-full" inputmode="decimal" autocomplete="off" placeholder="để trống nếu tính theo Tex"><span class="fsk-unit">gr</span></div><div class="fsk-seg uc-mode" id="uc-thread-full-mode" role="group" aria-label="Cách hiểu khối lượng cuộn nguyên"><button type="button" data-mode="all" aria-pressed="true">cân cả lõi</button><button type="button" data-mode="thread" aria-pressed="false">chỉ riêng chỉ</button></div></div>
+              </div>
+
+              <div id="uc-fabric-fields" hidden>
+                <div class="uc-two">
+                  <div class="fsk-field"><label for="uc-fabric-width">Khổ vải</label><div class="fsk-inrow"><input class="cut-input" id="uc-fabric-width" inputmode="decimal" autocomplete="off" placeholder="ví dụ 150"><span class="fsk-seg" id="uc-fabric-width-unit" role="group" aria-label="Đơn vị khổ"><button type="button" data-unit="cm" aria-pressed="true">cm</button><button type="button" data-unit="inch" aria-pressed="false">inch</button></span></div></div>
+                  <div class="fsk-field"><label for="uc-fabric-gsm">Định lượng</label><div class="fsk-inrow"><input class="cut-input" id="uc-fabric-gsm" inputmode="decimal" autocomplete="off" placeholder="ví dụ 220"><span class="fsk-unit">gsm</span></div></div>
+                </div>
+                <details class="uc-measured" id="uc-fabric-measured"><summary>Cân cuộn nguyên để có kết quả chính xác hơn</summary>
+                  <div class="uc-two">
+                    <div class="fsk-field"><label for="uc-fabric-roll">Chiều dài cuộn nguyên</label><div class="fsk-inrow"><input class="cut-input" id="uc-fabric-roll" inputmode="decimal" autocomplete="off" placeholder="ví dụ 100"><span class="fsk-seg" id="uc-fabric-roll-unit" role="group" aria-label="Đơn vị chiều dài cuộn"><button type="button" data-unit="m" aria-pressed="true">m</button><button type="button" data-unit="yard" aria-pressed="false">yard</button></span></div></div>
+                    <div class="fsk-field"><label for="uc-fabric-full">Khối lượng cuộn nguyên</label><div class="fsk-inrow"><input class="cut-input" id="uc-fabric-full" inputmode="decimal" autocomplete="off" placeholder="ví dụ 33000"><span class="fsk-unit">gr</span></div></div>
+                  </div>
+                </details>
+              </div>
+              <div class="cut-actions uc-data-actions"><button class="cut-secondary" id="uc-next" type="button">Lô tiếp theo</button><button class="cut-secondary" id="uc-clear" type="button">Xoá hết</button></div>
+            </section>
+          </div>
+
+          <section class="cut-card uc-result" aria-live="polite"><h2><span>3</span>Kết quả</h2>
+            <div class="uc-empty" id="uc-empty">Nhập số liệu cân để máy tính.</div>
+            <div id="uc-result" hidden>
+              <div class="uc-result-main"><strong id="uc-mm"></strong><span>mm</span><small>Tổng số lượng quy đổi</small></div>
+              <div class="uc-metrics"><div><b id="uc-m"></b><span>mét</span></div><div><b id="uc-density"></b><span>mm mỗi gram</span></div><div><b id="uc-basis"></b><span>thước đang dùng</span></div></div>
+              <div class="uc-warning" id="uc-warning" hidden></div>
+              <div class="fsk-steps" id="uc-steps"></div>
+              <div class="uc-result-actions"><button class="cut-secondary act-icon act-icon--copy" id="uc-copy" type="button">Copy mm</button><button class="cut-primary act-icon act-icon--print" id="uc-use" type="button" hidden>Quay lại TÌM SKU để in</button></div>
+            </div>
+          </section>
+        </div>
+      </main>
+    </section>
+    <style id="unit-converter-theme">
+      .uc-screen{background:#f3f7f5}.uc-main{max-width:1180px}.uc-kind{display:flex;width:min(420px,100%);margin:0 auto 16px;padding:4px;border:1px solid var(--wms-border,#d9e2de);border-radius:15px;background:#e8efec}.uc-kind button{flex:1;min-height:48px;border:0;border-radius:11px;background:transparent;color:#526861;font:800 15px Arial;cursor:pointer}.uc-kind button[aria-pressed="true"]{color:#fff;background:var(--wms-brand,#005f41);box-shadow:0 5px 14px rgba(0,95,65,.2)}
+      .uc-layout{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(340px,.8fr);gap:16px;align-items:start}.uc-inputs{display:grid;gap:16px}.uc-code-row{display:grid;grid-template-columns:minmax(0,1fr) 48px auto;gap:8px}.uc-picked{display:grid;gap:4px;margin-top:12px;padding:13px 15px;border:1px solid #b9d8cc;border-radius:13px;background:#edf8f4}.uc-picked strong{color:#005f41}.uc-picked span{font-weight:700}.uc-picked small{color:#60736b}.uc-two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.uc-mode{width:max-content;max-width:100%;margin-top:8px}.uc-measured{margin-top:4px;padding:12px 14px;border:1px solid #dce7e3;border-radius:13px;background:#f8faf9}.uc-measured summary{color:#176248;font-weight:800;cursor:pointer}.uc-measured .uc-two{margin-top:12px}.uc-data-actions{margin-top:14px}
+      .uc-result{position:sticky;top:16px}.uc-empty{padding:42px 20px;border:1px dashed #cbdad5;border-radius:14px;color:#72827d;text-align:center}.uc-result-main{display:grid;grid-template-columns:auto 1fr;align-items:baseline;padding:20px;border-left:5px solid #007754;border-radius:14px;background:#edf8f4}.uc-result-main strong{color:#005f41;font-size:34px;line-height:1;font-variant-numeric:tabular-nums}.uc-result-main>span{margin-left:7px;color:#526861;font-weight:800}.uc-result-main small{grid-column:1/-1;margin-top:7px;color:#526861;font-weight:700}.uc-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}.uc-metrics div{padding:12px;border:1px solid #dce7e3;border-radius:12px;background:#fff}.uc-metrics b,.uc-metrics span{display:block}.uc-metrics b{color:#173129;font-size:18px}.uc-metrics span{margin-top:3px;color:#6b7d76;font-size:11px}.uc-warning{margin-top:10px;padding:12px 14px;border-radius:12px;color:#a33b30;background:#fff0ee;font-size:13px;line-height:1.45}.uc-warning[data-tone="note"]{color:#76550c;background:#fff6dc}.uc-result-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:14px}.uc-result-actions button{min-height:48px}.uc-result .fsk-steps{margin-top:12px}.uc-result .fsk-step{grid-template-columns:30px minmax(0,1fr) auto}
+      @media(max-width:800px){.uc-main{padding-bottom:96px}.uc-layout{grid-template-columns:1fr}.uc-code-row{grid-template-columns:minmax(0,1fr) 48px}.uc-code-row .cut-secondary{grid-column:1/-1}.uc-result{position:static}.uc-result-actions{position:sticky;bottom:0;z-index:3;display:grid;grid-template-columns:1fr;margin:14px -16px -16px;padding:12px 16px calc(12px + env(safe-area-inset-bottom));border-top:1px solid #dce7e3;background:rgba(255,255,255,.96);backdrop-filter:blur(8px)}.uc-result-actions button{width:100%}}
+      @media(max-width:520px){.uc-two,.uc-metrics{grid-template-columns:1fr}.uc-result-main strong{font-size:29px}.uc-mode{width:100%}.uc-mode button{flex:1}}
+      @media print{#unit-converter-screen{display:none!important}}
+    </style>
     <style id="find-sku-theme">
       /* Camera toàn màn hình như ứng dụng quét chuyên nghiệp (Google Lens, mẫu quét mã của Material Design):
          bật lên là che hết trang — không phải cuộn; trên: đóng · tiêu đề · đèn pin; giữa: khung 4 góc +
@@ -4248,6 +4318,7 @@ Error generating stack: `+y.message+`
       .fsk-card__id{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:8px}
       .fsk-unit-chip{padding:2px 9px;border-radius:9px;background:var(--wms-text,#17251f);color:#fff;font-size:13px;font-weight:800}
       .fsk-unit-chip[hidden]{display:none}
+      .fsk-convert{display:flex;align-items:center;gap:12px;margin:4px 0 14px;padding:13px;border:1px solid #b9d8cc;border-radius:14px;background:#edf8f4}.fsk-convert[hidden]{display:none}.fsk-convert small{color:#526861;line-height:1.4}.fsk-convert .cut-primary{flex:none;min-height:48px}
       .fsk-card .fsk-name{margin:6px 0 4px}
       .fsk-why{color:var(--wms-muted,#60736b);font-size:12px}
       .fsk-why summary{display:flex;align-items:center;min-height:32px;cursor:pointer}
@@ -4278,6 +4349,7 @@ Error generating stack: `+y.message+`
         #find-sku-screen .cut-tabs{gap:6px;margin-bottom:10px}
         #find-sku-screen .cut-tab{min-height:46px;padding:0 4px;font-size:14px}
         .fsk-bar{margin:16px -16px -16px;padding:12px 16px calc(12px + env(safe-area-inset-bottom))}
+        .fsk-convert{align-items:stretch;flex-direction:column}.fsk-convert .cut-primary{width:100%}
       }
       @media(max-width:369px){.fsk-tab-n{display:none}}
     </style>
@@ -6011,37 +6083,103 @@ var FSK_CORE = (function () {
    */
   function convertWeight(input) {
     var specMm = Number(input.specMm), total = Number(input.total), cones = Number(input.cones);
-    var coreG = Number(input.coreG), fullG = Number(input.fullG);
+    var coreG = Number(input.coreG), fullG = Number(input.fullG), texInput = Number(input.tex);
     var totalG = input.unit === "g" ? total : total * 1000;
+    var hasScale = fullG > 0 && specMm > 0, hasTex = texInput > 0;
     var missing = [];
+    // Audit Factory luôn yêu cầu quy cách với chỉ: ngoài phép tính, số này còn dùng để kiểm tra
+    // trung bình mỗi cuộn thừa có vượt chiều dài một cuộn nguyên hay không.
     if (!(specMm > 0)) missing.push("quy cách cuộn nguyên");
     if (!(total > 0)) missing.push("tổng khối lượng");
     if (!(cones > 0)) missing.push("số cuộn");
     if (!(coreG >= 0) || !isFinite(coreG)) missing.push("khối lượng lõi");
-    if (!(fullG > 0)) missing.push("khối lượng cuộn nguyên");
+    if (!hasScale && !hasTex) missing.push("khối lượng cuộn nguyên hoặc chỉ số Tex");
     if (missing.length) return { ok: false, missing: missing };
     var coreTotalG = cones * coreG;
     var threadG = totalG - coreTotalG;
-    var fullThreadG = input.fullIncludesCore === false ? fullG : fullG - coreG;
-    if (fullThreadG <= 0) {
-      return { ok: false, reason: "cuộn nguyên " + formatNumber(fullG, 1) + " gr mà lõi đã " + formatNumber(coreG, 1) +
-        " gr — phần chỉ còn ≤ 0. Kiểm lại: " + formatNumber(fullG, 1) + " gr là riêng phần chỉ (chọn “chỉ riêng chỉ”) hay cân lõi bị sai?" };
-    }
     if (threadG <= 0) {
       return { ok: false, reason: "cả lô cân " + formatNumber(totalG, 1) + " gr nhưng " + formatNumber(cones) + " lõi đã chiếm " +
         formatNumber(coreTotalG, 1) + " gr — không còn chỉ nào. Kiểm lại số cuộn, khối lượng lõi, hoặc đơn vị kg/gr." };
     }
-    var mmPerG = specMm / fullThreadG;
+    var fullThreadG = NaN, scaleGPerM = NaN;
+    if (hasScale) {
+      fullThreadG = input.fullIncludesCore === false ? fullG : fullG - coreG;
+      if (fullThreadG <= 0) {
+        return { ok: false, reason: "cuộn nguyên " + formatNumber(fullG, 1) + " gr mà lõi đã " + formatNumber(coreG, 1) +
+          " gr — phần chỉ còn ≤ 0. Kiểm lại: " + formatNumber(fullG, 1) + " gr là riêng phần chỉ (chọn “chỉ riêng chỉ”) hay cân lõi bị sai?" };
+      }
+      scaleGPerM = fullThreadG * 1000 / specMm;
+    }
+    var texGPerM = hasTex ? texInput / 1000 : NaN;
+    // Có cân cuộn nguyên thì cân thắng; Tex chỉ làm đối chứng. Không có cân thì Tex là thước chính.
+    var method = hasScale ? "scale" : "tex";
+    var gPerM = hasScale ? scaleGPerM : texGPerM;
+    var mmPerG = 1000 / gPerM;
     var mm = Math.round(threadG * mmPerG);
     var avgMm = mm / cones;
     var flag = null;
-    if (avgMm > specMm) flag = "impossible";          // cuộn thừa dài hơn cuộn nguyên: số liệu sai ở đâu đó
+    if (avgMm > specMm) flag = "impossible";
     else if (avgMm / specMm >= 0.995) flag = "nearly_full";
+    var differencePct = hasScale && hasTex ? Math.abs(scaleGPerM - texGPerM) / texGPerM * 100 : NaN;
     return {
-      ok: true, mm: mm, totalG: totalG, coreTotalG: coreTotalG, threadG: threadG, fullThreadG: fullThreadG,
-      mmPerG: mmPerG, equivalentCones: mm / specMm, avgMm: avgMm, avgPct: avgMm / specMm * 100,
-      tex: fullThreadG * 1000000 / specMm, flag: flag
+      ok: true, material: "thread", method: method, mm: mm, totalG: totalG, coreTotalG: coreTotalG,
+      threadG: threadG, fullThreadG: fullThreadG, gPerM: gPerM, mmPerG: mmPerG,
+      equivalentCones: mm / specMm, avgMm: avgMm, avgPct: avgMm / specMm * 100,
+      tex: gPerM * 1000, texInput: hasTex ? texInput : NaN, differencePct: differencePct, flag: flag
     };
+  }
+
+  function convertFabric(input) {
+    var total = Number(input.total), totalG = input.unit === "g" ? total : total * 1000;
+    var width = Number(input.width), gsm = Number(input.gsm), fullG = Number(input.fullG);
+    var widthCm = input.widthUnit === "inch" ? width * 2.54 : width;
+    var rollLength = Number(input.rollLength), rollM = input.rollUnit === "yard" ? rollLength * 0.9144 : rollLength;
+    var nominalGPerM = widthCm > 0 && gsm > 0 ? gsm * widthCm / 100 : NaN;
+    var scaleGPerM = rollM > 0 && fullG > 0 ? fullG / rollM : NaN;
+    var hasNominal = nominalGPerM > 0, hasScale = scaleGPerM > 0;
+    var missing = [];
+    if (!(total > 0)) missing.push("tổng khối lượng");
+    if (!hasNominal && !hasScale) missing.push("khổ + định lượng, hoặc quy cách + khối lượng cuộn nguyên");
+    if (missing.length) return { ok: false, missing: missing };
+    var method = hasScale ? "scale" : "gsm";
+    var gPerM = hasScale ? scaleGPerM : nominalGPerM;
+    var mmPerG = 1000 / gPerM;
+    var mm = Math.round(totalG * mmPerG);
+    var differencePct = hasScale && hasNominal ? Math.abs(scaleGPerM - nominalGPerM) / nominalGPerM * 100 : NaN;
+    return {
+      ok: true, material: "fabric", method: method, mm: mm, totalG: totalG, gPerM: gPerM,
+      mmPerG: mmPerG, widthCm: widthCm, gsm: gsm, rollM: rollM, fullG: fullG,
+      nominalGPerM: nominalGPerM, scaleGPerM: scaleGPerM, differencePct: differencePct,
+      equivalentRolls: rollM > 0 ? mm / (rollM * 1000) : NaN
+    };
+  }
+
+  function texFromName(productName) {
+    var m = String(productName || "").match(/\b(?:tex|text)\s*[-:=]?\s*(\d+(?:[.,]\d+)?)/i);
+    if (!m) return null;
+    var value = parseFloat(m[1].replace(",", "."));
+    return value > 0 && value <= 1000 ? value : null;
+  }
+
+  function fabricFromName(productName) {
+    var name = String(productName || ""), gsmMatch = name.match(/(\d+(?:[.,]\d+)?)\s*gsm\b/i);
+    var gsm = gsmMatch ? parseFloat(gsmMatch[1].replace(",", ".")) : null, widthCm = null, source = "";
+    var cmMatch = name.match(/(\d+(?:[.,]\d+)?)\s*cm\b/i);
+    if (cmMatch) { widthCm = parseFloat(cmMatch[1].replace(",", ".")); source = "cm"; }
+    else {
+      var inchMatch = name.match(/(\d+(?:[.,]\d+)?)(?:[_-](\d+(?:[.,]\d+)?))?\s*(?:in|inch)\b/i);
+      if (inchMatch) {
+        var a = parseFloat(inchMatch[1].replace(",", "."));
+        var b = inchMatch[2] == null ? a : parseFloat(inchMatch[2].replace(",", "."));
+        widthCm = (a + b) / 2 * 2.54; source = "inch";
+      }
+    }
+    return { gsm: gsm > 0 ? gsm : null, widthCm: widthCm > 0 ? widthCm : null, source: source };
+  }
+
+  function materialOf(productName) {
+    var key = String(productName || "").trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/đ/g, "d");
+    return /^vai\b/.test(key) ? "fabric" : (/^chi\b/.test(key) ? "thread" : "");
   }
 
   // Đơn vị của SKU = ô CUỐI CÙNG của tên (tách bởi "/"), đúng quy ước WMS đặt tên
@@ -6113,7 +6251,8 @@ var FSK_CORE = (function () {
     };
   }
 
-  return { parseNumber: parseNumber, formatNumber: formatNumber, convertWeight: convertWeight, unitOf: unitOf,
+  return { parseNumber: parseNumber, formatNumber: formatNumber, convertWeight: convertWeight, convertFabric: convertFabric,
+    texFromName: texFromName, fabricFromName: fabricFromName, materialOf: materialOf, unitOf: unitOf,
     specFromName: specFromName, frameStats: frameStats, createAutoCapture: createAutoCapture };
 })();
 /* ===== FSK-CORE (ket thuc) ===== */
@@ -6615,7 +6754,8 @@ var FSK_CORE = (function () {
           doc("fsk-cd-cones-doc", cones, "cuộn", 0);
           doc("fsk-cd-core-doc", coreG, isFinite(coreG) && isFinite(cones) && cones > 0 ? `gr/lõi → ${fmt(coreG * cones, 1)} gr lõi cho cả lô` : "gr", 1);
           doc("fsk-cd-full-doc", fullG, cd.fullIncludesCore ? (isFinite(fullG) && isFinite(coreG) ? `gr cả lõi → chỉ trong cuộn nguyên còn ${fmt(fullG - coreG, 1)} gr` : "gr (cả lõi)") : "gr riêng phần chỉ", 1);
-          const r = FSK_CORE.convertWeight({ specMm, total, unit: cd.unit, cones, coreG, fullG, fullIncludesCore: cd.fullIncludesCore });
+          const r = FSK_CORE.convertWeight({ specMm, total, unit: cd.unit, cones, coreG, fullG,
+            tex: FSK_CORE.texFromName(state.selected?.pn), fullIncludesCore: cd.fullIncludesCore });
           cdField.tiles.hidden = !r.ok; cdField.steps.hidden = !r.ok; cdField.note.innerHTML = "";
           if (!r.ok) {
             cdField.state.hidden = false;
@@ -6626,7 +6766,7 @@ var FSK_CORE = (function () {
           cdSave();
           cdField.state.hidden = true;
           cdField.tiles.innerHTML =
-            tile("to", `${fmt(r.mm)} <small>mm</small>`, "Tổng số lượng quy đổi", `${fmt(cones)} cuộn thừa · mật độ ${fmt(r.mmPerG)} mm/gr · ≈ Tex ${fmt(r.tex, 1)}`) +
+            tile("to", `${fmt(r.mm)} <small>mm</small>`, "Tổng số lượng quy đổi", `${fmt(cones)} cuộn thừa · mật độ ${fmt(r.mmPerG)} mm/gr · ${r.method === "tex" ? `Tex ${fmt(r.texInput, 1)} theo tem` : `≈ Tex ${fmt(r.tex, 1)} theo cân`}`) +
             tile("", `${fmt(r.mm / 1000, 1)} <small>m</small>`, "Quy ra mét", `${fmt(r.mm / 1000000, 2)} km`) +
             tile("", `${fmt(r.equivalentCones, 2)} <small>cuộn</small>`, "Tương đương cuộn nguyên", `${fmt(specMm)} mm mỗi cuộn`) +
             tile("", `${fmt(r.avgMm)} <small>mm</small>`, "Trung bình 1 cuộn thừa", `${fmt(r.avgPct, 1)}% cuộn nguyên`);
@@ -6634,7 +6774,7 @@ var FSK_CORE = (function () {
             step(1, `Cân cả lô${cd.unit === "kg" ? ` (${fmt(total, 3)} kg)` : ""}`, `${fmt(r.totalG, 1)} gr`) +
             step(2, `Trừ lõi — ${fmt(cones)} cuộn × ${fmt(coreG, 1)} gr`, `− ${fmt(r.coreTotalG, 1)} gr`) +
             step(3, "Còn lại là <b>chỉ thật</b>", `${fmt(r.threadG, 1)} gr`) +
-            step(4, `Cuộn nguyên ${fmt(specMm)} mm có ${fmt(r.fullThreadG, 1)} gr chỉ${cd.fullIncludesCore ? ` (${fmt(fullG, 1)} gr cả lõi − ${fmt(coreG, 1)} gr lõi)` : " (số nhà cung cấp ghi)"}`, `${fmt(r.mmPerG)} mm/gr`) +
+            step(4, r.method === "tex" ? `Tex ${fmt(r.texInput, 1)} trên tem — 1.000 m chỉ nặng ${fmt(r.texInput, 1)} gr` : `Cuộn nguyên ${fmt(specMm)} mm có ${fmt(r.fullThreadG, 1)} gr chỉ${cd.fullIncludesCore ? ` (${fmt(fullG, 1)} gr cả lõi − ${fmt(coreG, 1)} gr lõi)` : " (số nhà cung cấp ghi)"}`, `${fmt(r.mmPerG)} mm/gr`) +
             step("=", `<b>${fmt(r.threadG, 1)} gr × ${fmt(r.mmPerG)} mm/gr</b>`, `${fmt(r.mm)} mm`, true);
           if (r.flag === "impossible") {
             cdField.note.innerHTML = `<div class="fsk-warn fsk-warn--bad"><b>Số liệu vô lý — đừng in tem ngay.</b> Mỗi cuộn thừa đang ra ${fmt(r.avgMm)} mm, <b>dài hơn cả cuộn nguyên</b> ${fmt(specMm)} mm (${fmt(r.avgPct)}%). Kiểm lại theo thứ tự: đơn vị <b>kg/gr</b> → <b>số cuộn</b> đếm đủ chưa → <b>khối lượng cuộn nguyên</b> có đúng quy cách không.</div>`;
@@ -6658,7 +6798,7 @@ var FSK_CORE = (function () {
           const s = state.selected;
           tabs.calc.btn.setAttribute("aria-disabled", String(!s));
           selBox.hidden = !s; selEmpty.hidden = Boolean(s); calcBody.hidden = !s;
-          if (!s) return;
+          if (!s) { $("fsk-convert").hidden = true; return; }
           $("fsk-sel-sku").textContent = s.sku;
           $("fsk-sel-unit-chip").textContent = s.unit.raw; $("fsk-sel-unit-chip").hidden = !s.unit.raw;
           $("fsk-sel-name").textContent = s.pn;
@@ -6667,6 +6807,7 @@ var FSK_CORE = (function () {
           $("fsk-sel-unit").textContent = s.unit.raw ? `Đơn vị của SKU: ${s.unit.raw}${s.unit.isLength ? " — số lượng in lên tem tính bằng mm" : ""}` : "Tên SKU không ghi đơn vị";
           $("fsk-qty-unit").textContent = s.unit.raw || "";
           $("fsk-qty-hint").textContent = s.unit.isLength ? "tính từ cân bên dưới, hoặc gõ thẳng" : "gõ đúng số sẽ in lên tem";
+          $("fsk-convert").hidden = !(s.unit.isLength && FSK_CORE.materialOf(s.pn) === "thread");
           syncAddBar();
         };
         // Dòng tóm tắt trên thanh "Thêm vào chờ in": đúng cái sẽ in — số lượng là số in lên MỖI tem, không nhân số tem.
@@ -6695,11 +6836,10 @@ var FSK_CORE = (function () {
           qtyInput.value = ""; qtyDoc.textContent = ""; copiesInput.value = "1";
           renderSelected();
           if (state.selected.unit.isLength) {
-            openCalc(true);
+            openCalc(false);
             const spec = FSK_CORE.specFromName(pn);
             if (spec) setSpec([2500000, 3000000, 5000000].includes(spec) ? spec : (cdField.specCustom.value = String(spec), 0), true);
             cdField.total.value = ""; cdField.cones.value = "";
-            compute();
           } else openCalc(false);
           setActiveTab("calc");
           tell(combo ? `Đã đổi SKU Combo ${combo.sku} sang SKU Normal ${sku} — nhập số lượng và số tem.` : `Đã chọn SKU ${sku} — nhập số lượng và số tem.`, "ok");
@@ -6709,6 +6849,14 @@ var FSK_CORE = (function () {
         cdField.fullMode.addEventListener("click", event => { const b = event.target.closest("button[data-mode]"); if (b) setFullMode(b.dataset.mode); });
         [cdField.specCustom, cdField.total, cdField.cones, cdField.core, cdField.full].forEach(input => input.addEventListener("input", compute));
         cdToggle.addEventListener("click", () => openCalc(cdBox.hidden));
+        $("fsk-open-converter").addEventListener("click", () => {
+          const s = state.selected;
+          if (!s) return;
+          const context = { returnTo: "find-sku", kind: "thread", sku: s.sku, pn: s.pn,
+            specMm: FSK_CORE.specFromName(s.pn), tex: FSK_CORE.texFromName(s.pn) };
+          try { sessionStorage.setItem("unit-converter-context", JSON.stringify(context)); } catch (_) {}
+          location.hash = "#unit-converter";
+        });
         $("fsk-cd-next").addEventListener("click", () => { cdField.total.value = ""; cdField.cones.value = ""; compute(); cdField.total.focus(); });
         $("fsk-cd-clear").addEventListener("click", () => {
           [cdField.specCustom, cdField.total, cdField.cones, cdField.core, cdField.full].forEach(input => { input.value = ""; });
@@ -6918,10 +7066,20 @@ var FSK_CORE = (function () {
         printButton.addEventListener("click", printSelected);
         $("fsk-back").addEventListener("click", () => { location.hash = "#home"; });
 
+        const consumeUnitResult = () => {
+          let data = null;
+          try { data = JSON.parse(sessionStorage.getItem("fsk-unit-result") || "null"); sessionStorage.removeItem("fsk-unit-result"); } catch (_) {}
+          if (!data || !(Number(data.mm) > 0) || !data.sku || !data.pn) return;
+          state.selected = { sku: String(data.sku), pn: String(data.pn), unit: FSK_CORE.unitOf(data.pn), combo: null };
+          qtyInput.value = String(Math.round(Number(data.mm))); copiesInput.value = "1";
+          renderSelected(); qtyInput.dispatchEvent(new Event("input"));
+          activeTab = "calc"; tell(`Đã nhận ${fmt(Number(data.mm))} mm từ Chuyển đổi đơn vị — kiểm tra số tem rồi thêm vào chờ in.`, "ok");
+        };
         const render = () => {
           const open = active();
           screen.hidden = !open;
           if (!open) { stopCamera(); clearTimeout(state.pollTimer); return; }
+          consumeUnitResult();
           renderTags(); renderSelected(); renderQueue();
           ensureCatalog().catch(() => {});
           setActiveTab(activeTab);
@@ -6929,6 +7087,152 @@ var FSK_CORE = (function () {
         };
         window.addEventListener("hashchange", render);
         render();
+      })();
+    </script>
+    <script id="unit-converter-app">
+      (() => {
+        const screen = document.getElementById("unit-converter-screen");
+        if (!screen || typeof FSK_CORE === "undefined") return;
+        const $ = id => document.getElementById(id);
+        const fields = {
+          total: $("uc-total"), threadSpec: $("uc-thread-spec"), threadTex: $("uc-thread-tex"),
+          threadCones: $("uc-thread-cones"), threadCore: $("uc-thread-core"), threadFull: $("uc-thread-full"),
+          fabricWidth: $("uc-fabric-width"), fabricGsm: $("uc-fabric-gsm"), fabricRoll: $("uc-fabric-roll"), fabricFull: $("uc-fabric-full")
+        };
+        const state = { kind: "thread", weightUnit: "kg", threadSpecUnit: "m", fullIncludesCore: true,
+          fabricWidthUnit: "cm", fabricRollUnit: "m", selected: null, result: null, returnTo: "" };
+        const active = () => location.hash.replace(/^#/, "").split("&")[0] === "unit-converter";
+        const num = input => FSK_CORE.parseNumber(input?.value);
+        const fmt = (value, decimals = 0) => FSK_CORE.formatNumber(value, decimals);
+        const esc = value => String(value ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+        const pressed = (id, attr, value) => $(id).querySelectorAll("button").forEach(button => button.setAttribute("aria-pressed", String(button.dataset[attr] === String(value))));
+        const tell = (text, tone = "") => { $("uc-message").textContent = text; $("uc-message").dataset.tone = tone; };
+        const step = (n, title, value, total) => `<div class="fsk-step${total ? " tong" : ""}"><span class="n">${n}</span><span class="t">${title}</span><span class="v">${value}</span></div>`;
+        const setKind = kind => {
+          state.kind = kind === "fabric" ? "fabric" : "thread";
+          screen.querySelectorAll("[data-uc-kind]").forEach(button => button.setAttribute("aria-pressed", String(button.dataset.ucKind === state.kind)));
+          $("uc-thread-fields").hidden = state.kind !== "thread";
+          $("uc-fabric-fields").hidden = state.kind !== "fabric";
+          compute();
+        };
+        const updateTotalDoc = () => {
+          const value = num(fields.total), doc = $("uc-total-doc");
+          if (!isFinite(value)) { doc.textContent = fields.total.value.trim() ? `Không đọc được số từ “${fields.total.value.trim()}”` : ""; return; }
+          doc.textContent = state.weightUnit === "kg" ? `Đọc là ${fmt(value, 3)} kg = ${fmt(value * 1000, 1)} gr` : `Đọc là ${fmt(value, 1)} gr = ${fmt(value / 1000, 3)} kg`;
+        };
+        const showInvalid = result => {
+          state.result = null; $("uc-result").hidden = true; $("uc-empty").hidden = false;
+          $("uc-empty").innerHTML = result?.missing ? `Còn thiếu: <b>${result.missing.map(esc).join("</b> · <b>")}</b>.` : result?.reason ? `<b>Không tính được:</b> ${esc(result.reason)}` : "Nhập số liệu cân để máy tính.";
+        };
+        const renderResult = (result, input) => {
+          state.result = result; $("uc-empty").hidden = true; $("uc-result").hidden = false;
+          $("uc-mm").textContent = fmt(result.mm); $("uc-m").textContent = fmt(result.mm / 1000, 1);
+          const densityDecimals = result.mmPerG >= 100 ? 0 : (result.mmPerG >= 10 ? 1 : 3);
+          $("uc-density").textContent = fmt(result.mmPerG, densityDecimals);
+          $("uc-basis").textContent = result.material === "thread"
+            ? (result.method === "scale" ? `Cân cuộn · Tex ${fmt(result.tex, 1)}` : `Tex ${fmt(result.texInput, 1)}`)
+            : (result.method === "scale" ? `${fmt(result.gPerM, 1)} g/m cân thật` : `${fmt(result.gPerM, 1)} g/m theo GSM`);
+          const warning = $("uc-warning"); warning.hidden = true; warning.dataset.tone = ""; warning.textContent = "";
+          if (result.flag === "impossible") warning.textContent = `Số liệu vô lý: trung bình mỗi cuộn thừa ${fmt(result.avgMm)} mm, dài hơn cuộn nguyên ${fmt(input.specMm)} mm. Kiểm tra đơn vị cân, số cuộn và thông số cuộn nguyên.`;
+          else if (result.differencePct > 5) warning.textContent = `Hai thước đo lệch ${fmt(result.differencePct, 1)}%. Máy đang ưu tiên cân cuộn nguyên; hãy kiểm tra lại thông số trên tem hoặc số cân mẫu.`;
+          else if (result.flag === "nearly_full") { warning.dataset.tone = "note"; warning.textContent = `Lô gần như còn nguyên: trung bình ${fmt(result.avgPct, 1)}% mỗi cuộn.`; }
+          else if (result.material === "fabric" && result.method === "gsm") { warning.dataset.tone = "note"; warning.textContent = "Đang tính theo định lượng danh nghĩa. Kết quả vải có thể lệch khoảng ±5–8%; cân thêm một cuộn nguyên nếu cần số chắc hơn."; }
+          warning.hidden = !warning.textContent;
+          if (result.material === "thread") {
+            $("uc-steps").innerHTML = step(1, `Cân cả lô${state.weightUnit === "kg" ? ` (${fmt(num(fields.total), 3)} kg)` : ""}`, `${fmt(result.totalG, 1)} gr`) +
+              step(2, `Trừ lõi — ${fmt(num(fields.threadCones))} cuộn × ${fmt(num(fields.threadCore), 1)} gr`, `− ${fmt(result.coreTotalG, 1)} gr`) +
+              step(3, "Còn lại là <b>chỉ thật</b>", `${fmt(result.threadG, 1)} gr`) +
+              step(4, result.method === "scale" ? `Cuộn nguyên dùng làm thước đo${isFinite(result.texInput) ? " · Tex dùng đối chứng" : ""}` : `Tex ${fmt(result.texInput, 1)} trên tem`, `${fmt(result.mmPerG, densityDecimals)} mm/gr`) +
+              step("=", `<b>${fmt(result.threadG, 1)} gr × ${fmt(result.mmPerG, densityDecimals)} mm/gr</b>`, `${fmt(result.mm)} mm`, true);
+          } else {
+            $("uc-steps").innerHTML = step(1, `Cân tổng vải${state.weightUnit === "kg" ? ` (${fmt(num(fields.total), 3)} kg)` : ""}`, `${fmt(result.totalG, 1)} gr`) +
+              step(2, result.method === "scale" ? `Cân cuộn nguyên ${fmt(result.fullG, 1)} gr / ${fmt(result.rollM, 2)} m` : `${fmt(result.gsm)} gsm × khổ ${fmt(result.widthCm, 1)} cm`, `${fmt(result.gPerM, 3)} gr/m`) +
+              step(3, "Một gram vải dài", `${fmt(result.mmPerG, densityDecimals)} mm/gr`) +
+              step("=", `<b>${fmt(result.totalG, 1)} gr × ${fmt(result.mmPerG, densityDecimals)} mm/gr</b>`, `${fmt(result.mm)} mm`, true);
+          }
+          // Chỉ chuyển sang in khi đơn vị thật của SKU là chiều dài. SKU vải lưu theo gram vẫn
+          // được tính/copy mm, nhưng không được gắn nhầm số mm lên tem có đơn vị g.
+          const use = $("uc-use"); use.hidden = !(state.selected?.sku && state.selected?.pn && FSK_CORE.unitOf(state.selected.pn).isLength);
+          use.textContent = state.returnTo === "find-sku" ? "Quay lại TÌM SKU để in" : "Đưa sang TÌM SKU để in";
+        };
+        function compute() {
+          updateTotalDoc();
+          if (state.kind === "thread") {
+            const specValue = num(fields.threadSpec);
+            const specMm = isFinite(specValue) ? specValue * (state.threadSpecUnit === "yard" ? 0.9144 : 1) * 1000 : NaN;
+            const input = { specMm, total: num(fields.total), unit: state.weightUnit, cones: num(fields.threadCones),
+              coreG: num(fields.threadCore), fullG: num(fields.threadFull), tex: num(fields.threadTex), fullIncludesCore: state.fullIncludesCore };
+            const result = FSK_CORE.convertWeight(input); return result.ok ? renderResult(result, input) : showInvalid(result);
+          }
+          const input = { total: num(fields.total), unit: state.weightUnit, width: num(fields.fabricWidth), widthUnit: state.fabricWidthUnit,
+            gsm: num(fields.fabricGsm), rollLength: num(fields.fabricRoll), rollUnit: state.fabricRollUnit, fullG: num(fields.fabricFull) };
+          const result = FSK_CORE.convertFabric(input); return result.ok ? renderResult(result, input) : showInvalid(result);
+        }
+        const apiHeaders = () => ({ apikey: window.PrintSkuQueue.publishableKey, Authorization: `Bearer ${window.PrintSkuQueue.publishableKey}` });
+        const lookupSku = async code => {
+          const q = window.PrintSkuQueue, response = await fetch(`${q.supabaseUrl}/rest/v1/SKU_Name?select=sku,product_name&sku=eq.${encodeURIComponent(code)}&limit=1`, { headers: apiHeaders(), signal: AbortSignal.timeout(8000) });
+          if (!response.ok) throw new Error(`HTTP ${response.status}`); const rows = await response.json();
+          return rows[0] ? { code, sku: String(rows[0].sku || code), pn: String(rows[0].product_name || ""), uid: "" } : null;
+        };
+        const lookupUid = async code => {
+          const q = window.PrintSkuQueue, response = await fetch(`${q.supabaseUrl}/rest/v1/rpc/group_uid_lookup`, { method: "POST", headers: { ...apiHeaders(), "Content-Type": "application/json" }, body: JSON.stringify({ p_codes: [code] }), signal: AbortSignal.timeout(10000) });
+          if (!response.ok) throw new Error(`HTTP ${response.status}`); const rows = await response.json(), row = rows[0];
+          return row ? { code, sku: String(row.sku || ""), pn: String(row.product_name || ""), uid: String(row.group_uid_code || code) } : null;
+        };
+        const lookup = async code => {
+          const value = String(code || "").trim(); if (!value) return null;
+          if (/^\d{16}$/.test(value)) return await lookupUid(value);
+          return await lookupSku(value) || await lookupUid(value);
+        };
+        const applyProduct = hit => {
+          state.selected = hit;
+          $("uc-picked").hidden = false; $("uc-picked-code").textContent = hit.uid ? `${hit.uid} · SKU ${hit.sku || "—"}` : `SKU ${hit.sku}`;
+          $("uc-picked-name").textContent = hit.pn || "Tên sản phẩm chưa có trong danh mục";
+          const material = FSK_CORE.materialOf(hit.pn); if (material) setKind(material);
+          if (material === "thread") {
+            const spec = FSK_CORE.specFromName(hit.pn), tex = FSK_CORE.texFromName(hit.pn);
+            if (spec) { fields.threadSpec.value = String(spec / 1000); state.threadSpecUnit = "m"; pressed("uc-thread-spec-unit", "unit", "m"); }
+            if (tex) fields.threadTex.value = String(tex);
+            $("uc-picked-spec").textContent = [spec && `${fmt(spec / 1000)} m/cuộn`, tex && `Tex ${fmt(tex, 1)}`].filter(Boolean).join(" · ") || "Không đọc được quy cách/Tex — nhập tay bên dưới.";
+          } else if (material === "fabric") {
+            const spec = FSK_CORE.fabricFromName(hit.pn);
+            if (spec.widthCm) { fields.fabricWidth.value = String(Number(spec.widthCm.toFixed(3))); state.fabricWidthUnit = "cm"; pressed("uc-fabric-width-unit", "unit", "cm"); }
+            if (spec.gsm) fields.fabricGsm.value = String(spec.gsm);
+            $("uc-picked-spec").textContent = [spec.widthCm && `khổ ${fmt(spec.widthCm, 1)} cm`, spec.gsm && `${fmt(spec.gsm)} gsm`].filter(Boolean).join(" · ") || "Không đọc được khổ/GSM — nhập tay bên dưới.";
+          } else $("uc-picked-spec").textContent = "Chưa nhận diện được loại hàng — chọn Chỉ hoặc Vải rồi nhập tay.";
+          compute();
+        };
+        const runLookup = async code => {
+          tell(`Đang tra ${code}…`); try { const hit = await lookup(code); if (!hit) return tell("Không tìm thấy mã này. Bạn vẫn có thể nhập thông số bằng tay.", "warn"); applyProduct(hit); tell(`Đã đọc thông số từ ${hit.uid ? "Group UID" : "SKU"}. Kiểm tra lại trước khi dùng.`, "ok"); }
+          catch (error) { tell(`Không tra được mã: ${error.message}. Có thể tiếp tục nhập tay.`, "error"); }
+        };
+        $("uc-code-form").addEventListener("submit", event => { event.preventDefault(); const code = $("uc-code").value.trim(); if (code) runLookup(code); });
+        $("uc-camera").hidden = !window.PrintSkuScanUI?.canOpen?.();
+        $("uc-camera").addEventListener("click", () => window.PrintSkuScanUI?.open({ title: "Quét SKU hoặc Group UID", typeLabel: "Gõ SKU hoặc Group UID", notFound: "Không tìm thấy mã trong dữ liệu", check: async code => { const hit = await lookup(code); return hit ? { sku: code, ten: hit.pn } : null; }, onCode: code => { $("uc-code").value = code; runLookup(code); }, typeFocus: "uc-code" }));
+        screen.querySelector(".uc-kind").addEventListener("click", event => { const button = event.target.closest("[data-uc-kind]"); if (button) setKind(button.dataset.ucKind); });
+        const unitGroups = { "uc-weight-unit": "weightUnit", "uc-thread-spec-unit": "threadSpecUnit", "uc-fabric-width-unit": "fabricWidthUnit", "uc-fabric-roll-unit": "fabricRollUnit" };
+        Object.keys(unitGroups).forEach(id => $(id).addEventListener("click", event => { const button = event.target.closest("button[data-unit]"); if (!button) return; state[unitGroups[id]] = button.dataset.unit; pressed(id, "unit", button.dataset.unit); compute(); }));
+        $("uc-thread-full-mode").addEventListener("click", event => { const button = event.target.closest("button[data-mode]"); if (!button) return; state.fullIncludesCore = button.dataset.mode !== "thread"; pressed("uc-thread-full-mode", "mode", button.dataset.mode); compute(); });
+        Object.values(fields).forEach(input => input.addEventListener("input", compute));
+        $("uc-next").addEventListener("click", () => { fields.total.value = ""; if (state.kind === "thread") fields.threadCones.value = ""; compute(); fields.total.focus(); });
+        $("uc-clear").addEventListener("click", () => { Object.values(fields).forEach(input => { input.value = ""; }); state.selected = null; state.returnTo = ""; $("uc-picked").hidden = true; $("uc-code").value = ""; tell(""); compute(); });
+        $("uc-copy").addEventListener("click", async () => { if (!state.result) return; const text = String(state.result.mm); try { await navigator.clipboard.writeText(text); tell(`Đã copy ${fmt(state.result.mm)} mm.`, "ok"); } catch (_) { const area = document.createElement("textarea"); area.value = text; document.body.append(area); area.select(); document.execCommand("copy"); area.remove(); tell(`Đã copy ${fmt(state.result.mm)} mm.`, "ok"); } });
+        $("uc-use").addEventListener("click", () => { if (!state.result || !state.selected?.sku || !state.selected?.pn) return; try { sessionStorage.setItem("fsk-unit-result", JSON.stringify({ sku: state.selected.sku, pn: state.selected.pn, mm: state.result.mm })); sessionStorage.removeItem("unit-converter-context"); } catch (_) {} location.hash = "#find-sku"; });
+        $("uc-back").addEventListener("click", () => { try { sessionStorage.removeItem("unit-converter-context"); } catch (_) {} location.hash = state.returnTo === "find-sku" ? "#find-sku" : "#home"; });
+        const loadContext = () => {
+          let data = null; try { data = JSON.parse(sessionStorage.getItem("unit-converter-context") || "null"); } catch (_) {}
+          if (!data) return;
+          state.returnTo = data.returnTo || "";
+          if (data.kind) setKind(data.kind);
+          if (data.sku && data.pn) applyProduct({ code: data.sku, sku: data.sku, pn: data.pn, uid: "" });
+          if (data.specMm > 0) { fields.threadSpec.value = String(data.specMm / 1000); state.threadSpecUnit = "m"; pressed("uc-thread-spec-unit", "unit", "m"); }
+          if (data.tex > 0) fields.threadTex.value = String(data.tex);
+          tell("Đã mang SKU từ TÌM SKU sang. Nhập số cân để tính, rồi quay lại in tem.", "ok"); compute();
+        };
+        let wasOpen = false;
+        const render = () => { const open = active(); screen.hidden = !open; if (!open) { wasOpen = false; return; } if (!wasOpen) { wasOpen = true; loadContext(); } compute(); };
+        addEventListener("hashchange", render); setKind("thread"); compute(); render();
+        window.UnitConverter = { compute, lookup, applyProduct };
       })();
     </script>
     <div class="cut-barcode-modal" id="cut-barcode-modal" role="dialog" aria-modal="true" aria-labelledby="cut-barcode-modal-code" hidden>

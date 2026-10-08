@@ -370,16 +370,30 @@ Mở **TÌM SKU** ở WH-MATERIAL hoặc `#find-sku`. Ba bước, bố cục nh�
    với PRINT SKU / PRINT UID (`window.SkuComboPicker.chooseNormal`): chọn Normal thì bước 2
    tính theo đơn vị của Normal và ghi "Đổi từ SKU Combo … · 1 Combo = …"; "Tiếp tục với SKU
    Combo" giữ Combo; "Hủy" ở lại bước 1.
-2. **Tính toán số lượng** — SKU đơn vị `mm` (ô cuối tên) mở sẵn bảng **quy đổi cân → mm** theo
-   đúng công thức tab "Chuyển đổi cân" của AuditFactory: quy cách cuộn nguyên (tự đọc `5000m` từ
-   tên), tổng khối lượng (kg/gr), số cuộn thừa, khối lượng lõi, khối lượng cuộn nguyên (cân cả
-   lõi / chỉ riêng chỉ) → mm, kèm phiếu tính và cờ đỏ khi số liệu vô lý. Lõi và cuộn nguyên
-   được nhớ cho lô sau. Đơn vị khác (`pcs`, `cuộn`, `g`…) gõ số thẳng. Nhập số tem rồi
-   "Thêm vào chờ in". Phần logic này nằm trong `FSK_CORE` (giữa hai dấu mốc trong `index.html`).
+2. **Tính toán số lượng** — SKU chỉ có đơn vị chiều dài (`mm`/`m`) hiện nút mở **CHUYỂN ĐỔI
+   ĐƠN VỊ**; kết quả mm có thể đưa ngược về form để in. Người dùng vẫn được gõ số lượng trực tiếp
+   và in tem, không bị khóa vào bước quy đổi. Chỉ được tính theo Tex hoặc khối lượng cuộn nguyên;
+   nếu có cả hai thì số cân thực tế được ưu tiên và Tex dùng để đối chiếu. Đơn vị khác (`pcs`,
+   `cuộn`, `g`…) tiếp tục gõ số thẳng. Nhập số tem rồi "Thêm vào chờ in". Phần logic quy đổi nằm
+   trong `FSK_CORE` (giữa hai dấu mốc trong `index.html`).
 3. **Chờ in** — danh sách lưu trên máy đang dùng (localStorage), tick chọn rồi "In tem đã chọn":
    gửi lệnh `sku` vào hàng đợi Supabase như PRINT SKU (tối đa 100 SKU · 500 tem/lượt), theo dõi
    tới khi agent báo xong (tự rời danh sách) hoặc lỗi (tick lại để in lại). Gửi lại sau lỗi mạng
    dùng cùng nonce nên không tạo lệnh trùng.
+
+## Chuyển đổi đơn vị
+
+Mở **CHUYỂN ĐỔI ĐƠN VỊ** ở WH-MATERIAL hoặc `#unit-converter`:
+
+- **Chỉ:** trừ tổng khối lượng lõi khỏi khối lượng lô; quy đổi theo `Tex / 1.000` g/m hoặc theo
+  khối lượng chỉ thật của một cuộn nguyên. Khi có số cân cuộn nguyên, kết quả cân được ưu tiên và
+  chênh lệch trên 5% so với Tex được cảnh báo. Ví dụ 10.000 g, 10 lõi × 14 g, Tex 27 cho
+  `365.185.185 mm`.
+- **Vải:** quy đổi danh nghĩa theo `GSM × khổ(cm) / 100` g/m; nếu nhập thêm mét và khối lượng một
+  cuộn nguyên thì ưu tiên định mức cân thực tế. Kết quả chỉ theo GSM có cảnh báo sai số ±5–8%.
+- Có thể nhập tay, quét/nhập SKU hoặc Group UID. Tên hàng được đọc để tự điền Tex, quy cách cuộn,
+  khổ vải và GSM. Chỉ SKU có đơn vị chiều dài mới được đưa kết quả mm sang TÌM SKU để in, tránh
+  gắn nhầm số mm vào SKU đơn vị gram/cuộn.
 
 Triển khai một lần:
 
@@ -405,5 +419,6 @@ Kiểm thử không cần mạng:
 ```powershell
 node tests/find_sku_engine.cjs                    # bộ đối chiếu cắt ra từ index.html
 node tests/find_sku_core.cjs                      # quy đổi cân → mm, đơn vị, tự chụp
+node tests/unit_converter_browser.cjs             # giao diện quy đổi chỉ/vải, SKU/UID, desktop/mobile
 node --test tests/sku_vision_function.mjs         # Edge Function, giả lập Deno/Supabase/Gemini
 ```

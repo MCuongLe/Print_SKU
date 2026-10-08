@@ -50,9 +50,46 @@ test('convertWeight: cờ đỏ khi cuộn thừa dài hơn cuộn nguyên, gầ
 test('convertWeight: "chỉ riêng chỉ" không trừ lõi ở cuộn nguyên; thiếu ô hoặc số vô lý thì ok=false', () => {
   const r = CORE.convertWeight({ specMm: 5000000, total: 3, unit: 'kg', cones: 10, coreG: 50, fullG: 70, fullIncludesCore: false });
   assert.equal(r.fullThreadG, 70);
-  assert.deepEqual(CORE.convertWeight({ specMm: 0, total: 3, unit: 'kg', cones: 10, coreG: 50, fullG: 120 }).missing, ['quy cách cuộn nguyên']);
+  assert.deepEqual(CORE.convertWeight({ specMm: 0, total: 3, unit: 'kg', cones: 10, coreG: 50, fullG: 120 }).missing, ['quy cách cuộn nguyên', 'khối lượng cuộn nguyên hoặc chỉ số Tex']);
   assert.match(CORE.convertWeight({ specMm: 5000000, total: 3, unit: 'kg', cones: 10, coreG: 130, fullG: 120, fullIncludesCore: true }).reason, /phần chỉ còn ≤ 0/);
   assert.match(CORE.convertWeight({ specMm: 5000000, total: 0.4, unit: 'kg', cones: 10, coreG: 50, fullG: 120, fullIncludesCore: true }).reason, /không còn chỉ nào/);
+});
+
+test('convertWeight: tính theo Tex khi không cân cuộn nguyên; cân cuộn nguyên luôn được ưu tiên', () => {
+  const tex = CORE.convertWeight({ specMm: 5000000, total: 10000, unit: 'g', cones: 10, coreG: 14, fullG: NaN, tex: 27 });
+  assert.equal(tex.ok, true);
+  assert.equal(tex.method, 'tex');
+  assert.equal(tex.threadG, 9860);
+  assert.equal(Math.round(tex.mmPerG), 37037);
+  assert.equal(tex.mm, 365185185);
+  const scale = CORE.convertWeight({ specMm: 5000000, total: 0.9, unit: 'kg', cones: 10, coreG: 50, fullG: 120, tex: 27, fullIncludesCore: true });
+  assert.equal(scale.method, 'scale');
+  assert.equal(scale.mm, Math.round(400 * 5000000 / 70));
+  assert.ok(scale.differencePct > 5);
+});
+
+test('convertFabric: GSM × khổ hoặc cân cuộn nguyên; cân thật được ưu tiên', () => {
+  const nominal = CORE.convertFabric({ total: 10, unit: 'kg', width: 150, widthUnit: 'cm', gsm: 200, rollLength: NaN, fullG: NaN });
+  assert.equal(nominal.ok, true);
+  assert.equal(nominal.method, 'gsm');
+  assert.equal(nominal.gPerM, 300);
+  assert.equal(nominal.mm, 33333);
+  const scale = CORE.convertFabric({ total: 10, unit: 'kg', width: 150, widthUnit: 'cm', gsm: 200, rollLength: 100, rollUnit: 'm', fullG: 33000 });
+  assert.equal(scale.method, 'scale');
+  assert.equal(scale.gPerM, 330);
+  assert.equal(scale.mm, 30303);
+  assert.ok(scale.differencePct > 5);
+});
+
+test('đọc Tex, khổ vải/GSM và loại hàng từ tên SKU', () => {
+  assert.equal(CORE.texFromName('Chỉ may/COATS/Text 27 - 60-3/mm'), 27);
+  assert.equal(CORE.texFromName('Chỉ may/Tex 24/Cuộn 5000m'), 24);
+  assert.equal(CORE.materialOf('Vải chính/Polyester/170GSM/W180cm/g'), 'fabric');
+  assert.equal(CORE.materialOf('Chỉ may/Coats/Tex 27/mm'), 'thread');
+  assert.deepEqual(CORE.fabricFromName('Vải dệt/170GSM/W180cm/g'), { gsm: 170, widthCm: 180, source: 'cm' });
+  const ranged = CORE.fabricFromName('Vải mẫu/220gsm/58_60in/g');
+  assert.equal(ranged.gsm, 220);
+  assert.equal(Number(ranged.widthCm.toFixed(2)), 149.86);
 });
 
 test('unitOf lấy ô cuối tên SKU, bỏ dấu', () => {
