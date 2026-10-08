@@ -87,6 +87,15 @@ Lỗi (máy chủ, chưa kết nối Extension) hiện thành **dải đỏ có 
 chỉ hiện sau khi đã kiểm tra hoặc mở một lượt) — thanh trên dính nên con số vẫn thấy khi cuộn; có nút làm mới (Lệnh in: tải lại danh sách; Đồng bộ: tải lại lịch sử). Dưới 1100 px chip và dòng phụ
 tự ẩn. Test: `tests/admin_web_sync_browser.cjs`.
 
+**Popup thay cho bảng nằm sẵn (08/10/2026).** Ở Đồng bộ SKU và Đồng bộ Group UID, bấm một ô số liệu (SKU mới, UID cập nhật, Combo thừa, Thiếu trên WMS…) mở **popup**
+danh sách (`#ss-dialog`, `#gu-dialog`: tìm không phân biệt dấu, lọc theo nhóm trường, sắp xếp, phân trang 50 dòng, xuất CSV; Group UID có 4 tab chuyển nhóm ngay trong popup).
+Xem trước xong thì **không** tự mở popup; ô có 0 dòng bị làm mờ và không mở. **Lịch sử** thu thành một ô trong dải thông tin (kết quả lượt gần nhất + số lượt): bấm mở popup lịch sử
+(`#ss-hist-dialog`, `#gu-hist-dialog`; có nút tải lại và, ở Group UID, "Ẩn lượt lỗi"); bấm một dòng thì nạp lượt đó vào các ô và popup tự đóng. Nút **Cập nhật Supabase** (kèm số thay đổi)
+và **Hủy xem trước** (Group UID, nút icon) nằm ở đầu trang và đều **hỏi xác nhận** bằng `WhDialog` trước khi ghi/hủy (Huỷ = không gọi Edge Function). Popup dùng chung
+`AdminSyncUI.openDialog / bindDialogs / closeDialogs` (lớp `.as-dialog`; Esc hoặc bấm nền để đóng, rời màn thì tự đóng). Tab **4 · Đối chiếu** của Cắt UID làm tương tự: bấm ô trạng thái
+(Tất cả, Sai số lượng, Quên tick…) mở popup `#cut-adj-dialog` chứa bảng, nút xuất Excel và **Tick giúp** (chỉ nhóm Quên tick và Tất cả); trên điện thoại popup là tờ trượt từ dưới lên.
+Test: `tests/sku_sync_admin_browser.cjs`, `tests/group_uid_sync_admin_browser.cjs`, `tests/cut_adj_reconcile_browser.cjs`, `tests/admin_web_sync_browser.cjs`.
+
 **Lệnh in** (`#admin/lenh-in`, mục đầu tiên, 08/10/2026) thay hai mục React cũ "Tổng quan" và "Đợt đã gửi" — hai mục đó chỉ đếm lệnh gửi
 từ chính tab đang mở. `#admin/tongquan`, `#admin/hangdoi` và mọi hash Admin lạ tự chuyển về đây. Màn đọc `print_jobs` của cả kho:
 dải trạng thái (máy in, đang chờ, số lệnh/tem trong ngày, lỗi), chọn ngày (giờ VN), lọc **Tất cả / SKU / UID**, tìm theo SKU, UID, tên

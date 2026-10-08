@@ -123,13 +123,15 @@ const navItems = page => page.evaluate(() => {
           assert.deepEqual(nav.active, [title], `${hash}: đúng một mục đang chọn`);
           assert.equal(nav.h, 50); assert.equal(nav.font, '16px'); assert.equal(nav.weight, '700');
         }
-        // thanh trên vẫn ở đỉnh sau khi cuộn
+        // thanh trên vẫn ở đỉnh; trong popup chi tiết, hàng tiêu đề bảng dính ở đỉnh vùng cuộn của popup
         await go(page, '#admin/sku-sync'); await page.locator('#sku-sync-preview').click();
+        await page.waitForFunction(() => document.getElementById('ss-sku-added').textContent !== '0');
+        await page.locator('[data-change-kind="sku-added"]').click(); await page.locator('#ss-dialog').waitFor({ state: 'visible' });
         await page.waitForFunction(() => document.querySelectorAll('#ss-change-body tr').length > 20);
-        await page.evaluate(() => { document.querySelector('#ss-change-body').scrollIntoView({ block: 'start' }); window.scrollBy(0, 500); });
+        await page.evaluate(() => { document.querySelector('#ss-dialog .as-d-body').scrollTop = 600; });
         await page.waitForTimeout(250);
-        const sticky = await page.evaluate(() => { const top = [...document.querySelectorAll('.ss-top')].find(e => e.getBoundingClientRect().width > 0); const th = document.querySelector('#ss-change-head th'); return { topY: Math.round(top.getBoundingClientRect().top), thY: Math.round(th.getBoundingClientRect().top), thPos: getComputedStyle(th).position }; });
-        assert.equal(sticky.topY, 0, 'thanh trên mất khi cuộn'); assert.equal(sticky.thPos, 'sticky'); assert.equal(sticky.thY, 64, `tiêu đề bảng phải dính ngay dưới thanh trên (thấy ${sticky.thY})`);
+        const sticky = await page.evaluate(() => { const top = [...document.querySelectorAll('.ss-top')].find(e => e.getBoundingClientRect().width > 0); const body = document.querySelector('#ss-dialog .as-d-body'), th = document.querySelector('#ss-change-head th'); return { topY: Math.round(top.getBoundingClientRect().top), bodyY: Math.round(body.getBoundingClientRect().top), thY: Math.round(th.getBoundingClientRect().top), thPos: getComputedStyle(th).position, scrolled: body.scrollTop }; });
+        assert.equal(sticky.topY, 0, 'thanh trên mất khi cuộn'); assert.equal(sticky.thPos, 'sticky'); assert.ok(sticky.scrolled > 0, 'vùng cuộn của popup phải cuộn được'); assert.equal(sticky.thY, sticky.bodyY, `tiêu đề bảng phải dính ở đỉnh popup (thấy ${sticky.thY}, vùng cuộn ${sticky.bodyY})`);
         assert.deepEqual(page.errors, []); await context.close();
       }
 
@@ -151,10 +153,16 @@ const navItems = page => page.evaluate(() => {
       // ---------- 3) Tương phản + cỡ chữ trên các dashboard ----------
       {
         const { context, page } = await open(browser, { width });
-        await go(page, '#admin/sku-sync'); await page.locator('#sku-sync-preview').click(); await page.waitForFunction(() => document.querySelectorAll('#ss-change-body tr').length > 20);
+        await go(page, '#admin/sku-sync'); await page.locator('#sku-sync-preview').click(); await page.waitForFunction(() => document.getElementById('ss-sku-added').textContent !== '0');
+        await page.locator('[data-change-kind="sku-added"]').click(); await page.waitForFunction(() => document.querySelectorAll('#ss-change-body tr').length > 20); // popup chi tiết đang mở: đo cả popup
         let m = await page.evaluate(textMetrics, '#sku-sync-screen'); assert.deepEqual(m.low, [], 'SKU: thiếu tương phản'); assert.deepEqual(m.small, [], 'SKU: chữ < 12 px');
+        await page.keyboard.press('Escape'); await page.locator('#ss-history-btn').click(); await page.locator('#ss-hist-dialog').waitFor({ state: 'visible' });
+        m = await page.evaluate(textMetrics, '#sku-sync-screen'); assert.deepEqual(m.low, [], 'SKU lịch sử: thiếu tương phản'); assert.deepEqual(m.small, [], 'SKU lịch sử: chữ < 12 px');
         await go(page, '#admin/group-uid-sync'); await page.locator('#gu-run-full').click(); await page.waitForFunction(() => /Đối chiếu xong/.test(document.getElementById('gu-status').textContent));
+        await page.locator('[data-gu-kind="added"]').click(); await page.locator('#gu-dialog').waitFor({ state: 'visible' });
         m = await page.evaluate(textMetrics, '#group-uid-sync-screen'); assert.deepEqual(m.low, [], 'Group UID: thiếu tương phản'); assert.deepEqual(m.small, [], 'Group UID: chữ < 12 px');
+        await page.keyboard.press('Escape'); await page.locator('#gu-history-btn').click(); await page.locator('#gu-hist-dialog').waitFor({ state: 'visible' });
+        m = await page.evaluate(textMetrics, '#group-uid-sync-screen'); assert.deepEqual(m.low, [], 'Group UID lịch sử: thiếu tương phản'); assert.deepEqual(m.small, [], 'Group UID lịch sử: chữ < 12 px');
         await go(page, '#admin/lenh-in'); await page.locator('#print-jobs-screen').waitFor({ state: 'visible' }); await page.waitForTimeout(600);
         m = await page.evaluate(textMetrics, '#print-jobs-screen'); assert.deepEqual(m.low, [], 'Lệnh in: thiếu tương phản'); assert.deepEqual(m.small, [], 'Lệnh in: chữ < 12 px');
         assert.deepEqual(page.errors, []); await context.close();

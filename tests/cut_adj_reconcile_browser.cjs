@@ -136,6 +136,9 @@ const STATE_ORDER = ['wrong', 'missing', 'multi', 'forgot', 'pending', 'wait', '
       const message = () => page.locator('#cut-message').textContent();
       const counts = () => page.$$eval('.cut-adj-kpi', buttons => Object.fromEntries(buttons.map(b => [b.dataset.st || 'all', Number(b.querySelector('b').textContent)])));
       const states = () => page.$$eval('#cut-adj-rows tr[data-code]', rows => rows.map(tr => [tr.dataset.code, tr.querySelector('.cut-adj-st').dataset.st]));
+      // Popup đối chiếu (#cut-adj-dialog): bấm ô trạng thái để mở; Esc đóng trước khi thao tác ngoài popup.
+      const closeAdj = async () => { if (await page.locator('#cut-adj-dialog').evaluate(d => d.open)) { await page.keyboard.press('Escape'); await page.locator('#cut-adj-dialog').waitFor({ state: 'hidden' }); } };
+      const tile = async st => { await closeAdj(); await page.locator(`.cut-adj-kpi[data-st="${st}"]`).click(); await page.locator('#cut-adj-dialog').waitFor({ state: 'visible' }); };
 
       await page.goto('http://127.0.0.1:8000/#home');
       await page.locator('#barcode-cut-uid').click();
@@ -233,9 +236,12 @@ const STATE_ORDER = ['wrong', 'missing', 'multi', 'forgot', 'pending', 'wait', '
 
       // Chi dong "Quen tick" co o chon; Tick giup ghi gio Cut cua WMS.
       assert.equal(await page.locator('#cut-adj-rows input[type=checkbox]').count(), 1);
-      await page.locator('.cut-adj-kpi[data-st="forgot"]').click();
+      assert.equal(await page.locator('#cut-adj-dialog').evaluate(d => d.open), false, 'tải xong không tự mở popup');
+      assert.equal(await page.locator('#cut-adj-rows').isVisible(), false, 'trang chỉ hiện ô trạng thái, bảng nằm trong popup');
+      await tile('forgot');
       assert.deepEqual((await states()).map(([code]) => code), ['UID-B']);
-      assert.equal(await page.locator('.cut-adj-kpi[data-st="forgot"]').getAttribute('aria-pressed'), 'true');
+      assert.equal((await page.locator('#cut-adj-d-title').textContent()).trim(), 'Quên tick');
+      assert.equal(await page.locator('#cut-adj-tick').isVisible(), true);
       await page.locator('#cut-adj-all').check();
       assert.equal((await page.locator('#cut-adj-tick').textContent()).trim(), 'Tick giúp 1');
       await page.locator('#cut-adj-tick').click();
@@ -251,10 +257,13 @@ const STATE_ORDER = ['wrong', 'missing', 'multi', 'forgot', 'pending', 'wait', '
       assert.equal(await page.locator('#cut-adj-issues').textContent(), '3');
 
       // Loc theo the + loc SKU/ngay gui dung tham so + nap lai cung file khong nhan doi.
-      await page.locator('.cut-adj-kpi[data-st="pending"]').click();
+      assert.equal(await page.locator('.cut-adj-kpi[data-st="forgot"]').getAttribute('data-zero'), 'true', 'ô 0 UID không mở popup');
+      await tile('pending');
+      assert.equal(await page.locator('#cut-adj-tick').isVisible(), false, 'chỉ Quên tick và Tất cả có nút Tick giúp');
       assert.deepEqual((await states()).map(([code]) => code).sort(), ['UID-H', 'UID-I']);
-      await page.locator('.cut-adj-kpi[data-st=""]').click();
+      await tile('');
       assert.equal((await states()).length, 11);
+      await closeAdj();
       await page.locator('#cut-adj-sku').fill('SKU-G');
       await page.locator('#cut-adj-date-from').fill('2026-10-01');
       await page.locator('#cut-adj-form').evaluate(form => form.requestSubmit());
@@ -273,6 +282,7 @@ const STATE_ORDER = ['wrong', 'missing', 'multi', 'forgot', 'pending', 'wait', '
       const bigTotal = filler.length + apiRows.length, bigText = await page.evaluate(n => n.toLocaleString('vi-VN'), bigTotal);
       const syncWms = async (mode, done) => {
         await page.evaluate(([rows, mode]) => { Object.assign(window.__wms, { source: rows, pages: [], noTotal: false, repeat: false }, mode); document.querySelector('#cut-message').textContent = ''; }, [[...filler, ...apiRows], mode]);
+        await closeAdj();
         await page.locator('#cut-adj-wms').click();
         await page.waitForFunction(text => document.querySelector('#cut-message').textContent.includes(text), done);
         return page.evaluate(() => window.__wms.pages);
@@ -291,7 +301,7 @@ const STATE_ORDER = ['wrong', 'missing', 'multi', 'forgot', 'pending', 'wait', '
       assert.equal(store.importCalls.length, importsBefore);
 
       // Xuat Excel: dung dong dang loc, du 9 cot, A4 ngang.
-      await page.locator('.cut-adj-kpi[data-st="wrong"]').click();
+      await tile('wrong');
       const downloadPromise = page.waitForEvent('download');
       await page.locator('#cut-adj-export').click();
       const download = await downloadPromise, path = await download.path();

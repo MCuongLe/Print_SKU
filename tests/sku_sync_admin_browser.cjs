@@ -48,6 +48,7 @@ const mockRoutes = async page => page.route('**/*', async route => {
     const ok = data => json({ ok: true, data });
     if (action === 'history') return ok({ runs: RUNS, lastSuccessAt: ago(119), lastSnapshotAt: ago(120) });
     if (action === 'preview') return ok({ runId: 'run-fresh', status: 'previewed', sourceCounts: SOURCE_COUNTS, changeCounts: CHANGE_COUNTS, changes: CHANGES });
+    if (action === 'apply') return ok({ status: 'completed', verification: { skuVerified: 3, comboVerified: 0, skuCount: 100 } });
     if (action === 'detail') {
       const run = RUNS.find(item => item.id === runId);
       return ok({ ...run, cutoff: 'x', source_counts: SOURCE_COUNTS, change_counts: run.change_counts, changes: CHANGES, verification: {}, error_message: null });
@@ -68,6 +69,10 @@ const fakeExtension = () => addEventListener('message', event => {
   postMessage({ source: 'HASAKI_INSIDE_CONNECTOR', requestId: request.requestId, ok: true, data }, location.origin);
 });
 
+// Popup chi tiết (#ss-dialog): bấm ô số liệu để mở, Esc để đóng; xem trước xong không tự mở.
+const dlg = page => page.locator('#ss-dialog');
+const openKind = async (page, kind) => { await page.locator(`[data-change-kind="${kind}"]`).click(); await dlg(page).waitFor({ state: 'visible' }); };
+const closeDlg = async page => { await page.keyboard.press('Escape'); await dlg(page).waitFor({ state: 'hidden' }); };
 const headers = page => page.locator('#ss-change-head th').allInnerTexts();
 // Nhóm cảnh báo phải hiện đủ cả 4 cột kể cả ở điện thoại (quy tắc ẩn cột 3 chỉ dành cho bảng thay đổi thường)
 const allVisible = async page => { for (const th of await page.locator('#ss-change-head th').all()) assert.equal(await th.isVisible(), true); };
@@ -86,7 +91,8 @@ const cells = async page => (await page.locator('#ss-change-body tr').evaluateAl
       await mockRoutes(page);
       await page.goto(BASE + '#admin/sku-sync');
       await page.locator('#sku-sync-screen').waitFor({ state: 'visible' });
-      await page.locator('#ss-history tr[data-run]').first().waitFor();
+      await page.locator('#ss-history tr[data-run]').first().waitFor({ state: 'attached' });
+      const calls = []; page.on('request', request => { if (request.url().includes('/functions/v1/sku-sync')) calls.push(JSON.parse(request.postData() || '{}').action); });
 
       // Menu và nút Về trang chủ/Đăng xuất dùng icon SVG, không dùng ký tự
       const navButtons = page.locator('#sku-sync-screen .ss-nav button');
@@ -102,11 +108,24 @@ const cells = async page => (await page.locator('#ss-change-body tr').evaluateAl
       assert.equal(await page.locator('.ss-hero p, .ss-note').count(), 0);
       assert.equal((await page.locator('#ss-change-note').innerText()).trim(), '');
 
-      // Lịch sử: preview quá 30 phút hiện "Hết hạn" và khóa nút Cập nhật
+      // Lịch sử gọn: một ô trong dải (kết quả lượt gần nhất + số lượt), bảng chỉ mở khi bấm; không có bảng chi tiết nằm sẵn trong trang
+      assert.equal(await page.locator('#ss-hist-dialog').evaluate(node => node.open), false);
+      assert.equal(await page.locator('#ss-history').isVisible(), false);
+      assert.equal(await dlg(page).isVisible(), false);
+      assert.equal((await page.locator('#ss-hist-last').innerText()).trim(), 'Chờ cập nhật');
+      assert.match(await page.locator('#ss-hist-count').innerText(), /3 lượt$/);
+      await page.locator('#ss-history-btn').click();
+      await page.locator('#ss-hist-dialog').waitFor({ state: 'visible' });
+      assert.equal((await page.locator('#ss-hist-note').innerText()).trim(), '3 lượt gần nhất');
+      // Lịch sử: preview quá 30 phút hiện "Hết hạn" và khóa nút Cập nhật; bảng có cột thời lượng và chip kết quả
       const badges = await page.locator('#ss-history .ss-badge').allInnerTexts();
       assert.deepEqual(badges, ['Chờ cập nhật', 'Hết hạn', 'Hoàn tất']);
+      assert.deepEqual(await page.locator('#ss-hist-dialog thead th').allInnerTexts(), ['Thời gian', 'Trạng thái', 'SKU', 'Normal–Combo', 'Thời lượng']);
+      assert.match(await page.locator('#ss-history tr[data-run="run-done"]').innerText(), /1 phút/);
       await page.locator('#ss-history tr[data-run="run-old"]').click();
-      await page.waitForFunction(() => document.getElementById('ss-change-title').textContent !== 'Chi tiết thay đổi');
+      await page.locator('#ss-hist-dialog').waitFor({ state: 'hidden' }); // chọn một lượt thì popup lịch sử tự đóng
+      await page.waitForFunction(() => /Lượt đang ở trạng thái/.test(document.getElementById('sku-sync-status').textContent) && !document.getElementById('sku-sync-preview').disabled);
+      assert.equal(await dlg(page).isVisible(), false, 'mở lượt cũ không tự bật popup chi tiết');
       assert.equal(await page.locator('#ss-apply').isDisabled(), true);
 
       // Tạo preview: ô cảnh báo sáng lên, tiêu đề bảng đổi theo từng nhóm
@@ -119,6 +138,14 @@ const cells = async page => (await page.locator('#ss-change-body tr').evaluateAl
         assert.equal(await page.locator('#' + id).evaluate(node => node.closest('.ss-metric').dataset.alert), 'true');
       }
 
+      assert.equal(await dlg(page).evaluate(node => node.open), false, 'xem trước xong không tự mở popup');
+      assert.equal(await page.locator('#ss-apply').getAttribute('data-count'), '3', 'nút Cập nhật ghi số thay đổi');
+      assert.equal(await page.locator('[data-change-kind="combo-added"]').getAttribute('data-zero'), 'true');
+      await page.locator('[data-change-kind="combo-added"]').click(); await page.waitForTimeout(150);
+      assert.equal(await dlg(page).evaluate(node => node.open), false, 'ô 0 dòng không mở popup');
+      await openKind(page, 'sku-added');
+      assert.equal((await page.locator('#ss-change-title').innerText()).trim(), 'SKU mới');
+      assert.equal(await dlg(page).locator('.as-d-mark svg').count(), 1, 'popup có icon nhóm');
       assert.deepEqual(await headers(page), ['SKU', 'Sản phẩm', 'Nhóm hàng']); // nhóm mặc định (SKU mới)
       assert.deepEqual(await cells(page), [['900000001', 'SKU thử', 'Thời Trang (Phụ Liệu)'], ['900000002', 'Chỉ Irisa / F6-8012 / 100% Polyester / Navy', 'Thời Trang (Phụ Liệu)']]);
       assert.equal(await page.locator('#ss-change-body .as-name b').count(), 2, 'phần đầu tên sản phẩm in đậm');
@@ -132,17 +159,16 @@ const cells = async page => (await page.locator('#ss-change-body tr').evaluateAl
       assert.match(download.suggestedFilename(), /^sku-sync-sku-added-\d{8}-\d{4}\.csv$/);
       const csv = require('node:fs').readFileSync(await download.path(), 'utf8'); assert.equal(csv.charCodeAt(0), 0xfeff, 'CSV có BOM để Excel đọc đúng tiếng Việt'); assert.match(csv, /"SKU","Sản phẩm","Nhóm hàng"\r\n"900000002"/); assert.equal(csv.includes('900000001'), false, 'chỉ xuất các dòng đang lọc');
       await page.locator('#ss-tools input').fill('');
+      // Esc đóng popup; bấm nền (ngoài hộp) cũng đóng
+      await closeDlg(page); await openKind(page, 'sku-added');
+      await page.mouse.click(5, 5); await dlg(page).waitFor({ state: 'hidden' });
       // SKU cập nhật: nhãn tiếng Việt, không lộ tên trường kỹ thuật, trạng thái dịch sang chữ
-      await page.locator('[data-change-kind="sku-updated"]').click();
+      await openKind(page, 'sku-updated');
       assert.deepEqual(await headers(page), ['SKU', 'Thay đổi']);
       const updatedText = await page.locator('#ss-change-body').innerText();
       for (const label of ['Tên sản phẩm', 'Trạng thái', 'Hoạt động', 'Ngừng', 'Thẻ bài/S/pcs', 'Thẻ bài/S/cái']) assert.equal(updatedText.includes(label), true, label);
       for (const raw of ['product_name', 'category_name', 'status:']) assert.equal(updatedText.includes(raw), false, `không lộ ${raw}`);
-      // Lịch sử có cột thời lượng và chip kết quả
-      assert.deepEqual(await page.locator('#sku-sync-screen table thead').last().locator('th').allInnerTexts(), ['Thời gian', 'Trạng thái', 'SKU', 'Normal–Combo', 'Thời lượng']);
-      assert.match(await page.locator('#ss-history tr[data-run="run-done"]').innerText(), /1 phút/);
-
-      await page.locator('[data-change-kind="combo-orphaned"]').click();
+      await closeDlg(page); await openKind(page, 'combo-orphaned');
       assert.deepEqual(await headers(page), ['Combo → Normal', 'Lý do', 'Trong Supabase', 'Trên Inside']);
       await allVisible(page);
       assert.deepEqual(await cells(page), [
@@ -151,12 +177,12 @@ const cells = async page => (await page.locator('#ss-change-body tr').evaluateAl
       ]);
       assert.equal((await page.locator('#ss-change-note').innerText()).trim(), '2 dòng');
 
-      await page.locator('[data-change-kind="combo-excluded"]').click();
+      await closeDlg(page); await openKind(page, 'combo-excluded');
       assert.deepEqual(await headers(page), ['Combo → Normal', 'Loại', 'Số lượng', 'SKU chưa có trong database']);
       await allVisible(page);
       assert.deepEqual(await cells(page), [['C1 → N1', 'Thiếu SKU', '1000', 'Combo'], ['C2 → N2', 'Thiếu SKU', '6', 'Normal']]);
 
-      await page.locator('[data-change-kind="source-issues"]').click();
+      await closeDlg(page); await openKind(page, 'source-issues');
       assert.deepEqual(await headers(page), ['Mã', 'Loại lỗi', 'Nội dung trên Inside', 'Lý do']);
       await allVisible(page);
       const issues = await cells(page);
@@ -164,8 +190,23 @@ const cells = async page => (await page.locator('#ss-change-body tr').evaluateAl
       assert.equal(issues[1][2], 'Ghi chú <b>tự do</b>');
       assert.equal(await page.locator('#ss-change-body b').count(), 0, 'nội dung từ Inside không được chèn thành HTML');
 
-      await page.locator('[data-change-kind="sku-added"]').click();
+      await closeDlg(page); await openKind(page, 'sku-added');
       assert.deepEqual(await headers(page), ['SKU', 'Sản phẩm', 'Nhóm hàng']);
+      await closeDlg(page);
+
+      // Cập nhật Supabase luôn hỏi xác nhận trước: Giữ lại = không gọi apply; Đồng ý = gọi một lần rồi khóa nút
+      await page.locator('#ss-apply').click();
+      const confirm = page.locator('dialog.whd'); await confirm.waitFor({ state: 'visible' });
+      assert.match(await confirm.locator('.whd-title').innerText(), /^Cập nhật 3 thay đổi vào Supabase$/);
+      assert.deepEqual(await confirm.locator('.whd-facts li').allInnerTexts(), ['2 SKU mới', '1 SKU cập nhật']);
+      await confirm.locator('.whd-cancel').click(); await confirm.waitFor({ state: 'hidden' });
+      assert.equal(calls.includes('apply'), false, 'Huỷ thì không ghi vào Supabase');
+      assert.equal(await page.locator('#ss-apply').isDisabled(), false);
+      await page.locator('#ss-apply').click(); await confirm.waitFor({ state: 'visible' });
+      await confirm.locator('.whd-ok').click();
+      await page.waitForFunction(() => /^Hoàn tất: xác minh 3 SKU/.test(document.getElementById('sku-sync-status').textContent));
+      assert.equal(calls.filter(action => action === 'apply').length, 1);
+      assert.equal(await page.locator('#ss-apply').isDisabled(), true);
 
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, 'không tràn ngang');
       assert.deepEqual(errors, []);
