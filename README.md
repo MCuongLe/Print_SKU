@@ -394,6 +394,8 @@ Mở **CHUYỂN ĐỔI ĐƠN VỊ** ở WH-MATERIAL hoặc `#unit-converter`:
 - Có thể nhập tay, quét/nhập SKU hoặc Group UID. Tên hàng được đọc để tự điền Tex, quy cách cuộn,
   khổ vải và GSM. Chỉ SKU có đơn vị chiều dài mới được đưa kết quả mm sang TÌM SKU để in, tránh
   gắn nhầm số mm vào SKU đơn vị gram/cuộn.
+- Mục nhận diện có thể thu gọn và tự thu sau khi tra thành công. **Lô tiếp theo** giữ SKU/thông số
+  hàng nhưng xóa số cân của lô; **Nhập lại từ đầu** xóa SKU cùng toàn bộ số liệu và mở lại mục nhận diện.
 
 Triển khai một lần:
 

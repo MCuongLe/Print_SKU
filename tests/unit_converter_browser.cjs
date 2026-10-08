@@ -54,6 +54,13 @@ const assert = require('node:assert/strict');
       assert.equal(await page.locator('#uc-fabric-gsm').inputValue(), '220');
       assert.equal(Number(Number(await page.locator('#uc-fabric-width').inputValue()).toFixed(2)), 149.86);
       assert.equal(await page.locator('#uc-use').isVisible(), false, 'SKU đơn vị g không được gắn nhầm kết quả mm để in');
+      assert.equal(await page.locator('#uc-lookup-details').evaluate(element => element.open), false, 'mục 1 tự thu gọn sau khi nhận diện');
+
+      // Nhập lại từ đầu mở mục 1 và xóa cả SKU lẫn thông số.
+      await page.locator('#uc-clear').click();
+      assert.equal(await page.locator('#uc-lookup-details').evaluate(element => element.open), true);
+      assert.equal(await page.locator('#uc-code').inputValue(), '');
+      assert.equal(await page.locator('#uc-fabric-gsm').inputValue(), '');
 
       // Group UID tự tìm SKU/tên sản phẩm rồi đọc khổ và GSM.
       await page.locator('#uc-code').fill('1028260900000101');
@@ -61,7 +68,15 @@ const assert = require('node:assert/strict');
       await page.waitForFunction(() => document.querySelector('#uc-picked-code')?.textContent.includes('1028260900000101'));
       assert.equal(await page.locator('#uc-fabric-width').inputValue(), '180');
       assert.equal(await page.locator('#uc-fabric-gsm').inputValue(), '170');
+      await page.locator('#uc-total').fill('10');
       assert.equal(await page.locator('#uc-use').isVisible(), true);
+      assert.equal(await page.locator('#uc-lookup-details').evaluate(element => element.open), false);
+
+      // Lô tiếp theo chỉ xóa số cân, vẫn giữ SKU và thông số hàng.
+      await page.locator('#uc-next').click();
+      assert.equal(await page.locator('#uc-total').inputValue(), '');
+      assert.equal(await page.locator('#uc-fabric-width').inputValue(), '180');
+      assert.equal(await page.locator('#uc-fabric-gsm').inputValue(), '170');
 
       // Kết quả quay về TÌM SKU, tự điền mm nhưng vẫn để người dùng quyết định số tem/in.
       await page.locator('#uc-total').fill('10');

@@ -4148,11 +4148,14 @@ Error generating stack: `+y.message+`
         <p class="cut-message" id="uc-message" aria-live="polite"></p>
         <div class="uc-layout">
           <div class="uc-inputs">
-            <section class="cut-card uc-lookup"><h2><span>1</span>Nhận diện hàng <small>không bắt buộc</small></h2>
-              <form class="uc-code-row" id="uc-code-form"><input class="cut-input" id="uc-code" autocomplete="off" inputmode="text" placeholder="Quét hoặc nhập SKU / Group UID…" aria-label="SKU hoặc Group UID"><button class="act-icon act-icon--camera" id="uc-camera" type="button" aria-label="Quét bằng camera" title="Quét bằng camera"></button><button class="cut-secondary act-icon act-icon--search" type="submit">Tra thông số</button></form>
-              <div class="uc-picked" id="uc-picked" hidden><strong id="uc-picked-code"></strong><span id="uc-picked-name"></span><small id="uc-picked-spec"></small></div>
-              <p class="cut-note">Có thể bỏ qua bước này và nhập thông số bằng tay.</p>
-            </section>
+            <details class="cut-card uc-lookup" id="uc-lookup-details" open>
+              <summary><span class="uc-step-number">1</span><strong>Nhận diện hàng</strong><small id="uc-lookup-summary">Không bắt buộc</small><span class="uc-lookup-chevron" aria-hidden="true"></span></summary>
+              <div class="uc-lookup-body">
+                <form class="uc-code-row" id="uc-code-form"><input class="cut-input" id="uc-code" autocomplete="off" inputmode="text" placeholder="Quét hoặc nhập SKU / Group UID…" aria-label="SKU hoặc Group UID"><button class="act-icon act-icon--camera" id="uc-camera" type="button" aria-label="Quét bằng camera" title="Quét bằng camera"></button><button class="cut-secondary act-icon act-icon--search" type="submit">Tra thông số</button></form>
+                <div class="uc-picked" id="uc-picked" hidden><strong id="uc-picked-code"></strong><span id="uc-picked-name"></span><small id="uc-picked-spec"></small></div>
+                <p class="cut-note">Có thể bỏ qua bước này và nhập thông số bằng tay.</p>
+              </div>
+            </details>
 
             <section class="cut-card uc-data"><h2><span>2</span>Số liệu cân</h2>
               <div class="fsk-field"><label for="uc-total">Tổng khối lượng trả về <span class="hint">cân cả lô</span></label><div class="fsk-inrow"><input class="cut-input" id="uc-total" inputmode="decimal" autocomplete="off" placeholder="ví dụ 0,9"><span class="fsk-seg" id="uc-weight-unit" role="group" aria-label="Đơn vị cân"><button type="button" data-unit="kg" aria-pressed="true">kg</button><button type="button" data-unit="g" aria-pressed="false">gr</button></span></div><div class="fsk-doc" id="uc-total-doc"></div></div>
@@ -4181,7 +4184,10 @@ Error generating stack: `+y.message+`
                   </div>
                 </details>
               </div>
-              <div class="cut-actions uc-data-actions"><button class="cut-secondary" id="uc-next" type="button">Lô tiếp theo</button><button class="cut-secondary" id="uc-clear" type="button">Xoá hết</button></div>
+              <div class="uc-data-actions">
+                <button class="uc-next-action" id="uc-next" type="button"><span class="uc-action-icon" aria-hidden="true">↻</span><span><strong>Lô tiếp theo</strong><small>Giữ SKU và thông số hàng</small></span></button>
+                <button class="uc-reset-action" id="uc-clear" type="button"><span class="uc-action-icon" aria-hidden="true">×</span><span><strong>Nhập lại từ đầu</strong><small>Xóa SKU và mọi số liệu</small></span></button>
+              </div>
             </section>
           </div>
 
@@ -4200,10 +4206,10 @@ Error generating stack: `+y.message+`
     </section>
     <style id="unit-converter-theme">
       .uc-screen{background:#f3f7f5}.uc-main{max-width:1180px}.uc-kind{display:flex;width:min(420px,100%);margin:0 auto 16px;padding:4px;border:1px solid var(--wms-border,#d9e2de);border-radius:15px;background:#e8efec}.uc-kind button{flex:1;min-height:48px;border:0;border-radius:11px;background:transparent;color:#526861;font:800 15px Arial;cursor:pointer}.uc-kind button[aria-pressed="true"]{color:#fff;background:var(--wms-brand,#005f41);box-shadow:0 5px 14px rgba(0,95,65,.2)}
-      .uc-layout{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(340px,.8fr);gap:16px;align-items:start}.uc-inputs{display:grid;gap:16px}.uc-code-row{display:grid;grid-template-columns:minmax(0,1fr) 48px auto;gap:8px}.uc-picked{display:grid;gap:4px;margin-top:12px;padding:13px 15px;border:1px solid #b9d8cc;border-radius:13px;background:#edf8f4}.uc-picked strong{color:#005f41}.uc-picked span{font-weight:700}.uc-picked small{color:#60736b}.uc-two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.uc-mode{width:max-content;max-width:100%;margin-top:8px}.uc-measured{margin-top:4px;padding:12px 14px;border:1px solid #dce7e3;border-radius:13px;background:#f8faf9}.uc-measured summary{color:#176248;font-weight:800;cursor:pointer}.uc-measured .uc-two{margin-top:12px}.uc-data-actions{margin-top:14px}
+      .uc-layout{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(340px,.8fr);gap:16px;align-items:start}.uc-inputs{display:grid;gap:16px}.uc-lookup{padding:0;overflow:hidden}.uc-lookup>summary{display:grid;grid-template-columns:30px auto minmax(0,1fr) 20px;align-items:center;gap:9px;min-height:68px;padding:14px 20px;cursor:pointer;list-style:none}.uc-lookup>summary::-webkit-details-marker{display:none}.uc-step-number{display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:#007754;color:#fff;font-weight:800}.uc-lookup>summary>strong{font-size:20px}.uc-lookup>summary>small{min-width:0;color:#6b7d76;overflow:hidden;text-align:right;text-overflow:ellipsis;white-space:nowrap}.uc-lookup-chevron{width:10px;height:10px;border-right:2px solid #60736b;border-bottom:2px solid #60736b;transform:rotate(45deg) translate(-2px,-2px);transition:transform .18s ease}.uc-lookup[open] .uc-lookup-chevron{transform:rotate(225deg) translate(-2px,-2px)}.uc-lookup-body{padding:0 20px 18px}.uc-code-row{display:grid;grid-template-columns:minmax(0,1fr) 48px auto;gap:8px}.uc-picked{display:grid;gap:4px;margin-top:12px;padding:13px 15px;border:1px solid #b9d8cc;border-radius:13px;background:#edf8f4}.uc-picked strong{color:#005f41}.uc-picked span{font-weight:700}.uc-picked small{color:#60736b}.uc-two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.uc-mode{width:max-content;max-width:100%;margin-top:8px}.uc-measured{margin-top:4px;padding:12px 14px;border:1px solid #dce7e3;border-radius:13px;background:#f8faf9}.uc-measured summary{color:#176248;font-weight:800;cursor:pointer}.uc-measured .uc-two{margin-top:12px}.uc-data-actions{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:10px;margin-top:18px;padding-top:16px;border-top:1px solid #e2ebe7}.uc-data-actions button{display:flex;align-items:center;gap:10px;min-height:60px;padding:10px 14px;border-radius:15px;font:inherit;text-align:left;cursor:pointer}.uc-data-actions button span:last-child{display:grid;gap:2px}.uc-data-actions button strong{font-size:15px}.uc-data-actions button small{font-size:11px;line-height:1.3}.uc-action-icon{display:grid;flex:none;place-items:center;width:34px;height:34px;border-radius:50%;font-size:23px;font-weight:700}.uc-next-action{border:1px solid #007754;background:#007754;color:#fff;box-shadow:0 5px 14px rgba(0,95,65,.16)}.uc-next-action .uc-action-icon{background:rgba(255,255,255,.16)}.uc-next-action small{color:rgba(255,255,255,.8)}.uc-reset-action{border:1px solid #e4d4d1;background:#fff;color:#7a332c}.uc-reset-action .uc-action-icon{background:#fff0ee}.uc-reset-action small{color:#8c6b67}
       .uc-result{position:sticky;top:16px}.uc-empty{padding:42px 20px;border:1px dashed #cbdad5;border-radius:14px;color:#72827d;text-align:center}.uc-result-main{display:grid;grid-template-columns:auto 1fr;align-items:baseline;padding:20px;border-left:5px solid #007754;border-radius:14px;background:#edf8f4}.uc-result-main strong{color:#005f41;font-size:34px;line-height:1;font-variant-numeric:tabular-nums}.uc-result-main>span{margin-left:7px;color:#526861;font-weight:800}.uc-result-main small{grid-column:1/-1;margin-top:7px;color:#526861;font-weight:700}.uc-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}.uc-metrics div{padding:12px;border:1px solid #dce7e3;border-radius:12px;background:#fff}.uc-metrics b,.uc-metrics span{display:block}.uc-metrics b{color:#173129;font-size:18px}.uc-metrics span{margin-top:3px;color:#6b7d76;font-size:11px}.uc-warning{margin-top:10px;padding:12px 14px;border-radius:12px;color:#a33b30;background:#fff0ee;font-size:13px;line-height:1.45}.uc-warning[data-tone="note"]{color:#76550c;background:#fff6dc}.uc-result-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:14px}.uc-result-actions button{min-height:48px}.uc-result .fsk-steps{margin-top:12px}.uc-result .fsk-step{grid-template-columns:30px minmax(0,1fr) auto}
       @media(max-width:800px){.uc-main{padding-bottom:96px}.uc-layout{grid-template-columns:1fr}.uc-code-row{grid-template-columns:minmax(0,1fr) 48px}.uc-code-row .cut-secondary{grid-column:1/-1}.uc-result{position:static}.uc-result-actions{position:sticky;bottom:0;z-index:3;display:grid;grid-template-columns:1fr;margin:14px -16px -16px;padding:12px 16px calc(12px + env(safe-area-inset-bottom));border-top:1px solid #dce7e3;background:rgba(255,255,255,.96);backdrop-filter:blur(8px)}.uc-result-actions button{width:100%}}
-      @media(max-width:520px){.uc-two,.uc-metrics{grid-template-columns:1fr}.uc-result-main strong{font-size:29px}.uc-mode{width:100%}.uc-mode button{flex:1}}
+      @media(max-width:520px){.uc-lookup>summary{grid-template-columns:30px minmax(0,1fr) 18px;min-height:62px;padding:12px 16px}.uc-lookup>summary>strong{font-size:17px}.uc-lookup>summary>small{grid-column:2;text-align:left}.uc-lookup-chevron{grid-column:3;grid-row:1/3}.uc-lookup-body{padding:0 16px 16px}.uc-two,.uc-metrics,.uc-data-actions{grid-template-columns:1fr}.uc-data-actions button{min-height:58px}.uc-result-main strong{font-size:29px}.uc-mode{width:100%}.uc-mode button{flex:1}}
       @media print{#unit-converter-screen{display:none!important}}
     </style>
     <style id="find-sku-theme">
@@ -7188,6 +7194,7 @@ var FSK_CORE = (function () {
           state.selected = hit;
           $("uc-picked").hidden = false; $("uc-picked-code").textContent = hit.uid ? `${hit.uid} · SKU ${hit.sku || "—"}` : `SKU ${hit.sku}`;
           $("uc-picked-name").textContent = hit.pn || "Tên sản phẩm chưa có trong danh mục";
+          $("uc-lookup-summary").textContent = hit.uid ? `UID ${hit.uid} · SKU ${hit.sku || "—"}` : `Đã chọn SKU ${hit.sku}`;
           const material = FSK_CORE.materialOf(hit.pn); if (material) setKind(material);
           if (material === "thread") {
             const spec = FSK_CORE.specFromName(hit.pn), tex = FSK_CORE.texFromName(hit.pn);
@@ -7201,6 +7208,7 @@ var FSK_CORE = (function () {
             $("uc-picked-spec").textContent = [spec.widthCm && `khổ ${fmt(spec.widthCm, 1)} cm`, spec.gsm && `${fmt(spec.gsm)} gsm`].filter(Boolean).join(" · ") || "Không đọc được khổ/GSM — nhập tay bên dưới.";
           } else $("uc-picked-spec").textContent = "Chưa nhận diện được loại hàng — chọn Chỉ hoặc Vải rồi nhập tay.";
           compute();
+          $("uc-lookup-details").open = false;
         };
         const runLookup = async code => {
           tell(`Đang tra ${code}…`); try { const hit = await lookup(code); if (!hit) return tell("Không tìm thấy mã này. Bạn vẫn có thể nhập thông số bằng tay.", "warn"); applyProduct(hit); tell(`Đã đọc thông số từ ${hit.uid ? "Group UID" : "SKU"}. Kiểm tra lại trước khi dùng.`, "ok"); }
@@ -7214,8 +7222,24 @@ var FSK_CORE = (function () {
         Object.keys(unitGroups).forEach(id => $(id).addEventListener("click", event => { const button = event.target.closest("button[data-unit]"); if (!button) return; state[unitGroups[id]] = button.dataset.unit; pressed(id, "unit", button.dataset.unit); compute(); }));
         $("uc-thread-full-mode").addEventListener("click", event => { const button = event.target.closest("button[data-mode]"); if (!button) return; state.fullIncludesCore = button.dataset.mode !== "thread"; pressed("uc-thread-full-mode", "mode", button.dataset.mode); compute(); });
         Object.values(fields).forEach(input => input.addEventListener("input", compute));
-        $("uc-next").addEventListener("click", () => { fields.total.value = ""; if (state.kind === "thread") fields.threadCones.value = ""; compute(); fields.total.focus(); });
-        $("uc-clear").addEventListener("click", () => { Object.values(fields).forEach(input => { input.value = ""; }); state.selected = null; state.returnTo = ""; $("uc-picked").hidden = true; $("uc-code").value = ""; tell(""); compute(); });
+        $("uc-next").addEventListener("click", () => {
+          fields.total.value = "";
+          if (state.kind === "thread") fields.threadCones.value = "";
+          compute();
+          tell(state.selected ? "Đã giữ SKU và thông số hàng. Nhập số cân của lô tiếp theo." : "Đã giữ thông số hàng. Nhập số cân của lô tiếp theo.", "ok");
+          fields.total.focus();
+        });
+        $("uc-clear").addEventListener("click", () => {
+          Object.values(fields).forEach(input => { input.value = ""; });
+          state.selected = null;
+          $("uc-picked").hidden = true;
+          $("uc-code").value = "";
+          $("uc-lookup-summary").textContent = "Không bắt buộc";
+          $("uc-lookup-details").open = true;
+          tell("Đã xóa SKU và toàn bộ số liệu. Có thể bắt đầu lại.", "ok");
+          compute();
+          $("uc-code").focus();
+        });
         $("uc-copy").addEventListener("click", async () => { if (!state.result) return; const text = String(state.result.mm); try { await navigator.clipboard.writeText(text); tell(`Đã copy ${fmt(state.result.mm)} mm.`, "ok"); } catch (_) { const area = document.createElement("textarea"); area.value = text; document.body.append(area); area.select(); document.execCommand("copy"); area.remove(); tell(`Đã copy ${fmt(state.result.mm)} mm.`, "ok"); } });
         $("uc-use").addEventListener("click", () => { if (!state.result || !state.selected?.sku || !state.selected?.pn) return; try { sessionStorage.setItem("fsk-unit-result", JSON.stringify({ sku: state.selected.sku, pn: state.selected.pn, mm: state.result.mm })); sessionStorage.removeItem("unit-converter-context"); } catch (_) {} location.hash = "#find-sku"; });
         $("uc-back").addEventListener("click", () => { try { sessionStorage.removeItem("unit-converter-context"); } catch (_) {} location.hash = state.returnTo === "find-sku" ? "#find-sku" : "#home"; });
