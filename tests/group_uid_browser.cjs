@@ -19,7 +19,9 @@ const assert = require('node:assert/strict');
           if (p_codes.includes('TEST-ERROR')) return route.fulfill({ status: 503, body: '{}' });
           return route.fulfill({ contentType: 'application/json', body: JSON.stringify(p_codes.filter(code => code !== 'TEST-UNKNOWN').map(code => ({
             group_uid_code: code, sku: code === 'TEST-NOSKU' ? '' : '000123456',
-            product_name: code === 'TEST-EMPTY' ? '' : 'Vải thử nghiệm & kiểm tra', lot: 'LOT-01', roll: '007'
+            product_name: code === 'TEST-EMPTY' ? '' : 'Vải thử nghiệm & kiểm tra',
+            // Roll WMS dạng Lot + "-" + số cuộn: tem chỉ in phần sau Lot.
+            lot: code === 'TEST-LOTROLL' ? '197/9' : 'LOT-01', roll: code === 'TEST-LOTROLL' ? '197/9-004' : '007'
           }))) });
         }
         return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ ok: true, data: { agents: [], jobs: [] } }) });
@@ -37,6 +39,12 @@ const assert = require('node:assert/strict');
       assert.match(await page.locator('#uid-ready').innerText(), /000123456/);
       await add('TEST-NOSKU');
       await page.waitForFunction(() => document.querySelector('#uid-ready-count').textContent === '2');
+      await add('TEST-LOTROLL');
+      await page.waitForFunction(() => document.querySelector('#uid-ready-count').textContent === '3');
+      // Chỉ cắt khi Roll = Lot + dấu ngăn cách + phần sau; trùng ký tự ngẫu nhiên hoặc Roll trùng hẳn Lot thì giữ nguyên.
+      assert.deepEqual(await page.evaluate(() => [['197/9', '197/9-004'], ['N03-64HXL/5/26DT', 'N03-64HXL/5/26DT-007'], ['abc', 'ABC_12'], ['1', '18'], ['3', '23'], ['1147/8', '1147/8'], ['', '007'], ['LOT-01', '007']]
+        .map(([lot, roll]) => window.PrintSkuQueue.labelRoll(lot, roll))), ['004', '007', '12', '18', '23', '1147/8', '007', '007']);
+      assert.deepEqual(await page.evaluate(() => window.PrintSkuQueue.lotRollOverlaps([{ groupUid: 'a', lot: '197/9', roll: '197/9-004' }, { groupUid: 'b', lot: '1147/8', roll: '1147/8-001' }])), []);
       await add('TEST-UNKNOWN');
       await add('TEST-EMPTY');
       await add('TEST-ERROR');
@@ -47,6 +55,7 @@ const assert = require('node:assert/strict');
       assert.equal(jobs.length, 1);
       assert.deepEqual(jobs[0].payload.items[0], { groupUid: 'TEST-FOUND', sku: '000123456', productName: 'Vải thử nghiệm & kiểm tra', lot: 'LOT-01', roll: '007', copies: 1 });
       assert.equal(jobs[0].payload.items[1].sku, '');
+      assert.deepEqual(jobs[0].payload.items[2], { groupUid: 'TEST-LOTROLL', sku: '000123456', productName: 'Vải thử nghiệm & kiểm tra', lot: '197/9', roll: '004', copies: 1 });
       assert.equal(await page.locator('#uid-ready-count').textContent(), '0');
       assert.equal(await page.locator('#uid-pending-count').textContent(), '3');
       const empty = page.locator('#uid-pending .uid-row').filter({ hasText: 'TEST-EMPTY' });
@@ -79,7 +88,7 @@ const assert = require('node:assert/strict');
       assert.match(await page.locator('#uid-ready').innerText(), /1028269999000003/);
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
       assert.deepEqual(errors, []);
-      console.log(`PASS ${width}px: automatic mapping, blank SKU, duplicate, missing data, network error, manual fallback, print payload, camera UID scan, no overflow/page errors`);
+      console.log(`PASS ${width}px: automatic mapping, blank SKU, duplicate, missing data, network error, manual fallback, print payload, roll trimmed after lot, camera UID scan, no overflow/page errors`);
       await page.close();
     }
   } finally { await browser.close(); }
