@@ -43,7 +43,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     sendResponse(errorResponse("FORBIDDEN_ORIGIN", "Ứng dụng không nằm trên địa chỉ Print SKU được cho phép"));
     return false;
   }
-  if (!message || !["PING", "PING_WMS", "GET_PO", "GET_SKU_SYNC_DATA", "GET_GROUP_UID_PAGE"].includes(message.type)) {
+  if (!message || !["PING", "PING_WMS", "GET_PO", "GET_SKU_SYNC_DATA", "GET_GROUP_UID_PAGE", "GET_GROUP_UID_HISTORY_PAGE"].includes(message.type)) {
     sendResponse(errorResponse("INVALID_REQUEST", "Yêu cầu kết nối không hợp lệ"));
     return false;
   }
@@ -59,12 +59,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
-  if (message.type === "GET_GROUP_UID_PAGE") {
+  if (["GET_GROUP_UID_PAGE", "GET_GROUP_UID_HISTORY_PAGE"].includes(message.type)) {
     (async () => {
       const wmsTab = await findWmsTab();
       if (!wmsTab) return errorResponse("WMS_TAB_MISSING", "Hãy mở một tab WMS và đăng nhập trước");
       try {
-        const result = await sendToWms(wmsTab, { type: "GET_GROUP_UID_PAGE", payload: message.payload || {} });
+        const result = await sendToWms(wmsTab, { type: message.type, payload: message.payload || {} });
         return result?.ok ? result : errorResponse(result?.error?.code || "WMS_ERROR", result?.error?.message || "WMS không trả dữ liệu Group UID");
       } catch {
         return errorResponse("WMS_BRIDGE_ERROR", "Không kết nối được tab WMS; hãy tải lại tab WMS rồi thử lại");

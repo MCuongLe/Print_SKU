@@ -11,6 +11,7 @@
     if (!Number.isFinite(date.getTime())) throw new Error(`Ngày cập nhật Group UID không hợp lệ: ${clean(value, 80)}`);
     return date.toISOString();
   };
+  const CUT_NOTE = /^Cut\s+([\d.,]+)\s+out of group\s+(\S+)\s+\(remaining\s+([\d.,]+)\)\s*$/i;
 
   function responseRows(payload) {
     const candidates = [
@@ -82,5 +83,44 @@
     return { rows: [...unique.values()], total: responseTotal(payload, rows.length) };
   }
 
-  globalThis.HasakiGroupUidSyncCore = Object.freeze({ clean, normalizeRow, normalizePage, responseRows, responseTotal });
+  function normalizeHistoryPage(payload) {
+    const source = responseRows(payload);
+    const unique = new Map();
+    let rangeFrom = "", rangeTo = "";
+    source.forEach((raw, index) => {
+      const updatedDate = isoDate(raw?.updated_at_tz ?? raw?.updated_at);
+      if (!rangeFrom || updatedDate < rangeFrom) rangeFrom = updatedDate;
+      if (!rangeTo || updatedDate > rangeTo) rangeTo = updatedDate;
+      const note = clean(raw?.note, 800);
+      const match = CUT_NOTE.exec(note);
+      if (!match) {
+        if (/^Cut\b/i.test(note)) throw new Error(`Lịch sử Group UID dòng ${index + 1} có ghi chú Cut không hợp lệ`);
+        return;
+      }
+      const code = clean(raw?.group_uid_code ?? match[2], 40);
+      if (!code || code !== clean(match[2], 40)) throw new Error(`Lịch sử Group UID dòng ${index + 1} có mã Cut không khớp`);
+      const qty = numberValue(match[1]);
+      const remaining = numberValue(match[3]);
+      if (!Number.isFinite(qty) || !Number.isFinite(remaining)) throw new Error(`Lịch sử Group UID ${code} có số lượng Cut không hợp lệ`);
+      const row = {
+        group_uid_code: code,
+        cut_at: updatedDate,
+        qty,
+        remaining_qty: remaining,
+        sku: clean(raw?.sku, 80) || null,
+        cut_by: clean(raw?.updated_by_name ?? raw?.updated_by, 240) || null,
+        warehouse: clean(raw?.warehouse_name ?? raw?.warehouse, 240) || null,
+      };
+      unique.set(`${row.group_uid_code}|${row.cut_at}`, row);
+    });
+    return {
+      rows: [...unique.values()],
+      total: responseTotal(payload, source.length),
+      sourceRows: source.length,
+      rangeFrom: rangeFrom || null,
+      rangeTo: rangeTo || null,
+    };
+  }
+
+  globalThis.HasakiGroupUidSyncCore = Object.freeze({ clean, normalizeRow, normalizePage, normalizeHistoryPage, responseRows, responseTotal });
 })();

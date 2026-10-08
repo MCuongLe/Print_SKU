@@ -33,7 +33,7 @@ Sau khi repository được cập nhật, mở `chrome://extensions` và bấm *
 
 Extension chỉ đọc Inside. Mọi ghi dữ liệu chạy trong Edge Function `sku-sync`, yêu cầu phiên Supabase có vai trò `admin` và luôn xác minh lại sau khi upsert.
 
-Phiên bản 0.4.2 đọc đầy đủ Combo nhiều thành phần và bổ sung Group UID từ WMS theo lô 500 dòng. Bản này hỗ trợ phản hồi WMS dạng `records/count`, Group UID trạng thái `New` chưa có SKU và Group UID chứa nhiều SKU. Các SKU thành phần được lưu trong `group_uid_products`.
+Phiên bản 0.5.0 đọc đầy đủ Combo nhiều thành phần, Group UID hiện tại và lịch sử cắt Group UID từ WMS theo lô 500 dòng. Bản này hỗ trợ phản hồi WMS dạng `records/count`, Group UID trạng thái `New` chưa có SKU và Group UID chứa nhiều SKU. Các SKU thành phần được lưu trong `group_uid_products`.
 
 Đồng bộ Group UID dành cho Admin:
 
@@ -43,6 +43,15 @@ Phiên bản 0.4.2 đọc đầy đủ Combo nhiều thành phần và bổ sung
 4. Xem báo cáo rồi bấm **Cập nhật Supabase**.
 
 Luồng thay đổi đọc chồng lại 30 phút. Luồng toàn bộ vẫn được giữ để tìm UID thiếu hoặc sai lệch. Access token WMS không rời extension.
+
+Đối chiếu UID đã cắt:
+
+1. Đăng nhập WMS bằng tài khoản có quyền xem **Group UID → History**.
+2. Mở `#cut-group-uid`, chọn **4 · Đối chiếu** và bấm **Đọc từ WMS**.
+3. Extension chỉ đọc kho `warehouse_id=1177` (**WH - MATERIAL - MTG**), nhận diện dòng Cut theo Note và gửi dữ liệu đã chuẩn hóa về ứng dụng.
+4. Ứng dụng nạp vào Supabase bằng phiên Admin, lùi mốc lần trước 30 phút và loại trùng theo Group UID + thời gian Cut.
+
+Nút **Nạp ZIP/XLSX** vẫn dùng được để đối chiếu toàn bộ hoặc khi API WMS tạm thời không khả dụng.
 
 ## Triển khai cho nhiều người
 

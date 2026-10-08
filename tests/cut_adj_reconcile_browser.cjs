@@ -113,9 +113,10 @@ const STATE_ORDER = ['wrong', 'missing', 'multi', 'forgot', 'pending', 'wait', '
             lastImport: null } };
         } else if (rpc === 'wms_group_uid_cut_import') {
           store.importCalls.push({ authorization: request.headers().authorization, body });
-          const have = new Set(store.rows.map(r => `${r.group_uid_code}|${r.cut_at}`));
+          const rowKey = r => `${r.group_uid_code}|${new Date(r.cut_at).toISOString()}`;
+          const have = new Set(store.rows.map(rowKey));
           let added = 0;
-          for (const row of body.p_rows) if (!have.has(`${row.group_uid_code}|${row.cut_at}`)) { store.rows.push(row); added += 1; }
+          for (const row of body.p_rows) if (!have.has(rowKey(row))) { store.rows.push(row); have.add(rowKey(row)); added += 1; }
           store.imports.push({ from: body.p_data_from, until: body.p_data_until });
           result = { ok: true, data: { importId: 'x', cutRows: body.p_rows.length, newRows: added, changedRows: 0, unchangedRows: body.p_rows.length - added, previousImports: 0 } };
         } else if (rpc === 'cut_group_uid_adj_from_wms') {
@@ -178,6 +179,37 @@ const STATE_ORDER = ['wrong', 'missing', 'multi', 'forgot', 'pending', 'wait', '
       assert.equal(call.body.p_data_until, '2026-10-05T14:03:46+07:00');
       assert.equal(call.body.p_rows.length, CUT_ROWS);
       assert.deepEqual(call.body.p_rows[0], { group_uid_code: 'UID-A', cut_at: '2026-10-03T09:00:00+07:00', qty: '306', remaining_qty: '4694', sku: 'SKU-G', cut_by: 'user@example.test', warehouse: 'WH - TEST' });
+
+      // Extension 0.5.0 doc truc tiep lich su WMS cua warehouse_id 1177; nap chong khong nhan doi.
+      const apiRows = HISTORY.slice(1).map(row => ({
+        group_uid_code: row[1], warehouse_name: row[2], action_name: row[3], sku: row[6],
+        quantity: Number(row[8]), note: row[10], updated_by_name: row[11], updated_at_tz: `${row[12].replace(' ', 'T')}+07:00`
+      }));
+      await page.evaluate(source => {
+        window.addEventListener('message', event => {
+          const req = event.data;
+          if (event.source !== window || req?.source !== 'PRINT_SKU_APP') return;
+          if (req.type === 'PING_WMS') window.postMessage({ source: 'HASAKI_INSIDE_CONNECTOR', requestId: req.requestId, ok: true, data: { version: '0.5.0' } }, location.origin);
+          if (req.type === 'GET_GROUP_UID_HISTORY_PAGE') {
+            const cuts = source.filter(row => /^Cut\s/i.test(row.note || '')).map(row => {
+              const match = /^Cut\s+([\d.,]+)\s+out of group\s+(\S+)\s+\(remaining\s+([\d.,]+)\)$/i.exec(row.note);
+              return { group_uid_code: row.group_uid_code, cut_at: new Date(row.updated_at_tz).toISOString(), qty: Number(match[1]), remaining_qty: Number(match[3]), sku: row.sku, cut_by: row.updated_by_name, warehouse: row.warehouse_name };
+            });
+            window.postMessage({ source: 'HASAKI_INSIDE_CONNECTOR', requestId: req.requestId, ok: true, data: {
+              page: 1, size: 500, total: source.length, totalPages: 1, rows: cuts, sourceRows: source.length,
+              rangeFrom: new Date(source.map(row => row.updated_at_tz).sort()[0]).toISOString(),
+              rangeTo: new Date(source.map(row => row.updated_at_tz).sort().at(-1)).toISOString(), warehouseId: '1177'
+            } }, location.origin);
+          }
+        });
+      }, apiRows);
+      await page.locator('#cut-adj-wms').click();
+      await page.waitForFunction(() => document.querySelector('#cut-message').textContent.startsWith('Đã đọc'));
+      assert.match(await message(), new RegExp(`Đã đọc ${HISTORY.length - 1} dòng lịch sử kho WH - MATERIAL - MTG; nạp ${CUT_ROWS} dòng Cut: 0 mới, 0 đổi, ${CUT_ROWS} giữ nguyên`));
+      assert.equal(store.importCalls.length, 2);
+      assert.match(store.importCalls[1].body.p_file_name, /^WMS_API_WH_MATERIAL_/);
+      assert.equal(store.importCalls[1].body.p_total_rows, HISTORY.length - 1);
+      assert.equal(store.importCalls[1].body.p_rows.length, CUT_ROWS);
 
       // Phan loai trang thai.
       assert.deepEqual(await counts(), { all: 11, wrong: 1, missing: 1, multi: 1, forgot: 1, pending: 2, wait: 1, ok: 4 });
