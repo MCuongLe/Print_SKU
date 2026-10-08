@@ -33,6 +33,7 @@ async function fetchAll(path: string, pageSize = 1000): Promise<Json[]> {
   const rows: Json[] = [];
   for (let start = 0; start < 100000; start += pageSize) {
     const response = await db(path, { headers: { Range: `${start}-${start + pageSize - 1}` } });
+    if (response.status === 416) break;
     const page = await jsonResponse(response, "Đọc database") as Json[];
     rows.push(...page);
     if (page.length < pageSize) break;
