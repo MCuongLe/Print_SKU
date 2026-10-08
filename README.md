@@ -61,6 +61,14 @@ IN TEM GROUP UID). Cao 64 px + viền 1 px, dính đầu màn; từ 760 px trở
 của từng màn. Màn mới chỉ cần dùng markup `.uid-topbar` (Back là phần tử đầu để thứ tự Tab khớp thứ tự nhìn). Trang chủ (nền xanh), Quản trị (React) và lớp
 camera/scanner giữ kiểu riêng. Thiết kế: [`docs/THIET_KE_HEADER_UI.md`](docs/THIET_KE_HEADER_UI.md).
 
+**Hộp xác nhận dùng chung** (08/10/2026): mọi bước hỏi lại trước khi làm dùng `await WhDialog.confirm({ title, facts, list, tone, confirmText })`
+(module `wh-dialog-script` cuối `<head>`), không dùng `confirm()` của trình duyệt — hộp đó ghi "mcuongle.github.io cho biết", lệch màu chữ
+của app và chỉ có OK/Huỷ. Hộp gồm icon, tiêu đề ngắn, nhãn số (`facts`), danh sách mã (tối đa 5, còn lại "+n") và nút ghi rõ việc + con
+số ("In lại 6 tem", "Xoá 3 vị trí"). `tone`: `default` (Enter = đồng ý), `warning` (SKU Combo, Lot/Roll đè nhau — con trỏ đứng sẵn ở Huỷ),
+`danger` (xoá, bỏ đánh dấu — nút đỏ, con trỏ ở Huỷ). Esc / bấm ra ngoài = Huỷ; gọi liên tiếp thì hộp sau đợi hộp trước; điện thoại hiện
+dạng trượt từ đáy. Đang dùng ở 9 chỗ: IN TEM SKU (Combo, > 30 tem), PRINT UID (Combo, Lot/Roll, > 30 tem), Cắt UID (Lot/Roll, bỏ đánh
+dấu ADJ), Đối chiếu ADJ (tick giúp), Mã vị trí (xoá khỏi hàng đợi), Lệnh in (in lại). Test: `tests/wh_dialog_browser.cjs`.
+
 ## Quản trị (Admin)
 
 Giao diện Admin (`#admin/lenh-in`, `#admin/cauhinh`, `#admin/sku-sync`, `#admin/group-uid-sync`) vào từ ô **QUẢN TRỊ** (nhóm "Quản trị", cuối trang chủ) — không còn

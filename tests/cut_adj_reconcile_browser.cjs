@@ -93,7 +93,8 @@ const STATE_ORDER = ['wrong', 'missing', 'multi', 'forgot', 'pending', 'wait', '
       const store = { rows: [], imports: [], importCalls: [], tickCalls: [], reconcileBodies: [] };
       page.on('pageerror', error => errors.push(error.message));
       page.on('console', message => { if (message.type() === 'error' && !/Failed to load resource/.test(message.text())) errors.push(message.text()); });
-      page.on('dialog', dialog => dialog.accept());
+      // 08/10/2026: xac nhan dung hop WhDialog trong trang; hop confirm() cua trinh duyet khong duoc hien nua.
+      page.on('dialog', dialog => { errors.push(`hop trinh duyet: ${dialog.message()}`); dialog.dismiss(); });
       // Mo phong server theo dung quy tac SQL: chi tinh Cut co gio >= gio quet cat tren app.
       await page.route('**/*', async route => {
         const request = route.request(), url = request.url();
@@ -197,6 +198,10 @@ const STATE_ORDER = ['wrong', 'missing', 'multi', 'forgot', 'pending', 'wait', '
       await page.locator('#cut-adj-all').check();
       assert.equal((await page.locator('#cut-adj-tick').textContent()).trim(), 'Tick giúp 1');
       await page.locator('#cut-adj-tick').click();
+      await page.locator('dialog.whd').waitFor({ state: 'visible' });
+      assert.equal((await page.locator('dialog.whd .whd-title').textContent()).trim(), 'Đánh dấu 1 UID đã xuất ADJ');
+      assert.deepEqual(await page.locator('dialog.whd .whd-list li').allTextContents(), ['UID-B']);
+      await page.locator('dialog.whd .whd-ok').click();
       await page.waitForFunction(() => document.querySelector('#cut-message').textContent.includes('Đã tick 1 UID'));
       assert.deepEqual(store.tickCalls, [['UID-B']]);
       assert.equal(items.find(x => x.groupUid === 'UID-B').adjExportedAt, '2026-10-03T09:01:00+07:00');

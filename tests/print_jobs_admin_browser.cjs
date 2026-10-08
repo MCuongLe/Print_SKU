@@ -72,6 +72,8 @@ function mock(page, calls) {
 const rows = page => page.locator('#pj-list .pj-row:not(.pj-head)');
 // PJ_SHOTS=<thư mục> thì chụp màn hình ở vài bước để xem bằng mắt (không bắt buộc).
 const shot = async (page, name, fullPage = false) => { if (process.env.PJ_SHOTS) await page.screenshot({ path: `${process.env.PJ_SHOTS}/${name}.png`, fullPage }); };
+const whd = page => page.locator('dialog.whd');
+const answer = async (page, ok) => { await whd(page).waitFor({ state: 'visible' }); await whd(page).locator(ok ? '.whd-ok' : '.whd-cancel').click(); await whd(page).waitFor({ state: 'hidden' }); };
 const lastCall = (calls, name) => [...calls].reverse().find(call => call.rpc === name);
 
 (async () => {
@@ -83,7 +85,8 @@ const lastCall = (calls, name) => [...calls].reverse().find(call => call.rpc ===
       const page = await context.newPage();
       const errors = [], calls = [];
       page.on('pageerror', error => errors.push(error.message));
-      page.on('dialog', dialog => dialog.accept());
+      // Xác nhận in lại là hộp WhDialog trong trang; hộp confirm() của trình duyệt không được hiện.
+      page.on('dialog', dialog => { errors.push(`hộp trình duyệt: ${dialog.message()}`); dialog.dismiss(); });
       await mock(page, calls);
 
       // Hash cũ Tổng quan / Đợt đã gửi chuyển về Lệnh in; React ẩn
@@ -161,7 +164,27 @@ const lastCall = (calls, name) => [...calls].reverse().find(call => call.rpc ===
       assert.match(await page.locator('#pj-d-meta').innerText(), /Đã in lại/);
       assert.equal((await page.locator('#pj-d-reprint-text').innerText()).trim(), 'In lại 6 tem');
       await shot(page, `sku-popup-${width}`);
+      const before = calls.filter(call => call.rpc === 'print_admin_reprint').length;
       await page.locator('#pj-d-reprint').click();
+      await whd(page).waitFor({ state: 'visible' });
+      assert.equal((await whd(page).locator('.whd-title').textContent()).trim(), 'In lại lệnh SKU');
+      assert.deepEqual(await whd(page).locator('.whd-facts li').allTextContents(), ['3 SKU', '6 tem', 'Ngày in 08/10/26']);
+      assert.equal(await whd(page).locator('.whd-list li').count(), 3);
+      assert.equal((await whd(page).locator('.whd-ok').textContent()).trim(), 'In lại 6 tem');
+      assert.equal(await whd(page).locator('.whd-ok').evaluate(button => button === document.activeElement), true, 'hộp thường: con trỏ ở nút đồng ý');
+      await shot(page, `confirm-sku-${width}`);
+      await answer(page, false);   // Huỷ → không gửi
+      assert.equal(calls.filter(call => call.rpc === 'print_admin_reprint').length, before);
+      assert.equal(await page.locator('#pj-d-reprint').isDisabled(), false);
+      await page.locator('#pj-d-reprint').click();
+      await whd(page).waitFor({ state: 'visible' });
+      await page.keyboard.press('Escape');   // Esc → Huỷ, popup Lệnh in vẫn mở
+      await whd(page).waitFor({ state: 'hidden' });
+      assert.equal(await dlg.isVisible(), true);
+      assert.equal(calls.filter(call => call.rpc === 'print_admin_reprint').length, before);
+      await page.locator('#pj-d-reprint').click();
+      await whd(page).waitFor({ state: 'visible' });
+      await page.keyboard.press('Enter');    // Enter = đồng ý ở hộp thường
       await page.waitForFunction(() => /ffff6666/.test(document.getElementById('pj-d-note').textContent));
       const skuCall = lastCall(calls, 'print_admin_reprint');
       assert.equal(skuCall.args.p_job_id, JOBS[0].id);
@@ -190,6 +213,18 @@ const lastCall = (calls, name) => [...calls].reverse().find(call => call.rpc ===
       assert.equal((await page.locator('#pj-d-sum').innerText()).trim(), '3/3 dòng · 3 tem');
       await page.locator('#pj-d-tbody input[data-pick="1"]').uncheck();
       await page.locator('#pj-d-reprint').click();
+      await whd(page).waitFor({ state: 'visible' });
+      assert.equal((await whd(page).locator('.whd-title').textContent()).trim(), 'In lại 2 UID');
+      assert.deepEqual(await whd(page).locator('.whd-list li').allTextContents(), ['1028260900000101', '1028260900000103']);
+      assert.deepEqual(await whd(page).locator('.whd-facts li').allTextContents(), ['2 tem', '2/3 dòng']);
+      if (width < 768) {
+        const sheet = await whd(page).boundingBox(), viewport = page.viewportSize();
+        assert.ok(Math.abs(sheet.y + sheet.height - viewport.height) <= 1, 'điện thoại: hộp xác nhận nằm sát đáy màn hình');
+        const [ok, cancel] = [await whd(page).locator('.whd-ok').boundingBox(), await whd(page).locator('.whd-cancel').boundingBox()];
+        assert.ok(ok.y < cancel.y && ok.width > 300, 'điện thoại: nút đồng ý ở trên, rộng hết hộp');
+      }
+      await shot(page, `confirm-uid-${width}`);
+      await answer(page, true);
       await page.waitForFunction(() => /ffff6666/.test(document.getElementById('pj-d-note').textContent));
       assert.deepEqual(lastCall(calls, 'print_admin_reprint').args.p_items, [0, 2]);
       await shot(page, `uid-popup-${width}`);
@@ -205,6 +240,9 @@ const lastCall = (calls, name) => [...calls].reverse().find(call => call.rpc ===
       await rows(page).filter({ hasText: '1028260900000101' }).click();
       await page.waitForFunction(() => document.querySelectorAll('#pj-d-tbody input[data-pick]').length === 3);
       await page.locator('#pj-d-reprint').click();
+      await whd(page).waitFor({ state: 'visible' });
+      assert.deepEqual(await whd(page).locator('.whd-facts li').allTextContents(), ['3 tem', 'Toàn bộ lệnh']);
+      await answer(page, true);
       await page.waitForFunction(() => /ffff6666/.test(document.getElementById('pj-d-note').textContent));
       assert.equal(lastCall(calls, 'print_admin_reprint').args.p_items, null);
       await page.locator('#pj-d-close').click();
