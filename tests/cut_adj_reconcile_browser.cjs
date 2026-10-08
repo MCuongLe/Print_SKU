@@ -185,20 +185,27 @@ const STATE_ORDER = ['wrong', 'missing', 'multi', 'forgot', 'pending', 'wait', '
         group_uid_code: row[1], warehouse_name: row[2], action_name: row[3], sku: row[6],
         quantity: Number(row[8]), note: row[10], updated_by_name: row[11], updated_at_tz: `${row[12].replace(' ', 'T')}+07:00`
       }));
+      // Extension giả lập chia trang như thật. noTotal: API không trả tổng → extension lấy số dòng của trang làm tổng
+      // (totalPages = 1). repeat: API bỏ qua tham số page, trang nào cũng trả trang 1.
       await page.evaluate(source => {
+        window.__wms = { source, noTotal: false, repeat: false, pages: [] };
         window.addEventListener('message', event => {
           const req = event.data;
           if (event.source !== window || req?.source !== 'PRINT_SKU_APP') return;
           if (req.type === 'PING_WMS') window.postMessage({ source: 'HASAKI_INSIDE_CONNECTOR', requestId: req.requestId, ok: true, data: { version: '0.5.0' } }, location.origin);
           if (req.type === 'GET_GROUP_UID_HISTORY_PAGE') {
-            const cuts = source.filter(row => /^Cut\s/i.test(row.note || '')).map(row => {
+            const wms = window.__wms, size = req.payload.size || 500, pageNo = req.payload.page || 1, at = wms.repeat ? 1 : pageNo;
+            wms.pages.push(pageNo);
+            const slice = wms.source.slice((at - 1) * size, at * size), times = slice.map(row => Date.parse(row.updated_at_tz)).sort((a, b) => a - b);
+            const total = wms.noTotal ? slice.length : wms.source.length;
+            const cuts = slice.filter(row => /^Cut\s/i.test(row.note || '')).map(row => {
               const match = /^Cut\s+([\d.,]+)\s+out of group\s+(\S+)\s+\(remaining\s+([\d.,]+)\)$/i.exec(row.note);
               return { group_uid_code: row.group_uid_code, cut_at: new Date(row.updated_at_tz).toISOString(), qty: Number(match[1]), remaining_qty: Number(match[3]), sku: row.sku, cut_by: row.updated_by_name, warehouse: row.warehouse_name };
             });
             window.postMessage({ source: 'HASAKI_INSIDE_CONNECTOR', requestId: req.requestId, ok: true, data: {
-              page: 1, size: 500, total: source.length, totalPages: 1, rows: cuts, sourceRows: source.length,
-              rangeFrom: new Date(source.map(row => row.updated_at_tz).sort()[0]).toISOString(),
-              rangeTo: new Date(source.map(row => row.updated_at_tz).sort().at(-1)).toISOString(), warehouseId: '1177'
+              page: pageNo, size, total, totalPages: Math.max(1, Math.ceil(total / size)), rows: cuts, sourceRows: slice.length,
+              rangeFrom: times.length ? new Date(times[0]).toISOString() : null,
+              rangeTo: times.length ? new Date(times.at(-1)).toISOString() : null, warehouseId: '1177'
             } }, location.origin);
           }
         });
@@ -260,6 +267,29 @@ const STATE_ORDER = ['wrong', 'missing', 'multi', 'forgot', 'pending', 'wait', '
       await page.waitForFunction(() => /0 mới/.test(document.querySelector('#cut-message').textContent));
       assert.match(await message(), new RegExp(`${CUT_ROWS} giữ nguyên`));
 
+      // Đọc nhiều trang: 1.150 dòng lịch sử không phải Cut đứng trước nên các dòng Cut nằm ở trang 3.
+      const filler = Array.from({ length: 1150 }, (_, i) => ({ group_uid_code: `FILL-${i}`, warehouse_name: 'WH - TEST', note: null, quantity: 0,
+        updated_at_tz: new Date(Date.parse('2026-10-02T08:00:00+07:00') + i * 1000).toISOString() }));
+      const bigTotal = filler.length + apiRows.length, bigText = await page.evaluate(n => n.toLocaleString('vi-VN'), bigTotal);
+      const syncWms = async (mode, done) => {
+        await page.evaluate(([rows, mode]) => { Object.assign(window.__wms, { source: rows, pages: [], noTotal: false, repeat: false }, mode); document.querySelector('#cut-message').textContent = ''; }, [[...filler, ...apiRows], mode]);
+        await page.locator('#cut-adj-wms').click();
+        await page.waitForFunction(text => document.querySelector('#cut-message').textContent.includes(text), done);
+        return page.evaluate(() => window.__wms.pages);
+      };
+      // Có tổng thật (> 1 trang): đọc đủ 3 trang theo totalPages.
+      assert.deepEqual(await syncWms({}, `Đã đọc ${bigText} dòng`), [1, 2, 3]);
+      assert.equal(store.importCalls.at(-1).body.p_total_rows, bigTotal);
+      assert.equal(store.importCalls.at(-1).body.p_rows.length, CUT_ROWS);
+      // API không trả tổng (extension báo totalPages = 1): trước đây chỉ đọc trang 1, mất các dòng Cut ở trang 3; nay đọc tới trang thiếu dòng.
+      assert.deepEqual(await syncWms({ noTotal: true }, `Đã đọc ${bigText} dòng`), [1, 2, 3]);
+      assert.equal(store.importCalls.at(-1).body.p_total_rows, bigTotal);
+      assert.equal(store.importCalls.at(-1).body.p_rows.length, CUT_ROWS);
+      // API bỏ qua tham số page (trang nào cũng là trang 1): dừng, báo lỗi, không nạp gì.
+      const importsBefore = store.importCalls.length;
+      assert.deepEqual(await syncWms({ noTotal: true, repeat: true }, 'trả lặp lại cùng một trang'), [1, 2]);
+      assert.equal(store.importCalls.length, importsBefore);
+
       // Xuat Excel: dung dong dang loc, du 9 cot, A4 ngang.
       await page.locator('.cut-adj-kpi[data-st="wrong"]').click();
       const downloadPromise = page.waitForEvent('download');
@@ -282,7 +312,7 @@ const STATE_ORDER = ['wrong', 'missing', 'multi', 'forgot', 'pending', 'wait', '
       assert.equal(layout.tabs.length, 4);
       assert.equal(layout.tabs.every(right => right <= layout.innerWidth), true);
       assert.deepEqual(errors, []);
-      console.log(`PASS ${width}px: file zip/xlsx, loi file, Admin truoc khi nap, 7 trang thai, Cut cu truoc lan quet, tick giup, loc, nap lai, XLSX, no overflow/errors`);
+      console.log(`PASS ${width}px: file zip/xlsx, loi file, Admin truoc khi nap, 7 trang thai, Cut cu truoc lan quet, tick giup, loc, nap lai, doc WMS nhieu trang (co/khong tong, lap trang), XLSX, no overflow/errors`);
       await page.close();
     }
   } finally { await browser.close(); }

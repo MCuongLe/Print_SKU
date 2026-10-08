@@ -7722,19 +7722,29 @@ var FSK_CORE = (function () {
             const to=new Date().toISOString(),from=cov?.until?new Date(Date.parse(cov.until)-30*60000).toISOString():null;
             const params={size:500,to,...(from?{from}:{})};
             tell(from?`Đang đọc thay đổi WMS từ ${fmt(from)} · kho WH - MATERIAL - MTG…`:'Đang đọc toàn bộ lịch sử kho WH - MATERIAL - MTG…');
-            const first=await extensionRequest('GET_GROUP_UID_HISTORY_PAGE',{...params,page:1});
-            if(String(first.warehouseId||'')!=='1177')throw new Error('Extension trả dữ liệu ngoài phạm vi kho WH - MATERIAL - MTG');
-            const totalPages=Number(first.totalPages)||1,total=Number(first.total)||0,byKey=new Map();
-            let dataFrom=first.rangeFrom||'',dataUntil=first.rangeTo||'';
-            for(const row of first.rows||[])byKey.set(`${row.group_uid_code}|${row.cut_at}`,row);
-            for(let page=2;page<=totalPages;page+=1){
-              tell(`Đang đọc lịch sử WMS: trang ${page}/${totalPages} · kho WH - MATERIAL - MTG…`);
+            // Đọc tới khi gặp trang thiếu dòng, không chỉ tin tổng số trang: API không trả tổng số dòng thì extension lấy
+            // số dòng của trang làm tổng (totalPages = 1) → trước đây chỉ đọc trang 1 mà không báo lỗi. Tổng > 1 trang chắc
+            // chắn là tổng thật: vẫn kiểm không đổi giữa các trang và khớp số dòng đã đọc. Trang lặp lại / quá 400 trang thì dừng.
+            const MAX_PAGES=400,byKey=new Map();
+            let total=0,totalPages=1,read=0,dataFrom='',dataUntil='',lastSig='';
+            for(let page=1;;page+=1){
+              if(page>MAX_PAGES)throw new Error(`Lịch sử WMS vượt ${MAX_PAGES} trang; hãy nạp ZIP/XLSX`);
+              if(page>1)tell(`Đang đọc lịch sử WMS: trang ${page}${page<=totalPages?`/${totalPages}`:''} · kho WH - MATERIAL - MTG…`);
               const result=await extensionRequest('GET_GROUP_UID_HISTORY_PAGE',{...params,page});
-              if(String(result.warehouseId||'')!=='1177'||Number(result.totalPages)!==totalPages||Number(result.total)!==total)throw new Error('Phạm vi lịch sử WMS thay đổi trong lúc đọc; hãy chạy lại');
+              if(String(result.warehouseId||'')!=='1177')throw new Error('Extension trả dữ liệu ngoài phạm vi kho WH - MATERIAL - MTG');
+              const size=Number(result.size)||params.size,count=Number(result.sourceRows)||0,pageTotal=Number(result.total)||0;
+              if(page===1){total=pageTotal;totalPages=Number(result.totalPages)||1}
+              else if(total>size&&(pageTotal!==total||Number(result.totalPages)!==totalPages))throw new Error('Phạm vi lịch sử WMS thay đổi trong lúc đọc; hãy chạy lại');
+              const keys=(result.rows||[]).map(row=>`${row.group_uid_code}|${row.cut_at}`),sig=`${count}|${result.rangeFrom}|${result.rangeTo}|${keys.join(',')}`;
+              if(page>1&&count&&sig===lastSig)throw new Error('WMS trả lặp lại cùng một trang lịch sử; hãy nạp ZIP/XLSX');
+              lastSig=sig;read+=count;
               if(result.rangeFrom&&(!dataFrom||result.rangeFrom<dataFrom))dataFrom=result.rangeFrom;
               if(result.rangeTo&&(!dataUntil||result.rangeTo>dataUntil))dataUntil=result.rangeTo;
-              for(const row of result.rows||[])byKey.set(`${row.group_uid_code}|${row.cut_at}`,row);
+              (result.rows||[]).forEach((row,i)=>byKey.set(keys[i],row));
+              if(page>=totalPages&&count<size)break;
             }
+            if(total>params.size&&read!==total)throw new Error(`Đọc được ${read}/${total} dòng lịch sử WMS; hãy chạy lại`);
+            total=read;
             const cuts=[...byKey.values()].sort((a,b)=>String(a.cut_at).localeCompare(String(b.cut_at))),parts=[];
             if(cuts.length)for(let i=0;i<cuts.length;i+=5000)parts.push(cuts.slice(i,i+5000));else parts.push([]);
             const result={cutRows:0,newRows:0,changedRows:0,unchangedRows:0};
