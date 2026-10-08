@@ -1,6 +1,6 @@
 # HASAKI Inside PO Connector
 
-Tiện ích Chrome chỉ đọc, dùng phiên Inside đã đăng nhập để lấy PO/SKU cho màn `#inspection` và lấy dữ liệu SKU/Combo cho màn `#admin/sku-sync` của Print SKU.
+Tiện ích Chrome chỉ đọc, dùng phiên Inside/WMS đã đăng nhập để lấy PO/SKU, dữ liệu SKU/Combo và Group UID cho Print SKU.
 
 ## Người dùng có phải tự cài không?
 
@@ -11,7 +11,7 @@ Có. Chrome không cho một website tự cài extension. Với bản nội bộ
 3. Bật **Chế độ dành cho nhà phát triển / Developer mode**.
 4. Chọn **Tải tiện ích đã giải nén / Load unpacked**.
 5. Chọn đúng thư mục `extension/inside-po-connector`.
-6. Tải lại tab Inside và tab Print SKU.
+6. Tải lại tab Inside, tab WMS và tab Print SKU.
 
 Sau khi repository được cập nhật, mở `chrome://extensions` và bấm **Tải lại / Reload** trên tiện ích để nhận mã mới.
 
@@ -33,7 +33,16 @@ Sau khi repository được cập nhật, mở `chrome://extensions` và bấm *
 
 Extension chỉ đọc Inside. Mọi ghi dữ liệu chạy trong Edge Function `sku-sync`, yêu cầu phiên Supabase có vai trò `admin` và luôn xác minh lại sau khi upsert.
 
-Phiên bản 0.3.3 đọc đầy đủ Combo nhiều thành phần dạng `Combo A=B+C`, chỉ kết thúc phân trang theo số dòng gốc và báo cáo từng lỗi nguồn: quan hệ không hợp lệ, mô tả sai dạng `Combo A=B+C` và thành phần không đọc được. Lỗi không bị bỏ lặng lẽ; chúng được gửi kèm bản xem trước.
+Phiên bản 0.4.0 đọc đầy đủ Combo nhiều thành phần và bổ sung Group UID từ WMS theo lô 500 dòng.
+
+Đồng bộ Group UID dành cho Admin:
+
+1. Mở tab WMS và đăng nhập.
+2. Vào `#admin/group-uid-sync` trong Print SKU.
+3. Chọn **Kiểm tra thay đổi** hoặc **Đối chiếu toàn bộ**.
+4. Xem báo cáo rồi bấm **Cập nhật Supabase**.
+
+Luồng thay đổi đọc chồng lại 30 phút. Luồng toàn bộ vẫn được giữ để tìm UID thiếu hoặc sai lệch. Access token WMS không rời extension.
 
 ## Triển khai cho nhiều người
 
@@ -45,11 +54,11 @@ Không thể tạo nút trên `index.html` để bỏ qua màn xác nhận cài 
 
 ## Bảo mật và phạm vi
 
-- Chỉ đọc dữ liệu PO/SKU; không ghi ngược vào Inside.
-- Không đọc hoặc lưu cookie/token. Request chạy trong tab Inside đã đăng nhập.
+- Chỉ đọc dữ liệu PO/SKU/Group UID; không ghi ngược vào Inside hoặc WMS.
+- Token WMS chỉ được đọc tạm trong tab WMS để gọi API và không gửi tới Print SKU hoặc Supabase.
 - App chỉ nhận dữ liệu đã chuẩn hóa: PO, kho, NCC, ngày giao và các dòng SKU.
 - Extension không chứa Supabase secret/service-role key.
-- Chỉ kết nối với Inside và các địa chỉ Print SKU đã khai báo trong `manifest.json`.
+- Chỉ kết nối với Inside, WMS và các địa chỉ Print SKU đã khai báo trong `manifest.json`.
 - Import `.xls/.xlsx` vẫn là phương án dự phòng.
 
 Nếu triển khai Print SKU trên domain khác, phải thêm domain đó đồng thời vào `manifest.json`, `background.js` và `app-bridge.js`.

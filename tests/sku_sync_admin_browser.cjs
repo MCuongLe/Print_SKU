@@ -83,11 +83,11 @@ const cells = async page => (await page.locator('#ss-change-body tr').evaluateAl
       await page.locator('#ss-history tr[data-run]').first().waitFor();
 
       // Menu và nút Về trang chủ/Đăng xuất dùng icon SVG, không dùng ký tự
-      const navButtons = page.locator('.ss-nav button');
-      assert.equal(await navButtons.count(), 4);
-      for (let index = 0; index < 4; index += 1) assert.equal(await navButtons.nth(index).locator('svg').count(), 1, `mục menu ${index + 1} có icon`);
-      assert.equal(await page.locator('.ss-side-foot button svg').count(), 2);
-      const chrome = await page.locator('.ss-side, .ss-top').allInnerTexts();
+      const navButtons = page.locator('#sku-sync-screen .ss-nav button');
+      assert.equal(await navButtons.count(), 5);
+      for (let index = 0; index < 5; index += 1) assert.equal(await navButtons.nth(index).locator('svg').count(), 1, `mục menu ${index + 1} có icon`);
+      assert.equal(await page.locator('#sku-sync-screen .ss-side-foot button svg').count(), 2);
+      const chrome = await page.locator('#sku-sync-screen .ss-side, #sku-sync-screen .ss-top').allInnerTexts();
       for (const glyph of ['▦', '☷', '⚙', '⇄', '←']) assert.equal(chrome.join('').includes(glyph), false, `không còn ký tự ${glyph}`);
 
       // Không có câu hướng dẫn/giải thích dài

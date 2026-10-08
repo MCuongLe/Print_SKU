@@ -63,9 +63,11 @@ camera/scanner giữ kiểu riêng. Thiết kế: [`docs/THIET_KE_HEADER_UI.md`]
 
 ## Quản trị (Admin)
 
-Giao diện Admin (`#admin/tongquan`, `#admin/hangdoi`, `#admin/cauhinh`, `#admin/sku-sync`) vào từ ô **QUẢN TRỊ** (nhóm "Quản trị", cuối trang chủ) — không còn
+Giao diện Admin (`#admin/tongquan`, `#admin/hangdoi`, `#admin/cauhinh`, `#admin/sku-sync`, `#admin/group-uid-sync`) vào từ ô **QUẢN TRỊ** (nhóm "Quản trị", cuối trang chủ) — không còn
 nút bánh răng trong header IN TEM SKU. Chưa có phiên thì hiện hộp thoại đăng nhập Supabase (tài khoản có vai trò `admin`); **Hủy**, **Về trang chủ** và **Đăng xuất**
 đều quay về `#home`. **Đăng xuất** nằm ở cuối thanh bên Admin (desktop) hoặc là icon ở hàng tiêu đề (điện thoại); không còn thanh nổi hiện tên Admin. Thương hiệu trong Admin và hộp thoại đăng nhập là "WH-MATERIAL" (trước đây là "In tem SKU"). Test: `tests/admin_entry_browser.cjs`.
+
+Màn `#admin/group-uid-sync` giữ hai chế độ: lấy thay đổi theo watermark lùi 30 phút và đối chiếu toàn bộ. WMS được đọc theo trang 500 dòng; Admin xem preview trước khi cập nhật. Áp dụng `supabase/group_uid_sync_v1.sql` và deploy Edge Function `group-uid-sync` trước khi sử dụng.
 
 ## Màn Sample — gom hàng mẫu vào bao
 
