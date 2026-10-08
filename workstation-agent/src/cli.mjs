@@ -9,6 +9,7 @@ import { queryPrinter } from "./printer.mjs";
 import { renderJobTspl, writePreview } from "./render.mjs";
 import { runService } from "./agent.mjs";
 import { acquireSingleInstance } from "./single-instance.mjs";
+import { installCrashLogging } from "./process-guard.mjs";
 import { measureTextWidths } from "./text-metrics.mjs";
 
 function argument(name, fallback = "") {
@@ -60,16 +61,25 @@ if (command === "preview" || command === "dry-run") {
     : Boolean(config.queueUrl && config.agentToken);
   console.log(JSON.stringify({ ok: printer.ok, agentId: config.agentId, printer, queueProvider: config.queueProvider, queueConfigured }, null, 2));
 } else if (command === "service") {
-  assertServiceConfig(config);
-  const releaseLock = acquireSingleInstance(config.tempDir);
   const controller = new AbortController();
-  process.on("SIGINT", () => controller.abort());
-  process.on("SIGTERM", () => controller.abort());
+  // 0.8.9: lỗi chết người, mã thoát và tín hiệu dừng đều vào agent.log (stderr bị Task Scheduler bỏ).
+  installCrashLogging({ logger, onSignal: () => controller.abort() });
+  assertServiceConfig(config);
+  let releaseLock = null;
   try {
-    const queue = config.queueProvider === "supabase" ? new SupabaseQueueClient(config, { logger }) : new QueueClient(config);
-    await runService(config, queue, logger, controller.signal, releaseLock);
-  } finally {
-    releaseLock();
+    releaseLock = acquireSingleInstance(config.tempDir, { logger });
+  } catch (error) {
+    // Task Scheduler thử chạy lại mỗi 5 phút; bản đang chạy giữ khóa thì bản mới chỉ ghi lại rồi thoát.
+    logger.warn(`Không khởi động agent: ${error.message}`);
+    process.exitCode = 1;
+  }
+  if (releaseLock) {
+    try {
+      const queue = config.queueProvider === "supabase" ? new SupabaseQueueClient(config, { logger }) : new QueueClient(config);
+      await runService(config, queue, logger, controller.signal, releaseLock);
+    } finally {
+      releaseLock();
+    }
   }
 } else {
   console.log("Dùng: preview | dry-run | validate | diagnose | service [--type sku|group_uid] [--file job.json] [--out path] [--env path]");

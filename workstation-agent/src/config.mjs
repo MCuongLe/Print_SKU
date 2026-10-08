@@ -26,6 +26,13 @@ function positiveInt(value, fallback, min, max) {
   return number;
 }
 
+function loopStall(value) {
+  // Không có dòng trong .env thì get() trả "" và Number("") là 0 — phải ra mặc định, không phải "tắt".
+  if (String(value ?? "").trim() === "") return 600000;
+  const ms = positiveInt(value, 600000, 0, 86400000);
+  return ms === 0 ? 0 : Math.max(ms, 300000);
+}
+
 export function loadConfig(options = {}) {
   const envFile = path.resolve(options.envFile || process.env.PRINT_AGENT_ENV || path.join(ROOT_DIR, "config", ".env"));
   let fileValues = {};
@@ -65,6 +72,9 @@ export function loadConfig(options = {}) {
     // 0.8.8: giữ MỘT tiến trình PowerShell thay vì mở mới 4–5 lần mỗi lệnh (src/ps-host.mjs). off để quay về cách cũ.
     psHost: !/^(0|false|off|no)$/i.test(get("PS_HOST", "on")),
     spoolRequireConfirm: /^(1|true|yes)$/i.test(get("SPOOL_REQUIRE_CONFIRM", "")),
+    // 0.8.9: vòng quét đứng quá số ms này khi không in thì agent tự thoát (mã 3) để Task Scheduler chạy lại.
+    // 0 = tắt; giá trị khác 0 tối thiểu 5 phút (> nhịp hỏi thưa dài nhất AGENT_IDLE_POLL_MS + thời hạn các bước).
+    loopStallMs: loopStall(get("LOOP_STALL_MS")),
     dpi: positiveInt(get("LABEL_DPI"), 203, 150, 600),
     density: positiveInt(get("LABEL_DENSITY"), 12, 0, 15),
     speed: positiveInt(get("LABEL_SPEED"), 3, 1, 10),

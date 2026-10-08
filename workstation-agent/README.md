@@ -2,6 +2,27 @@
 
 Agent Windows độc lập phục vụ ứng dụng Print SKU. Bản 0.7.0 dùng tem Fabric Relaxation viết tay hoàn toàn; frontend chỉ chọn số lượng tem.
 
+## Cập nhật 0.8.9 — agent chết thì tự chạy lại, không chết im lặng nữa
+
+Sự cố 06–07/10/2026: agent ngừng lúc ~20:21 và nằm im tới khi có người bật tay sáng hôm sau, `agent.log`
+không ghi gì. Bản 0.8.9:
+
+- **Task Scheduler chạy agent khi khởi động, khi có người đăng nhập và kiểm tra mỗi 5 phút**
+  (`install-agent.ps1`). Agent đang chạy thì bỏ qua (`IgnoreNew`), không bao giờ có hai bản; agent chết
+  thì chậm nhất 5 phút sau có lại. Không còn chặn khi máy chạy pin. Script cài tự tắt task và đợi agent
+  cũ dừng hẳn trước khi chép đè.
+- **Ghi lý do dừng vào `agent.log`**: lỗi không bắt được (kèm stack), mã thoát, tín hiệu dừng; mỗi giờ
+  một dòng "Agent còn chạy" kèm RAM. Log dừng mà không có dòng "Agent thoát" nghĩa là tiến trình bị diệt
+  từ bên ngoài (tắt máy, Task Manager, `Stop-ScheduledTask`).
+- **Khóa `temp\agent.lock` chạm lần cuối trước lần khởi động máy gần nhất thì coi là cũ ngay**, không
+  chờ 3 phút (trước đây tắt máy rồi lên lại nhanh có thể làm agent tưởng bản cũ còn chạy rồi tự thoát).
+- **Vòng quét đứng quá 10 phút khi không in thì agent tự thoát** (mã 3) để Task Scheduler chạy lại.
+  Đang in (kể cả chờ thay giấy) thì không tính. `LOOP_STALL_MS` trong `config\.env`, 0 để tắt.
+
+Không cần migration Supabase, không đổi web. Cài ZIP như bản 0.8.8 bằng `install-agent.ps1` (giữ nguyên
+`config\.env` và `temp`); máy trạm đặt chính sách Restricted nên gọi qua
+`powershell.exe -ExecutionPolicy Bypass -File`. Chờ lệnh in đang chạy xong trước khi cài.
+
 ## Cập nhật 0.8.8 — in nhanh hơn (PowerShell thường trực) và tên vị trí không bắt buộc
 
 ### In nhanh hơn

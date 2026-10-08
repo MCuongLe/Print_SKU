@@ -12,8 +12,9 @@ import { DATE_FONT_SIZES, QUANTITY_FONT_SIZES } from "./templates/text-layout.mj
 import { createSkuCatalog } from "./sku-catalog.mjs";
 import { createPowerShellHost, setPowerShellHost } from "./ps-host.mjs";
 import { LABEL_FONT_FAMILY } from "./templates/common.mjs";
+import { createLoopWatchdog, LOOP_STALL_EXIT_CODE } from "./process-guard.mjs";
 
-export const AGENT_VERSION = "0.8.8";
+export const AGENT_VERSION = "0.8.9";
 
 // Báo "hoàn tất" SAU khi tem đã ra giấy thì không được bỏ cuộc vì mạng: thử
 // lại giãn dần tới 30 giây/lần, khoảng 10 phút. Quá nữa thì để sổ tay lo — hết
@@ -306,7 +307,26 @@ export async function runService(config, queue, logger, signal, lock, dependenci
   catalog?.start(signal);
   let printerCache = null;   // { state, at } — kết quả kiểm tra máy in gần nhất
   let woken = false;         // vòng này do tín hiệu Realtime hoặc vừa in xong, không phải nhịp định kỳ
+  // 0.8.9: vòng quét đứng quá LOOP_STALL_MS khi không in thì tự thoát để Task Scheduler chạy lại
+  // (process-guard.mjs); mỗi giờ ghi một dòng "còn chạy". Mọi chờ trong một vòng rảnh đều có hạn
+  // (kiểm tra máy in 20s, Supabase 20s, chờ tín hiệu ≤ AGENT_IDLE_POLL_MS) nên đứng 10 phút là bất thường.
+  let lastLoopAt = Date.now();
+  const watchdog = createLoopWatchdog({
+    stallMs: config.loopStallMs,
+    checkMs: dependencies.watchdogCheckMs ?? 30000,
+    getLastProgressAt: () => lastLoopAt,
+    isBusy: () => printing,
+    logger,
+    onStall: () => {
+      // Dọn những gì không tự chết theo: PowerShell thường trực, Realtime, khóa (bản sau khỏi chờ).
+      try { wake?.stop(); } catch { /* đang thoát */ }
+      try { if (psHost) { setPowerShellHost(null); psHost.stop(); } } catch { /* đang thoát */ }
+      try { lock?.(); } catch { /* đang thoát */ }
+      (dependencies.exit ?? ((code) => process.exit(code)))(LOOP_STALL_EXIT_CODE);
+    }
+  }).start();
   while (!signal?.aborted) {
+    lastLoopAt = Date.now();
     try {
       lock?.touch?.();
       let printer;
@@ -333,6 +353,7 @@ export async function runService(config, queue, logger, signal, lock, dependenci
       await wait(Math.max(config.pollIntervalMs, 3000));
     }
   }
+  watchdog.stop();
   wake?.stop();
   textCache?.flush();
   if (psHost) { setPowerShellHost(null); psHost.stop(); }
