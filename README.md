@@ -87,6 +87,13 @@ Cùng migration: **pg_cron dọn `print_jobs` 3 ngày một lần lúc 03:00 VN,
 
 Màn `#admin/group-uid-sync` giữ hai chế độ: lấy thay đổi theo watermark lùi 30 phút và đối chiếu toàn bộ. WMS được đọc theo trang 500 dòng; Admin xem preview trước khi cập nhật. Áp dụng `supabase/group_uid_sync_v1.sql` và deploy Edge Function `group-uid-sync` trước khi sử dụng.
 
+Giao diện hai màn đồng bộ (`#admin/sku-sync`, `#admin/group-uid-sync`, 08/10/2026) dùng chung một bộ công cụ `AdminSyncUI` (khối `admin-sync-shared` trong `index.html`):
+- Danh sách thay đổi có ô tìm (không phân biệt dấu), lọc theo nhóm trường, sắp xếp theo mã/ngày cập nhật WMS, phân trang 50 dòng và xuất CSV (UTF-8 có BOM, đúng các dòng đang lọc). Bấm vào mã để sao chép.
+- Mỗi thay đổi hiện từng trường dạng `giá trị cũ → mới` (số lượng kèm chênh lệch), tên trường tiếng Việt, không in `updated_date` trong phần so sánh. UID mới hiện kho, vị trí, số lượng, trạng thái, Lot/Roll và SKU; SKU mới hiện tên sản phẩm (phần đầu in đậm) và nhóm hàng.
+- Group UID có thanh cơ cấu kết quả (không đổi / cập nhật / mới / WMS cũ hơn), chênh lệch so với lần toàn bộ trước, tab theo nhóm, cảnh báo bấm được và dải thời gian lần đồng bộ gần nhất; SKU chia thẻ thành 3 cụm (SKU, Combo, Cảnh báo). Lịch sử có lý do lỗi, thời lượng và nút ẩn lượt lỗi.
+- Edge Function chỉ trả tối đa 1.000 dòng mỗi nhóm, nên danh sách hiện `đã tải N / tổng` khi nhóm lớn hơn; tìm và CSV chỉ trên phần đã tải.
+- Giao diện điện thoại của màn Admin không được thiết kế lại (chỉ đảm bảo không tràn ngang). Test: `tests/group_uid_sync_admin_browser.cjs`, `tests/sku_sync_admin_browser.cjs`.
+
 ## Màn Sample — gom hàng mẫu vào bao
 
 Màn `#sample` quét mã QR SKU trên hàng mẫu, gom các mẫu cùng SKU vào một bao và báo SKU inactive.

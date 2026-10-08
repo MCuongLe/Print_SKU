@@ -9,7 +9,13 @@ const MIN = 60000;
 const ago = minutes => new Date(Date.now() - minutes * MIN).toISOString();
 
 const CHANGES = {
-  skus: { added: [{ sku: '900000001', after: { product_name: 'SKU thử', category_name: 'Thời Trang (Phụ Liệu)' } }], updated: [] },
+  skus: {
+    added: [
+      { sku: '900000001', after: { product_name: 'SKU thử', category_name: 'Thời Trang (Phụ Liệu)' } },
+      { sku: '900000002', after: { product_name: 'Chỉ Irisa/F6-8012/100% Polyester/Navy', category_name: 'Thời Trang (Phụ Liệu)' } },
+    ],
+    updated: [{ sku: '422292491', fields: { product_name: { before: 'Thẻ bài/S/pcs', after: 'Thẻ bài/S/cái' }, status: { before: '1', after: '0' } } }],
+  },
   combos: {
     added: [], updated: [],
     orphaned: [
@@ -24,7 +30,7 @@ const CHANGES = {
   ],
 };
 const SOURCE_COUNTS = { normalRows: 3, comboRows: 1000, selectedComboLinks: 10, excludedBreakdown: { bothMissing: 990, oneMissing: 2, outOfCategory: 0 }, sourceIssues: 2 };
-const CHANGE_COUNTS = { skuAdded: 1, skuUpdated: 0, comboAdded: 0, comboUpdated: 0, comboOrphaned: 2 };
+const CHANGE_COUNTS = { skuAdded: 2, skuUpdated: 1, comboAdded: 0, comboUpdated: 0, comboOrphaned: 2 };
 const RUNS = [
   { id: 'run-fresh', status: 'previewed', created_at: ago(5), change_counts: CHANGE_COUNTS },
   { id: 'run-old', status: 'previewed', created_at: ago(45), change_counts: CHANGE_COUNTS },
@@ -113,7 +119,28 @@ const cells = async page => (await page.locator('#ss-change-body tr').evaluateAl
         assert.equal(await page.locator('#' + id).evaluate(node => node.closest('.ss-metric').dataset.alert), 'true');
       }
 
-      assert.deepEqual(await headers(page), ['Mã', 'Loại thay đổi', 'Giá trị cũ', 'Giá trị mới']); // nhóm mặc định (SKU mới)
+      assert.deepEqual(await headers(page), ['SKU', 'Sản phẩm', 'Nhóm hàng']); // nhóm mặc định (SKU mới)
+      assert.deepEqual(await cells(page), [['900000001', 'SKU thử', 'Thời Trang (Phụ Liệu)'], ['900000002', 'Chỉ Irisa / F6-8012 / 100% Polyester / Navy', 'Thời Trang (Phụ Liệu)']]);
+      assert.equal(await page.locator('#ss-change-body .as-name b').count(), 2, 'phần đầu tên sản phẩm in đậm');
+      // Thẻ chia 3 cụm có tiêu đề, mọi thẻ có icon
+      assert.deepEqual(await page.locator('.as-group > h3').evaluateAll(nodes => nodes.map(n => n.textContent.trim())), ['SKU', 'Combo', 'Cảnh báo']);
+      assert.equal(await page.locator('.as-group .ss-metric > span svg').count(), 9, 'mỗi thẻ có icon');
+      assert.equal((await page.locator('#ss-last-done').innerText()).trim() !== '—', true, 'dải lần đồng bộ gần nhất có dữ liệu');
+      // Tìm không phân biệt dấu + xuất CSV
+      await page.locator('#ss-tools input').fill('chi irisa'); assert.equal(await page.locator('#ss-change-body tr').count(), 1); assert.equal((await page.locator('#ss-change-note').innerText()).trim(), '1 / 2 dòng');
+      const [download] = await Promise.all([page.waitForEvent('download'), page.locator('#ss-tools [data-as-export]').click()]);
+      assert.match(download.suggestedFilename(), /^sku-sync-sku-added-\d{8}-\d{4}\.csv$/);
+      const csv = require('node:fs').readFileSync(await download.path(), 'utf8'); assert.equal(csv.charCodeAt(0), 0xfeff, 'CSV có BOM để Excel đọc đúng tiếng Việt'); assert.match(csv, /"SKU","Sản phẩm","Nhóm hàng"\r\n"900000002"/); assert.equal(csv.includes('900000001'), false, 'chỉ xuất các dòng đang lọc');
+      await page.locator('#ss-tools input').fill('');
+      // SKU cập nhật: nhãn tiếng Việt, không lộ tên trường kỹ thuật, trạng thái dịch sang chữ
+      await page.locator('[data-change-kind="sku-updated"]').click();
+      assert.deepEqual(await headers(page), ['SKU', 'Thay đổi']);
+      const updatedText = await page.locator('#ss-change-body').innerText();
+      for (const label of ['Tên sản phẩm', 'Trạng thái', 'Hoạt động', 'Ngừng', 'Thẻ bài/S/pcs', 'Thẻ bài/S/cái']) assert.equal(updatedText.includes(label), true, label);
+      for (const raw of ['product_name', 'category_name', 'status:']) assert.equal(updatedText.includes(raw), false, `không lộ ${raw}`);
+      // Lịch sử có cột thời lượng và chip kết quả
+      assert.deepEqual(await page.locator('#sku-sync-screen table thead').last().locator('th').allInnerTexts(), ['Thời gian', 'Trạng thái', 'SKU', 'Normal–Combo', 'Thời lượng']);
+      assert.match(await page.locator('#ss-history tr[data-run="run-done"]').innerText(), /1 phút/);
 
       await page.locator('[data-change-kind="combo-orphaned"]').click();
       assert.deepEqual(await headers(page), ['Combo → Normal', 'Lý do', 'Trong Supabase', 'Trên Inside']);
@@ -138,7 +165,7 @@ const cells = async page => (await page.locator('#ss-change-body tr').evaluateAl
       assert.equal(await page.locator('#ss-change-body b').count(), 0, 'nội dung từ Inside không được chèn thành HTML');
 
       await page.locator('[data-change-kind="sku-added"]').click();
-      assert.deepEqual(await headers(page), ['Mã', 'Loại thay đổi', 'Giá trị cũ', 'Giá trị mới']);
+      assert.deepEqual(await headers(page), ['SKU', 'Sản phẩm', 'Nhóm hàng']);
 
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, 'không tràn ngang');
       assert.deepEqual(errors, []);

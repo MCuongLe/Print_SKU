@@ -157,6 +157,10 @@ Các nhóm chi tiết:
 - Dòng lỗi nguồn.
 - Dòng xác minh không khớp sau cập nhật.
 
+### 5.4b. Công cụ trên danh sách (đã làm 08/10/2026)
+
+Ô tìm (không dấu), lọc theo nhóm trường, sắp xếp, phân trang 50 dòng, xuất CSV, sao chép mã; mỗi dòng thay đổi hiện `cũ → mới` theo từng trường. Thanh cơ cấu và tab theo nhóm nằm trên bảng. Edge Function trả tối đa 1.000 dòng mỗi nhóm nên tìm/CSV chỉ trên phần đã tải.
+
 ### 5.5. Lịch sử đồng bộ
 
 | Thời gian | Chế độ | Trạng thái | Phạm vi | Kết quả | Người chạy |
