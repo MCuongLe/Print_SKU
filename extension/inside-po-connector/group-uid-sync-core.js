@@ -15,7 +15,8 @@
   function responseRows(payload) {
     const candidates = [
       payload?.data?.items, payload?.data?.rows, payload?.data?.data,
-      payload?.data?.group_uid_infos, payload?.items, payload?.rows,
+      payload?.data?.group_uid_infos, payload?.data?.records,
+      payload?.items, payload?.rows, payload?.records,
       Array.isArray(payload?.data) ? payload.data : null,
     ];
     return candidates.find(Array.isArray) || [];
@@ -24,7 +25,8 @@
   function responseTotal(payload, fallback = 0) {
     const candidates = [
       payload?.data?.total, payload?.data?.pagination?.total, payload?.data?.meta?.total,
-      payload?.pagination?.total, payload?.meta?.total, payload?.total,
+      payload?.data?.count, payload?.pagination?.total, payload?.meta?.total,
+      payload?.total, payload?.count,
     ];
     const total = candidates.map(Number).find(Number.isFinite);
     return Number.isFinite(total) && total >= 0 ? total : fallback;
@@ -35,7 +37,8 @@
     if (products.length > 1) throw new Error(`Group UID ${clean(raw?.group_uid_code) || index + 1} có nhiều SKU; cần kiểm tra cấu trúc nguồn`);
     const product = products[0] || {};
     const code = clean(raw?.group_uid_code, 40);
-    const qty = numberValue(product?.quantity ?? raw?.uid_quantity ?? raw?.sku_quantity);
+    const rawQty = product?.quantity ?? raw?.uid_quantity ?? (products.length ? raw?.sku_quantity : 0);
+    const qty = numberValue(rawQty);
     const updated = raw?.updated_at_tz ?? raw?.updated_at;
     const status = clean(raw?.status_name ?? raw?.status, 100);
     if (!code || !/^\d{6,40}$/.test(code)) throw new Error(`Dòng ${index + 1} có Group UID không hợp lệ`);

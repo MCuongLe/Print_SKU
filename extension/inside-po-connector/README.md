@@ -33,7 +33,7 @@ Sau khi repository được cập nhật, mở `chrome://extensions` và bấm *
 
 Extension chỉ đọc Inside. Mọi ghi dữ liệu chạy trong Edge Function `sku-sync`, yêu cầu phiên Supabase có vai trò `admin` và luôn xác minh lại sau khi upsert.
 
-Phiên bản 0.4.0 đọc đầy đủ Combo nhiều thành phần và bổ sung Group UID từ WMS theo lô 500 dòng.
+Phiên bản 0.4.1 đọc đầy đủ Combo nhiều thành phần và bổ sung Group UID từ WMS theo lô 500 dòng. Bản này hỗ trợ đúng phản hồi WMS dạng `records/count`, kể cả Group UID trạng thái `New` chưa có SKU.
 
 Đồng bộ Group UID dành cho Admin:
 

@@ -26,6 +26,32 @@ const page = core.normalizePage({ data: { items: [raw, { ...raw, status_name: "A
 assert.equal(page.total, 28468);
 assert.equal(page.rows.length, 1);
 assert.equal(page.rows[0].status, "Allocated");
+
+const actualWmsShape = core.normalizePage({
+  page: 1,
+  size: 500,
+  count: 28608,
+  records: [raw, {
+    group_uid_code: "1028261008000140",
+    warehouse_name: "WH - MATERIAL - MTG",
+    status_name: "New",
+    updated_at_tz: "2026-10-08T08:02:01+07:00",
+  }],
+});
+assert.equal(actualWmsShape.total, 28608);
+assert.equal(actualWmsShape.rows.length, 2);
+assert.deepEqual(JSON.parse(JSON.stringify(actualWmsShape.rows[1])), {
+  group_uid_code: "1028261008000140",
+  batch_code: null,
+  roll_code: null,
+  warehouse: "WH - MATERIAL - MTG",
+  location: null,
+  sku: null,
+  qty: 0,
+  updated_by: null,
+  updated_date: "2026-10-08T01:02:01.000Z",
+  status: "New",
+});
 assert.throws(() => core.normalizeRow({ ...raw, products: [{ sku: "A" }, { sku: "B" }] }), /nhiều SKU/);
 assert.throws(() => core.normalizeRow({ ...raw, updated_at_tz: "sai-ngày" }), /Ngày cập nhật/);
 console.log("group_uid_sync_extension: ok");
