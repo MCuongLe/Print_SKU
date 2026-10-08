@@ -335,6 +335,15 @@ python scripts/apply_supabase_sql.py supabase/cut_group_uid_v6_wms_reconcile.sql
 Kiểm thử không cần mạng (file zip/xlsx tự dựng trong test, mọi kết nối Supabase được giả lập): với server local cổng 8000,
 `node tests/cut_adj_reconcile_browser.cjs` (đặt `PLAYWRIGHT_MODULE` nếu Playwright không nằm trong `node_modules`).
 
+**Admin xóa UID đã cắt.** Icon khiên ở góc phải thanh tiêu đề mở hộp đăng nhập Quản trị dùng chung; là Admin thì
+tab Tra cứu có nút **Xóa N UID** cho các dòng đang tick (không xóa dòng đang gửi máy in). Bấm lại icon để thoát Admin
+mà vẫn ở màn Cắt UID. RPC `cut_group_uid_admin_delete` chỉ cấp cho tài khoản đã đăng nhập và tự kiểm vai trò admin;
+mỗi dòng bị xóa được chép vào bảng `cut_group_uid_deletions` (ai xóa, lúc nào). Migration v7 đã áp dụng 08/10/2026:
+
+```powershell
+python scripts/apply_supabase_sql.py supabase/cut_group_uid_v7_admin_delete.sql
+```
+
 ## Quét mã ở PRINT SKU
 
 Nút camera cạnh ô **Mã SKU** mở lớp quét toàn màn hình `window.PrintSkuScanUI` (script

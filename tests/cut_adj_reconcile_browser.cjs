@@ -128,6 +128,8 @@ const STATE_ORDER = ['wrong', 'missing', 'multi', 'forgot', 'pending', 'wait', '
           result = { ok: true, data: { updated, skipped: body.p_codes.length - updated } };
         } else if (rpc === 'cut_group_uid_list' || rpc === 'cut_group_uid_search') result = { ok: true, data: { items: [] } };
         else if (rpc === 'print_queue_status') result = { ok: true, data: { agents: [] } };
+        // Ô lọc SKU tra SKU Combo trước khi tìm (từ 3e233cb); mảng rỗng = không phải Combo, tìm luôn.
+        else if (rpc === 'sku_combo_lookup') result = [];
         return route.fulfill({ contentType: 'application/json', body: JSON.stringify(result) });
       });
       const message = () => page.locator('#cut-message').textContent();

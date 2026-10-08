@@ -3905,7 +3905,8 @@ Error generating stack: `+y.message+`
           if (location.hash !== destination) location.hash = destination;
         });
 
-        const logout = () => {
+        // stay = true: thoát quyền Admin nhưng ở lại màn đang dùng (icon Admin của CẮT UID).
+        const logout = (stay = false) => {
           const current = session || readSession();
           if (current?.access_token) {
             fetch(`${SUPABASE_URL}/auth/v1/logout`, {
@@ -3914,8 +3915,10 @@ Error generating stack: `+y.message+`
             }).catch(() => {});
           }
           clearSession();
-          location.hash = "#home";
+          window.dispatchEvent(new CustomEvent("print-sku-admin-logout"));
+          if (!stay) location.hash = "#home";
         };
+        window.PrintSkuAdminAccess.logout = () => logout(true);
         document.addEventListener("click", event => {
           if (event.target.closest("[data-admin-logout]")) logout();
         });
@@ -4064,7 +4067,7 @@ Error generating stack: `+y.message+`
       @media(max-width:800px){#cut-search{flex-wrap:nowrap}#cut-search #cut-sku{flex:none}.cut-searchbar .cut-adj-filter{flex:1;width:auto;min-width:0}}
     </style>
     <section class="cut-screen" id="cut-group-uid-screen" aria-labelledby="cut-title" hidden>
-      <header class="uid-topbar"><div class="uid-topbar__inner"><button class="uid-back" id="cut-back" type="button" aria-label="Quay lại trang chủ WH-MATERIAL">WH-MATERIAL</button><span class="uid-topbar__mark" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5.42 9.42 8 12M14 6l-8.58 8.58M10.8 14.8 14 18M16 12h-2M22 12h-2"/><circle cx="4" cy="8" r="2"/><circle cx="4" cy="16" r="2"/></svg></span><div class="uid-topbar__name"><h1 id="cut-title">CẮT GROUP UID</h1><span>Quét UID · lưu tem · in và tra cứu</span></div></div></header>
+      <header class="uid-topbar"><div class="uid-topbar__inner"><button class="uid-back" id="cut-back" type="button" aria-label="Quay lại trang chủ WH-MATERIAL">WH-MATERIAL</button><span class="uid-topbar__mark" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5.42 9.42 8 12M14 6l-8.58 8.58M10.8 14.8 14 18M16 12h-2M22 12h-2"/><circle cx="4" cy="8" r="2"/><circle cx="4" cy="16" r="2"/></svg></span><div class="uid-topbar__name"><h1 id="cut-title">CẮT GROUP UID</h1><span>Quét UID · lưu tem · in và tra cứu</span></div><button class="uid-topbar__admin" id="cut-admin" type="button" aria-pressed="false" aria-label="Đăng nhập Admin" title="Đăng nhập Admin"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path class="uid-topbar__admin-check" d="m9 12 2 2 4-4"/></svg></button></div></header>
       <main class="cut-main">
         <div class="cut-tabs" role="tablist">
           <button class="cut-tab" id="cut-tab-scan" type="button" role="tab" data-tab="scan" aria-selected="true">1 · Quét Group UID</button>
@@ -4075,7 +4078,7 @@ Error generating stack: `+y.message+`
         <p class="cut-message" id="cut-message" aria-live="polite" style="margin-bottom:14px"></p>
         <div class="cut-grid">
         <section class="cut-card" data-panel="scan"><h2><span>1</span>Quét Group UID</h2><form class="cut-scan" id="cut-form"><input class="cut-input" id="cut-code" autocomplete="off" inputmode="none" placeholder="Quét hoặc nhập UID…" maxlength="40" required><button class="act-icon act-icon--camera" id="cut-camera" type="button" aria-label="Quét bằng camera" title="Quét bằng camera" hidden></button><button class="act-icon act-icon--keyboard" id="cut-keyboard" type="button" aria-controls="cut-code" aria-label="Hiện bàn phím" title="Hiện bàn phím" aria-pressed="true"></button><button class="cut-primary act-icon act-icon--add" id="cut-add" type="submit">Lưu tem</button></form><div class="cut-last" id="cut-last" hidden></div><button class="cut-link" id="cut-goto-data" type="button">Xem trong Tra cứu →</button></section>
-        <section class="cut-card" data-panel="data"><h2><span>2</span>Tra cứu UID đã cắt</h2><form class="cut-searchbar" id="cut-search"><input class="cut-input" id="cut-sku" placeholder="Lọc theo SKU…" autocomplete="off"><input class="cut-input" id="cut-lot" style="max-width:150px" placeholder="Lọc theo Lot…" autocomplete="off"><div class="cut-daterange"><input class="cut-input" id="cut-date-from" type="date" aria-label="Cắt từ ngày" title="Cắt từ ngày"><span aria-hidden="true">→</span><input class="cut-input" id="cut-date-to" type="date" aria-label="Cắt đến ngày" title="Cắt đến ngày"></div><div class="cut-searchbar__end"><select class="cut-input cut-adj-filter" id="cut-adj" aria-label="Lọc theo trạng thái xuất ADJ" title="Lọc theo trạng thái xuất ADJ"><option value="">ADJ: Tất cả</option><option value="pending">Chưa xuất ADJ</option><option value="done">Đã xuất ADJ</option></select><button class="cut-secondary act-icon act-icon--search" type="submit">Tìm kiếm</button></div></form><div class="cut-actions"><button class="cut-icon-btn" id="cut-export" type="button" disabled title="Xuất Excel A4 ngang" aria-label="Xuất Excel A4 ngang"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button><button class="cut-primary act-icon act-icon--add" id="cut-push" type="button" disabled>Đưa vào hàng chờ in</button></div><p class="cut-note" id="cut-search-total" style="margin-top:10px"></p><div class="cut-table-wrap" style="margin-top:10px"><table class="cut-table"><thead><tr><th class="cut-th-check"><input id="cut-search-all" type="checkbox" aria-label="Chọn tất cả tem có thể in trong bảng"></th><th>SKU</th><th>UID</th><th>Lot</th><th>Roll</th><th>Số lượng cắt</th><th>Tên SP</th><th>Trạng thái</th><th>ADJ</th><th>Thời gian cắt</th></tr></thead><tbody id="cut-results"></tbody></table></div></section>
+        <section class="cut-card" data-panel="data"><h2><span>2</span>Tra cứu UID đã cắt</h2><form class="cut-searchbar" id="cut-search"><input class="cut-input" id="cut-sku" placeholder="Lọc theo SKU…" autocomplete="off"><input class="cut-input" id="cut-lot" style="max-width:150px" placeholder="Lọc theo Lot…" autocomplete="off"><div class="cut-daterange"><input class="cut-input" id="cut-date-from" type="date" aria-label="Cắt từ ngày" title="Cắt từ ngày"><span aria-hidden="true">→</span><input class="cut-input" id="cut-date-to" type="date" aria-label="Cắt đến ngày" title="Cắt đến ngày"></div><div class="cut-searchbar__end"><select class="cut-input cut-adj-filter" id="cut-adj" aria-label="Lọc theo trạng thái xuất ADJ" title="Lọc theo trạng thái xuất ADJ"><option value="">ADJ: Tất cả</option><option value="pending">Chưa xuất ADJ</option><option value="done">Đã xuất ADJ</option></select><button class="cut-secondary act-icon act-icon--search" type="submit">Tìm kiếm</button></div></form><div class="cut-actions"><button class="cut-icon-btn" id="cut-export" type="button" disabled title="Xuất Excel A4 ngang" aria-label="Xuất Excel A4 ngang"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button><button class="cut-primary act-icon act-icon--add" id="cut-push" type="button" disabled>Đưa vào hàng chờ in</button><button class="cut-danger act-icon act-icon--trash" id="cut-delete" type="button" disabled hidden>Xóa</button></div><p class="cut-note" id="cut-search-total" style="margin-top:10px"></p><div class="cut-table-wrap" style="margin-top:10px"><table class="cut-table"><thead><tr><th class="cut-th-check"><input id="cut-search-all" type="checkbox" aria-label="Chọn tất cả tem có thể in trong bảng"></th><th>SKU</th><th>UID</th><th>Lot</th><th>Roll</th><th>Số lượng cắt</th><th>Tên SP</th><th>Trạng thái</th><th>ADJ</th><th>Thời gian cắt</th></tr></thead><tbody id="cut-results"></tbody></table></div></section>
         <section class="cut-card" data-panel="print"><h2><span>3</span>Tem chờ in</h2><button class="cut-link cut-link--back" id="cut-goto-data-2" type="button">Chọn thêm ở Tra cứu</button><div class="cut-actions"><label class="cut-selectall"><input id="cut-all" type="checkbox"><span>Chọn tất cả tem có thể in</span><em id="cut-selected-count">Đã chọn 0</em></label><button class="cut-secondary act-icon act-icon--load" id="cut-reload" type="button">Tải lại</button><button class="cut-primary act-icon act-icon--print" id="cut-print" type="button" disabled>In tem đã chọn</button></div><div class="cut-list" id="cut-list"></div></section>
         <section class="cut-card" data-panel="adj" id="cut-adj-panel"><h2><span>4</span>Đối chiếu ADJ</h2>
           <div class="cut-adj-bar"><input id="cut-adj-file" type="file" accept=".zip,.xlsx,application/zip,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden><button class="cut-secondary act-icon act-icon--import" id="cut-adj-upload" type="button">Tải file zip WMS</button><button class="cut-icon-btn act-icon act-icon--load" id="cut-adj-reload" type="button" aria-label="Tải lại" title="Tải lại"></button><span class="cut-adj-cov" id="cut-adj-cov"></span></div>
@@ -7331,7 +7334,7 @@ var FSK_CORE = (function () {
         const copyToClipboard=async text=>{try{await navigator.clipboard.writeText(text);return true}catch(_){}
           try{const ta=document.createElement('textarea');ta.value=text;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.focus();ta.select();const ok=document.execCommand('copy');ta.remove();return ok}catch(_){return false}};
         searchTotal.addEventListener('click',async event=>{const btn=event.target.closest('.cut-copy-btn');if(!btn)return;const val=btn.dataset.copy;const ok=await copyToClipboard(val);tell(ok?`Đã copy ${val} vào clipboard.`:`Không copy được — bạn tự bôi đen số ${val} rồi copy tay.`,ok?'ok':'error')});
-        const syncSearchSelection=()=>{const boxes=[...resultsBody.querySelectorAll('input[type=checkbox]')],chosen=boxes.filter(x=>x.checked);boxes.forEach(x=>{const tr=x.closest('tr');if(tr)tr.classList.toggle('is-selected',x.checked)});searchAll.checked=boxes.length>0&&chosen.length===boxes.length;searchAll.indeterminate=chosen.length>0&&chosen.length<boxes.length;searchAll.disabled=!boxes.length;pushButton.disabled=!chosen.length;pushButton.textContent=chosen.length?`Đưa ${chosen.length} tem vào hàng chờ in`:'Đưa vào hàng chờ in'};
+        const syncSearchSelection=()=>{const boxes=[...resultsBody.querySelectorAll('input[type=checkbox]')],chosen=boxes.filter(x=>x.checked);boxes.forEach(x=>{const tr=x.closest('tr');if(tr)tr.classList.toggle('is-selected',x.checked)});searchAll.checked=boxes.length>0&&chosen.length===boxes.length;searchAll.indeterminate=chosen.length>0&&chosen.length<boxes.length;searchAll.disabled=!boxes.length;pushButton.disabled=!chosen.length;pushButton.textContent=chosen.length?`Đưa ${chosen.length} tem vào hàng chờ in`:'Đưa vào hàng chờ in';const del=document.getElementById('cut-delete');del.disabled=!chosen.length;del.textContent=chosen.length?`Xóa ${chosen.length} UID`:'Xóa'};
         // Ma hoa Code 128 + ve barcode SVG - lay dung logic tu
         // workstation-agent/src/templates/code128.mjs (noi agent in tem that dang
         // dung) de popup xem barcode khop chinh xac voi tem in thuc te, khong
@@ -7412,6 +7415,39 @@ var FSK_CORE = (function () {
         const cameraBtn=document.getElementById('cut-camera');
         if(window.PrintSkuScanUI?.canOpen()){cameraBtn.hidden=false;form.classList.add('has-camera')}
         cameraBtn.addEventListener('click',()=>{if(busy)return;window.PrintSkuScanUI.openGroupUid({typeFocus:'#cut-code',onCode:c=>{code.value=c;form.requestSubmit()}})});
+        // Admin (icon khiên ở thanh tiêu đề): đăng nhập bằng hộp "Đăng nhập Quản trị" dùng chung (Supabase Auth + user_roles).
+        // Là Admin thì hiện nút Xóa ở Tra cứu — xóa các UID đang tick bằng RPC cut_group_uid_admin_delete
+        // (supabase/cut_group_uid_v7_admin_delete.sql: chỉ admin, máy chủ tự kiểm quyền, ghi nhật ký, không xóa UID đang in).
+        const adminBtn=document.getElementById('cut-admin'),deleteButton=document.getElementById('cut-delete');
+        let isAdmin=false;
+        const syncAdmin=()=>{isAdmin=!!window.PrintSkuAdminAccess?.peekToken();const label=isAdmin?'Đang là Admin · bấm để thoát':'Đăng nhập Admin';adminBtn.setAttribute('aria-pressed',String(isAdmin));adminBtn.setAttribute('aria-label',label);adminBtn.title=label;deleteButton.hidden=!isAdmin};
+        adminBtn.addEventListener('click',async()=>{
+          if(isAdmin){if(await window.WhDialog.confirm({icon:'undo',title:'Thoát quyền Admin?',confirmText:'Thoát',cancelText:'Ở lại'})){window.PrintSkuAdminAccess.logout();syncAdmin();tell('Đã thoát quyền Admin.','ok')}return}
+          // Chưa có phiên thì getToken mở hộp đăng nhập và trả ''; đăng nhập xong hộp phát sự kiện print-sku-admin-ready.
+          if(await window.PrintSkuAdminAccess?.getToken()){syncAdmin();tell('Đã đăng nhập Admin.','ok')}
+        });
+        window.addEventListener('print-sku-admin-ready',()=>{const was=isAdmin;syncAdmin();if(!was&&isAdmin&&active())tell('Đã đăng nhập Admin.','ok')});
+        window.addEventListener('print-sku-admin-logout',syncAdmin);
+        window.addEventListener('hashchange',()=>{if(active())syncAdmin()});
+        deleteButton.addEventListener('click',async()=>{
+          const codes=[...resultsBody.querySelectorAll('input[type=checkbox]:checked')].map(x=>x.closest('tr')?.dataset.code).filter(Boolean);
+          if(!codes.length||!isAdmin)return;
+          if(!await window.WhDialog.confirm({tone:'danger',title:`Xóa ${codes.length} Group UID đã cắt`,facts:['Không hoàn tác'],list:codes,confirmText:`Xóa ${codes.length} UID`,cancelText:'Hủy'}))return;
+          let token='';try{token=await window.PrintSkuAdminAuth.accessToken()}catch(_){}
+          if(!token){syncAdmin();tell('Phiên Admin đã hết hạn. Đăng nhập lại rồi xóa.','error');window.PrintSkuAdminAccess.getToken().then(syncAdmin);return}
+          deleteButton.disabled=true;tell(`Đang xóa ${codes.length} UID…`);
+          try{
+            const q=window.PrintSkuQueue,r=await fetch(`${q.supabaseUrl}/rest/v1/rpc/cut_group_uid_admin_delete`,{method:'POST',headers:{apikey:q.publishableKey,Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({p_codes:codes}),signal:AbortSignal.timeout(15000)});
+            const data=await r.json().catch(()=>null);
+            if(!r.ok||!data)throw new Error(data?.message||`Supabase HTTP ${r.status}`);
+            if(!data.ok)throw new Error(data.error?.message||'Không xóa được');
+            (data.data?.codes||[]).forEach(c=>stagedItems.delete(c));
+            await Promise.all([loadOpen({quiet:true}),runSearch()]);
+            tell(`Đã xóa ${data.data?.count||0} UID${data.data?.missing?` · ${data.data.missing} UID không còn trong danh sách`:''}.`,'ok');
+          }catch(e){tell(`Chưa xóa được: ${e.message}`,'error')}
+          finally{syncSearchSelection()}
+        });
+        syncAdmin();
 
         // 3 cụm Scan/Data/Print, mỗi lần chỉ hiện đúng 1 cụm (giống tab) — bấm vào tiêu đề cụm
         // hoặc bấm nút "→" cuối mỗi cụm để nhảy sang cụm khác. Nhớ cụm đang mở theo localStorage.
@@ -7441,7 +7477,7 @@ var FSK_CORE = (function () {
         // thật trong màn — hệt cơ chế đã dùng ở #sample. Việc lưu tem vẫn chỉ xảy ra khi submit
         // form (Enter trong ô hoặc bấm "Lưu tem"), cơ chế này chỉ giữ focus, không tự lưu. CHỈ áp
         // dụng khi đang ở cụm Scan — sang cụm Data/Print thì không được cướp focus của người dùng.
-        const typingElsewhere=()=>{const el=document.activeElement;return el===code||(el&&/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName))};
+        const typingElsewhere=()=>{const el=document.activeElement;return el===code||(el&&(/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName)||el.closest('[aria-modal="true"]')))};
         document.addEventListener('keydown',event=>{
           if(screen.hidden||activeTab!=='scan'||typingElsewhere())return;
           if(event.ctrlKey||event.altKey||event.metaKey)return;
@@ -7453,7 +7489,8 @@ var FSK_CORE = (function () {
           setTimeout(()=>{
             if(screen.hidden)return;
             const el=document.activeElement;
-            if(el&&el!==document.body&&screen.contains(el))return;
+            // Hộp đăng nhập Admin / lớp camera (aria-modal) nằm ngoài màn: không kéo con trỏ về ô quét.
+            if(el&&el!==document.body&&(screen.contains(el)||el.closest('[aria-modal="true"]')))return;
             focusScan();
           },0);
         });
@@ -8313,6 +8350,7 @@ var FSK_CORE = (function () {
       .act-icon--play::before { -webkit-mask-image: var(--i-play); mask-image: var(--i-play); }
       .act-icon--stop::before { -webkit-mask-image: var(--i-stop); mask-image: var(--i-stop); }
       .act-icon--x::before { -webkit-mask-image: var(--i-x); mask-image: var(--i-x); }
+      .act-icon--trash::before { -webkit-mask-image: var(--i-trash); mask-image: var(--i-trash); }
     </style>
     <style id="wms-ux-foundation">
       /* Nền tảng UX dùng chung — Đợt 1 (accessibility) + Đợt 2 (trang chủ mobile, Back trong header)
@@ -8382,6 +8420,14 @@ var FSK_CORE = (function () {
       #cut-form #cut-camera { flex: none; width: 52px; min-width: 52px; min-height: 52px; margin: 0; padding: 0; border: 1px solid rgba(0, 95, 65, .35); border-radius: 13px; background: rgba(0, 95, 65, .07); color: var(--wms-brand, #005f41); cursor: pointer; }
       #cut-form #cut-camera::before { width: 22px; height: 22px; }
       #cut-form #cut-camera[hidden] { display: none; }
+      /* CẮT UID: icon Admin góc phải thanh tiêu đề (đang là Admin: nền xanh + dấu tick); nút Xóa đỏ chỉ hiện với Admin. */
+      .uid-topbar__admin { flex: none; display: inline-grid; place-items: center; width: 40px; height: 40px; margin-left: auto; padding: 0; border: 1px solid var(--wms-border, #d9e2de); border-radius: 999px; color: var(--wms-muted, #60736b); background: #fff; cursor: pointer; }
+      .uid-topbar__admin .uid-topbar__admin-check { display: none; }
+      .uid-topbar__admin[aria-pressed="true"] { border-color: var(--wms-brand, #005f41); color: #fff; background: var(--wms-brand, #005f41); }
+      .uid-topbar__admin[aria-pressed="true"] .uid-topbar__admin-check { display: inline; }
+      .cut-danger { min-height: 46px; padding: 0 18px; border: 1px solid rgba(194, 65, 59, .4); border-radius: 23px; background: #fff; color: var(--wms-danger, #c2413b); font-weight: 800; cursor: pointer; }
+      .cut-danger:disabled { opacity: .45; cursor: not-allowed; }
+      .cut-danger[hidden] { display: none; }
       @media (max-width: 800px) {
         #cut-form { display: grid; grid-template-columns: minmax(0, 1fr) auto; }
         #cut-form.has-camera { grid-template-columns: minmax(0, 1fr) auto auto; }

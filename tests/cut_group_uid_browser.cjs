@@ -11,6 +11,7 @@ const fs = require('node:fs');
       const errors = [];
       const records = [];
       const comboLookups = [];
+      const adminDeletes = [];
       page.on('pageerror', error => errors.push(error.message));
       await page.route('**/*', async route => {
         const request = route.request(), url = request.url();
@@ -35,6 +36,16 @@ const fs = require('node:fs');
         else if (rpc === 'sku_combo_lookup') {
           comboLookups.push(body.p_sku);
           result = body.p_sku === 'COMBO-001' ? [{ normal_sku: 'SKU-001', product_name: 'Vải thử nghiệm', category_name: 'Thời Trang (NVL)', quantity: 1000, available: true }] : [];
+        }
+        // Đăng nhập Admin (Supabase Auth giả lập) + RPC xóa chỉ nhận đúng token Admin.
+        else if (url.includes('/auth/v1/token')) result = { access_token: 'test-admin-token', refresh_token: 'test-refresh', token_type: 'bearer' };
+        else if (url.includes('/auth/v1/user')) result = { id: '00000000-0000-4000-8000-000000000001', email: 'admin@test.vn' };
+        else if (url.includes('/rest/v1/user_roles')) result = [{ username: 'admin', role: 'admin' }];
+        else if (url.includes('/auth/v1/logout')) result = {};
+        else if (rpc === 'cut_group_uid_admin_delete') {
+          adminDeletes.push({ auth: request.headers().authorization, codes: body.p_codes });
+          if (request.headers().authorization !== 'Bearer test-admin-token') result = { ok: false, error: { code: 'FORBIDDEN', message: 'Chỉ Admin được xóa Group UID đã cắt' } };
+          else { const gone = records.filter(x => body.p_codes.includes(x.groupUid)).map(x => x.groupUid); gone.forEach(code => records.splice(records.findIndex(x => x.groupUid === code), 1)); result = { ok: true, data: { count: gone.length, codes: gone, missing: body.p_codes.length - gone.length } }; }
         }
         return route.fulfill({ contentType: 'application/json', body: JSON.stringify(result) });
       });
@@ -139,8 +150,40 @@ const fs = require('node:fs');
       await page.waitForFunction(() => document.querySelector('#cut-last').textContent.includes('1028269999000001'));
       assert.equal(records.some(x => x.groupUid === '1028269999000001'), true);
       assert.equal(records.some(x => x.groupUid === '422467418'), false);
+      // Admin: icon khiên mở hộp đăng nhập dùng chung; đăng nhập xong ở lại CẮT UID, hiện nút Xóa; ô quét không giành focus của ô email.
+      assert.equal(await page.locator('#cut-admin').getAttribute('aria-pressed'), 'false');
+      assert.equal(await page.locator('#cut-delete').isVisible(), false);
+      await page.locator('#cut-admin').click();
+      await page.locator('#admin-auth').waitFor({ state: 'visible' });
+      await page.locator('#admin-auth-email').click();
+      await page.keyboard.type('admin@test.vn');
+      assert.equal(await page.evaluate(() => document.activeElement.id), 'admin-auth-email');
+      await page.locator('#admin-auth-password').fill('mat-khau-thu');
+      await page.locator('#admin-auth-submit').click();
+      await page.locator('#admin-auth').waitFor({ state: 'hidden' });
+      await page.waitForFunction(() => document.querySelector('#cut-admin').getAttribute('aria-pressed') === 'true');
+      assert.equal(page.url().endsWith('#cut-group-uid'), true);
+      await page.locator('#cut-tab-data').click();
+      assert.equal(await page.locator('#cut-delete').isVisible(), true);
+      await page.locator('#cut-sku').fill('');
+      await page.locator('#cut-search').evaluate(form => form.requestSubmit());
+      const before = Number(await page.waitForFunction(() => document.querySelector('#cut-message').textContent.startsWith('Tìm thấy') && document.querySelector('#cut-found').textContent).then(h => h.jsonValue()));
+      await page.locator('#cut-results tr[data-code="UID-0002"] input[type=checkbox]').check();
+      assert.equal(await page.locator('#cut-delete').textContent(), 'Xóa 1 UID');
+      await page.locator('#cut-delete').click();
+      await page.locator('dialog .whd-ok').click();
+      await page.waitForFunction(() => document.querySelector('#cut-message').textContent.startsWith('Đã xóa 1 UID'));
+      assert.deepEqual(adminDeletes, [{ auth: 'Bearer test-admin-token', codes: ['UID-0002'] }]);
+      assert.equal(records.some(x => x.groupUid === 'UID-0002'), false);
+      assert.equal(await page.locator('#cut-found').textContent(), String(before - 1));
+      // Thoát Admin: ở lại màn, ẩn nút Xóa.
+      await page.locator('#cut-admin').click();
+      await page.locator('dialog .whd-ok').click();
+      await page.waitForFunction(() => document.querySelector('#cut-admin').getAttribute('aria-pressed') === 'false');
+      assert.equal(await page.locator('#cut-delete').isVisible(), false);
+      assert.equal(page.url().endsWith('#cut-group-uid'), true);
       assert.deepEqual(errors, []);
-      console.log(`PASS ${width}px: route, missing/duplicate UID, persistence, current label payload, status polling, SKU filter, combo→normal SKU filter, A4 landscape XLSX, camera UID scan, no overflow/errors`);
+      console.log(`PASS ${width}px: route, missing/duplicate UID, persistence, current label payload, status polling, SKU filter, combo→normal SKU filter, A4 landscape XLSX, camera UID scan, admin login/delete/logout, no overflow/errors`);
       await page.close();
     }
   } finally { await browser.close(); }
