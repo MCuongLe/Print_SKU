@@ -48,7 +48,7 @@ const mockRoutes = async page => page.route('**/*', async route => {
         await page.locator('#admin-auth-cancel').click();
         await page.waitForFunction(() => location.hash === '#home');
         assert.equal(await page.locator('#admin-auth').isVisible(), false);
-        assert.equal(await page.locator('#barcode-home').isVisible(), true);
+        await page.locator('#barcode-home').waitFor({ state: 'visible' });
         assert.deepEqual(errors, []);
         await page.close();
       }
@@ -81,7 +81,7 @@ const mockRoutes = async page => page.route('**/*', async route => {
           await page.locator('#print-jobs-screen header button[aria-label="Về trang chủ WH-MATERIAL"]').click();
         }
         await page.waitForFunction(() => location.hash === '#home');
-        assert.equal(await page.locator('#barcode-home').isVisible(), true);
+        await page.locator('#barcode-home').waitFor({ state: 'visible' });
 
         // Không còn thanh admin nổi, nút Dữ liệu UID và màn nạp Excel; Đăng xuất có đúng một nút trong thanh điều hướng
         await openAdmin();
@@ -102,7 +102,7 @@ const mockRoutes = async page => page.route('**/*', async route => {
         await logout.click();
         await page.waitForFunction(() => location.hash === '#home');
         assert.equal(await page.evaluate(key => sessionStorage.getItem(key), SESSION_KEY), null);
-        assert.equal(await page.locator('#barcode-home').isVisible(), true);
+        await page.locator('#barcode-home').waitFor({ state: 'visible' });
 
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
         assert.deepEqual(errors, []);

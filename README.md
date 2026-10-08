@@ -75,6 +75,18 @@ Giao diện Admin (`#admin/lenh-in`, `#admin/cauhinh`, `#admin/sku-sync`, `#admi
 nút bánh răng trong header IN TEM SKU. Chưa có phiên thì hiện hộp thoại đăng nhập Supabase (tài khoản có vai trò `admin`); **Hủy**, **Về trang chủ** và **Đăng xuất**
 đều quay về `#home`. **Đăng xuất** nằm ở cuối thanh bên Admin (desktop) hoặc là icon ở hàng tiêu đề (điện thoại); không còn thanh nổi hiện tên Admin. Thương hiệu trong Admin và hộp thoại đăng nhập là "WH-MATERIAL" (trước đây là "In tem SKU"). Test: `tests/admin_entry_browser.cjs`.
 
+**Khung chung của Admin (web).** Admin chỉ dùng trên máy tính (từ 768 px), không thiết kế cho điện thoại. Bốn màn dùng cùng một khung: thanh bên 276 px,
+thanh trên 64 px **dính khi cuộn**, menu cùng thứ tự Lệnh in → Đồng bộ SKU → Đồng bộ Group UID → Cấu hình, tiêu đề thanh trên = tên mục. Cấu hình vẫn
+nằm trong khung React cũ nhưng được ép cùng kiểu bằng CSS (khối `#admin-web-sync`, vì bundle React đã minify); các mục Đồng bộ chèn vào menu React đứng
+trước Cấu hình và không còn lớp "đang chọn". Tiêu đề bảng của dashboard dính ngay dưới thanh trên. Chữ dùng màu `--wms-muted` (`#60736b`), cỡ ≥ 12 px.
+Lỗi (máy chủ, chưa kết nối Extension) hiện thành **dải đỏ có icon** ở dòng trạng thái (`data-tone="error"`, `aria-live="assertive"`); Đồng bộ SKU và
+Đồng bộ Group UID báo "Chưa kết nối Extension…" theo cùng một cách. Cấu hình chia hai nhóm **Thiết bị này** (Tên máy, Quyền in, Mẫu tem, Sổ tay SKU) và
+**Hệ thống** (Danh mục SKU, Trần một lệnh in · chỉ đọc), không còn câu hướng dẫn.
+**Thanh trên** của cả bốn màn có icon module (cùng icon với menu), tiêu đề đậm và dòng phụ ("Cả kho · cập nhật 17:19" ở Lệnh in, "Inside → Supabase" / "WMS → Supabase" ở hai màn Đồng bộ,
+"Thiết bị và hệ thống" ở Cấu hình). Lệnh in và hai màn Đồng bộ có thêm **chip tóm tắt** ngay trên thanh (Lệnh in: số lệnh hôm nay / đang chờ / lỗi; Đồng bộ: số thay đổi / cảnh báo,
+chỉ hiện sau khi đã kiểm tra hoặc mở một lượt) — thanh trên dính nên con số vẫn thấy khi cuộn; có nút làm mới (Lệnh in: tải lại danh sách; Đồng bộ: tải lại lịch sử). Dưới 1100 px chip và dòng phụ
+tự ẩn. Test: `tests/admin_web_sync_browser.cjs`.
+
 **Lệnh in** (`#admin/lenh-in`, mục đầu tiên, 08/10/2026) thay hai mục React cũ "Tổng quan" và "Đợt đã gửi" — hai mục đó chỉ đếm lệnh gửi
 từ chính tab đang mở. `#admin/tongquan`, `#admin/hangdoi` và mọi hash Admin lạ tự chuyển về đây. Màn đọc `print_jobs` của cả kho:
 dải trạng thái (máy in, đang chờ, số lệnh/tem trong ngày, lỗi), chọn ngày (giờ VN), lọc **Tất cả / SKU / UID**, tìm theo SKU, UID, tên
