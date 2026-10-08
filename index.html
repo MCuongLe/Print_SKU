@@ -3634,7 +3634,7 @@ Error generating stack: `+y.message+`
         const cancelButton = document.getElementById("admin-auth-cancel");
         let authorized = false;
         let session = null;
-        let pendingHash = "#admin/tongquan";
+        let pendingHash = "#admin/lenh-in";
 
         const isAdminHash = () => /^#admin(?:\/|$)/.test(location.hash);
         const authHeaders = token => ({
@@ -3743,7 +3743,7 @@ Error generating stack: `+y.message+`
           if (!button || button.textContent.trim() !== "Quản trị" || authorized) return;
           event.preventDefault();
           event.stopPropagation();
-          pendingHash = "#admin/tongquan";
+          pendingHash = "#admin/lenh-in";
           requireAdmin().then(ok => {
             if (ok) location.hash = pendingHash;
           });
@@ -8256,7 +8256,7 @@ var FSK_CORE = (function () {
       @media(max-width:1050px){.ss-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:760px){.ss-shell{display:block}.ss-side{position:static;height:auto;border-right:0;border-bottom:1px solid #dce7e3}.ss-brand{min-height:64px;padding:0 15px;font-size:17px}.ss-brand b{width:36px;height:36px}.ss-nav{display:flex;padding:8px 10px 10px;overflow-x:auto}.ss-nav button{flex:0 0 auto;width:auto;min-height:44px;padding:0 13px;border-left:0;border-bottom:3px solid transparent}.ss-nav button[aria-current=page]{border-left:0;border-bottom-color:#007754}.ss-side-foot{display:none}.ss-top{min-height:58px;padding:0 14px}.ss-content{width:calc(100% - 24px);padding-top:14px}.ss-hero,.ss-panel-head,.ss-actions{align-items:stretch;flex-direction:column}.ss-hero{padding:18px;border-radius:17px}.ss-primary,.ss-secondary{width:100%}.ss-metrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.ss-metric{min-height:100px;padding:14px}.ss-panel{padding:16px;border-radius:17px}.ss-table th:nth-child(3),.ss-table td:nth-child(3){display:none}}@media print{.ss-screen{display:none!important}}
     </style>
     <section class="ss-screen" id="sku-sync-screen" aria-labelledby="sku-sync-heading" hidden>
-      <div class="ss-shell"><aside class="ss-side"><div class="ss-brand"><b>H</b><span>WH-MATERIAL</span></div><nav class="ss-nav" aria-label="Điều hướng Quản trị"><button type="button" data-admin-hash="#admin/tongquan"><svg viewBox="0 0 24 24" aria-hidden="true"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>Tổng quan</button><button type="button" data-admin-hash="#admin/hangdoi"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 12h11"/><path d="M10 18h11"/><path d="M10 6h11"/><path d="M4 10h2"/><path d="M4 6h1v4"/><path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"/></svg>Đợt đã gửi</button><button type="button" data-admin-hash="#admin/cauhinh"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>Cấu hình</button><button type="button" data-admin-hash="#admin/sku-sync" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7h-9M17 4l3 3-3 3M4 17h9M7 14l-3 3 3 3"/></svg>Đồng bộ SKU</button></nav><div class="ss-side-foot"><button type="button" data-admin-hash="#home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>Về trang chủ</button><button type="button" data-admin-logout><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>Đăng xuất</button></div></aside>
+      <div class="ss-shell"><aside class="ss-side"><div class="ss-brand"><b>H</b><span>WH-MATERIAL</span></div><nav class="ss-nav" aria-label="Điều hướng Quản trị"><button type="button" data-admin-hash="#admin/lenh-in"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>Lệnh in</button><button type="button" data-admin-hash="#admin/cauhinh"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>Cấu hình</button><button type="button" data-admin-hash="#admin/sku-sync" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7h-9M17 4l3 3-3 3M4 17h9M7 14l-3 3 3 3"/></svg>Đồng bộ SKU</button></nav><div class="ss-side-foot"><button type="button" data-admin-hash="#home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>Về trang chủ</button><button type="button" data-admin-logout><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>Đăng xuất</button></div></aside>
         <div class="ss-main"><header class="ss-top"><h1 id="sku-sync-heading">Đồng bộ SKU</h1><span class="ss-connection" id="sku-sync-connection">Đang kiểm tra Extension</span></header><main class="ss-content">
           <section class="ss-hero"><div><h2>SKU và quan hệ Normal–Combo</h2></div><button class="ss-primary" id="sku-sync-preview" type="button">Kiểm tra dữ liệu Inside</button></section><div class="ss-progress" id="sku-sync-progress" aria-hidden="true"><i></i></div><p class="ss-status" id="sku-sync-status" aria-live="polite">Sẵn sàng kiểm tra dữ liệu.</p>
           <section class="ss-metrics" aria-label="Kết quả đối chiếu"><div class="ss-metric"><span>SKU nguồn</span><strong id="ss-source-sku">0</strong></div><button class="ss-metric" type="button" data-change-kind="sku-added"><span>SKU mới</span><strong id="ss-sku-added">0</strong></button><button class="ss-metric" type="button" data-change-kind="sku-updated"><span>SKU cập nhật</span><strong id="ss-sku-updated">0</strong></button><div class="ss-metric"><span>Quan hệ trong phạm vi</span><strong id="ss-source-combo">0</strong></div><button class="ss-metric" type="button" data-change-kind="combo-added"><span>Combo mới</span><strong id="ss-combo-added">0</strong></button><button class="ss-metric" type="button" data-change-kind="combo-updated"><span>Combo cập nhật</span><strong id="ss-combo-updated">0</strong></button></section><section class="ss-metrics ss-alerts" aria-label="Cảnh báo đối chiếu"><button class="ss-metric" type="button" data-change-kind="combo-orphaned"><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m18.84 12.25 1.72-1.71h-.02a5.004 5.004 0 0 0-.12-7.07 5.006 5.006 0 0 0-6.95 0l-1.72 1.71"/><path d="m5.17 11.75-1.71 1.71a5.004 5.004 0 0 0 .12 7.07 5.006 5.006 0 0 0 6.95 0l1.71-1.71"/><line x1="8" x2="8" y1="2" y2="5"/><line x1="2" x2="5" y1="8" y2="8"/><line x1="16" x2="16" y1="19" y2="22"/><line x1="19" x2="22" y1="16" y2="16"/></svg>Combo thừa</span><strong id="ss-combo-orphaned">0</strong></button><button class="ss-metric" type="button" data-change-kind="combo-excluded"><span><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/></svg>Thiếu SKU</span><strong id="ss-combo-excluded">0</strong></button><button class="ss-metric" type="button" data-change-kind="source-issues"><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>Lỗi nguồn</span><strong id="ss-source-issues">0</strong></button></section>
@@ -8292,7 +8292,7 @@ var FSK_CORE = (function () {
       @media(max-width:760px){.gu-hero-actions{display:grid;width:100%}.gu-meta{grid-template-columns:1fr}.gu-table th:nth-child(3),.gu-table td:nth-child(3){display:table-cell}.gu-table td:nth-child(3),.gu-table td:nth-child(4){min-width:190px}.gu-progress-label{align-items:flex-start;flex-direction:column}}
     </style>
     <section class="ss-screen" id="group-uid-sync-screen" aria-labelledby="group-uid-sync-heading" hidden>
-      <div class="ss-shell"><aside class="ss-side"><div class="ss-brand"><b>H</b><span>WH-MATERIAL</span></div><nav class="ss-nav" aria-label="Điều hướng Quản trị"><button type="button" data-admin-hash="#admin/tongquan"><svg viewBox="0 0 24 24" aria-hidden="true"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>Tổng quan</button><button type="button" data-admin-hash="#admin/sku-sync"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7h-9M17 4l3 3-3 3M4 17h9M7 14l-3 3 3 3"/></svg>Đồng bộ SKU</button><button type="button" data-admin-hash="#admin/group-uid-sync" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/><circle cx="18" cy="17" r="2"/></svg>Đồng bộ Group UID</button><button type="button" data-admin-hash="#admin/cauhinh"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1v.1h-4v-.1a1.7 1.7 0 0 0-1.1-1.6 1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1-.4h-.1v-4H3A1.7 1.7 0 0 0 4.6 8.5a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1v-.1h4V3A1.7 1.7 0 0 0 15.5 4.6a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 9c.12.36.33.7.6 1 .27.27.62.48 1 .6h.1v4H21c-.38.12-.73.33-1 .6-.27.27-.48.62-.6 1Z"/></svg>Cấu hình</button></nav><div class="ss-side-foot"><button type="button" data-admin-hash="#home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>Về trang chủ</button><button type="button" data-admin-logout><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>Đăng xuất</button></div></aside>
+      <div class="ss-shell"><aside class="ss-side"><div class="ss-brand"><b>H</b><span>WH-MATERIAL</span></div><nav class="ss-nav" aria-label="Điều hướng Quản trị"><button type="button" data-admin-hash="#admin/lenh-in"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>Lệnh in</button><button type="button" data-admin-hash="#admin/sku-sync"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7h-9M17 4l3 3-3 3M4 17h9M7 14l-3 3 3 3"/></svg>Đồng bộ SKU</button><button type="button" data-admin-hash="#admin/group-uid-sync" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/><circle cx="18" cy="17" r="2"/></svg>Đồng bộ Group UID</button><button type="button" data-admin-hash="#admin/cauhinh"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1v.1h-4v-.1a1.7 1.7 0 0 0-1.1-1.6 1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1-.4h-.1v-4H3A1.7 1.7 0 0 0 4.6 8.5a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1v-.1h4V3A1.7 1.7 0 0 0 15.5 4.6a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 9c.12.36.33.7.6 1 .27.27.62.48 1 .6h.1v4H21c-.38.12-.73.33-1 .6-.27.27-.48.62-.6 1Z"/></svg>Cấu hình</button></nav><div class="ss-side-foot"><button type="button" data-admin-hash="#home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>Về trang chủ</button><button type="button" data-admin-logout><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>Đăng xuất</button></div></aside>
         <div class="ss-main"><header class="ss-top"><h1 id="group-uid-sync-heading">Đồng bộ Group UID</h1><span class="ss-connection" id="gu-connection">Đang kiểm tra Extension</span></header><main class="ss-content">
           <section class="ss-hero"><div><h2>Đối chiếu dữ liệu WMS</h2></div><div class="gu-hero-actions"><button class="ss-primary" id="gu-run-incremental" type="button">Kiểm tra thay đổi</button><button class="ss-secondary" id="gu-run-full" type="button">Đối chiếu toàn bộ</button></div></section>
           <div class="gu-meta"><div><span>Lần thay đổi thành công</span><strong id="gu-last-incremental">—</strong></div><div><span>Lần đối chiếu toàn bộ</span><strong id="gu-last-full">—</strong></div><div><span>Phạm vi phiên hiện tại</span><strong id="gu-range">—</strong></div></div>
@@ -8324,6 +8324,249 @@ var FSK_CORE = (function () {
         function addNav(){const icon='<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h16M4 17h10"/><circle cx="18" cy="17" r="2"/></svg>',nav=[...root.querySelectorAll("nav")].find(e=>e.textContent.includes("Tổng quan")&&e.textContent.includes("Cấu hình"));if(nav&&!nav.querySelector("[data-group-uid-sync-nav]")){const ref=[...nav.querySelectorAll("button")].find(b=>b.textContent.trim()==="Đồng bộ SKU")||[...nav.querySelectorAll("button")].find(b=>b.textContent.trim()==="Cấu hình");if(ref){const b=document.createElement("button");b.type="button";b.dataset.groupUidSyncNav="true";b.className=ref.className;b.innerHTML=`${icon}<span class="text-sm">Đồng bộ Group UID</span>`;b.onclick=()=>location.hash="#admin/group-uid-sync";ref.after(b)}}const skuNav=$("sku-sync-screen")?.querySelector(".ss-nav");if(skuNav&&!skuNav.querySelector("[data-admin-hash='#admin/group-uid-sync']")){const ref=[...skuNav.querySelectorAll("button")].find(b=>b.dataset.adminHash==="#admin/sku-sync");if(ref){const b=document.createElement("button");b.type="button";b.dataset.adminHash="#admin/group-uid-sync";b.innerHTML=`${icon}Đồng bộ Group UID`;b.onclick=()=>location.hash=b.dataset.adminHash;ref.after(b)}}}
         async function route(){if(location.hash!=="#admin/group-uid-sync"){screen.hidden=true;if(location.hash!=="#admin/sku-sync")root.hidden=false;loaded=false;setTimeout(addNav,50);return}const token=await window.PrintSkuAdminAccess?.getToken?.();if(!token)return;root.hidden=true;$("sku-sync-screen").hidden=true;screen.hidden=false;if(!loaded){loaded=true;setBusy(true,"Đang kiểm tra Extension và tải lịch sử…");try{await Promise.all([checkExtension(),loadHistory()]);status.textContent="Sẵn sàng kiểm tra dữ liệu."}catch(error){status.textContent=error.message||"Không tải được dữ liệu quản trị."}finally{setBusy(false)}}}
         incBtn.onclick=()=>readAndStage("incremental");fullBtn.onclick=()=>readAndStage("full");applyBtn.onclick=apply;refreshBtn.onclick=async()=>{if(!busy){setBusy(true,"Đang tải lại lịch sử…");try{await loadHistory();status.textContent="Đã tải lại lịch sử."}catch(error){status.textContent=error.message}finally{setBusy(false)}}};document.querySelectorAll("[data-gu-kind]").forEach(b=>b.onclick=()=>selectKind(b.dataset.guKind));screen.querySelectorAll("[data-admin-hash]").forEach(b=>b.onclick=()=>location.hash=b.dataset.adminHash);historyBody.onclick=e=>{const row=e.target.closest("tr[data-gu-run]");if(row)openHistory(row.dataset.guRun)};new MutationObserver(addNav).observe(root,{childList:true,subtree:true});addEventListener("hashchange",route);addEventListener("print-sku-admin-ready",route);addNav();route();
+      })();
+    </script>
+    <style id="print-jobs-admin-style">
+      .pj-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.pj-stat{min-width:0;padding:15px 17px;border:1px solid #dce7e3;border-radius:16px;background:#fff;box-shadow:0 5px 17px rgba(13,71,52,.05)}.pj-stat span{display:flex;align-items:center;gap:7px;color:#74847e;font-size:11px;font-weight:700;text-transform:uppercase}.pj-stat strong{display:block;margin-top:8px;color:#163a2e;font-size:22px;line-height:1.15;overflow-wrap:anywhere}.pj-stat small{display:block;margin-top:4px;color:#74847e;font-size:12px;overflow-wrap:anywhere}.pj-stat[data-tone=ok] strong{color:#126348}.pj-stat[data-tone=warn]{border-color:#e3b64d;background:#fffaeb}.pj-stat[data-tone=warn] strong{color:#8b6100}.pj-stat[data-tone=bad]{border-color:#efb3ad;background:#fff6f5}.pj-stat[data-tone=bad] strong{color:#a53730}
+      .pj-svg{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}.pj-bar{display:flex;flex-wrap:wrap;align-items:center;gap:10px}.pj-day{display:inline-flex;align-items:center;gap:6px}.pj-icon{display:inline-grid;place-items:center;width:42px;height:42px;padding:0;border:1px solid #cbdcd6;border-radius:12px;background:#fff;color:#176248;cursor:pointer}.pj-icon:disabled{opacity:.35;cursor:default}.pj-day input,.pj-search input{height:42px;border:1px solid #cbdcd6;border-radius:12px;background:#fff;color:#17382d;font:inherit;font-size:14px}.pj-day input{padding:0 10px}.pj-today{min-height:42px;padding:0 14px;border:1px solid #cbdcd6;border-radius:999px;background:#fff;color:#176248;font-weight:700;white-space:nowrap;cursor:pointer}.pj-types{display:inline-flex;flex-wrap:wrap;gap:6px}.pj-type{display:inline-flex;align-items:center;gap:7px;min-height:42px;padding:0 14px;border:1px solid #cbdcd6;border-radius:999px;background:#fff;color:#4f645c;font-weight:700;white-space:nowrap;cursor:pointer}.pj-type b{min-width:24px;padding:2px 7px;border-radius:999px;background:#eef4f1;font-size:11px;text-align:center}.pj-type[aria-pressed=true]{border-color:#007754;background:#e5f2ee;color:#005f41}.pj-type[aria-pressed=true] b{background:#fff}.pj-search{position:relative;flex:1 1 230px;min-width:190px}.pj-search .pj-svg{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:#7b8a85}.pj-search input{width:100%;padding:0 12px 0 38px}
+      .pj-list{margin-top:14px;overflow:hidden;border:1px solid #e1eae7;border-radius:14px}.pj-row{display:grid;grid-template-columns:62px 62px minmax(0,1fr) 128px 58px 58px 86px;gap:12px;align-items:center;width:100%;padding:11px 14px;border:0;border-top:1px solid #edf2f0;background:#fff;color:inherit;font:inherit;font-size:13px;text-align:left;cursor:pointer}.pj-row:first-child{border-top:0}.pj-row:hover,.pj-row:focus-visible{outline:none;background:#f3faf7}.pj-row.pj-head{background:#f6faf8;color:#6b7d76;font-size:11px;font-weight:700;cursor:default}.pj-time{color:#64776f;font-variant-numeric:tabular-nums}.pj-kind{display:inline-flex;align-items:center;gap:5px;color:#176248;font-size:11px;font-weight:700}.pj-main{min-width:0}.pj-main strong,.pj-main small,.pj-src{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pj-main strong{color:#17382d;font-size:13px}.pj-main small,.pj-src{color:#74847e;font-size:12px}.pj-num{text-align:right;font-variant-numeric:tabular-nums}.pj-num b{color:#17382d}.pj-end{display:flex;justify-content:flex-end;gap:5px;flex-wrap:wrap}.pj-badge{display:inline-flex;align-items:center;gap:4px;min-height:24px;padding:0 9px;border-radius:999px;background:#e9f5f0;color:#126348;font-size:11px;font-weight:700;white-space:nowrap}.pj-badge[data-status=failed]{background:#fff0ee;color:#a53730}.pj-badge[data-status=queued],.pj-badge[data-status=printing]{background:#fff6dc;color:#8b6100}.pj-badge[data-status=cancelled]{background:#eef1f0;color:#60756d}.pj-re{display:inline-block;margin-right:6px;padding:0 6px;border-radius:999px;background:#eef0fb;color:#3c3489;font-size:10px;font-weight:700;line-height:17px;vertical-align:1px}.pj-empty{padding:30px 16px;color:#7b8a85;text-align:center}.pj-top-logout,.pj-top-home{display:none}
+      .pj-dialog{width:min(880px,calc(100% - 32px));max-height:calc(100vh - 48px);margin:auto;padding:0;border:0;border-radius:20px;background:#fff;color:#17251f;font-family:Arial,Helvetica,sans-serif;box-shadow:0 24px 60px rgba(13,40,30,.28)}.pj-dialog::backdrop{background:rgba(15,35,28,.45)}.pj-dialog[open]{display:flex;flex-direction:column}.pj-d-head{display:flex;align-items:center;gap:10px;padding:18px 20px 6px}.pj-d-head h2{flex:1;margin:0;color:#17382d;font-size:17px}.pj-d-meta{display:flex;flex-wrap:wrap;gap:6px 14px;padding:0 20px 12px;color:#64776f;font-size:12px}.pj-d-meta button{padding:0;border:0;background:none;color:#176248;font:inherit;font-weight:700;text-decoration:underline;cursor:pointer}.pj-d-alert{margin:0 20px 12px;padding:9px 12px;border-radius:10px;background:#fff0ee;color:#a53730;font-size:12px}.pj-d-body{flex:1;min-height:80px;overflow:auto;border-top:1px solid #edf2f0;border-bottom:1px solid #edf2f0}.pj-d-table{width:100%;border-collapse:collapse;font-size:13px}.pj-d-table th{position:sticky;top:0;padding:10px 12px;background:#f6faf8;color:#6b7d76;font-size:11px;text-align:left;white-space:nowrap}.pj-d-table td{padding:10px 12px;border-top:1px solid #edf2f0;vertical-align:top}.pj-d-table .n{text-align:right;font-variant-numeric:tabular-nums}.pj-d-table .code{font-weight:700;color:#17382d;white-space:nowrap}.pj-d-table .meta{display:none}.pj-d-table tr[data-off]{color:#93a29c}.pj-d-table input,.pj-check input{width:18px;height:18px;margin:0;accent-color:#007754;cursor:pointer}.pj-d-foot{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;padding:14px 20px}.pj-check{display:inline-flex;align-items:center;gap:8px;font-weight:700;cursor:pointer}.pj-sum{flex:1;color:#64776f;font-size:13px}.pj-d-note{width:100%;margin:0;color:#64776f;font-size:12px}.pj-d-note[data-tone=bad]{color:#a53730}.pj-d-note[data-tone=ok]{color:#126348}.pj-d-foot .ss-primary{display:inline-flex;align-items:center;gap:8px;font-weight:700}.pj-d-foot .ss-primary .pj-svg{width:18px;height:18px}
+      @media(max-width:1050px){.pj-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.pj-row{grid-template-columns:56px 58px minmax(0,1fr) 104px 52px 80px}.pj-row>.pj-lines{display:none}}
+      @media(max-width:760px){.pj-stats{gap:9px}.pj-stat{padding:12px 13px}.pj-stat strong{font-size:18px}.pj-bar{align-items:stretch}.pj-day{width:100%}.pj-day input{flex:1;min-width:0}.pj-types{width:100%}.pj-type{flex:1 1 0;min-width:0;justify-content:center;gap:5px;padding:0 8px;font-size:13px}.pj-search{flex:1 1 0;min-width:0}.pj-row.pj-head{display:none}.pj-row{grid-template-columns:auto auto minmax(0,1fr) auto;grid-template-areas:"main main main end" "kind time src tem";gap:5px 10px;padding:12px 13px}.pj-row>.pj-main{grid-area:main}.pj-row>.pj-end{grid-area:end;align-self:start}.pj-row>.pj-kind{grid-area:kind}.pj-row>.pj-time{grid-area:time}.pj-row>.pj-src{grid-area:src}.pj-row>.pj-tem{grid-area:tem}.pj-top-logout,.pj-top-home{display:inline-grid}#print-jobs-screen .ss-top{gap:10px}#print-jobs-screen .ss-top h1{flex:1;min-width:0}.pj-dialog{width:100%;max-width:100%;max-height:92vh;margin:auto 0 0;border-radius:20px 20px 0 0}.pj-d-head{padding:16px 16px 4px}.pj-d-meta{padding:0 16px 10px}.pj-d-alert{margin:0 16px 10px}.pj-d-table thead{display:none}.pj-d-table tr{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:3px 10px;padding:10px 16px;border-top:1px solid #edf2f0}.pj-d-table td{padding:0;border:0}.pj-d-table .sku,.pj-d-table .lot,.pj-d-table .roll,.pj-d-table .idx{display:none}.pj-d-table .meta{display:block;grid-column:1/-1;color:#74847e;font-size:12px}.pj-d-table .name{grid-column:1/-1;grid-row:2}.pj-d-table[data-pick] tr{grid-template-columns:28px minmax(0,1fr) auto}.pj-d-table[data-pick] .c{grid-row:1/span 3}.pj-d-table[data-pick] .name,.pj-d-table[data-pick] .meta{grid-column:2/-1}.pj-d-foot{padding:12px 16px 18px}.pj-d-foot .ss-primary{width:100%;justify-content:center}}
+      @media print{.pj-dialog{display:none!important}}
+    </style>
+    <section class="ss-screen" id="print-jobs-screen" aria-labelledby="print-jobs-heading" hidden>
+      <div class="ss-shell"><aside class="ss-side"><div class="ss-brand"><b>H</b><span>WH-MATERIAL</span></div><nav class="ss-nav" aria-label="Điều hướng Quản trị"><button type="button" data-admin-hash="#admin/lenh-in" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>Lệnh in</button><button type="button" data-admin-hash="#admin/sku-sync"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7h-9M17 4l3 3-3 3M4 17h9M7 14l-3 3 3 3"/></svg>Đồng bộ SKU</button><button type="button" data-admin-hash="#admin/group-uid-sync"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/><circle cx="18" cy="17" r="2"/></svg>Đồng bộ Group UID</button><button type="button" data-admin-hash="#admin/cauhinh"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1v.1h-4v-.1a1.7 1.7 0 0 0-1.1-1.6 1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1-.4h-.1v-4H3A1.7 1.7 0 0 0 4.6 8.5a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1v-.1h4V3A1.7 1.7 0 0 0 15.5 4.6a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 9c.12.36.33.7.6 1 .27.27.62.48 1 .6h.1v4H21c-.38.12-.73.33-1 .6-.27.27-.48.62-.6 1Z"/></svg>Cấu hình</button></nav><div class="ss-side-foot"><button type="button" data-admin-hash="#home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>Về trang chủ</button><button type="button" data-admin-logout><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>Đăng xuất</button></div></aside>
+        <div class="ss-main"><header class="ss-top"><button type="button" class="pj-icon pj-top-home" data-admin-hash="#home" aria-label="Về trang chủ WH-MATERIAL"><svg class="pj-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg></button><h1 id="print-jobs-heading">Lệnh in</h1><span class="ss-connection" id="pj-connection" data-state="error">Máy in</span><button type="button" class="pj-icon pj-top-logout" data-admin-logout aria-label="Đăng xuất"><svg class="pj-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg></button></header><main class="ss-content">
+          <section class="pj-stats" aria-label="Tình trạng in">
+            <div class="pj-stat" id="pj-stat-printer"><span><svg class="pj-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>Máy in</span><strong>—</strong><small>&nbsp;</small></div>
+            <div class="pj-stat" id="pj-stat-queue"><span><svg class="pj-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 22h14"/><path d="M5 2h14"/><path d="M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22"/><path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2"/></svg>Đang chờ</span><strong>—</strong><small>&nbsp;</small></div>
+            <div class="pj-stat" id="pj-stat-day"><span><svg class="pj-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg><em id="pj-day-label" style="font-style:normal">Hôm nay</em></span><strong>—</strong><small>&nbsp;</small></div>
+            <div class="pj-stat" id="pj-stat-failed"><span><svg class="pj-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>Lỗi</span><strong>—</strong><small>&nbsp;</small></div>
+          </section>
+          <section class="ss-panel">
+            <div class="pj-bar">
+              <div class="pj-day"><button type="button" class="pj-icon" id="pj-prev" aria-label="Ngày trước"><svg class="pj-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></button><input type="date" id="pj-date" aria-label="Ngày"><button type="button" class="pj-icon" id="pj-next" aria-label="Ngày sau"><svg class="pj-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></button><button type="button" class="pj-today" id="pj-today" hidden>Hôm nay</button></div>
+              <div class="pj-types" role="group" aria-label="Loại lệnh"><button type="button" class="pj-type" data-pj-type="all" aria-pressed="true">Tất cả <b id="pj-count-all">0</b></button><button type="button" class="pj-type" data-pj-type="sku" aria-pressed="false"><svg class="pj-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M8 7v10"/><path d="M12 7v10"/><path d="M17 7v10"/></svg>SKU <b id="pj-count-sku">0</b></button><button type="button" class="pj-type" data-pj-type="group_uid" aria-pressed="false"><svg class="pj-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5 6.3 6.3a2.4 2.4 0 0 1 0 3.4L17 19"/><path d="M9.586 5.586A2 2 0 0 0 8.172 5H3a1 1 0 0 0-1 1v5.172a2 2 0 0 0 .586 1.414L8.29 18.29a2.426 2.426 0 0 0 3.42 0l3.58-3.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="6.5" cy="9.5" r=".5"/></svg>UID <b id="pj-count-uid">0</b></button></div>
+              <label class="pj-search"><svg class="pj-svg" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><input type="search" id="pj-query" placeholder="SKU, UID, tên, mã lệnh" aria-label="Tìm lệnh in" autocomplete="off"></label>
+              <button type="button" class="pj-icon" id="pj-refresh" aria-label="Tải lại"><svg class="pj-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg></button>
+            </div>
+            <div class="ss-progress" id="pj-progress" aria-hidden="true"><i></i></div>
+            <div class="pj-list" id="pj-list"></div>
+            <p class="ss-status" id="pj-status" aria-live="polite"></p>
+          </section>
+        </main></div></div>
+      <dialog class="pj-dialog" id="pj-dialog" aria-labelledby="pj-d-title">
+        <div class="pj-d-head"><span class="pj-badge" id="pj-d-status"></span><h2 id="pj-d-title"></h2><button type="button" class="pj-icon" id="pj-d-close" aria-label="Đóng"><svg class="pj-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>
+        <div class="pj-d-meta" id="pj-d-meta"></div>
+        <p class="pj-d-alert" id="pj-d-alert" hidden></p>
+        <div class="pj-d-body"><table class="pj-d-table" id="pj-d-table"><thead id="pj-d-thead"></thead><tbody id="pj-d-tbody"></tbody></table></div>
+        <div class="pj-d-foot"><label class="pj-check" id="pj-d-all-wrap" hidden><input type="checkbox" id="pj-d-all">Tất cả</label><span class="pj-sum" id="pj-d-sum"></span><button type="button" class="ss-primary" id="pj-d-reprint"><svg class="pj-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg><span id="pj-d-reprint-text">In lại</span></button><p class="pj-d-note" id="pj-d-note" aria-live="polite"></p></div>
+      </dialog>
+    </section>
+    <script id="print-jobs-admin-script">
+      // Màn "Lệnh in" (#admin/lenh-in, 08/10/2026): gộp "Tổng quan" và "Đợt đã gửi" của Admin React
+      // (hai mục đó chỉ đếm lệnh gửi từ chính tab đang mở) thành một màn đọc print_jobs của cả kho qua
+      // supabase/print_jobs_admin_v1.sql. In lại: SKU nguyên lệnh, UID toàn bộ hoặc một phần dòng —
+      // máy chủ tự dựng lệnh mới từ lệnh gốc, trình duyệt chỉ gửi số thứ tự dòng.
+      (()=>{
+        const $=id=>document.getElementById(id),screen=$("print-jobs-screen"),root=$("root"),dialog=$("pj-dialog");
+        const ROUTE="#admin/lenh-in",OTHER=new Set(["#admin/sku-sync","#admin/group-uid-sync"]),KNOWN=new Set([ROUTE,"#admin/cauhinh",...OTHER]);
+        const API=window.PrintSkuQueue?.supabaseUrl||"https://ikzhitdqkoatlmkrxuuh.supabase.co",KEY=window.PrintSkuQueue?.publishableKey||"sb_publishable_mBl--Ep5nNxuC4Xvyi1gfg_SLGEcRhI";
+        const TYPE={sku:"SKU",group_uid:"UID",location:"Vị trí",fabric_relaxation:"Fabric"},STATUS={queued:"Chờ",printing:"Đang in",completed:"Xong",failed:"Lỗi",cancelled:"Huỷ"};
+        const SOURCE={"web-find-sku":"TÌM SKU","web-group-uid":"PRINT UID","web-cut-group-uid":"Cắt UID","web-location":"Mã vị trí"},FINAL=new Set(["completed","failed","cancelled"]);
+        const ICON={sku:'<path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M8 7v10"/><path d="M12 7v10"/><path d="M17 7v10"/>',group_uid:'<path d="m15 5 6.3 6.3a2.4 2.4 0 0 1 0 3.4L17 19"/><path d="M9.586 5.586A2 2 0 0 0 8.172 5H3a1 1 0 0 0-1 1v5.172a2 2 0 0 0 .586 1.414L8.29 18.29a2.426 2.426 0 0 0 3.42 0l3.58-3.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="6.5" cy="9.5" r=".5"/>',location:'<path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/>',fabric_relaxation:'<path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/>',printer:'<path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/>'};
+        const svg=(name,size=16)=>`<svg class="pj-svg" style="width:${size}px;height:${size}px" viewBox="0 0 24 24" aria-hidden="true">${ICON[name]||ICON.printer}</svg>`;
+        const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]),num=v=>Number(v||0).toLocaleString("vi-VN");
+        const vnDay=date=>new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Ho_Chi_Minh",year:"numeric",month:"2-digit",day:"2-digit"}).format(date);
+        const shiftDay=(day,step)=>{const d=new Date(`${day}T12:00:00Z`);d.setUTCDate(d.getUTCDate()+step);return d.toISOString().slice(0,10)};
+        const clock=(iso,seconds)=>iso?new Intl.DateTimeFormat("vi-VN",{timeZone:"Asia/Ho_Chi_Minh",hour:"2-digit",minute:"2-digit",...(seconds?{second:"2-digit"}:{})}).format(new Date(iso)):"—";
+        const ago=iso=>{const s=Math.max(0,Math.round((Date.now()-Date.parse(iso))/1000));return s<60?`${s}s trước`:s<3600?`${Math.round(s/60)} phút trước`:`${Math.round(s/3600)} giờ trước`};
+        const id8=id=>String(id||"").slice(0,8),dayText=day=>day?day.split("-").reverse().slice(0,2).join("/"):"";
+        const state=s=>FINAL.has(s)?s:s==="queued"?"queued":"printing",badge=s=>`<span class="pj-badge" data-status="${state(s)}">${STATUS[state(s)]}</span>`;
+        const source=raw=>{const base=String(raw||"").replace(/\s*(·\s*in lại|\(in lại).*$/i,"").trim();return SOURCE[base]||base||"—"};
+        const reprinted=job=>Boolean(job.reprintOf)||/in lại/i.test(job.source||"");
+        const title=(type,it)=>type==="group_uid"?it?.groupUid:type==="location"?it?.code:type==="fabric_relaxation"?(it?.code||"Tem viết tay"):(it?.productName||it?.sku);
+        const subtitle=(type,it)=>type==="group_uid"?[it?.sku,it?.productName].filter(Boolean).join(" · "):type==="location"?it?.name:type==="sku"?it?.sku:"";
+        const copiesOf=it=>Number.isInteger(Number(it?.copies))&&Number(it.copies)>0?Number(it.copies):1;
+        const view={day:null,today:null,type:"all",q:""};
+        let data=null,loaded=false,seq=0,timer=0,searchTimer=0,job=null,picked=new Set(),sending=false,sent=null,trackSeq=0;
+
+        async function rpc(name,args,retry=true){
+          const token=window.PrintSkuAdminAccess?.peekToken?.()||await window.PrintSkuAdminAuth.accessToken();
+          const response=await fetch(`${API}/rest/v1/rpc/${name}`,{method:"POST",headers:{apikey:KEY,Authorization:`Bearer ${token}`,"Content-Type":"application/json"},body:JSON.stringify(args),signal:AbortSignal.timeout(20000)});
+          if(response.status===401&&retry){await window.PrintSkuAdminAuth.accessToken();return rpc(name,args,false)}
+          const body=await response.json().catch(()=>null);
+          if(!response.ok)throw new Error(body?.message||`Supabase HTTP ${response.status}`);
+          if(!body?.ok)throw Object.assign(new Error(body?.error?.message||"Supabase từ chối yêu cầu"),{code:body?.error?.code});
+          return body.data;
+        }
+        const busy=on=>{$("pj-progress").dataset.busy=String(on);$("pj-refresh").disabled=on};
+        const tile=(id,value,note,tone="")=>{const box=$(id);box.dataset.tone=tone;box.querySelector("strong").textContent=value;box.querySelector("small").textContent=note||" "};
+
+        async function loadPrinter(){
+          try{
+            const result=await window.PrintSkuQueue.queueStatus();
+            if(!result?.ok)throw new Error(result?.error?.message||"");
+            const q=result.data||{},agent=[...(q.agents||[])].sort((a,b)=>Date.parse(b.lastSeenAt||0)-Date.parse(a.lastSeenAt||0))[0],printer=agent?.state?.printer||{};
+            const stale=!agent?.lastSeenAt||Date.now()-Date.parse(agent.lastSeenAt)>45000,version=agent?.state?.version?`v${agent.state.version} · `:"";
+            if(stale)tile("pj-stat-printer","Mất liên lạc",agent?.lastSeenAt?`${version}${ago(agent.lastSeenAt)}`:"Chưa có agent","bad");
+            else if(printer.blocked)tile("pj-stat-printer",printer.message||"Máy in đang mắc",`${version}${ago(agent.lastSeenAt)}`,"bad");
+            else tile("pj-stat-printer","Sẵn sàng",`${version}${ago(agent.lastSeenAt)}`,"ok");
+            const conn=$("pj-connection");conn.dataset.state=stale||printer.blocked?"error":"ok";conn.textContent=stale?"Mất liên lạc":printer.blocked?"Máy in đang mắc":"Máy in sẵn sàng";
+            tile("pj-stat-queue",num(q.queued),`${num(q.queuedCopies)} tem${q.active?` · ${num(q.active)} đang in`:""}`,q.queued?"warn":"");
+          }catch(_){tile("pj-stat-printer","Mất kết nối","","bad");tile("pj-stat-queue","—","");const conn=$("pj-connection");conn.dataset.state="error";conn.textContent="Mất kết nối"}
+        }
+
+        function renderSummary(){
+          const s=data?.summary||{},today=view.day===view.today;
+          $("pj-day-label").textContent=today?"Hôm nay":`Ngày ${dayText(view.day)}`;
+          tile("pj-stat-day",`${num(s.jobs)} lệnh`,`${num(s.copies)} tem`);
+          tile("pj-stat-failed",num(s.failed),today?"hôm nay":dayText(view.day),s.failed?"bad":"");
+          const c=data?.counts||{};$("pj-count-all").textContent=num(c.all);$("pj-count-sku").textContent=num(c.sku);$("pj-count-uid").textContent=num(c.group_uid);
+          const input=$("pj-date");input.value=view.day||"";input.max=view.today||"";input.min=data?.oldestDay||"";
+          $("pj-next").disabled=!view.day||view.day>=view.today;$("pj-prev").disabled=Boolean(data?.oldestDay&&view.day<=data.oldestDay);$("pj-today").hidden=today;
+        }
+
+        function renderList(){
+          const jobs=data?.jobs||[];
+          $("pj-list").innerHTML=jobs.length?`<div class="pj-row pj-head" aria-hidden="true"><span>Giờ</span><span>Loại</span><span>Nội dung</span><span>Nguồn</span><span class="pj-num pj-lines">Dòng</span><span class="pj-num">Tem</span><span class="pj-num">Trạng thái</span></div>`+jobs.map(j=>{
+            const first=j.first||{},extra=j.itemCount>1?` +${num(j.itemCount-1)}`:"",sub=subtitle(j.type,first);
+            return `<button type="button" class="pj-row" data-job="${esc(j.id)}"><span class="pj-time">${esc(clock(j.createdAt))}</span><span class="pj-kind">${svg(j.type,15)}${esc(TYPE[j.type]||j.type)}</span><span class="pj-main"><strong>${esc(title(j.type,first)||id8(j.id))}${esc(extra)}</strong>${sub||reprinted(j)?`<small>${reprinted(j)?'<span class="pj-re">In lại</span>':""}${esc(sub)}</small>`:""}</span><span class="pj-src">${esc(source(j.source))}</span><span class="pj-num pj-lines">${num(j.itemCount)}</span><span class="pj-num pj-tem"><b>${num(j.copies)}</b> tem</span><span class="pj-end">${badge(j.status)}</span></button>`}).join(""):`<div class="pj-empty">${view.q?"Không có lệnh khớp":"Chưa có lệnh in"}</div>`;
+        }
+
+        async function loadJobs(quiet=false){
+          const mine=++seq;if(!quiet)busy(true);
+          try{
+            const result=await rpc("print_admin_jobs",{p_day:view.day,p_type:view.type,p_query:view.q});
+            if(mine!==seq)return;
+            data=result;view.today=result.today;view.day=result.day;renderSummary();renderList();$("pj-status").textContent="";
+          }catch(error){if(mine===seq)$("pj-status").textContent=error.message||"Không tải được lệnh in"}
+          finally{if(mine===seq)busy(false)}
+        }
+        const refresh=quiet=>Promise.all([loadPrinter(),loadJobs(quiet)]);
+
+        function selectionText(){
+          const items=job?.items||[],chosen=items.filter(it=>picked.has(it.index)),copies=chosen.reduce((n,it)=>n+copiesOf(it),0);
+          return{count:chosen.length,copies};
+        }
+        function renderFoot(){
+          const allowed=Boolean(job?.reprint?.allowed),partial=Boolean(job?.reprint?.partial),items=job?.items||[],{count,copies}=selectionText(),button=$("pj-d-reprint"),all=$("pj-d-all");
+          $("pj-d-all-wrap").hidden=!(allowed&&partial);all.checked=count===items.length&&items.length>0;all.indeterminate=count>0&&count<items.length;
+          $("pj-d-sum").textContent=partial&&allowed?`${num(count)}/${num(items.length)} dòng · ${num(copies)} tem`:`${num(items.length)} dòng · ${num(job?.copies)} tem`;
+          button.hidden=!allowed;button.disabled=sending||Boolean(sent)||count===0;
+          $("pj-d-reprint-text").textContent=sent?"Đã gửi":count?`In lại ${num(copies)} tem`:"Chọn dòng";
+          $("pj-d-tbody").querySelectorAll("tr[data-index]").forEach(tr=>{if(picked.has(Number(tr.dataset.index)))tr.removeAttribute("data-off");else tr.dataset.off=""});
+        }
+        function renderDialog(){
+          const j=job,uid=j.type==="group_uid",items=j.items||[],allowed=Boolean(j.reprint?.allowed),partial=uid&&allowed&&Boolean(j.reprint?.partial);
+          const status=$("pj-d-status");status.dataset.status=state(j.status);status.textContent=STATUS[state(j.status)];
+          $("pj-d-title").textContent=`${TYPE[j.type]||j.type} · ${id8(j.id)}`;
+          const dates=[...new Set(items.map(it=>it.printedDate).filter(Boolean))];
+          const meta=[`${clock(j.createdAt,true)}${j.completedAt?` → ${clock(j.completedAt,true)}`:""}`,source(j.source),`${num(items.length)} dòng · ${num(j.copies)} tem`];
+          if(j.type==="sku"&&dates.length===1)meta.push(`Ngày in ${dates[0]}`);
+          let html=meta.map(m=>`<span>${esc(m)}</span>`).join("");
+          if(j.reprintOf)html+=`<span>In lại từ <button type="button" data-open-job="${esc(j.reprintOf)}">${esc(id8(j.reprintOf))}</button></span>`;
+          if(j.reprints?.length)html+=`<span>Đã in lại ${j.reprints.map(r=>`<button type="button" data-open-job="${esc(r.id)}">${esc(clock(r.createdAt))}</button>`).join(", ")}</span>`;
+          $("pj-d-meta").innerHTML=html;
+          const alert=$("pj-d-alert");alert.hidden=!(j.status==="failed"&&(j.errorMessage||j.errorCode));alert.textContent=j.errorMessage||j.errorCode||"";
+          const table=$("pj-d-table");table.dataset.kind=j.type;table.toggleAttribute("data-pick",partial);
+          if(uid){
+            $("pj-d-thead").innerHTML=`<tr>${partial?'<th class="c"></th>':""}<th>Group UID</th><th class="sku">SKU</th><th class="name">Tên sản phẩm</th><th class="lot">Lot</th><th class="roll">Roll</th><th class="n">Tem</th></tr>`;
+            $("pj-d-tbody").innerHTML=items.map(it=>`<tr data-index="${it.index}">${partial?`<td class="c"><input type="checkbox" data-pick="${it.index}" aria-label="Chọn ${esc(it.groupUid)}"></td>`:""}<td class="code">${esc(it.groupUid)}</td><td class="sku">${esc(it.sku)}</td><td class="name">${esc(it.productName)}</td><td class="lot">${esc(it.lot)}</td><td class="roll">${esc(it.roll)}</td><td class="n">${num(copiesOf(it))}</td><td class="meta">${esc([it.sku,it.lot&&`Lot ${it.lot}`,it.roll&&`Roll ${it.roll}`].filter(Boolean).join(" · "))}</td></tr>`).join("");
+          }else if(j.type==="location"){
+            $("pj-d-thead").innerHTML='<tr><th>Mã vị trí</th><th class="name">Tên</th><th class="n">Tem</th></tr>';
+            $("pj-d-tbody").innerHTML=items.map(it=>`<tr data-index="${it.index}"><td class="code">${esc(it.code)}</td><td class="name">${esc(it.name)}</td><td class="n">${num(copiesOf(it))}</td></tr>`).join("");
+          }else{
+            $("pj-d-thead").innerHTML='<tr><th class="idx">#</th><th>SKU</th><th class="name">Tên sản phẩm</th><th class="n">Tem</th></tr>';
+            $("pj-d-tbody").innerHTML=items.length?items.map(it=>`<tr data-index="${it.index}"><td class="idx">${it.index+1}</td><td class="code">${esc(it.sku||it.code||"—")}</td><td class="name">${esc(it.productName||"")}</td><td class="n">${num(copiesOf(it))}</td></tr>`).join(""):'<tr><td class="pj-empty" colspan="4">Tem viết tay</td></tr>';
+          }
+          $("pj-d-tbody").querySelectorAll("input[data-pick]").forEach(box=>{box.checked=picked.has(Number(box.dataset.pick));box.onchange=()=>{const i=Number(box.dataset.pick);box.checked?picked.add(i):picked.delete(i);renderFoot()}});
+          if(!sent&&!sending){const note=$("pj-d-note");note.dataset.tone="";note.textContent=!allowed&&j.reprint?.reason==="JOB_ACTIVE"?"Lệnh đang chờ hoặc đang in":""}
+          renderFoot();
+        }
+        async function openJob(id){
+          trackSeq++;sent=null;sending=false;job=null;
+          $("pj-d-title").textContent=id8(id);$("pj-d-meta").innerHTML="";$("pj-d-thead").innerHTML="";$("pj-d-tbody").innerHTML='<tr><td class="pj-empty">…</td></tr>';$("pj-d-note").textContent="";$("pj-d-reprint").hidden=true;$("pj-d-all-wrap").hidden=true;$("pj-d-sum").textContent="";$("pj-d-alert").hidden=true;
+          const status=$("pj-d-status");status.textContent="";status.removeAttribute("data-status");
+          if(!dialog.open)dialog.showModal();
+          try{job=await rpc("print_admin_job",{p_job_id:id});picked=new Set((job.items||[]).map(it=>it.index));renderDialog()}
+          catch(error){$("pj-d-tbody").innerHTML="";const note=$("pj-d-note");note.dataset.tone="bad";note.textContent=error.message||"Không tải được lệnh"}
+        }
+        async function track(id){
+          const mine=++trackSeq,note=$("pj-d-note"),started=Date.now();
+          while(mine===trackSeq&&dialog.open&&Date.now()-started<180000){
+            await new Promise(r=>setTimeout(r,1500));if(mine!==trackSeq)return;
+            try{
+              const next=await rpc("print_admin_job",{p_job_id:id}),st=state(next.status);
+              note.dataset.tone=st==="completed"?"ok":st==="failed"?"bad":"";
+              note.textContent=`Lệnh ${id8(id)} · ${STATUS[st]}${st==="failed"&&next.errorMessage?`: ${next.errorMessage}`:""}`;
+              if(FINAL.has(next.status)){loadJobs(true);return}
+            }catch(_){}
+          }
+        }
+        async function reprint(){
+          if(!job?.reprint?.allowed||sending||sent)return;
+          const uid=job.type==="group_uid",{count,copies}=selectionText(),all=count===(job.items||[]).length;
+          if(!count)return;
+          if(!confirm(uid?`In lại ${num(count)} UID · ${num(copies)} tem?`:`In lại nguyên lệnh SKU · ${num(job.copies)} tem?`))return;
+          sending=true;renderFoot();const note=$("pj-d-note");note.dataset.tone="";note.textContent="Đang gửi…";
+          const nonce=`rp-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,10)}`;
+          try{
+            const result=await rpc("print_admin_reprint",{p_job_id:job.id,p_items:uid&&!all?[...picked].sort((a,b)=>a-b):null,p_nonce:nonce});
+            sent=result;note.dataset.tone="ok";note.textContent=`Lệnh ${id8(result.id)} · ${num(result.copies)} tem · Chờ`;
+            loadJobs(true);track(result.id);
+          }catch(error){note.dataset.tone="bad";note.textContent=error.message||"Chưa in lại được"}
+          finally{sending=false;renderFoot()}
+        }
+
+        // Menu React: ẩn "Tổng quan" và "Đợt đã gửi" (để nguyên trong DOM — hai module Đồng bộ tìm menu theo chữ
+        // "Tổng quan"), thêm "Lệnh in" lên đầu ở cả thanh bên (máy tính) lẫn hàng nút (điện thoại).
+        function addNav(){
+          for(const nav of root.querySelectorAll("nav")){
+            const buttons=[...nav.querySelectorAll("button")],old=buttons.filter(b=>["Tổng quan","Đợt đã gửi"].includes(b.textContent.trim()));
+            if(!old.length)continue;
+            old.forEach(b=>{if(b.style.display!=="none"){b.style.display="none";b.tabIndex=-1;b.setAttribute("aria-hidden","true")}});
+            if(nav.querySelector("[data-print-jobs-nav]"))continue;
+            const rest=buttons.filter(b=>!old.includes(b)),plain=rest.find(b=>!/bg-brand-light|bg-slate-800/.test(b.className))||rest[0]||old[0];
+            const b=document.createElement("button");b.type="button";b.dataset.printJobsNav="true";b.className=plain.className.replace("bg-brand-light text-brand border-l-4 border-brand font-bold","text-slate-500 border-l-4 border-transparent hover:bg-slate-50").replace("bg-slate-800 border-slate-800 text-white","bg-white border-slate-200 text-slate-500");
+            b.innerHTML=plain.querySelector("svg")?`<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICON.printer}</svg><span class="text-sm">Lệnh in</span>`:"Lệnh in";
+            b.onclick=()=>location.hash=ROUTE;nav.prepend(b);
+          }
+        }
+        function stop(){clearInterval(timer);timer=0;if(dialog.open)dialog.close()}
+        async function route(){
+          // #admin/tongquan, #admin/hangdoi (đã gộp vào đây) và mọi hash Admin lạ đều về Lệnh in
+          if(/^#admin(?:\/|$)/.test(location.hash)&&!KNOWN.has(location.hash)){location.replace(ROUTE);return}
+          if(location.hash!==ROUTE){if(!screen.hidden){screen.hidden=true;stop()}if(!OTHER.has(location.hash))root.hidden=false;setTimeout(addNav,50);return}
+          root.hidden=true;["sku-sync-screen","group-uid-sync-screen"].forEach(id=>{const other=$(id);if(other)other.hidden=true});
+          screen.hidden=false;
+          const token=await window.PrintSkuAdminAccess?.getToken?.();
+          if(!token||location.hash!==ROUTE)return;
+          if(!timer)timer=setInterval(()=>{if(!screen.hidden&&document.visibilityState==="visible"){loadPrinter();if(view.day===view.today)loadJobs(true)}},20000);
+          if(!loaded){loaded=true;view.day=null}
+          refresh();
+        }
+
+        screen.querySelectorAll("[data-admin-hash]").forEach(b=>b.onclick=()=>location.hash=b.dataset.adminHash);
+        screen.querySelectorAll("[data-pj-type]").forEach(b=>b.onclick=()=>{view.type=b.dataset.pjType;screen.querySelectorAll("[data-pj-type]").forEach(x=>x.setAttribute("aria-pressed",String(x===b)));loadJobs()});
+        $("pj-date").onchange=e=>{if(e.target.value){view.day=e.target.value;loadJobs()}};
+        $("pj-prev").onclick=()=>{if(view.day){view.day=shiftDay(view.day,-1);loadJobs()}};
+        $("pj-next").onclick=()=>{if(view.day&&view.day<view.today){view.day=shiftDay(view.day,1);loadJobs()}};
+        $("pj-today").onclick=()=>{view.day=view.today;loadJobs()};
+        $("pj-refresh").onclick=()=>refresh();
+        $("pj-query").oninput=e=>{clearTimeout(searchTimer);searchTimer=setTimeout(()=>{view.q=e.target.value.trim();loadJobs()},300)};
+        $("pj-list").onclick=e=>{const row=e.target.closest("[data-job]");if(row)openJob(row.dataset.job)};
+        $("pj-d-meta").onclick=e=>{const link=e.target.closest("[data-open-job]");if(link)openJob(link.dataset.openJob)};
+        $("pj-d-close").onclick=()=>dialog.close();
+        dialog.addEventListener("close",()=>{trackSeq++;job=null});
+        dialog.addEventListener("click",e=>{if(e.target===dialog)dialog.close()});
+        $("pj-d-all").onchange=e=>{picked=e.target.checked?new Set((job?.items||[]).map(it=>it.index)):new Set();renderDialog()};
+        $("pj-d-reprint").onclick=reprint;
+        new MutationObserver(addNav).observe(root,{childList:true,subtree:true});
+        addEventListener("hashchange",route);addEventListener("print-sku-admin-ready",route);
+        window.PrintSkuPrintJobs={refresh,openJob};
+        addNav();route();
       })();
     </script>
   </body>

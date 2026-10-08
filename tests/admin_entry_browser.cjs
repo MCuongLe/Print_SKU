@@ -42,7 +42,7 @@ const mockRoutes = async page => page.route('**/*', async route => {
         await page.goto(BASE + '#home');
         await page.locator('#barcode-admin').click();
         await page.locator('#admin-auth').waitFor({ state: 'visible' });
-        assert.equal(await page.evaluate(() => location.hash), '#admin/tongquan');
+        assert.equal(await page.evaluate(() => location.hash), '#admin/lenh-in');
         assert.equal((await page.locator('.admin-auth__brand strong').innerText()).trim(), 'WH-MATERIAL');
         assert.equal((await page.locator('#admin-auth-cancel').innerText()).trim(), 'Về trang chủ');
         await page.locator('#admin-auth-cancel').click();
@@ -61,22 +61,24 @@ const mockRoutes = async page => page.route('**/*', async route => {
         const errors = [];
         page.on('pageerror', error => errors.push(error.message));
         await mockRoutes(page);
+        // 08/10/2026: ô QUẢN TRỊ mở thẳng màn "Lệnh in" (gộp Tổng quan + Đợt đã gửi), không còn vào React Tổng quan.
         const openAdmin = async () => {
           await page.goto(BASE + '#home');
           await page.locator('#barcode-admin').click();
-          await page.locator('#root header h1', { hasText: 'Quản trị' }).waitFor({ state: 'visible' });
+          await page.locator('#print-jobs-screen').waitFor({ state: 'visible' });
           assert.equal(await page.locator('#admin-auth').isVisible(), false);
-          assert.equal(await page.evaluate(() => location.hash), '#admin/tongquan');
-          assert.equal((await page.locator('#root header h1').innerText()).trim(), 'Quản trị');
+          assert.equal(await page.evaluate(() => location.hash), '#admin/lenh-in');
+          assert.equal((await page.locator('#print-jobs-heading').innerText()).trim(), 'Lệnh in');
+          assert.equal(await page.locator('#root').isVisible(), false);
         };
 
         // Về trang chủ từ giao diện Admin (thanh bên ở desktop, mũi tên ở header điện thoại)
         await openAdmin();
         if (width >= 768) {
-          assert.equal((await page.locator('#root aside h2').innerText()).trim(), 'WH-MATERIAL');
-          await page.locator('#root aside button', { hasText: 'Về trang chủ' }).click();
+          assert.equal((await page.locator('#print-jobs-screen .ss-brand span').innerText()).trim(), 'WH-MATERIAL');
+          await page.locator('#print-jobs-screen .ss-side-foot button', { hasText: 'Về trang chủ' }).click();
         } else {
-          await page.locator('#root header button[aria-label="Về trang chủ WH-MATERIAL"]').click();
+          await page.locator('#print-jobs-screen header button[aria-label="Về trang chủ WH-MATERIAL"]').click();
         }
         await page.waitForFunction(() => location.hash === '#home');
         assert.equal(await page.locator('#barcode-home').isVisible(), true);
@@ -84,13 +86,15 @@ const mockRoutes = async page => page.route('**/*', async route => {
         // Không còn thanh admin nổi, nút Dữ liệu UID và màn nạp Excel; Đăng xuất có đúng một nút trong thanh điều hướng
         await openAdmin();
         for (const id of ['#admin-session', '#admin-uid-data', '#admin-sku-sync', '#group-uid-import-screen']) assert.equal(await page.locator(id).count(), 0, id + ' đã bị xóa');
-        const logout = page.locator(width >= 768 ? '#root aside button[data-admin-logout]' : '#root header button[data-admin-logout]');
+        const logout = page.locator(width >= 768 ? '#print-jobs-screen .ss-side-foot button[data-admin-logout]' : '#print-jobs-screen header button[data-admin-logout]');
         await logout.waitFor({ state: 'visible' });
         assert.equal(await page.locator('[data-admin-logout]:visible').count(), 1);
         assert.equal(width >= 768 ? (await logout.innerText()).trim() : await logout.getAttribute('aria-label'), 'Đăng xuất');
-        if (width >= 768) assert.equal(await page.locator('#root aside nav button', { hasText: 'Đồng bộ SKU' }).count(), 1);
+        if (width >= 768) assert.equal(await page.locator('#print-jobs-screen .ss-nav button', { hasText: 'Đồng bộ SKU' }).count(), 1);
+        // Hash Admin cũ/lạ (màn nạp Excel đã xoá) chuyển về Lệnh in
         await page.goto(BASE + '#admin/group-uid-data');
-        await page.locator('#root header h1', { hasText: 'Quản trị' }).waitFor({ state: 'visible' });
+        await page.waitForFunction(() => location.hash === '#admin/lenh-in');
+        await page.locator('#print-jobs-screen').waitFor({ state: 'visible' });
         assert.equal(await page.locator('#group-uid-import-screen').count(), 0);
 
         // Đăng xuất → trang chủ, phiên bị xóa

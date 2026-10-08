@@ -63,9 +63,19 @@ camera/scanner giữ kiểu riêng. Thiết kế: [`docs/THIET_KE_HEADER_UI.md`]
 
 ## Quản trị (Admin)
 
-Giao diện Admin (`#admin/tongquan`, `#admin/hangdoi`, `#admin/cauhinh`, `#admin/sku-sync`, `#admin/group-uid-sync`) vào từ ô **QUẢN TRỊ** (nhóm "Quản trị", cuối trang chủ) — không còn
+Giao diện Admin (`#admin/lenh-in`, `#admin/cauhinh`, `#admin/sku-sync`, `#admin/group-uid-sync`) vào từ ô **QUẢN TRỊ** (nhóm "Quản trị", cuối trang chủ) — không còn
 nút bánh răng trong header IN TEM SKU. Chưa có phiên thì hiện hộp thoại đăng nhập Supabase (tài khoản có vai trò `admin`); **Hủy**, **Về trang chủ** và **Đăng xuất**
 đều quay về `#home`. **Đăng xuất** nằm ở cuối thanh bên Admin (desktop) hoặc là icon ở hàng tiêu đề (điện thoại); không còn thanh nổi hiện tên Admin. Thương hiệu trong Admin và hộp thoại đăng nhập là "WH-MATERIAL" (trước đây là "In tem SKU"). Test: `tests/admin_entry_browser.cjs`.
+
+**Lệnh in** (`#admin/lenh-in`, mục đầu tiên, 08/10/2026) thay hai mục React cũ "Tổng quan" và "Đợt đã gửi" — hai mục đó chỉ đếm lệnh gửi
+từ chính tab đang mở. `#admin/tongquan`, `#admin/hangdoi` và mọi hash Admin lạ tự chuyển về đây. Màn đọc `print_jobs` của cả kho:
+dải trạng thái (máy in, đang chờ, số lệnh/tem trong ngày, lỗi), chọn ngày (giờ VN), lọc **Tất cả / SKU / UID**, tìm theo SKU, UID, tên
+hoặc mã lệnh. Bấm một lệnh → popup từng dòng (SKU + tên; UID + SKU + tên + Lot + Roll). **In lại SKU = nguyên lệnh, giống hệt lệnh gốc**
+(cùng dòng, số tem, ngày in); **in lại UID cho tick toàn bộ hoặc một phần dòng**, mỗi dòng giữ số tem. Lệnh mới do máy chủ dựng từ lệnh
+gốc (trình duyệt chỉ gửi số thứ tự dòng), mang `reprint_of` và nhãn "In lại"; lệnh gốc còn chờ/đang in thì không cho in lại. Dữ liệu:
+`supabase/print_jobs_admin_v1.sql` (đã áp dụng 08/10/2026; RPC `print_admin_jobs`, `print_admin_job`, `print_admin_reprint`, chỉ Admin).
+Cùng migration: **pg_cron dọn `print_jobs` 3 ngày một lần lúc 03:00 VN, giữ lệnh của 3 ngày gần nhất** (chỉ xoá lệnh đã xong/lỗi/huỷ;
+`print_maintenance` ghi lần chạy cuối) — màn Lệnh in vì thế chỉ tìm lại được vài ngày gần nhất. Test: `tests/print_jobs_admin_browser.cjs`.
 
 Màn `#admin/group-uid-sync` giữ hai chế độ: lấy thay đổi theo watermark lùi 30 phút và đối chiếu toàn bộ. WMS được đọc theo trang 500 dòng; Admin xem preview trước khi cập nhật. Áp dụng `supabase/group_uid_sync_v1.sql` và deploy Edge Function `group-uid-sync` trước khi sử dụng.
 

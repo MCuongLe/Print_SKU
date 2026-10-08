@@ -84,8 +84,8 @@ const cells = async page => (await page.locator('#ss-change-body tr').evaluateAl
 
       // Menu và nút Về trang chủ/Đăng xuất dùng icon SVG, không dùng ký tự
       const navButtons = page.locator('#sku-sync-screen .ss-nav button');
-      assert.equal(await navButtons.count(), 5);
-      for (let index = 0; index < 5; index += 1) assert.equal(await navButtons.nth(index).locator('svg').count(), 1, `mục menu ${index + 1} có icon`);
+      assert.equal(await navButtons.count(), 4); // Lệnh in, Cấu hình, Đồng bộ SKU, Đồng bộ Group UID (08/10/2026: Tổng quan + Đợt đã gửi gộp thành Lệnh in)
+      for (let index = 0; index < 4; index += 1) assert.equal(await navButtons.nth(index).locator('svg').count(), 1, `mục menu ${index + 1} có icon`);
       assert.equal(await page.locator('#sku-sync-screen .ss-side-foot button svg').count(), 2);
       const chrome = await page.locator('#sku-sync-screen .ss-side, #sku-sync-screen .ss-top').allInnerTexts();
       for (const glyph of ['▦', '☷', '⚙', '⇄', '←']) assert.equal(chrome.join('').includes(glyph), false, `không còn ký tự ${glyph}`);
