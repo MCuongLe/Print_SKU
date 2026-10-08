@@ -33,11 +33,23 @@
   }
 
   function normalizeRow(raw, index = 0) {
-    const products = Array.isArray(raw?.products) ? raw.products : [];
-    if (products.length > 1) throw new Error(`Group UID ${clean(raw?.group_uid_code) || index + 1} có nhiều SKU; cần kiểm tra cấu trúc nguồn`);
-    const product = products[0] || {};
+    const sourceProducts = Array.isArray(raw?.products) ? raw.products : [];
+    const productMap = new Map();
+    sourceProducts.forEach((item, productIndex) => {
+      const sku = clean(item?.sku, 80);
+      const quantity = numberValue(item?.quantity);
+      if (!sku || !Number.isFinite(quantity)) throw new Error(`Group UID ${clean(raw?.group_uid_code) || index + 1} có SKU thành phần ${productIndex + 1} không hợp lệ`);
+      const existing = productMap.get(sku);
+      productMap.set(sku, {
+        sku,
+        quantity: quantity + (existing?.quantity || 0),
+        product_name: clean(item?.product_name, 500) || existing?.product_name || null,
+      });
+    });
+    const products = [...productMap.values()].sort((left, right) => left.sku.localeCompare(right.sku));
+    const product = products.length === 1 ? products[0] : {};
     const code = clean(raw?.group_uid_code, 40);
-    const rawQty = product?.quantity ?? raw?.uid_quantity ?? (products.length ? raw?.sku_quantity : 0);
+    const rawQty = raw?.uid_quantity ?? products.reduce((sum, item) => sum + item.quantity, 0);
     const qty = numberValue(rawQty);
     const updated = raw?.updated_at_tz ?? raw?.updated_at;
     const status = clean(raw?.status_name ?? raw?.status, 100);
@@ -55,6 +67,7 @@
       updated_by: clean(raw?.updated_by_name ?? raw?.updated_by, 240) || null,
       updated_date: isoDate(updated),
       status,
+      products,
     };
   }
 

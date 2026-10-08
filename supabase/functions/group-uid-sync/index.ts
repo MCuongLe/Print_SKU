@@ -68,13 +68,18 @@ function normalizedRows(value: unknown): Json[] {
   return value.map((raw, index) => {
     const row = (raw ?? {}) as Json;
     const code = clean(row.group_uid_code, 40), qty = Number(row.qty), status = clean(row.status, 100);
+    const products = Array.isArray(row.products) ? row.products.map((value, productIndex) => {
+      const product = (value ?? {}) as Json, sku = clean(product.sku, 80), quantity = Number(product.quantity);
+      if (!sku || !Number.isFinite(quantity) || quantity < 0) throw new Error(`INVALID_ROW:Group UID ${code || index + 1} có SKU thành phần ${productIndex + 1} không hợp lệ`);
+      return { sku, quantity, product_name: clean(product.product_name, 500) || null };
+    }) : [];
     if (!/^\d{6,40}$/.test(code) || seen.has(code)) throw new Error(`INVALID_ROW:Dòng ${index + 1} có Group UID rỗng, sai hoặc trùng`);
     if (!Number.isFinite(qty) || qty < 0 || !status) throw new Error(`INVALID_ROW:Group UID ${code} thiếu số lượng hoặc trạng thái`);
     seen.add(code);
     return {
       group_uid_code: code, batch_code: clean(row.batch_code, 120) || null, roll_code: clean(row.roll_code, 120) || null,
       warehouse: clean(row.warehouse, 240) || null, location: clean(row.location, 240) || null, sku: clean(row.sku, 80) || null,
-      qty, updated_by: clean(row.updated_by, 240) || null, updated_date: dateValue(row.updated_date, `Ngày cập nhật UID ${code}`), status,
+      qty, updated_by: clean(row.updated_by, 240) || null, updated_date: dateValue(row.updated_date, `Ngày cập nhật UID ${code}`), status, products,
     };
   });
 }

@@ -19,6 +19,7 @@ Hai chế độ dùng chung quy trình kiểm tra, upsert, xác minh và lịch 
 - `to_updated_at` được cố định ngay khi bắt đầu phiên, không thay đổi trong lúc phân trang.
 - Mỗi trang lấy tối đa 500 Group UID và lấy tất cả trạng thái.
 - Loại trùng theo `group_uid_code`; nếu một UID xuất hiện nhiều lần thì giữ bản có `updated_at` mới nhất.
+- Giữ một dòng cha cho mỗi UID trong `group_uid_details`; toàn bộ SKU thành phần và số lượng được lưu trong `group_uid_products` để không mất dữ liệu khi một UID chứa nhiều SKU.
 - Chỉ ghi dữ liệu nguồn mới hơn hoặc bằng `group_uid_details.updated_date`.
 - Không tự xóa UID vắng mặt trong nguồn. UID thiếu chỉ được đưa vào báo cáo đối chiếu.
 - Chỉ cập nhật mốc đồng bộ sau khi lấy đủ trang, upsert và đọc lại Supabase thành công.

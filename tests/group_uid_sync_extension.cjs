@@ -20,6 +20,7 @@ assert.deepEqual(row, {
   group_uid_code: "1028261006000050", batch_code: "1", roll_code: "1",
   warehouse: "WH - MATERIAL - MTG", location: "F0-KHO-HM-04-01-01", sku: "422268923",
   qty: 7429, updated_by: "user@example.invalid", updated_date: "2026-10-07T01:41:57.000Z", status: "Available",
+  products: [{ sku: "422268923", quantity: 7429, product_name: null }],
 });
 
 const page = core.normalizePage({ data: { items: [raw, { ...raw, status_name: "Allocated", updated_at_tz: "2026-10-07T09:00:00+07:00" }], total: 28468 } });
@@ -51,7 +52,23 @@ assert.deepEqual(JSON.parse(JSON.stringify(actualWmsShape.rows[1])), {
   updated_by: null,
   updated_date: "2026-10-08T01:02:01.000Z",
   status: "New",
+  products: [],
 });
-assert.throws(() => core.normalizeRow({ ...raw, products: [{ sku: "A" }, { sku: "B" }] }), /nhiều SKU/);
+const multiSku = JSON.parse(JSON.stringify(core.normalizeRow({
+  ...raw,
+  group_uid_code: "1028260925000067",
+  uid_quantity: 44,
+  products: [
+    { sku: "422439484", quantity: 7, product_name: "Panty XL" },
+    { sku: "422439472", quantity: 7, product_name: "Panty M" },
+    { sku: "422439473", quantity: 3, product_name: "Panty L" },
+    { sku: "422439482", quantity: 10, product_name: "Panty M Blue" },
+    { sku: "422439483", quantity: 17, product_name: "Panty L Blue" },
+  ],
+})));
+assert.equal(multiSku.sku, null);
+assert.equal(multiSku.qty, 44);
+assert.equal(multiSku.products.length, 5);
+assert.equal(multiSku.products.reduce((sum, item) => sum + item.quantity, 0), 44);
 assert.throws(() => core.normalizeRow({ ...raw, updated_at_tz: "sai-ngày" }), /Ngày cập nhật/);
 console.log("group_uid_sync_extension: ok");
