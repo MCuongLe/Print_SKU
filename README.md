@@ -71,7 +71,7 @@ dấu ADJ), Đối chiếu ADJ (tick giúp), Mã vị trí (xoá khỏi hàng đ
 
 ## Quản trị (Admin)
 
-Giao diện Admin (`#admin/lenh-in`, `#admin/cauhinh`, `#admin/sku-sync`, `#admin/group-uid-sync`) vào từ ô **QUẢN TRỊ** (nhóm "Quản trị", cuối trang chủ) — không còn
+Giao diện Admin (`#admin/lenh-in`, `#admin/cauhinh`, `#admin/sku-sync`, `#admin/group-uid-sync`, `#admin/kiem-ke`) vào từ ô **QUẢN TRỊ** (nhóm "Quản trị", cuối trang chủ) — không còn
 nút bánh răng trong header IN TEM SKU. Chưa có phiên thì hiện hộp thoại đăng nhập Supabase (tài khoản có vai trò `admin`); **Hủy**, **Về trang chủ** và **Đăng xuất**
 đều quay về `#home`. **Đăng xuất** nằm ở cuối thanh bên Admin (desktop) hoặc là icon ở hàng tiêu đề (điện thoại); không còn thanh nổi hiện tên Admin. Thương hiệu trong Admin và hộp thoại đăng nhập là "WH-MATERIAL" (trước đây là "In tem SKU"). Test: `tests/admin_entry_browser.cjs`.
 
@@ -107,6 +107,8 @@ Cùng migration: **pg_cron dọn `print_jobs` 3 ngày một lần lúc 03:00 VN,
 `print_maintenance` ghi lần chạy cuối) — màn Lệnh in vì thế chỉ tìm lại được vài ngày gần nhất. Test: `tests/print_jobs_admin_browser.cjs`.
 
 Màn `#admin/group-uid-sync` giữ hai chế độ: lấy thay đổi theo watermark lùi 30 phút và đối chiếu toàn bộ. WMS được đọc theo trang 500 dòng; Admin xem preview trước khi cập nhật. Áp dụng `supabase/group_uid_sync_v1.sql` và deploy Edge Function `group-uid-sync` trước khi sử dụng.
+
+Màn `#admin/kiem-ke` là dashboard chỉ đọc WMS qua Extension 0.6.0. Extension tự đổi `company-ids` theo từng nguồn: công ty Mastige cho `WH - MATERIAL - MTG`, công ty Garment cho `WH - MATERIAL - GARMENT`, rồi hợp nhất trên trình duyệt. Phạm vi tồn kho là dòng `In-BIN` có `qty > 0`; lịch sử là kiểm kê loại SKU có trạng thái `APPROVED`. Mỗi SKU + kho được xếp đúng một nhóm: chưa có lần duyệt, lần gần nhất không quá 30 ngày, hoặc quá 30 ngày. Dashboard không lưu token hay bản sao dữ liệu WMS vào Supabase/browser storage.
 
 Giao diện hai màn đồng bộ (`#admin/sku-sync`, `#admin/group-uid-sync`, 08/10/2026) dùng chung một bộ công cụ `AdminSyncUI` (khối `admin-sync-shared` trong `index.html`):
 - Danh sách thay đổi có ô tìm (không phân biệt dấu), lọc theo nhóm trường, sắp xếp theo mã/ngày cập nhật WMS, phân trang 50 dòng và xuất CSV (UTF-8 có BOM, đúng các dòng đang lọc). Bấm vào mã để sao chép.
@@ -420,6 +422,13 @@ Mở **TÌM SKU** ở WH-MATERIAL hoặc `#find-sku`. Ba bước, bố cục nh�
    gửi lệnh `sku` vào hàng đợi Supabase như PRINT SKU (tối đa 100 SKU · 500 tem/lượt), theo dõi
    tới khi agent báo xong (tự rời danh sách) hoặc lỗi (tick lại để in lại). Gửi lại sau lỗi mạng
    dùng cùng nonce nên không tạo lệnh trùng.
+
+**Bố cục điện thoại (10/10/2026).** Bước 1: nút Bật camera và nút Chọn ảnh (chỉ icon, vẫn có tên cho trình đọc màn hình) cùng một hàng. Bước 2: thẻ SKU gọn
+(SKU · chip đơn vị · nút Đổi), bỏ các câu giải thích đơn vị/cách nhập và thông báo "nhập số lượng và số tem"; nút **Tính mm từ cân** thay khối giải thích; **Số tem**
+cùng hàng với bộ − / +. Thanh **Thêm vào chờ in** dính đáy màn hình (điện thoại ẩn dòng tóm tắt lặp lại). Gốc lỗi cũ trên Chrome Android: khung toàn màn hình `.cut-screen`
+có `min-height:100vh`, mà 100vh của Android tính cả lúc ẩn thanh địa chỉ nên khung cao hơn vùng nhìn thấy và thanh dính đáy bị cắt — đã bỏ `min-height` đó (áp cho mọi màn
+dùng `.cut-screen`: CẮT GROUP UID, XẢ VẢI, MÃ VỊ TRÍ, TÌM SKU, CHUYỂN ĐỔI ĐƠN VỊ). Bước 3: dòng chờ in ghi "29.750.000 mm · 2 tem" (chỉ thêm trạng thái khi không phải "chờ in"),
+nút **Quét thêm tem** thay dòng "Lưu trên máy này…". Test: `tests/find_sku_mobile_browser.cjs`.
 
 ## Chuyển đổi đơn vị
 

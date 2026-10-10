@@ -7,8 +7,8 @@ const assert = require('node:assert/strict');
 const BASE = 'http://127.0.0.1:8000/';
 const SESSION_KEY = 'print-sku-admin-session-v1';
 const ago = minutes => new Date(Date.now() - minutes * 60000).toISOString();
-const NAV = ['Lệnh in', 'Đồng bộ SKU', 'Đồng bộ Group UID', 'Cấu hình'];
-const SCREENS = [['#admin/lenh-in', 'Lệnh in', 'print-jobs-screen'], ['#admin/sku-sync', 'Đồng bộ SKU', 'sku-sync-screen'], ['#admin/group-uid-sync', 'Đồng bộ Group UID', 'group-uid-sync-screen'], ['#admin/cauhinh', 'Cấu hình', null]];
+const NAV = ['Lệnh in', 'Đồng bộ SKU', 'Đồng bộ Group UID', 'Kiểm kê SKU', 'Cấu hình'];
+const SCREENS = [['#admin/lenh-in', 'Lệnh in', 'print-jobs-screen'], ['#admin/sku-sync', 'Đồng bộ SKU', 'sku-sync-screen'], ['#admin/group-uid-sync', 'Đồng bộ Group UID', 'group-uid-sync-screen'], ['#admin/kiem-ke', 'Kiểm kê SKU', 'inventory-audit-screen'], ['#admin/cauhinh', 'Cấu hình', null]];
 
 const SKU_CHANGES = {
   skus: { added: Array.from({ length: 60 }, (_, i) => ({ sku: `9000${String(i + 1).padStart(5, '0')}`, after: { product_name: `Chỉ mẫu ${i + 1}/100% Polyester`, category_name: 'Thời Trang (Phụ Liệu)' } })), updated: [] },
@@ -220,7 +220,7 @@ const navItems = page => page.evaluate(() => {
       }
       if (width === 1280) {
         const { context, page } = await open(browser, { width: 1024 });
-        for (const hash of ['#admin/lenh-in', '#admin/sku-sync', '#admin/group-uid-sync', '#admin/cauhinh']) {
+        for (const hash of ['#admin/lenh-in', '#admin/sku-sync', '#admin/group-uid-sync', '#admin/kiem-ke', '#admin/cauhinh']) {
           await go(page, hash); await page.waitForTimeout(700);
           const m = await page.evaluate(() => { const top = [...document.querySelectorAll('.ss-top, #root aside + div > header')].find(e => e.getBoundingClientRect().width > 0); const chips = top.querySelector('.ss-top-chips'), sub = top.querySelector('.ss-top-sub'); return { h: Math.round(top.getBoundingClientRect().height), chips: chips ? getComputedStyle(chips).display : 'none', sub: getComputedStyle(sub).display, overflow: document.documentElement.scrollWidth > innerWidth }; });
           assert.equal(m.h, 64, hash); assert.equal(m.chips, 'none', hash + ': chip ẩn ở cửa sổ hẹp'); assert.equal(m.sub, 'none', hash + ': dòng phụ ẩn ở cửa sổ hẹp'); assert.equal(m.overflow, false, hash + ': tràn ngang');

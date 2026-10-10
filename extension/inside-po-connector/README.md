@@ -33,7 +33,17 @@ Sau khi repository được cập nhật, mở `chrome://extensions` và bấm *
 
 Extension chỉ đọc Inside. Mọi ghi dữ liệu chạy trong Edge Function `sku-sync`, yêu cầu phiên Supabase có vai trò `admin` và luôn xác minh lại sau khi upsert.
 
-Phiên bản 0.5.0 đọc đầy đủ Combo nhiều thành phần, Group UID hiện tại và lịch sử cắt Group UID từ WMS theo lô 500 dòng. Bản này hỗ trợ phản hồi WMS dạng `records/count`, Group UID trạng thái `New` chưa có SKU và Group UID chứa nhiều SKU. Các SKU thành phần được lưu trong `group_uid_products`.
+Phiên bản 0.6.0 đọc đầy đủ Combo nhiều thành phần, Group UID hiện tại, lịch sử cắt Group UID và dữ liệu kiểm kê SKU từ WMS theo lô 500 dòng. Bản này hỗ trợ phản hồi WMS dạng `records/count`, Group UID trạng thái `New` chưa có SKU và Group UID chứa nhiều SKU. Các SKU thành phần được lưu trong `group_uid_products`.
+
+Dashboard kiểm kê SKU dành cho Admin:
+
+1. Mở tab WMS và đăng nhập bằng tài khoản có quyền trên cả Mastige và Hasaki Garment.
+2. Vào `#admin/kiem-ke` trong Print SKU.
+3. Bấm **Đọc và đối chiếu WMS**.
+4. Extension tự đọc `WH - MATERIAL - MTG` dưới công ty Mastige và chuyển header `company-ids` sang công ty Garment để đọc `WH - MATERIAL - GARMENT`; không thay đổi công ty đang chọn trên giao diện WMS.
+5. Dashboard đối chiếu tồn kho `In-BIN`, `qty > 0` với kết quả kiểm kê SKU có trạng thái `APPROVED`, rồi chia nhóm chưa kiểm kê, trong 30 ngày và quá 30 ngày.
+
+Nếu tài khoản thiếu quyền ở một công ty, dashboard vẫn hiện phần kho đọc được nhưng cảnh báo rõ kho còn thiếu; không được xem kết quả một kho là kết quả đủ hai kho.
 
 Đồng bộ Group UID dành cho Admin:
 
