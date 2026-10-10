@@ -10102,75 +10102,106 @@ async function rpc(name,args,retry=true){
       })();
     </script>
     <style id="uidhist-style">
-      #uidhist-screen .uh-label{display:block;margin:16px 0 6px;color:var(--wms-muted,#60736b);font-size:13px;font-weight:600}
-      #uidhist-screen .uh-label:first-of-type{margin-top:0}
-      .uh-field{display:flex;gap:8px}.uh-field .cut-input{flex:1;min-width:0}
-      .uh-icon-btn{flex:none;display:inline-grid;place-items:center;width:52px;height:52px;padding:0;border:1px solid var(--wms-border,#d9e2de);border-radius:13px;background:#fff;color:var(--wms-brand,#005f41);cursor:pointer}
-      .uh-icon-btn[hidden]{display:none}.uh-icon-btn svg{width:22px;height:22px}.uh-icon-btn:disabled{opacity:.45;cursor:not-allowed}
-      .uh-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:12px}
-      .uh-seg{display:inline-flex;gap:3px;padding:3px;border-radius:999px;background:#eef3f1}
-      .uh-chip{display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 15px;border:1px solid var(--wms-border,#d9e2de);border-radius:999px;background:#fff;color:#4f625b;font-size:13px;font-weight:600;cursor:pointer}
-      .uh-chip svg{width:16px;height:16px}.uh-chip[aria-pressed=true]{border-color:var(--wms-brand,#005f41);background:rgba(0,95,65,.08);color:var(--wms-brand,#005f41)}
-      .uh-seg .uh-chip{min-height:36px;border-color:transparent;background:transparent}.uh-seg .uh-chip[aria-pressed=true]{background:#fff;box-shadow:0 1px 3px rgba(23,37,31,.14)}
-      .uh-dates{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.uh-dates[hidden]{display:none}.uh-dates .cut-input{min-height:46px;font-size:16px}
-      .uh-select{appearance:auto}.uh-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}.uh-actions .cut-primary{flex:1;min-width:150px}
-      .uh-actions .cut-secondary,.uh-actions .cut-primary{display:inline-flex;align-items:center;justify-content:center;gap:8px}.uh-actions svg{width:20px;height:20px;flex:none}
-      .uh-admin{margin-top:16px;padding-top:16px;border-top:1px solid var(--wms-border,#d9e2de)}.uh-admin[hidden]{display:none}
-      .uh-spin{animation:spin 1s linear infinite}
-      .uh-updated{display:flex;align-items:center;gap:8px;margin:0 0 12px;color:var(--wms-muted,#60736b);font-size:13px;font-weight:600}.uh-updated svg{width:16px;height:16px;flex:none}
-      .uh-progress{height:5px;margin:0 0 12px;overflow:hidden;border-radius:999px;background:#dceae5}.uh-progress[hidden]{display:none}.uh-progress i{display:block;width:0;height:100%;border-radius:inherit;background:#00a878;transition:width .2s}
-      .uh-list{display:grid;gap:10px;margin-top:14px}
-      .uh-item{display:grid;gap:9px;padding:14px;border:1px solid var(--wms-border,#d9e2de);border-radius:16px;background:var(--wms-surface,#fff)}
-      .uh-item__top{display:flex;align-items:center;justify-content:space-between;gap:8px;color:var(--wms-muted,#60736b);font-size:13px;font-weight:600}
-      .uh-state{display:inline-flex;align-items:center;gap:5px;min-height:26px;padding:0 10px;border-radius:999px;background:#eef1f0;color:#4f625b;font-size:12px;font-weight:600;white-space:nowrap}.uh-state svg{width:14px;height:14px}.uh-state[data-tone=new]{background:#e3f5ec;color:#0f6a49}
-      .uh-uid{justify-self:start;padding:0;border:0;background:none;color:var(--wms-brand,#005f41);font:600 16px/1.2 var(--wms-font);letter-spacing:0;cursor:pointer}
-      .uh-sku{display:grid;gap:2px;color:var(--wms-text,#17251f)}.uh-sku b{font-size:16px}.uh-sku span{display:-webkit-box;overflow:hidden;color:var(--wms-muted,#60736b);font-size:13px;-webkit-box-orient:vertical;-webkit-line-clamp:2}.uh-sku i{margin-left:6px;color:var(--wms-muted,#60736b);font-size:12px;font-style:normal;font-weight:600}
-      .uh-move{display:grid;gap:3px;padding:10px 12px;border-radius:12px;background:#f3f7f5}.uh-from{color:var(--wms-muted,#60736b);font-size:13px;overflow-wrap:anywhere}
-      .uh-to{display:flex;align-items:center;flex-wrap:wrap;gap:6px;color:var(--wms-text,#17251f);font-size:16px;font-weight:600;overflow-wrap:anywhere}.uh-to svg{width:16px;height:16px;flex:none;color:#1aa774}
-      .uh-tag{display:inline-flex;align-items:center;min-height:22px;padding:0 9px;border-radius:999px;background:#fff3d6;color:#8a5b00;font-size:12px;font-style:normal;font-weight:600}
-      .uh-meta{display:flex;flex-wrap:wrap;gap:4px 12px;color:var(--wms-muted,#60736b);font-size:12px;overflow-wrap:anywhere}.uh-next{color:var(--wms-muted,#60736b);font-size:12px;overflow-wrap:anywhere}
-      .uh-more{width:100%;margin-top:12px}.uh-more[hidden]{display:none}
-      @media(min-width:801px){#uidhist-screen .cut-grid{grid-template-columns:minmax(300px,.7fr) minmax(420px,1.3fr);align-items:start}.uh-filter{position:sticky;top:84px}}
+      /* Lịch sử Group UID (ô trang chủ) — cùng khung với Đồng bộ Group UID: tiêu đề, dải thông tin, ô tìm, thẻ số liệu;
+         danh sách lượt chuyển và bộ lọc mở trong popup (as-dialog; điện thoại là tấm trượt từ đáy). */
+      #uidhist-screen .uh-content{width:min(1200px,calc(100% - 40px));padding-top:22px}
+      #uidhist-screen .as-hero-actions[hidden]{display:none}
+      .uh-run{display:inline-flex;align-items:center;gap:8px}.uh-run svg,#uh-full svg{width:20px;height:20px;flex:none}.uh-spin{animation:spin 1s linear infinite}
+      .uh-search{display:grid;gap:12px;padding:18px}
+      .uh-fields{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto auto;gap:10px;align-items:center}
+      .uh-field{display:flex;align-items:center;gap:8px;min-width:0;min-height:48px;padding:0 5px 0 14px;border:1px solid #cbdcd6;border-radius:999px;background:#fff;color:#60736b;cursor:text}
+      .uh-field:focus-within{border-color:#42a282;box-shadow:0 0 0 3px rgba(66,162,130,.18)}
+      .uh-field>.as-ico{width:18px;height:18px;flex:none}
+      .uh-field input{flex:1;min-width:0;height:44px;padding:0;border:0;outline:0;background:transparent;color:#17251f;font:inherit;font-size:16px}
+      .uh-scan{display:inline-grid;place-items:center;flex:none;width:38px;height:38px;padding:0;border:0;border-radius:999px;background:#eef6f2;color:#005f41;cursor:pointer}.uh-scan[hidden]{display:none}.uh-scan svg{width:20px;height:20px}
+      .uh-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px}.uh-btn svg{width:18px;height:18px;flex:none}
+      .uh-btn b{min-width:20px;padding:1px 7px;border-radius:999px;background:#006747;color:#fff;font-size:12px}.uh-btn b[hidden]{display:none}
+      #uh-strip em{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+      .uh-chips{display:flex;flex-wrap:wrap;gap:6px}.uh-chips:empty{display:none}.uh-chips .as-tag{display:inline-flex;align-items:center;gap:6px}.uh-chips .as-ico{width:14px;height:14px}
+      .uh-metrics{grid-template-columns:repeat(4,minmax(0,1fr))}.uh-metrics .ss-metric{display:flex;flex-direction:column;justify-content:flex-start}.uh-metrics .ss-metric small{display:block;margin-top:4px;color:#60736b;font-size:12px;font-weight:400}
+      .uh-metrics .ss-metric[data-uh-kind=vr] strong{color:#8a5b00}
+      .uh-fbody{display:grid;gap:18px;padding:18px 20px;overflow:auto}.uh-fbody h3{margin:0 0 8px;color:#60736b;font-size:13px;font-weight:600}
+      .uh-seg{display:inline-flex;gap:3px;padding:3px;border-radius:999px;background:#eef3f1}.uh-seg .as-tag{min-height:38px;padding:0 16px;border-color:transparent;background:transparent}.uh-seg .as-tag[aria-pressed=true]{background:#fff;box-shadow:0 1px 3px rgba(13,71,52,.14)}
+      .uh-ranges{display:flex;flex-wrap:wrap;gap:6px}.uh-ranges .as-tag{display:inline-flex;align-items:center;min-height:38px;padding:0 14px}.uh-ranges .as-ico{width:16px;height:16px}
+      .uh-dates{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.uh-dates[hidden]{display:none}
+      .uh-fbody select,.uh-dates input{width:100%;min-height:44px;padding:0 12px;border:1px solid #cbdcd6;border-radius:12px;background:#fff;color:#17251f;font:inherit;font-size:16px}
+      .uh-ffoot{display:flex;justify-content:space-between;gap:10px;padding:14px 20px;border-top:1px solid #edf2f0}.uh-ffoot .ss-primary{min-width:120px}
+      .uh-table td:nth-child(1),.uh-table td:nth-child(2){white-space:nowrap}.uh-table td:nth-child(2) em{display:block;margin-top:3px;color:#60736b;font-size:12px;font-style:normal}
+      .uh-date{display:block;color:#17382d;font-size:13px}.uh-sku b{color:#14382d}.uh-sku i{margin-left:5px;color:#60736b;font-size:12px;font-style:normal;font-weight:600}
+      .uh-pn{display:-webkit-box;max-width:260px;margin-top:3px;overflow:hidden;color:#60736b;font-size:12px;-webkit-box-orient:vertical;-webkit-line-clamp:2}
+      .uh-move{display:flex;flex-direction:column;align-items:flex-start;gap:4px}.uh-from{color:#60736b;font-size:12px}.uh-to{display:flex;align-items:center;gap:5px;color:#17382d;font-size:13px;font-weight:600;white-space:nowrap}.uh-to .as-ico{width:14px;height:14px;color:#1aa774}
+      .uh-from{white-space:nowrap}.uh-by{color:#31483f;font-size:13px;white-space:nowrap}.uh-now em{display:block;margin-top:4px;color:#60736b;font-size:12px;font-style:normal}
+      @media(max-width:1100px){.uh-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
+      @media(max-width:760px){
+        #uidhist-screen .uh-content{display:flex;flex-direction:column;width:calc(100% - 28px);padding-top:14px}
+        #uidhist-screen .uh-content>.ss-hero>div:first-child{display:none}#uh-progress:not([data-on=true]){display:none}#uidhist-screen .ss-hero:has(#uh-admin-tools[hidden]){display:none}
+        #uidhist-screen .ss-hero{padding:12px}#uh-admin-tools{flex-wrap:nowrap}#uh-admin-tools .uh-run{flex:1}#uh-admin-tools .as-icon-btn{width:48px}
+        .uh-search{order:1}.uh-metrics{order:2}#uh-strip{order:3;grid-template-columns:repeat(3,minmax(0,1fr))}
+        #uh-strip>div{padding:10px 12px;border-top:0;border-left:1px solid #edf2f0}#uh-strip>div:first-child{border-left:0}
+        .uh-from,.uh-to,.uh-by{white-space:normal;overflow-wrap:anywhere}
+        .uh-search{padding:14px}.uh-fields{grid-template-columns:1fr 1fr}.uh-field{grid-column:1/-1}.uh-fields .uh-btn{min-height:46px;padding:0 12px}
+        #uh-dialog .uh-table thead{display:none}
+        #uh-dialog .uh-table,#uh-dialog .uh-table tbody{display:block}
+        #uh-dialog .uh-table tr{display:grid;gap:6px;padding:12px 16px;border-top:1px solid #edf2f0}
+        #uh-dialog .uh-table td{display:block!important;padding:0!important;border:0;white-space:normal}
+        #uh-dialog .uh-table td:first-child .as-run-meta{display:inline;margin-left:6px}#uh-dialog .uh-date{display:inline}
+        .uh-pn{max-width:none}
+      }
     </style>
     <section class="cut-screen" id="uidhist-screen" aria-labelledby="uh-title" hidden>
       <header class="uid-topbar"><div class="uid-topbar__inner"><button class="uid-back" id="uh-back" type="button" aria-label="Quay lại trang chủ WH-MATERIAL">WH-MATERIAL</button><span class="uid-topbar__mark" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg></span><div class="uid-topbar__name"><h1 id="uh-title">LỊCH SỬ GROUP UID</h1><span>Chuyển vị trí</span></div><button class="uid-topbar__admin" id="uh-admin" type="button" aria-pressed="false" aria-label="Đăng nhập Admin" title="Đăng nhập Admin"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path class="uid-topbar__admin-check" d="m9 12 2 2 4-4"/></svg></button></div></header>
-      <main class="cut-main">
-        <p class="uh-updated" id="uh-updated"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg><span id="uh-updated-text">Đang tải…</span></p>
-        <p class="cut-message" id="uh-message" aria-live="polite" style="margin:0 0 14px"></p>
-        <div class="cut-grid">
-          <section class="cut-card uh-filter" aria-labelledby="uh-filter-title"><h2 id="uh-filter-title"><span>1</span>Bộ lọc</h2>
-            <label class="uh-label" for="uh-sku">SKU</label>
-            <div class="uh-field"><input class="cut-input" id="uh-sku" type="search" autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="search" maxlength="40" placeholder="422513459"><button class="uh-icon-btn" id="uh-sku-scan" type="button" aria-label="Quét SKU bằng camera" title="Quét SKU bằng camera" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/><circle cx="12" cy="13" r="3"/></svg></button></div>
-            <label class="uh-label" for="uh-loc">Vị trí</label>
-            <div class="uh-field"><input class="cut-input" id="uh-loc" type="search" autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="search" maxlength="40" placeholder="F0-KHO-503-02-04-01"><button class="uh-icon-btn" id="uh-loc-scan" type="button" aria-label="Quét mã vị trí bằng camera" title="Quét mã vị trí bằng camera" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/><circle cx="12" cy="13" r="3"/></svg></button></div>
-            <div class="uh-row"><div class="uh-seg" role="group" aria-label="Hướng chuyển"><button class="uh-chip" type="button" data-uh-match="to" aria-pressed="true" title="Chuyển đến vị trí">Đến</button><button class="uh-chip" type="button" data-uh-match="from" aria-pressed="false" title="Chuyển từ vị trí">Từ</button><button class="uh-chip" type="button" data-uh-match="any" aria-pressed="false" title="Đến hoặc từ vị trí">Cả hai</button></div></div>
-            <label class="uh-label" for="uh-wh">Kho</label>
-            <select class="cut-input uh-select" id="uh-wh"><option value="">Tất cả kho</option></select>
-            <span class="uh-label" id="uh-range-label">Khoảng ngày</span>
-            <div class="uh-row" role="group" aria-labelledby="uh-range-label" style="margin-top:0"><button class="uh-chip" type="button" data-uh-range="7" aria-pressed="false">7 ngày</button><button class="uh-chip" type="button" data-uh-range="30" aria-pressed="true">30 ngày</button><button class="uh-chip" type="button" data-uh-range="90" aria-pressed="false">90 ngày</button><button class="uh-chip" type="button" data-uh-range="365" aria-pressed="false">1 năm</button><button class="uh-chip" type="button" data-uh-range="custom" aria-pressed="false" aria-label="Chọn ngày" title="Chọn ngày"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg></button></div>
-            <div class="uh-dates" id="uh-dates" hidden><input class="cut-input" id="uh-from" type="date" aria-label="Từ ngày"><input class="cut-input" id="uh-to" type="date" aria-label="Đến ngày"></div>
-            <div class="uh-actions"><button class="cut-secondary" id="uh-clear" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>Xóa bộ lọc</button></div>
-            <div class="uh-admin" id="uh-admin-tools" hidden><div class="uh-actions" style="margin-top:0"><button class="cut-primary" id="uh-run" type="button"><svg id="uh-run-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg><span>Đọc từ WMS</span></button><button class="uh-icon-btn" id="uh-full" type="button" aria-label="Đọc lại 365 ngày" title="Đọc lại 365 ngày"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg></button></div></div>
-          </section>
-          <section class="cut-card uh-results" aria-labelledby="uh-results-title"><h2 id="uh-results-title"><span>2</span>Kết quả <b class="cut-badge" id="uh-count">0</b></h2>
-            <div class="uh-progress" id="uh-progress" hidden><i></i></div>
-            <div class="uh-list" id="uh-list"></div>
-            <p class="cut-empty" id="uh-empty">Đang tải…</p>
-            <button class="cut-secondary uh-more" id="uh-more" type="button" hidden>Xem thêm</button>
-          </section>
-        </div>
+      <main class="ss-content uh-content">
+        <section class="ss-hero"><div><h2>Lịch sử chuyển vị trí</h2></div><div class="as-hero-actions" id="uh-admin-tools" hidden><button class="ss-primary uh-run" id="uh-run" type="button"><svg id="uh-run-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg><span>Đọc từ WMS</span></button><button class="ss-secondary as-icon-btn" id="uh-full" type="button" aria-label="Đọc lại 365 ngày" title="Đọc lại 365 ngày"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg></button></div></section>
+        <div class="as-strip" id="uh-strip"><div><span data-ico="clock">Cập nhật gần nhất</span><strong id="uh-read-at">—</strong><em id="uh-read-rel"></em></div><div><span data-ico="database">Dữ liệu</span><strong id="uh-total">—</strong><em id="uh-span"></em></div><div><span data-ico="layers">Kho</span><strong id="uh-wh-count">—</strong><em id="uh-wh-top"></em></div></div>
+        <div class="ss-progress" id="uh-progress" aria-hidden="true"><i></i></div>
+        <p class="ss-status" id="uh-message" aria-live="polite"></p>
+        <section class="ss-panel uh-search" aria-label="Tìm lượt chuyển">
+          <div class="uh-fields">
+            <div class="uh-field" data-ico="box"><input id="uh-sku" type="search" autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="search" maxlength="40" placeholder="SKU" aria-label="SKU"><button class="uh-scan" id="uh-sku-scan" type="button" aria-label="Quét SKU bằng camera" title="Quét SKU bằng camera" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/><circle cx="12" cy="13" r="3"/></svg></button></div>
+            <div class="uh-field" data-ico="pin"><input id="uh-loc" type="search" autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="search" maxlength="40" placeholder="Mã vị trí" aria-label="Mã vị trí"><button class="uh-scan" id="uh-loc-scan" type="button" aria-label="Quét mã vị trí bằng camera" title="Quét mã vị trí bằng camera" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/><circle cx="12" cy="13" r="3"/></svg></button></div>
+            <button class="ss-secondary uh-btn" id="uh-filter-open" type="button" aria-haspopup="dialog"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 4h-7"/><path d="M10 4H3"/><path d="M21 12h-9"/><path d="M8 12H3"/><path d="M21 20h-5"/><path d="M12 20H3"/><path d="M14 2v4"/><path d="M8 10v4"/><path d="M16 18v4"/></svg><span>Bộ lọc</span><b id="uh-filter-count" hidden>0</b></button>
+            <button class="ss-primary uh-btn" id="uh-view" type="button" aria-haspopup="dialog"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/><path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/></svg><span>Xem kết quả</span></button>
+          </div>
+          <div class="uh-chips" id="uh-chips"></div>
+        </section>
+        <section class="ss-metrics uh-metrics" aria-label="Kết quả theo bộ lọc">
+          <button class="ss-metric" type="button" data-uh-kind="all"><span data-ico="history">Lượt chuyển</span><strong id="uh-count">—</strong><small id="uh-count-sub"></small></button>
+          <button class="ss-metric" type="button" data-uh-kind="now"><span data-ico="pin">Còn ở đây</span><strong id="uh-m-now">—</strong></button>
+          <button class="ss-metric" type="button" data-uh-kind="moved"><span data-ico="arrow">Đã chuyển tiếp</span><strong id="uh-m-moved">—</strong></button>
+          <button class="ss-metric" type="button" data-uh-kind="vr"><span data-ico="box">Trả NCC</span><strong id="uh-m-vr">—</strong><small>F0-VR-00-00-00-00</small></button>
+        </section>
+        <dialog class="as-dialog" id="uh-dialog" data-size="lg" aria-labelledby="uh-d-title">
+          <div class="as-d-head"><span class="as-d-mark" data-ico="history" aria-hidden="true"></span><div class="as-d-title"><h2 id="uh-d-title">Lượt chuyển vị trí</h2><p id="uh-note"></p></div><div class="as-tools" id="uh-tools" hidden></div><button type="button" class="pj-icon" data-as-close aria-label="Đóng" title="Đóng"><svg class="pj-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>
+          <div class="as-d-tabs"><div class="as-tabs" role="tablist" aria-label="Nhóm lượt chuyển"><button class="as-tab" type="button" role="tab" aria-selected="true" data-uh-tab="all">Tất cả<b id="uh-tab-all">0</b></button><button class="as-tab" type="button" role="tab" aria-selected="false" data-uh-tab="now">Còn ở đây<b id="uh-tab-now">0</b></button><button class="as-tab" type="button" role="tab" aria-selected="false" data-uh-tab="moved">Đã chuyển tiếp<b id="uh-tab-moved">0</b></button><button class="as-tab" type="button" role="tab" aria-selected="false" data-uh-tab="vr">Trả NCC<b id="uh-tab-vr">0</b></button></div></div>
+          <div class="as-tags" id="uh-tags" hidden></div>
+          <div class="as-d-body"><div class="ss-table-wrap"><table class="ss-table uh-table"><thead><tr id="uh-head"></tr></thead><tbody id="uh-body"></tbody></table></div></div>
+          <div class="as-pager" id="uh-pager" hidden></div>
+        </dialog>
+        <dialog class="as-dialog" id="uh-filter" data-size="sm" aria-labelledby="uh-f-title">
+          <div class="as-d-head"><span class="as-d-mark" data-ico="calendar" aria-hidden="true"></span><div class="as-d-title"><h2 id="uh-f-title">Bộ lọc</h2></div><button type="button" class="pj-icon" data-as-close aria-label="Đóng" title="Đóng"><svg class="pj-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>
+          <div class="uh-fbody">
+            <div><h3 id="uh-match-label">Hướng</h3><div class="uh-seg" role="group" aria-labelledby="uh-match-label"><button class="as-tag" type="button" data-uh-match="to" aria-pressed="true" title="Chuyển đến vị trí">Đến</button><button class="as-tag" type="button" data-uh-match="from" aria-pressed="false" title="Chuyển từ vị trí">Từ</button><button class="as-tag" type="button" data-uh-match="any" aria-pressed="false" title="Đến hoặc từ vị trí">Cả hai</button></div></div>
+            <div><h3><label for="uh-wh">Kho</label></h3><select id="uh-wh"><option value="">Tất cả kho</option></select></div>
+            <div><h3 id="uh-range-label">Khoảng ngày</h3><div class="uh-ranges" role="group" aria-labelledby="uh-range-label"><button class="as-tag" type="button" data-uh-range="7" aria-pressed="false">7 ngày</button><button class="as-tag" type="button" data-uh-range="30" aria-pressed="true">30 ngày</button><button class="as-tag" type="button" data-uh-range="90" aria-pressed="false">90 ngày</button><button class="as-tag" type="button" data-uh-range="365" aria-pressed="false">1 năm</button><button class="as-tag" type="button" data-uh-range="custom" aria-pressed="false" aria-label="Chọn ngày" title="Chọn ngày" data-ico="calendar"></button></div>
+              <div class="uh-dates" id="uh-dates" hidden><input id="uh-from" type="date" aria-label="Từ ngày"><input id="uh-to" type="date" aria-label="Đến ngày"></div></div>
+          </div>
+          <div class="uh-ffoot"><button class="ss-secondary uh-btn" id="uh-clear" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg><span>Xóa bộ lọc</span></button><button class="ss-primary" type="button" data-as-close>Xong</button></div>
+        </dialog>
       </main>
     </section>
     <script id="uidhist-script">
       (() => {
         const $ = id => document.getElementById(id), screen = $("uidhist-screen");
         if (!screen) return;
-        const ROUTE = "group-uid-history", DAY = 86400000, BACKFILL_DAYS = 365, OVERLAP_MS = 30 * 60000, PAGE_SIZE = 500, LOOKUP_LIMIT = 1000, SHOW_STEP = 30;
+        const ROUTE = "group-uid-history", DAY = 86400000, BACKFILL_DAYS = 365, OVERLAP_MS = 30 * 60000, PAGE_SIZE = 500, LOOKUP_LIMIT = 1000;
         // Vị trí đặc biệt do kho đặt tên (xác nhận 10/10/2026): hàng trả nhà cung cấp.
-        const LOCATION_LABEL = { "F0-VR-00-00-00-00": "Trả NCC" };
+        const VR = "F0-VR-00-00-00-00", LOCATION_LABEL = { [VR]: "Trả NCC" };
         const LOCATION_PATTERN = /^[0-9A-Z][0-9A-Z._\/-]{0,39}$/;
-        const state = { rows: [], total: 0, truncated: false, shown: SHOW_STEP, match: "to", range: "30", overview: null, loaded: false, busy: false, admin: false };
-        const skuInput = $("uh-sku"), locInput = $("uh-loc"), whSelect = $("uh-wh"), fromInput = $("uh-from"), toInput = $("uh-to"), listBox = $("uh-list"), emptyBox = $("uh-empty"), moreBtn = $("uh-more"), adminBtn = $("uh-admin");
+        const state = { rows: [], total: 0, truncated: false, tab: "all", match: "to", range: "30", overview: null, loaded: false, busy: false, admin: false };
+        const UI = window.AdminSyncUI;
+        const skuInput = $("uh-sku"), locInput = $("uh-loc"), whSelect = $("uh-wh"), fromInput = $("uh-from"), toInput = $("uh-to"), adminBtn = $("uh-admin"), dialog = $("uh-dialog"), filterDialog = $("uh-filter");
+        const list = UI.createList({ tools: $("uh-tools"), tagsBox: $("uh-tags"), head: $("uh-head"), body: $("uh-body"), pager: $("uh-pager"), note: $("uh-note") });
+        UI.hydrate(screen); UI.bindDialogs(screen);
         const esc = value => String(value ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
         const num = value => Number(value || 0).toLocaleString("vi-VN"), pad = n => String(n).padStart(2, "0");
         const vn = value => { const t = Date.parse(value); return Number.isFinite(t) ? new Date(t + 7 * 3600000) : null; };
@@ -10179,10 +10210,6 @@ async function rpc(name,args,retry=true){
         const vnDate = ms => new Date(ms + 7 * 3600000).toISOString().slice(0, 10), vnStart = day => new Date(`${day}T00:00:00+07:00`).getTime();
         const fromIso = () => fromInput.value ? new Date(vnStart(fromInput.value)).toISOString() : null, toIso = () => toInput.value ? new Date(vnStart(toInput.value) + DAY).toISOString() : null;
         const tell = (text, tone = "") => { const el = $("uh-message"); el.textContent = text; if (tone) el.dataset.tone = tone; else delete el.dataset.tone; };
-        const ICON = {
-          arrow: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>',
-          check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>'
-        };
         const anonRpc = async (name, args = {}) => {
           const q = window.PrintSkuQueue, response = await fetch(`${q.supabaseUrl}/rest/v1/rpc/${name}`, { method: "POST", headers: { apikey: q.publishableKey, Authorization: `Bearer ${q.publishableKey}`, "Content-Type": "application/json" }, body: JSON.stringify(args), signal: AbortSignal.timeout(30000) });
           const result = await response.json().catch(() => null);
@@ -10212,46 +10239,82 @@ async function rpc(name,args,retry=true){
           postMessage({ source: "PRINT_SKU_APP", requestId, type, payload }, location.origin);
         }));
 
-        // ---- Hiển thị ----
-        const noteOf = loc => LOCATION_LABEL[loc] ? `<em class="uh-tag">${esc(LOCATION_LABEL[loc])}</em>` : "";
-        function itemHtml(r) {
+        // ---- Hiển thị: dải thông tin + thẻ số liệu; danh sách trong popup (bộ dựng chung AdminSyncUI.createList) ----
+        const { ico } = UI;
+        const tagOf = loc => LOCATION_LABEL[loc] ? UI.chip(LOCATION_LABEL[loc], "warn") : "";
+        const shortWh = name => String(name || "").replace(/^WH\s*-\s*/i, "");
+        const day = value => { const d = vn(value); return d ? `${pad(d.getUTCDate())}/${pad(d.getUTCMonth() + 1)}/${d.getUTCFullYear()}` : "—"; };
+        const TABS = { all: () => true, now: r => !r.nextLocation, moved: r => Boolean(r.nextLocation), vr: r => r.to === VR };
+        const TAB_TITLE = { all: "Lượt chuyển vị trí", now: "Còn ở vị trí đến", moved: "Đã chuyển tiếp", vr: "Chuyển vào Trả NCC" };
+        const COLS = [{ label: "Thời điểm", sort: "at", first: "desc" }, { label: "Group UID", sort: "uid" }, { label: "SKU", sort: "sku" }, { label: "Chuyển", sort: "to" }, { label: "Người cập nhật", sort: "by" }, { label: "Hiện tại", sort: "now" }];
+        const CSV_HEAD = ["Thời điểm", "Group UID", "SKU", "Tên sản phẩm", "Kho", "Từ vị trí", "Đến vị trí", "Người cập nhật", "Vị trí kế tiếp", "Lúc chuyển tiếp"];
+        function rowFor(r) {
           const first = r.sku ? String(r.sku).split(", ")[0] : "", moved = Boolean(r.nextLocation);
-          const sku = first ? `<div class="uh-sku" title="${esc(r.sku)}"><div><b>${esc(first)}</b>${r.skuCount > 1 ? `<i>+${num(r.skuCount - 1)}</i>` : ""}</div>${r.product ? `<span>${esc(r.product)}</span>` : ""}</div>` : "";
-          return `<article class="uh-item"><div class="uh-item__top"><time datetime="${esc(r.at)}">${esc(dt(r.at))}</time>` +
-            (moved ? `<span class="uh-state">${ICON.arrow}Đã chuyển tiếp</span>` : `<span class="uh-state" data-tone="new">${ICON.check}Còn ở đây</span>`) + `</div>` +
-            `<button class="uh-uid" type="button" data-uh-copy="${esc(r.uid)}" title="Bấm để sao chép">${esc(r.uid)}</button>${sku}` +
-            `<div class="uh-move"><span class="uh-from">${r.from ? esc(r.from) : "—"}${noteOf(r.from)}</span><span class="uh-to">${ICON.arrow}${r.to ? esc(r.to) : "—"}${noteOf(r.to)}</span></div>` +
-            `<div class="uh-meta"><span>${esc(r.by || "—")}</span><span>${esc(r.warehouse || "")}</span></div>` +
-            (moved ? `<div class="uh-next">Sau đó: ${esc(r.nextLocation)} · ${esc(dt(r.nextAt))}</div>` : "") + `</article>`;
+          const sku = first ? `<div class="uh-sku" title="${esc(r.sku)}"><b>${esc(first)}</b>${r.skuCount > 1 ? `<i>+${num(r.skuCount - 1)}</i>` : ""}</div>${r.product ? `<span class="uh-pn" title="${esc(r.product)}">${esc(r.product)}</span>` : ""}` : '<span class="as-empty">—</span>';
+          const now = moved ? `${UI.chip("Đã chuyển tiếp", "", "arrow")}<em>${esc(r.nextLocation)} · ${esc(dt(r.nextAt))}</em>` : UI.chip("Còn ở đây", "new", "check");
+          return {
+            cells: [`<b class="uh-date">${esc(dt(r.at))}</b><span class="as-run-meta">${esc(rel(r.at))}</span>`,
+              `<code data-copy="${esc(r.uid)}" title="Bấm để sao chép">${esc(r.uid)}</code><em>${esc(shortWh(r.warehouse))}</em>`, sku,
+              `<div class="uh-move"><span class="uh-from">${esc(r.from || "—")} ${tagOf(r.from)}</span><span class="uh-to">${ico("arrow")}${esc(r.to || "—")}${tagOf(r.to)}</span></div>`,
+              `<span class="uh-by">${esc(r.by || "—")}</span>`, `<div class="uh-now">${now}</div>`],
+            text: [r.uid, r.sku, r.product, r.warehouse, r.from, r.to, r.by, r.nextLocation].join(" "),
+            facets: { wh: r.warehouse || "", by: r.by || "" },
+            sort: { at: Date.parse(r.at) || 0, uid: r.uid, sku: first, to: r.to || "", by: r.by || "", now: moved ? 1 : 0 },
+            csv: [dt(r.at), r.uid, r.sku || "", r.product || "", r.warehouse || "", r.from || "", r.to || "", r.by || "", r.nextLocation || "", r.nextAt ? dt(r.nextAt) : ""]
+          };
         }
-        function renderList() {
-          const rows = state.rows, shown = rows.slice(0, state.shown);
-          $("uh-count").textContent = state.loaded ? num(state.total) : "0";
-          listBox.innerHTML = shown.map(itemHtml).join("");
-          emptyBox.hidden = rows.length > 0 || !state.loaded;
-          emptyBox.textContent = "Không có lượt chuyển khớp bộ lọc.";
-          moreBtn.hidden = rows.length <= shown.length;
-          if (!moreBtn.hidden) moreBtn.textContent = `Xem thêm (${num(rows.length - shown.length)})`;
+        const counts = () => Object.fromEntries(Object.entries(TABS).map(([k, test]) => [k, state.rows.filter(test).length]));
+        function renderList(keep = true) {
+          const rows = state.rows.filter(TABS[state.tab]);
+          $("uh-d-title").textContent = TAB_TITLE[state.tab];
+          list.show({ columns: COLS, rows: rows.map(rowFor), total: state.tab === "all" ? state.total : rows.length, facets: [{ id: "wh", label: "Kho", icon: "database" }, { id: "by", label: "Người cập nhật", icon: "user" }], filename: "lich-su-group-uid", csvHead: CSV_HEAD, empty: state.loaded ? "Không có lượt chuyển khớp bộ lọc." : "Đang tải…" }, { keep });
+        }
+        function renderMetrics() {
+          const c = counts(), ready = state.loaded;
+          $("uh-count").textContent = ready ? num(state.total) : "—";
+          $("uh-count-sub").textContent = ready ? `${num(new Set(state.rows.map(r => r.uid)).size)} Group UID${state.truncated ? ` · ${num(state.rows.length)} lượt mới nhất` : ""}` : "";
+          [["now", "uh-m-now"], ["moved", "uh-m-moved"], ["vr", "uh-m-vr"]].forEach(([k, id]) => { $(id).textContent = ready ? num(c[k]) : "—"; });
+          screen.querySelectorAll("[data-uh-kind]").forEach(b => { b.dataset.zero = String(ready && !c[b.dataset.uhKind]); });
+          Object.keys(TABS).forEach(k => { $(`uh-tab-${k}`).textContent = num(k === "all" ? Math.max(state.total, c.all) : c[k]); });
         }
         function renderOverview() {
-          const o = state.overview, text = $("uh-updated-text");
-          text.textContent = !o ? "Đang tải…" : o.lastReadAt ? `Cập nhật ${dt(o.lastReadAt)} · ${rel(o.lastReadAt)} · ${num(o.total)} lượt` : "Chưa có dữ liệu";
+          const o = state.overview, whs = o?.warehouses || [];
+          $("uh-read-at").textContent = !o ? "—" : o.lastReadAt ? dt(o.lastReadAt) : "Chưa có dữ liệu";
+          $("uh-read-rel").textContent = o?.lastReadAt ? rel(o.lastReadAt) : "";
+          $("uh-total").textContent = o ? `${num(o.total)} lượt` : "—";
+          $("uh-span").textContent = o?.firstAt ? `${day(o.firstAt)} – ${day(o.lastAt)}` : "";
+          $("uh-wh-count").textContent = o ? num(whs.length) : "—";
+          $("uh-wh-top").textContent = whs.map(w => shortWh(w.name)).join(" · ");
           const current = whSelect.value;
-          whSelect.innerHTML = `<option value="">Tất cả kho</option>` + (o?.warehouses || []).map(w => `<option value="${esc(w.name)}">${esc(w.name)} (${num(w.count)})</option>`).join("");
+          whSelect.innerHTML = `<option value="">Tất cả kho</option>` + whs.map(w => `<option value="${esc(w.name)}">${esc(w.name)} (${num(w.count)})</option>`).join("");
           if ([...whSelect.options].some(option => option.value === current)) whSelect.value = current;
         }
+        const RANGE_TEXT = { 7: "7 ngày", 30: "30 ngày", 90: "90 ngày", 365: "1 năm" }, MATCH_TEXT = { to: "Đến vị trí", from: "Từ vị trí", any: "Đến hoặc từ vị trí" };
+        const shortDay = value => value ? value.split("-").reverse().join("/") : "…";
+        function renderChips() {
+          const chips = [["calendar", state.range === "custom" ? `${shortDay(fromInput.value)} – ${shortDay(toInput.value)}` : RANGE_TEXT[state.range]]];
+          if (locInput.value.trim() || state.match !== "to") chips.push(["pin", MATCH_TEXT[state.match]]);
+          if (whSelect.value) chips.push(["database", shortWh(whSelect.value)]);
+          $("uh-chips").innerHTML = chips.map(([icon, text]) => `<button class="as-tag" type="button" data-uh-open-filter>${ico(icon)}${esc(text)}</button>`).join("");
+          const changed = Number(state.range !== "30") + Number(state.match !== "to") + Number(Boolean(whSelect.value)), badge = $("uh-filter-count");
+          badge.textContent = changed; badge.hidden = !changed;
+        }
+        function setTab(tab) { state.tab = tab; dialog.querySelectorAll("[data-uh-tab]").forEach(b => b.setAttribute("aria-selected", String(b.dataset.uhTab === tab))); }
+        function openResults(tab = "all") { setTab(tab); renderList(false); UI.openDialog(dialog); }
         let seq = 0, timer = 0;
         async function search() {
-          const mine = ++seq;
+          const mine = ++seq; renderChips();
           try {
             const data = await anonRpc("group_uid_moves_lookup", { p_warehouse: whSelect.value, p_location: locInput.value.trim(), p_match: state.match, p_sku: skuInput.value.trim(), p_from: fromIso(), p_to: toIso(), p_limit: LOOKUP_LIMIT });
-            if (mine !== seq) return;
-            Object.assign(state, { rows: data.items || [], total: Number(data.total) || 0, truncated: Boolean(data.truncated), shown: SHOW_STEP, loaded: true });
-            renderList();
+            if (mine !== seq) return false;
+            Object.assign(state, { rows: data.items || [], total: Number(data.total) || 0, truncated: Boolean(data.truncated), loaded: true });
+            renderMetrics(); if (dialog.open) renderList(true);
             if (!state.busy) state.truncated ? tell(`Hiển thị ${num(state.rows.length)} / ${num(state.total)} lượt mới nhất; thu hẹp bộ lọc để xem đủ`, "warn") : tell("");
-          } catch (error) { if (mine === seq) tell(error.message || "Không tải được lịch sử Group UID.", "error"); }
+            return true;
+          } catch (error) { if (mine === seq) tell(error.message || "Không tải được lịch sử Group UID.", "error"); return false; }
         }
-        const queue = () => { clearTimeout(timer); timer = setTimeout(search, 350); };
+        const queue = () => { clearTimeout(timer); renderChips(); timer = setTimeout(search, 350); };
+        const searchAndShow = () => { clearTimeout(timer); return search().then(ok => { if (ok) openResults("all"); }); };
         async function loadOverview() { state.overview = await anonRpc("group_uid_moves_overview"); renderOverview(); }
         function setRange(range) {
           state.range = range;
@@ -10284,7 +10347,7 @@ async function rpc(name,args,retry=true){
           state.busy = on;
           [$("uh-run"), $("uh-full")].forEach(b => { b.disabled = on; });
           $("uh-run").querySelector("span").textContent = on ? "Đang đọc WMS…" : "Đọc từ WMS";
-          $("uh-run-ico").classList.toggle("uh-spin", on); $("uh-progress").hidden = !on;
+          $("uh-run-ico").classList.toggle("uh-spin", on); $("uh-progress").dataset.on = String(on);
           if (!on) $("uh-progress").querySelector("i").style.width = "0%";
         }
         const progress = (done, total) => { $("uh-progress").querySelector("i").style.width = total ? `${Math.min(100, done / total * 100)}%` : "0%"; };
@@ -10326,7 +10389,7 @@ async function rpc(name,args,retry=true){
         }
         function route() {
           const on = active(); screen.hidden = !on;
-          if (!on) return;
+          if (!on) { UI.closeDialogs(screen); return; }
           const root = $("root"); if (root) root.inert = true;
           enter();
         }
@@ -10335,23 +10398,27 @@ async function rpc(name,args,retry=true){
         $("uh-back").addEventListener("click", () => { location.hash = "#home"; });
         addEventListener("hashchange", route);
 
-        // ---- Bộ lọc ----
-        skuInput.addEventListener("input", queue); locInput.addEventListener("input", queue); whSelect.addEventListener("change", search);
-        [skuInput, locInput].forEach(input => input.addEventListener("keydown", event => { if (event.key === "Enter") { event.preventDefault(); clearTimeout(timer); search(); input.blur(); } }));
+        // ---- Tìm và bộ lọc ----
+        skuInput.addEventListener("input", queue); locInput.addEventListener("input", queue); whSelect.addEventListener("change", () => { clearTimeout(timer); search(); });
+        [skuInput, locInput].forEach(input => input.addEventListener("keydown", event => { if (event.key === "Enter") { event.preventDefault(); input.blur(); searchAndShow(); } }));
         [fromInput, toInput].forEach(input => input.addEventListener("change", queue));
+        screen.querySelectorAll(".uh-field").forEach(field => field.addEventListener("click", event => { if (!event.target.closest("button, input")) field.querySelector("input").focus(); }));
         screen.addEventListener("click", event => {
-          const match = event.target.closest("[data-uh-match]"), range = event.target.closest("[data-uh-range]"), copy = event.target.closest("[data-uh-copy]");
-          if (match) { setMatch(match.dataset.uhMatch); if (locInput.value.trim()) queue(); return; }
-          if (range) { setRange(range.dataset.uhRange); if (range.dataset.uhRange !== "custom") queue(); return; }
-          if (copy && navigator.clipboard) navigator.clipboard.writeText(copy.dataset.uhCopy).then(() => tell(`Đã sao chép ${copy.dataset.uhCopy}`, "ok")).catch(() => {});
+          const match = event.target.closest("[data-uh-match]"), range = event.target.closest("[data-uh-range]"), kind = event.target.closest("[data-uh-kind]"), tab = event.target.closest("[data-uh-tab]");
+          if (match) { setMatch(match.dataset.uhMatch); queue(); return; }
+          if (range) { setRange(range.dataset.uhRange); if (range.dataset.uhRange !== "custom") queue(); else renderChips(); return; }
+          if (kind) { if (state.loaded && kind.dataset.zero !== "true") openResults(kind.dataset.uhKind); return; }
+          if (tab) { setTab(tab.dataset.uhTab); renderList(true); return; }
+          if (event.target.closest("[data-uh-open-filter]")) UI.openDialog(filterDialog);
         });
+        $("uh-filter-open").addEventListener("click", () => UI.openDialog(filterDialog));
+        $("uh-view").addEventListener("click", searchAndShow);
         $("uh-clear").addEventListener("click", () => { skuInput.value = ""; locInput.value = ""; whSelect.value = ""; setMatch("to"); setRange("30"); queue(); });
-        moreBtn.addEventListener("click", () => { state.shown += SHOW_STEP; renderList(); });
         $("uh-run").addEventListener("click", () => readFromWms(false));
         $("uh-full").addEventListener("click", () => readFromWms(true));
-        $("uh-sku-scan").addEventListener("click", () => window.PrintSkuScanUI.open({ title: "Quét SKU", typeLabel: "Gõ tay SKU", notFound: "Mã này không phải SKU", check: code => /^\d{9}$/.test(code) ? { sku: code, ten: "" } : null, typeFocus: "#uh-sku", onCode: code => { skuInput.value = code; queue(); } }));
-        $("uh-loc-scan").addEventListener("click", () => window.PrintSkuScanUI.open({ title: "Quét mã vị trí", typeLabel: "Gõ tay mã vị trí", notFound: "Mã này không phải mã vị trí", check: code => LOCATION_PATTERN.test(String(code || "").toUpperCase()) ? { sku: String(code).toUpperCase(), ten: "" } : null, typeFocus: "#uh-loc", onCode: code => { locInput.value = String(code).toUpperCase(); queue(); } }));
-        setRange("30"); renderList(); route();
+        $("uh-sku-scan").addEventListener("click", () => window.PrintSkuScanUI.open({ title: "Quét SKU", typeLabel: "Gõ tay SKU", notFound: "Mã này không phải SKU", check: code => /^\d{9}$/.test(code) ? { sku: code, ten: "" } : null, typeFocus: "#uh-sku", onCode: code => { skuInput.value = code; searchAndShow(); } }));
+        $("uh-loc-scan").addEventListener("click", () => window.PrintSkuScanUI.open({ title: "Quét mã vị trí", typeLabel: "Gõ tay mã vị trí", notFound: "Mã này không phải mã vị trí", check: code => LOCATION_PATTERN.test(String(code || "").toUpperCase()) ? { sku: String(code).toUpperCase(), ten: "" } : null, typeFocus: "#uh-loc", onCode: code => { locInput.value = String(code).toUpperCase(); searchAndShow(); } }));
+        setRange("30"); renderChips(); renderMetrics(); route();
       })();
     </script>
     

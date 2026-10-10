@@ -1,4 +1,5 @@
 // Ô LỊCH SỬ GROUP UID trên trang chủ (#group-uid-history): xem không cần đăng nhập, đọc từ WMS chỉ khi là Admin.
+// Giao diện cùng khung Đồng bộ Group UID: dải thông tin + thẻ số liệu; bảng lượt chuyển và bộ lọc mở trong popup.
 // Chạy với python -m http.server 8000; Extension, WMS và Supabase đều giả lập, không ghi dữ liệu thật.
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
 const assert = require("node:assert/strict");
@@ -125,43 +126,82 @@ async function open(browser, width, { admin }) {
       assert.equal(await tile.isVisible(), false, "trang chủ ẩn khi mở màn lịch sử");
       const total = wms.length, within30 = count(days(30));
       await page.waitForFunction(n => document.getElementById("uh-count").textContent === n, fmt(within30));
-      assert.match(await page.locator("#uh-updated-text").innerText(), new RegExp(`^Cập nhật .* · ${fmt(total).replace(".", "\\.")} lượt$`), "dòng Cập nhật: giờ đọc gần nhất và tổng số lượt");
+      assert.equal(await page.locator("#uh-total").innerText(), `${fmt(total)} lượt`, "dải thông tin: tổng số lượt đã lưu");
+      assert.match(await page.locator("#uh-read-at").innerText(), /^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}$/, "dải thông tin: giờ đọc WMS gần nhất");
+      assert.equal(await page.locator("#uh-wh-count").innerText(), "3");
       assert.equal(await page.locator("#uh-admin-tools").isVisible(), false, "người không phải Admin không thấy nút Đọc từ WMS");
       assert.equal(await adminState(page), "false");
-      assert.equal(await page.locator("#uh-list .uh-item").count(), 30, "30 thẻ đầu, còn lại bấm Xem thêm");
-      assert.match(await page.locator("#uh-more").innerText(), new RegExp(`^Xem thêm \\(${fmt(within30 - 30)}\\)$`));
+      assert.equal(await page.locator("#uh-dialog").isVisible(), false, "danh sách nằm trong popup, chưa mở");
+      assert.deepEqual(await page.locator("#uh-chips .as-tag").allInnerTexts(), ["30 ngày"], "chip bộ lọc mặc định");
+      assert.equal(await page.locator("#uh-filter-count").isVisible(), false);
       const publishable = await page.evaluate(() => window.PrintSkuQueue.publishableKey);
       assert.ok(rpcCalls.length > 0 && rpcCalls.every(c => c.auth === `Bearer ${publishable}`), "xem lịch sử dùng khóa ẩn danh, không dùng phiên Admin");
       assert.deepEqual([...new Set(rpcCalls.map(c => c.name))].sort(), ["group_uid_moves_lookup", "group_uid_moves_overview"], "chỉ gọi hàm đọc");
       assert.equal(rpcCalls.find(c => c.name === "group_uid_moves_lookup").args.p_limit, 1000);
-      const firstCard = await page.locator("#uh-list .uh-item").first().innerText();
-      assert.match(firstCard, /10282606\d{8}/); assert.match(firstCard, /4225\d{5}/, "có SKU ghép từ Group UID"); assert.match(firstCard, /@hasaki\.vn/, "người cập nhật hiện đầy đủ email");
-      assert.match(firstCard, /Còn ở đây/, "lượt mới nhất của UID: còn ở đây");
-      await page.locator("#uh-more").click();
-      assert.equal(await page.locator("#uh-list .uh-item").count(), 60);
-      const khoOptions = await page.locator("#uh-wh option").allInnerTexts();
-      assert.equal(khoOptions.length, 4, "Tất cả kho + 3 kho");
-      assert.match(khoOptions[1], /^WH - MATERIAL - GARMENT \(\d+\)$/);
 
-      // --- Bộ lọc ---
+      // --- Thẻ số liệu (cùng kiểu Đồng bộ Group UID) → popup bảng ---
+      const lookupRows = lookup({ p_from: new Date(since(30)).toISOString(), p_limit: 1000 }).items;
+      const nowCount = lookupRows.filter(r => !r.nextLocation).length, vrCount = lookupRows.filter(r => r.to === "F0-VR-00-00-00-00").length;
+      assert.equal(await page.locator("#uh-m-now").innerText(), fmt(nowCount));
+      assert.equal(await page.locator("#uh-m-moved").innerText(), fmt(within30 - nowCount));
+      assert.equal(await page.locator("#uh-m-vr").innerText(), fmt(vrCount));
+      await page.locator('[data-uh-kind="all"]').click();
+      const dialog = page.locator("#uh-dialog"), rows = page.locator("#uh-body tr");
+      await dialog.waitFor({ state: "visible" });
+      assert.equal(await rows.count(), 50, "50 dòng mỗi trang");
+      assert.match(await page.locator("#uh-pager").innerText(), new RegExp(`Hiển thị 1–50 / ${fmt(within30).replace(".", "\\.")}`));
+      const firstRow = await rows.first().innerText();
+      assert.match(firstRow, /10282606\d{8}/); assert.match(firstRow, /4225\d{5}/, "có SKU ghép từ Group UID"); assert.match(firstRow, /@hasaki\.vn/, "người cập nhật hiện đầy đủ email");
+      assert.match(firstRow, /Còn ở đây/, "lượt mới nhất của UID: còn ở đây");
+      await page.locator('#uh-pager [data-as-page="1"]').click();
+      assert.match(await page.locator("#uh-pager").innerText(), /Hiển thị 51–100/);
+      await page.locator('[data-uh-tab="vr"]').click();
+      assert.equal(await page.locator("#uh-d-title").innerText(), "Chuyển vào Trả NCC");
+      assert.equal(await rows.count(), Math.min(50, vrCount));
+      assert.equal((await page.locator("#uh-body").innerText()).includes("Trả NCC"), true, "F0-VR-00-00-00-00 hiện nhãn Trả NCC");
+      await page.locator('[data-uh-tab="now"]').click();
+      assert.equal((await rows.allInnerTexts()).every(t => t.includes("Còn ở đây")), true, "tab Còn ở đây");
+      await page.keyboard.press("Escape"); await dialog.waitFor({ state: "hidden" });
+      await page.locator('[data-uh-kind="moved"]').click(); await dialog.waitFor({ state: "visible" });
+      assert.equal(await page.locator('[data-uh-tab="moved"]').getAttribute("aria-selected"), "true", "bấm thẻ mở đúng tab");
+      assert.equal((await rows.allInnerTexts()).every(t => t.includes("Đã chuyển tiếp")), true);
+      await page.locator("#uh-dialog [data-as-close]").click(); await dialog.waitFor({ state: "hidden" });
+
+      // --- Bộ lọc (popup) ---
       const inRange = days(30), lastCall = () => rpcCalls.filter(c => c.name === "group_uid_moves_lookup").at(-1).args;
       const wait = n => page.waitForFunction(v => document.getElementById("uh-count").textContent === v, fmt(n));
       const until = async check => { for (let i = 0; i < 100 && !check(); i++) await page.waitForTimeout(50); assert.ok(check(), "chưa thấy yêu cầu tìm kiếm mong đợi"); };
+      const filter = page.locator("#uh-filter"), openFilter = async () => { await page.locator("#uh-filter-open").click(); await filter.waitFor({ state: "visible" }); };
+      const closeFilter = async () => { await filter.locator(".ss-primary[data-as-close]").click(); await filter.waitFor({ state: "hidden" }); };
       await page.locator("#uh-loc").fill("f0-vr"); await wait(count(r => inRange(r) && r.to_location.toLowerCase().includes("f0-vr")));
-      assert.match(await page.locator("#uh-list").innerText(), /Trả NCC/, "F0-VR-00-00-00-00 hiện nhãn Trả NCC");
+      assert.deepEqual(await page.locator("#uh-chips .as-tag").allInnerTexts(), ["30 ngày", "Đến vị trí"]);
+      await openFilter();
       await page.locator('[data-uh-match="from"]').click(); await until(() => lastCall().p_match === "from"); await wait(count(r => inRange(r) && r.from_location.toLowerCase().includes("f0-vr")));
       await page.locator('[data-uh-match="any"]').click(); await until(() => lastCall().p_match === "any"); await wait(count(r => inRange(r) && (r.from_location + r.to_location).toLowerCase().includes("f0-vr")));
-      await page.locator('[data-uh-match="to"]').click(); await page.locator("#uh-loc").fill("503-02");
+      await page.locator('[data-uh-match="to"]').click(); await closeFilter();
+      await page.locator("#uh-loc").fill("503-02");
       await wait(count(r => inRange(r) && r.to_location.includes("503-02")));
       await page.locator("#uh-loc").fill("");
       await page.locator("#uh-sku").fill("42250001"); await wait(count(r => inRange(r) && skuOf(r.group_uid_code).includes("42250001")));
-      assert.equal((await page.locator("#uh-list .uh-uid").allInnerTexts()).every(c => skuOf(c.trim()).includes("42250001")), true);
+      await page.locator("#uh-view").click(); await dialog.waitFor({ state: "visible" });
+      assert.equal((await page.locator("#uh-body code[data-copy]").allInnerTexts()).every(c => skuOf(c.trim()).includes("42250001")), true);
+      await page.keyboard.press("Escape"); await dialog.waitFor({ state: "hidden" });
       await page.locator("#uh-sku").fill("");
+      await openFilter();
+      const khoOptions = await page.locator("#uh-wh option").allInnerTexts();
+      assert.equal(khoOptions.length, 4, "Tất cả kho + 3 kho");
+      assert.match(khoOptions[1], /^WH - MATERIAL - GARMENT \(\d+\)$/);
       await page.locator("#uh-wh").selectOption("WH - MATERIAL - GARMENT"); await wait(count(r => inRange(r) && r.warehouse === "WH - MATERIAL - GARMENT"));
       assert.equal(lastCall().p_warehouse, "WH - MATERIAL - GARMENT");
-      assert.equal((await page.locator("#uh-list .uh-meta").allInnerTexts()).every(t => t.includes("WH - MATERIAL - GARMENT")), true, "mọi thẻ đúng kho đã chọn");
+      await page.locator('[data-uh-range="7"]').click(); await wait(count(r => days(7)(r) && r.warehouse === "WH - MATERIAL - GARMENT"));
+      await closeFilter();
+      assert.deepEqual(await page.locator("#uh-chips .as-tag").allInnerTexts(), ["7 ngày", "MATERIAL - GARMENT"], "chip hiện bộ lọc đang dùng");
+      assert.equal(await page.locator("#uh-filter-count").innerText(), "2", "số bộ lọc đã đổi trên nút Bộ lọc");
+      await page.locator('[data-uh-kind="all"]').click(); await dialog.waitFor({ state: "visible" });
+      assert.equal((await page.locator("#uh-body tr td:nth-child(2) em").allInnerTexts()).every(t => t === "MATERIAL - GARMENT"), true, "mọi dòng đúng kho đã chọn");
+      await page.keyboard.press("Escape"); await dialog.waitFor({ state: "hidden" });
+      await page.locator("#uh-chips .as-tag").first().click(); await filter.waitFor({ state: "visible" });
       await page.locator("#uh-wh").selectOption("");
-      await page.locator('[data-uh-range="7"]').click(); await wait(count(days(7)));
       await page.locator('[data-uh-range="90"]').click(); await wait(count(days(90)));
       await page.locator('[data-uh-range="365"]').click(); await wait(total);
       assert.equal(await page.locator("#uh-dates").isVisible(), false, "ô chọn ngày chỉ hiện khi bấm biểu tượng lịch");
@@ -170,17 +210,21 @@ async function open(browser, width, { admin }) {
       await page.locator("#uh-from").fill(vnDate(NOW - 3 * DAY)); await wait(count(r => Date.parse(r.moved_at) >= Date.parse(`${vnDate(NOW - 3 * DAY)}T00:00:00+07:00`)));
       await page.locator("#uh-clear").click(); await wait(within30);
       assert.equal(await page.locator('[data-uh-range="30"]').getAttribute("aria-pressed"), "true", "Xóa bộ lọc về 30 ngày");
+      await closeFilter();
+      assert.equal(await page.locator("#uh-filter-count").isVisible(), false);
       await page.locator("#uh-sku").fill("big");
       await page.waitForFunction(() => /Hiển thị 0 \/ 7\.000/.test(document.getElementById("uh-message").textContent));
       await page.locator("#uh-sku").fill(""); await wait(within30);
 
-      // --- Sao chép UID, quét camera (SKU / vị trí) ---
-      const firstUid = (await page.locator("#uh-list .uh-uid").first().innerText()).trim();
-      await page.locator("#uh-list .uh-uid").first().click();
-      await page.waitForFunction(u => document.getElementById("uh-message").textContent.includes(u), firstUid);
+      // --- Sao chép UID trong popup, quét camera (SKU / vị trí) mở thẳng kết quả ---
+      await page.locator('[data-uh-kind="all"]').click(); await dialog.waitFor({ state: "visible" });
+      const firstUid = (await page.locator("#uh-body code[data-copy]").first().innerText()).trim();
+      await page.locator("#uh-body code[data-copy]").first().click();
+      await page.waitForFunction(() => document.querySelector("#uh-body code.copied"));
       assert.equal(await page.evaluate(() => navigator.clipboard.readText()), firstUid);
       await page.evaluate(() => { window.__scan = []; window.PrintSkuScanUI.canOpen = () => true; window.PrintSkuScanUI.open = options => window.__scan.push(options); });
       await page.evaluate(() => { location.hash = "#home"; }); await page.waitForFunction(() => document.getElementById("uidhist-screen").hidden);
+      assert.equal(await dialog.isVisible(), false, "rời màn thì popup đóng");
       await page.evaluate(() => { location.hash = "#group-uid-history"; }); await page.locator("#uidhist-screen").waitFor({ state: "visible" });
       assert.equal(await page.locator("#uh-loc-scan").isVisible(), true, "có nút quét camera khi trình duyệt cho phép");
       await page.locator("#uh-loc-scan").click();
@@ -188,12 +232,16 @@ async function open(browser, width, { admin }) {
       assert.deepEqual(locScan, { title: "Quét mã vị trí", ok: true, okLower: true, bad: false });
       await page.evaluate(() => window.__scan[0].onCode("f0-vr-00-00-00-00"));
       assert.equal(await page.locator("#uh-loc").inputValue(), "F0-VR-00-00-00-00", "mã quét điền vào ô Vị trí (chữ hoa)");
+      await dialog.waitFor({ state: "visible" });
       await wait(count(r => inRange(r) && r.to_location.toLowerCase().includes("f0-vr-00-00-00-00")));
+      assert.equal(await page.locator("#uh-note").innerText(), `${fmt(count(r => inRange(r) && r.to_location === "F0-VR-00-00-00-00"))} dòng`, "quét xong mở thẳng popup kết quả");
+      await page.keyboard.press("Escape"); await dialog.waitFor({ state: "hidden" });
       await page.locator("#uh-sku-scan").click();
       const skuScan = await page.evaluate(() => ({ title: window.__scan[1].title, ok: !!window.__scan[1].check("422500001"), bad: !!window.__scan[1].check("12345") }));
       assert.deepEqual(skuScan, { title: "Quét SKU", ok: true, bad: false });
       await page.evaluate(() => window.__scan[1].onCode("422500001"));
       assert.equal(await page.locator("#uh-sku").inputValue(), "422500001");
+      await dialog.waitFor({ state: "visible" }); await page.keyboard.press("Escape");
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `${width}px không được tràn ngang`);
       assert.deepEqual(errors, []);
       await context.close();
@@ -203,8 +251,9 @@ async function open(browser, width, { admin }) {
       ({ context, page, errors } = await open(browser, width, { admin: true }));
       await page.goto(BASE + "#group-uid-history");
       await page.locator("#uidhist-screen").waitFor({ state: "visible" });
-      await page.waitForFunction(() => document.getElementById("uh-empty").hidden === false);
-      assert.equal(await page.locator("#uh-updated-text").innerText(), "Chưa có dữ liệu");
+      await page.waitForFunction(() => document.getElementById("uh-read-at").textContent === "Chưa có dữ liệu");
+      assert.equal(await page.locator("#uh-count").innerText(), "0");
+      assert.equal(await page.locator('[data-uh-kind="all"]').getAttribute("data-zero"), "true", "thẻ rỗng mờ đi, bấm không mở popup");
       assert.equal(await page.locator("#uh-admin-tools").isVisible(), true, "Admin thấy nút Đọc từ WMS");
       assert.equal(await adminState(page), "true");
       await page.locator("#uh-run").click();
@@ -221,7 +270,7 @@ async function open(browser, width, { admin }) {
       assert.ok(rpcCalls.filter(c => c.name === "group_uid_moves_import").every(c => c.args.p_company_id === 0), "p_company_id = 0: mọi công ty");
       assert.equal(rpcCalls.filter(c => c.name === "group_uid_moves_mark_read").length, 1, "ghi mốc một lần");
       await page.waitForFunction(n => document.getElementById("uh-count").textContent === n, fmt(count(days(30))));
-      assert.match(await page.locator("#uh-updated-text").innerText(), new RegExp(`${fmt(wms.length).replace(".", "\\.")} lượt$`));
+      assert.equal(await page.locator("#uh-total").innerText(), `${fmt(wms.length)} lượt`);
       assert.equal(await page.locator("#uh-run").isEnabled(), true);
 
       await page.evaluate(() => window.__extCalls.splice(0));
@@ -254,12 +303,12 @@ async function open(browser, width, { admin }) {
       await confirm.locator(".whd-ok").click(); await confirm.waitFor({ state: "hidden" });
       assert.equal(await page.locator("#uh-admin-tools").isVisible(), false);
       assert.equal(await adminState(page), "false");
-      assert.equal(await page.locator("#uh-list .uh-item").count() > 0, true);
+      assert.notEqual(await page.locator("#uh-count").innerText(), "0");
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `${width}px không được tràn ngang`);
       assert.deepEqual(errors, []);
       await context.close();
     }
-    console.log("group_uid_moves_browser: ô trang chủ, xem không đăng nhập, bộ lọc, quét camera, Admin đọc từ WMS tăng dần và responsive passed");
+    console.log("group_uid_moves_browser: ô trang chủ, xem không đăng nhập, thẻ số liệu → popup bảng (tab, trang, sao chép), popup bộ lọc + chip, quét camera mở kết quả, Admin đọc từ WMS tăng dần và responsive passed");
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });
 
