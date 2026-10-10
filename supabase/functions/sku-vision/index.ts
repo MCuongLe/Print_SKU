@@ -16,6 +16,8 @@
 //                            gemini-3.5-flash cũng 503, gemini-2.5-flash-lite đã bị Google ngừng — 404)
 //   SKU_VISION_DEVICE_DAILY  tuỳ chọn, số lượt mỗi máy mỗi ngày, mặc định 60
 //   SKU_VISION_GLOBAL_DAILY  tuỳ chọn, tổng lượt mỗi ngày (giờ Pacific), mặc định 450
+//   SKU_VISION_HEDGE_MS      tuỳ chọn, model đang chạy quá chừng này mili giây chưa trả thì gọi thêm model
+//                            kế tiếp chạy song song, mặc định 6000
 // Triển khai với verify_jwt = false: publishable key dạng sb_publishable_ không
 // phải JWT, hàm tự kiểm tra header apikey.
 
@@ -31,9 +33,15 @@ const SERVICE_KEY = firstKey(Deno.env.get("SUPABASE_SECRET_KEYS")) || Deno.env.g
 const PUBLIC_KEYS = [...keyList(Deno.env.get("SUPABASE_PUBLISHABLE_KEYS")), ...keyList(Deno.env.get("SUPABASE_ANON_KEY"))];
 const MAX_IMAGE_BASE64 = 6_000_000; // ~4,5 MB ảnh; trang web nén còn ~0,5 MB
 const MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
-// 20 giây mỗi model: model quá tải có lúc 35 giây mới trả 503 — chờ lâu hơn thì trang web (90 giây) không
-// còn kịp thử model kế tiếp.
-const MODEL_TIMEOUT_MS = 20_000;
+// Model chính thường trả trong 2–3 giây, nhưng lúc Gemini quá tải nó treo: đo 10/10/2026, gemini-3.1-flash-lite
+// quá 20 giây không trả rồi gemini-3.8-flash mất 14 giây; trước đó có lượt cả ba model lần lượt hết 20 giây nên
+// trang báo "AI chưa đọc được tem". Vì vậy không thử tuần tự nữa: model chạy quá HEDGE_MS thì gọi thêm model kế
+// tiếp song song (lỗi tạm thời thì gọi ngay), model nào trả trước thì dùng và huỷ các lượt còn lại. Mỗi model
+// được chờ tới 40 giây: 3 model × 6 giây so le + 40 giây + 10 giây bộ đếm vẫn dưới 90 giây chờ của trang web.
+const MODEL_TIMEOUT_MS = 40_000;
+const HEDGE_MS = positiveInt(Deno.env.get("SKU_VISION_HEDGE_MS"), 6_000);
+// 429 hết hạn mức model này, 404 model không còn, 5xx lỗi tạm: model khác vẫn có thể đọc được.
+const RETRYABLE = new Set([404, 429, 500, 502, 503, 504]);
 // Đọc chữ không cần suy nghĩ: thinkingBudget 0 bỏ ~590 token nghĩ của gemini-3.8-flash. Có model từ chối
 // tham số này (gemini-3.5-flash-lite trả 400) — gửi lại không kèm và nhớ để các lượt sau khỏi thử.
 const NO_THINKING_CONFIG = new Set<string>();
@@ -113,7 +121,7 @@ async function takeQuota(device: string): Promise<Record<string, unknown>> {
 const strings = (value: unknown): string[] =>
   Array.isArray(value) ? value.map((item) => String(item ?? "").trim()).filter(Boolean).slice(0, 40) : [];
 
-function askGemini(model: string, mime: string, image: string, thinkingOff: boolean): Promise<Response> {
+function askGemini(model: string, mime: string, image: string, thinkingOff: boolean, signal: AbortSignal): Promise<Response> {
   const generationConfig: Record<string, unknown> = { temperature: 0, responseMimeType: "application/json", responseSchema: RESPONSE_SCHEMA };
   if (thinkingOff) generationConfig.thinkingConfig = { thinkingBudget: 0 };
   return fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
@@ -123,16 +131,17 @@ function askGemini(model: string, mime: string, image: string, thinkingOff: bool
       contents: [{ role: "user", parts: [{ inline_data: { mime_type: mime, data: image } }, { text: PROMPT }] }],
       generationConfig,
     }),
-    signal: AbortSignal.timeout(MODEL_TIMEOUT_MS),
+    signal,
   });
 }
 
-async function readLabel(model: string, mime: string, image: string) {
-  let response = await askGemini(model, mime, image, !NO_THINKING_CONFIG.has(model));
+async function readLabel(model: string, mime: string, image: string, stop: AbortSignal) {
+  const signal = AbortSignal.any([stop, AbortSignal.timeout(MODEL_TIMEOUT_MS)]);
+  let response = await askGemini(model, mime, image, !NO_THINKING_CONFIG.has(model), signal);
   if (response.status === 400 && !NO_THINKING_CONFIG.has(model)) {
     NO_THINKING_CONFIG.add(model);
     await response.body?.cancel();
-    response = await askGemini(model, mime, image, false);
+    response = await askGemini(model, mime, image, false, signal);
   }
   const text = await response.text();
   if (!response.ok) {
@@ -160,6 +169,58 @@ async function readLabel(model: string, mime: string, image: string) {
       usage: data?.usageMetadata ?? null,
     },
   };
+}
+
+type Attempt = { model: string; status: number | string; ms: number };
+type LabelRead = Extract<Awaited<ReturnType<typeof readLabel>>, { ok: true }>["result"];
+type ModelsRead = { model?: string; result?: LabelRead; attempts: Attempt[]; errors: string[]; busy: boolean };
+
+// Thử các model theo thứ tự GEMINI_MODELS, so le HEDGE_MS chứ không chờ model trước treo hết giờ.
+// Ghi lại từng lượt thử (model · kết quả · ms) để thấy model nào hay quá tải mà đổi thứ tự GEMINI_MODELS.
+function readFromModels(mime: string, image: string): Promise<ModelsRead> {
+  const attempts: Attempt[] = [];
+  const errors: string[] = [];
+  const stop = new AbortController();
+  const running = new Map<string, number>(); // model đang chờ → lúc bắt đầu gọi
+  let next = 0, halted = false, done = false;
+  let hedge: ReturnType<typeof setTimeout> | undefined;
+  return new Promise((resolve) => {
+    const finish = (model?: string, result?: LabelRead) => {
+      done = true;
+      clearTimeout(hedge);
+      running.forEach((tried, slow) => attempts.push({ model: slow, status: "cancelled", ms: Date.now() - tried }));
+      stop.abort();
+      resolve({ model, result, attempts, errors, busy: !halted });
+    };
+    const launch = () => {
+      clearTimeout(hedge);
+      if (done) return;
+      if (halted || next >= MODELS.length) {
+        if (!running.size) finish();
+        return;
+      }
+      const model = MODELS[next++];
+      const tried = Date.now();
+      running.set(model, tried);
+      readLabel(model, mime, image, stop.signal).then((read) => {
+        if (done) return;
+        running.delete(model);
+        attempts.push({ model, status: read.ok ? 200 : read.status, ms: Date.now() - tried });
+        if (read.ok) return finish(model, read.result);
+        errors.push(`${model}: HTTP ${read.status} ${read.detail}`);
+        // Lỗi không phải tạm thời (khoá sai, yêu cầu hỏng…) thì model khác cũng lỗi: không gọi thêm.
+        if (!RETRYABLE.has(read.status)) halted = true;
+      }, (error) => {
+        if (done) return; // bị huỷ vì model khác đã đọc xong
+        running.delete(model);
+        const timedOut = (error as Error).name === "TimeoutError";
+        attempts.push({ model, status: timedOut ? "timeout" : "error", ms: Date.now() - tried });
+        errors.push(`${model}: ${timedOut ? `quá ${MODEL_TIMEOUT_MS / 1000} giây không phản hồi` : (error as Error).message}`);
+      }).finally(launch);
+      hedge = setTimeout(launch, HEDGE_MS);
+    };
+    launch();
+  });
 }
 
 Deno.serve(async (request) => {
@@ -197,24 +258,11 @@ Deno.serve(async (request) => {
   }
 
   const started = Date.now();
-  const errors: string[] = [];
-  // Ghi lại từng lượt thử (model · kết quả · ms) để thấy model nào hay quá tải mà đổi thứ tự GEMINI_MODELS.
-  const attempts: { model: string; status: number | string; ms: number }[] = [];
-  for (const model of MODELS) {
-    const tried = Date.now();
-    try {
-      const read = await readLabel(model, mime, image);
-      attempts.push({ model, status: read.ok ? 200 : read.status, ms: Date.now() - tried });
-      if (read.ok) return reply(200, { ok: true, model, ms: Date.now() - started, attempts, ...read.result, quota });
-      errors.push(`${model}: HTTP ${read.status} ${read.detail}`);
-      // 429 hết hạn mức model này, 404 model không còn, 5xx lỗi tạm: thử model kế tiếp.
-      if (![404, 429, 500, 502, 503, 504].includes(read.status)) break;
-    } catch (error) {
-      const timedOut = (error as Error).name === "TimeoutError";
-      attempts.push({ model, status: timedOut ? "timeout" : "error", ms: Date.now() - tried });
-      errors.push(`${model}: ${timedOut ? `quá ${MODEL_TIMEOUT_MS / 1000} giây không phản hồi` : (error as Error).message}`);
-    }
-  }
+  const { model, result, attempts, errors, busy } = await readFromModels(mime, image);
+  if (result) return reply(200, { ok: true, model, ms: Date.now() - started, attempts, ...result, quota });
   console.error("sku-vision thất bại", errors.join(" | "));
-  return fail(502, "AI_FAILED", "AI chưa đọc được tem — thử chụp lại gần hơn, hoặc gõ mã in trên tem.", { attempts, detail: errors.join(" | ").slice(0, 600) });
+  // Ảnh mờ không rơi vào đây (Gemini vẫn trả quality "khong_doc_duoc"); tới đây là Gemini lỗi hoặc quá tải,
+  // nên đừng bảo người dùng chụp lại.
+  return fail(502, "AI_FAILED", busy ? "AI đang quá tải, chưa đọc được tem." : "AI chưa đọc được tem.",
+    { attempts, detail: errors.join(" | ").slice(0, 600) });
 });

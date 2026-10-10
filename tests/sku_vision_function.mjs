@@ -30,7 +30,7 @@ async function load(env = {}, routes = {}) {
     calls.push(call);
     const route = Object.keys(routes).find(key => call.url.includes(key));
     if (!route) throw new Error(`fetch không được giả lập: ${call.url}`);
-    const answer = typeof routes[route] === "function" ? routes[route](call, calls) : routes[route];
+    const answer = typeof routes[route] === "function" ? await routes[route](call, calls) : routes[route];
     return new Response(JSON.stringify(answer.body), { status: answer.status ?? 200 });
   };
   // Node không nạp lại .ts chỉ vì đổi ?query, nên mỗi ca chép ra một file riêng để env được đọc lại.
@@ -56,6 +56,10 @@ const geminiOk = {
     usageMetadata: { promptTokenCount: 1600, candidatesTokenCount: 120 }
   }
 };
+// Gemini quá tải: không trả gì, chỉ kết thúc khi hàm huỷ lượt gọi (model khác đã đọc xong).
+const hang = ({ init }) => new Promise((_, reject) => init.signal.addEventListener("abort", () => reject(init.signal.reason)));
+// Hết thời gian chờ một model, như AbortSignal.timeout báo.
+const timeout = () => new Promise((_, reject) => setTimeout(() => reject(new DOMException("hết giờ", "TimeoutError")), 15));
 
 test("preflight CORS trả 204 kèm header cho phép apikey", async () => {
   const { call } = await load();
@@ -120,15 +124,44 @@ test("ưu tiên khoá mới SUPABASE_SECRET_KEYS (JSON dictionary) khi gọi b�
   assert.equal(quota.init.headers.apikey, "sb_secret_moi");
 });
 
-test("model đầu hết hạn mức (429) thì tự thử model kế tiếp", async () => {
+test("model đầu hết hạn mức (429) thì thử ngay model kế tiếp, không chờ hết thời gian so le", async () => {
   const { call } = await load({}, {
     sku_vision_take: quotaOk,
     "model-a:generateContent": { status: 429, body: { error: { message: "quota" } } },
     "model-b:generateContent": geminiOk
   });
+  const started = Date.now();
   const body = await (await call({ image: IMAGE })).json();
   assert.equal(body.ok, true);
   assert.equal(body.model, "model-b");
+  assert.ok(Date.now() - started < 3000, "SKU_VISION_HEDGE_MS mặc định 6 giây — không được chờ tới lúc đó");
+});
+
+test("model đầu treo thì sau SKU_VISION_HEDGE_MS gọi thêm model kế tiếp, dùng kết quả trả trước", async () => {
+  const { call, calls } = await load({ SKU_VISION_HEDGE_MS: "30" }, {
+    sku_vision_take: quotaOk,
+    "model-a:generateContent": hang,
+    "model-b:generateContent": geminiOk
+  });
+  const response = await call({ image: IMAGE });
+  const body = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(body.model, "model-b");
+  assert.deepEqual(body.attempts.map(a => [a.model, a.status]), [["model-b", 200], ["model-a", "cancelled"]]);
+  assert.ok(body.attempts[1].ms >= 25, "model-a phải được chờ hết thời gian so le rồi mới gọi model-b");
+  const slow = calls.find(c => c.url.includes("model-a"));
+  assert.equal(slow.init.signal.aborted, true, "lượt treo của model-a phải bị huỷ");
+});
+
+test("mọi model đều hết thời gian chờ thì trả 502 báo AI quá tải, không bảo chụp lại", async () => {
+  const { call } = await load({ SKU_VISION_HEDGE_MS: "5" }, { sku_vision_take: quotaOk, generativelanguage: timeout });
+  const response = await call({ image: IMAGE });
+  const body = await response.json();
+  assert.equal(response.status, 502);
+  assert.equal(body.code, "AI_FAILED");
+  assert.match(body.message, /quá tải/);
+  assert.doesNotMatch(body.message, /chụp lại/);
+  assert.deepEqual(body.attempts.map(a => [a.model, a.status]).sort(), [["model-a", "timeout"], ["model-b", "timeout"]]);
 });
 
 test("model từ chối thinkingConfig (400) thì gửi lại không kèm, lượt sau khỏi thử", async () => {
@@ -146,7 +179,7 @@ test("model từ chối thinkingConfig (400) thì gửi lại không kèm, lư�
   assert.deepEqual(again.map(c => Boolean(c.body.generationConfig.thinkingConfig)), [false], "đã nhớ model này không nhận thinkingConfig");
 });
 
-test("lỗi không phải tạm thời (400) thì dừng ngay, báo nhắc gõ mã", async () => {
+test("lỗi không phải tạm thời (400) thì dừng ngay, không báo quá tải", async () => {
   const { call, calls } = await load({}, {
     sku_vision_take: quotaOk,
     "model-a:generateContent": { status: 400, body: { error: { message: "bad request" } } },
@@ -156,6 +189,7 @@ test("lỗi không phải tạm thời (400) thì dừng ngay, báo nhắc gõ m
   const body = await response.json();
   assert.equal(response.status, 502);
   assert.equal(body.code, "AI_FAILED");
+  assert.doesNotMatch(body.message, /quá tải/);
   assert.ok(!calls.some(c => c.url.includes("model-b")), "không được thử model-b sau lỗi 400");
   assert.equal(body.attempts.length, 1);
 });

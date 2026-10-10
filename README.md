@@ -474,7 +474,10 @@ bao giờ nằm trong `index.html`). Tuỳ chọn: `GEMINI_MODELS` (thứ tự m
 `gemini-3.1-flash-lite,gemini-3.8-flash,gemini-3.5-flash-lite` — đo 30/09/2026: bản lite đọc đúng
 2 tem thật trong ~3 giây và luôn trả được, còn 3.8-flash hay báo quá tải ở gói miễn phí; model
 lỗi/quá tải thì tự chuyển model kế tiếp), `SKU_VISION_DEVICE_DAILY` (mặc định 60 lượt/máy/ngày),
-`SKU_VISION_GLOBAL_DAILY` (mặc định 450 lượt/ngày cho cả kho — dưới hạn mức miễn phí của Gemini).
+`SKU_VISION_GLOBAL_DAILY` (mặc định 450 lượt/ngày cho cả kho — dưới hạn mức miễn phí của Gemini),
+`SKU_VISION_HEDGE_MS` (mặc định 6000: model đang chạy quá 6 giây chưa trả thì gọi thêm model kế tiếp
+song song, model nào trả trước thì dùng; lỗi tạm thời 429/404/5xx thì gọi ngay; mỗi model chờ tối đa 40 giây).
+Hết mọi model mà vẫn lỗi/treo thì trang báo "AI đang quá tải, chưa đọc được tem." — bấm 🔄 Đọc lại tem hoặc gõ mã.
 Ngày tính theo giờ Pacific vì Gemini reset hạn mức lúc nửa đêm Pacific. Hết lượt hoặc mất mạng
 thì ô "Mã trên tem" vẫn tìm được. Lưu ý: ở gói miễn phí, Google được dùng ảnh gửi lên để cải
 thiện sản phẩm.

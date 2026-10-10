@@ -6783,6 +6783,8 @@ var FSK_CORE = (function () {
               : error instanceof TypeError ? "Không gọi được máy chủ đọc tem (mất mạng hoặc máy chủ chưa sẵn sàng)"
               : String(error?.message || error);
             if (quotaOut) { state.auto?.finish(); stopCamera(); }
+            // Bỏ chữ "Đang đọc tem…" của resetLabel — để lại thì trông như vẫn đang chờ AI.
+            if (!state.tokens.length) results.innerHTML = "";
             tell(why, "error");
             if (state.stream) camStatus(quotaOut ? "Hết lượt đọc tem hôm nay" : "AI chưa đọc được", "warn");
             else if (finePointer()) codeInput.focus();
