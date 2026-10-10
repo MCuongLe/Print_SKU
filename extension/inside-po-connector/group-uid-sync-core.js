@@ -153,14 +153,5 @@
     return { rows: [...unique.values()], total: responseTotal(payload, source.length), sourceRows: source.length };
   }
 
-  function normalizeCompanies(payload) {
-    const rows = [payload?.records, payload?.data?.records, payload?.data?.items, Array.isArray(payload?.data) ? payload.data : null].find(Array.isArray) || [];
-    return rows.map(row => ({
-      companyId: Number(row?.company_id ?? row?.id),
-      companyCode: clean(row?.company_code ?? row?.code, 40),
-      companyName: clean(row?.company_name ?? row?.name, 160),
-    })).filter(row => Number.isSafeInteger(row.companyId) && row.companyId > 0);
-  }
-
-  globalThis.HasakiGroupUidSyncCore = Object.freeze({ clean, normalizeRow, normalizePage, normalizeHistoryPage, normalizeMovesPage, normalizeCompanies, responseRows, responseTotal });
+  globalThis.HasakiGroupUidSyncCore = Object.freeze({ clean, normalizeRow, normalizePage, normalizeHistoryPage, normalizeMovesPage, responseRows, responseTotal });
 })();

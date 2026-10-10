@@ -49,16 +49,6 @@ assert.throws(() => core.normalizeMovesPage({ records: [transfer(0)] }), /thiế
 assert.throws(() => core.normalizeMovesPage({ records: [transfer(5, { group_uid_code: "abc" })] }), /Group UID không hợp lệ/);
 assert.throws(() => core.normalizeMovesPage({ records: [transfer(5, { updated_at_tz: "sai-ngày", updated_at: undefined, created_at_tz: undefined })] }), /Ngày cập nhật/);
 
-const companies = core.normalizeCompanies({ records: [
-  { company_id: 1001, company_code: "hasaki", company_name: "Cty CP Hasaki Vietnam" },
-  { id: "1002", code: "mastige", name: "Cty Mastige" },
-  { company_id: "x" }, { company_id: 0 },
-] });
-assert.deepEqual(JSON.parse(JSON.stringify(companies)), [
-  { companyId: 1001, companyCode: "hasaki", companyName: "Cty CP Hasaki Vietnam" },
-  { companyId: 1002, companyCode: "mastige", companyName: "Cty Mastige" },
-]);
-
 // --- Bộ đọc trong wms-bridge ---
 const calls = [];
 let listener;
@@ -67,8 +57,6 @@ const bridgeContext = {
   localStorage: { getItem: key => ({ auth_store: JSON.stringify({ state: { token: "test-token" } }), company_id: "1001" })[key] ?? null },
   fetch: async (url, options) => {
     calls.push({ url: new URL(url), headers: options.headers });
-    const path = new URL(url).pathname;
-    if (path.endsWith("/master-data/company")) return { ok: true, status: 200, json: async () => ({ records: [{ company_id: 1005, company_code: "garment", company_name: "Cty Garment" }] }) };
     return { ok: true, status: 200, json: async () => ({ page: 1, size: 500, count: 1, records: [transfer(1), { id: 2, group_uid_code: 1028260605000300, action: 9, action_name: "Cut", updated_at_tz: "2026-10-10T15:40:00+07:00" }] }) };
   },
   chrome: { runtime: { id: "ext-id", onMessage: { addListener: fn => { listener = fn; } } } },
@@ -102,15 +90,17 @@ const send = (message, sender = { id: "ext-id" }) => new Promise(resolve => {
   assert.equal(headers["company-ids"], "1002", "đổi công ty theo yêu cầu, không theo công ty đang chọn trên WMS");
   assert.equal(headers.Authorization, "Bearer test-token");
 
-  const noCompany = await send({ type: "GET_GROUP_UID_MOVES_PAGE", payload: { page: 1 } });
-  assert.equal(noCompany.ok, false);
-  assert.match(noCompany.error.message, /công ty/);
-
-  const list = await send({ type: "GET_WMS_COMPANIES", payload: {} });
-  assert.equal(list.ok, true);
-  assert.deepEqual(JSON.parse(JSON.stringify(list.data.companies)), [{ companyId: 1005, companyCode: "garment", companyName: "Cty Garment" }]);
-  assert.equal(calls.at(-1).url.searchParams.get("check_permission"), "true");
+  // Không truyền công ty: dùng công ty đang chọn trên WMS (WMS không lọc endpoint này theo company-ids)
+  const anyCompany = await send({ type: "GET_GROUP_UID_MOVES_PAGE", payload: { page: 1, size: 500 } });
+  assert.equal(anyCompany.ok, true);
+  assert.equal(anyCompany.data.companyId, null);
+  assert.equal(calls.at(-1).headers["company-ids"], "1001", "mặc định theo công ty đang chọn trên WMS");
+  assert.equal(calls.at(-1).url.searchParams.has("from_updated_at"), false);
+  const badCompany = await send({ type: "GET_GROUP_UID_MOVES_PAGE", payload: { companyId: "abc" } });
+  assert.equal(badCompany.ok, false);
+  assert.match(badCompany.error.message, /ty cần đọc/);
+  assert.equal((await send({ type: "GET_WMS_COMPANIES", payload: {} })).ignored, true, "lệnh liệt kê công ty đã bỏ");
 
   assert.equal((await send({ type: "GET_GROUP_UID_MOVES_PAGE", payload: { companyId: 1002 } }, { id: "other-extension" })).ignored, true, "bỏ qua tin nhắn từ nơi khác");
-  console.log("group_uid_moves_core: Transfer location, bộ đọc theo công ty và chặn dữ liệu sai passed");
+  console.log("group_uid_moves_core: Transfer location, bộ đọc một lượt cho mọi kho và chặn dữ liệu sai passed");
 })().catch(error => { console.error(error); process.exitCode = 1; });
