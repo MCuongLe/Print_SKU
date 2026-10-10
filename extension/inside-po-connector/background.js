@@ -65,11 +65,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       if (!wmsTab) return errorResponse("WMS_TAB_MISSING", "Hãy mở một tab WMS và đăng nhập trước");
       try {
         const result = await sendToWms(wmsTab, { type: message.type, payload: message.payload || {} });
-        return result?.ok ? result : errorResponse(result?.error?.code || "WMS_ERROR", result?.error?.message || "WMS không trả dữ liệu Group UID");
+        return result?.ok ? result : errorResponse(result?.error?.code || "WMS_ERROR", result?.error?.message || "WMS không trả dữ liệu yêu cầu");
       } catch {
         return errorResponse("WMS_BRIDGE_ERROR", "Không kết nối được tab WMS; hãy tải lại tab WMS rồi thử lại");
       }
-    })().then(sendResponse).catch(() => sendResponse(errorResponse("CONNECTOR_ERROR", "Tiện ích gặp lỗi khi đọc Group UID")));
+    })().then(sendResponse).catch(() => sendResponse(errorResponse("CONNECTOR_ERROR", "Tiện ích gặp lỗi khi đọc dữ liệu WMS")));
     return true;
   }
 

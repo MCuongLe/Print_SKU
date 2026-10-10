@@ -8,7 +8,7 @@ const mockExtension = () => addEventListener("message", event => {
   const r = event.data;
   if (!r || r.source !== "PRINT_SKU_APP") return;
   let data;
-  if (r.type === "PING_WMS") data = { version: "0.6.0" };
+  if (r.type === "PING_WMS") data = { version: "0.6.1" };
   else if (r.type === "GET_SKU_COUNT_WAREHOUSES") data = { warehouses: [
     { warehouseId: 1177, warehouseName: "WH - MATERIAL - MTG", companyId: 1002, companyName: "Cty Mastige" },
     { warehouseId: 1339, warehouseName: "WH - MATERIAL - GARMENT", companyId: 1005, companyName: "Cty Garment" },

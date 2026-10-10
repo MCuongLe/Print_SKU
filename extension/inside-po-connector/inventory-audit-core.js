@@ -52,7 +52,9 @@
       sku: clean(row.sku, 80),
       productName: clean(row.product_name, 500),
       location: clean(row.location_description, 160),
-      qty: finite(row.qty),
+      // Stock Location đã gộp theo SKU/vị trí. count_inbin là tồn trạng thái In-BIN;
+      // quantity chỉ là fallback cho phiên bản WMS cũ có cùng ý nghĩa.
+      qty: finite(row.count_inbin ?? row.quantity ?? row.qty),
       uom: clean(row.uom, 40),
     })).filter(row => Number.isInteger(row.warehouseId) && row.sku && row.qty > 0);
     return { rows, sourceRows: sourceRows.length, total: Math.max(sourceRows.length, finite(payload?.count)), page: Math.max(1, finite(payload?.page) || 1), size: Math.max(1, finite(payload?.size) || 500) };

@@ -8,7 +8,10 @@ const manifest = JSON.parse(fs.readFileSync(path.join(extensionDir, "manifest.js
 const background = fs.readFileSync(path.join(extensionDir, "background.js"), "utf8");
 
 assert.equal(manifest.manifest_version, 3);
-assert.equal(manifest.version, "0.6.0");
+assert.equal(manifest.version, "0.6.1");
+const wmsBridge = fs.readFileSync(path.join(extensionDir, "wms-bridge.js"), "utf8");
+assert.match(wmsBridge, /stock-locations\/bins\/count\/v3/);
+assert.match(wmsBridge, /ignore_zero_total/);
 assert.ok(manifest.content_scripts.some(entry => entry.js.includes("inventory-audit-core.js")));
 for (const type of ["GET_SKU_COUNT_WAREHOUSES", "GET_SKU_COUNT_APPROVED_PAGE", "GET_SKU_COUNT_INVENTORY_PAGE"]) assert.match(background, new RegExp(type));
 

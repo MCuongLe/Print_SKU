@@ -9,7 +9,7 @@
   const WAREHOUSE_API = "https://wms-gw.inshasaki.com/api/v1/wms/master-data/warehouse/by-user";
   const COMPANY_API = "https://wms-gw.inshasaki.com/api/v1/wms/master-data/company";
   const APPROVED_COUNT_API = "https://wms-gw.inshasaki.com/api/v1/wms/counting-plan/checklists/type-sku";
-  const INVENTORY_API = "https://wms-gw.inshasaki.com/api/v1/wms/report-management/report-inventories";
+  const INVENTORY_API = "https://wms-gw.inshasaki.com/api/v1/wms/report-management/stock-locations/bins/count/v3";
   const CUT_WAREHOUSE_ID = "1177"; // WH - MATERIAL - MTG
 
   function auth() {
@@ -33,11 +33,24 @@
   }
 
   async function getJson(url, deniedMessage, companyIds = "") {
-    const response = await fetch(url, { headers: requestHeaders(companyIds), credentials: "omit" });
-    if (response.status === 401 || response.status === 403) throw new Error(deniedMessage || "Phiên WMS đã hết hạn hoặc không có quyền đọc dữ liệu");
-    if (response.status === 204) return { count: 0, page: 1, size: 500, records: [] };
-    if (!response.ok) throw new Error(`WMS trả mã ${response.status}`);
-    return response.json();
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      let response;
+      try {
+        response = await fetch(url, { headers: requestHeaders(companyIds), credentials: "omit" });
+      } catch {
+        if (attempt < 2) { await new Promise(resolve => setTimeout(resolve, 350 * (attempt + 1))); continue; }
+        throw new Error("WMS tạm ngắt kết nối; hãy tải lại tab WMS rồi thử lại");
+      }
+      if (response.status === 401 || response.status === 403) throw new Error(deniedMessage || "Phiên WMS đã hết hạn hoặc không có quyền đọc dữ liệu");
+      if (response.status === 204) return { count: 0, page: 1, size: 500, records: [] };
+      if ((response.status === 429 || response.status >= 500) && attempt < 2) {
+        await new Promise(resolve => setTimeout(resolve, 350 * (attempt + 1)));
+        continue;
+      }
+      if (!response.ok) throw new Error(`WMS trả mã ${response.status}`);
+      return response.json();
+    }
+    throw new Error("WMS tạm ngắt kết nối; hãy thử lại");
   }
 
   async function readPage(payload) {
@@ -156,12 +169,11 @@
   async function readInventoryPage(payload) {
     if (!auditCore) throw new Error("Extension chưa tải bộ đọc kiểm kê; hãy Reload extension");
     const { page, size } = pageInput(payload), ids = warehouseIds(payload), url = new URL(INVENTORY_API);
-    url.searchParams.set("status_ids", "6");
+    url.searchParams.set("ignore_zero_total", "1");
     url.searchParams.set("page", String(page));
     url.searchParams.set("size", String(size));
     url.searchParams.set("warehouse_ids", ids.join(","));
-    url.searchParams.set("keywords_type", "uids");
-    url.searchParams.set("keywords_type_2", "purchase_order_numbers");
+    if (payload?.companyId) url.searchParams.set("company_ids", String(payload.companyId));
     const normalized = auditCore.normalizeInventoryPage(await getJson(url, "Phiên WMS không còn quyền đọc tồn kho theo vị trí; hãy đăng nhập lại", payload?.companyId));
     return { ...normalized, totalPages: Math.max(1, Math.ceil(normalized.total / size)), warehouseIds: ids, generatedAt: new Date().toISOString() };
   }

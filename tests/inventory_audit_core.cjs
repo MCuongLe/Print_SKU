@@ -16,13 +16,14 @@ assert.deepEqual(JSON.parse(JSON.stringify(selected.warehouses.map(w => [w.wareh
 assert.deepEqual(JSON.parse(JSON.stringify(selected.missingNames)), []);
 
 const inventory = core.normalizeInventoryPage({ count: 5, page: 1, size: 500, records: [
-  { inventory_id: 1, warehouse_id: 1177, warehouse_name: "WH - MATERIAL - MTG", sku: "A", product_name: "Vải A", location_description: "A-01", qty: 2, uom: "m" },
-  { inventory_id: 2, warehouse_id: 1177, warehouse_name: "WH - MATERIAL - MTG", sku: "A", product_name: "Vải A", location_description: "A-02", qty: 3, uom: "m" },
-  { inventory_id: 3, warehouse_id: 1177, warehouse_name: "WH - MATERIAL - MTG", sku: "B", product_name: "Vải B", location_description: "B-01", qty: 4, uom: "m" },
-  { inventory_id: 4, warehouse_id: 1339, warehouse_name: "WH - MATERIAL - GARMENT", sku: "C", product_name: "Chỉ C", location_description: "C-01", qty: 1, uom: "cuộn" },
-  { inventory_id: 5, warehouse_id: 1339, warehouse_name: "WH - MATERIAL - GARMENT", sku: "Z", qty: 0 },
+  { warehouse_id: 1177, warehouse_name: "WH - MATERIAL - MTG", sku: "A", product_name: "Vải A", location_description: "A-01", count_inbin: 2, quantity: 99 },
+  { warehouse_id: 1177, warehouse_name: "WH - MATERIAL - MTG", sku: "A", product_name: "Vải A", location_description: "A-02", count_inbin: 3 },
+  { warehouse_id: 1177, warehouse_name: "WH - MATERIAL - MTG", sku: "B", product_name: "Vải B", location_description: "B-01", count_inbin: 4 },
+  { warehouse_id: 1339, warehouse_name: "WH - MATERIAL - GARMENT", sku: "C", product_name: "Chỉ C", location_description: "C-01", count_inbin: 1 },
+  { warehouse_id: 1339, warehouse_name: "WH - MATERIAL - GARMENT", sku: "Z", count_inbin: 0, quantity: 10 },
 ] });
-assert.equal(inventory.rows.length, 4, "qty <= 0 phải bị loại");
+assert.equal(inventory.rows.length, 4, "count_inbin <= 0 phải bị loại dù tổng quantity còn dương");
+assert.equal(inventory.rows[0].qty, 2, "count_inbin phải được ưu tiên hơn quantity");
 
 const now = Date.parse("2026-10-10T12:00:00+07:00");
 const approved = core.normalizeApprovedPage({ count: 3, records: [

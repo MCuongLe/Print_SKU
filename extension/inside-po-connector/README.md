@@ -33,7 +33,7 @@ Sau khi repository được cập nhật, mở `chrome://extensions` và bấm *
 
 Extension chỉ đọc Inside. Mọi ghi dữ liệu chạy trong Edge Function `sku-sync`, yêu cầu phiên Supabase có vai trò `admin` và luôn xác minh lại sau khi upsert.
 
-Phiên bản 0.6.0 đọc đầy đủ Combo nhiều thành phần, Group UID hiện tại, lịch sử cắt Group UID và dữ liệu kiểm kê SKU từ WMS theo lô 500 dòng. Bản này hỗ trợ phản hồi WMS dạng `records/count`, Group UID trạng thái `New` chưa có SKU và Group UID chứa nhiều SKU. Các SKU thành phần được lưu trong `group_uid_products`.
+Phiên bản 0.6.1 đọc đầy đủ Combo nhiều thành phần, Group UID hiện tại, lịch sử cắt Group UID và dữ liệu kiểm kê SKU từ WMS theo lô 500 dòng. Tồn kho kiểm kê dùng báo cáo `Stock Location` đã gộp theo SKU/vị trí và chỉ giữ `count_inbin > 0`, tránh tải hàng trăm nghìn dòng UID. Bản này hỗ trợ phản hồi WMS dạng `records/count`, Group UID trạng thái `New` chưa có SKU và Group UID chứa nhiều SKU. Các SKU thành phần được lưu trong `group_uid_products`.
 
 Dashboard kiểm kê SKU dành cho Admin:
 
