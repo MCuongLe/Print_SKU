@@ -6,9 +6,6 @@ These instructions apply to the entire repository.
 
 ## Repository overview
 
-- This repository contains a Vietnamese browser application for printing SKU labels.
-- The application is delivered as a single self-contained `index.html` file.
-- `index.html` includes a production React bundle and generated/minified CSS. There is currently no source tree, package manifest, build script, or automated test suite in the repository.
 - The app includes barcode/QR functionality, camera access, print layouts, and browser-side state. Treat those flows as user-facing production behavior.
 
 ## Working rules
@@ -19,7 +16,6 @@ These instructions apply to the entire repository.
 - Preserve Vietnamese UI copy, Unicode encoding, existing print styles, and responsive behavior unless the requested change requires otherwise.
 - Do not add external runtime dependencies, CDN assets, analytics, trackers, or network calls without explicit approval.
 - Do not commit secrets, credentials, private endpoints, or real customer/SKU data. Use clearly synthetic examples when test data is needed.
-- If a requested change is substantial, first note that the repository lacks editable source files. Prefer obtaining or restoring the original source project over reverse-engineering the minified bundle.
 
 ## Validation
 
