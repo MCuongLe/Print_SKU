@@ -446,8 +446,19 @@ Mở **CHUYỂN ĐỔI ĐƠN VỊ** ở WH-MATERIAL hoặc `#unit-converter`:
 - Có thể nhập tay, quét/nhập SKU hoặc Group UID. Tên hàng được đọc để tự điền Tex, quy cách cuộn,
   khổ vải và GSM. Chỉ SKU có đơn vị chiều dài mới được đưa kết quả mm sang TÌM SKU để in, tránh
   gắn nhầm số mm vào SKU đơn vị gram/cuộn.
+- **Quy cách cuộn nguyên suy ra từ Combo (10/10/2026).** Tên SKU Normal chỉ (`…/Tex 27- 60-3/mm`) không ghi quy cách, nhưng Combo của nó
+  (`…/cuộn 5000m`) có quan hệ `1 Combo = 5.000.000 mm`. Chọn SKU Normal chỉ thì màn hình gọi RPC `sku_combo_by_normal`
+  (`supabase/sku_combo_links_v3_by_normal.sql`; tra ngược Normal → Combo, bảng quan hệ vẫn private) và lấy `quantity` làm quy cách:
+  chỉ nhận Combo **một thành phần** (`component_count = 1`) và 500–100.000 m, gộp theo quy cách. Một quy cách thì tự điền; nhiều quy cách khác nhau thì
+  hiện chip (icon móc xích, mở tooltip "Theo Combo …") để chọn, không tự chọn hộ. Quy cách trong tên SKU (nếu có) và số người dùng gõ luôn thắng.
+  Từ TÌM SKU, chọn Combo → Normal cũng mang theo `combo.ratio` làm quy cách.
+- **Điện thoại (10/10/2026).** Kết quả mm (kèm "mét · thước đang dùng") nằm trên cùng, thanh dưới dính đáy có **Copy** và **In ở TÌM SKU**.
+  Mỗi lô chỉ nhập **tổng khối lượng** và **số cuộn thừa**; các thông số ít đổi (quy cách, Tex, khối lượng 1 lõi, khối lượng 1 cuộn nguyên; vải: khổ, GSM, cuộn nguyên)
+  gom thành một dòng tóm tắt ("5.000 m · Tex 27 · lõi 14 g") — chạm mở popup **Thông số hàng**; "Cách tính" (mét, mm/gram, các bước) là popup mở bằng icon ⓘ.
+  Popup là `dialog.uc-sheet`: ≤ 800 px là tờ trượt dưới (modal), từ 801 px mở không-modal ngay trong trang như bố cục cũ (JS `matchMedia`). Đã bỏ các câu hướng dẫn và
+  dòng "Còn thiếu: …". Test: `tests/unit_converter_browser.cjs`.
 - Mục nhận diện có thể thu gọn và tự thu sau khi tra thành công. **Lô tiếp theo** giữ SKU/thông số
-  hàng nhưng xóa số cân của lô; **Nhập lại từ đầu** xóa SKU cùng toàn bộ số liệu và mở lại mục nhận diện.
+  hàng nhưng xóa số cân của lô; **Nhập lại** xóa SKU cùng toàn bộ số liệu và mở lại mục nhận diện.
 
 Triển khai một lần:
 

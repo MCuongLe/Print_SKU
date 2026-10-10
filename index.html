@@ -4261,56 +4261,75 @@ Error generating stack: `+y.message+`
         <div class="uc-layout">
           <div class="uc-inputs">
             <details class="cut-card uc-lookup" id="uc-lookup-details" open>
-              <summary><span class="uc-step-number">1</span><strong>Nhận diện hàng</strong><small id="uc-lookup-summary">Không bắt buộc</small><span class="uc-lookup-chevron" aria-hidden="true"></span></summary>
+              <summary><span class="uc-step-number">1</span><strong>Nhận diện hàng</strong><small id="uc-lookup-summary"></small><span class="uc-lookup-chevron" aria-hidden="true"></span></summary>
               <div class="uc-lookup-body">
-                <form class="uc-code-row" id="uc-code-form"><input class="cut-input" id="uc-code" autocomplete="off" inputmode="text" placeholder="Quét hoặc nhập SKU / Group UID…" aria-label="SKU hoặc Group UID"><button class="act-icon act-icon--camera" id="uc-camera" type="button" aria-label="Quét bằng camera" title="Quét bằng camera"></button><button class="cut-secondary act-icon act-icon--search" type="submit">Tra thông số</button></form>
+                <form class="uc-code-row" id="uc-code-form"><input class="cut-input" id="uc-code" autocomplete="off" inputmode="text" placeholder="SKU hoặc Group UID" aria-label="SKU hoặc Group UID"><button class="act-icon act-icon--camera" id="uc-camera" type="button" aria-label="Quét bằng camera" title="Quét bằng camera"></button><button class="cut-secondary act-icon act-icon--search" type="submit">Tra thông số</button></form>
                 <div class="uc-picked" id="uc-picked" hidden><strong id="uc-picked-code"></strong><span id="uc-picked-name"></span><small id="uc-picked-spec"></small></div>
-                <p class="cut-note">Có thể bỏ qua bước này và nhập thông số bằng tay.</p>
               </div>
             </details>
 
             <section class="cut-card uc-data"><h2><span>2</span>Số liệu cân</h2>
-              <div class="fsk-field"><label for="uc-total">Tổng khối lượng trả về <span class="hint">cân cả lô</span></label><div class="fsk-inrow"><input class="cut-input" id="uc-total" inputmode="decimal" autocomplete="off" placeholder="ví dụ 0,9"><span class="fsk-seg" id="uc-weight-unit" role="group" aria-label="Đơn vị cân"><button type="button" data-unit="kg" aria-pressed="true">kg</button><button type="button" data-unit="g" aria-pressed="false">gr</button></span></div><div class="fsk-doc" id="uc-total-doc"></div></div>
+              <div class="fsk-field"><label for="uc-total">Tổng khối lượng</label><div class="fsk-inrow"><input class="cut-input" id="uc-total" inputmode="decimal" autocomplete="off"><span class="fsk-seg" id="uc-weight-unit" role="group" aria-label="Đơn vị cân"><button type="button" data-unit="kg" aria-pressed="true">kg</button><button type="button" data-unit="g" aria-pressed="false">gr</button></span></div><div class="fsk-doc" id="uc-total-doc"></div></div>
 
               <div id="uc-thread-fields">
-                <div class="uc-two">
-                  <div class="fsk-field"><label for="uc-thread-spec">Quy cách cuộn nguyên</label><div class="fsk-inrow"><input class="cut-input" id="uc-thread-spec" inputmode="decimal" autocomplete="off" placeholder="ví dụ 5000"><span class="fsk-seg" id="uc-thread-spec-unit" role="group" aria-label="Đơn vị quy cách"><button type="button" data-unit="m" aria-pressed="true">m</button><button type="button" data-unit="yard" aria-pressed="false">yard</button></span></div></div>
-                  <div class="fsk-field"><label for="uc-thread-tex">Chỉ số Tex <span class="hint">trên tem</span></label><div class="fsk-inrow"><input class="cut-input" id="uc-thread-tex" inputmode="decimal" autocomplete="off" placeholder="ví dụ 27"><span class="fsk-unit">Tex</span></div></div>
-                </div>
-                <div class="uc-two">
-                  <div class="fsk-field"><label for="uc-thread-cones">Số cuộn thừa</label><div class="fsk-inrow"><input class="cut-input" id="uc-thread-cones" inputmode="numeric" autocomplete="off" placeholder="ví dụ 10"><span class="fsk-unit">cuộn</span></div></div>
-                  <div class="fsk-field"><label for="uc-thread-core">Khối lượng 1 lõi</label><div class="fsk-inrow"><input class="cut-input" id="uc-thread-core" inputmode="decimal" autocomplete="off" placeholder="ví dụ 14"><span class="fsk-unit">gr</span></div></div>
-                </div>
-                <div class="fsk-field"><label for="uc-thread-full">Khối lượng 1 cuộn nguyên <span class="hint">không bắt buộc nếu đã có Tex</span></label><div class="fsk-inrow"><input class="cut-input" id="uc-thread-full" inputmode="decimal" autocomplete="off" placeholder="để trống nếu tính theo Tex"><span class="fsk-unit">gr</span></div><div class="fsk-seg uc-mode" id="uc-thread-full-mode" role="group" aria-label="Cách hiểu khối lượng cuộn nguyên"><button type="button" data-mode="all" aria-pressed="true">cân cả lõi</button><button type="button" data-mode="thread" aria-pressed="false">chỉ riêng chỉ</button></div></div>
+                <div class="fsk-field"><label for="uc-thread-cones">Số cuộn thừa</label><div class="fsk-inrow"><input class="cut-input" id="uc-thread-cones" inputmode="numeric" autocomplete="off"><span class="fsk-unit">cuộn</span></div></div>
+                <div class="uc-spec-choices" id="uc-spec-choices" role="group" aria-label="Quy cách theo Combo" hidden></div>
+                <button class="uc-params-open" id="uc-thread-open" type="button" data-sheet-open="uc-thread-params" aria-haspopup="dialog"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 4h-7"/><path d="M10 4H3"/><path d="M21 12h-9"/><path d="M8 12H3"/><path d="M21 20h-5"/><path d="M12 20H3"/><path d="M14 2v4"/><path d="M8 10v4"/><path d="M16 18v4"/></svg><span>Thông số hàng</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></button>
+                <dialog class="uc-sheet" id="uc-thread-params" aria-labelledby="uc-thread-params-title">
+                  <div class="uc-sheet-head"><h3 id="uc-thread-params-title">Thông số hàng</h3><button class="cut-icon-btn" type="button" data-sheet-close aria-label="Đóng" title="Đóng"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>
+                  <div class="uc-sheet-body">
+                    <div class="uc-two">
+                      <div class="fsk-field"><label for="uc-thread-spec">Quy cách cuộn nguyên</label><div class="fsk-inrow"><input class="cut-input" id="uc-thread-spec" inputmode="decimal" autocomplete="off"><span class="fsk-seg" id="uc-thread-spec-unit" role="group" aria-label="Đơn vị quy cách"><button type="button" data-unit="m" aria-pressed="true">m</button><button type="button" data-unit="yard" aria-pressed="false">yard</button></span></div></div>
+                      <div class="fsk-field"><label for="uc-thread-tex">Chỉ số Tex</label><div class="fsk-inrow"><input class="cut-input" id="uc-thread-tex" inputmode="decimal" autocomplete="off"><span class="fsk-unit">Tex</span></div></div>
+                    </div>
+                    <div class="uc-two">
+                      <div class="fsk-field"><label for="uc-thread-core">Khối lượng 1 lõi</label><div class="fsk-inrow"><input class="cut-input" id="uc-thread-core" inputmode="decimal" autocomplete="off"><span class="fsk-unit">gr</span></div></div>
+                      <div class="fsk-field"><label for="uc-thread-full">Khối lượng 1 cuộn nguyên</label><div class="fsk-inrow"><input class="cut-input" id="uc-thread-full" inputmode="decimal" autocomplete="off"><span class="fsk-unit">gr</span></div><div class="fsk-seg uc-mode" id="uc-thread-full-mode" role="group" aria-label="Cách hiểu khối lượng cuộn nguyên"><button type="button" data-mode="all" aria-pressed="true">cân cả lõi</button><button type="button" data-mode="thread" aria-pressed="false">chỉ riêng chỉ</button></div></div>
+                    </div>
+                  </div>
+                  <div class="uc-sheet-foot"><button class="cut-primary act-icon act-icon--check" type="button" data-sheet-close>Xong</button></div>
+                </dialog>
               </div>
 
               <div id="uc-fabric-fields" hidden>
-                <div class="uc-two">
-                  <div class="fsk-field"><label for="uc-fabric-width">Khổ vải</label><div class="fsk-inrow"><input class="cut-input" id="uc-fabric-width" inputmode="decimal" autocomplete="off" placeholder="ví dụ 150"><span class="fsk-seg" id="uc-fabric-width-unit" role="group" aria-label="Đơn vị khổ"><button type="button" data-unit="cm" aria-pressed="true">cm</button><button type="button" data-unit="inch" aria-pressed="false">inch</button></span></div></div>
-                  <div class="fsk-field"><label for="uc-fabric-gsm">Định lượng</label><div class="fsk-inrow"><input class="cut-input" id="uc-fabric-gsm" inputmode="decimal" autocomplete="off" placeholder="ví dụ 220"><span class="fsk-unit">gsm</span></div></div>
-                </div>
-                <details class="uc-measured" id="uc-fabric-measured"><summary>Cân cuộn nguyên để có kết quả chính xác hơn</summary>
-                  <div class="uc-two">
-                    <div class="fsk-field"><label for="uc-fabric-roll">Chiều dài cuộn nguyên</label><div class="fsk-inrow"><input class="cut-input" id="uc-fabric-roll" inputmode="decimal" autocomplete="off" placeholder="ví dụ 100"><span class="fsk-seg" id="uc-fabric-roll-unit" role="group" aria-label="Đơn vị chiều dài cuộn"><button type="button" data-unit="m" aria-pressed="true">m</button><button type="button" data-unit="yard" aria-pressed="false">yard</button></span></div></div>
-                    <div class="fsk-field"><label for="uc-fabric-full">Khối lượng cuộn nguyên</label><div class="fsk-inrow"><input class="cut-input" id="uc-fabric-full" inputmode="decimal" autocomplete="off" placeholder="ví dụ 33000"><span class="fsk-unit">gr</span></div></div>
+                <button class="uc-params-open" id="uc-fabric-open" type="button" data-sheet-open="uc-fabric-params" aria-haspopup="dialog"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 4h-7"/><path d="M10 4H3"/><path d="M21 12h-9"/><path d="M8 12H3"/><path d="M21 20h-5"/><path d="M12 20H3"/><path d="M14 2v4"/><path d="M8 10v4"/><path d="M16 18v4"/></svg><span>Thông số hàng</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></button>
+                <dialog class="uc-sheet" id="uc-fabric-params" aria-labelledby="uc-fabric-params-title">
+                  <div class="uc-sheet-head"><h3 id="uc-fabric-params-title">Thông số hàng</h3><button class="cut-icon-btn" type="button" data-sheet-close aria-label="Đóng" title="Đóng"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>
+                  <div class="uc-sheet-body">
+                    <div class="uc-two">
+                      <div class="fsk-field"><label for="uc-fabric-width">Khổ vải</label><div class="fsk-inrow"><input class="cut-input" id="uc-fabric-width" inputmode="decimal" autocomplete="off"><span class="fsk-seg" id="uc-fabric-width-unit" role="group" aria-label="Đơn vị khổ"><button type="button" data-unit="cm" aria-pressed="true">cm</button><button type="button" data-unit="inch" aria-pressed="false">inch</button></span></div></div>
+                      <div class="fsk-field"><label for="uc-fabric-gsm">Định lượng</label><div class="fsk-inrow"><input class="cut-input" id="uc-fabric-gsm" inputmode="decimal" autocomplete="off"><span class="fsk-unit">gsm</span></div></div>
+                    </div>
+                    <details class="uc-measured" id="uc-fabric-measured"><summary>Cân cuộn nguyên</summary>
+                      <div class="uc-two">
+                        <div class="fsk-field"><label for="uc-fabric-roll">Chiều dài cuộn nguyên</label><div class="fsk-inrow"><input class="cut-input" id="uc-fabric-roll" inputmode="decimal" autocomplete="off"><span class="fsk-seg" id="uc-fabric-roll-unit" role="group" aria-label="Đơn vị chiều dài cuộn"><button type="button" data-unit="m" aria-pressed="true">m</button><button type="button" data-unit="yard" aria-pressed="false">yard</button></span></div></div>
+                        <div class="fsk-field"><label for="uc-fabric-full">Khối lượng cuộn nguyên</label><div class="fsk-inrow"><input class="cut-input" id="uc-fabric-full" inputmode="decimal" autocomplete="off"><span class="fsk-unit">gr</span></div></div>
+                      </div>
+                    </details>
                   </div>
-                </details>
+                  <div class="uc-sheet-foot"><button class="cut-primary act-icon act-icon--check" type="button" data-sheet-close>Xong</button></div>
+                </dialog>
               </div>
               <div class="uc-data-actions">
-                <button class="uc-next-action" id="uc-next" type="button"><span class="uc-action-icon" aria-hidden="true">↻</span><span><strong>Lô tiếp theo</strong><small>Giữ SKU và thông số hàng</small></span></button>
-                <button class="uc-reset-action" id="uc-clear" type="button"><span class="uc-action-icon" aria-hidden="true">×</span><span><strong>Nhập lại từ đầu</strong><small>Xóa SKU và mọi số liệu</small></span></button>
+                <button class="uc-next-action" id="uc-next" type="button"><span class="uc-action-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg></span><strong>Lô tiếp theo</strong></button>
+                <button class="uc-reset-action" id="uc-clear" type="button"><span class="uc-action-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></span><strong>Nhập lại</strong></button>
               </div>
             </section>
           </div>
 
           <section class="cut-card uc-result" aria-live="polite"><h2><span>3</span>Kết quả</h2>
-            <div class="uc-empty" id="uc-empty">Nhập số liệu cân để máy tính.</div>
+            <div class="uc-empty" id="uc-empty" hidden></div>
             <div id="uc-result" hidden>
-              <div class="uc-result-main"><strong id="uc-mm"></strong><span>mm</span><small>Tổng số lượng quy đổi</small></div>
-              <div class="uc-metrics"><div><b id="uc-m"></b><span>mét</span></div><div><b id="uc-density"></b><span>mm mỗi gram</span></div><div><b id="uc-basis"></b><span>thước đang dùng</span></div></div>
+              <div class="uc-result-main"><strong id="uc-mm"></strong><span>mm</span><button class="cut-icon-btn uc-steps-open" type="button" data-sheet-open="uc-steps-sheet" aria-haspopup="dialog" aria-label="Cách tính" title="Cách tính"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></button><small class="uc-result-sub" id="uc-sub"></small></div>
               <div class="uc-warning" id="uc-warning" hidden></div>
-              <div class="fsk-steps" id="uc-steps"></div>
-              <div class="uc-result-actions"><button class="cut-secondary act-icon act-icon--copy" id="uc-copy" type="button">Copy mm</button><button class="cut-primary act-icon act-icon--print" id="uc-use" type="button" hidden>Quay lại TÌM SKU để in</button></div>
+              <dialog class="uc-sheet" id="uc-steps-sheet" aria-labelledby="uc-steps-title">
+                <div class="uc-sheet-head"><h3 id="uc-steps-title">Cách tính</h3><button class="cut-icon-btn" type="button" data-sheet-close aria-label="Đóng" title="Đóng"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>
+                <div class="uc-sheet-body">
+                  <div class="uc-metrics"><div><b id="uc-m"></b><span>mét</span></div><div><b id="uc-density"></b><span>mm mỗi gram</span></div><div><b id="uc-basis"></b><span>thước đang dùng</span></div></div>
+                  <div class="fsk-steps" id="uc-steps"></div>
+                </div>
+              </dialog>
+              <div class="uc-result-actions"><button class="cut-secondary act-icon act-icon--copy" id="uc-copy" type="button" title="Copy số mm">Copy</button><button class="cut-primary act-icon act-icon--print" id="uc-use" type="button" hidden>Quay lại TÌM SKU để in</button></div>
             </div>
           </section>
         </div>
@@ -4321,7 +4340,37 @@ Error generating stack: `+y.message+`
       .uc-layout{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(340px,.8fr);gap:16px;align-items:start}.uc-inputs{display:grid;gap:16px}.uc-lookup{padding:0;overflow:hidden}.uc-lookup>summary{display:grid;grid-template-columns:30px auto minmax(0,1fr) 20px;align-items:center;gap:9px;min-height:68px;padding:14px 20px;cursor:pointer;list-style:none}.uc-lookup>summary::-webkit-details-marker{display:none}.uc-step-number{display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:#007754;color:#fff;font-weight:800}.uc-lookup>summary>strong{font-size:20px}.uc-lookup>summary>small{min-width:0;color:#6b7d76;overflow:hidden;text-align:right;text-overflow:ellipsis;white-space:nowrap}.uc-lookup-chevron{width:10px;height:10px;border-right:2px solid #60736b;border-bottom:2px solid #60736b;transform:rotate(45deg) translate(-2px,-2px);transition:transform .18s ease}.uc-lookup[open] .uc-lookup-chevron{transform:rotate(225deg) translate(-2px,-2px)}.uc-lookup-body{padding:0 20px 18px}.uc-code-row{display:grid;grid-template-columns:minmax(0,1fr) 48px auto;gap:8px}.uc-picked{display:grid;gap:4px;margin-top:12px;padding:13px 15px;border:1px solid #b9d8cc;border-radius:13px;background:#edf8f4}.uc-picked strong{color:#005f41}.uc-picked span{font-weight:700}.uc-picked small{color:#60736b}.uc-two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.uc-mode{width:max-content;max-width:100%;margin-top:8px}.uc-measured{margin-top:4px;padding:12px 14px;border:1px solid #dce7e3;border-radius:13px;background:#f8faf9}.uc-measured summary{color:#176248;font-weight:800;cursor:pointer}.uc-measured .uc-two{margin-top:12px}.uc-data-actions{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:10px;margin-top:18px;padding-top:16px;border-top:1px solid #e2ebe7}.uc-data-actions button{display:flex;align-items:center;gap:10px;min-height:60px;padding:10px 14px;border-radius:15px;font:inherit;text-align:left;cursor:pointer}.uc-data-actions button span:last-child{display:grid;gap:2px}.uc-data-actions button strong{font-size:15px}.uc-data-actions button small{font-size:11px;line-height:1.3}.uc-action-icon{display:grid;flex:none;place-items:center;width:34px;height:34px;border-radius:50%;font-size:23px;font-weight:700}.uc-next-action{border:1px solid #007754;background:#007754;color:#fff;box-shadow:0 5px 14px rgba(0,95,65,.16)}.uc-next-action .uc-action-icon{background:rgba(255,255,255,.16)}.uc-next-action small{color:rgba(255,255,255,.8)}.uc-reset-action{border:1px solid #e4d4d1;background:#fff;color:#7a332c}.uc-reset-action .uc-action-icon{background:#fff0ee}.uc-reset-action small{color:#8c6b67}
       .uc-result{position:sticky;top:16px}.uc-empty{padding:42px 20px;border:1px dashed #cbdad5;border-radius:14px;color:#72827d;text-align:center}.uc-result-main{display:grid;grid-template-columns:auto 1fr;align-items:baseline;padding:20px;border-left:5px solid #007754;border-radius:14px;background:#edf8f4}.uc-result-main strong{color:#005f41;font-size:34px;line-height:1;font-variant-numeric:tabular-nums}.uc-result-main>span{margin-left:7px;color:#526861;font-weight:800}.uc-result-main small{grid-column:1/-1;margin-top:7px;color:#526861;font-weight:700}.uc-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}.uc-metrics div{padding:12px;border:1px solid #dce7e3;border-radius:12px;background:#fff}.uc-metrics b,.uc-metrics span{display:block}.uc-metrics b{color:#173129;font-size:18px}.uc-metrics span{margin-top:3px;color:#6b7d76;font-size:11px}.uc-warning{margin-top:10px;padding:12px 14px;border-radius:12px;color:#a33b30;background:#fff0ee;font-size:13px;line-height:1.45}.uc-warning[data-tone="note"]{color:#76550c;background:#fff6dc}.uc-result-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:14px}.uc-result-actions button{min-height:48px}.uc-result .fsk-steps{margin-top:12px}.uc-result .fsk-step{grid-template-columns:30px minmax(0,1fr) auto}
       @media(max-width:800px){.uc-main{padding-bottom:96px}.uc-layout{grid-template-columns:1fr}.uc-code-row{grid-template-columns:minmax(0,1fr) 48px}.uc-code-row .cut-secondary{grid-column:1/-1}.uc-result{position:static}.uc-result-actions{position:sticky;bottom:0;z-index:3;display:grid;grid-template-columns:1fr;margin:14px -16px -16px;padding:12px 16px calc(12px + env(safe-area-inset-bottom));border-top:1px solid #dce7e3;background:rgba(255,255,255,.96);backdrop-filter:blur(8px)}.uc-result-actions button{width:100%}}
-      @media(max-width:520px){.uc-lookup>summary{grid-template-columns:30px minmax(0,1fr) 18px;min-height:62px;padding:12px 16px}.uc-lookup>summary>strong{font-size:17px}.uc-lookup>summary>small{grid-column:2;text-align:left}.uc-lookup-chevron{grid-column:3;grid-row:1/3}.uc-lookup-body{padding:0 16px 16px}.uc-two,.uc-metrics,.uc-data-actions{grid-template-columns:1fr}.uc-data-actions button{min-height:58px}.uc-result-main strong{font-size:29px}.uc-mode{width:100%}.uc-mode button{flex:1}}
+      @media(max-width:520px){.uc-lookup>summary{grid-template-columns:30px minmax(0,1fr) 18px;min-height:62px;padding:12px 16px}.uc-lookup>summary>strong{font-size:17px}.uc-lookup>summary>small{grid-column:2;text-align:left}.uc-lookup-chevron{grid-column:3;grid-row:1/3}.uc-lookup-body{padding:0 16px 16px}.uc-two,.uc-metrics{grid-template-columns:1fr}.uc-data-actions button{min-height:52px}.uc-result-main strong{font-size:29px}.uc-mode{width:100%}.uc-mode button{flex:1}}
+      /* 10/10/2026 — điện thoại: "Thông số hàng" và "Cách tính" là popup (dialog.uc-sheet, tờ trượt dưới); từ 801 px dialog mở không-modal ngay trong trang như cũ (JS: matchMedia). */
+      .uc-sheet{margin:0;padding:0;border:0;background:transparent;color:inherit}
+      .uc-sheet[open]{position:static;display:block;width:auto;max-width:none;max-height:none;overflow:visible}
+      .uc-sheet-head,.uc-sheet-foot,.uc-params-open,.uc-steps-open{display:none}
+      .uc-spec-choices{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}.uc-spec-choices[hidden]{display:none}
+      .uc-spec-chip{display:inline-flex;align-items:center;gap:6px;min-height:42px;padding:0 15px;border:1px solid var(--wms-border,#d9e2de);border-radius:999px;background:#fff;color:#31483f;font:inherit;font-weight:800;cursor:pointer}
+      .uc-spec-chip svg{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+      .uc-spec-chip[aria-pressed="true"]{border-color:#007754;background:#e5f2ee;color:#005f41}
+      .uc-result-main{grid-template-columns:auto 1fr auto}.uc-result-sub{grid-column:1/-1;margin-top:7px;color:#526861;font-weight:700}
+      .uc-result:has(>#uc-empty[hidden]):has(>#uc-result[hidden]){display:none}
+      .uc-action-icon svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+      .uc-main .cut-message:empty{display:none}
+      @media(max-width:800px){
+        .uc-data>h2,.uc-result>h2{display:none}
+        .uc-layout{display:flex;flex-direction:column;align-items:stretch;gap:12px}.uc-inputs{display:contents}
+        .uc-lookup{order:1}.uc-result{order:2}.uc-data{order:3}
+        .uc-kind{margin-bottom:10px}.uc-result{padding:10px}.uc-result-main{padding:14px 16px}
+        .uc-result-actions{position:fixed;left:0;right:0;bottom:0;z-index:30;display:flex;gap:10px;margin:0;padding:12px 16px calc(12px + env(safe-area-inset-bottom));border-top:1px solid #dce7e3;background:rgba(255,255,255,.97);box-shadow:0 -6px 16px rgba(23,37,31,.06)}
+        .uc-result-actions button{width:auto}#uc-copy{flex:1 1 auto}#uc-use{flex:2 1 auto}
+        .uc-params-open{display:flex;align-items:center;gap:10px;width:100%;min-height:52px;margin-top:12px;padding:0 14px;border:1px solid var(--wms-border,#d9e2de);border-radius:13px;background:#fff;color:#17251f;font:inherit;font-weight:700;text-align:left;cursor:pointer}
+        .uc-params-open svg{flex:none;width:20px;height:20px;fill:none;stroke:#176248;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+        .uc-params-open span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+        .uc-params-open[data-empty="true"]{border-color:#e3b64d;background:#fffaeb}
+        .uc-steps-open{display:inline-grid;align-self:center}
+        .uc-sheet[open]{position:fixed;inset:auto 0 0 0;display:flex;flex-direction:column;width:100%;max-width:100%;max-height:92vh;max-height:92dvh;border-radius:20px 20px 0 0;background:#fff;box-shadow:0 -12px 40px rgba(13,40,30,.25);overflow:hidden}
+        .uc-sheet::backdrop{background:rgba(15,35,28,.45)}
+        .uc-sheet-head{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid #edf2f0}.uc-sheet-head h3{flex:1;margin:0;color:#17382d;font-size:17px}
+        .uc-sheet-body{flex:1;min-height:0;overflow:auto;padding:4px 16px 16px}
+        .uc-sheet-foot{display:block;padding:12px 16px calc(12px + env(safe-area-inset-bottom));border-top:1px solid #edf2f0}.uc-sheet-foot .cut-primary{width:100%}
+      }
       @media print{#unit-converter-screen{display:none!important}}
     </style>
     <style id="find-sku-theme">
@@ -7011,7 +7060,7 @@ var FSK_CORE = (function () {
           const s = state.selected;
           if (!s) return;
           const context = { returnTo: "find-sku", kind: "thread", sku: s.sku, pn: s.pn,
-            specMm: FSK_CORE.specFromName(s.pn), tex: FSK_CORE.texFromName(s.pn) };
+            specMm: FSK_CORE.specFromName(s.pn) || (s.combo && s.unit.key === "mm" && s.combo.ratio >= 500000 && s.combo.ratio <= 100000000 ? s.combo.ratio : null), tex: FSK_CORE.texFromName(s.pn) };
           try { sessionStorage.setItem("unit-converter-context", JSON.stringify(context)); } catch (_) {}
           location.hash = "#unit-converter";
         });
@@ -7262,13 +7311,63 @@ var FSK_CORE = (function () {
           fabricWidth: $("uc-fabric-width"), fabricGsm: $("uc-fabric-gsm"), fabricRoll: $("uc-fabric-roll"), fabricFull: $("uc-fabric-full")
         };
         const state = { kind: "thread", weightUnit: "kg", threadSpecUnit: "m", fullIncludesCore: true,
-          fabricWidthUnit: "cm", fabricRollUnit: "m", selected: null, result: null, returnTo: "" };
+          fabricWidthUnit: "cm", fabricRollUnit: "m", selected: null, result: null, returnTo: "", specChoices: [], comboRun: 0 };
         const active = () => location.hash.replace(/^#/, "").split("&")[0] === "unit-converter";
         const num = input => FSK_CORE.parseNumber(input?.value);
         const fmt = (value, decimals = 0) => FSK_CORE.formatNumber(value, decimals);
         const esc = value => String(value ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
         const pressed = (id, attr, value) => $(id).querySelectorAll("button").forEach(button => button.setAttribute("aria-pressed", String(button.dataset[attr] === String(value))));
         const tell = (text, tone = "") => { $("uc-message").textContent = text; $("uc-message").dataset.tone = tone; };
+        // Popup (dialog.uc-sheet): điện thoại = tờ trượt dưới (modal, bấm nền/Esc/Xong để đóng); từ 801 px mở không-modal ngay trong trang.
+        const sheets = [...screen.querySelectorAll("dialog.uc-sheet")], wide = matchMedia("(min-width: 801px)");
+        const showInline = dialog => { const previous = document.activeElement; dialog.show(); try { if (previous && previous !== document.body && previous.isConnected) previous.focus({ preventScroll: true }); else document.activeElement?.blur?.(); } catch (_) {} };
+        const syncSheets = () => sheets.forEach(dialog => {
+          if (wide.matches) { if (dialog.open && dialog.matches(":modal")) dialog.close(); if (!dialog.open) showInline(dialog); }
+          else if (dialog.open && !dialog.matches(":modal")) dialog.close();
+        });
+        wide.addEventListener("change", syncSheets); syncSheets();
+        screen.addEventListener("click", event => {
+          const opener = event.target.closest("[data-sheet-open]");
+          if (opener) { const dialog = $(opener.dataset.sheetOpen); if (dialog && !wide.matches && !dialog.open) dialog.showModal(); return; }
+          const closer = event.target.closest("[data-sheet-close]");
+          if (closer) { const dialog = closer.closest("dialog"); if (dialog?.matches(":modal")) dialog.close(); return; }
+          if (event.target.matches?.("dialog.uc-sheet:modal")) event.target.close();
+        });
+        addEventListener("hashchange", () => sheets.forEach(dialog => { if (dialog.matches(":modal")) dialog.close(); }));
+        // Quy cách cuộn nguyên suy ra từ Combo: RPC sku_combo_by_normal (supabase/sku_combo_links_v3_by_normal.sql); 1 Combo = quantity đơn vị gốc của Normal (mm).
+        const threadSpecMm = () => { const value = num(fields.threadSpec); return isFinite(value) ? value * (state.threadSpecUnit === "yard" ? 0.9144 : 1) * 1000 : NaN; };
+        const syncSpecChoices = () => { const current = threadSpecMm(); $("uc-spec-choices").querySelectorAll("button").forEach(button => button.setAttribute("aria-pressed", String(isFinite(current) && Math.abs(Number(button.dataset.mm) - current) < 1))); };
+        const renderSpecChoices = () => {
+          const box = $("uc-spec-choices"); box.hidden = !state.specChoices.length;
+          box.innerHTML = state.specChoices.map(choice => `<button type="button" class="uc-spec-chip" data-mm="${choice.mm}" aria-pressed="false" title="Theo Combo ${esc(choice.combo)}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>${esc(fmt(choice.mm / 1000))} m</button>`).join("");
+          syncSpecChoices();
+        };
+        const setSum = (id, parts) => { const button = $(id); button.querySelector("span").textContent = parts.join(" · ") || "Thông số hàng"; button.dataset.empty = String(!parts.length); };
+        const updateSummary = () => {
+          const pos = value => isFinite(value) && value > 0;
+          if (state.kind === "thread") {
+            const spec = num(fields.threadSpec), tex = num(fields.threadTex), core = num(fields.threadCore), full = num(fields.threadFull);
+            setSum("uc-thread-open", [pos(spec) && `${fmt(spec)} ${state.threadSpecUnit === "yard" ? "yard" : "m"}`, pos(tex) && `Tex ${fmt(tex, 1)}`, pos(core) && `lõi ${fmt(core, 1)} g`, pos(full) && `cuộn ${fmt(full, 1)} g`].filter(Boolean));
+            syncSpecChoices();
+          } else {
+            const width = num(fields.fabricWidth), gsm = num(fields.fabricGsm), roll = num(fields.fabricRoll), full = num(fields.fabricFull);
+            setSum("uc-fabric-open", [pos(width) && `khổ ${fmt(width, 1)} ${state.fabricWidthUnit}`, pos(gsm) && `${fmt(gsm)} gsm`, pos(roll) && pos(full) && `cuộn ${fmt(roll, 1)} ${state.fabricRollUnit} · ${fmt(full, 1)} g`].filter(Boolean));
+          }
+        };
+        const loadComboSpecs = async sku => {
+          const run = ++state.comboRun;
+          try {
+            const q = window.PrintSkuQueue, response = await fetch(`${q.supabaseUrl}/rest/v1/rpc/sku_combo_by_normal`, { method: "POST", headers: { ...apiHeaders(), "Content-Type": "application/json" }, body: JSON.stringify({ p_sku: sku }), signal: AbortSignal.timeout(8000) });
+            if (!response.ok) return; const rows = await response.json();
+            if (run !== state.comboRun || state.selected?.sku !== sku) return;
+            const scale = FSK_CORE.unitOf(state.selected.pn).key === "m" ? 1000 : 1, seen = new Set(), list = [];
+            (Array.isArray(rows) ? rows : []).forEach(row => { const mm = Number(row.quantity) * scale; if (Number(row.component_count) !== 1 || !(mm >= 500000 && mm <= 100000000) || seen.has(mm)) return; seen.add(mm); list.push({ mm, combo: String(row.combo_sku || "") }); });
+            state.specChoices = list; renderSpecChoices();
+            if (list.length === 1 && !isFinite(num(fields.threadSpec))) { fields.threadSpec.value = String(list[0].mm / 1000); state.threadSpecUnit = "m"; pressed("uc-thread-spec-unit", "unit", "m"); }
+            if (list.length) $("uc-picked-spec").textContent = [$("uc-picked-spec").textContent.replace(/^Chưa có quy cách\/Tex$/, ""), list.length === 1 ? `${fmt(list[0].mm / 1000)} m/cuộn theo Combo ${list[0].combo}` : `${list.length} quy cách theo Combo`].filter(Boolean).join(" · ");
+            compute();
+          } catch (_) {}
+        };
         const step = (n, title, value, total) => `<div class="fsk-step${total ? " tong" : ""}"><span class="n">${n}</span><span class="t">${title}</span><span class="v">${value}</span></div>`;
         const setKind = kind => {
           state.kind = kind === "fabric" ? "fabric" : "thread";
@@ -7284,7 +7383,7 @@ var FSK_CORE = (function () {
         };
         const showInvalid = result => {
           state.result = null; $("uc-result").hidden = true; $("uc-empty").hidden = false;
-          $("uc-empty").innerHTML = result?.missing ? `Còn thiếu: <b>${result.missing.map(esc).join("</b> · <b>")}</b>.` : result?.reason ? `<b>Không tính được:</b> ${esc(result.reason)}` : "Nhập số liệu cân để máy tính.";
+          $("uc-empty").innerHTML = result?.reason ? `<b>Không tính được:</b> ${esc(result.reason)}` : ""; $("uc-empty").hidden = !$("uc-empty").innerHTML;
         };
         const renderResult = (result, input) => {
           state.result = result; $("uc-empty").hidden = true; $("uc-result").hidden = false;
@@ -7294,6 +7393,7 @@ var FSK_CORE = (function () {
           $("uc-basis").textContent = result.material === "thread"
             ? (result.method === "scale" ? `Cân cuộn · Tex ${fmt(result.tex, 1)}` : `Tex ${fmt(result.texInput, 1)}`)
             : (result.method === "scale" ? `${fmt(result.gPerM, 1)} g/m cân thật` : `${fmt(result.gPerM, 1)} g/m theo GSM`);
+          $("uc-sub").textContent = `${fmt(result.mm / 1000, 1)} m · ${$("uc-basis").textContent}`;
           const warning = $("uc-warning"); warning.hidden = true; warning.dataset.tone = ""; warning.textContent = "";
           if (result.flag === "impossible") warning.textContent = `Số liệu vô lý: trung bình mỗi cuộn thừa ${fmt(result.avgMm)} mm, dài hơn cuộn nguyên ${fmt(input.specMm)} mm. Kiểm tra đơn vị cân, số cuộn và thông số cuộn nguyên.`;
           else if (result.differencePct > 5) warning.textContent = `Hai thước đo lệch ${fmt(result.differencePct, 1)}%. Máy đang ưu tiên cân cuộn nguyên; hãy kiểm tra lại thông số trên tem hoặc số cân mẫu.`;
@@ -7315,10 +7415,10 @@ var FSK_CORE = (function () {
           // Chỉ chuyển sang in khi đơn vị thật của SKU là chiều dài. SKU vải lưu theo gram vẫn
           // được tính/copy mm, nhưng không được gắn nhầm số mm lên tem có đơn vị g.
           const use = $("uc-use"); use.hidden = !(state.selected?.sku && state.selected?.pn && FSK_CORE.unitOf(state.selected.pn).isLength);
-          use.textContent = state.returnTo === "find-sku" ? "Quay lại TÌM SKU để in" : "Đưa sang TÌM SKU để in";
+          use.textContent = "In ở TÌM SKU";
         };
         function compute() {
-          updateTotalDoc();
+          updateTotalDoc(); updateSummary();
           if (state.kind === "thread") {
             const specValue = num(fields.threadSpec);
             const specMm = isFinite(specValue) ? specValue * (state.threadSpecUnit === "yard" ? 0.9144 : 1) * 1000 : NaN;
@@ -7347,7 +7447,7 @@ var FSK_CORE = (function () {
           return await lookupSku(value) || await lookupUid(value);
         };
         const applyProduct = hit => {
-          state.selected = hit;
+          state.selected = hit; state.specChoices = []; state.comboRun += 1; renderSpecChoices();
           $("uc-picked").hidden = false; $("uc-picked-code").textContent = hit.uid ? `${hit.uid} · SKU ${hit.sku || "—"}` : `SKU ${hit.sku}`;
           $("uc-picked-name").textContent = hit.pn || "Tên sản phẩm chưa có trong danh mục";
           $("uc-lookup-summary").textContent = hit.uid ? `UID ${hit.uid} · SKU ${hit.sku || "—"}` : `Đã chọn SKU ${hit.sku}`;
@@ -7356,19 +7456,20 @@ var FSK_CORE = (function () {
             const spec = FSK_CORE.specFromName(hit.pn), tex = FSK_CORE.texFromName(hit.pn);
             if (spec) { fields.threadSpec.value = String(spec / 1000); state.threadSpecUnit = "m"; pressed("uc-thread-spec-unit", "unit", "m"); }
             if (tex) fields.threadTex.value = String(tex);
-            $("uc-picked-spec").textContent = [spec && `${fmt(spec / 1000)} m/cuộn`, tex && `Tex ${fmt(tex, 1)}`].filter(Boolean).join(" · ") || "Không đọc được quy cách/Tex — nhập tay bên dưới.";
+            if (!spec && FSK_CORE.unitOf(hit.pn).isLength) loadComboSpecs(hit.sku);
+            $("uc-picked-spec").textContent = [spec && `${fmt(spec / 1000)} m/cuộn`, tex && `Tex ${fmt(tex, 1)}`].filter(Boolean).join(" · ") || "Chưa có quy cách/Tex";
           } else if (material === "fabric") {
             const spec = FSK_CORE.fabricFromName(hit.pn);
             if (spec.widthCm) { fields.fabricWidth.value = String(Number(spec.widthCm.toFixed(3))); state.fabricWidthUnit = "cm"; pressed("uc-fabric-width-unit", "unit", "cm"); }
             if (spec.gsm) fields.fabricGsm.value = String(spec.gsm);
-            $("uc-picked-spec").textContent = [spec.widthCm && `khổ ${fmt(spec.widthCm, 1)} cm`, spec.gsm && `${fmt(spec.gsm)} gsm`].filter(Boolean).join(" · ") || "Không đọc được khổ/GSM — nhập tay bên dưới.";
-          } else $("uc-picked-spec").textContent = "Chưa nhận diện được loại hàng — chọn Chỉ hoặc Vải rồi nhập tay.";
+            $("uc-picked-spec").textContent = [spec.widthCm && `khổ ${fmt(spec.widthCm, 1)} cm`, spec.gsm && `${fmt(spec.gsm)} gsm`].filter(Boolean).join(" · ") || "Chưa có khổ/GSM";
+          } else $("uc-picked-spec").textContent = "Chưa nhận diện được loại hàng";
           compute();
           $("uc-lookup-details").open = false;
         };
         const runLookup = async code => {
-          tell(`Đang tra ${code}…`); try { const hit = await lookup(code); if (!hit) return tell("Không tìm thấy mã này. Bạn vẫn có thể nhập thông số bằng tay.", "warn"); applyProduct(hit); tell(`Đã đọc thông số từ ${hit.uid ? "Group UID" : "SKU"}. Kiểm tra lại trước khi dùng.`, "ok"); }
-          catch (error) { tell(`Không tra được mã: ${error.message}. Có thể tiếp tục nhập tay.`, "error"); }
+          tell(`Đang tra ${code}…`); try { const hit = await lookup(code); if (!hit) return tell("Không tìm thấy mã này.", "warn"); applyProduct(hit); tell(""); }
+          catch (error) { tell(`Không tra được mã: ${error.message}`, "error"); }
         };
         $("uc-code-form").addEventListener("submit", event => { event.preventDefault(); const code = $("uc-code").value.trim(); if (code) runLookup(code); });
         $("uc-camera").hidden = !window.PrintSkuScanUI?.canOpen?.();
@@ -7378,11 +7479,12 @@ var FSK_CORE = (function () {
         Object.keys(unitGroups).forEach(id => $(id).addEventListener("click", event => { const button = event.target.closest("button[data-unit]"); if (!button) return; state[unitGroups[id]] = button.dataset.unit; pressed(id, "unit", button.dataset.unit); compute(); }));
         $("uc-thread-full-mode").addEventListener("click", event => { const button = event.target.closest("button[data-mode]"); if (!button) return; state.fullIncludesCore = button.dataset.mode !== "thread"; pressed("uc-thread-full-mode", "mode", button.dataset.mode); compute(); });
         Object.values(fields).forEach(input => input.addEventListener("input", compute));
+        $("uc-spec-choices").addEventListener("click", event => { const chip = event.target.closest("button[data-mm]"); if (!chip) return; fields.threadSpec.value = String(Number(chip.dataset.mm) / 1000); state.threadSpecUnit = "m"; pressed("uc-thread-spec-unit", "unit", "m"); compute(); });
         $("uc-next").addEventListener("click", () => {
           fields.total.value = "";
           if (state.kind === "thread") fields.threadCones.value = "";
           compute();
-          tell(state.selected ? "Đã giữ SKU và thông số hàng. Nhập số cân của lô tiếp theo." : "Đã giữ thông số hàng. Nhập số cân của lô tiếp theo.", "ok");
+          tell("");
           fields.total.focus();
         });
         $("uc-clear").addEventListener("click", () => {
@@ -7390,9 +7492,9 @@ var FSK_CORE = (function () {
           state.selected = null;
           $("uc-picked").hidden = true;
           $("uc-code").value = "";
-          $("uc-lookup-summary").textContent = "Không bắt buộc";
+          $("uc-lookup-summary").textContent = ""; state.specChoices = []; state.comboRun += 1; renderSpecChoices();
           $("uc-lookup-details").open = true;
-          tell("Đã xóa SKU và toàn bộ số liệu. Có thể bắt đầu lại.", "ok");
+          tell("");
           compute();
           $("uc-code").focus();
         });
@@ -7407,7 +7509,7 @@ var FSK_CORE = (function () {
           if (data.sku && data.pn) applyProduct({ code: data.sku, sku: data.sku, pn: data.pn, uid: "" });
           if (data.specMm > 0) { fields.threadSpec.value = String(data.specMm / 1000); state.threadSpecUnit = "m"; pressed("uc-thread-spec-unit", "unit", "m"); }
           if (data.tex > 0) fields.threadTex.value = String(data.tex);
-          tell("Đã mang SKU từ TÌM SKU sang. Nhập số cân để tính, rồi quay lại in tem.", "ok"); compute();
+          tell(""); compute();
         };
         let wasOpen = false;
         const render = () => { const open = active(); screen.hidden = !open; if (!open) { wasOpen = false; return; } if (!wasOpen) { wasOpen = true; loadContext(); } compute(); };
