@@ -455,8 +455,8 @@ Mở **CHUYỂN ĐỔI ĐƠN VỊ** ở WH-MATERIAL hoặc `#unit-converter`:
   hiện chip (icon móc xích, mở tooltip "Theo Combo …") để chọn, không tự chọn hộ. Quy cách trong tên SKU (nếu có) và số người dùng gõ luôn thắng.
   Từ TÌM SKU, chọn Combo → Normal cũng mang theo `combo.ratio` làm quy cách.
 - **Điện thoại (10/10/2026).** Kết quả mm (kèm "mét · thước đang dùng") nằm trên cùng, thanh dưới dính đáy có **Copy** và **In ở TÌM SKU**.
-  Mỗi lô chỉ nhập **tổng khối lượng** và **số cuộn thừa**; các thông số ít đổi (quy cách, Tex, khối lượng 1 lõi, khối lượng 1 cuộn nguyên; vải: khổ, GSM, cuộn nguyên)
-  gom thành một dòng tóm tắt ("5.000 m · Tex 27 · lõi 14 g") — chạm mở popup **Thông số hàng**; "Cách tính" (mét, mm/gram, các bước) là popup mở bằng icon ⓘ.
+  Mỗi lô chỉ nhập **tổng khối lượng**, **số cuộn thừa** và **khối lượng 1 lõi** (hai ô sau cùng một hàng, kể cả điện thoại); các thông số ít đổi (quy cách, Tex, khối lượng 1 cuộn nguyên; vải: khổ, GSM, cuộn nguyên)
+  gom thành một dòng tóm tắt ("5.000 m · Tex 27") — chạm mở popup **Thông số hàng**; "Cách tính" (mét, mm/gram, các bước) là popup mở bằng icon ⓘ.
   Popup là `dialog.uc-sheet`: ≤ 800 px là tờ trượt dưới (modal), từ 801 px mở không-modal ngay trong trang như bố cục cũ (JS `matchMedia`). Đã bỏ các câu hướng dẫn và
   dòng "Còn thiếu: …". Test: `tests/unit_converter_browser.cjs`.
 - Mục nhận diện có thể thu gọn và tự thu sau khi tra thành công. **Lô tiếp theo** giữ SKU/thông số

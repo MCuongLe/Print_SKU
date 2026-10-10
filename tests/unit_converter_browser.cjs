@@ -50,14 +50,18 @@ const assert = require('node:assert/strict');
       await withParams('thread', async () => {
         await page.locator('#uc-thread-spec').fill('5000');
         await page.locator('#uc-thread-tex').fill('27');
-        await page.locator('#uc-thread-core').fill('14');
       });
+      // Khối lượng 1 lõi nằm ngoài popup, cùng hàng với Số cuộn thừa (cả trên điện thoại).
+      assert.equal(await page.locator('#uc-thread-params #uc-thread-core').count(), 0, 'khối lượng lõi không còn trong popup Thông số hàng');
+      const coneBox = await page.locator('#uc-thread-cones').boundingBox(), coreBox = await page.locator('#uc-thread-core').boundingBox();
+      assert.ok(Math.abs(coneBox.y - coreBox.y) < 2 && coreBox.x > coneBox.x, `Số cuộn thừa và Khối lượng 1 lõi cùng một hàng (${width}px)`);
+      await page.locator('#uc-thread-core').fill('14');
       await page.locator('#uc-total').fill('10000');
       await page.locator('#uc-weight-unit [data-unit="g"]').click();
       await page.locator('#uc-thread-cones').fill('10');
       await page.waitForFunction(() => document.querySelector('#uc-mm')?.textContent === '365.185.185');
       assert.equal(await page.locator('#uc-basis').innerText(), 'Tex 27');
-      assert.equal((await page.locator('#uc-thread-open span').innerText()).trim(), '5.000 m · Tex 27 · lõi 14 g', 'dòng tóm tắt thông số hàng');
+      assert.equal((await page.locator('#uc-thread-open span').innerText()).trim(), '5.000 m · Tex 27', 'dòng tóm tắt thông số hàng (không lặp khối lượng lõi)');
       assert.match(await page.locator('#uc-sub').innerText(), /^365\.185[,.]2 m · Tex 27$/, 'dòng phụ dưới kết quả: mét + thước đang dùng');
       assert.equal(await page.locator('.uc-steps-open').isVisible(), modal);
       if (modal) {
