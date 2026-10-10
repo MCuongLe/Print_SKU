@@ -1359,7 +1359,7 @@ Error generating stack: `+y.message+`
       .ins-fields input[readonly] { color: var(--wms-brand, #005f41); }
       .ins-scroll { overflow-x: auto; }
       .ins-table { display: grid; gap: 6px; min-width: 860px; }
-      .ins-row { display: grid; grid-template-columns: 110px minmax(240px, 1fr) 170px 150px 90px 70px; gap: 8px; align-items: center; }
+      .ins-row { display: grid; grid-template-columns: 110px minmax(240px, 1fr) 230px 150px 90px 70px; gap: 8px; align-items: center; }
       .ins-row--head { padding: 0 2px; color: var(--wms-muted, #60736b); font-size: 9px; font-weight: 900; letter-spacing: .07em; text-transform: uppercase; }
       .ins-row input { width: 100%; min-height: 42px; box-sizing: border-box; padding: 9px 10px; border: 1px solid var(--wms-border, #d9e2de); border-radius: 10px; outline: none; color: var(--wms-text, #17251f); background: #fff; font: 700 13px/1.2 Arial, Helvetica, sans-serif; }
       .ins-row input:focus { border-color: var(--wms-brand, #005f41); }
@@ -2776,13 +2776,14 @@ Error generating stack: `+y.message+`
 
         const parsePo = rows => {
           const norm = value => typeof value === "number" ? String(Number.isInteger(value) ? value : value) : String(value ?? "").trim();
-          let invoice = "", rcvdDate = "";
+          let invoice = "", rcvdDate = "", vendor = "";
           let headerRow = -1;
           const cols = { stt: 0, sku: 1, ten: 2, ncc: 4, qty: 5 };
           rows.forEach((row, r) => {
             row.forEach((cell, c) => {
               const text = norm(cell);
               if (text === "Mã số" && !invoice) { for (let k = c + 1; k < row.length; k += 1) { const next = norm(row[k]); if (next) { invoice = next; break; } } }
+              if (text === "Nhà cung cấp" && !vendor) vendor = norm(rows[r + 1]?.[c]);
               const dateMatch = text.match(/Ngày giao:\s*(?:\d{1,2}:\d{2}\s*)?(\d{1,2}\/\d{1,2}\/\d{4})/);
               if (dateMatch && !rcvdDate) rcvdDate = dateMatch[1];
             });
@@ -2811,7 +2812,7 @@ Error generating stack: `+y.message+`
               list.push({ sku, name: parts.name, supplier: parts.supplier, colour: parts.colour, qty, unit: inferUnitFromName(ten) || "pcs" });
             }
           }
-          return { invoice, rcvdDate, items: list };
+          return { invoice, rcvdDate, vendor, items: list };
         };
 
         const updateTotals = () => {
@@ -2868,7 +2869,7 @@ Error generating stack: `+y.message+`
           if (!named.length) return;
           const parts = named.map(row => parseNameParts(row.name));
           if (item.name === item.poName) { item.names = named.map(row => row.name); item.name = item.names.join(" + "); }
-          if (item.supplier === item.poSupplier) item.supplier = uniqueJoin(parts.map(part => part.supplier)) || item.supplier;
+          if (!item.supplierFromVendor && item.supplier === item.poSupplier) item.supplier = uniqueJoin(parts.map(part => part.supplier)) || item.supplier;
           if (item.colour === item.poColour) item.colour = uniqueJoin(parts.map(part => part.colour)) || item.colour;
         };
         const paintItem = item => {
@@ -2880,7 +2881,7 @@ Error generating stack: `+y.message+`
             const input = row.querySelector(`input[data-field="${field}"]`);
             if (!input || input === document.activeElement) continue;
             input.value = item[field];
-            if (field === "name") input.title = item.name;
+            if (field === "name" || field === "supplier") input.title = item[field];
           }
         };
         // Trả về số dòng Combo chưa có SKU Normal (chưa liên kết hoặc tra lỗi). Gọi lại là thử lại các dòng lỗi.
@@ -2908,7 +2909,7 @@ Error generating stack: `+y.message+`
             <div class="ins-row" data-index="${index}">
               ${skuCellHtml(item)}
               <input data-field="name" value="${escapeHtml(item.name)}" title="${escapeHtml(item.name)}">
-              <input data-field="supplier" value="${escapeHtml(item.supplier)}">
+              <input data-field="supplier" value="${escapeHtml(item.supplier)}" title="${escapeHtml(item.supplier)}">
               <input data-field="colour" value="${escapeHtml(item.colour)}">
               <input data-field="qty" type="number" min="1" value="${Math.floor(Number(item.qty)) || 0}" title="Đơn vị: ${escapeHtml(normalizeUnit(item.unit) || "pcs")}">
               <input data-field="aql" readonly value="${aqlSample(Math.floor(Number(item.qty)) || 0)}">
@@ -2921,11 +2922,17 @@ Error generating stack: `+y.message+`
           return match ? `${match[3]}/${match[2]}/${match[1]}` : String(value || "").trim();
         };
 
+        // Trim Supplier = tên nhà cung cấp trên PO (tên pháp nhân). Danh sách PO của Inside trả "<tên> - <người liên hệ>" nên cắt hậu tố
+        // ở nguồn extension; Excel "Phiếu mua" đã là tên sạch (có tên pháp nhân chứa " - " thật nên không cắt). "Nhà cung cấp nhỏ lẻ" đại
+        // diện nhiều nhà thật → dùng NCC trong tên SKU như trước.
+        const stripVendorContact = value => { const text = String(value || "").trim(); const cut = text.lastIndexOf(" - "); return cut > 0 ? text.slice(0, cut).trim() : text; };
+        const usableVendor = value => { const text = String(value || "").trim(); return text && !/nhỏ lẻ/i.test(text) ? text : ""; };
         const applyPoData = (po, sourceLabel) => {
           if (!po || !Array.isArray(po.items)) throw new Error("Dữ liệu PO không đúng định dạng");
           if (po.warehouse && !String(po.warehouse).toUpperCase().includes("WH - MATERIAL - MTG")) {
             throw new Error(`PO thuộc kho ${po.warehouse}, không phải WH - MATERIAL - MTG`);
           }
+          const poVendor = usableVendor(po.vendor);
           const normalized = po.items.map(raw => {
             const name = String(raw.name || raw.productName || "").trim();
             const parts = parseNameParts(name);
@@ -2934,14 +2941,14 @@ Error generating stack: `+y.message+`
             return {
               sku: String(raw.sku || "").trim(),
               name: parts.name,
-              supplier: parts.supplier || String(raw.supplier || "").trim(),
+              supplier: poVendor || parts.supplier || String(raw.supplier || "").trim(),
               colour: parts.colour || String(raw.colour || raw.color || "").trim(),
               qty,
               unit
             };
           }).filter(item => item.sku && item.name && item.qty > 0);
           if (!normalized.length) throw new Error("PO không có dòng phụ liệu hợp lệ");
-          normalized.forEach(item => { item.poName = item.name; item.poSupplier = item.supplier; item.poColour = item.colour; });
+          normalized.forEach(item => { item.poName = item.name; item.poSupplier = item.supplier; item.poColour = item.colour; item.supplierFromVendor = Boolean(poVendor); });
           lookupGeneration += 1;
           items = normalized;
           fields.po.value = String(po.poCode || po.invoice || "").trim();
@@ -3008,7 +3015,7 @@ Error generating stack: `+y.message+`
             await callInsideConnector("PING", {}, 1800).catch(() => { throw new Error(wasReady ? "Tiện ích vừa được cập nhật — tải lại trang (F5)" : "Không tìm thấy tiện ích kết nối Inside"); });
             setConnectorState("ready", "Tiện ích đã kết nối");
             const po = await callInsideConnector("GET_PO", { poCode });
-            applyPoData(po, "Inside");
+            applyPoData({ ...po, vendor: stripVendorContact(po.vendor) }, "Inside");
           } catch (error) {
             const message = String(error?.message || error);
             if (/tải lại trang/i.test(message)) setConnectorState("error", "Tải lại trang");
@@ -3053,7 +3060,7 @@ Error generating stack: `+y.message+`
             if (bytes[0] === 0x50 && bytes[1] === 0x4b) rows = await readXlsxRows(bytes);
             else rows = readXlsRows(bytes);
             const po = parsePo(rows);
-            applyPoData({ poCode: po.invoice, rcvdDate: po.rcvdDate, items: po.items }, "file");
+            applyPoData({ poCode: po.invoice, rcvdDate: po.rcvdDate, vendor: po.vendor, items: po.items }, "file");
           } catch (error) {
             setStatus(`Không đọc được file: ${String(error?.message || error)}`, "error");
           } finally {
