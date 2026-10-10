@@ -9,7 +9,8 @@ const changes = [
 const counts = { added: 1, updated: 1, unchanged: 0, missing: 0, issues: 0, totalChanges: 2 };
 const warnCounts = { ...counts, missing: 3, issues: 1 };
 let scenario = "normal", cancelCalls = 0;
-const MANY = Array.from({ length: 120 }, (_, i) => ({ groupUidCode: `1028261006${String(i).padStart(6, "0")}`, changeType: "updated", before: { qty: 1000 + i, status: "Available", location: `A-${i}` }, after: { qty: 1180 + i, status: "Allocated", location: `B-${i}` }, changedFields: i % 2 ? ["qty", "status"] : ["qty", "location"], sourceUpdatedAt: new Date(Date.UTC(2026, 9, 8, 1, 0, i)).toISOString() }));
+const WHS = ["WH - MATERIAL - MTG", "WH - MATERIAL - GARMENT", "WH - SEMI PRODUCT - MTG"];
+const MANY = Array.from({ length: 120 }, (_, i) => ({ groupUidCode: `1028261006${String(i).padStart(6, "0")}`, changeType: "updated", before: { qty: 1000 + i, status: "Available", location: `A-${i}`, warehouse: WHS[i % 3] }, after: { qty: 1180 + i, status: "Allocated", location: `B-${i}`, warehouse: WHS[i % 3] }, changedFields: i % 2 ? ["qty", "status"] : ["qty", "location"], sourceUpdatedAt: new Date(Date.UTC(2026, 9, 8, 1, 0, i)).toISOString() }));
 const manyCounts = { added: 0, updated: 120, unchanged: 1880, missing: 0, issues: 0, totalChanges: 120 };
 
 const fakeExtension = () => addEventListener("message", event => {
@@ -79,8 +80,24 @@ async function mock(page) {
       const rowText=await page.locator("#gu-change-body tr").first().innerText();for(const part of ["Số lượng","+180"])assert.equal(rowText.includes(part),true,part);assert.equal(rowText.includes("updated_date"),false);
       await page.locator("#gu-tools input").fill("000050");assert.equal(await page.locator("#gu-change-body tr").count(),1);assert.equal((await page.locator("#gu-change-note").innerText()).trim(),"1 / 120 dòng");await page.locator("#gu-tools input").fill("");
       await page.locator('[data-as-tag="loc"]').click();assert.equal((await page.locator("#gu-pager").innerText()).includes("/ 60"),true);await page.locator('[data-as-tag="loc"]').click();
-      await page.locator('[data-as-sort="wms"]').click();assert.equal(await page.locator("#gu-change-head th[aria-sort=descending]").count(),1);assert.equal((await page.locator("#gu-change-body code").first().innerText()).trim().endsWith("000119"),true,"mới nhất đứng đầu");
-      const [download]=await Promise.all([page.waitForEvent("download"),page.locator("#gu-tools [data-as-export]").click()]);assert.equal(download.suggestedFilename().startsWith("group-uid-updated-"),true);const csv=require("node:fs").readFileSync(await download.path(),"utf8");assert.equal(csv.charCodeAt(0),0xfeff);assert.equal(csv.trim().split(String.fromCharCode(13,10)).length,121,"tiêu đề + 120 dòng");
+      // Cột Kho + bộ lọc Kho (chọn nhiều, có số đếm), chip cũ đổi tên "Đổi kho"
+      assert.deepEqual(await page.locator("#gu-change-head th").allInnerTexts(),["Group UID","Kho","Thay đổi","Cập nhật WMS"]);
+      assert.equal((await page.locator("#gu-change-body tr").first().locator("td").nth(1).innerText()).includes("WH - "),true,"mỗi dòng hiện kho");
+      await page.locator('[data-as-facet="wh"] .as-facet-btn').click();
+      assert.equal(await page.locator(".as-facet-pop").isVisible(),true);assert.equal(await page.locator(".as-opt").count(),3);
+      for(const n of await page.locator(".as-opt b").allInnerTexts())assert.equal(n.trim(),"40","mỗi kho 40 dòng");
+      await page.locator('.as-opt:has-text("MATERIAL - GARMENT") input').check();
+      assert.equal((await page.locator("#gu-pager").innerText()).includes("/ 40"),true);assert.equal(await page.locator(".as-facet-pop").isVisible(),true,"chọn xong danh sách vẫn mở");
+      assert.equal((await page.locator(".as-facet-btn").innerText()).includes("1"),true,"nút Kho hiện số kho đã chọn");
+      await page.keyboard.press("Escape");assert.equal(await page.locator(".as-facet-pop").count(),0,"Esc đóng danh sách kho");assert.equal(await page.locator("#gu-dialog").evaluate(d=>d.open),true,"Esc chỉ đóng danh sách, không đóng cửa sổ");
+      assert.equal((await page.locator("#gu-pager").innerText()).includes("/ 40"),true,"bộ lọc kho còn hiệu lực sau khi đóng");
+      await page.locator('[data-as-tag="loc"]').click();assert.equal((await page.locator("#gu-pager").innerText()).includes("/ 20"),true,"kho GARMENT và đổi vị trí = 20");await page.locator('[data-as-tag="loc"]').click();
+      await page.locator('[data-as-facet="wh"] .as-facet-btn').click();assert.deepEqual(await page.locator(".as-opt b").allInnerTexts(),["40","40","40"]);
+      await page.locator('.as-opt:has-text("SEMI PRODUCT") input').check();assert.equal((await page.locator("#gu-pager").innerText()).includes("/ 80"),true,"chọn 2 kho = 80");
+      await page.locator("[data-as-clear]").click();assert.equal((await page.locator("#gu-pager").innerText()).includes("/ 120"),true,"Xóa chọn trả về đủ 120");await page.keyboard.press("Escape");
+      await page.locator("#gu-tools input").fill("semi product");assert.equal((await page.locator("#gu-change-note").innerText()).trim(),"40 / 120 dòng","ô tìm tìm được cả theo tên kho");await page.locator("#gu-tools input").fill("");
+            await page.locator('[data-as-sort="wms"]').click();assert.equal(await page.locator("#gu-change-head th[aria-sort=descending]").count(),1);assert.equal((await page.locator("#gu-change-body code").first().innerText()).trim().endsWith("000119"),true,"mới nhất đứng đầu");
+      const [download]=await Promise.all([page.waitForEvent("download"),page.locator("#gu-tools [data-as-export]").click()]);assert.equal(download.suggestedFilename().startsWith("group-uid-updated-"),true);const csv=require("node:fs").readFileSync(await download.path(),"utf8");assert.equal(csv.charCodeAt(0),0xfeff);assert.equal(csv.trim().split(String.fromCharCode(13,10)).length,121,"tiêu đề + 120 dòng");assert.equal(csv.split(String.fromCharCode(13,10))[0].includes('"Kho"'),true,"CSV có cột Kho");assert.equal(csv.includes("WH - SEMI PRODUCT - MTG"),true);
       await page.keyboard.press("Escape");await page.locator("#gu-dialog").waitFor({state:"hidden"});
       await page.locator("#gu-cancel").click();await confirm.waitFor({state:"visible"});await confirm.locator(".whd-ok").click();await page.waitForFunction(()=>/Đã hủy bản xem trước/.test(document.getElementById("gu-status").textContent));scenario="normal";
       assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);assert.deepEqual(errors,[]);await context.close();console.log(`PASS ${width}px: Group UID full/preview/detail/apply, cảnh báo, hủy xem trước, responsive`);
