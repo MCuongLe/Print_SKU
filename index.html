@@ -1617,7 +1617,7 @@ Error generating stack: `+y.message+`
             </form>
             <section class="uid-card uid-panel" aria-labelledby="uid-pending-title">
               <div class="uid-panel__head">
-                <b class="uid-panel__num">3</b>
+                <b class="uid-panel__num">2</b>
                 <h2 id="uid-pending-title">Chưa gán SKU</h2>
                 <span class="uid-badge" id="uid-pending-count">0</span>
               </div>
@@ -1631,7 +1631,7 @@ Error generating stack: `+y.message+`
           </div>
           <div class="uid-col">
             <section class="uid-card uid-assign" aria-labelledby="uid-assign-title">
-              <div class="uid-panel__head"><b class="uid-panel__num">2</b><h2 id="uid-assign-title">Gán SKU</h2></div>
+              <div class="uid-panel__head"><b class="uid-panel__num">3</b><h2 id="uid-assign-title">Gán SKU</h2></div>
               <div class="uid-tabs" role="tablist" aria-label="Chế độ gán SKU">
                 <button id="uid-tab-manual" type="button" role="tab" aria-selected="true">Gán theo tick chọn</button>
                 <button id="uid-tab-auto" type="button" role="tab" aria-selected="false">Gán tự động</button>
@@ -3347,7 +3347,7 @@ Error generating stack: `+y.message+`
               <div class="uid-panel__head"><b class="uid-panel__num">1</b><h2>Quét SKU hàng mẫu</h2></div>
               <label class="uid-add__label" for="sample-sku">Mã SKU</label>
               <div class="uid-add__row">
-                <input id="sample-sku" autocomplete="off" spellcheck="false" enterkeyhint="done" placeholder="Quét mã QR bằng máy Honeywell…" required>
+                <input id="sample-sku" autocomplete="off" spellcheck="false" enterkeyhint="done" placeholder="Quét mã SKU" required>
                 <button class="uid-add__btn act-icon act-icon--check" id="sample-add" type="submit">Kiểm tra</button>
               </div>
               <button class="sample-kb act-icon act-icon--keyboard" id="sample-keyboard" type="button" aria-pressed="true">Hiện bàn phím</button>
@@ -3468,7 +3468,7 @@ Error generating stack: `+y.message+`
           totalQtyElement.textContent = String(totalQuantity());
           exportButton.disabled = !bags.length;
           if (!bags.length) {
-            listElement.innerHTML = '<div class="uid-empty">Chưa có bao nào.<br>Quét SKU đầu tiên để mở bao số 1.</div>';
+            listElement.innerHTML = '<div class="uid-empty">Chưa có bao nào.</div>';
             return;
           }
           listElement.innerHTML = bags.map(bag => {
@@ -3544,7 +3544,7 @@ Error generating stack: `+y.message+`
             }));
             await fetchNames(bags.map(bag => bag.sku)).catch(() => {});
             render();
-            if (!quiet) setStatus(bags.length ? `Đang có ${bags.length} bao · ${totalQuantity()} mẫu.` : "Chưa có bao nào — quét SKU đầu tiên để mở bao số 1.", "");
+            if (!quiet) setStatus(bags.length ? `Đang có ${bags.length} bao · ${totalQuantity()} mẫu.` : "", "");
           } catch (error) {
             if (!quiet) setStatus(`Không đọc được danh sách bao: ${String(error?.message || error)}`, "error");
           }
@@ -4190,10 +4190,10 @@ Error generating stack: `+y.message+`
       <header class="uid-topbar"><div class="uid-topbar__inner"><button class="uid-back" id="cut-back" type="button" aria-label="Quay lại trang chủ WH-MATERIAL">WH-MATERIAL</button><span class="uid-topbar__mark" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5.42 9.42 8 12M14 6l-8.58 8.58M10.8 14.8 14 18M16 12h-2M22 12h-2"/><circle cx="4" cy="8" r="2"/><circle cx="4" cy="16" r="2"/></svg></span><div class="uid-topbar__name"><h1 id="cut-title">CẮT GROUP UID</h1><span>Quét UID · lưu tem · in và tra cứu</span></div><button class="uid-topbar__admin" id="cut-admin" type="button" aria-pressed="false" aria-label="Đăng nhập Admin" title="Đăng nhập Admin"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path class="uid-topbar__admin-check" d="m9 12 2 2 4-4"/></svg></button></div></header>
       <main class="cut-main">
         <div class="cut-tabs" role="tablist">
-          <button class="cut-tab" id="cut-tab-scan" type="button" role="tab" data-tab="scan" aria-selected="true">1 · Quét Group UID</button>
-          <button class="cut-tab" id="cut-tab-data" type="button" role="tab" data-tab="data" aria-selected="false">2 · Tra cứu UID đã cắt <b class="cut-badge" id="cut-found">0</b></button>
-          <button class="cut-tab" id="cut-tab-print" type="button" role="tab" data-tab="print" aria-selected="false">3 · Tem chờ in <b class="cut-badge" id="cut-count">0</b></button>
-          <button class="cut-tab" id="cut-tab-adj" type="button" role="tab" data-tab="adj" aria-selected="false">4 · Đối chiếu <b class="cut-badge" id="cut-adj-issues">0</b></button>
+          <button class="cut-tab" id="cut-tab-scan" type="button" role="tab" data-tab="scan" aria-selected="true"><i class="fsk-tab-n" aria-hidden="true">1</i><span class="tab-l">Quét Group UID</span><span class="tab-s">Quét</span></button>
+          <button class="cut-tab" id="cut-tab-data" type="button" role="tab" data-tab="data" aria-selected="false"><i class="fsk-tab-n" aria-hidden="true">2</i><span class="tab-l">Tra cứu UID đã cắt</span><span class="tab-s">Tra cứu</span> <b class="cut-badge" id="cut-found">0</b></button>
+          <button class="cut-tab" id="cut-tab-print" type="button" role="tab" data-tab="print" aria-selected="false"><i class="fsk-tab-n" aria-hidden="true">3</i><span class="tab-l">Tem chờ in</span><span class="tab-s">Chờ in</span> <b class="cut-badge" id="cut-count">0</b></button>
+          <button class="cut-tab" id="cut-tab-adj" type="button" role="tab" data-tab="adj" aria-selected="false"><i class="fsk-tab-n" aria-hidden="true">4</i>Đối chiếu <b class="cut-badge" id="cut-adj-issues">0</b></button>
         </div>
         <p class="cut-message" id="cut-message" aria-live="polite" style="margin-bottom:14px"></p>
         <div class="cut-grid">
@@ -4678,6 +4678,72 @@ Error generating stack: `+y.message+`
         #find-sku-screen .fsk-bar__sum { font-weight: 600; }
         #find-sku-screen .cut-selectall { font-size: 14px; font-weight: 600; }
         #find-sku-screen .cut-selectall span, #find-sku-screen .cut-row strong { font-weight: 600; }
+      }
+    </style>
+    <style id="mobile-pro-modules">
+      /* Đợt 1 (10/10/2026): đưa kiểu điện thoại của TÌM SKU / CHUYỂN ĐỔI ĐƠN VỊ sang IN TEM GROUP UID, TEM XẢ VẢI, MÃ VỊ TRÍ, CẮT GROUP UID,
+         THEO DÕI XẢ VẢI, KIỂM TRA ĐẦU VÀO, GOM HÀNG MẪU, RỦI RO LƯU TRỮ: font hệ thống, chữ đậm vừa, nhãn chữ thường, số thứ tự khối cùng một kiểu,
+         thẻ phẳng, ô nhập có tiêu điểm nhẹ, nút 46 px, tab nút chọn liền khối với nhãn ngắn. Bản máy tính chỉ đổi nhãn tab (số tròn) và ẩn
+         dòng "Tìm thấy …" của Tra cứu khi đang ở tab Quét. */
+      .cut-tab .tab-s { display: none; }
+      #cut-group-uid-screen:has(#cut-tab-scan[aria-selected="true"]) #cut-message[data-kind="search"],
+      #xa-vai-screen:has(#xa-vai-tab-scan[aria-selected="true"]) #xa-vai-message[data-kind="search"] { display: none; }
+      #cut-group-uid-screen .cut-tab[aria-selected="true"] .fsk-tab-n, #xa-vai-screen .cut-tab[aria-selected="true"] .fsk-tab-n { background: var(--wms-brand, #005f41); color: #fff; }
+      @media (max-width: 800px) {
+        :is(#uid-screen, #ins-screen, #sample-screen, #fabric-screen, #cut-group-uid-screen, #xa-vai-screen, #location-screen, #storage-risk-screen) {
+          --pro-font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+          --pro-line: #e1e9e5; --pro-field: #d3ddd9; --pro-muted: #5c6f68; --pro-brand: #006747; --pro-soft: #e9efec;
+          font-family: var(--pro-font);
+        }
+        :is(#uid-screen, #ins-screen, #sample-screen, #fabric-screen, #cut-group-uid-screen, #xa-vai-screen, #location-screen, #storage-risk-screen) :is(button, input, select, textarea, h1, h2, h3) { font-family: inherit; }
+        :is(#uid-screen, #ins-screen, #sample-screen, #fabric-screen, #cut-group-uid-screen, #xa-vai-screen, #location-screen, #storage-risk-screen) button { font-weight: 600; }
+        /* Thanh trên: icon module, tiêu đề nhẹ hơn */
+        :is(#uid-screen, #ins-screen, #sample-screen, #fabric-screen, #cut-group-uid-screen, #xa-vai-screen, #location-screen, #storage-risk-screen) .uid-topbar__inner { min-height: 56px; gap: 10px; padding: 6px 0; }
+        :is(#uid-screen, #ins-screen, #sample-screen, #fabric-screen, #cut-group-uid-screen, #xa-vai-screen, #location-screen, #storage-risk-screen) .uid-topbar__mark { display: grid; width: 32px; height: 32px; border-radius: 9px; box-shadow: none; }
+        :is(#uid-screen, #ins-screen, #sample-screen, #fabric-screen, #cut-group-uid-screen, #xa-vai-screen, #location-screen, #storage-risk-screen) .uid-topbar__name h1 { font-size: 16px; font-weight: 600; letter-spacing: .01em; }
+        /* Tiêu đề khối + số thứ tự: cùng một kiểu (chấm tròn 22 px) */
+        :is(#uid-screen, #ins-screen, #sample-screen, #fabric-screen, #cut-group-uid-screen, #xa-vai-screen, #location-screen) :is(.uid-panel__head h2, .cut-card h2, .fabric-card h2) { font-size: 17px; font-weight: 600; letter-spacing: 0; }
+        :is(#uid-screen, #ins-screen, #sample-screen, #cut-group-uid-screen, #xa-vai-screen, #location-screen) .cut-card h2 { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; }
+        :is(#uid-screen, #ins-screen, #sample-screen, #cut-group-uid-screen, #xa-vai-screen, #location-screen) :is(.uid-panel__num, .cut-card h2 > span) { display: inline-grid; flex: none; place-items: center; width: 22px; height: 22px; margin: 0; border-radius: 50%; background: var(--pro-brand); color: #fff; font-size: 12px; font-weight: 600; }
+        /* Nhãn ô nhập: chữ thường nhỏ, không viết hoa giãn chữ */
+        :is(#uid-screen, #ins-screen, #sample-screen, #fabric-screen, #location-screen) :is(.uid-add__label, .uid-map__grid label, .ins-fields label, .loc-form label, .fabric-card label) { color: var(--pro-muted); font-size: 12px; font-weight: 600; letter-spacing: 0; text-transform: none; }
+        :is(#uid-screen, #sample-screen, #cut-group-uid-screen, #xa-vai-screen, #location-screen) :is(.uid-selectall, .cut-selectall) { font-weight: 600; }
+        /* Thẻ phẳng một lớp */
+        :is(#uid-screen, #ins-screen, #sample-screen, #fabric-screen, #cut-group-uid-screen, #xa-vai-screen, #location-screen) :is(.uid-card, .cut-card, .fabric-card) { border-color: var(--pro-line); border-radius: 14px; box-shadow: none; }
+        /* Ô nhập: viền mảnh, tiêu điểm nhẹ (thay viền xanh đậm dày) */
+        :is(#uid-screen, #ins-screen, #sample-screen, #fabric-screen, #cut-group-uid-screen, #xa-vai-screen, #location-screen, #storage-risk-screen) :is(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), select, textarea) { border-width: 1px; border-color: var(--pro-field); border-radius: 10px; font-size: 16px; }
+        :is(#uid-screen, #ins-screen, #sample-screen, #fabric-screen, #cut-group-uid-screen, #xa-vai-screen, #location-screen, #storage-risk-screen) :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea):is(:focus, :focus-visible) { border-color: #0b7a55; outline: 0; box-shadow: 0 0 0 3px rgba(0,119,84,.15); }
+        /* Nút */
+        :is(#uid-screen, #ins-screen, #sample-screen, #fabric-screen, #cut-group-uid-screen, #xa-vai-screen, #location-screen) :is(.uid-add__btn, .cut-primary, .cut-secondary, .uid-import, .uid-submit, .fabric-print) { min-height: 46px; border-radius: 12px; font-size: 15px; font-weight: 600; }
+        /* CẮT GROUP UID + THEO DÕI XẢ VẢI: tab nút chọn liền khối, nhãn ngắn */
+        :is(#cut-group-uid-screen, #xa-vai-screen) .cut-tabs { gap: 2px; width: 100%; margin: 0 0 12px; padding: 3px; border: 1px solid var(--pro-line); border-radius: 12px; background: var(--pro-soft); }
+        :is(#cut-group-uid-screen, #xa-vai-screen) .cut-tab { gap: 5px; min-width: 0; min-height: 40px; padding: 0 4px; border: 0; border-radius: 9px; background: transparent; box-shadow: none; color: var(--pro-muted); font-size: 13px; font-weight: 600; white-space: nowrap; }
+        :is(#cut-group-uid-screen, #xa-vai-screen) .cut-tab[aria-selected="true"] { background: #fff; color: var(--pro-brand); box-shadow: 0 1px 3px rgba(23,37,31,.14); }
+        :is(#cut-group-uid-screen, #xa-vai-screen) .cut-tab .tab-l { display: none; }
+        :is(#cut-group-uid-screen, #xa-vai-screen) .cut-tab .tab-s { display: inline; }
+        :is(#cut-group-uid-screen, #xa-vai-screen) .cut-badge { min-width: 20px; height: 20px; padding: 0 5px; font-size: 11px; }
+        #cut-group-uid-screen .cut-tab .fsk-tab-n { display: none; }
+        :is(#cut-group-uid-screen, #xa-vai-screen) .cut-message { padding: 9px 12px; border-radius: 10px; font-size: 13px; font-weight: 600; }
+        /* THEO DÕI XẢ VẢI: nút bàn phím thành icon cạnh ô quét */
+        #xa-vai-screen .cut-card[data-panel="scan"][data-active="true"] { display: grid; grid-template-columns: minmax(0, 1fr) 46px; gap: 10px 8px; }
+        #xa-vai-screen .cut-card[data-panel="scan"] > * { grid-column: 1 / -1; margin-top: 0; }
+        #xa-vai-screen .cut-card[data-panel="scan"] > h2 { grid-row: 1; margin-bottom: 2px; }
+        #xa-vai-form { display: contents; }
+        #xa-vai-form > .cut-scanwrap { grid-column: 1; grid-row: 2; }
+        #xa-vai-screen .cut-card[data-panel="scan"] > #xa-vai-keyboard { grid-column: 2; grid-row: 2; width: 46px; min-width: 46px; min-height: 46px; margin: 0; padding: 0; font-size: 0; }
+        #xa-vai-form > [type="submit"] { grid-column: 1 / -1; grid-row: 3; margin: 0; }
+        #xa-vai-screen .cut-card[data-panel="scan"] > #xa-vai-goto-open { grid-row: 4; justify-self: start; }
+        /* GOM HÀNG MẪU: nút bàn phím thành icon cạnh ô quét */
+        #sample-form { display: grid; grid-template-columns: minmax(0, 1fr) 46px; column-gap: 8px; }
+        #sample-form > * { grid-column: 1 / -1; }
+        #sample-form > .uid-add__row { display: contents; }
+        #sample-form > .uid-panel__head { grid-row: 1; }
+        #sample-form > .uid-add__label { grid-row: 2; }
+        #sample-form #sample-sku { grid-column: 1; grid-row: 3; min-height: 46px; }
+        #sample-form > #sample-keyboard { grid-column: 2; grid-row: 3; width: 46px; min-width: 46px; min-height: 46px; margin: 0; padding: 0; border-radius: 10px; font-size: 0; }
+        #sample-form #sample-add { grid-column: 1 / -1; grid-row: 4; margin-top: 10px; }
+        #sample-form > #sample-hint { grid-row: 5; }
+        :is(#uid-screen, #ins-screen, #sample-screen) .uid-status:empty { display: none; }
       }
     </style>
 <script>
@@ -7698,7 +7764,7 @@ var FSK_CORE = (function () {
         let openItems=[],searchItems=[],busy=false,pollTimer=0,stagedItems=new Map();
         const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
         const active=()=>location.hash.replace(/^#/,'').split('&')[0]==='cut-group-uid';
-        const tell=(text,tone='')=>{message.textContent=text;message.dataset.tone=tone};
+        const tell=(text,tone='')=>{message.textContent=text;message.dataset.tone=tone;delete message.dataset.kind};
         const rpc=async(name,args={})=>{const q=window.PrintSkuQueue,r=await fetch(`${q.supabaseUrl}/rest/v1/rpc/${name}`,{method:'POST',headers:{apikey:q.publishableKey,Authorization:`Bearer ${q.publishableKey}`,'Content-Type':'application/json'},body:JSON.stringify({p_access_token:q.accessToken(),...args}),signal:AbortSignal.timeout(15000)});const data=await r.json().catch(()=>null);if(!r.ok||!data)throw new Error(data?.message||`Supabase HTTP ${r.status}`);return data};
         const statusName={pending:'Chờ in',queued:'Đang in',printed:'Đã in',failed:'In lỗi'};
         const fmt=value=>{const d=new Date(value);return Number.isNaN(d.getTime())?'':new Intl.DateTimeFormat('vi-VN',{dateStyle:'short',timeStyle:'short'}).format(d)};
@@ -7785,7 +7851,7 @@ var FSK_CORE = (function () {
         // Trả null = huỷ tìm, '' = tìm theo ô như cũ, mã Combo = đã đổi sang Normal.
         const comboChecked=new WeakMap(),comboRuns=new WeakMap();
         const resolveComboSku=async input=>{const sku=input.value.trim(),picker=window.SkuComboPicker;if(!sku||!picker?.chooseNormal||comboChecked.get(input)===sku)return '';const run=(comboRuns.get(input)||0)+1;comboRuns.set(input,run);const valid=()=>active()&&input.value.trim()===sku&&comboRuns.get(input)===run;const choice=await picker.chooseNormal(sku,valid,'Group UID đã cắt lưu theo SKU Normal.','Chọn SKU Normal để tra cứu');if(!valid()||choice==='cancel'||choice===null)return null;if(choice&&typeof choice==='object'){input.value=choice.normal_sku;comboChecked.set(input,choice.normal_sku);return sku}comboChecked.set(input,sku);return ''};
-        const runSearch=async({combo=''}={})=>{const from=dateFrom.value||null,to=dateTo.value||null,adj=adjFilter.value;if(from&&to&&from>to){tell('Ngày bắt đầu phải trước hoặc bằng ngày kết thúc.','error');return}try{const r=await rpc('cut_group_uid_search',{p_sku:skuFilter.value.trim(),p_lot:lotFilter.value.trim(),p_date_from:from,p_date_to:to,...(adj?{p_adj:adj}:{}),p_limit:5000});if(!r.ok)throw new Error(r.error?.message);searchItems=r.data?.items||[];mergeStaged(searchItems);renderSearch();renderOpen();const range=from&&to?(from===to?` ngày ${viDay(from)}`:` từ ${viDay(from)} đến ${viDay(to)}`):from?` từ ${viDay(from)}`:to?` đến ${viDay(to)}`:'';tell(`${combo?`SKU Combo ${combo} → SKU Normal ${skuFilter.value.trim()} · `:''}Tìm thấy ${searchItems.length} UID đã cắt${range}${adj==='done'?' · đã xuất ADJ':adj==='pending'?' · chưa xuất ADJ':''}.`,'ok')}catch(e){tell(`Không tra cứu được: ${e.message}`,'error')}};
+        const runSearch=async({combo=''}={})=>{const from=dateFrom.value||null,to=dateTo.value||null,adj=adjFilter.value;if(from&&to&&from>to){tell('Ngày bắt đầu phải trước hoặc bằng ngày kết thúc.','error');return}try{const r=await rpc('cut_group_uid_search',{p_sku:skuFilter.value.trim(),p_lot:lotFilter.value.trim(),p_date_from:from,p_date_to:to,...(adj?{p_adj:adj}:{}),p_limit:5000});if(!r.ok)throw new Error(r.error?.message);searchItems=r.data?.items||[];mergeStaged(searchItems);renderSearch();renderOpen();const range=from&&to?(from===to?` ngày ${viDay(from)}`:` từ ${viDay(from)} đến ${viDay(to)}`):from?` từ ${viDay(from)}`:to?` đến ${viDay(to)}`:'';tell(`${combo?`SKU Combo ${combo} → SKU Normal ${skuFilter.value.trim()} · `:''}Tìm thấy ${searchItems.length} UID đã cắt${range}${adj==='done'?' · đã xuất ADJ':adj==='pending'?' · chưa xuất ADJ':''}.`,'ok');message.dataset.kind='search'}catch(e){tell(`Không tra cứu được: ${e.message}`,'error')}};
         adjFilter.addEventListener('change',runSearch);
         form.addEventListener('submit',async event=>{event.preventDefault();const uid=code.value.trim();if(!uid||busy)return;busy=true;add.disabled=true;tell(`Đang kiểm tra ${uid}…`);try{const r=await rpc('cut_group_uid_scan',{p_group_uid:uid});if(!r.ok){const extra=r.error?.code==='GROUP_UID_NOT_READY'?' Vào mục Nạp dữ liệu Group UID để cập nhật database.':'';tell((r.error?.message||'Không lưu được UID')+extra,r.error?.code==='ALREADY_CUT'?'warn':'error');return}const d=r.data;last.hidden=false;last.innerHTML=`<strong>${esc(d.groupUid)} · ${esc(d.sku)}</strong><span>${esc(d.productName)}</span><small>Lot ${esc(d.lot||'—')} · Roll ${esc(d.roll||'—')}</small>`;code.value='';tell('Đã lưu tem. Sang Tra cứu để chọn in khi cần.','ok');await Promise.all([loadOpen({quiet:true}),runSearch()])}catch(e){tell(`Chưa rõ UID đã lưu hay chưa: ${e.message}. Đang tải lại để đối chiếu.`,'error');loadOpen({quiet:true})}finally{busy=false;add.disabled=false;syncSelection();focusScan()}});
         list.addEventListener('change',event=>{const row=event.target.closest('.cut-row');if(row&&!event.target.checked){stagedItems.delete(row.dataset.code);renderOpen();return}syncSelection()});
@@ -8300,9 +8366,9 @@ var FSK_CORE = (function () {
       <header class="uid-topbar"><div class="uid-topbar__inner"><button class="uid-back" id="xa-vai-back" type="button" aria-label="Quay lại trang chủ WH-MATERIAL">WH-MATERIAL</button><span class="uid-topbar__mark" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2h4M12 14v-4M4 13a8 8 0 0 1 8-7 8 8 0 1 1-5.3 14L4 17.6M9 17H4v5"/></svg></span><div class="uid-topbar__name"><h1 id="xa-vai-title">THEO DÕI XẢ VẢI</h1><span>Quét UID · bắt đầu · kết thúc · tra cứu</span></div></div></header>
       <main class="cut-main">
         <div class="cut-tabs" role="tablist">
-          <button class="cut-tab" id="xa-vai-tab-scan" type="button" role="tab" data-tab="scan" aria-selected="true">1 · Quét Group UID</button>
-          <button class="cut-tab" id="xa-vai-tab-open" type="button" role="tab" data-tab="open" aria-selected="false">2 · Đang xả <b class="cut-badge" id="xa-vai-open-count">0</b></button>
-          <button class="cut-tab" id="xa-vai-tab-done" type="button" role="tab" data-tab="done" aria-selected="false">3 · Đã xả xong <b class="cut-badge" id="xa-vai-found">0</b></button>
+          <button class="cut-tab" id="xa-vai-tab-scan" type="button" role="tab" data-tab="scan" aria-selected="true"><i class="fsk-tab-n" aria-hidden="true">1</i><span class="tab-l">Quét Group UID</span><span class="tab-s">Quét</span></button>
+          <button class="cut-tab" id="xa-vai-tab-open" type="button" role="tab" data-tab="open" aria-selected="false"><i class="fsk-tab-n" aria-hidden="true">2</i>Đang xả <b class="cut-badge" id="xa-vai-open-count">0</b></button>
+          <button class="cut-tab" id="xa-vai-tab-done" type="button" role="tab" data-tab="done" aria-selected="false"><i class="fsk-tab-n" aria-hidden="true">3</i><span class="tab-l">Đã xả xong</span><span class="tab-s">Đã xả</span> <b class="cut-badge" id="xa-vai-found">0</b></button>
         </div>
         <p class="cut-message" id="xa-vai-message" aria-live="polite" style="margin-bottom:14px"></p>
         <div class="cut-grid">
@@ -8320,7 +8386,7 @@ var FSK_CORE = (function () {
         if(!dateFromFilter.value)dateFromFilter.value=todayVN();
         if(!dateToFilter.value)dateToFilter.value=todayVN();
         const active=()=>location.hash.replace(/^#/,'').split('&')[0]==='xa-vai';
-        const tell=(text,tone='')=>{message.textContent=text;message.dataset.tone=tone};
+        const tell=(text,tone='')=>{message.textContent=text;message.dataset.tone=tone;delete message.dataset.kind};
         const rpc=async(name,args={})=>{const q=window.PrintSkuQueue,r=await fetch(`${q.supabaseUrl}/rest/v1/rpc/${name}`,{method:'POST',headers:{apikey:q.publishableKey,Authorization:`Bearer ${q.publishableKey}`,'Content-Type':'application/json'},body:JSON.stringify(args),signal:AbortSignal.timeout(15000)});const data=await r.json().catch(()=>null);if(!r.ok||!data)throw new Error(data?.message||`Supabase HTTP ${r.status}`);return data};
         const fmtDate=value=>{if(!value)return '';const d=new Date(value);return Number.isNaN(d.getTime())?'':new Intl.DateTimeFormat('vi-VN',{timeZone:'Asia/Ho_Chi_Minh',day:'2-digit',month:'2-digit',year:'numeric'}).format(d)};
         const fmtTime=value=>{if(!value)return '';const d=new Date(value);return Number.isNaN(d.getTime())?'':new Intl.DateTimeFormat('vi-VN',{timeZone:'Asia/Ho_Chi_Minh',hour:'2-digit',minute:'2-digit',hour12:false}).format(d)};
@@ -8391,7 +8457,7 @@ var FSK_CORE = (function () {
           resultsBody.innerHTML=searchItems.length?searchItems.map((item,i)=>`<tr><td>${i+1}</td><td>${esc(item.groupUid)}</td><td>${esc(item.batchCode||'')}</td><td>${esc(item.rollCode||'')}</td><td>${esc(item.sku)}</td><td>${esc(fmtDate(item.startedAt))}</td><td>${esc(fmtTime(item.startedAt))}</td><td>${esc(fmtTime(item.endedAt))}</td></tr>`).join(''):'<tr><td colspan="8" class="cut-empty">Chưa có dữ liệu phù hợp.</td></tr>'
         };
         const runSearch=async({quiet=false}={})=>{
-          try{const r=await rpc('xa_vai_search',{p_sku:skuFilter.value.trim(),p_date_from:dateFromFilter.value||null,p_date_to:dateToFilter.value||null,p_limit:5000});if(!r.ok)throw new Error(r.error?.message);searchItems=r.data?.items||[];renderSearch();if(!quiet)tell(`Tìm thấy ${searchItems.length} dòng.`,'ok')}
+          try{const r=await rpc('xa_vai_search',{p_sku:skuFilter.value.trim(),p_date_from:dateFromFilter.value||null,p_date_to:dateToFilter.value||null,p_limit:5000});if(!r.ok)throw new Error(r.error?.message);searchItems=r.data?.items||[];renderSearch();if(!quiet){tell(`Tìm thấy ${searchItems.length} dòng.`,'ok');message.dataset.kind='search'}}
           catch(e){tell(`Không tra cứu được: ${e.message}`,'error')}
         };
         searchForm.addEventListener('submit',event=>{event.preventDefault();runSearch()});

@@ -445,6 +445,11 @@ Mở **TÌM SKU** ở WH-MATERIAL hoặc `#find-sku`. Ba bước, bố cục nh�
 (Roboto/San Francisco/Segoe UI — không tải thêm gì), chữ đậm vừa (600); thanh trên có icon module; tab bước và Chỉ | Vải là nút chọn liền khối; thẻ phẳng một lớp
 (bo 14 px, không bóng, không thẻ lồng thẻ); đơn vị (mm, cuộn, gr) và nút kg|gr nằm trong khung ô nhập; gợi ý SKU dạng danh sách — % bên trái, SKU + đơn vị,
 tên 2 dòng, nút chọn tròn bên phải, chạm cả dòng là chọn; Chuyển đổi đơn vị: "Lô tiếp theo" là nút phụ, "Nhập lại" và "Copy" là nút icon. Bản máy tính không đổi.
+Đợt 1 cho các module còn lại (khối CSS `#mobile-pro-modules`, ≤ 800 px): IN TEM GROUP UID, TEM XẢ VẢI, MÃ VỊ TRÍ, CẮT GROUP UID, THEO DÕI XẢ VẢI, KIỂM TRA ĐẦU VÀO,
+GOM HÀNG MẪU, RỦI RO LƯU TRỮ dùng cùng font hệ thống, chữ đậm vừa, nhãn chữ thường, số thứ tự khối là chấm tròn 22 px, thẻ phẳng bo 14 px, ô nhập viền mảnh với
+tiêu điểm nhẹ, nút 46 px. Tab Cắt UID / Xả vải là nút chọn liền khối với nhãn ngắn (Quét · Tra cứu · Chờ in · Đối chiếu; Quét · Đang xả · Đã xả) — máy tính vẫn nhãn
+đầy đủ, có số tròn. Nút bàn phím của Xả vải và Gom hàng mẫu là icon cạnh ô quét. IN TEM GROUP UID đánh số lại theo thứ tự trên màn: 1 Thêm · 2 Chưa gán SKU · 3 Gán SKU ·
+4 Sẵn sàng in. Dòng "Tìm thấy N …" của Tra cứu không hiện khi đang ở tab Quét. Gom hàng mẫu bỏ câu hướng dẫn mở bao. Test: `tests/mobile_modules_browser.cjs`.
 
 **Bố cục điện thoại (10/10/2026).** Toàn màn hình bỏ các câu hướng dẫn (thông báo sau khi đọc tem/chọn SKU, mẹo gõ mã, "Lưu trên máy này…", đuôi "kiểm tra mạng rồi bấm…"
 của các thông báo lỗi); chỉ giữ trạng thái và lỗi ngắn. Bước 1: nút Bật camera và nút Chọn ảnh (chỉ icon, vẫn có tên cho trình đọc màn hình) cùng một hàng. Bước 2: thẻ SKU gọn
