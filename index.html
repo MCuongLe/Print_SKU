@@ -10250,5 +10250,41 @@ async function rpc(name,args,retry=true){
         window.HasakiGroupUidMovesDashboard=Object.freeze({refresh:readFromWms,search,setTab});renderInfo();renderMetrics();
       })();
     </script>
+    <style id="ui-touch-text">
+      /* Rà soát giao diện 10/10/2026: vùng chạm ≥ 44 px và chữ ≥ 12 px trên điện thoại, header hẹp không xuống dòng.
+         Chỉ ghi đè kích thước/màu, không đổi bố cục; đặt cuối trang để thắng các khối CSS màn riêng. */
+      @media (max-width: 800px) {
+        #cut-group-uid-screen .cut-tab, #xa-vai-screen .cut-tab, #find-sku-screen .cut-tab { min-height: 44px; font-size: 12px; }
+        :is(#cut-group-uid-screen, #xa-vai-screen, #find-sku-screen) .cut-badge,
+        :is(#cut-group-uid-screen, #xa-vai-screen, #find-sku-screen) .fsk-tab-n { font-size: 12px; }
+        #find-sku-screen .fsk-seg button, #unit-converter-screen .fsk-seg button,
+        #find-sku-screen .fsk-inrow:has(> .cut-input) > .fsk-seg button,
+        #unit-converter-screen .fsk-inrow:has(> .cut-input) > .fsk-seg button { min-height: 44px; }
+      }
+      #unit-converter-screen .uc-kind button { min-height: 44px; }
+      #unit-converter-screen .fsk-seg button, #find-sku-screen .fsk-seg button { min-height: 44px; min-width: 44px; }
+      .uid-topbar__admin { width: 44px; height: 44px; }
+      .uid-selectall input { width: 24px; height: 24px; }
+      .uid-selectall em, .uid-optional, .fsk-tab-n, .cut-badge, #ins-connector, .ins-import-fallback span { font-size: 12px; }
+      #root .text-\[11px\] { font-size: 12px; }
+      .storage-risk__level, .storage-risk__intro small, .storage-risk__total span { font-size: 12px; }
+      .storage-risk__status { color: #60736b; }
+      @media (max-width: 620px) {
+        .uid-topbar__printer { font-size: 12px; }
+      }
+      @media (max-width: 480px) {
+        .uid-topbar__name { min-width: 0; }
+        .uid-topbar__name h1 { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .uid-topbar__printer { padding: 0 10px; max-width: none; }
+      }
+      /* IN TEM GROUP UID là tiêu đề dài nhất: dưới 420 px nhường chỗ icon module cho tiêu đề + pill máy in. */
+      @media (max-width: 420px) {
+        #uid-screen .uid-topbar__mark { display: none; }
+      }
+      @media (max-width: 360px) {
+        #uid-screen .uid-topbar__name h1 { font-size: 14px; }
+        #uid-screen .uid-topbar__printer { font-size: 11px; padding: 0 8px; }
+      }
+    </style>
   </body>
 </html>
