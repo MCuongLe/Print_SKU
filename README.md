@@ -405,9 +405,11 @@ Mở **TÌM SKU** ở WH-MATERIAL hoặc `#find-sku`. Ba bước, bố cục nh�
    (bộ quét chung với XẢ VẢI). Có thể "Chụp ngay", "Chọn ảnh", hoặc gõ mã in trên tem (`N0144`,
    `C3966 Tex 27`) — không cần AI. Bộ đối chiếu `NDS_ENGINE` (chép nguyên từ tab "Nhận diện SKU"
    của AuditFactory) gợi ý 3 SKU từ `SKU_Name` ngay trong trình duyệt; danh mục tải một lần, lưu
-   IndexedDB, 12 giờ tự tải lại. Mỗi thẻ gợi ý ghi mức khớp bằng chữ ("Khớp mã" / "Cần kiểm
-   tra") và **đơn vị** của SKU — bản Normal và Combo cùng mã hàng thường ra cùng điểm, khác nhau
-   ở đơn vị (vd `mm` và `cuộn`); % và từ khoá khớp nằm trong "Vì sao gợi ý".
+   IndexedDB, 12 giờ tự tải lại. Mỗi thẻ gợi ý có **% khớp** cỡ chữ lớn (xanh + dấu tích khi khớp mã,
+   vàng + cảnh báo khi chỉ khớp chữ chung) và **đơn vị** của SKU — bản Normal và Combo cùng mã hàng
+   thường ra cùng điểm, khác nhau ở đơn vị (vd `mm` và `cuộn`). Không còn mục "Vì sao gợi ý"; từ khoá
+   đã nhận, chữ AI đọc được, "Đối chiếu lại" và "Tải lại danh mục" nằm trong **popup Chi tiết xử lý**
+   (nút icon cạnh Chọn ảnh, số từ khoá ở góc).
    **Chọn SKU Combo** thì hiện hộp gợi ý SKU Normal — cùng hộp và cùng RPC `sku_combo_lookup`
    với PRINT SKU / PRINT UID (`window.SkuComboPicker.chooseNormal`): chọn Normal thì bước 2
    tính theo đơn vị của Normal và ghi "Đổi từ SKU Combo … · 1 Combo = …"; "Tiếp tục với SKU
@@ -423,7 +425,8 @@ Mở **TÌM SKU** ở WH-MATERIAL hoặc `#find-sku`. Ba bước, bố cục nh�
    tới khi agent báo xong (tự rời danh sách) hoặc lỗi (tick lại để in lại). Gửi lại sau lỗi mạng
    dùng cùng nonce nên không tạo lệnh trùng.
 
-**Bố cục điện thoại (10/10/2026).** Bước 1: nút Bật camera và nút Chọn ảnh (chỉ icon, vẫn có tên cho trình đọc màn hình) cùng một hàng. Bước 2: thẻ SKU gọn
+**Bố cục điện thoại (10/10/2026).** Toàn màn hình bỏ các câu hướng dẫn (thông báo sau khi đọc tem/chọn SKU, mẹo gõ mã, "Lưu trên máy này…", đuôi "kiểm tra mạng rồi bấm…"
+của các thông báo lỗi); chỉ giữ trạng thái và lỗi ngắn. Bước 1: nút Bật camera và nút Chọn ảnh (chỉ icon, vẫn có tên cho trình đọc màn hình) cùng một hàng. Bước 2: thẻ SKU gọn
 (SKU · chip đơn vị · nút Đổi), bỏ các câu giải thích đơn vị/cách nhập và thông báo "nhập số lượng và số tem"; nút **Tính mm từ cân** thay khối giải thích; **Số tem**
 cùng hàng với bộ − / +. Thanh **Thêm vào chờ in** dính đáy màn hình (điện thoại ẩn dòng tóm tắt lặp lại). Gốc lỗi cũ trên Chrome Android: khung toàn màn hình `.cut-screen`
 có `min-height:100vh`, mà 100vh của Android tính cả lúc ẩn thanh địa chỉ nên khung cao hơn vùng nhìn thấy và thanh dính đáy bị cắt — đã bỏ `min-height` đó (áp cho mọi màn
