@@ -56,7 +56,7 @@ Mọi nút gửi lệnh in là một `.act-icon--print` (IN TEM SKU và Xác nh�
 ## Header các màn hình
 
 Mọi màn con dùng một kiểu header theo IN TEM SKU (`.uid-topbar`): nút Back dạng pill (nhãn "WH-MATERIAL"; riêng màn Nạp dữ liệu Group UID là "Tổng quan"),
-icon module 32 px (đúng icon ô trang chủ), tiêu đề đậm 16 px, phụ đề chữ hoa 10 px và — nếu màn có máy in — pill trạng thái máy in (hiện có ở IN TEM SKU và
+icon module 32 px (đúng icon ô trang chủ), tiêu đề đậm 16 px, phụ đề 12 px và — nếu màn có máy in — pill trạng thái máy in (hiện có ở IN TEM SKU và
 IN TEM GROUP UID). Cao 64 px + viền 1 px, dính đầu màn; từ 760 px trở xuống Back chỉ còn icon 44 px, ẩn icon module và phụ đề. Bề rộng header bám bề rộng nội dung
 của từng màn. Màn mới chỉ cần dùng markup `.uid-topbar` (Back là phần tử đầu để thứ tự Tab khớp thứ tự nhìn). Trang chủ (nền xanh), Quản trị (React) và lớp
 camera/scanner giữ kiểu riêng. Thiết kế: [`docs/THIET_KE_HEADER_UI.md`](docs/THIET_KE_HEADER_UI.md).
@@ -68,6 +68,22 @@ số ("In lại 6 tem", "Xoá 3 vị trí"). `tone`: `default` (Enter = đồng 
 `danger` (xoá, bỏ đánh dấu — nút đỏ, con trỏ ở Huỷ). Esc / bấm ra ngoài = Huỷ; gọi liên tiếp thì hộp sau đợi hộp trước; điện thoại hiện
 dạng trượt từ đáy. Đang dùng ở 9 chỗ: IN TEM SKU (Combo, > 30 tem), PRINT UID (Combo, Lot/Roll, > 30 tem), Cắt UID (Lot/Roll, bỏ đánh
 dấu ADJ), Đối chiếu ADJ (tick giúp), Mã vị trí (xoá khỏi hàng đợi), Lệnh in (in lại). Test: `tests/wh_dialog_browser.cjs`.
+
+## Chuẩn chữ (font)
+
+Chuẩn từ 10/10/2026, áp cho mọi màn ở cả điện thoại và máy tính, kể cả IN TEM SKU và Admin:
+
+- **Font:** một font hệ thống `--wms-font` (`system-ui, "Segoe UI", Roboto, Arial…`): máy Windows ở kho hiện Segoe UI, Android hiện Roboto,
+  iPhone hiện SF. Không tải font ngoài. Số dùng chữ số đều nhau (`tabular-nums`) để dễ so mã.
+- **Cỡ:** chỉ 7 bậc `--fs-12 … --fs-28`: 12 (số đếm, badge, phụ đề) · 13 (nhãn ô, tab, đầu bảng) · 14 (bảng Admin, nút phụ, thông báo) ·
+  16 (chữ trong ô nhập, nút chính) · 18 (tiêu đề khối, tên module) · 22 (tiêu đề trang Admin, KPI vừa) · 28 (số lớn). Ngoại lệ duy nhất:
+  số bao ở Gom hàng mẫu (46–82 px, để đọc từ xa).
+- **Đậm:** 400 chữ thường · 600 nhãn, tab, nút, tiêu đề khối · 700 tên module, thương hiệu, số lớn.
+- **Chữ hoa:** chỉ tiêu đề nhóm trang chủ, đầu bảng Kiểm tra đầu vào và ô mã vị trí; còn lại viết thường, không giãn chữ.
+- **Tem in giữ Arial:** tem là SVG tự ghi `font-family="Arial…"`, chỗ đo chữ cho tem (canvas) vẫn Arial, mẫu tem trong agent không đổi.
+
+CSS cũ đã được quy đổi tại chỗ; khối `#type-standard` cuối trang phủ phần Tailwind sinh sẵn của IN TEM SKU/Admin (`text-[11px]`, `font-black`,
+`uppercase`…). CSS mới chỉ dùng các token trên. Test: `tests/typography_browser.cjs`, đo mọi chữ đang hiện trên 12 màn × 2 khổ + 5 màn Admin.
 
 ## Quản trị (Admin)
 

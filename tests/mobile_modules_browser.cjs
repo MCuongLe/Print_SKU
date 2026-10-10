@@ -27,7 +27,7 @@ const SCREENS = { 'group-uid': 'uid-screen', inspection: 'ins-screen', sample: '
       for (const hash of Object.keys(SCREENS)) {
         await open(hash);
         const look = await page.evaluate(id => ({ font: getComputedStyle(document.getElementById(id)).fontFamily, overflow: document.documentElement.scrollWidth > innerWidth }), SCREENS[hash]);
-        assert.equal(/system-ui/.test(look.font), mobile, `${hash}: điện thoại dùng font hệ thống, máy tính giữ font cũ (${look.font})`);
+        assert.ok(/^system-ui/.test(look.font), `${hash}: dùng font hệ thống trên mọi khổ (chuẩn chữ 10/10/2026) (${look.font})`);
         assert.equal(look.overflow, false, `${hash}: tràn ngang`);
       }
 
@@ -69,7 +69,7 @@ const SCREENS = { 'group-uid': 'uid-screen', inspection: 'ins-screen', sample: '
       assert.deepEqual(await page.locator('#uid-screen .uid-panel__num').allTextContents(), ['1', '2', '3', '4'], 'thứ tự trong trang 1-2-3-4');
 
       assert.deepEqual(errors, []);
-      console.log(`PASS ${width}px: các module — font hệ thống (chỉ điện thoại), tab không vỡ chữ, bàn phím dạng icon, số khối 1-2-3-4, "Tìm thấy…" không hiện ở tab Quét`);
+      console.log(`PASS ${width}px: các module — font hệ thống, tab không vỡ chữ, bàn phím dạng icon, số khối 1-2-3-4, "Tìm thấy…" không hiện ở tab Quét`);
       await context.close();
     }
   } finally { await browser.close(); }

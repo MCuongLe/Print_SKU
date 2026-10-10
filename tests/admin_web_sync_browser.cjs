@@ -117,11 +117,11 @@ const navItems = page => page.evaluate(() => {
           assert.equal(m.topH, 64, `${hash}: thanh trên ${m.topH}`);
           assert.equal(m.topPos, 'sticky', `${hash}: thanh trên phải dính`);
           assert.equal(m.title, title, `${hash}: tiêu đề`);
-          assert.equal(m.titleFont, '19px'); assert.equal(m.titleWeight, '700', `${hash}: tiêu đề phải đậm`);
+          assert.equal(m.titleFont, '18px'); assert.equal(m.titleWeight, '700', `${hash}: tiêu đề phải đậm`);
           assert.equal(m.mark, '38x38', `${hash}: icon module`); assert.equal(m.markIcon, true); assert.notEqual(m.sub, '', `${hash}: thiếu dòng phụ`);
           assert.deepEqual(nav.names, NAV, `${hash}: thứ tự menu`);
           assert.deepEqual(nav.active, [title], `${hash}: đúng một mục đang chọn`);
-          assert.equal(nav.h, 50); assert.equal(nav.font, '16px'); assert.equal(nav.weight, '700');
+          assert.equal(nav.h, 50); assert.equal(nav.font, '16px'); assert.equal(nav.weight, '600');
         }
         // thanh trên vẫn ở đỉnh; trong popup chi tiết, hàng tiêu đề bảng dính ở đỉnh vùng cuộn của popup
         await go(page, '#admin/sku-sync'); await page.locator('#sku-sync-preview').click();
