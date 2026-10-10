@@ -95,6 +95,8 @@ và **Hủy xem trước** (Group UID, nút icon) nằm ở đầu trang và đ�
 `AdminSyncUI.openDialog / bindDialogs / closeDialogs` (lớp `.as-dialog`; Esc hoặc bấm nền để đóng, rời màn thì tự đóng). Tab **4 · Đối chiếu** của Cắt UID làm tương tự: bấm ô trạng thái
 (Tất cả, Sai số lượng, Quên tick…) mở popup `#cut-adj-dialog` chứa bảng, nút xuất Excel và **Tick giúp** (chỉ nhóm Quên tick và Tất cả); trên điện thoại popup là tờ trượt từ dưới lên.
 Test: `tests/sku_sync_admin_browser.cjs`, `tests/group_uid_sync_admin_browser.cjs`, `tests/cut_adj_reconcile_browser.cjs`, `tests/admin_web_sync_browser.cjs`.
+Danh sách Group UID luôn ghi **người cập nhật** (email trong WMS) dưới giờ ở cột "Cập nhật WMS" (cả UID mới, cập nhật, thiếu, WMS cũ hơn; không có thì "—"), có trong tìm kiếm và cột "Người cập nhật" của CSV;
+dòng so sánh "Người cập nhật a → b" ở cột "Thay đổi" vẫn chỉ hiện khi người cập nhật đổi (WMS giữ nguyên người cập nhật khi chỉ đổi trạng thái/số lượng).
 
 **Lệnh in** (`#admin/lenh-in`, mục đầu tiên, 08/10/2026) thay hai mục React cũ "Tổng quan" và "Đợt đã gửi" — hai mục đó chỉ đếm lệnh gửi
 từ chính tab đang mở. `#admin/tongquan`, `#admin/hangdoi` và mọi hash Admin lạ tự chuyển về đây. Màn đọc `print_jobs` của cả kho:

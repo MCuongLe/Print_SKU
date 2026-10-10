@@ -9109,7 +9109,8 @@ var FSK_CORE = (function () {
           alert:'<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
           ban:'<circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/>',
           unlink:'<path d="m18.84 12.25 1.72-1.71h-.02a5.004 5.004 0 0 0-.12-7.07 5.006 5.006 0 0 0-6.95 0l-1.72 1.71"/><path d="m5.17 11.75-1.71 1.71a5.004 5.004 0 0 0 .12 7.07 5.006 5.006 0 0 0 6.95 0l1.71-1.71"/><line x1="8" x2="8" y1="2" y2="5"/><line x1="2" x2="5" y1="8" y2="8"/><line x1="16" x2="16" y1="19" y2="22"/><line x1="19" x2="22" y1="16" y2="16"/>',
-          box:'<path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>'
+          box:'<path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>',
+          user:'<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>'
         };
         const ico=(name,cls="")=>`<svg class="as-ico${cls?" "+cls:""}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name]||""}</svg>`;
         const hydrate=(root=document)=>root.querySelectorAll("[data-ico]").forEach(el=>{if(el.dataset.icoDone==="1")return;el.insertAdjacentHTML("afterbegin",ico(el.dataset.ico));el.dataset.icoDone="1"});
@@ -9278,7 +9279,7 @@ var FSK_CORE = (function () {
       })();
     </script>
     <style id="group-uid-sync-admin-style">
-      .gu-hero-actions{display:flex;gap:10px;flex-wrap:wrap}.gu-progress-label{display:flex;justify-content:space-between;gap:12px;margin-top:8px;color:#60736b;font-size:12px}.gu-table td:nth-child(1){white-space:nowrap}.gu-table td:nth-child(2){min-width:190px}.gu-table td:nth-child(3){min-width:340px}.gu-table td:nth-child(4){white-space:nowrap;color:#31483f}.gu-table td:nth-child(4) .as-run-meta{margin-top:2px}.as-wh{color:#24473b;font-size:12px;font-weight:800;line-height:1.4}.gu-type{font-weight:800;color:#176248}
+      .gu-hero-actions{display:flex;gap:10px;flex-wrap:wrap}.gu-progress-label{display:flex;justify-content:space-between;gap:12px;margin-top:8px;color:#60736b;font-size:12px}.gu-table td:nth-child(1){white-space:nowrap}.gu-table td:nth-child(2){min-width:190px}.gu-table td:nth-child(3){min-width:340px}.gu-table td:nth-child(4){white-space:nowrap;color:#31483f}.gu-table td:nth-child(4) .as-run-meta{margin-top:2px}.as-by{display:flex;align-items:center;gap:5px;margin-top:4px;color:#24473b;font-size:12px;font-weight:700;white-space:normal;overflow-wrap:anywhere}.as-by .as-ico{flex:none;width:13px;height:13px;color:#60736b}.as-wh{color:#24473b;font-size:12px;font-weight:800;line-height:1.4}.gu-type{font-weight:800;color:#176248}
       @media(max-width:760px){.gu-hero-actions{display:grid;width:100%}.gu-progress-label{align-items:flex-start;flex-direction:column}.gu-table th:nth-child(3),.gu-table td:nth-child(3){display:table-cell}.gu-table td:nth-child(2){min-width:150px}.gu-table td:nth-child(3){min-width:240px}}
     </style>
     <section class="ss-screen" id="group-uid-sync-screen" aria-labelledby="group-uid-sync-heading" hidden>
@@ -9317,8 +9318,8 @@ var FSK_CORE = (function () {
           missing:[{label:"Group UID",sort:"code"},{label:"Kho",sort:"wh"},{label:"Đang có trong database"},{label:"Cập nhật cuối",sort:"wms"}],
           stale_source:[{label:"Group UID",sort:"code"},{label:"Kho",sort:"wh"},{label:"Database ≠ WMS"},{label:"Cập nhật WMS",sort:"wms"}]
         };
-        const INFO_CSV=["Group UID","Trạng thái","Kho","Vị trí","Số lượng","SKU","Cập nhật"];
-        const CSVH={added:INFO_CSV,updated:["Group UID","Kho","Thay đổi","Cập nhật WMS"],missing:INFO_CSV,stale_source:["Group UID","Kho","Chênh lệch","Cập nhật WMS"]};
+        const INFO_CSV=["Group UID","Trạng thái","Kho","Vị trí","Số lượng","SKU","Cập nhật","Người cập nhật"];
+        const CSVH={added:INFO_CSV,updated:["Group UID","Kho","Thay đổi","Cập nhật WMS","Người cập nhật"],missing:INFO_CSV,stale_source:["Group UID","Kho","Chênh lệch","Cập nhật WMS","Người cập nhật"]};
         const list=UI.createList({tools:$("gu-tools"),tagsBox:$("gu-tags"),head:$("gu-change-head"),body:changeBody,pager:$("gu-pager"),note:changeNote});
         let activeRun=null,busy=false,loaded=false,historyRuns=[],hideFailed=false;
         const statusName=v=>({running:"Đang đọc",previewed:"Chờ cập nhật",applying:"Đang cập nhật",completed:"Hoàn tất",failed:"Lỗi",expired:"Hết hạn"})[v]||v,modeName=v=>v==="full"?"Toàn bộ":"Thay đổi";
@@ -9358,13 +9359,13 @@ var FSK_CORE = (function () {
         }
         function rowFor(kind,row){
           const code=row.groupUidCode||row.group_uid_code,b=row.before||row.before_data||null,a=row.after||row.after_data||null,when=row.sourceUpdatedAt||row.source_updated_at||(kind==="missing"?b?.updated_date:null);
-          const codeCell=`<code data-copy="${esc(code)}" title="Bấm để sao chép">${esc(code)}</code>`,wmsCell=when?`${esc(dt(when))}<span class="as-run-meta">${esc(rel(when))}</span>`:"—";
+          const codeCell=`<code data-copy="${esc(code)}" title="Bấm để sao chép">${esc(code)}</code>`,by=String((kind==="missing"?b?.updated_by:a?.updated_by)??"").trim(),wmsCell=(when?`${esc(dt(when))}<span class="as-run-meta">${esc(rel(when))}</span>`:"—")+`<span class="as-by" title="Người cập nhật">${ico("user")}${by?esc(by):'<span class="as-empty">—</span>'}</span>`;
           let mid,text,tags=[],csvMid;const info=kind==="missing"?b:a,whName=(kind==="missing"||kind==="stale_source"?(b?.warehouse||a?.warehouse):(a?.warehouse||b?.warehouse))||"",moved=kind==="updated"&&b?.warehouse&&a?.warehouse&&b.warehouse!==a.warehouse,whCell=whName?`<span class="as-wh">${esc(whName)}</span>${moved?`<span class="as-run-meta">từ ${esc(b.warehouse)}</span>`:""}`:'<span class="as-empty">—</span>';
           if(kind==="updated"){const u=updatedCell(row);mid=u.html;text=u.text;tags=u.tags;csvMid=u.csv}
           else if(kind==="stale_source"){const s=staleCell(row);mid=s.html;text=s.text;csvMid=s.csv}
           else{const i=plainInfo(info);mid=infoCell(info);text=[i.status,i.wh,i.loc,i.sku,i.lot].join(" ");tags=i.status?[`st:${i.status}`]:[]}
-          const csv=kind==="updated"||kind==="stale_source"?[code,whName,csvMid,when?dt(when):""]:(i=>[code,i.status,i.wh,i.loc,i.qty,i.sku,when?dt(when):""])(plainInfo(info));
-          return{cells:[codeCell,whCell,mid,wmsCell],text:`${code} ${whName} ${text}`,tags,facets:{wh:whName},sort:{code:String(code),wh:whName,wms:when?Date.parse(when):null},csv};
+          const csv=kind==="updated"||kind==="stale_source"?[code,whName,csvMid,when?dt(when):"",by]:(i=>[code,i.status,i.wh,i.loc,i.qty,i.sku,when?dt(when):"",by])(plainInfo(info));
+          return{cells:[codeCell,whCell,mid,wmsCell],text:`${code} ${whName} ${text} ${by}`,tags,facets:{wh:whName},sort:{code:String(code),wh:whName,wms:when?Date.parse(when):null},csv};
         }
         function tagsFor(kind,rows){if(kind==="updated")return TAGS.filter(t=>rows.some(r=>r.tags.includes(t.id)));if(kind==="added"||kind==="missing"){const seen=[...new Set(rows.flatMap(r=>r.tags))];return seen.map(id=>({id,label:id.slice(3)}))}return[]}
         function renderChanges(kind="added",rows){
