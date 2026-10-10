@@ -360,6 +360,15 @@ loạt các dòng *Quên tick* theo giờ Cut trên WMS. Cần migration v6 (ch�
 python scripts/apply_supabase_sql.py supabase/cut_group_uid_v6_wms_reconcile.sql
 ```
 
+**Đã xử lý.** Kiểm tra xong một UID lệch thì tick nó trong popup nhóm lệch rồi bấm **Đã xử lý**: UID chuyển sang
+thẻ *Đã xử lý* (lưu trên Supabase, không còn tính là lệch). Dấu này gắn với đúng kiểu lệch lúc tick — dữ liệu WMS
+đổi làm UID lệch kiểu khác thì UID hiện lại ở nhóm lệch mới. **Bỏ xử lý** ở thẻ Đã xử lý để trả lại. Migration v8
+(đã áp dụng 10/10/2026; chỉ thêm cột và hàm):
+
+```powershell
+python scripts/apply_supabase_sql.py supabase/cut_group_uid_v8_adj_resolved.sql
+```
+
 Kiểm thử không cần mạng (file zip/xlsx tự dựng trong test, mọi kết nối Supabase được giả lập): với server local cổng 8000,
 `node tests/cut_adj_reconcile_browser.cjs` (đặt `PLAYWRIGHT_MODULE` nếu Playwright không nằm trong `node_modules`).
 

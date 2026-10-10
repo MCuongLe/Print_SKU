@@ -82,7 +82,7 @@ const syntheticItems = () => [
   appItem('UID-K', 'SKU-G', G, '2026-10-03T02:06:00.000Z') // lech 1 trong dung sai -> khop
 ];
 const EXPECTED_STATES = { 'UID-A': 'ok', 'UID-B': 'forgot', 'UID-C': 'wrong', 'UID-D': 'ok', 'UID-E': 'multi', 'UID-F': 'missing', 'UID-G': 'wait', 'UID-H': 'pending', 'UID-I': 'pending', 'UID-J': 'ok', 'UID-K': 'ok' };
-const STATE_ORDER = ['wrong', 'missing', 'multi', 'forgot', 'pending', 'wait', 'ok'];
+const STATE_ORDER = ['wrong', 'missing', 'multi', 'forgot', 'done', 'pending', 'wait', 'ok'];
 
 (async () => {
   const browser = await chromium.launch({ channel: 'chrome', headless: true });
@@ -90,7 +90,7 @@ const STATE_ORDER = ['wrong', 'missing', 'multi', 'forgot', 'pending', 'wait', '
     for (const width of [1280, 375]) {
       const page = await browser.newPage({ viewport: { width, height: 900 }, acceptDownloads: true });
       const errors = [], items = syntheticItems();
-      const store = { rows: [], imports: [], importCalls: [], tickCalls: [], reconcileBodies: [] };
+      const store = { rows: [], imports: [], importCalls: [], tickCalls: [], reconcileBodies: [], resolveCalls: [] };
       page.on('pageerror', error => errors.push(error.message));
       page.on('console', message => { if (message.type() === 'error' && !/Failed to load resource/.test(message.text())) errors.push(message.text()); });
       // 08/10/2026: xac nhan dung hop WhDialog trong trang; hop confirm() cua trinh duyet khong duoc hien nua.
@@ -127,6 +127,14 @@ const STATE_ORDER = ['wrong', 'missing', 'multi', 'forgot', 'pending', 'wait', '
             if (item && !item.adjExportedAt && cuts.length === 1) { item.adjExportedAt = cuts[0].cut_at; updated += 1; }
           }
           result = { ok: true, data: { updated, skipped: body.p_codes.length - updated } };
+        } else if (rpc === 'cut_group_uid_adj_resolve') {
+          store.resolveCalls.push({ p_codes: body.p_codes, p_state: body.p_state, p_done: body.p_done });
+          let count = 0;
+          for (const code of body.p_codes) {
+            const item = items.find(x => x.groupUid === code);
+            if (item) { item.adjResolvedAt = body.p_done ? new Date().toISOString() : null; item.adjResolvedState = body.p_done ? body.p_state : null; count += 1; }
+          }
+          result = { ok: true, data: { count, missing: body.p_codes.length - count } };
         } else if (rpc === 'cut_group_uid_list' || rpc === 'cut_group_uid_search') result = { ok: true, data: { items: [] } };
         else if (rpc === 'print_queue_status') result = { ok: true, data: { agents: [] } };
         // Ô lọc SKU tra SKU Combo trước khi tìm (từ 3e233cb); mảng rỗng = không phải Combo, tìm luôn.
@@ -222,7 +230,7 @@ const STATE_ORDER = ['wrong', 'missing', 'multi', 'forgot', 'pending', 'wait', '
       assert.equal(store.importCalls[1].body.p_rows.length, CUT_ROWS);
 
       // Phan loai trang thai.
-      assert.deepEqual(await counts(), { all: 11, wrong: 1, missing: 1, multi: 1, forgot: 1, pending: 2, wait: 1, ok: 4 });
+      assert.deepEqual(await counts(), { all: 11, wrong: 1, missing: 1, multi: 1, forgot: 1, done: 0, pending: 2, wait: 1, ok: 4 });
       assert.equal(await page.locator('#cut-adj-issues').textContent(), '4');
       const rows = await states();
       assert.deepEqual(Object.fromEntries(rows), EXPECTED_STATES);
@@ -234,8 +242,8 @@ const STATE_ORDER = ['wrong', 'missing', 'multi', 'forgot', 'pending', 'wait', '
       assert.match(wrongRow, /100 g/);
       assert.match(await page.locator('#cut-adj-rows tr[data-code="UID-D"]').innerText(), /1\.000 mm/);
 
-      // Chi dong "Quen tick" co o chon; Tick giup ghi gio Cut cua WMS.
-      assert.equal(await page.locator('#cut-adj-rows input[type=checkbox]').count(), 1);
+      // Dong lech (sai so luong, tick WMS khong co, Cut nhieu lan, quen tick) co o chon; Tick giup ghi gio Cut cua WMS.
+      assert.equal(await page.locator('#cut-adj-rows input[type=checkbox]').count(), 4);
       assert.equal(await page.locator('#cut-adj-dialog').evaluate(d => d.open), false, 'tải xong không tự mở popup');
       assert.equal(await page.locator('#cut-adj-rows').isVisible(), false, 'trang chỉ hiện ô trạng thái, bảng nằm trong popup');
       await tile('forgot');
@@ -253,8 +261,44 @@ const STATE_ORDER = ['wrong', 'missing', 'multi', 'forgot', 'pending', 'wait', '
       assert.deepEqual(store.tickCalls, [['UID-B']]);
       assert.equal(items.find(x => x.groupUid === 'UID-B').adjExportedAt, '2026-10-03T09:01:00+07:00');
       await page.waitForFunction(() => document.querySelector('.cut-adj-kpi[data-st="ok"] b').textContent === '5');
-      assert.deepEqual(await counts(), { all: 11, wrong: 1, missing: 1, multi: 1, forgot: 0, pending: 2, wait: 1, ok: 5 });
+      assert.deepEqual(await counts(), { all: 11, wrong: 1, missing: 1, multi: 1, forgot: 0, done: 0, pending: 2, wait: 1, ok: 5 });
       assert.equal(await page.locator('#cut-adj-issues').textContent(), '3');
+
+      // Da xu ly: chon UID lech -> luu kem kieu lech; sang nhom Da xu ly, bot 1 lech. Bo xu ly tra lai nhom cu.
+      await tile('missing');
+      assert.equal(await page.locator('#cut-adj-tick').isVisible(), false, 'Tick giup chi o Quen tick / Tat ca');
+      assert.equal(await page.locator('#cut-adj-unresolve').isVisible(), false);
+      await page.locator('#cut-adj-rows tr[data-code="UID-F"] input[type=checkbox]').check();
+      assert.equal((await page.locator('#cut-adj-resolve').textContent()).trim(), 'Đã xử lý 1');
+      await page.locator('#cut-adj-resolve').click();
+      await page.locator('dialog.whd').waitFor({ state: 'visible' });
+      assert.deepEqual(await page.locator('dialog.whd .whd-list li').allTextContents(), ['UID-F']);
+      await page.locator('dialog.whd .whd-ok').click();
+      await page.waitForFunction(() => document.querySelector('#cut-message').textContent.includes('Đã đánh dấu 1 UID đã xử lý'));
+      assert.deepEqual(store.resolveCalls, [{ p_codes: ['UID-F'], p_state: 'missing', p_done: true }]);
+      await page.waitForFunction(() => document.querySelector('.cut-adj-kpi[data-st="done"] b').textContent === '1');
+      assert.deepEqual(await counts(), { all: 11, wrong: 1, missing: 0, multi: 1, forgot: 0, done: 1, pending: 2, wait: 1, ok: 5 });
+      assert.equal(await page.locator('#cut-adj-issues').textContent(), '2');
+      await tile('done');
+      assert.match(await page.locator('#cut-adj-rows tr[data-code="UID-F"]').innerText(), /Đã xử lý[\s\S]*Tick, WMS không có/);
+      assert.equal(await page.locator('#cut-adj-resolve').isVisible(), false);
+      await page.locator('#cut-adj-all').check();
+      assert.equal((await page.locator('#cut-adj-unresolve').textContent()).trim(), 'Bỏ xử lý 1');
+      await page.locator('#cut-adj-unresolve').click();
+      await page.locator('dialog.whd .whd-ok').click();
+      await page.waitForFunction(() => document.querySelector('#cut-message').textContent.includes('Đã bỏ đánh dấu 1 UID'));
+      assert.deepEqual(store.resolveCalls.at(-1), { p_codes: ['UID-F'], p_state: null, p_done: false });
+      await page.waitForFunction(() => document.querySelector('.cut-adj-kpi[data-st="missing"] b').textContent === '1');
+      assert.equal((await counts()).done, 0);
+      // Kieu lech doi sau khi xu ly (luu 'wrong' nhung UID-F dang 'missing') -> khong tinh la da xu ly.
+      Object.assign(items.find(x => x.groupUid === 'UID-F'), { adjResolvedAt: '2026-10-04T10:00:00+07:00', adjResolvedState: 'wrong' });
+      await closeAdj();
+      const reloads = store.reconcileBodies.length;
+      await page.locator('#cut-adj-reload').click();
+      while (store.reconcileBodies.length === reloads) await page.waitForTimeout(50);
+      await page.waitForTimeout(200);
+      assert.deepEqual([(await counts()).missing, (await counts()).done], [1, 0]);
+      Object.assign(items.find(x => x.groupUid === 'UID-F'), { adjResolvedAt: null, adjResolvedState: null });
 
       // Loc theo the + loc SKU/ngay gui dung tham so + nap lai cung file khong nhan doi.
       assert.equal(await page.locator('.cut-adj-kpi[data-st="forgot"]').getAttribute('data-zero'), 'true', 'ô 0 UID không mở popup');
@@ -322,7 +366,7 @@ const STATE_ORDER = ['wrong', 'missing', 'multi', 'forgot', 'pending', 'wait', '
       assert.equal(layout.tabs.length, 4);
       assert.equal(layout.tabs.every(right => right <= layout.innerWidth), true);
       assert.deepEqual(errors, []);
-      console.log(`PASS ${width}px: file zip/xlsx, loi file, Admin truoc khi nap, 7 trang thai, Cut cu truoc lan quet, tick giup, loc, nap lai, doc WMS nhieu trang (co/khong tong, lap trang), XLSX, no overflow/errors`);
+      console.log(`PASS ${width}px: file zip/xlsx, loi file, Admin truoc khi nap, 7 trang thai, Cut cu truoc lan quet, tick giup, loc, nap lai, doc WMS nhieu trang (co/khong tong, lap trang), da xu ly/bo xu ly, XLSX, no overflow/errors`);
       await page.close();
     }
   } finally { await browser.close(); }

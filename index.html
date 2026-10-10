@@ -4208,8 +4208,8 @@ Error generating stack: `+y.message+`
       </div></main>
       <dialog class="as-dialog cut-adj-dialog" id="cut-adj-dialog" aria-labelledby="cut-adj-d-title">
         <div class="as-d-head"><span class="as-d-mark" id="cut-adj-d-mark" aria-hidden="true"></span><div class="as-d-title"><h2 id="cut-adj-d-title">Đối chiếu ADJ</h2><p id="cut-adj-total"></p></div><button class="cut-icon-btn" id="cut-adj-export" type="button" disabled title="Xuất Excel các dòng đang hiện" aria-label="Xuất Excel các dòng đang hiện"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button><button class="cut-icon-btn" type="button" data-adj-close title="Đóng" aria-label="Đóng"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>
-        <div class="as-d-body"><div class="cut-table-wrap"><table class="cut-table"><thead><tr><th class="cut-th-check"><input id="cut-adj-all" type="checkbox" aria-label="Chọn tất cả UID quên tick" disabled></th><th>UID</th><th>SKU</th><th>Lot</th><th>Chuẩn</th><th>WMS</th><th>Tick ADJ</th><th>Trạng thái</th></tr></thead><tbody id="cut-adj-rows"><tr><td colspan="8" class="cut-empty">Đang tải…</td></tr></tbody></table></div></div>
-        <div class="as-d-foot" id="cut-adj-foot"><button class="cut-primary act-icon act-icon--check" id="cut-adj-tick" type="button" disabled>Tick giúp</button></div>
+        <div class="as-d-body"><div class="cut-table-wrap"><table class="cut-table"><thead><tr><th class="cut-th-check"><input id="cut-adj-all" type="checkbox" aria-label="Chọn tất cả UID có thể xử lý" disabled></th><th>UID</th><th>SKU</th><th>Lot</th><th>Chuẩn</th><th>WMS</th><th>Tick ADJ</th><th>Trạng thái</th></tr></thead><tbody id="cut-adj-rows"><tr><td colspan="8" class="cut-empty">Đang tải…</td></tr></tbody></table></div></div>
+        <div class="as-d-foot" id="cut-adj-foot"><button class="cut-primary act-icon act-icon--check" id="cut-adj-tick" type="button" disabled>Tick giúp</button><button class="cut-secondary act-icon act-icon--check" id="cut-adj-resolve" type="button" disabled>Đã xử lý</button><button class="cut-secondary act-icon act-icon--x" id="cut-adj-unresolve" type="button" disabled>Bỏ xử lý</button></div>
       </dialog>
     </section>
         <section class="cut-screen" id="find-sku-screen" aria-labelledby="fsk-title" hidden>
@@ -7792,6 +7792,12 @@ var FSK_CORE = (function () {
       .cut-adj-st[data-st="forgot"]{background:rgba(183,121,31,.16);color:#8a5a00}
       .cut-adj-st[data-st="wrong"],.cut-adj-st[data-st="missing"],.cut-adj-st[data-st="multi"]{background:rgba(180,35,24,.1);color:var(--wms-danger,#b42318)}
       .cut-adj-st[data-st="pending"],.cut-adj-st[data-st="wait"]{background:rgba(96,115,107,.14);color:var(--wms-muted,#60736b)}
+      /* Đã xử lý (v8): xanh dương như chip "Đã xuất ADJ", không lẫn với Khớp (xanh lá). Nút chân popup ẩn theo nhóm đang mở. */
+      .cut-adj-st[data-st="done"]{background:rgba(31,78,120,.1);color:#1f4e78}
+      .cut-adj-kpi[data-tone="done"]{color:#1f4e78}
+      .as-d-mark[data-tone="done"]{background:#e5eefb;color:#1f4e78}
+      #cut-adj-foot .cut-secondary{flex:1 1 auto;min-height:52px}
+      #cut-adj-foot [hidden]{display:none}
       #cut-adj-rows small{display:block;color:var(--wms-muted,#60736b);font-size:11px}
       #cut-adj-rows .cut-adj-q[data-bad="true"]{color:var(--wms-danger,#b42318);font-weight:800}
       .cut-adj-kpi[data-zero="true"]{opacity:.55;cursor:default}
@@ -7816,11 +7822,13 @@ var FSK_CORE = (function () {
           missing:{label:'Tick, WMS không có',tone:'bad',icon:'<circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/>'},
           multi:{label:'Cut nhiều lần',tone:'bad',icon:'<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>'},
           forgot:{label:'Quên tick',tone:'warn',icon:'<path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"/>'},
+          done:{label:'Đã xử lý',tone:'done',icon:'<path d="M18 6 7 17l-5-5"/><path d="m22 10-7.5 7.5L13 16"/>'},
           pending:{label:'Chưa ADJ',tone:'mute',icon:'<circle cx="12" cy="12" r="10"/><path d="M8 12h8"/>'},
           wait:{label:'Chờ dữ liệu WMS',tone:'mute',icon:'<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>'},
           ok:{label:'Khớp',tone:'good',icon:'<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>'}
         };
-        const ORDER=Object.keys(STATES),ISSUES=['wrong','missing','multi','forgot'];
+        // SELECTABLE: dòng có ô chọn — nhóm lệch (Đã xử lý; Quên tick còn Tick giúp) và nhóm Đã xử lý (Bỏ xử lý).
+        const ORDER=Object.keys(STATES),ISSUES=['wrong','missing','multi','forgot'],SELECTABLE=[...ISSUES,'done'];
         const ALL_ICON='<line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>';
         const CAL_ICON='<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/>';
         const QTY_TOLERANCE=1; // WMS làm tròn số lượng về số nguyên
@@ -7829,7 +7837,7 @@ var FSK_CORE = (function () {
         const num=v=>nf.format(Number(v));
         const day=value=>{const d=new Date(value);return Number.isNaN(d.getTime())?'':new Intl.DateTimeFormat('vi-VN',{dateStyle:'short'}).format(d)};
         let items=[],cov=null,rows=[],filter='',loading=false,uploading=false,pending=null,pendingWms=false;
-        const picked=new Set();
+        const picked=new Set(),resolveBtn=$('cut-adj-resolve'),unresolveBtn=$('cut-adj-unresolve');
 
         // Trạng thái của một UID đã cắt, so với các dòng Cut của WMS.
         const classify=(item,until)=>{
@@ -7839,6 +7847,9 @@ var FSK_CORE = (function () {
           else if(cuts.length>1)state='multi';
           else if(std&&Math.abs(Number(cuts[0].qty)-std.value)>QTY_TOLERANCE)state='wrong';
           else state=item.adjExportedAt?'ok':'forgot';
+          // "Đã xử lý" (supabase/cut_group_uid_v8_adj_resolved.sql) chỉ áp cho đúng kiểu lệch lúc tick; WMS đổi làm UID
+          // lệch kiểu khác thì UID hiện lại ở nhóm lệch mới.
+          if(ISSUES.includes(state)&&item.adjResolvedAt&&item.adjResolvedState===state)return {item,state:'done',issue:state,std,cuts};
           return {item,state,std,cuts};
         };
         const visible=()=>rows.filter(r=>!filter||r.state===filter);
@@ -7847,20 +7858,24 @@ var FSK_CORE = (function () {
           const tile=(key,label,tone,icon,count)=>`<button class="cut-adj-kpi" type="button" data-st="${key}" data-tone="${tone}" data-zero="${!count}" aria-haspopup="dialog">${svg(icon)}<span>${esc(label)}</span><b>${count}</b></button>`;
           kpisEl.innerHTML=tile('','Tất cả','mute',ALL_ICON,rows.length)+ORDER.map(key=>tile(key,STATES[key].label,STATES[key].tone,STATES[key].icon,counts[key]||0)).join('');
           const info=filter?STATES[filter]:{label:'Tất cả',tone:'mute',icon:ALL_ICON};
-          dTitle.textContent=info.label;dMark.dataset.tone=info.tone;dMark.innerHTML=svg(info.icon,20);foot.hidden=filter!==''&&filter!=='forgot';
+          dTitle.textContent=info.label;dMark.dataset.tone=info.tone;dMark.innerHTML=svg(info.icon,20);foot.hidden=filter!==''&&!SELECTABLE.includes(filter);
         };
         const rowHtml=r=>{
-          const {item,state,std,cuts}=r,unit=std?` ${std.unit}`:'';
+          const {item,state,issue,std,cuts}=r,unit=std?` ${std.unit}`:'';
           const wms=cuts.length?cuts.map(c=>`<span class="cut-adj-q" data-bad="${state==='wrong'}">${num(c.qty)}${esc(unit)}</span><small>${esc(fmt(c.cutAt))}</small>`).join(''):'—';
           const tick=item.adjExportedAt?`<span class="cut-adj-chip">Đã xuất ADJ</span><small>${esc(fmt(item.adjExportedAt))}</small>`:'<span class="cut-adj-none">Chưa</span>';
-          const box=state==='forgot'?`<input type="checkbox" ${picked.has(item.groupUid)?'checked':''} aria-label="Chọn ${esc(item.groupUid)}">`:'';
-          return `<tr data-code="${esc(item.groupUid)}"${picked.has(item.groupUid)?' class="is-selected"':''}><td>${box}</td><td data-label="UID">${esc(item.groupUid)}</td><td data-label="SKU">${esc(item.sku)}</td><td data-label="Lot">${esc(item.lot||'—')}</td><td data-label="Chuẩn">${std?esc(fmtQty(std)):'—'}</td><td data-label="WMS"><div>${wms}</div></td><td data-label="Tick ADJ"><div>${tick}</div></td><td data-label="Trạng thái"><span class="cut-adj-st" data-st="${state}">${esc(STATES[state].label)}</span></td></tr>`;
+          const box=SELECTABLE.includes(state)?`<input type="checkbox" ${picked.has(item.groupUid)?'checked':''} aria-label="Chọn ${esc(item.groupUid)}">`:'';
+          const stCell=`<span class="cut-adj-st" data-st="${state}">${esc(STATES[state].label)}</span>${issue?`<small>${esc(STATES[issue].label)} · ${esc(fmt(item.adjResolvedAt))}</small>`:''}`;
+          return `<tr data-code="${esc(item.groupUid)}"${picked.has(item.groupUid)?' class="is-selected"':''}><td>${box}</td><td data-label="UID">${esc(item.groupUid)}</td><td data-label="SKU">${esc(item.sku)}</td><td data-label="Lot">${esc(item.lot||'—')}</td><td data-label="Chuẩn">${std?esc(fmtQty(std)):'—'}</td><td data-label="WMS"><div>${wms}</div></td><td data-label="Tick ADJ"><div>${tick}</div></td><td data-label="Trạng thái"><div>${stCell}</div></td></tr>`;
         };
         const syncTick=()=>{
           const boxes=[...rowsEl.querySelectorAll('input[type=checkbox]')],chosen=boxes.filter(x=>x.checked);
           boxes.forEach(x=>x.closest('tr').classList.toggle('is-selected',x.checked));
           allBox.disabled=!boxes.length;allBox.checked=boxes.length>0&&chosen.length===boxes.length;allBox.indeterminate=chosen.length>0&&chosen.length<boxes.length;
-          tickBtn.disabled=!picked.size||uploading;tickBtn.textContent=picked.size?`Tick giúp ${picked.size}`:'Tick giúp';
+          // Mỗi nút đếm đúng nhóm của nó: Tick giúp (Quên tick), Đã xử lý (mọi kiểu lệch), Bỏ xử lý (Đã xử lý).
+          const sel=rows.filter(r=>picked.has(r.item.groupUid)),count=states=>sel.filter(r=>states.includes(r.state)).length;
+          const show=(btn,states,label)=>{const n=count(states);btn.hidden=filter!==''&&!states.includes(filter);btn.disabled=!n||uploading;btn.textContent=n?`${label} ${n}`:label};
+          show(tickBtn,['forgot'],'Tick giúp');show(resolveBtn,ISSUES,'Đã xử lý');show(unresolveBtn,['done'],'Bỏ xử lý');
         };
         const render=()=>{
           const until=cov?Date.parse(cov.until):NaN,old=Number.isFinite(until)&&Date.now()-until>MAX_AGE_MS;
@@ -7869,7 +7884,7 @@ var FSK_CORE = (function () {
           issuesEl.textContent=ISSUES.reduce((sum,key)=>sum+(counts[key]||0),0);
           covEl.dataset.tone=!cov||old?'warn':'';
           covEl.innerHTML=cov?`${svg(CAL_ICON,18)}<span title="Nạp lúc ${esc(fmt(cov.importedAt))}">WMS ${esc(day(cov.from))} → ${esc(fmt(cov.until))}</span>`:`${svg(CAL_ICON,18)}<span>Chưa nạp dữ liệu WMS</span>`;
-          for(const code of [...picked])if(!rows.some(r=>r.item.groupUid===code&&r.state==='forgot'))picked.delete(code);
+          for(const code of [...picked])if(!rows.some(r=>r.item.groupUid===code&&SELECTABLE.includes(r.state)))picked.delete(code);
           renderKpis(counts);
           const shown=visible();
           exportBtn.disabled=!shown.length;
@@ -8064,7 +8079,8 @@ var FSK_CORE = (function () {
 
         // ---- Tick giúp, xuất Excel, lọc ----
         tickBtn.addEventListener('click',async()=>{
-          const codes=[...picked];
+          // Chỉ gửi dòng "Quên tick": máy chủ không biết số lượng chuẩn nên không được gửi UID sai số lượng.
+          const codes=rows.filter(r=>picked.has(r.item.groupUid)&&r.state==='forgot').map(r=>r.item.groupUid);
           if(!codes.length||uploading)return;
           if(!await window.WhDialog.confirm({icon:'check',title:`Đánh dấu ${codes.length} UID đã xuất ADJ`,facts:['Theo giờ Cut trên WMS'],list:codes,confirmText:`Đánh dấu ${codes.length} UID`}))return;
           uploading=true;tickBtn.disabled=true;
@@ -8080,6 +8096,28 @@ var FSK_CORE = (function () {
           }catch(e){tell(`Chưa tick được: ${e.message}`,'error')}
           finally{uploading=false;await load()}
         });
+        // "Đã xử lý" / "Bỏ xử lý": lưu theo từng kiểu lệch (adj_resolved_state) để WMS đổi kiểu lệch thì UID hiện lại.
+        const setResolved=async done=>{
+          const sel=rows.filter(r=>picked.has(r.item.groupUid)&&(done?ISSUES.includes(r.state):r.state==='done'));
+          if(!sel.length||uploading)return;
+          const codes=sel.map(r=>r.item.groupUid);
+          if(!await window.WhDialog.confirm(done?{icon:'check',title:`Đánh dấu ${codes.length} UID đã xử lý`,list:codes,confirmText:`Đã xử lý ${codes.length} UID`}:{tone:'danger',icon:'undo',title:`Bỏ đánh dấu đã xử lý ${codes.length} UID`,list:codes,confirmText:`Bỏ xử lý ${codes.length} UID`}))return;
+          uploading=true;syncTick();
+          try{
+            const groups=new Map();sel.forEach(r=>{const key=done?r.state:'';groups.set(key,[...(groups.get(key)||[]),r.item.groupUid])});
+            let count=0;
+            for(const [state,list] of groups)for(let i=0;i<list.length;i+=500){
+              const r=await rpc('cut_group_uid_adj_resolve',{p_codes:list.slice(i,i+500),p_state:state||null,p_done:done});
+              if(!r.ok)throw new Error(r.error?.message||'Không lưu được');
+              count+=r.data?.count||0;
+            }
+            picked.clear();
+            tell(done?`Đã đánh dấu ${count} UID đã xử lý.`:`Đã bỏ đánh dấu ${count} UID.`,'ok');
+          }catch(e){tell(`Chưa lưu được: ${e.message}`,'error')}
+          finally{uploading=false;await load()}
+        };
+        resolveBtn.addEventListener('click',()=>setResolved(true));
+        unresolveBtn.addEventListener('click',()=>setResolved(false));
         rowsEl.addEventListener('change',event=>{
           const box=event.target.closest('input[type=checkbox]');if(!box)return;
           const code=box.closest('tr').dataset.code;
@@ -8087,7 +8125,7 @@ var FSK_CORE = (function () {
           syncTick();
         });
         allBox.addEventListener('change',()=>{
-          const shown=visible().filter(r=>r.state==='forgot');
+          const shown=visible().filter(r=>SELECTABLE.includes(r.state));
           shown.forEach(r=>allBox.checked?picked.add(r.item.groupUid):picked.delete(r.item.groupUid));
           rowsEl.querySelectorAll('input[type=checkbox]').forEach(x=>{x.checked=allBox.checked});
           syncTick();
@@ -8095,6 +8133,7 @@ var FSK_CORE = (function () {
         kpisEl.addEventListener('click',event=>{
           const button=event.target.closest('[data-st]');if(!button)return;
           if(button.dataset.zero==='true')return;
+          if(filter!==button.dataset.st)picked.clear();   // đổi nhóm thì bỏ chọn cũ, nút chỉ đếm dòng đang thấy
           filter=button.dataset.st;render();
           if(!dlg.open)dlg.showModal();
           dlg.querySelector('[data-adj-close]').focus({preventScroll:true});
@@ -8103,7 +8142,7 @@ var FSK_CORE = (function () {
         exportBtn.addEventListener('click',()=>{
           const shown=visible();if(!shown.length)return;
           const head=['Trạng thái','UID','SKU','Lot','Cắt lúc','SL chuẩn','SL WMS','Giờ Cut WMS','Tick ADJ'];
-          const data=shown.map(({item,state,std,cuts})=>[STATES[state].label,item.groupUid,item.sku,item.lot,fmt(item.cutAt),std?fmtQty(std):'',cuts.map(c=>num(c.qty)).join(' + '),cuts.map(c=>fmt(c.cutAt)).join(' + '),item.adjExportedAt?fmt(item.adjExportedAt):'Chưa']);
+          const data=shown.map(({item,state,issue,std,cuts})=>[issue?`${STATES[state].label} (${STATES[issue].label})`:STATES[state].label,item.groupUid,item.sku,item.lot,fmt(item.cutAt),std?fmtQty(std):'',cuts.map(c=>num(c.qty)).join(' + '),cuts.map(c=>fmt(c.cutAt)).join(' + '),item.adjExportedAt?fmt(item.adjExportedAt):'Chưa']);
           const bytes=workbook([head,...data],[20,22,14,10,18,14,14,22,18]),blob=new Blob([bytes],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),a=document.createElement('a'),now=new Date(),pad=n=>String(n).padStart(2,'0');
           a.href=URL.createObjectURL(blob);a.download=`Doi_chieu_ADJ_${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}.xlsx`;
           document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),10000);
