@@ -2829,7 +2829,7 @@ Error generating stack: `+y.message+`
         // ---- SKU Normal của dòng Combo: màn hình và biên bản hiển thị SKU Normal thay cho SKU Combo ----
         // Tra bằng RPC sku_combo_lookup (cùng RPC với PRINT SKU/TÌM SKU); SKU thường trả mảng rỗng.
         // comboState: normal (đã có Normal) · none (không phải Combo) · missing (Combo chưa có liên kết) · error (tra lỗi, thử lại lúc xuất).
-        // Số lượng, đơn vị, tên giữ nguyên theo PO: đơn vị Normal khác Combo (kg→g, m→mm, yard→mm) nên không quy đổi.
+        // Tên, NCC, màu lấy theo tên SKU Normal; số lượng và đơn vị giữ nguyên theo PO (đơn vị Normal khác Combo: kg→g, m→mm, yard→mm nên không quy đổi).
         const normalCache = new Map();
         let lookupGeneration = 0;
         const lookupNormals = sku => {
@@ -2845,25 +2845,43 @@ Error generating stack: `+y.message+`
               if (!response.ok) throw new Error("lookup");
               const rows = await response.json();
               if (!Array.isArray(rows) || rows.some(row => !row.normal_sku || !(Number(row.quantity) > 0))) throw new Error("shape");
-              return rows.map(row => ({ sku: String(row.normal_sku).trim(), available: row.available === true }));
+              return rows.map(row => ({ sku: String(row.normal_sku).trim(), name: String(row.product_name || "").trim(), available: row.available === true }));
             }).catch(() => { normalCache.delete(sku); return null; }));
           }
           return normalCache.get(sku);
         };
-        const isComboName = item => /^\(combo\)/i.test(item.name);
+        const isComboName = item => /^\(combo\)/i.test(item.poName ?? item.name);
         // Ghi chú cảnh báo: chỉ cho dòng trông giống Combo, để mất kết nối không làm mọi dòng SKU thường bị đánh dấu.
         const comboNote = item => item.comboState === "missing" ? "Combo chưa có SKU Normal" : item.comboState === "error" && isComboName(item) ? "Chưa tra được SKU Normal" : "";
         const skuCellHtml = item => {
           if (item.normals?.length) {
-            const note = `Combo ${item.sku}${item.normalsInactive ? " · có SKU Normal ngừng hoạt động" : ""}`;
+            const note = `Combo ${item.sku}${item.poName ? ` — ${item.poName}` : ""}${item.normalsInactive ? " · có SKU Normal ngừng hoạt động" : ""}`;
             return `<div class="ins-sku" data-sku-cell title="${escapeHtml(note)}">${item.normals.map(sku => `<span>${escapeHtml(sku)}</span>`).join("")}</div>`;
           }
           const warn = comboNote(item);
           return `<input data-field="sku" data-sku-cell value="${escapeHtml(item.sku)}"${warn ? ` class="ins-sku--warn" title="${warn}"` : ""}>`;
         };
-        const paintSku = item => {
-          const cell = itemsElement.querySelector(`.ins-row[data-index="${items.indexOf(item)}"] [data-sku-cell]`);
+        // Tên, NCC, màu theo tên SKU Normal (Combo 2 Normal: nối bằng " + "). Không ghi đè ô người dùng đã sửa tay.
+        const uniqueJoin = values => [...new Set(values.filter(Boolean))].join(" + ");
+        const applyNormalNames = (item, rows) => {
+          const named = rows.filter(row => row.name);
+          if (!named.length) return;
+          const parts = named.map(row => parseNameParts(row.name));
+          if (item.name === item.poName) { item.names = named.map(row => row.name); item.name = item.names.join(" + "); }
+          if (item.supplier === item.poSupplier) item.supplier = uniqueJoin(parts.map(part => part.supplier)) || item.supplier;
+          if (item.colour === item.poColour) item.colour = uniqueJoin(parts.map(part => part.colour)) || item.colour;
+        };
+        const paintItem = item => {
+          const row = itemsElement.querySelector(`.ins-row[data-index="${items.indexOf(item)}"]`);
+          if (!row) return;
+          const cell = row.querySelector("[data-sku-cell]");
           if (cell) cell.outerHTML = skuCellHtml(item);
+          for (const field of ["name", "supplier", "colour"]) {
+            const input = row.querySelector(`input[data-field="${field}"]`);
+            if (!input || input === document.activeElement) continue;
+            input.value = item[field];
+            if (field === "name") input.title = item.name;
+          }
         };
         // Trả về số dòng Combo chưa có SKU Normal (chưa liên kết hoặc tra lỗi). Gọi lại là thử lại các dòng lỗi.
         const resolveNormals = async () => {
@@ -2875,9 +2893,9 @@ Error generating stack: `+y.message+`
               const rows = await lookupNormals(item.sku);
               if (generation !== lookupGeneration || !items.includes(item)) return;
               if (rows === null) item.comboState = "error";
-              else if (rows.length) { item.normals = rows.map(row => row.sku); item.normalsInactive = rows.some(row => !row.available); item.comboState = "normal"; }
+              else if (rows.length) { item.normals = rows.map(row => row.sku); item.normalsInactive = rows.some(row => !row.available); item.comboState = "normal"; applyNormalNames(item, rows); }
               else item.comboState = isComboName(item) ? "missing" : "none";
-              if (item.comboState !== "none") paintSku(item);
+              if (item.comboState !== "none") paintItem(item);
             }
           };
           await Promise.all(Array.from({ length: Math.min(6, queue.length) }, worker));
@@ -2923,6 +2941,7 @@ Error generating stack: `+y.message+`
             };
           }).filter(item => item.sku && item.name && item.qty > 0);
           if (!normalized.length) throw new Error("PO không có dòng phụ liệu hợp lệ");
+          normalized.forEach(item => { item.poName = item.name; item.poSupplier = item.supplier; item.poColour = item.colour; });
           lookupGeneration += 1;
           items = normalized;
           fields.po.value = String(po.poCode || po.invoice || "").trim();
@@ -3013,7 +3032,7 @@ Error generating stack: `+y.message+`
           const item = items[Number(rowElement.dataset.index)];
           if (!item) return;
           item[field] = event.target.value;
-          if (field === "sku") { item.normals = undefined; item.comboState = undefined; }
+          if (field === "sku") { item.normals = undefined; item.names = undefined; item.comboState = undefined; }
           if (field === "qty") {
             const aqlInput = rowElement.querySelector('input[data-field="aql"]');
             if (aqlInput) aqlInput.value = aqlSample(Math.floor(Number(item.qty)) || 0);
@@ -3118,6 +3137,7 @@ Error generating stack: `+y.message+`
             const write = (ref, raw) => { const value = String(raw ?? "").trim(); if (!value) setCell(ref, null); else if (numeric(value)) setCell(ref, value, true); else setCell(ref, value); };
             const writeText = (ref, raw) => { const value = String(raw ?? "").trim(); setCell(ref, value || null); };
             const reportSkuOf = item => (item.normals?.length ? item.normals : [String(item.sku ?? "").trim()]).filter(Boolean).join("\n");
+            const reportNameOf = item => item.names?.length && item.name === item.names.join(" + ") ? item.names.join("\n") : item.name; // Combo 2 Normal: mỗi tên một dòng
             const noteOf = item => comboNote(item) || null;
             setCell("C5", "MASTIGE");
             setCell("C6", null);
@@ -3143,7 +3163,7 @@ Error generating stack: `+y.message+`
               if (item) {
                 setCell("A" + row, reportSkuOf(item) || null, false, 6); // SKU là chữ, không bị đổi thành 4.22E+08 hay mất số 0 đầu
                 setCell("O" + row, noteOf(item));
-                writeText("B" + row, item.name);
+                writeText("B" + row, reportNameOf(item));
                 writeText("C" + row, item.supplier);
                 writeText("D" + row, item.colour);
                 const rowQty = Math.floor(Number(item.qty)) || 0;
@@ -3196,7 +3216,7 @@ Error generating stack: `+y.message+`
             for (let row = DATA_ROW_FIRST; row <= DATA_ROW_LAST; row += 1) {
               const item = items[row - DATA_ROW_FIRST];
               if (!item) { setRow(row, 0, true); continue; }  // hàng không dùng: ẩn để bản in gọn, không có khung trống
-              const lines = Math.max(wrappedLines(reportSkuOf(item), COLS[0]), wrappedLines(item.name, COLS[1]), wrappedLines(item.supplier, COLS[2]), wrappedLines(item.colour, COLS[3]), wrappedLines(noteOf(item), COLS[14]));
+              const lines = Math.max(wrappedLines(reportSkuOf(item), COLS[0]), wrappedLines(reportNameOf(item), COLS[1]), wrappedLines(item.supplier, COLS[2]), wrappedLines(item.colour, COLS[3]), wrappedLines(noteOf(item), COLS[14]));
               setRow(row, Math.max(24, Math.ceil(lines * 12.75 + 6)));
             }
             // ---- Gói tệp: tên sheet, vùng in + dòng lặp, bỏ cài đặt máy in HP của người tạo template ----
