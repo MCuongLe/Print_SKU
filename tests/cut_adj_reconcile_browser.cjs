@@ -195,7 +195,7 @@ const STATE_ORDER = ['wrong', 'missing', 'multi', 'forgot', 'pending', 'wait', '
         window.addEventListener('message', event => {
           const req = event.data;
           if (event.source !== window || req?.source !== 'PRINT_SKU_APP') return;
-          if (req.type === 'PING_WMS') window.postMessage({ source: 'HASAKI_INSIDE_CONNECTOR', requestId: req.requestId, ok: true, data: { version: '0.5.0' } }, location.origin);
+          if (req.type === 'PING' || req.type === 'PING_WMS') window.postMessage({ source: 'HASAKI_INSIDE_CONNECTOR', requestId: req.requestId, ok: true, data: { version: '0.5.0' } }, location.origin);
           if (req.type === 'GET_GROUP_UID_HISTORY_PAGE') {
             const wms = window.__wms, size = req.payload.size || 500, pageNo = req.payload.page || 1, at = wms.repeat ? 1 : pageNo;
             wms.pages.push(pageNo);

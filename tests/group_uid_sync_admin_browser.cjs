@@ -16,7 +16,7 @@ const manyCounts = { added: 0, updated: 120, unchanged: 1880, missing: 0, issues
 const fakeExtension = () => addEventListener("message", event => {
   const request = event.data;
   if (!request || request.source !== "PRINT_SKU_APP") return;
-  const data = request.type === "PING_WMS" ? { version: "0.4.2" } : request.type === "GET_GROUP_UID_PAGE" ? {
+  const data = request.type === "PING" || request.type === "PING_WMS" ? { version: "0.4.2" } : request.type === "GET_GROUP_UID_PAGE" ? {
     page: 1, size: 500, total: 2, totalPages: 1, rows: [
       { group_uid_code: "1028261006000050", sku: "422268923", qty: 7429, status: "Available", updated_date: "2026-10-08T01:00:00Z" },
       { group_uid_code: "1028261006000049", sku: "422273475", qty: 3180, status: "Allocated", updated_date: "2026-10-08T01:01:00Z" },
