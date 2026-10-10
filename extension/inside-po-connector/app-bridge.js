@@ -11,23 +11,15 @@
     const request = event.data;
     if (!request || request.source !== "PRINT_SKU_APP" || !["PING", "PING_WMS", "GET_PO", "GET_SKU_SYNC_DATA", "GET_GROUP_UID_PAGE", "GET_GROUP_UID_HISTORY_PAGE", "GET_SKU_COUNT_WAREHOUSES", "GET_SKU_COUNT_APPROVED_PAGE", "GET_SKU_COUNT_INVENTORY_PAGE"].includes(request.type) || !request.requestId) return;
 
-    chrome.runtime.sendMessage({ type: request.type, payload: request.payload || {} })
-      .then(response => {
-        window.postMessage({
-          source: "HASAKI_INSIDE_CONNECTOR",
-          requestId: request.requestId,
-          ok: Boolean(response?.ok),
-          data: response?.data,
-          error: response?.error
-        }, location.origin);
-      })
-      .catch(() => {
-        window.postMessage({
-          source: "HASAKI_INSIDE_CONNECTOR",
-          requestId: request.requestId,
-          ok: false,
-          error: { code: "EXTENSION_UNAVAILABLE", message: "Tiện ích kết nối Inside chưa sẵn sàng" }
-        }, location.origin);
-      });
+    const reply = fields => window.postMessage({ source: "HASAKI_INSIDE_CONNECTOR", requestId: request.requestId, ...fields }, location.origin);
+    try {
+      chrome.runtime.sendMessage({ type: request.type, payload: request.payload || {} })
+        .then(response => reply({ ok: Boolean(response?.ok), data: response?.data, error: response?.error }))
+        .catch(() => reply({ ok: false, error: { code: "EXTENSION_UNAVAILABLE", message: "Tiện ích kết nối Inside chưa sẵn sàng" } }));
+    } catch {
+      // Extension vừa được Reload/cập nhật: cầu nối còn sót trong tab này không còn nối được và sendMessage ném lỗi ngay.
+      // Phải trả lời, nếu không trang chỉ biết chờ hết hạn mà không rõ nguyên nhân.
+      reply({ ok: false, error: { code: "EXTENSION_RELOADED", message: "Tiện ích vừa được cập nhật; hãy tải lại trang" } });
+    }
   });
 })();

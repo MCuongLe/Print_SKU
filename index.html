@@ -2984,13 +2984,16 @@ Error generating stack: `+y.message+`
           fetchPoButton.textContent = "Đang lấy…";
           setStatus(`Đang lấy PO ${poCode} từ Inside…`);
           try {
-            if (!connectorReady) await callInsideConnector("PING", {}, 1800);
+            // Luôn hỏi lại trước khi lấy PO: sau khi extension Reload/cập nhật, cầu nối trong tab này mồ côi nhưng huy hiệu cũ vẫn xanh.
+            const wasReady = connectorReady;
+            await callInsideConnector("PING", {}, 1800).catch(() => { throw new Error(wasReady ? "Tiện ích vừa được cập nhật — tải lại trang (F5)" : "Không tìm thấy tiện ích kết nối Inside"); });
             setConnectorState("ready", "Tiện ích đã kết nối");
             const po = await callInsideConnector("GET_PO", { poCode });
             applyPoData(po, "Inside");
           } catch (error) {
             const message = String(error?.message || error);
-            if (/tiện ích/i.test(message)) setConnectorState("missing", "Chưa có tiện ích");
+            if (/tải lại trang/i.test(message)) setConnectorState("error", "Tải lại trang");
+            else if (/tiện ích/i.test(message)) setConnectorState("missing", "Chưa có tiện ích");
             else if (/đăng nhập|tab Inside|phiên/i.test(message)) setConnectorState("error", "Cần mở Inside");
             setStatus(`${message}. Bạn vẫn có thể chọn file PO bên dưới.`, "error");
           } finally {

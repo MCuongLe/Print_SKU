@@ -31,4 +31,39 @@ assert.equal(sandbox.result.test("https://mcuongle.github.io/Print_SKU/#inspecti
 assert.equal(sandbox.result.test("https://evil.example/Print_SKU/#inspection"), false);
 assert.equal(sandbox.result.test("https://mcuongle.github.io/Other_App/#inspection"), false);
 
-console.log("inside_po_connector: manifest and allowed origins passed");
+// Cầu nối trong tab app phải luôn trả lời: khi extension vừa Reload, sendMessage ném lỗi ngay (cầu nối "mồ côi")
+// và trang chỉ còn cách chờ hết hạn nếu cầu nối im lặng.
+const appBridge = fs.readFileSync(path.join(extensionDir, "app-bridge.js"), "utf8");
+const runBridge = chromeStub => {
+  const posted = [];
+  let handler;
+  const win = { addEventListener: (type, fn) => { if (type === "message") handler = fn; }, postMessage: (data, origin) => posted.push({ data, origin }) };
+  vm.runInNewContext(appBridge, { window: win, chrome: chromeStub, location: { hostname: "localhost", pathname: "/", origin: "http://localhost:8000" } });
+  return { posted, send: data => handler({ source: win, origin: "http://localhost:8000", data }) };
+};
+const request = { source: "PRINT_SKU_APP", type: "GET_PO", requestId: "r1", payload: { poCode: "123" } };
+const settle = () => new Promise(resolve => setImmediate(resolve));
+
+(async () => {
+  const ok = runBridge({ runtime: { sendMessage: async () => ({ ok: true, data: { version: "x" } }) } });
+  ok.send(request);
+  await settle();
+  assert.deepEqual(ok.posted.map(item => [item.data.requestId, item.data.ok, item.data.data]), [["r1", true, { version: "x" }]]);
+
+  const orphaned = runBridge({ runtime: { sendMessage: () => { throw new Error("Extension context invalidated."); } } });
+  orphaned.send(request);
+  await settle();
+  assert.deepEqual(orphaned.posted.map(item => [item.data.requestId, item.data.ok, item.data.error.code]), [["r1", false, "EXTENSION_RELOADED"]]);
+
+  const rejected = runBridge({ runtime: { sendMessage: () => Promise.reject(new Error("no receiver")) } });
+  rejected.send(request);
+  await settle();
+  assert.deepEqual(rejected.posted.map(item => [item.data.ok, item.data.error.code]), [[false, "EXTENSION_UNAVAILABLE"]]);
+
+  const unknown = runBridge({ runtime: { sendMessage: async () => ({ ok: true }) } });
+  unknown.send({ ...request, type: "SOMETHING_ELSE" });
+  await settle();
+  assert.equal(unknown.posted.length, 0, "yêu cầu lạ không được chuyển tiếp");
+
+  console.log("inside_po_connector: manifest, allowed origins and app bridge replies passed");
+})().catch(error => { console.error(error); process.exit(1); });
