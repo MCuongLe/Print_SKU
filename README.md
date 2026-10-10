@@ -425,6 +425,11 @@ Mở **TÌM SKU** ở WH-MATERIAL hoặc `#find-sku`. Ba bước, bố cục nh�
    với PRINT SKU / PRINT UID (`window.SkuComboPicker.chooseNormal`): chọn Normal thì bước 2
    tính theo đơn vị của Normal và ghi "Đổi từ SKU Combo … · 1 Combo = …"; "Tiếp tục với SKU
    Combo" giữ Combo; "Hủy" ở lại bước 1.
+   **Luôn gợi ý SKU Normal (10/10/2026):** dòng Combo trong kết quả được thay bằng SKU Normal theo quan hệ Combo → Normal
+   (RPC `sku_combo_lookup`); % trên thẻ là điểm khớp tem của **chính tên Normal**, kèm dòng "Combo … · %" của tên Combo. Tên Combo
+   khớp ≥ 70% mà tên Normal khớp < 70% thì **thẻ đỏ** để kiểm tra lại (gõ đúng số SKU Combo thì không cảnh báo). Chọn thẻ này thì
+   bước 2 ghi "Đổi từ SKU Combo …" và mang tỷ lệ Combo sang Chuyển đổi đơn vị. Combo chưa có quan hệ (hoặc tra lỗi) vẫn hiện như cũ.
+   Test: `tests/find_sku_combo_normal_browser.cjs`.
 2. **Tính toán số lượng** — SKU chỉ có đơn vị chiều dài (`mm`/`m`) hiện nút mở **CHUYỂN ĐỔI
    ĐƠN VỊ**; kết quả mm có thể đưa ngược về form để in. Người dùng vẫn được gõ số lượng trực tiếp
    và in tem, không bị khóa vào bước quy đổi. Chỉ được tính theo Tex hoặc khối lượng cuộn nguyên;

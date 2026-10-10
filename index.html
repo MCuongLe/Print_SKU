@@ -4551,6 +4551,11 @@ Error generating stack: `+y.message+`
       .fsk-pct svg{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
       .fsk-pct[data-tone="ok"]{background:rgba(0,168,115,.14);color:var(--wms-brand,#005f41)}
       .fsk-pct[data-tone="warn"]{background:rgba(183,121,31,.16);color:#8a5a00}
+      .fsk-pct[data-tone="bad"]{background:rgba(194,65,59,.13);color:#b42318}
+      .fsk-via{display:flex;align-items:center;gap:6px;margin:6px 0 0;color:#60736b;font-size:12px;font-weight:700}
+      .fsk-via svg{flex:none;width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+      .fsk-card[data-alert="true"]{border-color:#d4483f;background:#fff7f6;box-shadow:inset 0 0 0 1px #d4483f}
+      .fsk-card[data-alert="true"] .fsk-via{color:#b42318}
       #find-sku-screen .fsk-card .fsk-pick{min-height:46px;margin-top:10px}
       .fsk-alt .fsk-more-btn{position:relative;display:inline-flex;align-items:center;justify-content:center;flex:none;width:52px;min-height:52px;padding:0}
       .fsk-more-btn .cut-badge{position:absolute;top:-7px;right:-7px;min-width:20px;height:20px}
@@ -6702,16 +6707,58 @@ var FSK_CORE = (function () {
         };
         // Thẻ gọn: % khớp là thông tin nổi bật (xanh + dấu tích khi khớp mã, vàng + cảnh báo khi chỉ khớp chữ chung), ĐƠN VỊ cũng nổi bật vì
         // bản Normal và Combo cùng mã hàng thường ra cùng điểm (vd Roman N0144: "mm" và "cuộn"). Chạm cả thẻ hay nút đều chọn.
+        // Thẻ đổi từ Combo (r.via): % là điểm khớp tem của CHÍNH tên Normal, kèm dòng "Combo … · %"; r.warn (Combo khớp cao, Normal thấp) → thẻ đỏ.
         const card = (r, best) => {
-          const unit = FSK_CORE.unitOf(r.pn).raw;
-          const hit = (r.khop?.code || []).length > 0, pct = Math.max(0, Math.min(100, Math.round(Number(r.pct) || 0))), tone = hit ? "ok" : "warn";
-          const icon = hit ? '<path d="M20 6 9 17l-5-5"/>' : '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>';
-          return `<article class="fsk-card" data-sku="${esc(r.sku)}" data-pn="${esc(r.pn)}"${best ? ' data-best="true"' : ""}><div class="fsk-card__head">` +
+          const unit = FSK_CORE.unitOf(r.pn).raw, known = r.pct !== null && r.pct !== undefined;
+          const hit = (r.khop?.code || []).length > 0, pct = known ? Math.max(0, Math.min(100, Math.round(Number(r.pct) || 0))) : null, tone = r.warn ? "bad" : hit ? "ok" : "warn";
+          const label = r.warn ? `Kiểm tra lại: tên Combo khớp ${r.via.pct}%, tên Normal khớp ${known ? `${pct}%` : "—"}` : hit ? "Khớp mã" : "Cần kiểm tra";
+          const icon = hit && !r.warn ? '<path d="M20 6 9 17l-5-5"/>' : '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>';
+          const combo = r.via ? ` data-combo="${esc(r.via.sku)}" data-combo-pn="${esc(r.via.pn)}" data-ratio="${esc(r.via.ratio)}"` : "";
+          return `<article class="fsk-card" data-sku="${esc(r.sku)}" data-pn="${esc(r.pn)}"${combo}${best ? ' data-best="true"' : ""}${r.warn ? ' data-alert="true"' : ""}><div class="fsk-card__head">` +
             `<div class="fsk-card__id"><strong class="fsk-sku">${esc(r.sku)}</strong>${unit ? `<span class="fsk-unit-chip" title="Đơn vị của SKU">${esc(unit)}</span>` : ""}` +
             (r.type === "COMBO" ? '<span class="fsk-badge">Combo</span>' : "") + (r.status === "INACTIVE" ? '<span class="fsk-badge">Ngừng</span>' : "") + "</div>" +
-            `<span class="fsk-pct" data-tone="${tone}" title="${hit ? "Khớp mã" : "Cần kiểm tra"}" aria-label="${hit ? "Khớp mã" : "Cần kiểm tra"} ${pct}%"><svg viewBox="0 0 24 24" aria-hidden="true">${icon}</svg>${pct}<small>%</small></span></div>` +
+            `<span class="fsk-pct" data-tone="${tone}" title="${esc(label)}" aria-label="${esc(r.warn ? label : `${label} ${known ? pct : "—"}%`)}"><svg viewBox="0 0 24 24" aria-hidden="true">${icon}</svg>${known ? pct : "—"}<small>%</small></span></div>` +
             `<p class="fsk-name">${esc(r.pn)}</p>` +
-            `<button class="cut-primary fsk-pick act-icon act-icon--check" type="button" data-sku="${esc(r.sku)}" data-pn="${esc(r.pn)}">Chọn</button></article>`;
+            (r.via ? `<p class="fsk-via" title="Tên Combo khớp ${esc(r.via.pct)}%"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>Combo ${esc(r.via.sku)} · ${esc(r.via.pct)}%</p>` : "") +
+            `<button class="cut-primary fsk-pick act-icon act-icon--check" type="button" data-sku="${esc(r.sku)}" data-pn="${esc(r.pn)}"${combo}>Chọn</button></article>`;
+        };
+        // Luôn gợi ý SKU Normal (10/10/2026): dòng Combo trong kết quả được thay bằng SKU Normal theo quan hệ Combo → Normal (RPC sku_combo_lookup,
+        // cùng RPC với hộp chọn Normal). % của thẻ là điểm khớp tem của tên Normal; tên Combo khớp cao (≥ COMBO_HIGH) mà tên Normal khớp thấp
+        // (< NORMAL_LOW) thì thẻ đỏ để kiểm tra lại. Gõ đúng số SKU Combo thì không cảnh báo (quan hệ là chắc chắn). Không tra được quan hệ → giữ dòng Combo.
+        const COMBO_HIGH = 70, NORMAL_LOW = 70, comboLinks = new Map();
+        const comboNormals = sku => {
+          if (!comboLinks.has(sku)) comboLinks.set(sku, (async () => {
+            try {
+              const q = window.PrintSkuQueue, response = await fetch(`${q.supabaseUrl}/rest/v1/rpc/sku_combo_lookup`, { method: "POST", headers: { apikey: q.publishableKey, Authorization: `Bearer ${q.publishableKey}`, "Content-Type": "application/json" }, body: JSON.stringify({ p_sku: sku }), signal: AbortSignal.timeout(8000) });
+              if (!response.ok) throw new Error(`HTTP ${response.status}`);
+              const rows = await response.json();
+              if (!Array.isArray(rows)) throw new Error("Invalid response");
+              return rows.filter(row => row && row.normal_sku && row.product_name && Number(row.quantity) > 0);
+            } catch (_) { comboLinks.delete(sku); return null; }
+          })());
+          return comboLinks.get(sku);
+        };
+        const scoreOf = (nhan, cm, sku) => {
+          const row = cm.ds.find(item => String(item.sku) === String(sku));
+          if (!row || !row._b) return null;
+          const d = (NDS_ENGINE.kieuCham() === "idf" ? NDS_ENGINE.chamIdf : NDS_ENGINE.diemMot)(nhan, row._b, cm);
+          return { pct: Math.round((Number(d && d.diem) || 0) * 100), khop: (d && d.khop) || {} };
+        };
+        const toNormals = async (found, nhan, cm) => {
+          const out = [], seen = new Map();
+          const add = item => { const prev = seen.get(item.sku); if (prev) { if (!prev.via && item.via) Object.assign(prev, { via: item.via, warn: item.warn }); return; } seen.set(item.sku, item); out.push(item); };
+          const links = await Promise.all(found.map(r => r.type === "COMBO" ? comboNormals(String(r.sku)) : null));
+          found.forEach((r, index) => {
+            const rows = links[index];
+            if (r.type !== "COMBO" || !rows || !rows.length) { add(r); return; }
+            rows.forEach(row => {
+              const score = scoreOf(nhan, cm, row.normal_sku), pct = score ? score.pct : null;
+              add({ sku: String(row.normal_sku), pn: String(row.product_name), type: "NORMAL", status: row.available === false ? "INACTIVE" : "ACTIVE", pct, khop: score ? score.khop : {},
+                via: { sku: String(r.sku), pn: String(r.pn), pct: Math.round(Number(r.pct) || 0), ratio: Number(row.quantity) },
+                warn: !r.laSku && Number(r.pct) >= COMBO_HIGH && !(pct >= NORMAL_LOW) });
+            });
+          });
+          const list = out.slice(0, 3); list.coMaKhop = found.coMaKhop; return list;
         };
         const match = async () => {
           const run = state.run;
@@ -6744,6 +6791,8 @@ var FSK_CORE = (function () {
             results.innerHTML = `<p class="cut-empty">Không tìm được SKU khớp.</p>${nearCodes(cm)}`;
             return { found, coMaKhop: false };
           }
+          found = await toNormals(found, nhan, cm);
+          if (run !== state.run) return { found: [], coMaKhop: false, stale: true };
           const warn = found.coMaKhop ? "" : `<div class="fsk-warn"><b>Chưa khớp mã hàng</b>${nearCodes(cm)}</div>`;
           const note = inactive ? '<div class="fsk-warn">Chỉ có SKU ngừng hoạt động khớp</div>' : "";
           results.innerHTML = note + warn + found.map((r, i) => card(r, i === 0 && Boolean(found.coMaKhop))).join("");
@@ -7047,9 +7096,9 @@ var FSK_CORE = (function () {
           const s = state.selected, q = qtyInput.value.trim(), copies = Number(copiesInput.value);
           $("fsk-add-sum").textContent = s ? `${s.sku} · ${q ? labelQuantity(q) + (s.unit.raw ? " " + s.unit.raw : "") : "không ghi số lượng"} · ${Number.isInteger(copies) && copies > 0 ? copies : "?"} tem` : "";
         };
-        const choose = async (sku, pn) => {
+        const choose = async (sku, pn, via = null) => {
           stopCamera();
-          let combo = null;
+          let combo = via;
           // SKU Combo: hỏi SKU Normal trước khi tính số lượng (đơn vị hai mã khác nhau, vd cuộn ↔ mm) —
           // cùng hộp chọn và cùng RPC sku_combo_lookup với PRINT SKU / PRINT UID.
           if (/^\s*\(combo\)/i.test(pn) && window.SkuComboPicker?.chooseNormal) {
@@ -7255,7 +7304,7 @@ var FSK_CORE = (function () {
         });
         results.addEventListener("click", event => {
           const chooser = event.target.closest("button[data-sku], .fsk-card[data-sku]");
-          if (chooser) return choose(chooser.dataset.sku, chooser.dataset.pn);
+          if (chooser) return choose(chooser.dataset.sku, chooser.dataset.pn, chooser.dataset.combo ? { sku: chooser.dataset.combo, pn: chooser.dataset.comboPn || "", ratio: Number(chooser.dataset.ratio) } : null);
           const near = event.target.closest("button[data-code]");
           if (near) {
             state.tokens = state.tokens.filter(k => k.vai !== "code" || state.cm?.idx[k.t]);
