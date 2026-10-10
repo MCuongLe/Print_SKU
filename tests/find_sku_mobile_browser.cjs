@@ -50,6 +50,13 @@ const NAME = 'Chỉ Irisa/FS9286_Phong Việt/100% Polyester/none/Black Marle-Me
       assert.match(await pct.getAttribute('aria-label'), /\d+%$/);
       assert.equal(await page.locator('#fsk-results .fsk-why, #fsk-results .fsk-conf, #fsk-results details').count(), 0, 'thẻ gợi ý không còn mục "Vì sao gợi ý"');
       assert.equal((await page.locator('#fsk-results .fsk-pick').first().innerText()).trim(), 'Chọn');
+      if (mobile) {
+        // Giao diện điện thoại: font hệ thống, gợi ý dạng danh sách (% bên trái, nút chọn tròn 40 px), đơn vị nằm trong khung ô nhập
+        const look = await page.evaluate(() => { const screen = document.getElementById('find-sku-screen'), card = document.querySelector('#fsk-results .fsk-card'), pick = card.querySelector('.fsk-pick').getBoundingClientRect(), pct = card.querySelector('.fsk-pct').getBoundingClientRect(), tabs = getComputedStyle(document.querySelector('#find-sku-screen .cut-tab[aria-selected="true"]')); return { font: getComputedStyle(screen).fontFamily, grid: getComputedStyle(card).display, pick: Math.round(pick.width), pctLeft: pct.right <= card.querySelector('.fsk-card__id').getBoundingClientRect().left, tabBorder: tabs.borderTopWidth }; });
+        assert.match(look.font, /system-ui/, 'điện thoại dùng font hệ thống');
+        assert.equal(look.grid, 'grid'); assert.equal(look.pick, 40, 'nút chọn tròn 40 px'); assert.equal(look.pctLeft, true, '% nằm bên trái SKU');
+        assert.equal(look.tabBorder, '0px', 'tab bước là nút chọn liền khối, không viền riêng');
+      }
       // Chi tiết xử lý là popup mở bằng nút icon (có số từ khoá), Esc đóng
       assert.equal(await page.locator('#fsk-more').evaluate(node => node.tagName), 'DIALOG');
       assert.equal(await visible('#fsk-more'), false);

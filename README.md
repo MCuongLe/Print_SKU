@@ -441,6 +441,11 @@ Mở **TÌM SKU** ở WH-MATERIAL hoặc `#find-sku`. Ba bước, bố cục nh�
    tới khi agent báo xong (tự rời danh sách) hoặc lỗi (tick lại để in lại). Gửi lại sau lỗi mạng
    dùng cùng nonce nên không tạo lệnh trùng.
 
+**Giao diện điện thoại (10/10/2026, khối CSS `#mobile-pro-theme`, chỉ ≤ 800 px, áp cho TÌM SKU và CHUYỂN ĐỔI ĐƠN VỊ):** font hệ thống của máy
+(Roboto/San Francisco/Segoe UI — không tải thêm gì), chữ đậm vừa (600); thanh trên có icon module; tab bước và Chỉ | Vải là nút chọn liền khối; thẻ phẳng một lớp
+(bo 14 px, không bóng, không thẻ lồng thẻ); đơn vị (mm, cuộn, gr) và nút kg|gr nằm trong khung ô nhập; gợi ý SKU dạng danh sách — % bên trái, SKU + đơn vị,
+tên 2 dòng, nút chọn tròn bên phải, chạm cả dòng là chọn; Chuyển đổi đơn vị: "Lô tiếp theo" là nút phụ, "Nhập lại" và "Copy" là nút icon. Bản máy tính không đổi.
+
 **Bố cục điện thoại (10/10/2026).** Toàn màn hình bỏ các câu hướng dẫn (thông báo sau khi đọc tem/chọn SKU, mẹo gõ mã, "Lưu trên máy này…", đuôi "kiểm tra mạng rồi bấm…"
 của các thông báo lỗi); chỉ giữ trạng thái và lỗi ngắn. Bước 1: nút Bật camera và nút Chọn ảnh (chỉ icon, vẫn có tên cho trình đọc màn hình) cùng một hàng. Bước 2: thẻ SKU gọn
 (SKU · chip đơn vị · nút Đổi), bỏ các câu giải thích đơn vị/cách nhập và thông báo "nhập số lượng và số tem"; nút **Tính mm từ cân** thay khối giải thích; **Số tem**

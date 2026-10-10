@@ -4589,6 +4589,97 @@ Error generating stack: `+y.message+`
         .fsk-list-note{margin:12px 0 0}.fsk-list-note .cut-secondary{width:100%}
       }
     </style>
+    <style id="mobile-pro-theme">
+      /* Điện thoại (≤ 800 px) — TÌM SKU + CHUYỂN ĐỔI ĐƠN VỊ (10/10/2026): font hệ thống của máy (Roboto/San Francisco/Segoe UI, không tải
+         thêm gì), tab bước dạng nút chọn liền khối giống "Chỉ | Vải", thẻ phẳng một lớp, đơn vị và kg|gr nằm trong ô nhập, gợi ý SKU dạng
+         danh sách (% bên trái, chạm cả dòng để chọn), nhịp 8/12/16 px, chỗ bấm ≥ 40 px. Bản máy tính không đổi. */
+      @media (max-width: 800px) {
+        #find-sku-screen, #unit-converter-screen {
+          --pro-font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+          --pro-line: #e1e9e5; --pro-field: #d3ddd9; --pro-muted: #5c6f68; --pro-brand: #006747; --pro-soft: #e9efec;
+          font-family: var(--pro-font); background: #f3f6f5;
+        }
+        #find-sku-screen :is(button, input, select, textarea, .as-dialog), #unit-converter-screen :is(button, input, select, textarea) { font-family: inherit; }
+        /* Thanh trên: icon module như bản máy tính, tiêu đề nhẹ hơn */
+        #find-sku-screen .uid-topbar__inner, #unit-converter-screen .uid-topbar__inner { min-height: 56px; gap: 10px; padding: 6px 0; }
+        #find-sku-screen .uid-topbar__mark, #unit-converter-screen .uid-topbar__mark { display: grid; width: 32px; height: 32px; border-radius: 9px; box-shadow: none; }
+        #find-sku-screen .uid-topbar__name h1, #unit-converter-screen .uid-topbar__name h1 { font-size: 16px; font-weight: 600; letter-spacing: .01em; }
+        #find-sku-screen .cut-main, #unit-converter-screen .cut-main { padding: 12px 12px 96px; }
+        /* Tab bước / loại hàng: nút chọn liền khối */
+        #find-sku-screen .cut-tabs, #unit-converter-screen .uc-kind { gap: 2px; width: 100%; margin: 0 0 12px; padding: 3px; border: 1px solid var(--pro-line); border-radius: 12px; background: var(--pro-soft); }
+        #find-sku-screen .cut-tab { min-height: 40px; padding: 0 4px; border: 0; border-radius: 9px; background: transparent; box-shadow: none; color: var(--pro-muted); font-size: 13px; font-weight: 600; }
+        #find-sku-screen .cut-tab[aria-selected="true"] { background: #fff; color: var(--pro-brand); box-shadow: 0 1px 3px rgba(23,37,31,.14); }
+        #find-sku-screen .fsk-tab-n { width: 18px; height: 18px; font-size: 11px; font-weight: 600; }
+        #unit-converter-screen .uc-kind button { min-height: 40px; border-radius: 9px; color: var(--pro-muted); font: 600 14px var(--pro-font); box-shadow: none; }
+        #unit-converter-screen .uc-kind button[aria-pressed="true"] { background: #fff; color: var(--pro-brand); box-shadow: 0 1px 3px rgba(23,37,31,.14); }
+        /* Thẻ phẳng một lớp */
+        #find-sku-screen .cut-card, #unit-converter-screen .cut-card { padding: 14px; border: 1px solid var(--pro-line); border-radius: 14px; box-shadow: none; }
+        #find-sku-screen .fsk-message, #unit-converter-screen .cut-message { padding: 9px 12px; border-radius: 10px; font-size: 13px; font-weight: 600; }
+        /* Chữ + nút */
+        #find-sku-screen .fsk-field label, #unit-converter-screen .fsk-field label { margin-bottom: 6px; color: var(--pro-muted); font-size: 12px; font-weight: 600; }
+        #find-sku-screen :is(.cut-primary, .cut-secondary), #unit-converter-screen :is(.cut-primary, .cut-secondary) { min-height: 46px; border-radius: 12px; font-size: 15px; font-weight: 600; }
+        #find-sku-screen .cut-input, #unit-converter-screen .cut-input { min-height: 46px; border-color: var(--pro-field); border-radius: 10px; font-size: 16px; }
+        /* Ô nhập có đơn vị: đơn vị và nút kg|gr nằm trong khung ô */
+        #find-sku-screen .fsk-inrow:has(> .cut-input), #unit-converter-screen .fsk-inrow:has(> .cut-input) { gap: 6px; min-height: 46px; padding-right: 6px; border: 1px solid var(--pro-field); border-radius: 10px; background: #fff; }
+        #find-sku-screen .fsk-inrow:has(> .cut-input):focus-within, #unit-converter-screen .fsk-inrow:has(> .cut-input):focus-within { border-color: #0b7a55; box-shadow: 0 0 0 3px rgba(0,119,84,.15); }
+        #find-sku-screen .fsk-inrow:has(> .cut-input) > .cut-input, #unit-converter-screen .fsk-inrow:has(> .cut-input) > .cut-input { min-height: 44px; border: 0; background: transparent; box-shadow: none; outline: 0; }
+        #find-sku-screen .fsk-inrow:has(> .cut-input) > .fsk-unit, #unit-converter-screen .fsk-inrow:has(> .cut-input) > .fsk-unit { flex: none; min-width: 0; padding-right: 6px; color: var(--pro-muted); font-size: 13px; font-weight: 600; }
+        #find-sku-screen .fsk-inrow:has(> .cut-input) > .fsk-seg, #unit-converter-screen .fsk-inrow:has(> .cut-input) > .fsk-seg { flex: none; padding: 2px; border: 0; border-radius: 8px; background: var(--pro-soft); }
+        #find-sku-screen .fsk-inrow:has(> .cut-input) > .fsk-seg button, #unit-converter-screen .fsk-inrow:has(> .cut-input) > .fsk-seg button { min-height: 34px; padding: 0 11px; border-radius: 7px; color: var(--pro-muted); font-size: 13px; font-weight: 600; }
+        #find-sku-screen .fsk-inrow:has(> .cut-input) > .fsk-seg button[aria-pressed="true"], #unit-converter-screen .fsk-inrow:has(> .cut-input) > .fsk-seg button[aria-pressed="true"] { background: var(--pro-brand); color: #fff; }
+        #find-sku-screen .fsk-doc, #unit-converter-screen .fsk-doc { margin-top: 5px; font-size: 12px; }
+        /* TÌM SKU — gợi ý dạng danh sách: % bên trái, SKU + đơn vị, tên 2 dòng, nút chọn tròn bên phải; chạm cả dòng là chọn */
+        #find-sku-screen .fsk-card { display: grid; grid-template-columns: 60px minmax(0, 1fr) 40px; grid-template-areas: "pct id pick" "pct name pick" "pct via pick"; align-items: center; gap: 2px 12px; margin-top: 8px; padding: 10px 12px; border-color: var(--pro-line); border-radius: 14px; }
+        #find-sku-screen .fsk-card__head { display: contents; }
+        #find-sku-screen .fsk-card__id { grid-area: id; gap: 6px; margin: 0; }
+        #find-sku-screen .fsk-sku { font-size: 16px; font-weight: 600; letter-spacing: .01em; }
+        #find-sku-screen .fsk-unit-chip { padding: 1px 7px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+        #find-sku-screen .fsk-card .fsk-pct { display: block; grid-area: pct; align-self: stretch; padding: 8px 0; border-radius: 10px; font-size: 22px; font-weight: 700; line-height: 1.1; text-align: center; }
+        #find-sku-screen .fsk-card .fsk-pct svg { display: block; width: 15px; height: 15px; margin: 0 auto 3px; }
+        #find-sku-screen .fsk-card .fsk-pct small { font-size: 12px; font-weight: 600; }
+        #find-sku-screen .fsk-card .fsk-name { display: -webkit-box; grid-area: name; margin: 0; overflow: hidden; color: var(--pro-muted); font-size: 13px; line-height: 1.4; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+        #find-sku-screen .fsk-card .fsk-via { grid-area: via; margin: 2px 0 0; }
+        #find-sku-screen .fsk-card .fsk-pick { grid-area: pick; width: 40px; min-width: 40px; height: 40px; min-height: 40px; margin: 0; padding: 0; border-radius: 50%; font-size: 0; }
+        #find-sku-screen .fsk-card[data-best="true"] { border-color: #00a873; box-shadow: inset 0 0 0 1px #00a873; }
+        #find-sku-screen .fsk-card[data-alert="true"] { border-color: #d4483f; box-shadow: inset 0 0 0 1px #d4483f; }
+        #find-sku-screen .fsk-warn { border-radius: 10px; font-size: 13px; }
+        /* TÌM SKU — bước Số lượng: thẻ SKU không lồng trong thẻ */
+        #find-sku-screen .fsk-sel { padding: 0 0 12px; border-bottom: 1px solid #edf2f0; border-radius: 0; background: transparent; }
+        #find-sku-screen .fsk-sel strong { font-size: 20px; font-weight: 700; }
+        #find-sku-screen .fsk-link.fsk-swap { min-height: 36px; font-size: 13px; font-weight: 600; }
+        #find-sku-screen .fsk-field--row label { color: var(--pro-ink, #17251f); font-size: 14px; }
+        #find-sku-screen .fsk-stepper button { width: 46px; min-height: 46px; border-color: var(--pro-field); border-radius: 10px; font-size: 20px; font-weight: 600; }
+        #find-sku-screen .cut-row { border-radius: 12px; }
+        /* CHUYỂN ĐỔI ĐƠN VỊ */
+        #unit-converter-screen .uc-lookup { padding: 0; }
+        #unit-converter-screen .uc-lookup > summary { min-height: 52px; padding: 10px 14px; }
+        #unit-converter-screen .uc-lookup > summary > strong { font-size: 15px; font-weight: 600; }
+        #unit-converter-screen .uc-step-number { width: 24px; height: 24px; font-size: 12px; font-weight: 600; }
+        #unit-converter-screen .uc-result { padding: 0; border: 0; background: transparent; }
+        #unit-converter-screen .uc-result-main { padding: 14px 16px; border-left: 0; border-radius: 14px; background: #e6f4ee; }
+        #unit-converter-screen .uc-result-main strong { font-size: 28px; font-weight: 700; }
+        #unit-converter-screen .uc-result-main > span, #unit-converter-screen .uc-result-sub { font-weight: 600; }
+        #unit-converter-screen .uc-params-open { min-height: 46px; border-color: var(--pro-field); border-radius: 10px; font-size: 14px; font-weight: 600; }
+        #unit-converter-screen .uc-spec-chip { min-height: 36px; font-size: 13px; font-weight: 600; }
+        #unit-converter-screen .uc-data-actions { grid-template-columns: minmax(0, 1fr) 46px; gap: 8px; margin-top: 14px; padding-top: 14px; }
+        #unit-converter-screen .uc-data-actions button { position: relative; justify-content: center; gap: 8px; min-height: 46px; padding: 0 12px; border-radius: 12px; box-shadow: none; }
+        #unit-converter-screen .uc-data-actions strong { font-size: 15px; font-weight: 600; }
+        #unit-converter-screen .uc-next-action { border: 1px solid var(--pro-field); background: #fff; color: var(--pro-brand); }
+        #unit-converter-screen .uc-data-actions .uc-action-icon { width: auto; height: auto; background: none; }
+        #unit-converter-screen .uc-reset-action { width: 46px; padding: 0; }
+        #unit-converter-screen .uc-reset-action strong { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+        #unit-converter-screen #uc-copy { flex: none; width: 48px; padding: 0; font-size: 0; }
+        #unit-converter-screen .uc-sheet-head h3 { font-weight: 600; }
+        /* Chi tiết: nút chọn đứng riêng, thanh dính đáy khớp lề thẻ 14 px, tiêu điểm nhẹ, hàng chờ in */
+        #find-sku-screen .cut-input:focus, #unit-converter-screen .cut-input:focus { border-color: #0b7a55; outline: 0; box-shadow: 0 0 0 3px rgba(0,119,84,.15); }
+        #find-sku-screen .fsk-seg, #unit-converter-screen .fsk-seg { border-color: var(--pro-field); }
+        #find-sku-screen .fsk-seg button, #unit-converter-screen .fsk-seg button { min-height: 40px; font-size: 14px; font-weight: 600; }
+        #find-sku-screen .fsk-bar { margin: 14px -14px -14px; padding: 12px 14px calc(12px + env(safe-area-inset-bottom)); border-radius: 0 0 14px 14px; }
+        #find-sku-screen .fsk-bar__sum { font-weight: 600; }
+        #find-sku-screen .cut-selectall { font-size: 14px; font-weight: 600; }
+        #find-sku-screen .cut-selectall span, #find-sku-screen .cut-row strong { font-weight: 600; }
+      }
+    </style>
 <script>
 /* ===== NDS-ENGINE (bat dau) =====
  * Bo doi chieu chu tren tem <-> danh muc SKU, chay 100% trong trinh duyet. Chep NGUYEN tu

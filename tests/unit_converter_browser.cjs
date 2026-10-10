@@ -69,6 +69,10 @@ const assert = require('node:assert/strict');
         assert.ok(await page.locator('#uc-steps .fsk-step').count() >= 4, 'Cách tính liệt kê các bước');
         await page.keyboard.press('Escape'); await page.locator('#uc-steps-sheet').waitFor({ state: 'hidden' });
       } else assert.equal(await page.locator('#uc-steps-sheet').isVisible(), true, 'từ 801 px cách tính nằm sẵn trong trang');
+      if (modal) {
+        const look = await page.evaluate(() => ({ font: getComputedStyle(document.getElementById('unit-converter-screen')).fontFamily, copy: Math.round(document.getElementById('uc-copy').getBoundingClientRect().width), unitInside: (() => { const row = document.getElementById('uc-thread-cones').closest('.fsk-inrow'); return getComputedStyle(row).borderTopWidth !== '0px' && getComputedStyle(document.getElementById('uc-thread-cones')).borderTopWidth === '0px'; })() }));
+        assert.match(look.font, /system-ui/, 'điện thoại dùng font hệ thống'); assert.equal(look.copy, 48, 'Copy là nút icon 48 px'); assert.equal(look.unitInside, true, 'đơn vị nằm trong khung ô nhập');
+      }
       assert.equal(await page.locator('#uc-find-hint, .uc-result-main small:not(.uc-result-sub)').count(), 0);
       assert.equal(await page.locator('#uc-use').isVisible(), false, 'không SKU vẫn tính/copy được, chỉ không thể chuyển sang in');
 
