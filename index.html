@@ -9379,7 +9379,10 @@ var FSK_CORE = (function () {
           ban:'<circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/>',
           unlink:'<path d="m18.84 12.25 1.72-1.71h-.02a5.004 5.004 0 0 0-.12-7.07 5.006 5.006 0 0 0-6.95 0l-1.72 1.71"/><path d="m5.17 11.75-1.71 1.71a5.004 5.004 0 0 0 .12 7.07 5.006 5.006 0 0 0 6.95 0l1.71-1.71"/><line x1="8" x2="8" y1="2" y2="5"/><line x1="2" x2="5" y1="8" y2="8"/><line x1="16" x2="16" y1="19" y2="22"/><line x1="19" x2="22" y1="16" y2="16"/>',
           box:'<path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>',
-          user:'<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>'
+          user:'<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+          pin:'<path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/>',
+          arrow:'<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
+          calendar:'<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/>'
         };
         const ico=(name,cls="")=>`<svg class="as-ico${cls?" "+cls:""}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name]||""}</svg>`;
         const hydrate=(root=document)=>root.querySelectorAll("[data-ico]").forEach(el=>{if(el.dataset.icoDone==="1")return;el.insertAdjacentHTML("afterbegin",ico(el.dataset.ico));el.dataset.icoDone="1"});
@@ -9553,7 +9556,9 @@ var FSK_CORE = (function () {
     </style>
     <section class="ss-screen" id="group-uid-sync-screen" aria-labelledby="group-uid-sync-heading" hidden>
       <div class="ss-shell"><aside class="ss-side"><div class="ss-brand"><b>H</b><span>WH-MATERIAL</span></div><nav class="ss-nav" aria-label="Điều hướng Quản trị"><button type="button" data-admin-hash="#admin/lenh-in"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>Lệnh in</button><button type="button" data-admin-hash="#admin/sku-sync"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7h-9M17 4l3 3-3 3M4 17h9M7 14l-3 3 3 3"/></svg>Đồng bộ SKU</button><button type="button" data-admin-hash="#admin/group-uid-sync" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/><circle cx="18" cy="17" r="2"/></svg>Đồng bộ Group UID</button><button type="button" data-admin-hash="#admin/cauhinh"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1v.1h-4v-.1a1.7 1.7 0 0 0-1.1-1.6 1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1-.4h-.1v-4H3A1.7 1.7 0 0 0 4.6 8.5a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1v-.1h4V3A1.7 1.7 0 0 0 15.5 4.6a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 9c.12.36.33.7.6 1 .27.27.62.48 1 .6h.1v4H21c-.38.12-.73.33-1 .6-.27.27-.48.62-.6 1Z"/></svg>Cấu hình</button></nav><div class="ss-side-foot"><button type="button" data-admin-hash="#home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>Về trang chủ</button><button type="button" data-admin-logout><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>Đăng xuất</button></div></aside>
-        <div class="ss-main"><header class="ss-top"><span class="ss-top-mark" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/><circle cx="18" cy="17" r="2"/></svg></span><div class="ss-top-title"><h1 id="group-uid-sync-heading">Đồng bộ Group UID</h1><p class="ss-top-sub">WMS → Supabase</p></div><div class="ss-top-chips" id="gu-top-chips" aria-live="polite"></div><div class="ss-top-end"><span class="ss-connection" id="gu-connection">Đang kiểm tra Extension</span><button type="button" class="pj-icon ss-top-refresh" id="gu-top-refresh" aria-label="Tải lại lịch sử" title="Tải lại lịch sử"><svg class="pj-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg></button></div></header><main class="ss-content">
+        <div class="ss-main"><header class="ss-top"><span class="ss-top-mark" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/><circle cx="18" cy="17" r="2"/></svg></span><div class="ss-top-title"><h1 id="group-uid-sync-heading">Đồng bộ Group UID</h1><p class="ss-top-sub">WMS → Supabase</p></div><div class="ss-top-chips" id="gu-top-chips" aria-live="polite"></div><div class="ss-top-chips gm-off" id="gm-top-chips" aria-live="polite"></div><div class="ss-top-end"><span class="ss-connection" id="gu-connection">Đang kiểm tra Extension</span><button type="button" class="pj-icon ss-top-refresh" id="gu-top-refresh" aria-label="Tải lại lịch sử" title="Tải lại lịch sử"><svg class="pj-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg></button><button type="button" class="pj-icon ss-top-refresh gm-off" id="gm-top-refresh" aria-label="Tải lại" title="Tải lại"><svg class="pj-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg></button></div></header><main class="ss-content">
+          <div class="as-tabs gu-main-tabs" role="tablist" aria-label="Group UID"><button class="as-tab" type="button" role="tab" aria-selected="true" data-gu-main-tab="sync">Đồng bộ</button><button class="as-tab" type="button" role="tab" aria-selected="false" data-gu-main-tab="moves">Lịch sử di chuyển</button></div>
+          <div id="gu-panel-sync">
           <section class="ss-hero"><div><h2>Đối chiếu dữ liệu WMS</h2></div><div class="gu-hero-actions as-hero-actions"><button class="ss-secondary" id="gu-run-incremental" type="button">Kiểm tra thay đổi</button><button class="ss-secondary" id="gu-run-full" type="button">Đối chiếu toàn bộ</button><i class="as-hero-sep" aria-hidden="true"></i><button class="ss-secondary as-icon-btn" id="gu-cancel" type="button" disabled aria-label="Hủy xem trước" title="Hủy xem trước"><svg class="pj-svg" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg></button><button class="ss-primary" id="gu-apply" type="button" disabled>Cập nhật Supabase</button></div></section>
           <div class="as-strip" id="gu-strip"><div id="gu-strip-inc"><span data-ico="clock">Thay đổi gần nhất</span><strong id="gu-last-incremental">—</strong><em id="gu-last-incremental-rel"></em></div><div><span data-ico="history">Đối chiếu toàn bộ</span><strong id="gu-last-full">—</strong><em id="gu-last-full-rel"></em></div><div><span data-ico="database">Lần tới lấy từ</span><strong id="gu-next-from">—</strong></div><div><span data-ico="layers">Phiên hiện tại</span><strong id="gu-range">—</strong></div><div class="as-histcell"><button type="button" class="as-histbtn" id="gu-history-btn" aria-haspopup="dialog"><span data-ico="history">Lịch sử</span><strong id="gu-hist-last">—</strong><em id="gu-hist-count"></em></button></div></div>
           <div class="ss-progress" id="gu-progress" aria-hidden="true"><i></i></div><div class="gu-progress-label"><span id="gu-status" aria-live="polite">Sẵn sàng kiểm tra dữ liệu.</span><span id="gu-pages">—</span></div><div class="as-warns" id="gu-warn" role="status" hidden></div>
@@ -9570,6 +9575,21 @@ var FSK_CORE = (function () {
             <div class="as-d-head"><span class="as-d-mark" data-ico="history" aria-hidden="true"></span><div class="as-d-title"><h2 id="gu-hist-title">Lịch sử đồng bộ Group UID</h2><p id="gu-hist-note"></p></div><button class="as-tag" id="gu-hide-failed" type="button" aria-pressed="false">Ẩn lượt lỗi</button><button type="button" class="pj-icon" id="gu-refresh" aria-label="Tải lại lịch sử" title="Tải lại lịch sử"><svg class="pj-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg></button><button type="button" class="pj-icon" data-as-close aria-label="Đóng" title="Đóng"><svg class="pj-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>
             <div class="as-d-body"><div class="ss-table-wrap"><table class="ss-table"><thead><tr><th>Thời gian</th><th>Chế độ</th><th>Trạng thái</th><th>Phạm vi</th><th>Kết quả</th><th>Thời lượng</th></tr></thead><tbody id="gu-history"><tr><td colspan="6" class="ss-empty">Đang tải lịch sử…</td></tr></tbody></table></div></div>
           </dialog>
+          </div>
+          <div id="gu-panel-moves" class="gm-off">
+                <section class="ss-hero"><div><h2>Lịch sử chuyển vị trí</h2></div><div class="as-hero-actions"><button class="ss-secondary as-icon-btn" id="gm-full" type="button" aria-label="Đọc lại 365 ngày" title="Đọc lại 365 ngày"><svg class="pj-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg></button><button class="ss-primary" id="gm-run" type="button"><svg class="pj-svg" id="gm-run-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg><span>Đọc từ WMS</span></button></div></section>
+        <div class="as-strip" id="gm-strip"><div><span data-ico="clock">Đọc gần nhất</span><strong id="gm-read-at">—</strong><em id="gm-read-rel"></em></div><div><span data-ico="database">Dữ liệu</span><strong id="gm-total">—</strong><em id="gm-range"></em></div><div><span data-ico="layers">Lần tới lấy từ</span><strong id="gm-next-from">—</strong><em id="gm-next-sub"></em></div><div><span data-ico="link">Công ty đã đọc</span><strong id="gm-companies">—</strong></div></div>
+        <div class="ss-progress" id="gm-progress" aria-hidden="true"><i></i></div><p class="ss-status" id="gm-status" aria-live="polite">Đang tải…</p><div class="as-warns" id="gm-warn" role="status" hidden></div>
+        <section class="ss-metrics gm-metrics" aria-label="Tổng quan lịch sử"><div class="ss-metric"><span data-ico="history">Lượt chuyển</span><strong id="gm-m-moves">—</strong><small id="gm-m-sub">Theo bộ lọc</small></div><div class="ss-metric"><span data-ico="layers">Group UID</span><strong id="gm-m-uids">—</strong><small>Khác nhau</small></div><div class="ss-metric"><span data-ico="pin">Vị trí đến</span><strong id="gm-m-locs">—</strong><small>Khác nhau</small></div><div class="ss-metric"><span data-ico="user">Người cập nhật</span><strong id="gm-m-users">—</strong><small>Khác nhau</small></div></section>
+        <section class="ss-panel">
+          <div class="gm-filters" id="gm-filters"></div>
+          <div class="ss-panel-head"><div><h2 id="gm-list-title">Lịch sử di chuyển</h2><p id="gm-note"></p></div><div class="as-tools" id="gm-tools" hidden></div></div>
+          <div class="as-tags" id="gm-tags" hidden></div>
+          <div class="ss-table-wrap"><table class="ss-table gm-table"><thead><tr id="gm-head"><th>Thời điểm</th><th>Group UID</th><th>SKU</th><th>Vị trí</th><th>Người cập nhật</th><th>Hiện tại</th></tr></thead><tbody id="gm-body"><tr><td colspan="6" class="ss-empty">Chưa có dữ liệu lịch sử.</td></tr></tbody></table></div>
+          <div class="as-pager" id="gm-pager" hidden></div>
+        </section>
+      
+          </div>
         </main></div></div>
     </section>
     <script id="group-uid-sync-admin-script">
@@ -10088,10 +10108,146 @@ async function rpc(name,args,retry=true){
         const icon=()=>'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>';
         function ensureNav(){document.querySelectorAll(".ss-nav").forEach(nav=>{if(nav.querySelector('[data-admin-hash="#admin/kiem-ke"]'))return;const ref=nav.querySelector('[data-admin-hash="#admin/group-uid-sync"]')||[...nav.querySelectorAll("button")].find(b=>b.textContent.trim()==="Cấu hình");if(!ref)return;const b=document.createElement("button");b.type="button";b.dataset.adminHash=ROUTE;b.innerHTML=`${icon()}Kiểm kê SKU`;b.onclick=()=>location.hash=ROUTE;ref.dataset.adminHash==="#admin/group-uid-sync"?ref.after(b):ref.before(b)});const nav=root.querySelector("aside nav");if(nav&&!nav.querySelector("[data-inventory-audit-nav]")){const ref=[...nav.querySelectorAll("button")].find(b=>b.textContent.trim()==="Đồng bộ Group UID")||[...nav.querySelectorAll("button")].find(b=>b.textContent.trim()==="Cấu hình");if(ref){const b=document.createElement("button");b.type="button";b.dataset.inventoryAuditNav="true";b.className=ref.className.replace("bg-brand-light text-brand border-l-4 border-brand font-bold","text-slate-500 border-l-4 border-transparent hover:bg-slate-50");b.innerHTML=`${icon()}<span class="text-sm">Kiểm kê SKU</span>`;b.onclick=()=>location.hash=ROUTE;ref.textContent.trim()==="Cấu hình"?ref.before(b):ref.after(b)}}}
         async function route(){ensureNav();if(location.hash!==ROUTE){screen.hidden=true;UI.closeDialogs(screen);return}const token=await window.PrintSkuAdminAccess?.getToken?.();if(!token)return;root.hidden=true;["sku-sync-screen","group-uid-sync-screen","print-jobs-screen"].forEach(id=>{const el=$(id);if(el)el.hidden=true});screen.hidden=false;if(!state.loaded&&!state.busy)try{await checkExtension();say("Sẵn sàng đọc dữ liệu WMS.")}catch(error){say(error.message||"Chưa kết nối Extension; kiểm tra tab WMS rồi thử lại.","error")}}
-        UI.hydrate(screen);UI.bindDialogs(screen);
+        UI.hydrate(screen);UI.bindDialogs(screen);UI.bindCopy($("ia-body"));
         screen.querySelectorAll("[data-admin-hash]").forEach(b=>b.onclick=()=>location.hash=b.dataset.adminHash);
         screen.addEventListener("click",e=>{const t=e.target.closest("[data-ia-tab],button.ss-metric[data-ia-status]");if(t){if(t.dataset.zero!=="true")setTab(t.dataset.iaTab||t.dataset.iaStatus);return}const row=e.target.closest("#ia-body tr[data-ia-key]");if(row&&!e.target.closest("code[data-copy]"))openDetail(row.dataset.iaKey)});screen.addEventListener("keydown",e=>{if(e.key!=="Enter"&&e.key!==" ")return;const row=e.target.closest?.("#ia-body tr[data-ia-key]");if(row&&e.target===row){e.preventDefault();openDetail(row.dataset.iaKey)}});
         $("ia-run").onclick=run;$("ia-top-refresh").onclick=run;new MutationObserver(ensureNav).observe(root,{childList:true,subtree:true});addEventListener("hashchange",route);addEventListener("print-sku-admin-ready",route);window.HasakiInventoryAuditDashboard=Object.freeze({reconcile,refresh:run});metrics();ensureNav();route();
+      })();
+    </script>
+    <style id="group-uid-moves-admin-style">
+      .gm-off{display:none!important}.gu-main-tabs{margin:0 0 16px}
+      .gm-metrics{grid-template-columns:repeat(4,minmax(0,1fr))}.gm-metrics .ss-metric small{display:block;margin-top:4px;color:#60736b;font-size:12px;font-weight:400;line-height:1.35}
+      .gm-spin{animation:spin 1s linear infinite}#gm-run{display:inline-flex;align-items:center;gap:8px}
+      .gm-filters{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:0 0 14px}.gm-filters .as-search{flex:1 1 170px;min-width:0;max-width:250px}
+      .gm-seg{display:inline-flex;gap:3px;padding:3px;border-radius:999px;background:#eef3f1}.gm-seg .as-tag{min-height:30px;border-color:transparent;background:transparent}.gm-seg .as-tag[aria-pressed=true]{border-color:transparent;background:#fff;box-shadow:0 1px 3px rgba(13,71,52,.14)}
+      .gm-ranges{display:inline-flex;flex-wrap:wrap;gap:6px}.gm-dates{display:inline-flex;align-items:center;gap:6px}.gm-dates .as-ico{width:15px;height:15px;color:#60736b}
+      .gm-dates input{width:138px;min-height:38px;padding:0 12px;border:1px solid #cbdcd6;border-radius:999px;background:#fff;color:#17251f;font:inherit;font-size:13px}.gm-dates input:focus{outline:0;border-color:#42a282;box-shadow:0 0 0 3px rgba(66,162,130,.18)}
+      .gm-clear{display:inline-grid;place-items:center;width:38px;height:38px;border:1px solid #cbdcd6;border-radius:999px;background:#fff;color:#4f625b;cursor:pointer}.gm-clear:hover{background:#f1f8f5}.gm-clear .as-ico{width:16px;height:16px}
+      .ss-panel .as-tags{padding:0 0 14px}.gm-table td:nth-child(1),.gm-table td:nth-child(2){white-space:nowrap}.gm-table td:nth-child(2) em{display:block;margin-top:3px;color:#60736b;font-size:12px;font-style:normal}
+      .gm-date{display:block;color:#17382d;font-size:13px}.gm-pn{display:-webkit-box;max-width:240px;margin-top:3px;overflow:hidden;color:#60736b;font-size:12px;-webkit-box-orient:vertical;-webkit-line-clamp:2}.gm-sku b{color:#14382d}.gm-sku i{margin-left:5px;color:#60736b;font-size:12px;font-style:normal;font-weight:700}
+      .gm-move{display:flex;flex-direction:column;align-items:flex-start;gap:4px}.gm-from{color:#60736b;font-size:12px;white-space:nowrap}.gm-to{display:flex;align-items:center;flex-wrap:wrap;gap:5px;color:#17382d;font-size:13px;font-weight:800;white-space:nowrap}.gm-to .as-ico{width:14px;height:14px;color:#1aa774}
+      .gm-by{color:#31483f;font-size:13px}.gm-now em{display:block;margin-top:4px;color:#60736b;font-size:12px;font-style:normal;white-space:nowrap}
+      @media(max-width:1100px){.gm-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.gm-dates{margin-left:0}}
+      @media(max-width:760px){.gm-metrics{gap:9px}.gm-filters .as-search{max-width:none;flex-basis:100%}.gm-table th:nth-child(5),.gm-table td:nth-child(5){display:none}}
+    </style>
+    
+    <script id="group-uid-moves-admin-script">
+      (()=>{
+        const UI=window.AdminSyncUI,{esc,num,dt,rel,ico,chip}=UI;
+        const $=id=>document.getElementById(id),screen=$("group-uid-sync-screen");
+        const API="https://ikzhitdqkoatlmkrxuuh.supabase.co",KEY="sb_publishable_mBl--Ep5nNxuC4Xvyi1gfg_SLGEcRhI";
+        const DAY=86400000,BACKFILL_DAYS=365,OVERLAP_MS=30*60000,PAGE_SIZE=500,SEARCH_LIMIT=5000;
+        // Vị trí đặc biệt do kho đặt tên (xác nhận 10/10/2026): hàng trả nhà cung cấp.
+        const LOCATION_LABEL={"F0-VR-00-00-00-00":"Trả NCC"};
+        const COLS=[{label:"Thời điểm",sort:"at",first:"desc"},{label:"Group UID",sort:"uid"},{label:"SKU",sort:"sku"},{label:"Vị trí",sort:"to"},{label:"Người cập nhật",sort:"by"},{label:"Hiện tại",sort:"now"}];
+        const CSVH=["Thời điểm","Group UID","SKU","Sản phẩm","Kho","Từ vị trí","Đến vị trí","Người cập nhật","Vị trí kế tiếp","Chuyển tiếp lúc"];
+        const state={rows:[],total:0,truncated:false,info:null,match:"to",range:"30",busy:false,loaded:false};
+        const list=UI.createList({tools:$("gm-tools"),tagsBox:$("gm-tags"),head:$("gm-head"),body:$("gm-body"),pager:$("gm-pager"),note:$("gm-note")});
+        const shortWh=n=>String(n||"").replace(/^WH\s*-\s*/i,"")||"—",userName=v=>String(v||"").split("@")[0]||"—";
+        const vnDate=ms=>new Date(ms+7*3600000).toISOString().slice(0,10),vnStart=d=>new Date(`${d}T00:00:00+07:00`).getTime();
+        const fromIso=()=>{const v=$("gm-from").value;return v?new Date(vnStart(v)).toISOString():null},toIso=()=>{const v=$("gm-to").value;return v?new Date(vnStart(v)+DAY).toISOString():null};
+        function extensionRequest(type,payload={},timeout=120000){return window.PrintSkuBridgeReady(type).then(()=>new Promise((resolve,reject)=>{const requestId=`group-uid-moves-${Date.now()}-${Math.random().toString(36).slice(2)}`,timer=setTimeout(()=>{removeEventListener("message",listener);reject(new Error("Extension phản hồi quá lâu; kiểm tra tab WMS rồi thử lại"))},timeout),listener=event=>{const response=event.data;if(event.source!==window||event.origin!==location.origin||response?.source!=="HASAKI_INSIDE_CONNECTOR"||response.requestId!==requestId)return;clearTimeout(timer);removeEventListener("message",listener);response.ok?resolve(response.data):reject(new Error(response.error?.message||"Extension không trả lịch sử Group UID"))};addEventListener("message",listener);postMessage({source:"PRINT_SKU_APP",requestId,type,payload},location.origin)}))}
+        async function rpc(name,args={}){const token=await window.PrintSkuAdminAuth.accessToken(),response=await fetch(`${API}/rest/v1/rpc/${name}`,{method:"POST",headers:{apikey:KEY,Authorization:`Bearer ${token}`,"Content-Type":"application/json"},body:JSON.stringify(args),signal:AbortSignal.timeout(60000)}),result=await response.json().catch(()=>null);if(!response.ok||!result)throw new Error(result?.message||`Supabase HTTP ${response.status}`);if(!result.ok)throw new Error(result.error?.message||"Supabase từ chối yêu cầu");return result.data}
+        function say(text,tone=""){const el=$("gm-status");el.textContent=text;el.dataset.tone=tone;el.setAttribute("aria-live",tone==="error"?"assertive":"polite")}
+        function progress(done,total){$("gm-progress").querySelector("i").style.width=total?`${Math.min(100,done/total*100)}%`:"0%"}
+        function setBusy(on){state.busy=on;[$("gm-run"),$("gm-full"),$("gm-top-refresh")].forEach(b=>b.disabled=on);$("gm-run").querySelector("span").textContent=on?"Đang đọc WMS…":"Đọc từ WMS";$("gm-run-ico").classList.toggle("gm-spin",on);if(!on)setTimeout(()=>progress(0,0),350)}
+        async function checkExtension(){const data=await extensionRequest("PING_WMS",{},6000),el=$("gu-connection");el.dataset.state="ok";el.textContent=`Extension v${data.version} · WMS sẵn sàng`;return data}
+        function markDisconnected(error){if(/Extension|WMS|Phiên|tiện ích|Tiện ích/.test(error?.message||"")){const el=$("gu-connection");el.dataset.state="error";el.textContent="Chưa kết nối WMS"}}
+        const noteOf=l=>LOCATION_LABEL[l]?chip(LOCATION_LABEL[l],"warn","box"):"";
+        function rowFor(r){
+          const first=r.sku?String(r.sku).split(", ")[0]:"",now=r.nextLocation?"Đã chuyển tiếp":"Còn ở đây";
+          const skuCell=first?`<div class="gm-sku" title="${esc(r.sku)}"><b>${esc(first)}</b>${r.skuCount>1?`<i>+${num(r.skuCount-1)}</i>`:""}${r.product?`<span class="gm-pn" title="${esc(r.product)}">${esc(r.product)}</span>`:""}</div>`:'<span class="as-empty">—</span>';
+          return{cells:[`<b class="gm-date">${esc(dt(r.at))}</b><span class="as-run-meta">${esc(rel(r.at))}</span>`,`<code data-copy="${esc(r.uid)}" title="Bấm để sao chép">${esc(r.uid)}</code><em>${esc(shortWh(r.warehouse))}</em>`,skuCell,
+              `<div class="gm-move"><span class="gm-from">${r.from?esc(r.from):"—"}${noteOf(r.from)}</span><span class="gm-to">${ico("arrow")}${r.to?esc(r.to):"—"}${noteOf(r.to)}</span></div>`,
+              `<span class="gm-by" title="${esc(r.by||"")}">${esc(userName(r.by))}</span>`,
+              r.nextLocation?`<div class="gm-now">${chip(now,"","arrow")}<em title="${esc(dt(r.nextAt))}">${esc(r.nextLocation)}</em></div>`:`<div class="gm-now">${chip(now,"new","check")}</div>`],
+            text:[r.uid,r.sku,r.product,r.warehouse,r.from,r.to,r.by,r.nextLocation].join(" "),facets:{wh:r.warehouse||"",by:r.by||"",now},
+            sort:{at:Date.parse(r.at),uid:r.uid,sku:r.sku||"",to:r.to||"",by:r.by||"",now:r.nextLocation?1:0},
+            csv:[dt(r.at),r.uid,r.sku||"",r.product||"",r.warehouse||"",r.from||"",r.to||"",r.by||"",r.nextLocation||"",r.nextAt?dt(r.nextAt):""]};
+        }
+        function renderList(keep=true){list.show({columns:COLS,rows:state.rows.map(rowFor),facets:[{id:"wh",label:"Kho",icon:"database"},{id:"by",label:"Người cập nhật",icon:"user"},{id:"now",label:"Hiện tại",icon:"pin"}],filename:"lich-su-group-uid",csvHead:CSVH,empty:state.loaded?"Không có lượt chuyển khớp bộ lọc.":"Chưa có dữ liệu lịch sử."},{keep})}
+        function renderMetrics(){
+          const rows=state.rows,count=key=>new Set(rows.map(r=>r[key]).filter(Boolean)).size;
+          $("gm-m-moves").textContent=state.loaded?num(state.total):"—";$("gm-m-sub").textContent=state.truncated?`Hiển thị ${num(rows.length)} / ${num(state.total)}`:"Theo bộ lọc";
+          $("gm-m-uids").textContent=state.loaded?num(count("uid")):"—";$("gm-m-locs").textContent=state.loaded?num(count("to")):"—";$("gm-m-users").textContent=state.loaded?num(count("by")):"—";
+          $("gm-warn").hidden=!state.truncated;$("gm-warn").innerHTML=state.truncated?`<span class="as-warn">${ico("alert")}Chỉ hiển thị ${num(SEARCH_LIMIT)} lượt mới nhất; thu hẹp bộ lọc để xem đủ</span>`:"";
+        }
+        function renderInfo(){
+          const info=state.info||{},companies=info.companies||[],next=companies.length?Math.min(...companies.map(c=>Date.parse(c.lastTo)))-OVERLAP_MS:NaN;
+          $("gm-read-at").textContent=info.lastReadAt?dt(info.lastReadAt):"—";$("gm-read-rel").textContent=info.lastReadAt?rel(info.lastReadAt):"";
+          $("gm-total").textContent=state.info?num(info.total):"—";$("gm-range").textContent=info.total?`${dt(info.firstAt)} – ${dt(info.lastAt)}`:"";
+          $("gm-next-from").textContent=Number.isFinite(next)?dt(next):state.info?`${BACKFILL_DAYS} ngày gần nhất`:"—";$("gm-next-sub").textContent=Number.isFinite(next)?"Lùi 30 phút":"";
+          $("gm-companies").textContent=companies.map(c=>String(c.companyName||c.companyId).replace(/^Cty\s+/i,"")).join(" · ")||"—";
+          $("gm-top-chips").innerHTML=state.info?chip(`${num(info.total)} lượt chuyển`,info.total?"new":"warn","history"):"";
+        }
+        function render(keep=true){renderInfo();renderMetrics();renderList(keep)}
+        let seq=0,timer=0;
+        async function search(){
+          const mine=++seq;
+          try{const data=await rpc("group_uid_moves_search",{p_location:$("gm-loc").value,p_match:state.match,p_sku:$("gm-sku").value,p_from:fromIso(),p_to:toIso(),p_limit:SEARCH_LIMIT});if(mine!==seq)return;Object.assign(state,{rows:data.items||[],total:Number(data.total)||0,truncated:Boolean(data.truncated),loaded:true});render(true);if(!state.busy)say(state.total?`${num(state.total)} lượt chuyển khớp bộ lọc.`:"Không có lượt chuyển khớp bộ lọc.")}
+          catch(error){if(mine===seq)say(error.message||"Không tải được lịch sử Group UID.","error")}
+        }
+        const queue=()=>{clearTimeout(timer);timer=setTimeout(search,380)};
+        async function refreshInfo(){state.info=await rpc("group_uid_moves_state");renderInfo()}
+        function setRange(days){
+          state.range=days;screen.querySelectorAll("[data-gm-range]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.gmRange===String(days))));
+          if(!days)return;const now=Date.now();$("gm-from").value=vnDate(now-(Number(days)-1)*DAY);$("gm-to").value=vnDate(now);
+        }
+        function setMatch(match){state.match=match;screen.querySelectorAll("[data-gm-match]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.gmMatch===match)))}
+        async function readFromWms(full){
+          if(state.busy)return;setBusy(true);const errors=[];
+          try{
+            await checkExtension();say("Đang xác định công ty WMS…");
+            const {companies}=await extensionRequest("GET_WMS_COMPANIES");
+            if(!companies?.length)throw new Error("Tài khoản WMS chưa có quyền xem công ty nào");
+            await refreshInfo();
+            const last=new Map((state.info.companies||[]).map(c=>[Number(c.companyId),Date.parse(c.lastTo)])),to=Date.now(),floor=to-BACKFILL_DAYS*DAY;
+            let pagesDone=0,pagesAll=companies.length,fresh=0,changed=0,rows=0;
+            for(const company of companies){
+              const label=String(company.companyName||company.companyId).replace(/^Cty\s+/i,""),prev=last.get(company.companyId),from=full||!Number.isFinite(prev)?floor:Math.max(prev-OVERLAP_MS,floor);
+              try{
+                let page=1,pages=1,read=0,added=0,edited=0;
+                while(page<=pages){
+                  say(`${label}: trang ${num(page)}/${num(pages)}…`);progress(pagesDone,pagesAll);
+                  const data=await extensionRequest("GET_GROUP_UID_MOVES_PAGE",{companyId:company.companyId,page,size:PAGE_SIZE,from:new Date(from).toISOString(),to:new Date(to).toISOString()});
+                  if(page===1&&data.totalPages>1)pagesAll+=data.totalPages-1;pages=data.totalPages;
+                  if(data.rows.length){const saved=await rpc("group_uid_moves_import",{p_company_id:company.companyId,p_rows:data.rows});added+=saved.newRows;edited+=saved.changedRows;read+=data.rows.length}
+                  pagesDone++;page++;progress(pagesDone,pagesAll);
+                }
+                await rpc("group_uid_moves_mark_read",{p_company_id:company.companyId,p_company_name:company.companyName||"",p_from:new Date(from).toISOString(),p_to:new Date(to).toISOString(),p_rows:read,p_new:added,p_changed:edited});
+                rows+=read;fresh+=added;changed+=edited;
+              }catch(error){errors.push(`${label}: ${error.message}`)}
+            }
+            if(errors.length===companies.length)throw new Error(errors[0]);
+            await refreshInfo();await search();
+            const warn=$("gm-warn");if(errors.length){warn.hidden=false;warn.innerHTML=errors.map(e=>`<span class="as-warn">${ico("alert")}Chưa đọc được: ${esc(e)}</span>`).join("")}
+            say(`Đã đọc ${num(rows)} lượt chuyển${fresh||changed?`: ${num(fresh)} mới, ${num(changed)} cập nhật`:", không có thay đổi"}.${errors.length?` Có ${num(errors.length)} công ty lỗi.`:""}`,errors.length?"":"")
+          }catch(error){markDisconnected(error);say(error.message||"Không đọc được lịch sử từ WMS.","error")}
+          finally{setBusy(false)}
+        }
+        let tab="sync",activating=false;
+        async function activate(){
+          if(state.loaded||state.busy||activating)return;activating=true;say("Đang tải lịch sử…");checkExtension().catch(markDisconnected);
+          try{await refreshInfo();await search()}catch(error){say(error.message||"Không tải được lịch sử Group UID.","error")}finally{activating=false}
+        }
+        function setTab(next){
+          if(!["sync","moves"].includes(next))return;tab=next;
+          screen.querySelectorAll("[data-gu-main-tab]").forEach(b=>b.setAttribute("aria-selected",String(b.dataset.guMainTab===next)));
+          $("gu-panel-sync").classList.toggle("gm-off",next!=="sync");$("gu-panel-moves").classList.toggle("gm-off",next!=="moves");
+          ["gu-top-chips","gu-top-refresh"].forEach(id=>$(id).classList.toggle("gm-off",next!=="sync"));["gm-top-chips","gm-top-refresh"].forEach(id=>$(id).classList.toggle("gm-off",next!=="moves"));
+          screen.querySelector(".ss-top-sub").textContent=next==="sync"?"WMS → Supabase":"WMS · chuyển vị trí";
+          if(next==="moves")activate();
+        }
+        $("gm-filters").innerHTML=`<label class="as-search">${ico("box")}<input id="gm-sku" type="search" placeholder="SKU" aria-label="SKU" autocomplete="off"></label><label class="as-search">${ico("pin")}<input id="gm-loc" type="search" placeholder="Vị trí" aria-label="Vị trí" autocomplete="off"></label><div class="gm-seg" role="group" aria-label="Hướng chuyển">${[["to","Đến","Chuyển đến vị trí"],["from","Từ","Chuyển từ vị trí"],["any","Cả hai","Đến hoặc từ vị trí"]].map(([k,l,t])=>`<button type="button" class="as-tag" data-gm-match="${k}" title="${t}" aria-pressed="${k==="to"}">${l}</button>`).join("")}</div><div class="gm-ranges" role="group" aria-label="Khoảng ngày">${[["7","7 ngày"],["30","30 ngày"],["90","90 ngày"],["365","1 năm"]].map(([k,l])=>`<button type="button" class="as-tag" data-gm-range="${k}" aria-pressed="${k==="30"}">${l}</button>`).join("")}</div><div class="gm-dates">${ico("calendar")}<input id="gm-from" type="date" aria-label="Từ ngày"><input id="gm-to" type="date" aria-label="Đến ngày"></div><button type="button" class="gm-clear" id="gm-clear" aria-label="Xóa bộ lọc" title="Xóa bộ lọc">${ico("xcircle")}</button>`;
+        UI.hydrate(screen);UI.bindCopy($("gm-body"));setRange("30");
+        screen.querySelectorAll("[data-gu-main-tab]").forEach(b=>b.onclick=()=>setTab(b.dataset.guMainTab));
+        $("gm-sku").addEventListener("input",queue);$("gm-loc").addEventListener("input",queue);
+        $("gm-filters").addEventListener("click",e=>{const m=e.target.closest("[data-gm-match]"),r=e.target.closest("[data-gm-range]");if(m){setMatch(m.dataset.gmMatch);if($("gm-loc").value.trim())queue();return}if(r){setRange(r.dataset.gmRange);queue()}});
+        ["gm-from","gm-to"].forEach(id=>$(id).addEventListener("change",()=>{setRange("");queue()}));
+        $("gm-clear").onclick=()=>{$("gm-sku").value="";$("gm-loc").value="";setMatch("to");setRange("30");queue()};
+        $("gm-run").onclick=()=>readFromWms(false);$("gm-full").onclick=()=>readFromWms(true);
+        $("gm-top-refresh").onclick=async()=>{if(state.busy)return;try{await refreshInfo();await search()}catch(error){say(error.message||"Không tải được lịch sử Group UID.","error")}};
+        window.HasakiGroupUidMovesDashboard=Object.freeze({refresh:readFromWms,search,setTab});renderInfo();renderMetrics();
       })();
     </script>
   </body>

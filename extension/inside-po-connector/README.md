@@ -35,6 +35,15 @@ Extension chỉ đọc Inside. Mọi ghi dữ liệu chạy trong Edge Function 
 
 Phiên bản 0.6.1 đọc đầy đủ Combo nhiều thành phần, Group UID hiện tại, lịch sử cắt Group UID và dữ liệu kiểm kê SKU từ WMS theo lô 500 dòng. Tồn kho kiểm kê dùng báo cáo `Stock Location` đã gộp theo SKU/vị trí và chỉ giữ `count_inbin > 0`, tránh tải hàng trăm nghìn dòng UID. Bản này hỗ trợ phản hồi WMS dạng `records/count`, Group UID trạng thái `New` chưa có SKU và Group UID chứa nhiều SKU. Các SKU thành phần được lưu trong `group_uid_products`.
 
+Phiên bản 0.7.0 thêm hai lệnh chỉ đọc cho Lịch sử Group UID: `GET_WMS_COMPANIES` (công ty tài khoản được xem) và `GET_GROUP_UID_MOVES_PAGE` (lịch sử `Transfer location` của từng công ty, 500 dòng/trang, không giới hạn kho). Sau khi cập nhật extension phải Reload trong `chrome://extensions` và tải lại trang Print SKU.
+
+Lịch sử Group UID dành cho Admin:
+
+1. Mở tab WMS và đăng nhập.
+2. Vào `#admin/group-uid-sync` trong Print SKU, chọn tab **Lịch sử di chuyển**.
+3. Bấm **Đọc từ WMS**: lần đầu lấy 365 ngày, các lần sau chỉ lấy phần mới (lùi 30 phút). Nút đồng hồ bên cạnh đọc lại toàn bộ 365 ngày.
+4. Chọn SKU, vị trí (đến / từ / cả hai) và khoảng ngày để xem Group UID đã chuyển, người cập nhật và vị trí hiện tại.
+
 Dashboard kiểm kê SKU dành cho Admin:
 
 1. Mở tab WMS và đăng nhập bằng tài khoản có quyền trên cả Mastige và Hasaki Garment.

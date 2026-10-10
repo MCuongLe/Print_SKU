@@ -20,6 +20,7 @@
 | Group UID sync run | `mode`, khoảng thời gian, trang, thay đổi, xác minh | Edge Function `group-uid-sync` | Incremental lùi watermark 30 phút; full đọc toàn bộ; 500 dòng/trang; chỉ một phiên hoạt động | Thiếu trang, lệch tổng hoặc xác minh sai → NG, không cập nhật watermark |
 | Group UID | `sku`, `products` | WMS `group-uid-infos` | Một SKU → `sku` của UID; nhiều SKU → `sku` để trống, từng SKU ở `group_uid_products`; WMS không trả sản phẩm → GIỮ SKU và sản phẩm đã biết (migration `group_uid_sync_v3_keep_sku.sql`) | Không ghi đè SKU đang có bằng trống |
 | Group UID Cut | Mã, số lượng cắt/còn lại, SKU, người và ngày cắt | WMS `group-uid-info-histories` | Chỉ `warehouse_ids=1177` (WH - MATERIAL - MTG); Note phải khớp `Cut ... out of group ...`; đọc 500 dòng/trang, lần sau lùi 30 phút | Note Cut sai hoặc mã trong Note lệch mã dòng → NG, dừng đồng bộ |
+| Group UID move | Mã dòng lịch sử, Group UID, kho, vị trí cũ/mới, người cập nhật, thời điểm | WMS `group-uid-info-histories?actions=4` theo từng công ty (`company-ids`) | Chỉ action 4 (Transfer location); mã dòng nguyên dương, Group UID 6–40 chữ số, ngày hợp lệ; 500 dòng/trang, cửa sổ `from/to_updated_at` cố định trong một lần đọc, lần sau lùi 30 phút | Sai một dòng → NG; công ty lỗi không được ghi mốc đọc |
 
 ## Origin được phép
 
@@ -36,7 +37,7 @@ Origin khác bị từ chối ở cả manifest, app bridge và background servi
 
 - Connector chỉ đọc; không có thao tác ghi vào Inside hoặc WMS.
 - App không nhận cookie, token hoặc HTML gốc.
-- Background chỉ chuyển các yêu cầu đọc `PING`, `PING_WMS`, `GET_PO`, `GET_SKU_SYNC_DATA`, `GET_GROUP_UID_PAGE` và `GET_GROUP_UID_HISTORY_PAGE`.
+- Background chỉ chuyển các yêu cầu đọc `PING`, `PING_WMS`, `GET_PO`, `GET_SKU_SYNC_DATA`, `GET_GROUP_UID_PAGE`, `GET_GROUP_UID_HISTORY_PAGE`, `GET_GROUP_UID_MOVES_PAGE` và `GET_WMS_COMPANIES` (cùng các lệnh kiểm kê `GET_SKU_COUNT_*`).
 - Access token WMS chỉ đi giữa tab WMS và extension, không được gửi tới ứng dụng hoặc Supabase.
 - Extension không chứa Supabase secret/service-role key. Dữ liệu được gửi tới Edge Function bằng phiên Supabase Admin đang đăng nhập.
 - Không tự xóa SKU hoặc quan hệ Combo vắng mặt trong nguồn.

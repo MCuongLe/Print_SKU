@@ -122,5 +122,45 @@
     };
   }
 
-  globalThis.HasakiGroupUidSyncCore = Object.freeze({ clean, normalizeRow, normalizePage, normalizeHistoryPage, responseRows, responseTotal });
+  // WMS Group UID History: action 4 = "Transfer location" (đổi vị trí). Dòng này không có SKU/số lượng.
+  const TRANSFER_ACTION = 4;
+
+  function normalizeMovesPage(payload) {
+    const source = responseRows(payload);
+    const unique = new Map();
+    source.forEach((raw, index) => {
+      const actionCode = Number(raw?.action);
+      const actionName = clean(raw?.action_name, 80);
+      if (actionCode !== TRANSFER_ACTION && !/^transfer\s+location$/i.test(actionName)) return;
+      const id = Number(raw?.id);
+      const code = clean(raw?.group_uid_code, 40);
+      if (!Number.isSafeInteger(id) || id <= 0) throw new Error(`Lịch sử chuyển vị trí dòng ${index + 1} thiếu mã dòng`);
+      if (!/^\d{6,40}$/.test(code)) throw new Error(`Lịch sử chuyển vị trí dòng ${index + 1} có Group UID không hợp lệ`);
+      const warehouseId = raw?.warehouse_id == null || raw.warehouse_id === "" ? NaN : Number(raw.warehouse_id);
+      unique.set(id, {
+        history_id: id,
+        group_uid_code: code,
+        warehouse_id: Number.isInteger(warehouseId) ? warehouseId : null,
+        warehouse: clean(raw?.warehouse_name ?? raw?.warehouse, 240) || null,
+        action_code: Number.isFinite(actionCode) ? actionCode : TRANSFER_ACTION,
+        action_name: actionName || "Transfer location",
+        from_location: clean(raw?.old_location_description ?? raw?.old_location, 240) || null,
+        to_location: clean(raw?.location_description ?? raw?.location, 240) || null,
+        moved_by: clean(raw?.updated_by_name ?? raw?.updated_by ?? raw?.created_by_name, 240) || null,
+        moved_at: isoDate(raw?.updated_at_tz ?? raw?.updated_at ?? raw?.created_at_tz ?? raw?.created_at),
+      });
+    });
+    return { rows: [...unique.values()], total: responseTotal(payload, source.length), sourceRows: source.length };
+  }
+
+  function normalizeCompanies(payload) {
+    const rows = [payload?.records, payload?.data?.records, payload?.data?.items, Array.isArray(payload?.data) ? payload.data : null].find(Array.isArray) || [];
+    return rows.map(row => ({
+      companyId: Number(row?.company_id ?? row?.id),
+      companyCode: clean(row?.company_code ?? row?.code, 40),
+      companyName: clean(row?.company_name ?? row?.name, 160),
+    })).filter(row => Number.isSafeInteger(row.companyId) && row.companyId > 0);
+  }
+
+  globalThis.HasakiGroupUidSyncCore = Object.freeze({ clean, normalizeRow, normalizePage, normalizeHistoryPage, normalizeMovesPage, normalizeCompanies, responseRows, responseTotal });
 })();

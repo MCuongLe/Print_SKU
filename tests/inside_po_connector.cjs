@@ -8,7 +8,7 @@ const manifest = JSON.parse(fs.readFileSync(path.join(extensionDir, "manifest.js
 const background = fs.readFileSync(path.join(extensionDir, "background.js"), "utf8");
 
 assert.equal(manifest.manifest_version, 3);
-assert.equal(manifest.version, "0.6.1");
+assert.equal(manifest.version, "0.7.0");
 const wmsBridge = fs.readFileSync(path.join(extensionDir, "wms-bridge.js"), "utf8");
 assert.match(wmsBridge, /stock-locations\/bins\/count\/v3/);
 assert.match(wmsBridge, /ignore_zero_total/);

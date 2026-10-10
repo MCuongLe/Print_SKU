@@ -13,7 +13,7 @@ const source = html.slice(start, end);
 
 // Mọi helper gửi lệnh qua cầu nối phải hỏi lại tiện ích trước.
 const definitions = html.match(/(?:const extensionRequest=\(type,payload=\{\},timeout=\d+\)=>|function extensionRequest\(type,payload=\{\},timeout=\d+\)\{return )[^;]{0,60}/g) || [];
-assert.equal(definitions.length, 4, `cần 4 helper extensionRequest, thấy ${definitions.length}`);
+assert.equal(definitions.length, 5, `cần 5 helper extensionRequest, thấy ${definitions.length}`);
 for (const definition of definitions) assert.match(definition, /window\.PrintSkuBridgeReady\(type\)\.then\(/, `helper chưa hỏi lại tiện ích: ${definition}`);
 
 // Sandbox: cửa sổ giả có postMessage/addEventListener; `bridge` quyết định cầu nối trả lời thế nào.
@@ -64,5 +64,5 @@ const messageOf = promise => promise.then(() => "OK", error => error.message);
   assert.equal(await messageOf(makeWindow(() => null).PrintSkuBridgeReady("PING_WMS", 40)), "OK");
   assert.equal(await messageOf(makeWindow(() => null).PrintSkuBridgeReady("PING", 40)), "OK");
 
-  console.log("bridge_ready: 4 helper hỏi lại tiện ích; PING trả lời / im lặng / EXTENSION_RELOADED đều đạt");
+  console.log("bridge_ready: 5 helper hỏi lại tiện ích; PING trả lời / im lặng / EXTENSION_RELOADED đều đạt");
 })().catch(error => { console.error(error); process.exit(1); });

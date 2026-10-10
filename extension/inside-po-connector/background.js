@@ -43,7 +43,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     sendResponse(errorResponse("FORBIDDEN_ORIGIN", "Ứng dụng không nằm trên địa chỉ Print SKU được cho phép"));
     return false;
   }
-  if (!message || !["PING", "PING_WMS", "GET_PO", "GET_SKU_SYNC_DATA", "GET_GROUP_UID_PAGE", "GET_GROUP_UID_HISTORY_PAGE", "GET_SKU_COUNT_WAREHOUSES", "GET_SKU_COUNT_APPROVED_PAGE", "GET_SKU_COUNT_INVENTORY_PAGE"].includes(message.type)) {
+  if (!message || !["PING", "PING_WMS", "GET_PO", "GET_SKU_SYNC_DATA", "GET_GROUP_UID_PAGE", "GET_GROUP_UID_HISTORY_PAGE", "GET_GROUP_UID_MOVES_PAGE", "GET_WMS_COMPANIES", "GET_SKU_COUNT_WAREHOUSES", "GET_SKU_COUNT_APPROVED_PAGE", "GET_SKU_COUNT_INVENTORY_PAGE"].includes(message.type)) {
     sendResponse(errorResponse("INVALID_REQUEST", "Yêu cầu kết nối không hợp lệ"));
     return false;
   }
@@ -59,7 +59,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
-  if (["GET_GROUP_UID_PAGE", "GET_GROUP_UID_HISTORY_PAGE", "GET_SKU_COUNT_WAREHOUSES", "GET_SKU_COUNT_APPROVED_PAGE", "GET_SKU_COUNT_INVENTORY_PAGE"].includes(message.type)) {
+  if (["GET_GROUP_UID_PAGE", "GET_GROUP_UID_HISTORY_PAGE", "GET_GROUP_UID_MOVES_PAGE", "GET_WMS_COMPANIES", "GET_SKU_COUNT_WAREHOUSES", "GET_SKU_COUNT_APPROVED_PAGE", "GET_SKU_COUNT_INVENTORY_PAGE"].includes(message.type)) {
     (async () => {
       const wmsTab = await findWmsTab();
       if (!wmsTab) return errorResponse("WMS_TAB_MISSING", "Hãy mở một tab WMS và đăng nhập trước");

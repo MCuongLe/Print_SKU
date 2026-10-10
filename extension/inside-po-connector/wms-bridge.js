@@ -11,6 +11,7 @@
   const APPROVED_COUNT_API = "https://wms-gw.inshasaki.com/api/v1/wms/counting-plan/checklists/type-sku";
   const INVENTORY_API = "https://wms-gw.inshasaki.com/api/v1/wms/report-management/stock-locations/bins/count/v3";
   const CUT_WAREHOUSE_ID = "1177"; // WH - MATERIAL - MTG
+  const MOVE_ACTION = "4"; // Transfer location trong Group UID History
 
   function auth() {
     let store = {};
@@ -108,6 +109,39 @@
     };
   }
 
+  // Lịch sử đổi vị trí Group UID (action 4 = Transfer location); không truyền warehouse_ids nên WMS trả mọi kho của công ty trong company-ids.
+  async function readMovesPage(payload) {
+    if (!core?.normalizeMovesPage) throw new Error("Extension chưa tải bộ đọc lịch sử chuyển vị trí; hãy Reload extension");
+    const { page, size } = pageInput(payload), companyId = Number(payload?.companyId);
+    if (!Number.isSafeInteger(companyId) || companyId <= 0) throw new Error("Chưa xác định được công ty cần đọc lịch sử");
+    const url = new URL(HISTORY_API);
+    url.searchParams.set("active_tab", "group-history");
+    url.searchParams.set("page", String(page));
+    url.searchParams.set("size", String(size));
+    url.searchParams.set("actions", MOVE_ACTION);
+    if (payload?.from) url.searchParams.set("from_updated_at", String(new Date(payload.from).getTime()));
+    if (payload?.to) url.searchParams.set("to_updated_at", String(new Date(payload.to).getTime()));
+    const normalized = core.normalizeMovesPage(await getJson(url, "Phiên WMS không còn quyền đọc lịch sử chuyển vị trí; hãy đăng nhập lại", companyId));
+    return {
+      page, size, total: normalized.total,
+      totalPages: Math.max(1, Math.ceil(normalized.total / size)),
+      rows: normalized.rows,
+      sourceRows: normalized.sourceRows,
+      companyId,
+      generatedAt: new Date().toISOString(),
+    };
+  }
+
+  async function readCompanies() {
+    if (!core?.normalizeCompanies) throw new Error("Extension chưa tải bộ đọc công ty; hãy Reload extension");
+    const url = new URL(COMPANY_API);
+    url.searchParams.set("page", "1");
+    url.searchParams.set("size", "10000");
+    url.searchParams.set("check_permission", "true");
+    url.searchParams.set("status", "1");
+    return { companies: core.normalizeCompanies(await getJson(url, "Phiên WMS không còn quyền đọc danh mục công ty; hãy đăng nhập lại")), generatedAt: new Date().toISOString() };
+  }
+
   function pageInput(payload) {
     return { page: Math.max(1, Number(payload?.page) || 1), size: Math.min(500, Math.max(1, Number(payload?.size) || 500)) };
   }
@@ -179,10 +213,12 @@
   }
 
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    if (sender.id !== chrome.runtime.id || !["GET_GROUP_UID_PAGE", "GET_GROUP_UID_HISTORY_PAGE", "GET_SKU_COUNT_WAREHOUSES", "GET_SKU_COUNT_APPROVED_PAGE", "GET_SKU_COUNT_INVENTORY_PAGE"].includes(message?.type)) return false;
+    if (sender.id !== chrome.runtime.id || !["GET_GROUP_UID_PAGE", "GET_GROUP_UID_HISTORY_PAGE", "GET_GROUP_UID_MOVES_PAGE", "GET_WMS_COMPANIES", "GET_SKU_COUNT_WAREHOUSES", "GET_SKU_COUNT_APPROVED_PAGE", "GET_SKU_COUNT_INVENTORY_PAGE"].includes(message?.type)) return false;
     const readers = {
       GET_GROUP_UID_PAGE: readPage,
       GET_GROUP_UID_HISTORY_PAGE: readHistoryPage,
+      GET_GROUP_UID_MOVES_PAGE: readMovesPage,
+      GET_WMS_COMPANIES: readCompanies,
       GET_SKU_COUNT_WAREHOUSES: readCountWarehouses,
       GET_SKU_COUNT_APPROVED_PAGE: readApprovedCountPage,
       GET_SKU_COUNT_INVENTORY_PAGE: readInventoryPage,

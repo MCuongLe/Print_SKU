@@ -45,7 +45,7 @@ assert.deepEqual(detail("Mô tả tự do"), { matched: false, relations: [], re
 assert.deepEqual(detail(""), { matched: false, relations: [], rejected: [] });
 
 const manifest = JSON.parse(fs.readFileSync("extension/inside-po-connector/manifest.json", "utf8"));
-assert.equal(manifest.version, "0.6.1");
+assert.equal(manifest.version, "0.7.0");
 assert.deepEqual(manifest.content_scripts[1].js, ["sku-sync-core.js", "inside-bridge.js"]);
 assert.deepEqual(manifest.content_scripts[2].js, ["group-uid-sync-core.js", "inventory-audit-core.js", "wms-bridge.js"]);
 assert.ok(manifest.host_permissions.includes("https://wms-gw.inshasaki.com/*"));
