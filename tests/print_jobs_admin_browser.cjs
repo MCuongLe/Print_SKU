@@ -100,8 +100,8 @@ const lastCall = (calls, name) => [...calls].reverse().find(call => call.rpc ===
 
       // Menu riêng: Lệnh in đứng đầu, đủ icon; không còn Tổng quan / Đợt đã gửi
       const nav = await page.locator('#print-jobs-screen .ss-nav button').allInnerTexts();
-      assert.deepEqual(nav.map(t => t.trim()), ['Lệnh in', 'Đồng bộ SKU', 'Đồng bộ Group UID', 'Cấu hình']);
-      assert.equal(await page.locator('#print-jobs-screen .ss-nav button svg').count(), 4);
+      assert.deepEqual(nav.map(t => t.trim()), ['Lệnh in', 'Đồng bộ SKU', 'Đồng bộ Group UID', 'Kiểm kê SKU', 'Cấu hình']);
+      assert.equal(await page.locator('#print-jobs-screen .ss-nav button svg').count(), 5);
       for (const id of ['sku-sync-screen', 'group-uid-sync-screen']) {
         const other = (await page.locator(`#${id} .ss-nav`).innerText());
         assert.equal(/Tổng quan|Đợt đã gửi/.test(other), false, `${id} không còn mục cũ`);

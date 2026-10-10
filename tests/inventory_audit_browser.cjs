@@ -52,9 +52,54 @@ const mockExtension = () => addEventListener("message", event => {
       assert.equal(await page.locator("#ia-body tr").count(), 2, "mặc định chỉ hiện SKU cần kiểm kê");
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth);
       assert.equal(overflow, false, `${width}px không được tràn ngang`);
+      if (width === 1280) {
+        const rows = () => page.locator("#ia-body tr[data-ia-key]"), skus = () => page.locator("#ia-body tr[data-ia-key] code").allInnerTexts();
+        assert.deepEqual(await skus(), ["SKU-NEVER", "SKU-OLD"], "chưa kiểm kê đứng trước, rồi đến quá hạn");
+        assert.deepEqual(await page.evaluate(() => ["action", "never", "overdue", "recent", "all"].map(k => document.getElementById(`ia-count-${k}`).textContent)), ["2", "1", "1", "1", "3"]);
+        assert.match(await page.locator("#ia-run").evaluate(el => getComputedStyle(el).display), /flex/, "nút đọc WMS có icon cùng hàng với chữ");
+        assert.equal(await page.locator("#ia-head th").count(), 7, "7 cột, không còn cột Chi tiết");
+        assert.equal(await page.locator(".ia-table").evaluate(t => t.parentElement.scrollWidth <= t.parentElement.clientWidth), true, "bảng vừa khung, không cuộn ngang");
+        await page.locator('[data-ia-tab="all"]').click();
+        assert.equal(await page.locator('[data-ia-tab="all"]').getAttribute("aria-selected"), "true");
+        assert.equal(await rows().count(), 3);
+        await page.locator('button.ss-metric[data-ia-status="recent"]').click();
+        assert.deepEqual(await skus(), ["SKU-RECENT"], "bấm thẻ Trong 30 ngày lọc đúng nhóm");
+        assert.equal(await page.locator("#ia-list-title").innerText(), "Trong 30 ngày");
+        await page.locator('[data-ia-tab="all"]').click();
+        await page.locator("#ia-tools input").fill("vai cu");
+        assert.deepEqual(await skus(), ["SKU-OLD"], "tìm không dấu theo tên sản phẩm");
+        await page.locator("#ia-tools input").fill("");
+        await page.locator('[data-as-facet="wh"] .as-facet-btn').click();
+        assert.equal(await page.locator(".as-opt").count(), 2, "lọc Kho có đúng hai kho");
+        await page.locator(".as-opt", { hasText: "GARMENT" }).click();
+        assert.deepEqual(await skus(), ["SKU-NEVER"], "lọc theo kho GARMENT");
+        await page.locator("[data-as-clear]").click();
+        assert.equal(await rows().count(), 3);
+        await page.keyboard.press("Escape");
+        await page.locator('[data-as-sort="qty"]').click();
+        assert.deepEqual(await skus(), ["SKU-RECENT", "SKU-OLD", "SKU-NEVER"], "bấm Tồn lần đầu sắp giảm dần");
+        await rows().first().click();
+        assert.equal(await page.locator("#ia-dialog").evaluate(d => d.open), true, "bấm dòng mở chi tiết");
+        assert.equal(await page.locator("#ia-d-title").innerText(), "SKU-RECENT");
+        assert.equal(await page.locator("#ia-d-locs .ia-locrow").count(), 1);
+        assert.equal((await page.locator("#ia-d-locs").innerText()).includes("A-01"), true);
+        assert.equal(await page.locator("#ia-dialog").evaluate(d => d.offsetHeight < 600), true, "hộp chi tiết co theo nội dung");
+        await page.keyboard.press("Escape");
+        assert.equal(await page.locator("#ia-dialog").evaluate(d => d.open), false);
+        await rows().nth(1).focus();
+        await page.keyboard.press("Enter");
+        assert.equal(await page.locator("#ia-d-title").innerText(), "SKU-OLD", "Enter trên dòng mở chi tiết");
+        await page.keyboard.press("Escape");
+        const [download] = await Promise.all([page.waitForEvent("download"), page.locator("#ia-tools [data-as-export]").click()]);
+        assert.equal(download.suggestedFilename().startsWith("kiem-ke-sku-"), true);
+        const csv = require("node:fs").readFileSync(await download.path(), "utf8");
+        assert.equal(csv.charCodeAt(0), 0xfeff);
+        assert.equal(csv.trim().split(String.fromCharCode(13, 10)).length, 4, "tiêu đề + 3 dòng");
+        assert.equal(csv.includes("SKU-NEVER") && csv.includes("Chưa kiểm kê"), true);
+      }
       assert.deepEqual(errors, []);
       await context.close();
     }
-    console.log("inventory_audit_browser: two companies, 3 statuses and responsive layout passed");
+    console.log("inventory_audit_browser: two companies, 3 statuses, tabs, filters, sort, detail dialog, CSV and responsive layout passed");
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });
