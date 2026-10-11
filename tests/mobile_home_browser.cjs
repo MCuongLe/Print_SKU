@@ -9,7 +9,7 @@ const BASE = process.env.BASE || 'http://127.0.0.1:8000/';
 (async () => {
   const browser = await chromium.launch({ channel: 'chrome', headless: true });
   try {
-    for (const [width, height] of [[390, 844], [320, 640], [1280, 800]]) {
+    for (const [width, height] of [[390, 844], [320, 640], [1280, 800], [1920, 1080]]) {
       const mobile = width < 800;
       const context = await browser.newContext({ viewport: { width, height }, isMobile: mobile, hasTouch: mobile });
       const page = await context.newPage();
@@ -41,6 +41,17 @@ const BASE = process.env.BASE || 'http://127.0.0.1:8000/';
       home.heads.forEach((head, i) => { const [name, count, w, r] = head.split('|'); assert.equal(count, `${String(home.counts[i]).padStart(2, '0')} chức năng`, `${name}: số chức năng`); assert.equal(r, '50%', `${name}: icon nhóm tròn`); assert.ok(Number(w) >= 40, `${name}: icon nhóm ≥ 40 px`); });
       assert.deepEqual(home.heads.map(h => h.split('|')[0]), ['In tem', 'Vận hành kho', 'Kiểm tra', 'Quản trị']);
       assert.equal(home.overflow, false, `${width}px: trang chủ tràn ngang`);
+      // Ảnh nền đầu trang (kệ kho, webp nhúng sẵn — không tải ngoài) thay hoạ tiết kệ SVG ::after; ở màn rộng icon kho thẳng mép thẻ nhóm
+      const head = await page.evaluate(() => {
+        const hd = document.querySelector('#barcode-home .barcode-home__header'), cs = getComputedStyle(hd);
+        return { img: /url\("data:image\/webp;base64,/.test(cs.backgroundImage), after: getComputedStyle(hd, '::after').content, h: Math.round(hd.getBoundingClientRect().height), color: getComputedStyle(hd.querySelector('h1')).color,
+          markX: Math.round(hd.querySelector('.barcode-home__mark').getBoundingClientRect().left), groupX: Math.round(document.querySelector('#barcode-home .barcode-home__group').getBoundingClientRect().left) };
+      });
+      assert.equal(head.img, true, 'đầu trang có ảnh nền webp nhúng');
+      assert.equal(head.after, 'none', 'bỏ hoạ tiết kệ SVG cũ');
+      assert.equal(head.color, 'rgb(255, 255, 255)');
+      assert.equal(head.h, mobile ? 112 : 148, `đầu trang cao ${head.h}px`);
+      if (mobile) assert.equal(head.markX, 16); else assert.equal(head.markX, head.groupX, 'máy tính: icon kho thẳng mép thẻ nhóm');
       if (width === 390) {
         assert.equal(home.cols, 3, 'điện thoại: lưới 3 cột');
         assert.ok(home.bottom <= height * 1.25, `điện thoại 390 × 844: trang chủ cuộn tối đa ~1,25 màn (ô cuối ở ${home.bottom}px)`);

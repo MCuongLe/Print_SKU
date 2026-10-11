@@ -525,7 +525,9 @@ tiêu điểm nhẹ, nút 46 px. Tab Cắt UID / Xả vải là nút chọn li�
 Máy tính giữ nguyên. Test: `tests/mobile_home_browser.cjs`.
 
 **Trang chủ theo mẫu (11/10/2026, khối `#home-cards` + script `home-group-count`):** đầu trang icon kho trong ô bo góc + "WH-MATERIAL"
-trên nền xanh có hoạ tiết kệ hàng mờ; mỗi nhóm là một thẻ có thanh tiêu đề màu nhạt (icon tròn, tên nhóm, "0N chức năng" tự đếm số ô đang
+trên ảnh nền kệ kho (ảnh người dùng gửi, nén lại 2000×722 webp ~21 KB và nhúng data URI trong `#home-cards` — không thêm file, không tải ngoài;
+lớp tối bên trái giữ chữ trắng đủ tương phản ≥ 4:1 ở mọi bề rộng; đầu trang cao 112 px điện thoại / 148 px máy tính, màn rộng icon kho thẳng mép
+thẻ nhóm). Đổi ảnh: nén webp rồi thay chuỗi base64 trong `background-image` của `.barcode-home__header`. Mỗi nhóm là một thẻ có thanh tiêu đề màu nhạt (icon tròn, tên nhóm, "0N chức năng" tự đếm số ô đang
 hiện — ô KÍCH HOẠT MÁY chèn/ẩn bằng JS cũng được tính). Màu riêng từng nhóm chỉ ở thanh tiêu đề: In tem xanh lá, Vận hành kho xanh dương,
 Kiểm tra cam, Quản trị tím (chữ đủ tương phản ≥ 4,5:1). Theo chuẩn: không câu mô tả, không chuông, không mũi tên ">" (chưa có chức năng
 tương ứng). Điện thoại ô 3 cột, cuộn khoảng 1,2 màn; máy tính thẻ nhóm xếp 2 cột kiểu báo (không chừa khoảng trống).
