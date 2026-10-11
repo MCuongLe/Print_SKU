@@ -231,6 +231,24 @@ Các UID có SKU chưa có tên trong `SKU_Name` sẽ chờ gán tên thủ côn
 Đã kiểm tra frontend với RPC thật: UID có dữ liệu tự chuyển sang Sẵn sàng in,
 đủ SKU, tên sản phẩm, lot và roll. Frontend báo lỗi và cho gán tay nếu RPC không truy cập được.
 
+## SKU ngừng hoạt động
+
+Từ 11/10/2026 (`supabase/sku_inactive_v1.sql`), SKU ngừng = `SKU_Name.status <> '1'` theo Inside. Không xoá dòng; thay vào đó:
+
+- **Ẩn khỏi tìm kiếm**: policy đọc công khai trên `SKU_Name` chỉ trả SKU đang hoạt động, nên IN TEM SKU và TÌM SKU không gợi ý SKU ngừng. Các hàm tra Group UID, Cắt UID, Combo và Admin vẫn thấy đủ.
+- **Chặn in tem SKU mới**: `print_enqueue` từ chối lệnh loại `sku` có SKU ngừng với lỗi `SKU_INACTIVE` kèm danh sách mã. Tem Group UID và tem vị trí vẫn in vì cuộn vải còn trong kho.
+- **Cắt UID**: vẫn lưu tem, thẻ "tem vừa lưu" gắn nhãn *SKU đã ngừng hoạt động* và thông báo màu cảnh báo.
+- **Mốc ngừng**: cột `inactive_since` do trigger đặt khi `status` chuyển khỏi `'1'`, xoá khi hoạt động lại.
+- **Lưu trữ**: pg_cron `sku-inactive-archive` chạy 03:45 thứ hai hằng tuần, chuyển SKU ngừng quá 180 ngày, không còn UID sống, không trong Combo đang Active, không ở phiên xả vải mở và không cắt trong 90 ngày sang bảng `sku_archive`. Kết quả ghi ở `print_maintenance`.
+
+Nạp bù một lần để Supabase biết các SKU đã ngừng trước 01/10/2026 (lần nạp đầu chỉ lấy SKU hoạt động): xuất Inside **Download → File** có cả SKU Inactive, nhập bằng `scripts/import_sku_xlsx.py`, rồi:
+
+```powershell
+python scripts/sync_sku_to_supabase.py --include-inactive
+```
+
+Thiếu cờ `--include-inactive`, script vẫn chỉ đẩy SKU hoạt động như trước.
+
 ## Đồng bộ danh mục SKU lên Supabase
 
 Đặt `SUPABASE_URL` và `SUPABASE_SECRET_KEY` trong biến môi trường của máy chạy đồng bộ. Không lưu secret key trong source code hoặc Git.

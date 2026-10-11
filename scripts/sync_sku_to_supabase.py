@@ -29,7 +29,9 @@ DEFAULT_TABLE = "SKU_Name"
 DEFAULT_BATCH_SIZE = 500
 
 
-def active_skus(database: Path) -> list[dict[str, str]]:
+def active_skus(database: Path, include_inactive: bool = False) -> list[dict[str, str]]:
+    # include_inactive=True (--include-inactive, 11/10/2026): nạp cả SKU status <> '1' để Supabase biết SKU đã ngừng
+    # (web ẩn khỏi tìm kiếm, máy chủ chặn in tem mới). Bản xuất Inside phải có cả SKU Inactive thì mới có tác dụng.
     connection = sqlite3.connect(database)
     try:
         columns = {
@@ -54,9 +56,10 @@ def active_skus(database: Path) -> list[dict[str, str]]:
             FROM products
             WHERE TRIM(sku) <> ''
               AND TRIM(product_name) <> ''
-              AND status = '1'
+              AND (? OR status = '1')
             ORDER BY sku
-            """
+            """,
+            (1 if include_inactive else 0,),
         ).fetchall()
     finally:
         connection.close()
@@ -120,8 +123,9 @@ def sync(
     secret_key: str,
     table: str,
     batch_size: int,
+    include_inactive: bool = False,
 ) -> dict[str, object]:
-    records = active_skus(database)
+    records = active_skus(database, include_inactive)
     endpoint = (
         f"{supabase_url.rstrip('/')}/rest/v1/{quote(table, safe='')}"
         "?on_conflict=sku"
@@ -154,6 +158,11 @@ def main() -> None:
     parser.add_argument("--table", default=DEFAULT_TABLE)
     parser.add_argument("--batch-size", type=int, default=DEFAULT_BATCH_SIZE)
     parser.add_argument(
+        "--include-inactive",
+        action="store_true",
+        help="Nạp cả SKU ngừng hoạt động (status <> '1') để Supabase ẩn khỏi tìm kiếm và chặn in tem mới",
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Validate and count local data without contacting Supabase",
@@ -166,7 +175,7 @@ def main() -> None:
         parser.error("--batch-size must be between 1 and 1000")
 
     if args.dry_run:
-        records = active_skus(args.database.resolve())
+        records = active_skus(args.database.resolve(), args.include_inactive)
         categories: dict[str, int] = {}
         for record in records:
             label = f"{record['category_id']} | {record['category_name']}"
@@ -200,6 +209,7 @@ def main() -> None:
         secret_key,
         args.table,
         args.batch_size,
+        include_inactive=args.include_inactive,
     )
     print(json.dumps(result, ensure_ascii=False, indent=2))
 
