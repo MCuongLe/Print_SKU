@@ -98,6 +98,14 @@ tìm và đã sửa: chữ xám `text-slate-400` của IN TEM SKU/Cấu hình ch
 opacity (nay chữ xám đủ tương phản), hộp chọn "Mẫu tem" thiếu nhãn, nút "WH-MATERIAL" của Chuyển đổi đơn vị có tên đọc không chứa chữ
 đang hiện, và 14 thẻ `<main>` lồng trong vùng màn hình (đổi thành `<div>`, mỗi màn vẫn là một vùng có tên).
 
+## Source và tự động hóa (Đợt 6)
+
+Kết luận 11/10/2026: **giữ `index.html` một file, sửa trực tiếp** (người dùng chọn). Source gốc React/Vite của IN TEM SKU và Admin
+Cấu hình không còn — không có trong repo (từ commit đầu 31/08/2026 đã là bundle), không có source map, không có bản nào khác trên máy —
+nên không khôi phục source, không tách component, không thêm bước build. Phần tự động hóa đã có: bộ test Playwright trong `tests/`,
+quét axe (`tests/a11y_axe_browser.cjs`), mốc hiệu năng ở mục Chuẩn giao diện chung. Nếu sau này tìm lại được source gốc thì mới làm
+tiếp phần build/component theo `docs/DOI_CHIEU_HIEN_TRANG_VA_HUONG_CAI_THIEN_UI_UX.md` mục 7.
+
 ## Chuẩn icon
 
 Từ 11/10/2026 (khối `#icon-standard`, test `tests/icon_standard_browser.cjs`): icon Lucide nét 2 px, tô `currentColor`, chỉ 4 cỡ —
