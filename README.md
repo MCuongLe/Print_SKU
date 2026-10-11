@@ -524,6 +524,12 @@ tiêu điểm nhẹ, nút 46 px. Tab Cắt UID / Xả vải là nút chọn li�
 22 px, tiêu đề khối 18 px, thẻ phẳng bo 14 px, ô nhập tiêu điểm nhẹ, nút Thêm vào danh sách 46 px bo 12 px (font đã chuẩn từ đợt chuẩn chữ).
 Máy tính giữ nguyên. Test: `tests/mobile_home_browser.cjs`.
 
+**Trang chủ theo mẫu (11/10/2026, khối `#home-cards` + script `home-group-count`):** đầu trang icon kho trong ô bo góc + "WH-MATERIAL"
+trên nền xanh có hoạ tiết kệ hàng mờ; mỗi nhóm là một thẻ có thanh tiêu đề màu nhạt (icon tròn, tên nhóm, "0N chức năng" tự đếm số ô đang
+hiện — ô KÍCH HOẠT MÁY chèn/ẩn bằng JS cũng được tính). Màu riêng từng nhóm chỉ ở thanh tiêu đề: In tem xanh lá, Vận hành kho xanh dương,
+Kiểm tra cam, Quản trị tím (chữ đủ tương phản ≥ 4,5:1). Theo chuẩn: không câu mô tả, không chuông, không mũi tên ">" (chưa có chức năng
+tương ứng). Điện thoại ô 3 cột, cuộn khoảng 1,2 màn; máy tính thẻ nhóm xếp 2 cột kiểu báo (không chừa khoảng trống).
+
 **Bố cục điện thoại (10/10/2026).** Toàn màn hình bỏ các câu hướng dẫn (thông báo sau khi đọc tem/chọn SKU, mẹo gõ mã, "Lưu trên máy này…", đuôi "kiểm tra mạng rồi bấm…"
 của các thông báo lỗi); chỉ giữ trạng thái và lỗi ngắn. Bước 1: nút Bật camera và nút Chọn ảnh (chỉ icon, vẫn có tên cho trình đọc màn hình) cùng một hàng. Bước 2: thẻ SKU gọn
 (SKU · chip đơn vị · nút Đổi), bỏ các câu giải thích đơn vị/cách nhập và thông báo "nhập số lượng và số tem"; nút **Tính mm từ cân** thay khối giải thích; **Số tem**

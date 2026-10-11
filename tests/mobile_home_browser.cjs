@@ -1,4 +1,4 @@
-// Giao diện điện thoại đợt 2 (11/10/2026, khối CSS #mobile-pro-home): trang chủ lưới 3 cột ô gọn, mọi ô vừa một màn 390 × 844
+// Giao diện điện thoại đợt 2 (11/10/2026, khối CSS #mobile-pro-home) + thẻ nhóm theo mẫu (#home-cards): trang chủ lưới 3 cột ô gọn, mỗi nhóm một thẻ có thanh tiêu đề
 // (≤ 340 px về 2 cột); IN TEM SKU cùng kiểu các module đợt 1 (số thứ tự chấm tròn 22 px, tiêu đề khối 18 px, thẻ phẳng, nút 46 px).
 // Máy tính giữ nguyên. Dữ liệu giả rỗng, không gọi Supabase thật. Chạy với python -m http.server 8000 (đổi bằng biến BASE).
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
@@ -29,19 +29,28 @@ const BASE = process.env.BASE || 'http://127.0.0.1:8000/';
         const tiles = [...document.querySelectorAll('#barcode-home .barcode-choice')].filter(t => t.getBoundingClientRect().width > 0);
         const boxes = tiles.map(t => t.getBoundingClientRect());
         const lines = tiles.map(t => { const s = t.querySelector('strong'), cs = getComputedStyle(s); return Math.round(s.getBoundingClientRect().height / parseFloat(cs.lineHeight)); });
-        return { count: tiles.length, cols: new Set(boxes.map(b => Math.round(b.left))).size, w: Math.round(boxes[0].width), h: Math.round(Math.min(...boxes.map(b => b.height))), bottom: Math.round(Math.max(...boxes.map(b => b.bottom))), maxLines: Math.max(...lines), overflow: document.documentElement.scrollWidth > innerWidth };
+        const groups = [...document.querySelectorAll('#barcode-home .barcode-home__group')];
+        const firstRow = boxes.filter(b => Math.abs(b.top - boxes[0].top) < 2);
+        return { count: tiles.length, cols: firstRow.length, w: Math.round(boxes[0].width), h: Math.round(Math.min(...boxes.map(b => b.height))), bottom: Math.round(Math.max(...boxes.map(b => b.bottom))), maxLines: Math.max(...lines), overflow: document.documentElement.scrollWidth > innerWidth,
+          groupCols: new Set(groups.map(g => Math.round(g.getBoundingClientRect().left))).size,
+          heads: groups.map(g => { const icon = g.querySelector('.barcode-home__group-icon'), r = icon.getBoundingClientRect(); return `${g.querySelector('h2').textContent.trim()}|${g.querySelector('[data-home-count]').textContent}|${Math.round(r.width)}|${getComputedStyle(icon).borderRadius}`; }),
+          counts: groups.map(g => [...g.querySelectorAll('.barcode-choice')].filter(t => !t.hidden && t.getBoundingClientRect().width > 0).length) };
       });
       assert.ok(home.count >= 10, `trang chủ có đủ ô (${home.count})`);
+      // Thẻ nhóm theo mẫu 11/10/2026: thanh tiêu đề có icon tròn, tên nhóm, số chức năng đúng số ô đang hiện
+      home.heads.forEach((head, i) => { const [name, count, w, r] = head.split('|'); assert.equal(count, `${String(home.counts[i]).padStart(2, '0')} chức năng`, `${name}: số chức năng`); assert.equal(r, '50%', `${name}: icon nhóm tròn`); assert.ok(Number(w) >= 40, `${name}: icon nhóm ≥ 40 px`); });
+      assert.deepEqual(home.heads.map(h => h.split('|')[0]), ['In tem', 'Vận hành kho', 'Kiểm tra', 'Quản trị']);
       assert.equal(home.overflow, false, `${width}px: trang chủ tràn ngang`);
       if (width === 390) {
         assert.equal(home.cols, 3, 'điện thoại: lưới 3 cột');
-        assert.ok(home.bottom <= height, `điện thoại 390 × 844: mọi ô vừa một màn (ô cuối ở ${home.bottom}px)`);
+        assert.ok(home.bottom <= height * 1.25, `điện thoại 390 × 844: trang chủ cuộn tối đa ~1,25 màn (ô cuối ở ${home.bottom}px)`);
         assert.ok(home.maxLines <= 2, `tên ô tối đa 2 dòng (${home.maxLines})`);
         assert.ok(home.h >= 88, `ô đủ lớn để chạm (${home.h}px)`);
       } else if (width === 320) {
         assert.equal(home.cols, 2, 'màn rất hẹp: về 2 cột');
       } else {
-        assert.deepEqual([home.w, home.h], [200, 152], 'máy tính giữ ô cũ 200 × 152');
+        assert.equal(home.groupCols, 2, 'máy tính: thẻ nhóm xếp 2 cột');
+        assert.equal(home.h, 152, 'máy tính: ô cao 152');
       }
 
       // --- IN TEM SKU ---
