@@ -1,0 +1,120 @@
+const ASCII_BARCODE = /^[\x20-\x7E]+$/;
+const SKU_PATTERN = /^[0-9A-Za-z._-]{1,40}$/;
+// Mã vị trí kho: chữ IN HOA, số và . _ / - (print_enqueue trên Supabase dùng đúng mẫu này).
+const LOCATION_PATTERN = /^[0-9A-Z][0-9A-Z._\/-]{0,39}$/;
+
+function cleanText(value, maxLength) {
+  return String(value ?? "").trim().replace(/\s+/g, " ").slice(0, maxLength);
+}
+
+function validCopies(value) {
+  const copies = Number(value ?? 1);
+  return Number.isInteger(copies) && copies >= 1 && copies <= 500 ? copies : null;
+}
+
+export function normalizeJob(input) {
+  const source = input && typeof input === "object" ? input : {};
+  const payload = source.payload && typeof source.payload === "object" ? source.payload : {};
+  const type = cleanText(source.type, 30).toLowerCase();
+  const templateVersion = Number(source.templateVersion) || 1;
+  const copies = validCopies(source.copies);
+  const errors = [];
+  if (!source.id) errors.push("Thiếu id của lệnh in");
+  if (!source.nonce) errors.push("Thiếu nonce chống gửi trùng");
+  if (!copies) errors.push("Số tem phải từ 1 đến 500");
+  if (!['sku', 'group_uid', 'location'].includes(type)) errors.push("Loại tem không được hỗ trợ");
+
+  let normalizedPayload = {};
+  if (type === "sku") {
+    const normalizeSku = (item) => ({
+      sku: cleanText(item.sku, 40),
+      productName: cleanText(item.productName, 180),
+      quantity: cleanText(item.quantity, 40),
+      printedDate: cleanText(item.printedDate, 20),
+      copies: validCopies(item.copies ?? 1) || 0
+    });
+    if (Array.isArray(payload.items)) {
+      const items = payload.items.slice(0, 100).map(normalizeSku);
+      if (!items.length) errors.push("Danh sách SKU đang trống");
+      items.forEach((item, index) => {
+        if (!SKU_PATTERN.test(item.sku)) errors.push(`SKU dòng ${index + 1} không hợp lệ`);
+        if (!item.productName) errors.push(`Thiếu tên sản phẩm dòng ${index + 1}`);
+        if (!item.copies) errors.push(`Số bản dòng ${index + 1} không hợp lệ`);
+      });
+      const totalCopies = items.reduce((sum, item) => sum + item.copies, 0);
+      if (totalCopies !== copies) errors.push("Tổng số bản SKU không khớp lệnh in");
+      normalizedPayload = { items };
+    } else {
+      normalizedPayload = normalizeSku(payload);
+      delete normalizedPayload.copies;
+      if (!SKU_PATTERN.test(normalizedPayload.sku)) errors.push("SKU không hợp lệ");
+      if (!normalizedPayload.productName) errors.push("Thiếu tên sản phẩm");
+    }
+  }
+
+  if (type === "group_uid") {
+    // Lot và Roll không bắt buộc: trước đây người vận hành ghi bút lên tem.
+    // Bỏ trống thì template không vẽ dòng đó.
+    const normalizeUid = (item) => ({
+      groupUid: cleanText(item.groupUid, 40),
+      sku: cleanText(item.sku, 40),
+      productName: cleanText(item.productName ?? item.materialName, 180),
+      lot: cleanText(item.lot, 20),
+      roll: cleanText(item.roll, 20),
+      copies: validCopies(item.copies ?? 1) || 0
+    });
+    if (Array.isArray(payload.items)) {
+      const items = payload.items.slice(0, 100).map(normalizeUid);
+      if (!items.length) errors.push("Danh sách Group UID đang trống");
+      items.forEach((item, index) => {
+        if (!item.groupUid || !ASCII_BARCODE.test(item.groupUid)) errors.push(`Group UID dòng ${index + 1} không hợp lệ`);
+        if (item.sku && !SKU_PATTERN.test(item.sku)) errors.push(`SKU dòng ${index + 1} không hợp lệ`);
+        if (!item.productName) errors.push(`Thiếu tên sản phẩm dòng ${index + 1}`);
+        if (!item.copies) errors.push(`Số bản dòng ${index + 1} không hợp lệ`);
+      });
+      const totalCopies = items.reduce((sum, item) => sum + item.copies, 0);
+      if (totalCopies !== copies) errors.push("Tổng số bản Group UID không khớp lệnh in");
+      normalizedPayload = { items };
+    } else {
+      normalizedPayload = normalizeUid(payload);
+      delete normalizedPayload.copies;
+      if (!normalizedPayload.groupUid || !ASCII_BARCODE.test(normalizedPayload.groupUid)) errors.push("Group UID không hợp lệ");
+      if (normalizedPayload.sku && !SKU_PATTERN.test(normalizedPayload.sku)) errors.push("SKU không hợp lệ");
+      if (!normalizedPayload.productName) errors.push("Thiếu tên sản phẩm");
+    }
+  }
+
+  if (type === "location") {
+    if (templateVersion !== 1) errors.push("Phiên bản tem vị trí không được hỗ trợ");
+    // Không cắt bớt mã/tên: mã bị cắt là in ra tem của một vị trí KHÁC — sai thì từ chối cả lệnh.
+    const items = Array.isArray(payload.items) ? payload.items.slice(0, 100).map((item) => ({
+      code: String(item?.code ?? "").trim(),
+      name: cleanText(item?.name, 200),
+      copies: validCopies(item?.copies ?? 1) || 0
+    })) : [];
+    if (!items.length) errors.push("Danh sách vị trí đang trống");
+    items.forEach((item, index) => {
+      if (!LOCATION_PATTERN.test(item.code)) errors.push(`Mã vị trí dòng ${index + 1} không hợp lệ`);
+      // Tên là tùy chọn (02/10/2026): trống thì tem chỉ in QR + mã.
+      if (item.name.length > 60) errors.push(`Tên vị trí dòng ${index + 1} tối đa 60 ký tự`);
+      if (!item.copies) errors.push(`Số tem dòng ${index + 1} không hợp lệ`);
+    });
+    const totalCopies = items.reduce((sum, item) => sum + item.copies, 0);
+    if (items.length && totalCopies !== copies) errors.push("Tổng số tem vị trí không khớp lệnh in");
+    normalizedPayload = { items };
+  }
+
+  return {
+    ok: errors.length === 0,
+    errors,
+    job: {
+      id: cleanText(source.id, 100),
+      nonce: cleanText(source.nonce, 120),
+      type,
+      templateVersion,
+      copies: copies || 0,
+      requestedBy: cleanText(source.requestedBy, 100),
+      payload: normalizedPayload
+    }
+  };
+}

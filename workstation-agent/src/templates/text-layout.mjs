@@ -1,0 +1,273 @@
+// Chia dòng theo bề rộng chữ THẬT (px, đo trước qua GDI+), không đếm đầu người
+// như wrapText cũ ở common.mjs. Toàn bộ hàm ở đây thuần logic, đồng bộ, không I/O
+// — nhận sẵn bảng bề rộng đã đo, để test được mà không cần PowerShell.
+
+// Tách y hệt cách wrapText cũ tách: mỗi token là một cụm ký tự không phải khoảng
+// trắng/dấu / theo sau bởi MỘT khoảng trắng hoặc dấu /, hoặc là phần đuôi cuối
+// cùng không còn gì theo sau. Giữ nguyên quy tắc này để không đổi VỊ TRÍ được
+// phép ngắt dòng — chỉ đổi ĐIỀU KIỆN khi nào một dòng đã đầy.
+export function tokenize(value) {
+  return String(value ?? "").trim().match(/[^\s/]*[\s/]|[^\s/]+$/g) || [];
+}
+
+// Đo thật ngày 24/09/2026: CỘNG DỒN bề rộng từng token đo RIÊNG LẺ luôn thấp
+// hơn bề rộng đo NGUYÊN CẢ CỤM khi ghép lại — ví dụ "Opened end/No.3 Plastic
+// Zipper": tổng 5 token đo riêng = 294,7px, đo nguyên cụm = 313,07px, lệch
+// 6,2%. GDI+ với GenericTypographic bỏ "side bearing" ở HAI ĐẦU của MỖI lần
+// đo độc lập; đo rời từng token nghĩa là bỏ bearing nhiều lần thay vì đúng
+// một lần ở đầu và một lần ở cuối dòng thật. Càng nhiều token trong một dòng,
+// sai số càng cộng dồn — không phải hằng số cố định.
+//
+// ĐÍNH CHÍNH 30/09/2026: nguyên nhân thật KHÔNG phải side bearing mà là
+// GenericTypographic bỏ qua khoảng trắng CUỐI chuỗi — token "Opened " bị đo như
+// "Opened". Lệch 18,37px ở ví dụ trên đúng bằng 3 dấu cách cỡ 22 (3 × 6,1px).
+// measure-text.ps1 nay bật MeasureTrailingSpaces: tổng token bằng đúng đo
+// nguyên dòng (lệch 0,0% trên dữ liệu thật). Vòng 2 vẫn giữ làm chốt chặn, và
+// hệ số dưới đây chỉ còn là phương án thận trọng dự phòng.
+//
+// Vì vậy KHÔNG được tin thẳng tổng token để quyết định tràn tem: phải dùng nó
+// làm ranh giới SƠ BỘ (với biên an toàn), rồi đo lại NGUYÊN từng dòng thật để
+// xác nhận (xem `verifyLineWidths` + planProductNames ở render.mjs).
+export const WRAP_SAFETY_FACTOR = 0.88; // bù cho sai số cộng dồn đã đo được (~6–12% tuỳ số token/dòng)
+
+/**
+ * Ghép token thành dòng dựa theo bề rộng thật, không giới hạn số dòng (gọi nơi
+ * khác tự cắt bớt nếu cần). `measure(text)` phải là hàm ĐỒNG BỘ trả về px, tra
+ * từ bảng đã đo sẵn — đây chỉ là ranh giới SƠ BỘ, xem cảnh báo `WRAP_SAFETY_FACTOR`
+ * ở trên; kết quả PHẢI được xác nhận lại bằng đo nguyên dòng trước khi tin.
+ *
+ * Token đơn lẻ rộng hơn cả một dòng (ví dụ mã hàng dài không có khoảng trắng)
+ * vẫn phải cắt cứng để không treo mãi không xuống dòng được — ước lượng điểm
+ * cắt theo tỷ lệ bề rộng/độ dài của chính token đó, giống tinh thần bản cũ
+ * (`token.slice(0, maxCharacters)`) nhưng theo pixel thay vì đếm ký tự.
+ */
+export function wrapByWidth(value, measure, maxWidthPx) {
+  const tokens = tokenize(value);
+  const lines = [];
+  let current = "";
+  let currentWidth = 0;
+
+  for (let token of tokens) {
+    let tokenWidth = measure(token);
+    while (tokenWidth > maxWidthPx && token.trim().length > 1) {
+      if (current.trim()) { lines.push(current.trimEnd()); current = ""; currentWidth = 0; }
+      const trimmed = token.trimEnd();
+      const ratio = maxWidthPx / tokenWidth;
+      // Bớt 10% cho chắc: bề rộng không tuyến tính tuyệt đối theo số ký tự (mỗi
+      // ký tự rộng khác nhau), nên cắt hụt một chút còn hơn cắt dư làm tràn dòng.
+      const cut = Math.max(1, Math.min(trimmed.length - 1, Math.floor(trimmed.length * ratio * 0.9)));
+      lines.push(trimmed.slice(0, cut));
+      token = token.slice(cut);
+      tokenWidth = measure(token);
+    }
+    if (currentWidth + tokenWidth > maxWidthPx && current.trim()) {
+      lines.push(current.trimEnd());
+      current = token;
+      currentWidth = tokenWidth;
+    } else {
+      current += token;
+      currentWidth += tokenWidth;
+    }
+  }
+  if (current.trim()) lines.push(current.trimEnd());
+  return lines;
+}
+
+/**
+ * Xác nhận lại các dòng đã wrap sơ bộ bằng cách đo NGUYÊN mỗi dòng (không phải
+ * tổng từng token) — đây là bước bắt buộc, xem cảnh báo `WRAP_SAFETY_FACTOR`.
+ * Dòng nào đo lại vẫn vượt `maxWidthPx` (hiếm, nhờ đã có biên an toàn ở bước
+ * wrap sơ bộ) thì tách bớt token cuối xuống một dòng mới chèn ngay sau — bỏ
+ * bớt nội dung LUÔN làm dòng hẹp hơn (đúng về mặt toán học, không phụ thuộc
+ * đặc tính đo của GDI+), nên an toàn dù không đo lại lần hai để xác nhận
+ * tuyệt đối phần còn lại.
+ *
+ * `measureWholeLine(text)` và `measureToken(text)` đồng bộ, tra từ bảng đã đo
+ * sẵn (không tự gọi thêm phép đo nào — mọi giá trị cần dùng phải được đo
+ * trước qua measureTextWidths).
+ */
+export function verifyLineWidths(lines, { measureWholeLine, measureToken }, maxWidthPx) {
+  const output = [];
+  for (const line of lines) {
+    const width = measureWholeLine(line);
+    if (width <= maxWidthPx) {
+      output.push(line.trimEnd());
+      continue;
+    }
+    const tokens = tokenize(line);
+    const excess = width - maxWidthPx;
+    const popped = [];
+    let poppedWidth = 0;
+    while (tokens.length > 1 && poppedWidth < excess) {
+      const token = tokens.pop();
+      popped.unshift(token);
+      poppedWidth += measureToken(token);
+    }
+    output.push(tokens.join("").trimEnd());
+    if (popped.length) output.push(popped.join("").trimEnd());
+  }
+  return output;
+}
+
+// Số dòng tối đa còn vừa khổ tem với một cỡ chữ cho trước, suy ra từ đúng công
+// thức bố cục dùng trong sku-label.mjs (qrTop/skuY/lineY) — một nguồn sự thật
+// duy nhất, đổi hằng số bố cục ở template thì phải đổi luôn ở đây. Vạch kẻ cố
+// định ở `lineY`, nên tên + QR + số SKU phải nằm gọn phía trên nó.
+export function maxLinesForSize(fontSizePx, layout) {
+  const { lineY, qrSize, skuOffset, lineOffset, pad } = layout;
+  const lineHeight = fontSizePx + 3;
+  return Math.max(1, Math.floor((lineY - lineOffset - skuOffset - qrSize - pad - 34) / lineHeight));
+}
+
+// Hàng cuối tem SKU: số lượng (canh trái x=20) và ngày (canh phải x=300)
+// cùng một hàng cố định ở đáy tem. Cả hai phải hiện ĐỦ mọi ký tự, không bao giờ
+// cắt: thu nhỏ số lượng trước (tới 18), rồi tới ngày (tới 12), rồi số lượng dưới
+// 18; vẫn không vừa thì hạ số lượng theo đúng tỷ lệ bề rộng cho tới khi vừa.
+export const FOOTER_SPAN_PX = 280; // x=20 → x=300
+export const FOOTER_GAP_PX = 10;   // khoảng trống tối thiểu giữa số lượng và ngày
+export const QUANTITY_FONT_SIZES = [40, 38, 36, 34, 32, 30, 28, 26, 24, 22, 20, 18, 16, 14, 12];
+export const DATE_FONT_SIZES = [17, 16, 15, 14, 13, 12];
+const QUANTITY_PREFERRED_MIN = 18;
+const QUANTITY_LAST_RESORT_MIN = 6;
+
+// Ước lượng bề rộng Arial khi KHÔNG đo được bằng GDI+ (preview đơn lẻ, đo lỗi):
+// chữ số 0,557em (Arial dùng chữ số rộng đều nhau), dấu câu/khoảng trắng 0,34em,
+// M/W/m/w 0,95em, chữ hoa khác 0,8em, chữ thường 0,62em, ký hiệu khác (@ % &…)
+// 1,02em — bằng ký tự rộng nhất của Arial. Đã so với GDI+ thật ngày 30/09/2026:
+// luôn ước dư. Dư thì chữ chỉ nhỏ hơn cần thiết, thiếu mới làm hai chuỗi đè nhau.
+export function estimateTextWidth(text, sizePx) {
+  let em = 0;
+  for (const char of String(text ?? "")) {
+    em += /\d/.test(char) ? 0.557
+      : /[\s.,:;/'-]/.test(char) ? 0.34
+      : /[MWmw]/.test(char) ? 0.95
+      : /\p{Lu}/u.test(char) ? 0.8
+      : /\p{L}/u.test(char) ? 0.62
+      : 1.02;
+  }
+  return em * sizePx;
+}
+
+/**
+ * Chọn cỡ chữ cho số lượng và ngày sao cho hai chuỗi không chạm nhau trên cùng
+ * một hàng. `measureQuantity(text, size)` và `measureDate(text, size)`
+ * đồng bộ, tra từ bảng đã đo sẵn hoặc dùng estimateTextWidth.
+ */
+export function fitFooter(quantity, date, { measureQuantity, measureDate }) {
+  const dateWidth = (size) => (date ? measureDate(date, size) : 0);
+  const smallestDate = DATE_FONT_SIZES[DATE_FONT_SIZES.length - 1];
+  if (!quantity) {
+    return { quantityFontSize: null, dateFontSize: DATE_FONT_SIZES.find((size) => dateWidth(size) <= FOOTER_SPAN_PX) ?? smallestDate };
+  }
+  const fits = (quantitySize, dateSize) =>
+    measureQuantity(quantity, quantitySize) + FOOTER_GAP_PX + dateWidth(dateSize) <= FOOTER_SPAN_PX;
+  for (const dateSize of DATE_FONT_SIZES) {
+    for (const quantitySize of QUANTITY_FONT_SIZES) {
+      if (quantitySize < QUANTITY_PREFERRED_MIN) break;
+      if (fits(quantitySize, dateSize)) return { quantityFontSize: quantitySize, dateFontSize: dateSize };
+    }
+  }
+  for (const quantitySize of QUANTITY_FONT_SIZES) {
+    if (quantitySize < QUANTITY_PREFERRED_MIN && fits(quantitySize, smallestDate)) {
+      return { quantityFontSize: quantitySize, dateFontSize: smallestDate };
+    }
+  }
+  // Bề rộng chữ tỷ lệ thuận với cỡ chữ: suy ra cỡ vừa khít từ số đo ở cỡ nhỏ nhất.
+  const baseSize = QUANTITY_FONT_SIZES[QUANTITY_FONT_SIZES.length - 1];
+  const available = FOOTER_SPAN_PX - FOOTER_GAP_PX - dateWidth(smallestDate);
+  const scaled = Math.floor((baseSize * available) / Math.max(1, measureQuantity(quantity, baseSize)));
+  return { quantityFontSize: Math.max(QUANTITY_LAST_RESORT_MIN, Math.min(baseSize, scaled)), dateFontSize: smallestDate };
+}
+
+/**
+ * Chọn cỡ chữ lớn nhất (trong `fontSizes`, sắp giảm dần) khiến tên vừa đủ số
+ * dòng cho phép ở cỡ đó; nếu không cỡ nào đủ thì dùng cỡ nhỏ nhất và chấp nhận
+ * cắt bớt — vẫn tốt hơn bản cũ vì đã thử hết khả năng trước khi cắt.
+ *
+ * `measureAt(text, size)` đồng bộ, tra từ bảng đã đo sẵn qua measureTextWidths.
+ */
+export function fitProductName(value, { measureAt, maxWidthPx, fontSizes, layout, maxLinesFor }) {
+  // Dùng maxWidthPx đã bớt biên an toàn cho bước wrap sơ bộ — xem cảnh báo ở
+  // WRAP_SAFETY_FACTOR. Kết quả ở đây CHƯA được xác nhận, phải qua
+  // verifyLineWidths (render.mjs) trước khi in.
+  // `maxLinesFor(size)` cho tem có khung tên khác tem SKU (vd Group UID); không
+  // truyền thì dùng công thức bố cục tem SKU.
+  const candidates = productNameCandidates(value, { measureAt, maxWidthPx, fontSizes, maxLinesFor: maxLinesFor ?? ((size) => maxLinesForSize(size, layout)) });
+  const chosen = candidates.find((candidate) => candidate.fits) ?? candidates[candidates.length - 1];
+  return { fontSize: chosen.fontSize, lines: chosen.lines.slice(0, chosen.maxLines), fits: chosen.fits };
+}
+
+/**
+ * Wrap sơ bộ tên ở MỌI cỡ trong `fontSizes`, bắt đầu từ cỡ lớn nhất vừa khung
+ * (hoặc chỉ cỡ nhỏ nhất nếu không cỡ nào vừa). render.mjs đo lại nguyên từng
+ * dòng của tất cả phương án trong vòng 2 rồi chọn phương án đầu tiên vẫn vừa
+ * sau khi xác nhận — nhờ vậy dòng bị tách ở bước xác nhận chuyển sang cỡ nhỏ
+ * hơn thay vì bị cắt mất đuôi tên.
+ *
+ * `widthFactors`: mỗi cỡ thử lần lượt các mức bề rộng (vd [1, WRAP_SAFETY_FACTOR]
+ * — dùng đủ khung trước, thận trọng sau). Chỉ dùng mức thận trọng thì tên vừa
+ * khít ở cỡ 22 bị coi là không vừa và thu nhỏ oan: đo thật 30/09/2026, 659/1.829
+ * tem Group UID xuống cỡ 18–20 dù chữ cỡ 22 vẫn nằm gọn khung.
+ */
+export function productNameCandidates(value, { measureAt, maxWidthPx, fontSizes, maxLinesFor, widthFactors = [WRAP_SAFETY_FACTOR] }) {
+  const all = [];
+  for (const size of fontSizes) {
+    const maxLines = maxLinesFor(size);
+    let previous = null;
+    for (const factor of widthFactors) {
+      const lines = wrapByWidth(value, (t) => measureAt(t, size), maxWidthPx * factor);
+      const key = lines.join("\n");
+      if (key === previous) continue; // hai mức cho cùng kết quả thì không đo lặp
+      previous = key;
+      all.push({ fontSize: size, lines, maxLines, fits: lines.length <= maxLines });
+    }
+  }
+  const first = all.findIndex((candidate) => candidate.fits);
+  return all.slice(first === -1 ? all.length - 1 : first);
+}
+
+// ---- LOT / ROLL ở đáy tem Group UID (0.9.0) ----
+// Trước 0.9.0 hai chuỗi in cố định cỡ 24 trên một hàng (LOT trái x=12, ROLL phải x=308) nên Lot dài
+// đè lên Roll (RULES 08/10/2026). Nay chọn bố cục theo bề rộng chữ thật, cùng cách tem SKU chọn cỡ
+// số lượng/ngày: một hàng ở cỡ 24 → 18; không vừa thì hai hàng cỡ 22 (LOT trên, ROLL dưới vẫn canh phải);
+// một chuỗi đơn lẻ vẫn rộng hơn khung thì thu theo tỷ lệ, tối thiểu 14.
+export const LOT_ROLL_SPAN_PX = 296; // x=12 → x=308, bằng bề rộng barcode
+export const LOT_ROLL_GAP_PX = 10;
+export const LOT_ROLL_ONE_ROW_SIZES = [24, 22, 20, 18];
+export const LOT_ROLL_TWO_ROW_SIZE = 22;
+export const LOT_ROLL_MIN_SIZE = 14;
+export const LOT_ROLL_FONT_SIZES = [24, 22, 20, 18, 14]; // các cỡ cần đo sẵn (cỡ khác suy theo tỷ lệ)
+export const lotRollTexts = (lot, roll) => ({
+  lot: String(lot ?? "").trim() ? `LOT: ${String(lot).trim()}` : "",
+  roll: String(roll ?? "").trim() ? `ROLL: ${String(roll).trim()}` : ""
+});
+
+/**
+ * `measureAt(text, size)` đồng bộ (bảng đã đo hoặc estimateTextWidth).
+ * @returns {{ rows: 1|2, fontSize: number }}
+ */
+export function fitLotRoll(lot, roll, { measureAt }) {
+  const texts = lotRollTexts(lot, roll);
+  const measure = (text, size) => (text ? measureAt(text, size) : 0);
+  // Cỡ không có trong bảng đo: bề rộng tỷ lệ thuận cỡ chữ (đã đo, xem fitFooter).
+  const widthAt = (text, size) => (LOT_ROLL_FONT_SIZES.includes(size)
+    ? measure(text, size)
+    : (measure(text, LOT_ROLL_TWO_ROW_SIZE) * size) / LOT_ROLL_TWO_ROW_SIZE);
+  if (!texts.lot || !texts.roll) {
+    const only = texts.lot || texts.roll;
+    if (!only) return { rows: 1, fontSize: LOT_ROLL_ONE_ROW_SIZES[0] };
+    const size = LOT_ROLL_ONE_ROW_SIZES.find((s) => widthAt(only, s) <= LOT_ROLL_SPAN_PX);
+    if (size) return { rows: 1, fontSize: size };
+    const scaled = Math.floor((LOT_ROLL_TWO_ROW_SIZE * LOT_ROLL_SPAN_PX) / Math.max(1, widthAt(only, LOT_ROLL_TWO_ROW_SIZE)));
+    return { rows: 1, fontSize: Math.max(LOT_ROLL_MIN_SIZE, Math.min(LOT_ROLL_ONE_ROW_SIZES[0], scaled)) };
+  }
+  for (const size of LOT_ROLL_ONE_ROW_SIZES) {
+    if (widthAt(texts.lot, size) + LOT_ROLL_GAP_PX + widthAt(texts.roll, size) <= LOT_ROLL_SPAN_PX) return { rows: 1, fontSize: size };
+  }
+  const widest = (size) => Math.max(widthAt(texts.lot, size), widthAt(texts.roll, size));
+  for (const size of [LOT_ROLL_TWO_ROW_SIZE, 20, 18]) {
+    if (widest(size) <= LOT_ROLL_SPAN_PX) return { rows: 2, fontSize: size };
+  }
+  const scaled = Math.floor((LOT_ROLL_TWO_ROW_SIZE * LOT_ROLL_SPAN_PX) / Math.max(1, widest(LOT_ROLL_TWO_ROW_SIZE)));
+  return { rows: 2, fontSize: Math.max(LOT_ROLL_MIN_SIZE, Math.min(LOT_ROLL_TWO_ROW_SIZE, scaled)) };
+}

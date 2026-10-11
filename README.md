@@ -56,7 +56,7 @@ Mọi nút gửi lệnh in là một `.act-icon--print` (IN TEM SKU và Xác nh�
 ## Header các màn hình
 
 Mọi màn con dùng một kiểu header theo IN TEM SKU (`.uid-topbar`): nút Back dạng pill (nhãn "WH-MATERIAL"; riêng màn Nạp dữ liệu Group UID là "Tổng quan"),
-icon module 32 px (đúng icon ô trang chủ), tiêu đề đậm 16 px, phụ đề 12 px và — nếu màn có máy in — pill trạng thái máy in (hiện có ở IN TEM SKU và
+icon module 32 px (đúng icon ô trang chủ), tiêu đề đậm 16 px (không phụ đề mô tả — icon module đã cho biết màn) và — nếu màn có máy in — pill trạng thái máy in (hiện có ở IN TEM SKU và
 IN TEM GROUP UID). Cao 64 px + viền 1 px, dính đầu màn; từ 760 px trở xuống Back chỉ còn icon 44 px, ẩn icon module và phụ đề. Bề rộng header bám bề rộng nội dung
 của từng màn. Màn mới chỉ cần dùng markup `.uid-topbar` (Back là phần tử đầu để thứ tự Tab khớp thứ tự nhìn). Trang chủ (nền xanh), Quản trị (React) và lớp
 camera/scanner giữ kiểu riêng. Thiết kế: [`docs/THIET_KE_HEADER_UI.md`](docs/THIET_KE_HEADER_UI.md).
@@ -68,6 +68,15 @@ số ("In lại 6 tem", "Xoá 3 vị trí"). `tone`: `default` (Enter = đồng 
 `danger` (xoá, bỏ đánh dấu — nút đỏ, con trỏ ở Huỷ). Esc / bấm ra ngoài = Huỷ; gọi liên tiếp thì hộp sau đợi hộp trước; điện thoại hiện
 dạng trượt từ đáy. Đang dùng ở 9 chỗ: IN TEM SKU (Combo, > 30 tem), PRINT UID (Combo, Lot/Roll, > 30 tem), Cắt UID (Lot/Roll, bỏ đánh
 dấu ADJ), Đối chiếu ADJ (tick giúp), Mã vị trí (xoá khỏi hàng đợi), Lệnh in (in lại). Test: `tests/wh_dialog_browser.cjs`.
+
+## Chuẩn icon
+
+Từ 11/10/2026 (khối `#icon-standard`, test `tests/icon_standard_browser.cjs`): icon Lucide nét 2 px, tô `currentColor`, chỉ 4 cỡ —
+**16** (trong chữ, nhãn, chip) · **20** (nút, ô nhập, menu, thanh trên) · **24** (ô trang chủ điện thoại) · **32** (ô trang chủ máy tính). CSS cũ
+được quy đổi tại chỗ; SVG chỉ có thuộc tính `width/height` (markup, chuỗi JS, lucide-react của IN TEM SKU) đưa về thang bằng `:where()` nên CSS riêng
+vẫn thắng. Không dùng ký tự làm icon (→ ← ×); nút chỉ có icon luôn có `aria-label`/`title`. Chỗ icon nói được thì không thêm chữ hướng dẫn: không phụ đề
+mô tả ở thanh trên, placeholder chỉ là danh từ ("Group UID", "SKU", "Mã PO" — ô đã có icon quét/bàn phím), nút nhập file cùng nhãn "Nhập Excel",
+liên kết chuyển tab là nhãn ngắn + icon mũi tên ("Tra cứu", "Đang xả", "Chi tiết"), nút bàn phím Xả vải chỉ còn icon. Tem in không dùng khối này.
 
 ## Chuẩn chữ (font)
 

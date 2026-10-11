@@ -1,6 +1,6 @@
 // Chuyển mục Admin mượt (11/10/2026): đã xác nhận Admin trong phiên và token JWT còn hạn thì bấm menu hiện màn mới ngay khung hình kế
 // tiếp (trước đây chờ 2 lượt gọi mạng kiểm quyền nên lộ nền đen 0,2–0,6 giây); quay lại Đồng bộ SKU / Group UID không khoá nút, tải lại
-// ngầm; token hết hạn thì vẫn kiểm lại qua mạng. Icon "Kiểm kê SKU" trong menu màn Cấu hình (React) đúng 18 px, không thành khối đen.
+// ngầm; token hết hạn thì vẫn kiểm lại qua mạng. Icon "Kiểm kê SKU" trong menu màn Cấu hình (React) đúng cỡ (20 px theo thang icon), không thành khối đen.
 // Supabase, Edge Function và Extension đều giả lập (trễ 300 ms). Chạy với python -m http.server 8000 (đổi bằng biến BASE).
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const assert = require('node:assert/strict');
@@ -74,7 +74,7 @@ const clickAndMeasure = (page, label) => page.evaluate(async text => {
     // Icon menu "Kiểm kê SKU" trong màn Cấu hình (React)
     await clickAndMeasure(page, 'Cấu hình');
     const icon = await page.evaluate(() => { const b = [...document.querySelectorAll('#root aside nav button')].find(e => e.textContent.trim() === 'Kiểm kê SKU'); const s = b.querySelector('svg').getBoundingClientRect(); return { w: Math.round(s.width), h: Math.round(s.height), btn: Math.round(b.getBoundingClientRect().height), fill: getComputedStyle(b.querySelector('svg')).fill }; });
-    assert.deepEqual([icon.w, icon.h], [18, 18], 'icon Kiểm kê SKU 18 px');
+    assert.deepEqual([icon.w, icon.h], [20, 20], 'icon Kiểm kê SKU 20 px (thang icon đợt 3)');
     assert.equal(icon.fill, 'none', 'icon nét, không tô đen');
     const ref = await page.evaluate(() => Math.round([...document.querySelectorAll('#root aside nav button')].find(e => e.textContent.trim() === 'Cấu hình').getBoundingClientRect().height));
     assert.equal(icon.btn, ref, 'dòng Kiểm kê SKU cao bằng các mục khác');
@@ -92,6 +92,6 @@ const clickAndMeasure = (page, label) => page.evaluate(async text => {
     await page.locator('#sku-sync-screen').waitFor({ state: 'visible' });
     assert.deepEqual(errors, []);
     await context.close();
-    console.log('PASS 1280px: chuyển mục Admin hiện màn mới ngay khung hình kế tiếp, getToken không chờ mạng khi token còn hạn, quay lại không khoá nút, token hết hạn vẫn kiểm lại, icon Kiểm kê SKU 18 px');
+    console.log('PASS 1280px: chuyển mục Admin hiện màn mới ngay khung hình kế tiếp, getToken không chờ mạng khi token còn hạn, quay lại không khoá nút, token hết hạn vẫn kiểm lại, icon Kiểm kê SKU 20 px');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });
