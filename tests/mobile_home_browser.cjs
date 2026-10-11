@@ -45,6 +45,7 @@ const BASE = process.env.BASE || 'http://127.0.0.1:8000/';
       const head = await page.evaluate(() => {
         const hd = document.querySelector('#barcode-home .barcode-home__header'), cs = getComputedStyle(hd);
         return { img: /url\("data:image\/webp;base64,/.test(cs.backgroundImage), size: cs.backgroundSize.split(', ').pop(), after: getComputedStyle(hd, '::after').content, h: Math.round(hd.getBoundingClientRect().height), color: getComputedStyle(hd.querySelector('h1')).color,
+          toggleX: (t => t && t.getBoundingClientRect().width ? Math.round(t.getBoundingClientRect().left) : null)(hd.querySelector('.an-toggle')),
           markX: Math.round(hd.querySelector('.barcode-home__mark').getBoundingClientRect().left), groupX: Math.round(document.querySelector('#barcode-home .barcode-home__group').getBoundingClientRect().left) };
       });
       assert.equal(head.img, true, 'đầu trang có ảnh nền webp nhúng');
@@ -52,7 +53,8 @@ const BASE = process.env.BASE || 'http://127.0.0.1:8000/';
       assert.equal(head.size, width >= 1200 ? '960px auto' : 'cover', 'màn ≥ 1200 px: ảnh giữ rộng 960 px, không phóng theo bề rộng màn');
       assert.equal(head.color, 'rgb(255, 255, 255)');
       assert.equal(head.h, mobile ? 112 : 148, `đầu trang cao ${head.h}px`);
-      if (mobile) assert.equal(head.markX, 16); else assert.equal(head.markX, head.groupX, 'máy tính: icon kho thẳng mép thẻ nhóm');
+      // Máy tính ≥ 1024 px: đầu trang bắt đầu bằng nút thu gọn thanh trái, thẳng mép thẻ nhóm
+      if (mobile) { assert.equal(head.markX, 16); assert.equal(head.toggleX, null); } else assert.equal(head.toggleX, head.groupX, 'máy tính: nút thu gọn thẳng mép thẻ nhóm');
       if (width === 390) {
         assert.equal(home.cols, 3, 'điện thoại: lưới 3 cột');
         assert.ok(home.bottom <= height * 1.25, `điện thoại 390 × 844: trang chủ cuộn tối đa ~1,25 màn (ô cuối ở ${home.bottom}px)`);
@@ -62,7 +64,8 @@ const BASE = process.env.BASE || 'http://127.0.0.1:8000/';
         assert.equal(home.cols, 2, 'màn rất hẹp: về 2 cột');
       } else {
         assert.equal(home.groupCols, 2, 'máy tính: thẻ nhóm xếp 2 cột');
-        assert.equal(home.h, 152, 'máy tính: ô cao 152');
+        // Ô cao 152; thanh trái chung (264 px) làm vùng nội dung hẹp hơn nên tên 2 dòng đẩy ô lên 160
+        assert.ok(home.h >= 152 && home.h <= 160, `máy tính: ô cao 152–160 (${home.h})`);
       }
 
       // --- IN TEM SKU ---

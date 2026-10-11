@@ -77,7 +77,7 @@ const mockRoutes = async page => page.route('**/*', async route => {
         // Về trang chủ từ giao diện Admin (mục Trang chủ ở thanh trái chung trên máy tính, mũi tên ở header điện thoại)
         await openAdmin();
         if (width >= 1024) {
-          assert.equal((await page.locator('#app-nav .an-name').innerText()).trim(), 'WH-MATERIAL');
+          assert.equal((await page.locator('#app-nav .an-head').first().innerText()).trim(), 'WH-MATERIAL');
           assert.equal(await page.locator('#print-jobs-screen .ss-side').isVisible(), false, 'thanh bên riêng của Admin ẩn');
           await page.locator('#app-nav .an-item[aria-label="Trang chủ"]').click();
         } else {

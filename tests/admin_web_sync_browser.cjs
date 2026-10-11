@@ -1,6 +1,6 @@
 // Admin (chỉ desktop, 08/10/2026): khung Cấu hình khớp 3 màn còn lại, thanh trên + tiêu đề bảng dính, chữ đủ tương phản/cỡ ≥ 12 px,
 // dải lỗi + trạng thái Extension thống nhất, Cấu hình không còn câu hướng dẫn và tách "Thiết bị này" / "Hệ thống".
-// 11/10/2026: menu Admin là các mục nhóm Quản trị trong thanh trái chung (276 px, máy tính ≥ 1024 px), thay thanh bên riêng.
+// 11/10/2026: menu Admin là các mục nhóm Quản trị trong thanh trái chung (264 px, máy tính ≥ 1024 px), thay thanh bên riêng.
 // Run against python -m http.server 8000. Supabase, Edge Function và Extension được giả lập; không ghi dữ liệu.
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const assert = require('node:assert/strict');
@@ -114,7 +114,7 @@ const navItems = page => page.evaluate(() => {
           });
           const nav = await navItems(page);
           seen.push({ hash, m, nav });
-          assert.equal(m.sideW, 276, `${hash}: thanh bên ${m.sideW}`);
+          assert.equal(m.sideW, 264, `${hash}: thanh bên ${m.sideW}`);
           assert.equal(m.topH, 64, `${hash}: thanh trên ${m.topH}`);
           assert.equal(m.topPos, 'sticky', `${hash}: thanh trên phải dính`);
           assert.equal(m.title, title, `${hash}: tiêu đề`);
@@ -228,7 +228,7 @@ const navItems = page => page.evaluate(() => {
         }
         assert.deepEqual(page.errors, []); await context.close();
       }
-      console.log(`PASS ${width}px: khung đồng bộ (thanh trái chung 276/thanh trên 64/menu Admin cùng thứ tự), thanh trên + tiêu đề bảng dính, tương phản/cỡ chữ, Cấu hình gọn + nhóm, dải lỗi + Extension thống nhất, thanh trên (icon, tiêu đề đậm, dòng phụ, chip, làm mới)`);
+      console.log(`PASS ${width}px: khung đồng bộ (thanh trái chung 264/thanh trên 64/menu Admin cùng thứ tự), thanh trên + tiêu đề bảng dính, tương phản/cỡ chữ, Cấu hình gọn + nhóm, dải lỗi + Extension thống nhất, thanh trên (icon, tiêu đề đậm, dòng phụ, chip, làm mới)`);
     }
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

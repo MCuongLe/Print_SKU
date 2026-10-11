@@ -534,14 +534,16 @@ Kiểm tra cam, Quản trị tím (chữ đủ tương phản ≥ 4,5:1). Theo c
 tương ứng). Điện thoại ô 3 cột, cuộn khoảng 1,2 màn; máy tính thẻ nhóm xếp 2 cột kiểu báo (không chừa khoảng trống).
 
 **Thanh điều hướng trái (11/10/2026, khối `#app-nav-theme` + script `app-nav-script`, cuối `index.html`).** Chỉ máy tính ≥ 1024 px; điện thoại và
-máy tính bảng giữ ô trang chủ + nút quay lại. Thanh 276 px dựng từ chính các ô trang chủ (ô ẩn — vd. KÍCH HOẠT MÁY khi máy đã có khoá — thì mục ẩn;
-bấm mục = bấm ô): mục Trang chủ rồi 4 nhóm theo màu trang chủ (ô vuông màu + tên nhóm 16/700, mục con 16/400 có chấm trên đường dọc, mục đang mở nền
-trắng + vạch màu nhóm, `aria-current="page"`). Nút thu gọn còn thanh icon 76 px (icon màu nhóm, chữ ẩn khỏi màn nhưng vẫn đọc được), nhớ trên máy
-(`localStorage` `wh-app-nav-collapsed`). Nhóm Quản trị: chưa đăng nhập là mục Quản trị (mở hộp đăng nhập); đã đăng nhập đổi thành Lệnh in, Đồng bộ SKU,
-Đồng bộ Group UID, Kiểm kê SKU, Cấu hình + **Đăng xuất** ở chân thanh — thay thanh bên riêng của Admin (`.ss-side`, `#root aside` ẩn từ 1024 px).
-Admin báo trạng thái qua `PrintSkuAdminAccess.isAuthorized()` (sự kiện `print-sku-admin-ready` có thể bắn trước khi script cuối body chạy). Nút
-"← WH-MATERIAL" ẩn vì đã có mục Trang chủ; dưới tên module có tên nhóm viết hoa giãn chữ theo màu nhóm. Nội dung lùi bằng `--app-nav-w`; chỉ chuyển
-động khi bấm thu gọn (CSS cuối body tới sau lần vẽ đầu nên không để trượt lúc tải). Không ra giấy in. Test: `tests/app_nav_browser.cjs`.
+máy tính bảng giữ ô trang chủ + nút quay lại. Thanh 264 px dựng từ chính các ô trang chủ (ô ẩn — vd. KÍCH HOẠT MÁY khi máy đã có khoá — thì mục ẩn;
+bấm mục = bấm ô): nhóm WH-MATERIAL › Trang chủ rồi 4 nhóm theo màu trang chủ (ô vuông màu + tên nhóm 14/700, mục con 16/400 có chấm trên đường dọc,
+mục đang mở nền trắng + vạch màu nhóm, `aria-current="page"`), thanh cuộn mảnh chỉ hiện khi rê chuột. Nút thu gọn (ô xanh, icon bảng) nằm đầu thanh
+trên của từng màn — trang chủ, module, Admin, IN TEM SKU/Cấu hình (React vẽ lại thì gắn lại); thu gọn là **ẩn hẳn thanh**, nội dung tràn hết bề
+rộng, nhớ trên máy (`localStorage` `wh-app-nav-collapsed`). Nhóm Quản trị: chưa đăng nhập là mục Quản trị (mở hộp đăng nhập); đã đăng nhập đổi
+thành Lệnh in, Đồng bộ SKU, Đồng bộ Group UID, Kiểm kê SKU, Cấu hình + **Đăng xuất** ở chân thanh — thay thanh bên riêng của Admin (`.ss-side`,
+`#root aside` ẩn từ 1024 px). Admin báo trạng thái qua `PrintSkuAdminAccess.isAuthorized()` (sự kiện `print-sku-admin-ready` có thể bắn trước khi
+script cuối body chạy). Nút "← WH-MATERIAL" ẩn vì đã có mục Trang chủ; dưới tên module có tên nhóm viết hoa giãn chữ theo màu nhóm. Nội dung lùi
+bằng `--app-nav-w`; chỉ chuyển động khi bấm thu gọn (CSS cuối body tới sau lần vẽ đầu nên không để trượt lúc tải). Không ra giấy in.
+Test: `tests/app_nav_browser.cjs`.
 
 **Bố cục điện thoại (10/10/2026).** Toàn màn hình bỏ các câu hướng dẫn (thông báo sau khi đọc tem/chọn SKU, mẹo gõ mã, "Lưu trên máy này…", đuôi "kiểm tra mạng rồi bấm…"
 của các thông báo lỗi); chỉ giữ trạng thái và lỗi ngắn. Bước 1: nút Bật camera và nút Chọn ảnh (chỉ icon, vẫn có tên cho trình đọc màn hình) cùng một hàng. Bước 2: thẻ SKU gọn

@@ -10366,55 +10366,40 @@ async function rpc(name,args,retry=true){
       }
     </style>
     <style id="app-nav-theme">
-      /* Thanh điều hướng trái chung (11/10/2026, máy tính ≥ 1024 px; điện thoại giữ ô trang chủ + nút quay lại). Nhóm và màu lấy theo trang chủ
-         (In tem xanh lá, Vận hành kho xanh dương, Kiểm tra cam, Quản trị tím): ô vuông màu + tên nhóm, mục con chấm tròn trên đường dọc,
-         mục đang mở nền trắng có vạch màu. Thu gọn còn thanh icon 76 px (nhớ trên máy). Nhóm Quản trị mở các mục Admin sau khi đăng nhập,
-         thay thanh bên riêng của Admin; nút quay lại trang chủ ẩn vì đã có mục Trang chủ. */
-      #app-nav { display: none; }
+      /* Thanh điều hướng trái chung (11/10/2026, máy tính ≥ 1024 px; điện thoại giữ ô trang chủ + nút quay lại). Kiểu theo mẫu người dùng gửi:
+         nhóm = ô vuông màu + tên đậm (WH-MATERIAL › Trang chủ, rồi 4 nhóm màu trang chủ), mục con chấm tròn trên đường dọc, mục đang mở nền trắng
+         có vạch màu. Nút thu gọn nằm đầu thanh trên của từng màn; thu gọn là ẩn hẳn thanh (nhớ trên máy). Nhóm Quản trị mở các mục Admin sau khi
+         đăng nhập, thay thanh bên riêng của Admin; nút quay lại trang chủ ẩn vì đã có mục Trang chủ. */
+      #app-nav, .an-toggle { display: none; }
       @media screen and (min-width: 1024px) {
-        html { --app-nav-w: 276px; }
-        html.app-nav-collapsed { --app-nav-w: 76px; }
-        #app-nav { --tone: #005f41; --ink: #005f41; position: fixed; inset: 0 auto 0 0; z-index: 60; display: flex; flex-direction: column; width: var(--app-nav-w); box-sizing: border-box; border-right: 1px solid #dde7e2; background: #edf3f0; color: #17251f; font-family: var(--wms-font); }
-        #app-nav svg { flex: none; width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-        #app-nav .an-top { display: flex; align-items: center; gap: 10px; padding: 16px 14px 10px 18px; }
-        #app-nav .an-brand { display: flex; flex: 1; align-items: center; gap: 12px; min-width: 0; color: #005f41; font-size: 18px; font-weight: 700; line-height: 1.2; white-space: nowrap; }
-        #app-nav .an-mark { display: grid; flex: none; place-items: center; width: 44px; height: 44px; border-radius: 14px; background: linear-gradient(135deg, #0d7350, #005f41 60%, #03462d); box-shadow: 0 6px 14px rgba(0, 95, 65, .22); color: #fff; }
-        #app-nav .an-mark svg { width: 24px; height: 24px; }
-        #app-nav .an-toggle { display: grid; flex: none; place-items: center; width: 40px; height: 40px; padding: 0; border: 1px solid #d5e1db; border-radius: 12px; background: #fff; color: #005f41; cursor: pointer; }
-        #app-nav .an-toggle:hover { border-color: #9fc4b5; }
-        #app-nav .an-scroll { display: flex; flex: 1; flex-direction: column; gap: 18px; min-height: 0; overflow-y: auto; padding: 8px 14px 16px; scrollbar-width: thin; }
+        html { --app-nav-w: 264px; }
+        html.app-nav-collapsed { --app-nav-w: 0px; }
+        #app-nav { --tone: #005f41; --ink: #005f41; position: fixed; inset: 0 auto 0 0; z-index: 60; display: flex; flex-direction: column; width: 264px; box-sizing: border-box; border-right: 1px solid #dde7e2; background: #edf3f0; color: #17251f; font-family: var(--wms-font); }
+        html.app-nav-collapsed #app-nav { visibility: hidden; transform: translateX(-100%); }
+        #app-nav svg, .an-toggle svg { flex: none; width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+        #app-nav .an-scroll { display: flex; flex: 1; flex-direction: column; gap: 20px; min-height: 0; overflow-y: auto; padding: 24px 14px 16px; scrollbar-width: thin; scrollbar-color: transparent transparent; }
+        #app-nav .an-scroll:hover { scrollbar-color: #c4d4cc transparent; }
         #app-nav .an-group[data-tone="ops"] { --tone: #1f63b5; --ink: #174c8c; }
         #app-nav .an-group[data-tone="check"] { --tone: #d9861f; --ink: #8a5b00; }
         #app-nav .an-group[data-tone="admin"] { --tone: #5b3fb8; --ink: #4a2f9e; }
-        #app-nav .an-head { display: flex; align-items: center; gap: 10px; margin: 0 0 6px 4px; font-size: 16px; font-weight: 700; line-height: 1.2; white-space: nowrap; }
+        #app-nav .an-head { display: flex; align-items: center; gap: 10px; margin: 0 0 6px 4px; font-size: 14px; font-weight: 700; line-height: 1.2; white-space: nowrap; }
         #app-nav .an-head::before { content: ""; flex: none; width: 14px; height: 14px; border-radius: 4px; background: var(--tone); }
         #app-nav .an-list { display: grid; gap: 2px; margin: 0 0 0 10px; padding: 2px 0 2px 12px; border-left: 2px solid #d9e4df; }
         #app-nav .an-item { position: relative; display: flex; align-items: center; gap: 12px; width: 100%; min-height: 40px; padding: 0 12px; border: 0; border-radius: 12px; background: transparent; color: #4f625b; font: 400 16px/1.2 var(--wms-font); text-align: left; white-space: nowrap; cursor: pointer; }
-        #app-nav .an-item svg { display: none; }
         #app-nav .an-item::before { content: ""; flex: none; width: 6px; height: 6px; border-radius: 50%; background: #9db2a9; }
         #app-nav .an-item:hover { background: rgba(255, 255, 255, .7); color: #17251f; }
-        #app-nav :is(.an-item, .an-toggle):focus-visible { outline: 2px solid var(--tone); outline-offset: 2px; }
+        #app-nav .an-item:focus-visible, .an-toggle:focus-visible { outline: 2px solid var(--tone, #005f41); outline-offset: 2px; }
         #app-nav .an-item[aria-current="page"] { background: #fff; box-shadow: 0 4px 14px rgba(23, 37, 31, .08); color: var(--ink); font-weight: 600; }
         #app-nav .an-item[aria-current="page"]::before { background: var(--tone); }
-        #app-nav .an-list .an-item[aria-current="page"]::after { content: ""; position: absolute; top: 9px; bottom: 9px; left: -14px; width: 3px; border-radius: 3px; background: var(--tone); }
-        #app-nav :is(.an-home, .an-foot .an-item) { padding-left: 8px; color: #17251f; }
-        #app-nav :is(.an-home, .an-foot .an-item)::before { display: none; }
-        #app-nav :is(.an-home, .an-foot .an-item) svg { display: block; }
+        #app-nav .an-item[aria-current="page"]::after { content: ""; position: absolute; top: 9px; bottom: 9px; left: -14px; width: 3px; border-radius: 3px; background: var(--tone); }
         #app-nav .an-foot { padding: 10px 14px 16px; border-top: 1px solid #dde7e2; }
-        /* Thu gọn: chỉ icon (màu nhóm), tên nhóm thành vạch màu; chữ ẩn khỏi màn nhưng vẫn đọc được */
-        html.app-nav-collapsed #app-nav .an-top { flex-direction: column; padding: 16px 0 10px; }
-        html.app-nav-collapsed #app-nav .an-brand { flex: none; }
-        html.app-nav-collapsed #app-nav :is(.an-name, .an-head span, .an-item span) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-        html.app-nav-collapsed #app-nav :is(.an-scroll, .an-foot) { padding-inline: 12px; }
-        html.app-nav-collapsed #app-nav .an-scroll { gap: 12px; }
-        html.app-nav-collapsed #app-nav .an-head { justify-content: center; margin: 0 0 6px; }
-        html.app-nav-collapsed #app-nav .an-head::before { width: 20px; height: 4px; border-radius: 2px; }
-        html.app-nav-collapsed #app-nav .an-list { margin: 0; padding: 0; border: 0; }
-        html.app-nav-collapsed #app-nav .an-item { justify-content: center; min-height: 44px; padding: 0; color: var(--ink); }
-        html.app-nav-collapsed #app-nav .an-item::before { display: none; }
-        html.app-nav-collapsed #app-nav .an-item svg { display: block; }
-        html.app-nav-collapsed #app-nav .an-item[aria-current="page"] { background: var(--tone); color: #fff; }
-        html.app-nav-collapsed #app-nav .an-list .an-item[aria-current="page"]::after { display: none; }
+        #app-nav .an-foot .an-item { padding-left: 10px; color: #17251f; }
+        #app-nav .an-foot .an-item::before { display: none; }
+        /* Nút thu gọn / mở thanh: đầu thanh trên của từng màn */
+        /* :is(#root, body) + !important: thanh trên React có "#root > header button { background … !important }" đè lên */
+        :is(#root, body) .an-toggle { display: grid; flex: none; place-items: center; width: 40px !important; height: 40px !important; min-height: 0 !important; margin: 0; padding: 0 !important; border: 0 !important; border-radius: 12px !important; background: #005f41 !important; box-shadow: 0 4px 12px rgba(0, 95, 65, .22) !important; color: #fff !important; cursor: pointer; }
+        :is(#root, body) .an-toggle:hover { background: #004d35 !important; }
+        #barcode-home .barcode-home__header .an-toggle { position: relative; z-index: 1; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .3), 0 4px 12px rgba(0, 40, 26, .25) !important; }
         /* Nội dung lùi sang phải bằng bề rộng thanh */
         #barcode-home, #uid-screen, #ins-screen, #storage-risk-screen, .cut-screen { right: 0 !important; left: var(--app-nav-w) !important; width: auto !important; }
         #root { padding-left: var(--app-nav-w); }
@@ -10422,8 +10407,8 @@ async function rpc(name,args,retry=true){
         .ss-screen { margin-left: var(--app-nav-w); }
         .ss-screen .ss-shell { grid-template-columns: minmax(0, 1fr); }
         .ss-screen .ss-side, #root aside, button[aria-label="Quay lại trang chủ WH-MATERIAL"] { display: none !important; }
-        /* Chỉ chuyển động khi bấm thu gọn/mở rộng (lúc tải trang CSS cuối body tới sau lần vẽ đầu — không để nội dung trượt) */
-        html.app-nav-anim :is(#app-nav, #barcode-home, #uid-screen, #ins-screen, #storage-risk-screen, .cut-screen, #root, #root .fixed.inset-x-0.bottom-0, .ss-screen) { transition: width .18s ease, left .18s ease, padding-left .18s ease, margin-left .18s ease; }
+        /* Chỉ chuyển động khi bấm thu gọn/mở (lúc tải trang CSS cuối body tới sau lần vẽ đầu — không để nội dung trượt) */
+        html.app-nav-anim :is(#app-nav, #barcode-home, #uid-screen, #ins-screen, #storage-risk-screen, .cut-screen, #root, #root .fixed.inset-x-0.bottom-0, .ss-screen) { transition: transform .18s ease, visibility .18s, left .18s ease, padding-left .18s ease, margin-left .18s ease; }
         /* Tên nhóm dưới tên module (theo màu nhóm) */
         :is(.uid-topbar, #root header) h1[data-nav-group]::after { content: attr(data-nav-group); display: block; margin-top: 2px; color: #005f41; font-size: 12px; font-weight: 600; letter-spacing: .18em; line-height: 1.2; text-transform: uppercase; }
         :is(.uid-topbar, #root header) h1[data-nav-tone="ops"]::after { color: #174c8c; }
@@ -10440,7 +10425,6 @@ async function rpc(name,args,retry=true){
         if (!groupsRoot) return;
         const SV = body => `<svg viewBox="0 0 24 24" aria-hidden="true">${body}</svg>`;
         const ICON = {
-          home: SV('<path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>'),
           collapse: SV('<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="m16 15-3-3 3-3"/>'),
           expand: SV('<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="m14 9 3 3-3 3"/>'),
           logout: SV('<path d="m16 17 5-5-5-5"/><path d="M21 12H9"/><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>')
@@ -10448,27 +10432,43 @@ async function rpc(name,args,retry=true){
         const LABEL = { "barcode-print-sku": "In tem SKU", "barcode-print-uid": "In tem Group UID", "barcode-location": "Mã vị trí", "barcode-cut-uid": "Cắt Group UID", "barcode-uid-history": "Lịch sử Group UID", "barcode-find-sku": "Tìm SKU", "barcode-unit-converter": "Chuyển đổi đơn vị", "barcode-xa-vai": "Theo dõi xả vải", "barcode-inspection": "Kiểm tra đầu vào", "barcode-storage-risk": "Rủi ro lưu trữ", "barcode-activate": "Kích hoạt máy", "barcode-admin": "Quản trị" };
         const ROUTE = { worker: "barcode-print-sku", "group-uid": "barcode-print-uid", location: "barcode-location", "cut-group-uid": "barcode-cut-uid", "group-uid-history": "barcode-uid-history", "find-sku": "barcode-find-sku", "unit-converter": "barcode-unit-converter", "xa-vai": "barcode-xa-vai", inspection: "barcode-inspection", "storage-risk": "barcode-storage-risk" };
         const TITLE = { "uid-title": "barcode-print-uid", "loc-title": "barcode-location", "cut-title": "barcode-cut-uid", "uh-title": "barcode-uid-history", "fsk-title": "barcode-find-sku", "uc-title": "barcode-unit-converter", "xa-vai-title": "barcode-xa-vai", "ins-title": "barcode-inspection", "storage-risk-title": "barcode-storage-risk" };
-        const ADMIN = [
-          ["#admin/lenh-in", "Lệnh in", SV('<path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/>')],
-          ["#admin/sku-sync", "Đồng bộ SKU", SV('<path d="M20 7h-9M17 4l3 3-3 3M4 17h9M7 14l-3 3 3 3"/>')],
-          ["#admin/group-uid-sync", "Đồng bộ Group UID", SV('<path d="M4 7h16M4 12h16M4 17h10"/><circle cx="18" cy="17" r="2"/>')],
-          ["#admin/kiem-ke", "Kiểm kê SKU", SV('<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>')],
-          ["#admin/cauhinh", "Cấu hình", SV('<circle cx="12" cy="12" r="3"/><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>')]
-        ];
+        const ADMIN = [["#admin/lenh-in", "Lệnh in"], ["#admin/sku-sync", "Đồng bộ SKU"], ["#admin/group-uid-sync", "Đồng bộ Group UID"], ["#admin/kiem-ke", "Kiểm kê SKU"], ["#admin/cauhinh", "Cấu hình"]];
         const KEY = "wh-app-nav-collapsed";
         const esc = text => String(text).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
-        const item = (attr, icon, label) => `<button type="button" class="an-item" ${attr} aria-label="${esc(label)}" title="${esc(label)}">${icon}<span>${esc(label)}</span></button>`;
-        const mark = document.querySelector("#barcode-home .barcode-home__mark svg");
+        const item = (attr, label, icon = "") => `<button type="button" class="an-item" ${attr} aria-label="${esc(label)}">${icon}<span>${esc(label)}</span></button>`;
+        const group = (tone, name, items, index) => `<section class="an-group" data-tone="${esc(tone)}" role="group" aria-labelledby="an-group-${index}"><div class="an-head" id="an-group-${index}"><span>${esc(name)}</span></div><div class="an-list">${items}</div></section>`;
         const nav = document.createElement("nav");
         nav.id = "app-nav";
         nav.setAttribute("aria-label", "Chức năng");
-        nav.innerHTML = `<div class="an-top"><div class="an-brand"><span class="an-mark" aria-hidden="true">${mark ? mark.outerHTML : ""}</span><span class="an-name">WH-MATERIAL</span></div><button type="button" class="an-toggle" aria-controls="app-nav"></button></div><div class="an-scroll"></div><div class="an-foot" hidden>${item("data-admin-logout", ICON.logout, "Đăng xuất")}</div>`;
+        nav.innerHTML = `<div class="an-scroll"></div><div class="an-foot" hidden>${item("data-admin-logout", "Đăng xuất", ICON.logout)}</div>`;
         document.body.prepend(nav);
-        const scroll = nav.querySelector(".an-scroll"), foot = nav.querySelector(".an-foot"), toggle = nav.querySelector(".an-toggle");
+        const scroll = nav.querySelector(".an-scroll"), foot = nav.querySelector(".an-foot");
         // Sự kiện print-sku-admin-ready có thể bắn trước khi script cuối body chạy (trang lớn, mạng nhanh): đọc trạng thái lúc khởi tạo
         let adminReady = Boolean(window.PrintSkuAdminAccess?.isAuthorized?.()), shape = "";
         const route = () => decodeURIComponent(location.hash.replace(/^#/, "")).split(/[?&]/)[0];
-        const tiles = group => [...group.querySelectorAll(".barcode-choice")].filter(tile => !tile.hidden);
+        const tiles = home => [...home.querySelectorAll(".barcode-choice")].filter(tile => !tile.hidden);
+        const collapsed = () => document.documentElement.classList.contains("app-nav-collapsed");
+
+        // Nút thu gọn: một nút ở đầu thanh trên của mỗi màn (trang chủ, các module, Admin; React vẽ lại thì gắn lại)
+        const paintToggle = button => {
+          const label = collapsed() ? "Mở thanh bên" : "Thu gọn thanh bên";
+          button.setAttribute("aria-expanded", String(!collapsed()));
+          button.setAttribute("aria-label", label);
+          button.title = label;
+          button.innerHTML = collapsed() ? ICON.expand : ICON.collapse;
+        };
+        const placeToggles = () => {
+          const rows = [document.querySelector("#barcode-home .barcode-home__header"), ...document.querySelectorAll(".uid-topbar__inner, .ss-screen .ss-top"), document.querySelector("#root header > div")];
+          rows.forEach(row => {
+            if (!row || row.firstElementChild?.classList.contains("an-toggle")) return;
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "an-toggle";
+            button.setAttribute("aria-controls", "app-nav");
+            paintToggle(button);
+            row.prepend(button);
+          });
+        };
 
         const markCurrent = () => {
           const current = route();
@@ -10480,26 +10480,27 @@ async function rpc(name,args,retry=true){
           nav.querySelectorAll(".an-item[aria-current]").forEach(button => { if (button !== active) button.removeAttribute("aria-current"); });
           if (active && !active.hasAttribute("aria-current")) {
             active.setAttribute("aria-current", "page");
-            // Mục đang mở nằm ngoài vùng thấy (vd. mục Admin cuối danh sách): cuộn để mục đó ra giữa thanh (thấy cả các mục cùng nhóm)
+            // Mục đang mở sát mép hoặc ngoài vùng thấy (vd. mục Admin cuối danh sách): cuộn để mục đó ra giữa thanh (thấy cả các mục cùng nhóm)
             const box = active.getBoundingClientRect(), view = scroll.getBoundingClientRect();
-            if (box.height && (box.top < view.top || box.bottom > view.bottom)) scroll.scrollTop += box.top + box.height / 2 - (view.top + view.height / 2);
+            if (box.height && (box.top < view.top + 40 || box.bottom > view.bottom - 120)) scroll.scrollTop += box.top + box.height / 2 - (view.top + view.height / 2);
           }
           // Tên nhóm dưới tiêu đề IN TEM SKU (React vẽ sau, nên gắn lại khi đổi màn)
           const reactTitle = current === "worker" && document.querySelector("#root header h1");
           if (reactTitle && !reactTitle.dataset.navGroup) { reactTitle.dataset.navGroup = "In tem"; reactTitle.dataset.navTone = "print"; }
+          placeToggles();
         };
 
         const build = () => {
           const groups = [...groupsRoot.querySelectorAll(".barcode-home__group")];
-          const next = `${adminReady}|` + groups.map(group => tiles(group).map(tile => tile.id).join(",")).join("|");
+          const next = `${adminReady}|` + groups.map(home => tiles(home).map(tile => tile.id).join(",")).join("|");
           if (next === shape) return markCurrent();
           shape = next;
-          let html = item('data-an-route="home"', ICON.home, "Trang chủ").replace('class="an-item"', 'class="an-item an-home"');
-          groups.forEach((group, index) => {
-            const tone = group.dataset.tone || "print", name = group.querySelector("h2")?.textContent.trim() || "";
-            let items = tiles(group).filter(tile => !(adminReady && tile.id === "barcode-admin")).map(tile => item(`data-an-tile="${tile.id}"`, tile.querySelector("svg")?.outerHTML || "", LABEL[tile.id] || tile.textContent.trim())).join("");
-            if (tone === "admin" && adminReady) items += ADMIN.map(([hash, label, icon]) => item(`data-an-hash="${hash}"`, icon, label)).join("");
-            html += `<section class="an-group" data-tone="${esc(tone)}" role="group" aria-labelledby="an-group-${index}"><div class="an-head" id="an-group-${index}"><span>${esc(name)}</span></div><div class="an-list">${items}</div></section>`;
+          let html = group("home", "WH-MATERIAL", item('data-an-route="home"', "Trang chủ"), 0);
+          groups.forEach((home, index) => {
+            const tone = home.dataset.tone || "print", name = home.querySelector("h2")?.textContent.trim() || "";
+            let items = tiles(home).filter(tile => !(adminReady && tile.id === "barcode-admin")).map(tile => item(`data-an-tile="${tile.id}"`, LABEL[tile.id] || tile.textContent.trim())).join("");
+            if (tone === "admin" && adminReady) items += ADMIN.map(([hash, label]) => item(`data-an-hash="${hash}"`, label)).join("");
+            html += group(tone, name, items, index + 1);
           });
           scroll.innerHTML = html;
           foot.hidden = !adminReady;
@@ -10507,39 +10508,39 @@ async function rpc(name,args,retry=true){
         };
 
         let animTimer = 0;
-        const setCollapsed = (collapsed, save) => {
+        const setCollapsed = (value, save) => {
           if (save) { clearTimeout(animTimer); document.documentElement.classList.add("app-nav-anim"); animTimer = setTimeout(() => document.documentElement.classList.remove("app-nav-anim"), 260); }
-          document.documentElement.classList.toggle("app-nav-collapsed", collapsed);
-          const label = collapsed ? "Mở rộng thanh bên" : "Thu gọn thanh bên";
-          toggle.setAttribute("aria-expanded", String(!collapsed));
-          toggle.setAttribute("aria-label", label);
-          toggle.title = label;
-          toggle.innerHTML = collapsed ? ICON.expand : ICON.collapse;
-          if (save) try { localStorage.setItem(KEY, collapsed ? "1" : "0"); } catch (_) {}
+          document.documentElement.classList.toggle("app-nav-collapsed", value);
+          document.querySelectorAll(".an-toggle").forEach(paintToggle);
+          if (save) try { localStorage.setItem(KEY, value ? "1" : "0"); } catch (_) {}
         };
         let saved = false;
         try { saved = localStorage.getItem(KEY) === "1"; } catch (_) {}
         setCollapsed(saved, false);
 
+        document.addEventListener("click", event => {
+          if (event.target.closest(".an-toggle")) setCollapsed(!collapsed(), true);
+        });
         nav.addEventListener("click", event => {
           const button = event.target.closest("button");
           if (!button) return;
-          if (button === toggle) return setCollapsed(!document.documentElement.classList.contains("app-nav-collapsed"), true);
           if (button.dataset.anTile) document.getElementById(button.dataset.anTile)?.click();
           else if (button.dataset.anHash) location.hash = button.dataset.anHash;
           else if (button.dataset.anRoute === "home") location.hash = "#home";
         });
 
         Object.entries(TITLE).forEach(([id, tileId]) => {
-          const title = document.getElementById(id), group = document.getElementById(tileId)?.closest(".barcode-home__group");
-          if (!title || !group) return;
-          title.dataset.navGroup = group.querySelector("h2")?.textContent.trim() || "";
-          title.dataset.navTone = group.dataset.tone || "print";
+          const title = document.getElementById(id), home = document.getElementById(tileId)?.closest(".barcode-home__group");
+          if (!title || !home) return;
+          title.dataset.navGroup = home.querySelector("h2")?.textContent.trim() || "";
+          title.dataset.navTone = home.dataset.tone || "print";
         });
 
-        let pending = 0;
+        let pending = 0, reactPending = 0;
         new MutationObserver(() => { cancelAnimationFrame(pending); pending = requestAnimationFrame(build); })
           .observe(groupsRoot, { childList: true, subtree: true, attributes: true, attributeFilter: ["hidden"] });
+        const root = document.getElementById("root");
+        if (root) new MutationObserver(() => { cancelAnimationFrame(reactPending); reactPending = requestAnimationFrame(placeToggles); }).observe(root, { childList: true, subtree: true });
         // Hộp đăng nhập Admin che toàn màn: thanh bên không nhận phím Tab phía sau
         new MutationObserver(() => { nav.inert = document.documentElement.classList.contains("admin-auth-lock"); })
           .observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
