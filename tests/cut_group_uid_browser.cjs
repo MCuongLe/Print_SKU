@@ -56,7 +56,7 @@ const fs = require('node:fs');
       assert.deepEqual(await page.locator('#cut-group-uid-screen').evaluate(element => {
         const rect = element.getBoundingClientRect();
         return { position: getComputedStyle(element).position, top: rect.top, left: rect.left, width: rect.width, viewport: innerWidth };
-      }), { position: 'fixed', top: 0, left: 0, width, viewport: width });
+      }), { position: 'fixed', top: 0, left: width >= 1024 ? 276 : 0, width: width >= 1024 ? width - 276 : width, viewport: width }); // máy tính: lùi sau thanh trái chung 276 px
       await page.evaluate(() => {
         window.testJobs = [];
         window.PrintSkuQueue.enqueue = async job => { window.testJobs.push(job); return { ok: true, data: { id: '11111111-1111-4111-8111-111111111111' } }; };

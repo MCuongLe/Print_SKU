@@ -264,9 +264,18 @@ const lastCall = (calls, name) => [...calls].reverse().find(call => call.rpc ===
       assert.equal(await page.locator('#pj-d-reprint').isVisible(), false);
       await page.locator('#pj-d-close').click();
 
-      // Menu React (màn Cấu hình): Tổng quan / Đợt đã gửi ẩn, Lệnh in đứng đầu và đưa về màn mới
+      // Menu ở màn Cấu hình: Tổng quan / Đợt đã gửi ẩn, Lệnh in đứng đầu và đưa về màn mới (máy tính ≥ 1024 px: nhóm Quản trị ở thanh trái chung)
       await page.goto(BASE + '#admin/cauhinh');
       await page.locator('#root').waitFor({ state: 'visible' });
+      if (width >= 1024) {
+        await page.locator('#app-nav [data-an-hash]').first().waitFor();
+        const items = (await page.locator('#app-nav .an-item').allTextContents()).map(t => t.trim());
+        for (const label of ['Tổng quan', 'Đợt đã gửi']) assert.equal(items.includes(label), false, `${label} không có trong thanh trái`);
+        assert.equal((await page.locator('#app-nav [data-an-hash]').first().innerText()).trim(), 'Lệnh in');
+        await page.locator('#app-nav [data-an-hash="#admin/lenh-in"]').click();
+        await page.waitForFunction(() => location.hash === '#admin/lenh-in');
+        await page.locator('#print-jobs-screen').waitFor({ state: 'visible' });
+      } else {
       const reactNav = page.locator(width >= 768 ? '#root aside nav' : '#root header nav');
       await reactNav.locator('[data-print-jobs-nav]').waitFor({ state: 'visible' });
       for (const label of ['Tổng quan', 'Đợt đã gửi']) assert.equal(await reactNav.locator('button', { hasText: label }).isVisible(), false, `${label} ẩn`);
@@ -274,6 +283,7 @@ const lastCall = (calls, name) => [...calls].reverse().find(call => call.rpc ===
       await reactNav.locator('[data-print-jobs-nav]').click();
       await page.waitForFunction(() => location.hash === '#admin/lenh-in');
       await page.locator('#print-jobs-screen').waitFor({ state: 'visible' });
+      }
 
       // Không chữ hướng dẫn dài; không cuộn ngang; không lỗi JS
       const screenText = await page.locator('#print-jobs-screen').innerText();

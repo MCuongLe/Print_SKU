@@ -1,5 +1,6 @@
 // Admin (chỉ desktop, 08/10/2026): khung Cấu hình khớp 3 màn còn lại, thanh trên + tiêu đề bảng dính, chữ đủ tương phản/cỡ ≥ 12 px,
 // dải lỗi + trạng thái Extension thống nhất, Cấu hình không còn câu hướng dẫn và tách "Thiết bị này" / "Hệ thống".
+// 11/10/2026: menu Admin là các mục nhóm Quản trị trong thanh trái chung (276 px, máy tính ≥ 1024 px), thay thanh bên riêng.
 // Run against python -m http.server 8000. Supabase, Edge Function và Extension được giả lập; không ghi dữ liệu.
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const assert = require('node:assert/strict');
@@ -87,10 +88,9 @@ const open = async (browser, { width = 1280, ext = true, failOn = null } = {}) =
 const go = async (page, hash) => { await page.goto(BASE + '#home'); await page.goto(BASE + hash); };
 const navItems = page => page.evaluate(() => {
   const vis = e => { const b = e.getBoundingClientRect(); return b.width > 0 && b.height > 0 && getComputedStyle(e).display !== 'none'; };
-  const nav = [...document.querySelectorAll('nav')].find(n => vis(n) && n.querySelector('button') && /Đồng bộ SKU|Lệnh in/.test(n.textContent) && n.getBoundingClientRect().width < 400);
-  const btns = [...nav.querySelectorAll('button')].filter(vis);
-  const cs = e => getComputedStyle(e);
-  return { names: btns.map(b => b.textContent.trim()), active: btns.filter(b => b.getAttribute('aria-current') === 'page' || b.classList.contains('bg-brand-light')).map(b => b.textContent.trim()), h: Math.round(btns[0].getBoundingClientRect().height), font: cs(btns[0]).fontSize, weight: cs(btns[0]).fontWeight };
+  const btns = [...document.querySelectorAll('#app-nav [data-an-hash]')].filter(vis);
+  const cs = e => getComputedStyle(e), active = btns.filter(b => b.getAttribute('aria-current') === 'page');
+  return { names: btns.map(b => b.textContent.trim()), active: active.map(b => b.textContent.trim()), h: Math.round(btns[0].getBoundingClientRect().height), font: cs(btns[0]).fontSize, weights: [...new Set(btns.map(b => `${b.getAttribute('aria-current') === 'page' ? 'on' : 'off'}:${cs(b).fontWeight}`))].sort() };
 });
 
 (async () => {
@@ -103,11 +103,12 @@ const navItems = page => page.evaluate(() => {
         const seen = [];
         for (const [hash, title, screenId] of SCREENS) {
           await go(page, hash);
-          if (screenId) await page.locator('#' + screenId).waitFor({ state: 'visible' }); else await page.locator('#root aside nav button', { hasText: 'Đồng bộ Group UID' }).waitFor();
+          if (screenId) await page.locator('#' + screenId).waitFor({ state: 'visible' }); else await page.locator('#root aside + div > header h1').waitFor();
+          await page.locator('#app-nav [data-an-hash]').first().waitFor();
           await page.waitForTimeout(500);
           const m = await page.evaluate(() => {
             const vis = e => { if (!e) return false; const b = e.getBoundingClientRect(); return b.width > 0 && b.height > 0; };
-            const side = [...document.querySelectorAll('.ss-side, #root aside')].find(vis), top = [...document.querySelectorAll('.ss-top, #root aside + div > header')].find(vis);
+            const side = [...document.querySelectorAll('#app-nav, .ss-side, #root aside')].find(vis), top = [...document.querySelectorAll('.ss-top, #root aside + div > header')].find(vis);
             const mk = top.querySelector('.ss-top-mark'), mb = mk && mk.getBoundingClientRect();
             return { sideW: Math.round(side.getBoundingClientRect().width), topH: Math.round(top.getBoundingClientRect().height), topPos: getComputedStyle(top).position, title: top.querySelector('h1').textContent.trim(), titleFont: getComputedStyle(top.querySelector('h1')).fontSize, titleWeight: getComputedStyle(top.querySelector('h1')).fontWeight, mark: mb ? `${Math.round(mb.width)}x${Math.round(mb.height)}` : null, markIcon: !!(mk && mk.querySelector('svg')), sub: top.querySelector('.ss-top-sub')?.textContent.trim() || '' };
           });
@@ -121,7 +122,7 @@ const navItems = page => page.evaluate(() => {
           assert.equal(m.mark, '38x38', `${hash}: icon module`); assert.equal(m.markIcon, true); assert.notEqual(m.sub, '', `${hash}: thiếu dòng phụ`);
           assert.deepEqual(nav.names, NAV, `${hash}: thứ tự menu`);
           assert.deepEqual(nav.active, [title], `${hash}: đúng một mục đang chọn`);
-          assert.equal(nav.h, 50); assert.equal(nav.font, '16px'); assert.equal(nav.weight, '600');
+          assert.equal(nav.h, 40); assert.equal(nav.font, '16px'); assert.deepEqual(nav.weights, ['off:400', 'on:600'], `${hash}: mục đang mở đậm 600, mục khác 400`);
         }
         // thanh trên vẫn ở đỉnh; trong popup chi tiết, hàng tiêu đề bảng dính ở đỉnh vùng cuộn của popup
         await go(page, '#admin/sku-sync'); await page.locator('#sku-sync-preview').click();
@@ -227,7 +228,7 @@ const navItems = page => page.evaluate(() => {
         }
         assert.deepEqual(page.errors, []); await context.close();
       }
-      console.log(`PASS ${width}px: khung đồng bộ (276/64/menu cùng thứ tự), thanh trên + tiêu đề bảng dính, tương phản/cỡ chữ, Cấu hình gọn + nhóm, dải lỗi + Extension thống nhất, thanh trên (icon, tiêu đề đậm, dòng phụ, chip, làm mới)`);
+      console.log(`PASS ${width}px: khung đồng bộ (thanh trái chung 276/thanh trên 64/menu Admin cùng thứ tự), thanh trên + tiêu đề bảng dính, tương phản/cỡ chữ, Cấu hình gọn + nhóm, dải lỗi + Extension thống nhất, thanh trên (icon, tiêu đề đậm, dòng phụ, chip, làm mới)`);
     }
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

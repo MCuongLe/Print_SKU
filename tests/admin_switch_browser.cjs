@@ -1,6 +1,7 @@
 // Chuyển mục Admin mượt (11/10/2026): đã xác nhận Admin trong phiên và token JWT còn hạn thì bấm menu hiện màn mới ngay khung hình kế
 // tiếp (trước đây chờ 2 lượt gọi mạng kiểm quyền nên lộ nền đen 0,2–0,6 giây); quay lại Đồng bộ SKU / Group UID không khoá nút, tải lại
-// ngầm; token hết hạn thì vẫn kiểm lại qua mạng. Icon "Kiểm kê SKU" trong menu màn Cấu hình (React) đúng cỡ (20 px theo thang icon), không thành khối đen.
+// ngầm; token hết hạn thì vẫn kiểm lại qua mạng. Menu là thanh trái chung (máy tính ≥ 1024 px, 11/10/2026). Icon "Kiểm kê SKU" trong menu React
+// màn Cấu hình (còn hiện ở 768–1023 px) đúng cỡ (20 px theo thang icon), không thành khối đen.
 // Supabase, Edge Function và Extension đều giả lập (trễ 300 ms). Chạy với python -m http.server 8000 (đổi bằng biến BASE).
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const assert = require('node:assert/strict');
@@ -37,7 +38,7 @@ async function open(browser, token) {
 // Bấm mục menu, đợi hashchange rồi đo ở khung hình vẽ kế tiếp: màn nào đang phủ giữa màn hình, thanh tiến trình có chạy không
 const clickAndMeasure = (page, label) => page.evaluate(async text => {
   const vis = e => { const b = e.getBoundingClientRect(); return b.width > 0 && b.height > 0; };
-  const btn = [...document.querySelectorAll('.ss-side nav button, #root aside nav button')].find(b => vis(b) && b.textContent.trim() === text);
+  const btn = [...document.querySelectorAll('#app-nav .an-item, .ss-side nav button, #root aside nav button')].find(b => vis(b) && (b.getAttribute('aria-label') || b.textContent).trim() === text);
   const changed = new Promise(resolve => { addEventListener('hashchange', resolve, { once: true }); setTimeout(resolve, 1000); });
   btn.click();
   await changed;
@@ -71,13 +72,16 @@ const clickAndMeasure = (page, label) => page.evaluate(async text => {
     }
     assert.equal(await page.locator('#sku-sync-preview').isDisabled(), false);
 
-    // Icon menu "Kiểm kê SKU" trong màn Cấu hình (React)
+    // Icon menu "Kiểm kê SKU" trong màn Cấu hình (React; máy tính ≥ 1024 px dùng thanh trái chung nên đo ở 900 px)
     await clickAndMeasure(page, 'Cấu hình');
+    await page.setViewportSize({ width: 900, height: 800 });
+    await page.locator('#root aside nav button', { hasText: 'Kiểm kê SKU' }).waitFor({ state: 'visible' });
     const icon = await page.evaluate(() => { const b = [...document.querySelectorAll('#root aside nav button')].find(e => e.textContent.trim() === 'Kiểm kê SKU'); const s = b.querySelector('svg').getBoundingClientRect(); return { w: Math.round(s.width), h: Math.round(s.height), btn: Math.round(b.getBoundingClientRect().height), fill: getComputedStyle(b.querySelector('svg')).fill }; });
     assert.deepEqual([icon.w, icon.h], [20, 20], 'icon Kiểm kê SKU 20 px (thang icon đợt 3)');
     assert.equal(icon.fill, 'none', 'icon nét, không tô đen');
     const ref = await page.evaluate(() => Math.round([...document.querySelectorAll('#root aside nav button')].find(e => e.textContent.trim() === 'Cấu hình').getBoundingClientRect().height));
     assert.equal(icon.btn, ref, 'dòng Kiểm kê SKU cao bằng các mục khác');
+    await page.setViewportSize({ width: 1280, height: 800 });
     assert.deepEqual(errors, []);
     await context.close();
 
@@ -88,7 +92,7 @@ const clickAndMeasure = (page, label) => page.evaluate(async text => {
     await page.waitForTimeout(800);
     const slow = await page.evaluate(async () => { const t = performance.now(); const token = await window.PrintSkuAdminAccess.getToken(); return { ms: performance.now() - t, ok: Boolean(token) }; });
     assert.ok(slow.ms >= 250 && slow.ok, `token hết hạn: getToken kiểm quyền lại qua mạng (${Math.round(slow.ms)} ms)`);
-    await page.locator('.ss-side nav button:visible', { hasText: 'Đồng bộ SKU' }).click();
+    await page.locator('#app-nav .an-item[aria-label="Đồng bộ SKU"]').click();
     await page.locator('#sku-sync-screen').waitFor({ state: 'visible' });
     assert.deepEqual(errors, []);
     await context.close();

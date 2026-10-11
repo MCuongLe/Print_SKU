@@ -181,7 +181,8 @@ const XLSX_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.s
       assert.match(await rows().first().innerText(), /In lỗi: Hết giấy/);
 
       assert.equal(await page.evaluate(() => document.querySelector('#location-screen').scrollWidth <= innerWidth), true);
-      await page.locator('#loc-back').click();
+      // Máy tính ≥ 1024 px: nút quay lại ẩn, về trang chủ bằng mục Trang chủ ở thanh trái chung
+      await page.locator(width >= 1024 ? '#app-nav .an-item[aria-label="Trang chủ"]' : '#loc-back').click();
       await page.locator('#barcode-home').waitFor({ state: 'visible' });
       assert.deepEqual(errors, []);
       console.log(`PASS ${width}px: nhập tay + Excel (template WMS, Location/Description), hàng đợi lưu trên máy, chia lệnh ≤500 tem, nonce gửi lại, chặn agent cũ, lỗi/xong theo lệnh`);

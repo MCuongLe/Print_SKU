@@ -1,5 +1,6 @@
 // Lối vào Admin nằm ở trang chủ (ô QUẢN TRỊ), không còn trong IN TEM SKU.
-// Thanh admin nổi (tên + Dữ liệu UID/Đồng bộ SKU/Đăng xuất) đã bỏ; Đăng xuất nằm trong thanh bên Admin (desktop) và hàng tiêu đề (điện thoại).
+// Thanh admin nổi (tên + Dữ liệu UID/Đồng bộ SKU/Đăng xuất) đã bỏ; Đăng xuất nằm ở chân thanh trái chung (máy tính ≥ 1024 px, 11/10/2026 thay thanh bên
+// riêng của Admin) và hàng tiêu đề (điện thoại).
 // Run against python -m http.server 8000. Supabase/auth được giả lập; không ghi dữ liệu.
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const assert = require('node:assert/strict');
@@ -35,7 +36,8 @@ const mockRoutes = async page => page.route('**/*', async route => {
 
         // IN TEM SKU không còn nút Quản trị (bánh răng) trong header
         await page.goto(BASE + '#worker');
-        await page.locator('#print-sku-back').waitFor({ state: 'visible' });
+        // Máy tính: nút quay lại ẩn vì thanh trái có mục Trang chủ
+        await page.locator(width >= 1024 ? '#app-nav .an-item[aria-current="page"][aria-label="In tem SKU"]' : '#print-sku-back').waitFor({ state: 'visible' });
         assert.equal(await page.locator('#root header button[aria-label="Quản trị"]').count(), 0, 'IN TEM SKU không còn nút Quản trị');
 
         // Ô QUẢN TRỊ → hộp thoại đăng nhập; Hủy → về trang chủ
@@ -72,11 +74,12 @@ const mockRoutes = async page => page.route('**/*', async route => {
           assert.equal(await page.locator('#root').isVisible(), false);
         };
 
-        // Về trang chủ từ giao diện Admin (thanh bên ở desktop, mũi tên ở header điện thoại)
+        // Về trang chủ từ giao diện Admin (mục Trang chủ ở thanh trái chung trên máy tính, mũi tên ở header điện thoại)
         await openAdmin();
-        if (width >= 768) {
-          assert.equal((await page.locator('#print-jobs-screen .ss-brand span').innerText()).trim(), 'WH-MATERIAL');
-          await page.locator('#print-jobs-screen .ss-side-foot button', { hasText: 'Về trang chủ' }).click();
+        if (width >= 1024) {
+          assert.equal((await page.locator('#app-nav .an-name').innerText()).trim(), 'WH-MATERIAL');
+          assert.equal(await page.locator('#print-jobs-screen .ss-side').isVisible(), false, 'thanh bên riêng của Admin ẩn');
+          await page.locator('#app-nav .an-item[aria-label="Trang chủ"]').click();
         } else {
           await page.locator('#print-jobs-screen header button[aria-label="Về trang chủ WH-MATERIAL"]').click();
         }
@@ -86,11 +89,11 @@ const mockRoutes = async page => page.route('**/*', async route => {
         // Không còn thanh admin nổi, nút Dữ liệu UID và màn nạp Excel; Đăng xuất có đúng một nút trong thanh điều hướng
         await openAdmin();
         for (const id of ['#admin-session', '#admin-uid-data', '#admin-sku-sync', '#group-uid-import-screen']) assert.equal(await page.locator(id).count(), 0, id + ' đã bị xóa');
-        const logout = page.locator(width >= 768 ? '#print-jobs-screen .ss-side-foot button[data-admin-logout]' : '#print-jobs-screen header button[data-admin-logout]');
+        const logout = page.locator(width >= 1024 ? '#app-nav .an-foot [data-admin-logout]' : '#print-jobs-screen header button[data-admin-logout]');
         await logout.waitFor({ state: 'visible' });
         assert.equal(await page.locator('[data-admin-logout]:visible').count(), 1);
-        assert.equal(width >= 768 ? (await logout.innerText()).trim() : await logout.getAttribute('aria-label'), 'Đăng xuất');
-        if (width >= 768) assert.equal(await page.locator('#print-jobs-screen .ss-nav button', { hasText: 'Đồng bộ SKU' }).count(), 1);
+        assert.equal(width >= 1024 ? (await logout.innerText()).trim() : await logout.getAttribute('aria-label'), 'Đăng xuất');
+        if (width >= 1024) assert.equal(await page.locator('#app-nav .an-item[aria-label="Đồng bộ SKU"]').count(), 1);
         // Hash Admin cũ/lạ (màn nạp Excel đã xoá) chuyển về Lệnh in
         await page.goto(BASE + '#admin/group-uid-data');
         await page.waitForFunction(() => location.hash === '#admin/lenh-in');
