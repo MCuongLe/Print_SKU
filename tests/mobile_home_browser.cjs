@@ -41,14 +41,15 @@ const BASE = process.env.BASE || 'http://127.0.0.1:8000/';
       home.heads.forEach((head, i) => { const [name, count, w, r] = head.split('|'); assert.equal(count, `${String(home.counts[i]).padStart(2, '0')} chức năng`, `${name}: số chức năng`); assert.equal(r, '50%', `${name}: icon nhóm tròn`); assert.ok(Number(w) >= 40, `${name}: icon nhóm ≥ 40 px`); });
       assert.deepEqual(home.heads.map(h => h.split('|')[0]), ['In tem', 'Vận hành kho', 'Kiểm tra', 'Quản trị']);
       assert.equal(home.overflow, false, `${width}px: trang chủ tràn ngang`);
-      // Ảnh nền đầu trang (kệ kho, webp nhúng sẵn — không tải ngoài) thay hoạ tiết kệ SVG ::after; ở màn rộng icon kho thẳng mép thẻ nhóm
+      // Ảnh nền đầu trang (kệ kho, webp nhúng sẵn — không tải ngoài) thay hoạ tiết kệ SVG ::after; màn ≥ 1200 px ảnh giữ rộng 960 px, icon kho thẳng mép thẻ nhóm
       const head = await page.evaluate(() => {
         const hd = document.querySelector('#barcode-home .barcode-home__header'), cs = getComputedStyle(hd);
-        return { img: /url\("data:image\/webp;base64,/.test(cs.backgroundImage), after: getComputedStyle(hd, '::after').content, h: Math.round(hd.getBoundingClientRect().height), color: getComputedStyle(hd.querySelector('h1')).color,
+        return { img: /url\("data:image\/webp;base64,/.test(cs.backgroundImage), size: cs.backgroundSize.split(', ').pop(), after: getComputedStyle(hd, '::after').content, h: Math.round(hd.getBoundingClientRect().height), color: getComputedStyle(hd.querySelector('h1')).color,
           markX: Math.round(hd.querySelector('.barcode-home__mark').getBoundingClientRect().left), groupX: Math.round(document.querySelector('#barcode-home .barcode-home__group').getBoundingClientRect().left) };
       });
       assert.equal(head.img, true, 'đầu trang có ảnh nền webp nhúng');
       assert.equal(head.after, 'none', 'bỏ hoạ tiết kệ SVG cũ');
+      assert.equal(head.size, width >= 1200 ? '960px auto' : 'cover', 'màn ≥ 1200 px: ảnh giữ rộng 960 px, không phóng theo bề rộng màn');
       assert.equal(head.color, 'rgb(255, 255, 255)');
       assert.equal(head.h, mobile ? 112 : 148, `đầu trang cao ${head.h}px`);
       if (mobile) assert.equal(head.markX, 16); else assert.equal(head.markX, head.groupX, 'máy tính: icon kho thẳng mép thẻ nhóm');
