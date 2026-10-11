@@ -76,8 +76,7 @@ Chuẩn từ 10/10/2026, áp cho mọi màn ở cả điện thoại và máy t�
 - **Font:** một font hệ thống `--wms-font` (`system-ui, "Segoe UI", Roboto, Arial…`): máy Windows ở kho hiện Segoe UI, Android hiện Roboto,
   iPhone hiện SF. Không tải font ngoài. Số dùng chữ số đều nhau (`tabular-nums`) để dễ so mã.
 - **Cỡ:** chỉ 7 bậc `--fs-12 … --fs-28`: 12 (số đếm, badge, phụ đề) · 13 (nhãn ô, tab, đầu bảng) · 14 (bảng Admin, nút phụ, thông báo) ·
-  16 (chữ trong ô nhập, nút chính) · 18 (tiêu đề khối, tên module) · 22 (tiêu đề trang Admin, KPI vừa) · 28 (số lớn). Ngoại lệ duy nhất:
-  số bao ở Gom hàng mẫu (46–82 px, để đọc từ xa).
+  16 (chữ trong ô nhập, nút chính) · 18 (tiêu đề khối, tên module) · 22 (tiêu đề trang Admin, KPI vừa) · 28 (số lớn).
 - **Đậm:** 400 chữ thường · 600 nhãn, tab, nút, tiêu đề khối · 700 tên module, thương hiệu, số lớn.
 - **Chữ hoa:** chỉ tiêu đề nhóm trang chủ, đầu bảng Kiểm tra đầu vào và ô mã vị trí; còn lại viết thường, không giãn chữ.
 - **Tem in giữ Arial:** tem là SVG tự ghi `font-family="Arial…"`, chỗ đo chữ cho tem (canvas) vẫn Arial, mẫu tem trong agent không đổi.
@@ -151,23 +150,6 @@ Triển khai:
 
 Trong màn Thiết bị in còn có: tắt/bật và đổi tên từng máy, số lệnh in theo máy (`print_jobs.device_id`), thu hồi mã trước hạn. Nhập sai mã quá 30 lần trong một phút thì máy chủ tạm khoá việc kích hoạt một phút. Mất khoá (xoá dữ liệu trình duyệt, đổi máy) thì kích hoạt lại bằng mã mới.
 
-## Màn Sample — gom hàng mẫu vào bao
-
-Màn `#sample` quét mã QR SKU trên hàng mẫu, gom các mẫu cùng SKU vào một bao và báo SKU inactive.
-
-Trước khi dùng, nạp schema một lần:
-
-```powershell
-python scripts/apply_supabase_sql.py supabase/sample_bag_v1.sql
-python scripts/apply_supabase_sql.py supabase/sample_bag_v2_lock_delete.sql
-```
-
-Hoặc dán tay nội dung `supabase/sample_bag_v1.sql` vào Supabase SQL Editor nếu không muốn dùng token.
-
-File này tạo bảng `public.sample_bags` (`bag_no`, `sku`, `quantity`) cùng bốn RPC `sample_scan`, `sample_list`, `sample_decrement`, `sample_delete`. Bảng bật RLS và không cho `anon` đọc/ghi trực tiếp — web chỉ gọi RPC, giống hàng đợi in. Chưa chạy file này thì màn Sample báo `Không đọc được danh sách bao`.
-
-Số bao chạy từ 1 trên một danh sách duy nhất, không reset theo ngày hay theo đợt. Nút `Xuất Excel theo dõi` tạo file `.xlsx` ngay trên trình duyệt, không cần thư viện ngoài.
-
 ## Nạp schema lên Supabase
 
 `scripts/apply_supabase_sql.py` chạy một file `.sql` lên project qua Management API — không cần `psql`, không cần Supabase CLI, chỉ dùng thư viện chuẩn của Python.
@@ -181,8 +163,8 @@ SUPABASE_ACCESS_TOKEN=sbp_...
 Token này khác publishable key và secret key: hai key kia chỉ tới được PostgREST nên không chạy được `create table`. Script không bao giờ in token ra màn hình.
 
 ```powershell
-python scripts/apply_supabase_sql.py supabase/sample_bag_v1.sql --dry-run   # xem trước, không gọi Supabase
-python scripts/apply_supabase_sql.py supabase/sample_bag_v1.sql             # chạy thật
+python scripts/apply_supabase_sql.py supabase/print_devices_v1.sql --dry-run   # xem trước, không gọi Supabase
+python scripts/apply_supabase_sql.py supabase/print_devices_v1.sql             # chạy thật
 ```
 
 Project ref lấy tự động từ `SUPABASE_URL`, ghi đè bằng `--project-ref`. Chạy xong script liệt kê lại toàn bộ bảng và hàm trong schema `public` để đối chiếu.
@@ -261,28 +243,6 @@ python scripts/sync_sku_to_supabase.py --database data/sku.db
 
 Đồng bộ chỉ thêm mới hoặc cập nhật theo khóa `sku`; script không tự xóa bản ghi trên Supabase.
 
-
-## Fabric Relaxation — tem xả vải
-
-Mở **TEM XẢ VẢI** (trước đây tên FABRIC RELAXATION) ở WH-MATERIAL hoặc `#fabric-relaxation`.
-Chỉ nhập số tem (1–500), xem trước rồi bấm In. Mã hàng, Lot, Ngày và Giờ
-đều để trống để ghi tay; Lot nằm dưới Mã hàng và cách khoảng hai dòng. Sử dụng agent SKU/UID,
-giấy 40 × 60 mm, hai tem mỗi hàng; số lẻ để trắng tem bên phải hàng cuối.
-
-Kích hoạt trên hệ thống đang chạy:
-
-1. Áp dụng `supabase/print_queue_v4_fabric_relaxation_handwritten.sql` trong Supabase SQL Editor.
-   Migration chạy trong transaction, chỉ mở rộng loại tem và cập nhật enqueue/claim;
-   không xóa job. Nếu dùng `scripts/apply_supabase_sql.py`, cần `--allow-destructive`
-   vì migration thay CHECK constraint (không xóa dữ liệu).
-2. Cập nhật agent lên 0.7.0 tại máy in, giữ nguyên `config/.env`, token và cấu hình máy in.
-   Khởi động lại agent sau khi hàng đợi hiện tại đã hoàn tất. Agent tự báo capability mới.
-3. Cập nhật `index.html` trên nơi phục vụ ứng dụng. In thử 1, 2 và 3 tem để kiểm tra căn giấy.
-
-Kiểm tra không in thật: `npm test` trong `workstation-agent`,
-`node src/cli.mjs dry-run --type fabric_relaxation` tạo PNG và TSPL.
-Browser test: `node tests/fabric_relaxation_browser.cjs` khi server local chạy cổng 8000;
-đặt `PLAYWRIGHT_MODULE` nếu Playwright nằm ngoài repo. Test chặn mọi kết nối ngoài local.
 
 ## Mã vị trí — tem QR dán kệ
 
@@ -479,8 +439,8 @@ tên 2 dòng, nút chọn tròn bên phải, chạm cả dòng là chọn; Chuy�
 Đợt 1 cho các module còn lại (khối CSS `#mobile-pro-modules`, ≤ 800 px): IN TEM GROUP UID, TEM XẢ VẢI, MÃ VỊ TRÍ, CẮT GROUP UID, THEO DÕI XẢ VẢI, KIỂM TRA ĐẦU VÀO,
 GOM HÀNG MẪU, RỦI RO LƯU TRỮ dùng cùng font hệ thống, chữ đậm vừa, nhãn chữ thường, số thứ tự khối là chấm tròn 22 px, thẻ phẳng bo 14 px, ô nhập viền mảnh với
 tiêu điểm nhẹ, nút 46 px. Tab Cắt UID / Xả vải là nút chọn liền khối với nhãn ngắn (Quét · Tra cứu · Chờ in · Đối chiếu; Quét · Đang xả · Đã xả) — máy tính vẫn nhãn
-đầy đủ, có số tròn. Nút bàn phím của Xả vải và Gom hàng mẫu là icon cạnh ô quét. IN TEM GROUP UID đánh số lại theo thứ tự trên màn: 1 Thêm · 2 Chưa gán SKU · 3 Gán SKU ·
-4 Sẵn sàng in. Dòng "Tìm thấy N …" của Tra cứu không hiện khi đang ở tab Quét. Gom hàng mẫu bỏ câu hướng dẫn mở bao. Test: `tests/mobile_modules_browser.cjs`.
+đầy đủ, có số tròn. Nút bàn phím của Xả vải là icon cạnh ô quét. IN TEM GROUP UID đánh số lại theo thứ tự trên màn: 1 Thêm · 2 Chưa gán SKU · 3 Gán SKU ·
+4 Sẵn sàng in. Dòng "Tìm thấy N …" của Tra cứu không hiện khi đang ở tab Quét. Test: `tests/mobile_modules_browser.cjs`.
 
 Đợt 2 (11/10/2026, khối CSS `#mobile-pro-home`, chỉ điện thoại): trang chủ ≤ 620 px là lưới 3 cột ô gọn (icon 40 px, tên 13 px tối đa
 2 dòng) — 14 ô vừa một màn 390 × 844 thay vì cuộn 1,5 màn; ≤ 340 px về 2 cột. IN TEM SKU ≤ 800 px theo kiểu đợt 1: số thứ tự khối chấm tròn

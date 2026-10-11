@@ -5,7 +5,8 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const assert = require('node:assert/strict');
 
 const BASE = 'http://127.0.0.1:8000/';
-const SCREENS = { 'group-uid': 'uid-screen', inspection: 'ins-screen', sample: 'sample-screen', 'fabric-relaxation': 'fabric-screen', 'cut-group-uid': 'cut-group-uid-screen', 'xa-vai': 'xa-vai-screen', location: 'location-screen', 'storage-risk': 'storage-risk-screen' };
+// 11/10/2026: bỏ Gom hàng mẫu (#sample) và Tem xả vải (#fabric-relaxation) khỏi app.
+const SCREENS = { 'group-uid': 'uid-screen', inspection: 'ins-screen', 'cut-group-uid': 'cut-group-uid-screen', 'xa-vai': 'xa-vai-screen', location: 'location-screen', 'storage-risk': 'storage-risk-screen' };
 
 (async () => {
   const browser = await chromium.launch({ channel: 'chrome', headless: true });
@@ -51,15 +52,12 @@ const SCREENS = { 'group-uid': 'uid-screen', inspection: 'ins-screen', sample: '
 
       if (mobile) {
         // Nút bàn phím là icon cạnh ô quét
-        for (const [hash, input, keyboard] of [['xa-vai', '#xa-vai-code', '#xa-vai-keyboard'], ['sample', '#sample-sku', '#sample-keyboard']]) {
+        for (const [hash, input, keyboard] of [['xa-vai', '#xa-vai-code', '#xa-vai-keyboard']]) {
           await open(hash);
           const box = await page.evaluate(([i, k]) => { const a = document.querySelector(i).getBoundingClientRect(), b = document.querySelector(k).getBoundingClientRect(); return { sameRow: Math.abs((a.top + a.bottom) / 2 - (b.top + b.bottom) / 2) <= 6, right: b.left >= a.right, w: Math.round(b.width) }; }, [input, keyboard]);
           assert.equal(box.sameRow && box.right, true, `${hash}: nút bàn phím phải nằm cạnh ô quét`);
           assert.ok(box.w <= 48, `${hash}: nút bàn phím chỉ là icon (${box.w}px)`);
         }
-        // Gom hàng mẫu: không còn câu hướng dẫn
-        assert.equal((await page.locator('#sample-screen').innerText()).includes('quét SKU đầu tiên'), false);
-        assert.equal(await page.locator('#sample-sku').getAttribute('placeholder'), 'Quét mã SKU');
       }
 
       // IN TEM GROUP UID: số khối theo đúng thứ tự xuất hiện

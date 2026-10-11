@@ -19,8 +19,8 @@ The project reference comes from SUPABASE_URL (https://<ref>.supabase.co) unless
 
 Usage:
 
-    python scripts/apply_supabase_sql.py supabase/sample_bag_v1.sql --dry-run
-    python scripts/apply_supabase_sql.py supabase/sample_bag_v1.sql
+    python scripts/apply_supabase_sql.py supabase/print_devices_v1.sql --dry-run
+    python scripts/apply_supabase_sql.py supabase/print_devices_v1.sql
 """
 
 from __future__ import annotations

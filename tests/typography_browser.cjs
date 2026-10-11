@@ -6,7 +6,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const assert = require('node:assert/strict');
 
 const BASE = process.env.BASE || 'http://127.0.0.1:8000/';
-const USER = ['home', 'worker', 'group-uid', 'fabric-relaxation', 'location', 'cut-group-uid', 'find-sku', 'unit-converter', 'xa-vai', 'inspection', 'sample', 'storage-risk', 'group-uid-history'];
+const USER = ['home', 'worker', 'group-uid', 'location', 'cut-group-uid', 'find-sku', 'unit-converter', 'xa-vai', 'inspection', 'storage-risk', 'group-uid-history'];
 const ADMIN = ['admin/lenh-in', 'admin/sku-sync', 'admin/group-uid-sync', 'admin/kiem-ke', 'admin/cauhinh'];
 
 // Chạy trong trang: liệt kê chữ lệch chuẩn trong màn đang hiện (phần tử gốc nằm ở giữa màn hình)
@@ -25,7 +25,7 @@ const audit = () => {
     if (!text) continue;
     const size = parseFloat(cs.fontSize), name = `${el.tagName.toLowerCase()}${el.id ? '#' + el.id : ''}${typeof el.className === 'string' && el.className.trim() ? '.' + el.className.trim().split(/\s+/)[0] : ''} "${text.slice(0, 24)}"`;
     if (!/^system-ui/.test(cs.fontFamily)) bad.push(`font ${cs.fontFamily.split(',')[0]} · ${name}`);
-    if (size && !SIZES.includes(size) && !(size >= 46 && el.closest('.sample-result__no, .sample-modal__no'))) bad.push(`cỡ ${size}px · ${name}`);
+    if (size && !SIZES.includes(size)) bad.push(`cỡ ${size}px · ${name}`);
     if (!WEIGHTS.includes(cs.fontWeight)) bad.push(`đậm ${cs.fontWeight} · ${name}`);
     const upperOk = el.closest(UPPER_OK);
     if (cs.textTransform === 'uppercase' && !upperOk) bad.push(`chữ hoa · ${name}`);
