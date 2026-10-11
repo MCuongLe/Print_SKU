@@ -555,6 +555,14 @@ thẻ nhóm 380 px), phần trái tô `--gb-fill` mờ dần vào ảnh, lớp t
 mờ; chip trạng thái nền trắng; Admin tiêu đề 18/700, ô icon 38, icon KPI 16, chữ ≥ 12 / đậm ≤ 700, bỏ dòng "WH-MATERIAL". Điện thoại giữ chiều cao
 cũ. Map nhóm ↔ màn nằm trong CSS (ID màn). Test: `tests/group_banners_browser.cjs`.
 
+**IN TEM SKU theo mẫu (11/10/2026, khối `#sku-queue-ui` + script `sku-queue-ui-script`).** Bundle React không có chọn/sửa/xoá nhiều tem nên
+danh sách chờ in của React (`ul.divide-y`) bị ẩn và thay bằng danh sách mới đọc lại từ nó (SKU, tên, số lượng in lên tem, số bản): mỗi dòng ô chọn
+(tem mới mặc định đã chọn), số lượng + "N bản", nút **Sửa** (đưa tem về ô nhập rồi bỏ khỏi danh sách — React tra danh mục có thể xoá tên nên điền
+lại tới khi các ô giữ nguyên 1 giây; người dùng bấm/gõ thì dừng) và **Xoá** (bấm nút Bỏ của React). Thẻ 2 có chip "N tem"; thanh đáy thêm
+Chọn tất cả + xoá tem đã chọn (hỏi lại bằng WhDialog) và tổng "N tem / Tổng M bản in". Điện thoại: nút › mở tấm kéo lên (tìm theo SKU/tên không dấu,
+lọc Tất cả / Đã chọn / Chưa chọn, In tem). **In tem vẫn in cả danh sách** như React (ô chọn dùng cho xoá nhiều). Thẻ 1 đổi tên "Nhập thông tin
+tem" + icon nhãn; ô SKU giữ gợi ý "SKU" (chuẩn không câu hướng dẫn). Test: `tests/sku_queue_browser.cjs`.
+
 **Bố cục điện thoại (10/10/2026).** Toàn màn hình bỏ các câu hướng dẫn (thông báo sau khi đọc tem/chọn SKU, mẹo gõ mã, "Lưu trên máy này…", đuôi "kiểm tra mạng rồi bấm…"
 của các thông báo lỗi); chỉ giữ trạng thái và lỗi ngắn. Bước 1: nút Bật camera và nút Chọn ảnh (chỉ icon, vẫn có tên cho trình đọc màn hình) cùng một hàng. Bước 2: thẻ SKU gọn
 (SKU · chip đơn vị · nút Đổi), bỏ các câu giải thích đơn vị/cách nhập và thông báo "nhập số lượng và số tem"; nút **Tính mm từ cân** thay khối giải thích; **Số tem**

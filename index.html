@@ -10826,5 +10826,269 @@ async function rpc(name,args,retry=true){
       }
       @media print { :is(.uid-topbar, #root > header, .ss-screen .ss-top) { background: none !important; } }
     </style>
+    <style id="sku-queue-ui">
+      /* IN TEM SKU theo mẫu (11/10/2026): danh sách chờ in có ô chọn, sửa (đưa tem về ô nhập), xoá; thanh đáy "Chọn tất cả" + xoá tem đã chọn +
+         tổng tem / bản in; điện thoại có tấm kéo lên (tìm, lọc Tất cả / Đã chọn / Chưa chọn). Dữ liệu đọc từ danh sách của bundle React (ẩn đi),
+         mọi thao tác bấm đúng nút của React (Bỏ, Thêm, In) — không đổi luồng in: In tem vẫn in cả danh sách. */
+      #root > main > section > ul.divide-y { display: none !important; }
+      #root > main > section > p.items-baseline { align-items: center; }
+      .skq-tag { display: grid; place-items: center; margin-left: auto; color: #005f41; }
+      .skq-count { display: inline-flex; align-items: center; min-height: 32px; margin-left: auto; padding: 0 12px; border-radius: 999px; background: #eef4f1; color: #17251f; font-size: 14px; font-weight: 700; white-space: nowrap; }
+      .skq-open { display: none; place-items: center; width: 40px; height: 40px; margin: 0 -8px 0 0; padding: 0; border: 0; border-radius: 12px; background: transparent; color: #4f625b; cursor: pointer; }
+      :is(.skq-tag, .skq-open, .skq-list, .skq-sheet, .skq-tools, .skq-sum) svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+      .skq-list { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+      .skq-item { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto auto; align-items: center; gap: 10px; padding: 12px; border: 1px solid #e3eae6; border-radius: 14px; background: #f7faf9; }
+      .skq-check { display: grid; place-items: center; width: 40px; height: 40px; margin: -8px; cursor: pointer; }
+      .skq-check input, .skq-all input { width: 22px; height: 22px; margin: 0; accent-color: #005f41; cursor: pointer; }
+      .skq-main { min-width: 0; }
+      .skq-main b { display: block; color: #17251f; font-size: 16px; font-weight: 700; letter-spacing: .02em; }
+      .skq-main span { display: -webkit-box; overflow: hidden; color: #5c6f68; font-size: 14px; line-height: 1.35; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+      .skq-meta { display: grid; gap: 2px; color: #17251f; font-size: 14px; font-weight: 600; text-align: right; white-space: nowrap; }
+      .skq-meta span:last-child { color: #5c6f68; font-weight: 400; }
+      .skq-icon { display: grid; place-items: center; width: 40px; height: 40px; padding: 0; border: 0; border-radius: 12px; background: #fff; box-shadow: 0 1px 2px rgba(23, 37, 31, .06); cursor: pointer; }
+      .skq-icon--edit { color: #005f41; }
+      .skq-icon--del { color: #c62828; }
+      .skq-icon:focus-visible, .skq-open:focus-visible, .skq-chip:focus-visible { outline: 2px solid #005f41; outline-offset: 2px; }
+      /* Thanh đáy */
+      .skq-tools { display: flex; flex: none; align-items: center; gap: 8px; }
+      .skq-tools[hidden] { display: none; }
+      .skq-all { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 12px; border-radius: 12px; background: #f1f5f3; color: #17251f; font-size: 13px; font-weight: 600; white-space: nowrap; cursor: pointer; }
+      .skq-bulk { display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 12px; background: #fdecec; color: #c62828; cursor: pointer; }
+      .skq-bulk:disabled { opacity: .45; cursor: default; }
+      .skq-sum { flex: 1; min-width: 0; }
+      .skq-sum b { display: block; color: #17251f; font-size: 18px; font-weight: 700; }
+      .skq-sum span { display: block; color: #5c6f68; font-size: 13px; }
+      #root .fixed.inset-x-0.bottom-0 > div:first-child > div.flex-1:not(.skq-sum) { display: none; }
+      /* Tấm kéo lên (điện thoại) */
+      .skq-sheet { position: fixed; inset: auto 0 0; width: 100%; max-width: none; max-height: 88vh; margin: 0; padding: 0; border: 0; border-radius: 22px 22px 0 0; background: #fff; color: #17251f; font-family: var(--wms-font); box-shadow: 0 -12px 40px rgba(7, 27, 21, .25); }
+      .skq-sheet[open] { display: flex; flex-direction: column; }
+      .skq-sheet::backdrop { background: rgba(7, 27, 21, .45); }
+      .skq-grab { width: 44px; height: 4px; margin: 10px auto 4px; border-radius: 2px; background: #c9d4cf; }
+      .skq-sheet-head { display: flex; align-items: center; gap: 12px; padding: 6px 16px 8px; }
+      .skq-sheet-head h2 { flex: 1; margin: 0; font-size: 18px; font-weight: 700; }
+      .skq-close { display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 12px; background: transparent; color: #17251f; cursor: pointer; }
+      .skq-search { display: flex; align-items: center; gap: 10px; min-height: 48px; margin: 0 16px; padding: 0 14px; border-radius: 13px; background: #f1f5f3; color: #5c6f68; }
+      .skq-search input { flex: 1; min-width: 0; border: 0; background: transparent; color: #17251f; font: 400 16px/1.2 var(--wms-font); outline: none; }
+      .skq-chips { display: flex; gap: 8px; padding: 12px 16px 4px; overflow-x: auto; }
+      .skq-chip { flex: none; min-height: 40px; padding: 0 16px; border: 1px solid #dbe5e0; border-radius: 999px; background: #fff; color: #17251f; font: 600 14px/1 var(--wms-font); cursor: pointer; }
+      .skq-chip[aria-pressed="true"] { border-color: #005f41; background: #005f41; color: #fff; }
+      .skq-sheet-body { flex: 1; min-height: 0; overflow-y: auto; padding: 8px 16px 12px; }
+      .skq-sheet .skq-item { grid-template-columns: auto minmax(0, 1fr) auto; background: #fff; }
+      .skq-pills { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+      .skq-pill { display: inline-flex; align-items: center; min-height: 26px; padding: 0 10px; border-radius: 999px; font-size: 13px; font-weight: 600; }
+      .skq-pill--qty { background: #e2f4ea; color: #0d6b45; }
+      .skq-pill--copies { background: #e6eefb; color: #1f4f9e; }
+      .skq-go { display: grid; place-items: center; width: 40px; height: 40px; padding: 0; border: 0; border-radius: 12px; background: transparent; color: #4f625b; cursor: pointer; }
+      .skq-empty { margin: 24px 0; color: #5c6f68; font-size: 14px; text-align: center; }
+      .skq-sheet-foot { display: flex; align-items: center; gap: 10px; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); border-top: 1px solid #e3eae6; }
+      .skq-print { display: inline-flex; flex: none; align-items: center; gap: 8px; min-height: 52px; padding: 0 22px; border: 0; border-radius: 14px; background: #005f41; color: #fff; font: 700 16px/1 var(--wms-font); cursor: pointer; }
+      .skq-print:disabled { opacity: .45; cursor: default; }
+      @media (max-width: 1023px) {
+        .skq-open { display: grid; }
+      }
+      @media (max-width: 420px) {
+        .skq-item { grid-template-columns: auto minmax(0, 1fr) auto auto; }
+        .skq-item .skq-meta { grid-column: 2; grid-row: 2; display: flex; gap: 10px; text-align: left; }
+        .skq-all span { display: none; }
+      }
+    </style>
+    <script id="sku-queue-ui-script">
+      (() => {
+        const root = document.getElementById("root");
+        if (!root) return;
+        const SV = body => `<svg viewBox="0 0 24 24" aria-hidden="true">${body}</svg>`;
+        const I = {
+          tag: SV('<path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5" fill="currentColor"/>'),
+          chevron: SV('<path d="m9 18 6-6-6-6"/>'),
+          edit: SV('<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/>'),
+          trash: SV('<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><path d="M10 11v6"/><path d="M14 11v6"/>'),
+          close: SV('<path d="M18 6 6 18"/><path d="m6 6 12 12"/>'),
+          search: SV('<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>'),
+          print: SV('<path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6"/><rect x="6" y="14" width="12" height="8" rx="1"/>')
+        };
+        const esc = value => String(value).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+        const fold = value => String(value).normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/đ/gi, "d").toLowerCase();
+        const text = (node, selector) => node.querySelector(selector)?.textContent.trim() || "";
+        let items = [], picked = [], shape = null, filter = "all", query = "";
+
+        // Đọc danh sách của React: SKU, tên, số bản ("N tem"), số lượng in lên tem (chip), nút Bỏ
+        const reactList = () => [...root.querySelectorAll("main > section > ul.divide-y")][0] || null;
+        const readItems = () => {
+          const ul = reactList();
+          return ul ? [...ul.children].map(li => ({
+            sku: text(li, ".font-extrabold"), name: text(li, ".line-clamp-2"),
+            copies: parseInt(text(li, ".text-xs > span.so:not(.rounded-full)"), 10) || 1,
+            qty: text(li, ".text-xs > .rounded-full"), remove: li.querySelector('button[aria-label^="Bỏ"]')
+          })) : [];
+        };
+        const sig = item => `${item.sku}|${item.name}|${item.qty}|${item.copies}`;
+        const copiesOf = list => list.reduce((sum, item) => sum + item.copies, 0);
+        const chosen = () => items.filter((_, index) => picked[index]);
+
+        const row = (item, index, sheet) => `<li class="skq-item" data-i="${index}">
+            <label class="skq-check"><input type="checkbox" data-pick="${index}" ${picked[index] ? "checked" : ""} aria-label="Chọn ${esc(item.sku)}"></label>
+            <div class="skq-main"><b>${esc(item.sku)}</b><span>${esc(item.name)}</span>${sheet ? `<div class="skq-pills">${item.qty ? `<span class="skq-pill skq-pill--qty">${esc(item.qty)}</span>` : ""}<span class="skq-pill skq-pill--copies">${item.copies} bản</span></div>` : ""}</div>
+            ${sheet ? `<button type="button" class="skq-go" data-edit="${index}" aria-label="Sửa ${esc(item.sku)}">${I.chevron}</button>`
+              : `<div class="skq-meta">${item.qty ? `<span>${esc(item.qty)}</span>` : ""}<span>${item.copies} bản</span></div>
+            <button type="button" class="skq-icon skq-icon--edit" data-edit="${index}" aria-label="Sửa ${esc(item.sku)}">${I.edit}</button>
+            <button type="button" class="skq-icon skq-icon--del" data-del="${index}" aria-label="Xoá ${esc(item.sku)}">${I.trash}</button>`}
+          </li>`;
+
+        // Tấm kéo lên (điện thoại)
+        const sheet = document.createElement("dialog");
+        sheet.className = "skq-sheet";
+        sheet.setAttribute("aria-labelledby", "skq-sheet-title");
+        sheet.innerHTML = `<div class="skq-grab" aria-hidden="true"></div>
+          <div class="skq-sheet-head"><h2 id="skq-sheet-title"></h2><button type="button" class="skq-close" aria-label="Đóng">${I.close}</button></div>
+          <label class="skq-search">${I.search}<input type="search" placeholder="SKU, tên hàng" aria-label="Tìm SKU hoặc tên hàng"></label>
+          <div class="skq-chips" role="group" aria-label="Lọc"><button type="button" class="skq-chip" data-filter="all"></button><button type="button" class="skq-chip" data-filter="on"></button><button type="button" class="skq-chip" data-filter="off"></button></div>
+          <div class="skq-sheet-body"><ul class="skq-list"></ul></div>
+          <div class="skq-sheet-foot"><div class="skq-tools"><label class="skq-all"><input type="checkbox" aria-label="Chọn tất cả"><span>Chọn tất cả</span></label><button type="button" class="skq-bulk" aria-label="Xoá tem đã chọn">${I.trash}</button></div><div class="skq-sum"><b></b><span></span></div><button type="button" class="skq-print">${I.print}<span>In tem</span></button></div>`;
+        document.body.append(sheet);
+        const search = sheet.querySelector(".skq-search input");
+
+        const paintTools = scope => {
+          const all = scope.querySelector(".skq-all input"), bulk = scope.querySelector(".skq-bulk"), n = chosen().length;
+          if (all) { all.checked = items.length > 0 && n === items.length; all.indeterminate = n > 0 && n < items.length; }
+          if (bulk) bulk.disabled = n === 0;
+          const sum = scope.querySelector(".skq-sum");
+          if (sum) { sum.querySelector("b").textContent = `${items.length} tem`; sum.querySelector("span").textContent = items.length ? `Tổng ${copiesOf(items)} bản in` : ""; }
+        };
+        const paintSheet = () => {
+          if (!sheet.open) return;
+          const on = chosen().length;
+          sheet.querySelector("h2").textContent = `Danh sách chờ in (${items.length} tem)`;
+          const labels = { all: `Tất cả (${items.length})`, on: `Đã chọn (${on})`, off: `Chưa chọn (${items.length - on})` };
+          sheet.querySelectorAll(".skq-chip").forEach(chip => { chip.textContent = labels[chip.dataset.filter]; chip.setAttribute("aria-pressed", String(chip.dataset.filter === filter)); });
+          const q = fold(query.trim());
+          const shown = items.map((item, index) => [item, index]).filter(([item, index]) => (filter === "all" || (filter === "on") === Boolean(picked[index])) && (!q || fold(item.sku + " " + item.name).includes(q)));
+          sheet.querySelector(".skq-list").innerHTML = shown.length ? shown.map(([item, index]) => row(item, index, true)).join("") : `<li class="skq-empty">Không có tem phù hợp</li>`;
+          sheet.querySelector(".skq-print").disabled = !items.length;
+          paintTools(sheet);
+        };
+        const paint = () => {
+          const sections = root.querySelectorAll("main > section");
+          const form = sections[0], list = [...sections].find(section => /Danh sách chờ in/.test(section.querySelector("p.items-baseline")?.textContent || ""));
+          // Thẻ 1: tên theo mẫu + icon nhãn (ô SKU giữ gợi ý ngắn "SKU" theo chuẩn không câu hướng dẫn)
+          const formTitle = form?.querySelector("p.items-baseline");
+          if (formTitle && !formTitle.querySelector(".skq-tag")) {
+            const label = formTitle.querySelector("span");
+            if (label && label.textContent.trim() === "Nhập tem") label.textContent = "Nhập thông tin tem";
+            formTitle.insertAdjacentHTML("beforeend", `<span class="skq-tag" aria-hidden="true">${I.tag}</span>`);
+          }
+          // Thẻ 2: số tem + mở tấm kéo lên; danh sách mới thay danh sách React (đã ẩn)
+          const head = list?.querySelector("p.items-baseline");
+          if (head) {
+            if (!head.querySelector(".skq-count")) head.insertAdjacentHTML("beforeend", `<span class="skq-count"></span><button type="button" class="skq-open" aria-label="Mở danh sách chờ in">${I.chevron}</button>`);
+            head.querySelector(".skq-count").textContent = `${items.length} tem`;
+            head.querySelector(".skq-count").hidden = !items.length;
+            head.querySelector(".skq-open").hidden = !items.length;
+            let mine = list.querySelector(":scope > .skq-list");
+            if (items.length) {
+              if (!mine) { mine = document.createElement("ul"); mine.className = "skq-list"; (reactList() || head).after(mine); }
+              mine.innerHTML = items.map((item, index) => row(item, index, false)).join("");
+            } else if (mine) mine.remove();
+          }
+          // Thanh đáy: Chọn tất cả + xoá tem đã chọn + tổng
+          const bar = root.querySelector(".fixed.inset-x-0.bottom-0 > div:first-child");
+          if (bar) {
+            if (!bar.querySelector(".skq-tools")) bar.insertAdjacentHTML("afterbegin", `<div class="skq-tools"><label class="skq-all"><input type="checkbox" aria-label="Chọn tất cả"><span>Chọn tất cả</span></label><button type="button" class="skq-bulk" aria-label="Xoá tem đã chọn">${I.trash}</button></div><div class="skq-sum"><b></b><span></span></div>`);
+            bar.querySelector(".skq-tools").hidden = !items.length;
+            paintTools(bar);
+          }
+          paintSheet();
+        };
+        const sync = () => {
+          if (!/^#worker\b/.test(location.hash) && !root.querySelector("#f-sku")) return;
+          const next = readItems();
+          const nextShape = next.map(sig).join("\n");
+          if (nextShape !== shape) {
+            // Giữ trạng thái chọn theo tem (cùng nội dung), tem mới thêm mặc định đã chọn
+            const kept = new Map();
+            items.forEach((item, index) => { const key = sig(item); kept.set(key, [...(kept.get(key) || []), picked[index]]); });
+            picked = next.map(item => { const list = kept.get(sig(item)); return list && list.length ? list.shift() : true; });
+            items = next; shape = nextShape;
+          } else items = next;
+          paint();
+        };
+
+        const setValue = (input, value) => {
+          Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(input, value);
+          input.dispatchEvent(new Event("input", { bubbles: true }));
+        };
+        const frame = () => new Promise(resolve => requestAnimationFrame(() => setTimeout(resolve, 0)));
+        // Sửa: đưa tem về ô nhập (SKU, tên, số lượng, số bản) rồi bỏ khỏi danh sách; bấm Thêm vào danh sách để đưa lại
+        const edit = async index => {
+          const item = items[index];
+          if (!item) return;
+          if (sheet.open) sheet.close();
+          item.remove?.click();
+          const sku = document.getElementById("f-sku"), name = document.getElementById("f-pn"), qty = document.getElementById("f-sl"), copies = document.getElementById("f-ban");
+          if (!sku) return;
+          setValue(sku, item.sku);
+          // Ô SKU tự tra danh mục (trễ theo mạng) rồi có thể xoá/ghi đè tên, số lượng: điền lại tới khi các ô giữ nguyên 1 giây (tối đa 5 giây)
+          const want = [[name, item.name], [qty, item.qty], [copies, String(item.copies)]].filter(([input]) => input);
+          // Người dùng bấm/gõ vào ô nhập trong lúc này thì dừng điền lại (người dùng tự sửa)
+          let steady = 0, takeover = false;
+          const stop = event => { if (event.isTrusted && event.target.closest?.("main > section")) takeover = true; };
+          root.addEventListener("pointerdown", stop, true); root.addEventListener("keydown", stop, true);
+          root.dataset.skqEditing = "1";
+          for (let waited = 0; waited < 5000 && steady < 1000 && !takeover; waited += 150) {
+            if (want.every(([input, value]) => input.value === value)) steady += 150;
+            else { steady = 0; want.forEach(([input, value]) => { if (input.value !== value) setValue(input, value); }); }
+            await new Promise(resolve => setTimeout(resolve, 150));
+          }
+          root.removeEventListener("pointerdown", stop, true); root.removeEventListener("keydown", stop, true);
+          delete root.dataset.skqEditing;
+          sku.scrollIntoView({ block: "center", behavior: "smooth" });
+          sku.focus({ preventScroll: true });
+        };
+        const removeChosen = async () => {
+          const targets = chosen().map(sig);
+          if (!targets.length) return;
+          const ok = window.WhDialog?.confirm ? await window.WhDialog.confirm({ tone: "warning", title: `Xoá ${targets.length} tem đã chọn`, facts: [`${targets.length} tem`, `${copiesOf(chosen())} bản in`], confirmText: "Xoá" }) : confirm(`Xoá ${targets.length} tem đã chọn?`);
+          if (!ok) return;
+          for (const key of targets) {
+            const item = readItems().find(entry => sig(entry) === key);
+            item?.remove?.click();
+            await frame();
+          }
+        };
+        const pickAll = value => { picked = items.map(() => value); paint(); };
+
+        const onClick = async event => {
+          const target = event.target;
+          const del = target.closest("[data-del]"), editButton = target.closest("[data-edit]");
+          if (del) { items[Number(del.dataset.del)]?.remove?.click(); return; }
+          if (editButton) { edit(Number(editButton.dataset.edit)); return; }
+          if (target.closest(".skq-bulk")) { removeChosen(); return; }
+          if (target.closest(".skq-open")) { filter = "all"; query = ""; search.value = ""; sheet.showModal(); paintSheet(); return; }
+        };
+        const onChange = event => {
+          const target = event.target;
+          if (target.matches("[data-pick]")) { picked[Number(target.dataset.pick)] = target.checked; paint(); }
+          else if (target.closest(".skq-all")) pickAll(target.checked);
+        };
+        root.addEventListener("click", onClick);
+        root.addEventListener("change", onChange);
+        sheet.addEventListener("click", event => {
+          if (event.target === sheet || event.target.closest(".skq-close")) { sheet.close(); return; }
+          const chip = event.target.closest(".skq-chip");
+          if (chip) { filter = chip.dataset.filter; paintSheet(); return; }
+          if (event.target.closest(".skq-print")) { sheet.close(); root.querySelector("button.act-icon--print")?.click(); return; }
+          onClick(event);
+        });
+        sheet.addEventListener("change", onChange);
+        search.addEventListener("input", () => { query = search.value; paintSheet(); });
+
+        let pending = 0;
+        new MutationObserver(mutations => {
+          if (mutations.every(m => m.target.closest?.(".skq-list, .skq-tools, .skq-sum, .skq-count, .skq-open, .skq-tag"))) return;
+          cancelAnimationFrame(pending); pending = requestAnimationFrame(sync);
+        }).observe(root, { childList: true, subtree: true, characterData: true });
+        addEventListener("hashchange", () => { if (sheet.open && !/^#worker\b/.test(location.hash)) sheet.close(); setTimeout(sync, 0); });
+        sync();
+      })();
+    </script>
   </body>
 </html>
