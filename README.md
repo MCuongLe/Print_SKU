@@ -138,6 +138,19 @@ Giao diện hai màn đồng bộ (`#admin/sku-sync`, `#admin/group-uid-sync`, 0
 - Group UID có cột **Kho** (sắp xếp được) và bộ lọc **Kho** chọn nhiều có ô tìm và số đếm theo các bộ lọc đang bật; kết hợp với bộ lọc trường theo kiểu "và" (chip "Đổi kho" là UID bị chuyển kho). Ô tìm và CSV có cả kho; UID bị chuyển kho hiện kho mới kèm "từ kho cũ". Danh sách chọn dùng chung trong `AdminSyncUI.createList` (tùy chọn `facets`).
 - Giao diện điện thoại của màn Admin không được thiết kế lại (chỉ đảm bảo không tràn ngang). Test: `tests/group_uid_sync_admin_browser.cjs`, `tests/sku_sync_admin_browser.cjs`.
 
+## Thiết bị in — kích hoạt máy bằng mã chung
+
+Từ 10/10/2026 (`supabase/print_devices_v1.sql`), máy chủ chỉ nhận lệnh in từ máy đã kích hoạt. Mỗi máy kích hoạt một lần bằng mã chung do Admin tạo, đổi lấy khoá riêng lưu trong trình duyệt (`localStorage` khoá `tb-khoa`). Agent máy trạm không liên quan, vẫn dùng token agent riêng.
+
+Triển khai:
+
+1. Chạy migration: `python scripts/apply_supabase_sql.py supabase/print_devices_v1.sql`. Migration chèn khoá chuyển tiếp `legacy-public` nên máy chưa kích hoạt vẫn in được như cũ.
+2. Admin vào **Quản trị → Thiết bị in** (`#admin/thiet-bi`), bấm **Tạo mã kích hoạt**. Mã dạng `XXXX-XXXX`, hiệu lực 30 phút, dùng được cho nhiều máy trong thời gian đó, chỉ hiện rõ một lần.
+3. Trên từng máy, mở trang chủ, bấm ô **KÍCH HOẠT MÁY** (chỉ hiện khi máy chưa có khoá), nhập mã và tên máy. Ô biến mất là xong. Máy bị máy chủ từ chối cũng tự mở hộp này.
+4. Khi mọi máy đã có trong danh sách, tắt **Khoá chung cũ** trong màn Thiết bị in. Từ đó chỉ máy đã kích hoạt mới in được; bật lại được bất cứ lúc nào.
+
+Trong màn Thiết bị in còn có: tắt/bật và đổi tên từng máy, số lệnh in theo máy (`print_jobs.device_id`), thu hồi mã trước hạn. Nhập sai mã quá 30 lần trong một phút thì máy chủ tạm khoá việc kích hoạt một phút. Mất khoá (xoá dữ liệu trình duyệt, đổi máy) thì kích hoạt lại bằng mã mới.
+
 ## Màn Sample — gom hàng mẫu vào bao
 
 Màn `#sample` quét mã QR SKU trên hàng mẫu, gom các mẫu cùng SKU vào một bao và báo SKU inactive.

@@ -28,8 +28,16 @@
           return result;
         };
 
-        const accessToken = () => "public";
-        try { localStorage.setItem("tb-khoa", "public"); } catch (_) {}
+        // Khoá riêng của máy (print_devices_v1, 10/10/2026): kích hoạt một lần bằng mã Admin phát, lưu ở "tb-khoa" (pd_…).
+        // Chưa kích hoạt thì gửi "public" = khoá chuyển tiếp; Admin tắt khoá đó trong màn Thiết bị in khi mọi máy đã kích hoạt.
+        const DEVICE_KEY = "tb-khoa";
+        const deviceKey = () => { try { return (localStorage.getItem(DEVICE_KEY) || "").trim(); } catch (_) { return ""; } };
+        const accessToken = () => { const key = deviceKey(); return key && key !== "public" ? key : "public"; };
+        // Máy chủ từ chối (ACCESS_DENIED) → báo cho hộp kích hoạt (print-device-script) mở lên.
+        const deniedWatch = promise => promise.then(result => {
+          if (result && result.ok === false && result.error?.code === "ACCESS_DENIED") window.dispatchEvent(new CustomEvent("print-sku-access-denied", { detail: result.error }));
+          return result;
+        });
         const nonce = () => `pr-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
         const viDate = () => new Intl.DateTimeFormat("vi-VN", { day: "2-digit", month: "2-digit", year: "2-digit" }).format(new Date());
         const printerView = agent => {
@@ -50,7 +58,7 @@
           headers: { "Content-Type": "application/json; charset=utf-8" }
         });
 
-        const enqueue = async ({ type, payload, copies, requestedBy, requestNonce, templateVersion = 1 }) => rpc("print_enqueue", {
+        const enqueue = async ({ type, payload, copies, requestedBy, requestNonce, templateVersion = 1 }) => deniedWatch(rpc("print_enqueue", {
           p_access_token: accessToken(),
           p_nonce: requestNonce || nonce(),
           p_type: type,
@@ -58,9 +66,9 @@
           p_payload: payload,
           p_copies: copies,
           p_requested_by: requestedBy || ""
-        });
-        const jobStatus = id => rpc("print_job_status", { p_access_token: accessToken(), p_job_id: id });
-        const queueStatus = () => rpc("print_queue_status", { p_access_token: accessToken() });
+        }));
+        const jobStatus = id => deniedWatch(rpc("print_job_status", { p_access_token: accessToken(), p_job_id: id }));
+        const queueStatus = () => deniedWatch(rpc("print_queue_status", { p_access_token: accessToken() }));
 
         // Tem Group UID in LOT (trái, x=12) và ROLL (canh phải, x=308) cùng một hàng
         // cỡ 24 ở đáy tem (workstation-agent/src/templates/group-uid-label.mjs). Đo
@@ -98,7 +106,7 @@
           });
         };
 
-        window.PrintSkuQueue = { enqueue, jobStatus, queueStatus, accessToken, supabaseUrl: SUPABASE_URL, publishableKey: SUPABASE_KEY, lotRollOverlaps, confirmLotRoll, labelRoll };
+        window.PrintSkuQueue = { enqueue, jobStatus, queueStatus, accessToken, deviceKey, supabaseUrl: SUPABASE_URL, publishableKey: SUPABASE_KEY, lotRollOverlaps, confirmLotRoll, labelRoll };
 
         // Hỏi lại tiện ích trước mỗi lệnh gửi qua cầu nối extension (Đồng bộ SKU, Group UID, Kiểm kê, Đối chiếu ADJ).
         // Extension vừa Reload/cập nhật mà trang chưa tải lại thì cầu nối trong tab này mồ côi: lệnh im lặng tới hết hạn chờ
@@ -1015,6 +1023,114 @@ Error generating stack: `+y.message+`
           return result;
         };
         window.WhDialog = { confirm: confirmDialog };
+      })();
+    </script>
+    <style id="print-device-style">
+      /* Kích hoạt máy in (hướng C, 10/10/2026): hộp nhập mã chung + tên máy; ô KÍCH HOẠT MÁY ở trang chủ chỉ hiện khi máy chưa có khoá riêng. */
+      dialog.pdv{width:min(420px,calc(100% - 32px));margin:auto;padding:22px 20px 18px;border:0;border-radius:20px;background:#fff;color:#17251f;font-family:var(--wms-font,Arial,Helvetica,sans-serif);box-shadow:0 24px 60px rgba(13,40,30,.28)}
+      dialog.pdv::backdrop{background:rgba(10,30,22,.45)}
+      .pdv__head{display:flex;align-items:center;gap:12px;margin-bottom:6px}
+      .pdv__icon{display:grid;flex:none;place-items:center;width:42px;height:42px;border-radius:12px;background:rgba(0,95,65,.1);color:#005f41}.pdv__icon svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+      .pdv__title{margin:0;font-size:18px;font-weight:700;line-height:1.3}
+      .pdv__label{display:block;margin:14px 0 6px;color:#60736b;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+      .pdv input{width:100%;min-height:52px;padding:0 14px;border:1.5px solid #d9e2de;border-radius:14px;background:#fff;color:#17251f;font:600 16px/1.2 inherit;outline:none}
+      .pdv input:focus{border-color:#005f41;box-shadow:0 0 0 3px rgba(0,95,65,.14)}
+      .pdv__code{font-size:22px!important;font-weight:800!important;letter-spacing:.14em;text-transform:uppercase;text-align:center}
+      .pdv__status{min-height:20px;margin:10px 0 0;color:#60736b;font-size:13px}.pdv__status[data-tone=error]{color:#8f2f2a;font-weight:700}.pdv__status[data-tone=ok]{color:#0f6a49;font-weight:700}
+      .pdv__actions{display:flex;gap:10px;margin-top:16px}
+      .pdv__btn{flex:1;min-height:48px;border:1.5px solid #d9e2de;border-radius:14px;background:#fff;color:#17251f;font:700 15px inherit;cursor:pointer}
+      .pdv__btn--ok{border-color:#005f41;background:#005f41;color:#fff}.pdv__btn:disabled{opacity:.55;cursor:not-allowed}
+      .barcode-choice[hidden]{display:none}
+      @media(max-width:767px){dialog.pdv{width:100%;max-width:none;margin:auto 0 0;border-radius:20px 20px 0 0}}
+    </style>
+    <script id="print-device-script">
+      (() => {
+        // Khoá riêng của máy lưu ở "tb-khoa" (dạng pd_…); "public" hoặc trống = chưa kích hoạt (khoá chuyển tiếp, Admin tắt được).
+        const KEY = "tb-khoa", NAME_KEY = "nds-ten-may";
+        const read = k => { try { return (localStorage.getItem(k) || "").trim(); } catch (_) { return ""; } };
+        const write = (k, v) => { try { localStorage.setItem(k, v); } catch (_) {} };
+        const key = () => read(KEY);
+        const activated = () => /^pd_[0-9a-f]{48}$/.test(key());
+        const ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/></svg>';
+        let dialog = null, lastPrompt = 0;
+        const say = (text, tone = "") => { const s = dialog.querySelector("#pdv-status"); s.textContent = text; s.dataset.tone = tone; };
+        const build = () => {
+          if (dialog) return dialog;
+          dialog = document.createElement("dialog");
+          dialog.className = "pdv"; dialog.id = "pdv-dialog"; dialog.setAttribute("aria-labelledby", "pdv-title");
+          dialog.innerHTML = `<form method="dialog" novalidate>
+            <div class="pdv__head"><span class="pdv__icon">${ICON}</span><h2 class="pdv__title" id="pdv-title">Kích hoạt máy in</h2></div>
+            <label class="pdv__label" for="pdv-code">Mã kích hoạt</label>
+            <input id="pdv-code" class="pdv__code" type="text" inputmode="latin" autocomplete="one-time-code" autocapitalize="characters" spellcheck="false" maxlength="9" placeholder="XXXX-XXXX">
+            <label class="pdv__label" for="pdv-name">Tên máy</label>
+            <input id="pdv-name" type="text" autocomplete="off" maxlength="60" placeholder="Máy kho 02">
+            <p class="pdv__status" id="pdv-status" aria-live="polite"></p>
+            <div class="pdv__actions"><button type="button" class="pdv__btn" id="pdv-cancel">Huỷ</button><button type="submit" class="pdv__btn pdv__btn--ok" id="pdv-ok">Kích hoạt</button></div>
+          </form>`;
+          document.body.append(dialog);
+          const form = dialog.querySelector("form"), code = dialog.querySelector("#pdv-code"), name = dialog.querySelector("#pdv-name"), ok = dialog.querySelector("#pdv-ok");
+          code.addEventListener("input", () => { const v = code.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8); code.value = v.length > 4 ? `${v.slice(0, 4)}-${v.slice(4)}` : v; });
+          dialog.querySelector("#pdv-cancel").onclick = () => dialog.close();
+          dialog.addEventListener("click", e => { if (e.target === dialog) dialog.close(); });
+          form.onsubmit = async e => {
+            e.preventDefault();
+            const c = code.value.replace(/[^A-Z0-9]/g, ""), n = name.value.replace(/\s+/g, " ").trim();
+            if (c.length !== 8) { say("Mã kích hoạt gồm 8 ký tự", "error"); code.focus(); return; }
+            if (!n) { say("Nhập tên máy", "error"); name.focus(); return; }
+            ok.disabled = true; say("Đang kích hoạt…");
+            try { const r = await activate(c, n); say(`Đã kích hoạt: ${r.device?.name || n}`, "ok"); setTimeout(() => dialog.close(), 900); }
+            catch (error) { say(error.message || "Không kích hoạt được", "error"); }
+            finally { ok.disabled = false; }
+          };
+          return dialog;
+        };
+        async function activate(codeValue, nameValue) {
+          const q = window.PrintSkuQueue;
+          const response = await fetch(`${q.supabaseUrl}/rest/v1/rpc/print_device_activate`, {
+            method: "POST",
+            headers: { apikey: q.publishableKey, Authorization: `Bearer ${q.publishableKey}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ p_code: codeValue, p_name: nameValue, p_user_agent: String(navigator.userAgent || "").slice(0, 200) }),
+            signal: AbortSignal.timeout(15000)
+          });
+          const body = await response.json().catch(() => null);
+          if (!response.ok || !body) throw new Error(body?.message || `Supabase HTTP ${response.status}`);
+          if (!body.ok) throw Object.assign(new Error(body.error?.message || "Không kích hoạt được"), { code: body.error?.code });
+          write(KEY, String(body.data.token || ""));
+          write(NAME_KEY, String(body.data.device?.name || nameValue).replace(/\s+/g, " ").trim().slice(0, 24));
+          card();
+          window.dispatchEvent(new CustomEvent("print-sku-device-activated", { detail: body.data.device }));
+          return body.data;
+        }
+        function open(reason = "") {
+          const d = build();
+          d.querySelector("#pdv-name").value = read(NAME_KEY) || "";
+          d.querySelector("#pdv-code").value = "";
+          say(reason, reason ? "error" : "");
+          if (!d.open) d.showModal();
+          setTimeout(() => d.querySelector("#pdv-code").focus(), 30);
+        }
+        // Ô KÍCH HOẠT MÁY trong nhóm Quản trị ở trang chủ: chép ô QUẢN TRỊ, đổi icon và nhãn; ẩn khi máy đã có khoá riêng.
+        function card() {
+          const admin = document.getElementById("barcode-admin");
+          if (!admin) return;
+          let b = document.getElementById("barcode-activate");
+          if (!b) {
+            b = admin.cloneNode(true); b.id = "barcode-activate"; b.removeAttribute("aria-current");
+            const svg = b.querySelector("svg"); if (svg) svg.outerHTML = ICON;
+            const walker = document.createTreeWalker(b, NodeFilter.SHOW_TEXT);
+            for (let t; (t = walker.nextNode());) if (t.textContent.trim()) { t.textContent = "KÍCH HOẠT MÁY"; break; }
+            b.onclick = () => open();
+            admin.before(b);
+          }
+          b.hidden = activated();
+        }
+        window.addEventListener("print-sku-access-denied", () => {
+          if (Date.now() - lastPrompt < 60000 || (dialog && dialog.open)) return;
+          lastPrompt = Date.now();
+          open("Máy này chưa được kích hoạt in");
+        });
+        window.PrintSkuDevice = { key, activated, open, activate, name: () => read(NAME_KEY) };
+        if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", card); else card();
       })();
     </script>
   </head>
@@ -9783,7 +9899,7 @@ var FSK_CORE = (function () {
       // máy chủ tự dựng lệnh mới từ lệnh gốc, trình duyệt chỉ gửi số thứ tự dòng.
       (()=>{
         const $=id=>document.getElementById(id),screen=$("print-jobs-screen"),root=$("root"),dialog=$("pj-dialog");
-        const ROUTE="#admin/lenh-in",OTHER=new Set(["#admin/sku-sync","#admin/group-uid-sync","#admin/kiem-ke"]),KNOWN=new Set([ROUTE,"#admin/cauhinh",...OTHER]);
+        const ROUTE="#admin/lenh-in",OTHER=new Set(["#admin/sku-sync","#admin/group-uid-sync","#admin/kiem-ke","#admin/thiet-bi"]),KNOWN=new Set([ROUTE,"#admin/cauhinh",...OTHER]);
         const API=window.PrintSkuQueue?.supabaseUrl||"https://ikzhitdqkoatlmkrxuuh.supabase.co",KEY=window.PrintSkuQueue?.publishableKey||"sb_publishable_mBl--Ep5nNxuC4Xvyi1gfg_SLGEcRhI";
         const TYPE={sku:"SKU",group_uid:"UID",location:"Vị trí",fabric_relaxation:"Fabric"},STATUS={queued:"Chờ",printing:"Đang in",completed:"Xong",failed:"Lỗi",cancelled:"Huỷ"};
         const SOURCE={"web-find-sku":"TÌM SKU","web-group-uid":"PRINT UID","web-cut-group-uid":"Cắt UID","web-location":"Mã vị trí"},FINAL=new Set(["completed","failed","cancelled"]);
@@ -10422,6 +10538,147 @@ async function rpc(name,args,retry=true){
       })();
     </script>
     
+    <style id="print-devices-admin-style">
+      /* Admin · Thiết bị in (hướng C, 10/10/2026): mã kích hoạt chung 30 phút, danh sách máy đã kích hoạt, khoá chung cũ. Chỉ desktop. */
+      .pdm-code{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:14px;margin-top:14px;padding:16px 18px;border:1px solid #bfe0d2;border-radius:16px;background:#f1faf6}
+      .pdm-code[hidden]{display:none}.pdm-code b{display:block;color:#005f41;font-size:32px;font-weight:800;letter-spacing:.16em;line-height:1.1}.pdm-code small{display:block;margin-top:6px;color:#60736b;font-size:12px}
+      .pdm-legacy{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin-top:14px;padding:14px 16px;border:1px solid #e3b64d;border-radius:14px;background:#fffaeb}
+      .pdm-legacy[hidden]{display:none}.pdm-legacy[data-off=true]{border-color:#dce7e3;background:#f6f8f7}.pdm-legacy strong{display:block;font-size:14px}.pdm-legacy span{color:#60736b;font-size:12px}
+      .pdm-switch{display:inline-flex;align-items:center;gap:8px;min-height:38px;padding:0 14px;border:1px solid #d9e2de;border-radius:999px;background:#fff;color:#4f625b;font-size:13px;font-weight:700;cursor:pointer}
+      .pdm-switch[aria-pressed=true]{border-color:#1aa774;background:#e3f5ec;color:#0f6a49}.pdm-switch:disabled{opacity:.5;cursor:not-allowed}
+      .pdm-actions{display:flex;flex-wrap:wrap;gap:6px}.pdm-actions button{min-height:36px;padding:0 12px;border:1px solid #d9e2de;border-radius:10px;background:#fff;color:#17251f;font-size:12px;font-weight:700;cursor:pointer}
+      .pdm-actions button[data-tone=bad]{color:#8f2f2a}.pdm-actions button:disabled{opacity:.5;cursor:not-allowed}
+      .pdm-metrics{grid-template-columns:repeat(4,minmax(0,1fr))}
+      .pdm-table td.pdm-name b{display:block;font-size:14px}.pdm-table td.pdm-name small{display:block;color:#60736b;font-size:12px;overflow-wrap:anywhere}
+      .pdm-table td.pdm-num{text-align:right;font-variant-numeric:tabular-nums}.pdm-table tr[data-off=true] td{color:#60736b}
+      .pdm-empty{padding:28px 12px;color:#60736b;text-align:center}
+      .pdm-this{display:block;margin:6px 0 0;color:#60736b;font-size:13px}
+      #print-devices-screen .ss-panel h2{margin:0 0 10px;font-size:15px}
+    </style>
+    <section class="ss-screen" id="print-devices-screen" aria-labelledby="print-devices-heading" hidden>
+      <div class="ss-shell"><aside class="ss-side"><div class="ss-brand"><b>H</b><span>WH-MATERIAL</span></div><nav class="ss-nav" aria-label="Điều hướng Quản trị">
+        <button type="button" data-admin-hash="#admin/lenh-in"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>Lệnh in</button>
+        <button type="button" data-admin-hash="#admin/sku-sync"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7h-9M17 4l3 3-3 3M4 17h9M7 14l-3 3 3 3"/></svg>Đồng bộ SKU</button>
+        <button type="button" data-admin-hash="#admin/group-uid-sync"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/><circle cx="18" cy="17" r="2"/></svg>Đồng bộ Group UID</button>
+        <button type="button" data-admin-hash="#admin/kiem-ke"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Kiểm kê SKU</button>
+        <button type="button" data-admin-hash="#admin/thiet-bi" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5"/></svg>Thiết bị in</button>
+        <button type="button" data-admin-hash="#admin/cauhinh"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1v.1h-4v-.1a1.7 1.7 0 0 0-1.1-1.6 1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.6-1.1H3v-4h.1A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1V3h4v.1a1.7 1.7 0 0 0 1.1 1.6 1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 9a1.7 1.7 0 0 0 1.6 1.1h.1v4h-.1a1.7 1.7 0 0 0-1.6 1.1z"/></svg>Cấu hình</button>
+      </nav><div class="ss-side-foot"><button type="button" data-admin-hash="#home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>Về trang chủ</button><button type="button" data-admin-logout><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>Đăng xuất</button></div></aside>
+      <div class="ss-main"><header class="ss-top"><span class="ss-top-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5"/></svg></span><div class="ss-top-title"><h1 id="print-devices-heading">Thiết bị in</h1><p class="ss-top-sub" id="pdm-top-sub">Máy đã kích hoạt</p></div><div class="ss-top-chips" id="pdm-top-chips" aria-live="polite"></div><div class="ss-top-end"><button type="button" class="pj-icon ss-top-refresh" id="pdm-top-refresh" aria-label="Tải lại" title="Tải lại"><svg class="pj-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg></button></div></header>
+      <main class="ss-content">
+        <section class="ss-hero"><div><h2>Mã kích hoạt chung · 30 phút</h2><span class="pdm-this" id="pdm-this"></span></div><div class="as-hero-actions"><button class="ss-primary" id="pdm-create" type="button"><svg class="pj-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/></svg><span>Tạo mã kích hoạt</span></button></div></section>
+        <div class="pdm-code" id="pdm-code" hidden><div><b id="pdm-code-text">XXXX-XXXX</b><small id="pdm-code-exp"></small></div><div class="pdm-actions"><button type="button" id="pdm-code-copy">Chép mã</button><button type="button" id="pdm-code-revoke" data-tone="bad">Thu hồi</button></div></div>
+        <div class="pdm-legacy" id="pdm-legacy" hidden><div><strong>Khoá chung cũ · máy chưa kích hoạt vẫn in được</strong><span id="pdm-legacy-sub"></span></div><button type="button" class="pdm-switch" id="pdm-legacy-switch" aria-pressed="true">Đang bật</button></div>
+        <div class="ss-progress" id="pdm-progress" aria-hidden="true"><i></i></div><p class="ss-status" id="pdm-status" aria-live="polite"></p>
+        <section class="ss-metrics pdm-metrics" aria-label="Tổng quan thiết bị"><div class="ss-metric"><span data-ico="check">Máy đang bật</span><strong id="pdm-m-on">—</strong></div><div class="ss-metric"><span data-ico="ban">Máy đã tắt</span><strong id="pdm-m-off">—</strong></div><div class="ss-metric"><span data-ico="box">Lệnh in hôm nay</span><strong id="pdm-m-jobs">—</strong></div><div class="ss-metric"><span data-ico="clock">Mã đang hiệu lực</span><strong id="pdm-m-codes">—</strong></div></section>
+        <section class="ss-panel"><h2 id="pdm-list-title">Máy đã kích hoạt</h2><div class="ss-table-wrap"><table class="ss-table pdm-table"><thead><tr><th scope="col">Máy</th><th scope="col">Kích hoạt</th><th scope="col">Dùng gần nhất</th><th scope="col">In gần nhất</th><th scope="col" class="pdm-num">Lệnh in</th><th scope="col">Trạng thái</th><th scope="col"></th></tr></thead><tbody id="pdm-body"></tbody></table></div></section>
+      </main></div></div>
+      <dialog class="pdv" id="pdm-rename" aria-labelledby="pdm-rename-title"><form method="dialog" novalidate><div class="pdv__head"><h2 class="pdv__title" id="pdm-rename-title">Đổi tên máy</h2></div><label class="pdv__label" for="pdm-rename-input">Tên máy</label><input id="pdm-rename-input" type="text" maxlength="60" autocomplete="off"><p class="pdv__status" id="pdm-rename-status"></p><div class="pdv__actions"><button type="button" class="pdv__btn" id="pdm-rename-cancel">Huỷ</button><button type="submit" class="pdv__btn pdv__btn--ok" id="pdm-rename-ok">Lưu</button></div></form></dialog>
+    </section>
+    <script id="print-devices-admin-script">
+      (() => {
+        const ROUTE="#admin/thiet-bi",$=id=>document.getElementById(id),screen=$("print-devices-screen"),root=$("root");
+        const UI=window.AdminSyncUI||{};
+        const esc=UI.esc||(s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])));
+        const q=window.PrintSkuQueue,API=q.supabaseUrl,KEY=q.publishableKey;
+        const num=n=>Number(n||0).toLocaleString("vi-VN");
+        const dt=v=>v?new Date(v).toLocaleString("vi-VN",{hour:"2-digit",minute:"2-digit",day:"2-digit",month:"2-digit"}):"—";
+        const rel=v=>{if(!v)return"chưa dùng";const m=Math.round((Date.now()-Date.parse(v))/60000);if(m<1)return"vừa xong";if(m<60)return`${m} phút trước`;const h=Math.round(m/60);if(h<48)return`${h} giờ trước`;return`${Math.round(h/24)} ngày trước`};
+        const say=(text,tone="")=>{const el=$("pdm-status");el.textContent=text;el.dataset.tone=tone;el.setAttribute("aria-live",tone==="error"?"assertive":"polite")};
+        const busy=on=>{$("pdm-progress").dataset.busy=String(on);$("pdm-top-refresh").disabled=on};
+        async function rpc(name,args={},retry=true){
+          const token=window.PrintSkuAdminAccess?.peekToken?.()||await window.PrintSkuAdminAuth.accessToken();
+          const response=await fetch(`${API}/rest/v1/rpc/${name}`,{method:"POST",headers:{apikey:KEY,Authorization:`Bearer ${token}`,"Content-Type":"application/json"},body:JSON.stringify(args),signal:AbortSignal.timeout(20000)});
+          if(response.status===401&&retry){await window.PrintSkuAdminAuth.accessToken();return rpc(name,args,false)}
+          const body=await response.json().catch(()=>null);
+          if(!response.ok)throw new Error(body?.message||`Supabase HTTP ${response.status}`);
+          if(!body?.ok)throw Object.assign(new Error(body?.error?.message||"Supabase từ chối yêu cầu"),{code:body?.error?.code});
+          return body.data;
+        }
+        let data=null,code=null,timer=0,seq=0;
+        const legacy=()=>(data?.legacyKeys||[]).find(k=>k.isPublic);
+        function renderCode(){
+          const box=$("pdm-code");
+          if(!code||Date.parse(code.expiresAt)<=Date.now()){box.hidden=true;return}
+          const row=(data?.codes||[]).find(c=>c.id===code.id),left=Math.max(0,Math.ceil((Date.parse(code.expiresAt)-Date.now())/60000));
+          box.hidden=false;$("pdm-code-text").textContent=code.code;
+          $("pdm-code-exp").textContent=`Hiệu lực tới ${dt(code.expiresAt)} · còn ${num(left)} phút · đã kích hoạt ${num(row?.useCount||0)} máy`;
+        }
+        function render(){
+          const devices=data?.devices||[],on=devices.filter(d=>d.enabled),off=devices.filter(d=>!d.enabled),codes=(data?.codes||[]).filter(c=>c.active),jobs=devices.reduce((n,d)=>n+Number(d.jobsToday||0),0),lk=legacy();
+          $("pdm-m-on").textContent=num(on.length);$("pdm-m-off").textContent=num(off.length);$("pdm-m-jobs").textContent=num(jobs);$("pdm-m-codes").textContent=num(codes.length);
+          $("pdm-top-chips").innerHTML=`<span class="as-chip" data-tone="${on.length?"new":"warn"}">${num(on.length)} máy đang bật</span>${lk?`<span class="as-chip" data-tone="${lk.enabled?"warn":"new"}">${lk.enabled?"Khoá chung đang bật":"Chỉ máy đã kích hoạt"}</span>`:""}`;
+          const legacyBox=$("pdm-legacy");legacyBox.hidden=!lk;
+          if(lk){legacyBox.dataset.off=String(!lk.enabled);$("pdm-legacy-sub").textContent=lk.enabled?"Tắt khi mọi máy đã kích hoạt: từ đó chỉ máy trong danh sách mới in được.":"Đã tắt · chỉ máy đã kích hoạt mới in được.";const sw=$("pdm-legacy-switch");sw.setAttribute("aria-pressed",String(lk.enabled));sw.textContent=lk.enabled?"Đang bật":"Đã tắt"}
+          const me=window.PrintSkuDevice;$("pdm-this").textContent=me?.activated?.()?`Máy này: ${me.name()||"đã kích hoạt"}`:"Máy này chưa kích hoạt";
+          $("pdm-body").innerHTML=devices.length?devices.map(d=>`<tr data-id="${esc(d.id)}" data-off="${!d.enabled}"><td class="pdm-name"><b>${esc(d.name)}</b><small>${esc(String(d.userAgent||"").replace(/^Mozilla\/5\.0\s*/,"").slice(0,70))}</small></td><td>${esc(dt(d.activatedAt))}</td><td>${esc(rel(d.lastSeenAt))}</td><td>${esc(rel(d.lastPrintAt))}</td><td class="pdm-num">${num(d.printCount)}${d.jobsToday?` <small>(+${num(d.jobsToday)} hôm nay)</small>`:""}</td><td><span class="ss-badge" data-status="${d.enabled?"completed":"failed"}">${d.enabled?"Đang bật":"Đã tắt"}</span></td><td><div class="pdm-actions"><button type="button" data-act="rename">Đổi tên</button><button type="button" data-act="toggle"${d.enabled?' data-tone="bad"':""}>${d.enabled?"Tắt":"Bật"}</button></div></td></tr>`).join(""):`<tr><td colspan="7" class="pdm-empty">Chưa có máy nào kích hoạt. Tạo mã rồi nhập trên từng máy.</td></tr>`;
+          $("pdm-top-sub").textContent=`${num(devices.length)} máy · cập nhật ${new Date().toLocaleTimeString("vi-VN",{hour:"2-digit",minute:"2-digit"})}`;
+          renderCode();
+        }
+        async function load(quiet=false){
+          const mine=++seq;if(!quiet)busy(true);
+          try{data=await rpc("print_devices_admin");if(mine!==seq)return;render();say("")}
+          catch(error){if(mine===seq)say(error.message||"Không tải được danh sách máy","error")}
+          finally{if(mine===seq)busy(false)}
+        }
+        async function create(){
+          const btn=$("pdm-create");btn.disabled=true;
+          try{code=await rpc("print_activation_create",{p_minutes:30,p_note:""});say("");await load(true);renderCode()}
+          catch(error){say(error.message||"Không tạo được mã","error")}
+          finally{btn.disabled=false}
+        }
+        async function revoke(){
+          if(!code)return;
+          try{await rpc("print_activation_revoke",{p_id:code.id});code=null;renderCode();say("Đã thu hồi mã","ok");load(true)}
+          catch(error){say(error.message||"Không thu hồi được","error")}
+        }
+        async function toggle(id){
+          const d=(data?.devices||[]).find(x=>x.id===id);if(!d)return;
+          if(d.enabled&&window.WhDialog&&!await window.WhDialog.confirm({tone:"warning",title:`Tắt máy ${d.name}`,facts:["Máy này sẽ không in được nữa"],confirmText:"Tắt máy",cancelText:"Huỷ"}))return;
+          try{await rpc("print_device_set_enabled",{p_id:id,p_enabled:!d.enabled});await load(true)}
+          catch(error){say(error.message||"Không đổi được trạng thái","error")}
+        }
+        async function legacyToggle(){
+          const lk=legacy();if(!lk)return;
+          if(lk.enabled&&window.WhDialog&&!await window.WhDialog.confirm({tone:"warning",title:"Tắt khoá chung cũ",facts:[`${num((data?.devices||[]).filter(d=>d.enabled).length)} máy đã kích hoạt`],list:["Máy chưa kích hoạt sẽ bị từ chối in","Bật lại được bất cứ lúc nào"],confirmText:"Tắt khoá chung",cancelText:"Huỷ"}))return;
+          const sw=$("pdm-legacy-switch");sw.disabled=true;
+          try{await rpc("print_access_key_set_enabled",{p_name:lk.name,p_enabled:!lk.enabled});await load(true)}
+          catch(error){say(error.message||"Không đổi được khoá chung","error")}
+          finally{sw.disabled=false}
+        }
+        const renameDialog=$("pdm-rename");let renameId=null;
+        function openRename(id){const d=(data?.devices||[]).find(x=>x.id===id);if(!d)return;renameId=id;$("pdm-rename-input").value=d.name;$("pdm-rename-status").textContent="";if(!renameDialog.open)renameDialog.showModal();setTimeout(()=>$("pdm-rename-input").focus(),30)}
+        renameDialog.querySelector("form").onsubmit=async e=>{e.preventDefault();const name=$("pdm-rename-input").value.replace(/\s+/g," ").trim();if(!name){$("pdm-rename-status").textContent="Nhập tên máy";return}
+          try{await rpc("print_device_rename",{p_id:renameId,p_name:name});renameDialog.close();await load(true)}catch(error){$("pdm-rename-status").textContent=error.message||"Không đổi được tên"}};
+        $("pdm-rename-cancel").onclick=()=>renameDialog.close();renameDialog.addEventListener("click",e=>{if(e.target===renameDialog)renameDialog.close()});
+        const icon=()=>'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5"/></svg>';
+        // Thêm mục "Thiết bị in" ngay trước "Cấu hình" ở thanh bên tĩnh của các màn Admin vanilla và ở thanh bên React (Cấu hình).
+        function ensureNav(){
+          document.querySelectorAll(".ss-nav").forEach(nav=>{if(nav.querySelector('[data-admin-hash="#admin/thiet-bi"]'))return;const ref=nav.querySelector('[data-admin-hash="#admin/cauhinh"]');if(!ref)return;const b=document.createElement("button");b.type="button";b.dataset.adminHash=ROUTE;b.innerHTML=`${icon()}Thiết bị in`;b.onclick=()=>location.hash=ROUTE;ref.before(b)});
+          const nav=root.querySelector("aside nav");
+          if(nav&&!nav.querySelector("[data-print-devices-nav]")){const ref=[...nav.querySelectorAll("button")].find(b=>b.textContent.trim()==="Cấu hình");if(ref){const b=document.createElement("button");b.type="button";b.dataset.printDevicesNav="true";b.className=ref.className.replace("bg-brand-light text-brand border-l-4 border-brand font-bold","text-slate-500 border-l-4 border-transparent hover:bg-slate-50");b.innerHTML=`<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5"/></svg><span class="text-sm">Thiết bị in</span>`;b.onclick=()=>location.hash=ROUTE;ref.before(b)}}
+        }
+        function stop(){clearInterval(timer);timer=0;if(renameDialog.open)renameDialog.close()}
+        async function route(){
+          ensureNav();
+          if(location.hash!==ROUTE){if(!screen.hidden){screen.hidden=true;stop()}return}
+          const token=await window.PrintSkuAdminAccess?.getToken?.();
+          if(!token||location.hash!==ROUTE)return;
+          root.hidden=true;document.querySelectorAll(".ss-screen").forEach(s=>{if(s!==screen)s.hidden=true});screen.hidden=false;
+          if(!timer)timer=setInterval(()=>{if(!screen.hidden&&document.visibilityState==="visible"){load(true);renderCode()}},20000);
+          load();
+        }
+        if(UI.hydrate)try{UI.hydrate(screen)}catch(_){}
+        screen.querySelectorAll("[data-admin-hash]").forEach(b=>b.onclick=()=>location.hash=b.dataset.adminHash);
+        $("pdm-create").onclick=create;$("pdm-code-revoke").onclick=revoke;$("pdm-top-refresh").onclick=()=>load();$("pdm-legacy-switch").onclick=legacyToggle;
+        $("pdm-code-copy").onclick=async()=>{try{await navigator.clipboard.writeText($("pdm-code-text").textContent);say("Đã chép mã","ok")}catch(_){say("Không chép được, hãy đọc mã cho nhân viên","error")}};
+        $("pdm-body").onclick=e=>{const b=e.target.closest("button[data-act]");if(!b)return;const id=b.closest("tr")?.dataset.id;if(b.dataset.act==="toggle")toggle(id);else openRename(id)};
+        new MutationObserver(ensureNav).observe(root,{childList:true,subtree:true});
+        addEventListener("hashchange",route);addEventListener("print-sku-admin-ready",route);
+        window.PrintSkuDevicesAdmin={refresh:load};
+        route();
+      })();
+    </script>
     <style id="ui-touch-text">
       /* Rà soát giao diện 10/10/2026: vùng chạm ≥ 44 px và chữ ≥ 12 px trên điện thoại, header hẹp không xuống dòng.
          Chỉ ghi đè kích thước/màu, không đổi bố cục; đặt cuối trang để thắng các khối CSS màn riêng. */
