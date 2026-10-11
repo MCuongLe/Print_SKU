@@ -10414,6 +10414,18 @@ async function rpc(name,args,retry=true){
         :is(.uid-topbar, #root header) h1[data-nav-tone="ops"]::after { color: #174c8c; }
         :is(.uid-topbar, #root header) h1[data-nav-tone="check"]::after { color: #8a5b00; }
       }
+      /* Chế độ Quản trị: ô icon 36 px (màu nhóm tím, mục đang mở ô đặc chữ trắng), không chấm/đường dọc/vạch; Trang chủ ô xanh, Đăng xuất ô xám */
+      #app-nav[data-mode="admin"] .an-list { gap: 4px; margin: 0; padding: 0; border: 0; }
+      #app-nav[data-mode="admin"] .an-item { gap: 12px; min-height: 48px; padding: 0 8px; }
+      #app-nav[data-mode="admin"] .an-item::before, #app-nav[data-mode="admin"] .an-item[aria-current="page"]::after { display: none; }
+      #app-nav .an-ico { display: grid; flex: none; place-items: center; width: 36px; height: 36px; border-radius: 11px; background: #efeafb; color: #5b3fb8; }
+      #app-nav .an-ico svg { display: block; width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+      #app-nav[data-mode="admin"] .an-item[aria-current="page"] .an-ico { background: #5b3fb8; color: #fff; }
+      #app-nav .an-back { margin-bottom: 4px; color: #17251f; }
+      #app-nav .an-back .an-ico { background: #e6f3ef; color: #005f41; }
+      #app-nav .an-foot .an-ico { background: #e7eeeb; color: #4f625b; }
+      #app-nav .an-foot .an-item { padding-left: 8px; }
+      #app-nav[data-mode="admin"] .an-back + .an-group { padding-top: 16px; border-top: 1px solid #dde7e2; }
       @media screen and (min-width: 1024px) and (prefers-reduced-motion: reduce) {
         html.app-nav-anim :is(#app-nav, #barcode-home, #uid-screen, #ins-screen, #storage-risk-screen, .cut-screen, #root, #root .fixed.inset-x-0.bottom-0, .ss-screen) { transition: none; }
       }
@@ -10432,30 +10444,45 @@ async function rpc(name,args,retry=true){
         const LABEL = { "barcode-print-sku": "In tem SKU", "barcode-print-uid": "In tem Group UID", "barcode-location": "Mã vị trí", "barcode-cut-uid": "Cắt Group UID", "barcode-uid-history": "Lịch sử Group UID", "barcode-find-sku": "Tìm SKU", "barcode-unit-converter": "Chuyển đổi đơn vị", "barcode-xa-vai": "Theo dõi xả vải", "barcode-inspection": "Kiểm tra đầu vào", "barcode-storage-risk": "Rủi ro lưu trữ", "barcode-activate": "Kích hoạt máy", "barcode-admin": "Quản trị" };
         const ROUTE = { worker: "barcode-print-sku", "group-uid": "barcode-print-uid", location: "barcode-location", "cut-group-uid": "barcode-cut-uid", "group-uid-history": "barcode-uid-history", "find-sku": "barcode-find-sku", "unit-converter": "barcode-unit-converter", "xa-vai": "barcode-xa-vai", inspection: "barcode-inspection", "storage-risk": "barcode-storage-risk" };
         const TITLE = { "uid-title": "barcode-print-uid", "loc-title": "barcode-location", "cut-title": "barcode-cut-uid", "uh-title": "barcode-uid-history", "fsk-title": "barcode-find-sku", "uc-title": "barcode-unit-converter", "xa-vai-title": "barcode-xa-vai", "ins-title": "barcode-inspection", "storage-risk-title": "barcode-storage-risk" };
-        const ADMIN = [["#admin/lenh-in", "Lệnh in"], ["#admin/sku-sync", "Đồng bộ SKU"], ["#admin/group-uid-sync", "Đồng bộ Group UID"], ["#admin/kiem-ke", "Kiểm kê SKU"], ["#admin/cauhinh", "Cấu hình"]];
+        const ADMIN = [
+          ["#admin/lenh-in", "Lệnh in", SV('<path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6"/><rect x="6" y="14" width="12" height="8" rx="1"/>')],
+          ["#admin/sku-sync", "Đồng bộ SKU", SV('<path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/>')],
+          ["#admin/group-uid-sync", "Đồng bộ Group UID", SV('<path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/>'), "Đồng bộ UID"],
+          ["#admin/kiem-ke", "Kiểm kê SKU", SV('<rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/>'), "Kiểm kê"],
+          ["#admin/cauhinh", "Cấu hình", SV('<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>')]
+        ];
+        const HOME_ICON = SV('<path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>');
         const KEY = "wh-app-nav-collapsed";
         const esc = text => String(text).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
-        const item = (attr, label, icon = "") => `<button type="button" class="an-item" ${attr} aria-label="${esc(label)}">${icon}<span>${esc(label)}</span></button>`;
+        const item = (attr, label, icon = "", short = "") => `<button type="button" class="an-item" ${attr} aria-label="${esc(label)}"${short ? ` title="${esc(label)}"` : ""}>${icon ? `<i class="an-ico" aria-hidden="true">${icon}</i>` : ""}<span>${esc(short || label)}</span></button>`;
         const group = (tone, name, items, index) => `<section class="an-group" data-tone="${esc(tone)}" role="group" aria-labelledby="an-group-${index}"><div class="an-head" id="an-group-${index}"><span>${esc(name)}</span></div><div class="an-list">${items}</div></section>`;
         const nav = document.createElement("nav");
         nav.id = "app-nav";
         nav.setAttribute("aria-label", "Chức năng");
         nav.innerHTML = `<div class="an-scroll"></div><div class="an-foot" hidden>${item("data-admin-logout", "Đăng xuất", ICON.logout)}</div>`;
         document.body.prepend(nav);
+        const backdrop = document.createElement("button");
+        backdrop.type = "button";
+        backdrop.id = "app-nav-backdrop";
+        backdrop.setAttribute("aria-label", "Đóng menu");
+        document.body.insertBefore(backdrop, nav);
         const scroll = nav.querySelector(".an-scroll"), foot = nav.querySelector(".an-foot");
         // Sự kiện print-sku-admin-ready có thể bắn trước khi script cuối body chạy (trang lớn, mạng nhanh): đọc trạng thái lúc khởi tạo
         let adminReady = Boolean(window.PrintSkuAdminAccess?.isAuthorized?.()), shape = "";
         const route = () => decodeURIComponent(location.hash.replace(/^#/, "")).split(/[?&]/)[0];
         const tiles = home => [...home.querySelectorAll(".barcode-choice")].filter(tile => !tile.hidden);
         const collapsed = () => document.documentElement.classList.contains("app-nav-collapsed");
+        const mobileNav = () => matchMedia("(max-width: 1023px)").matches;
+        const mobileOpen = () => document.documentElement.classList.contains("app-nav-mobile-open");
 
         // Nút thu gọn: một nút ở đầu thanh trên của mỗi màn (trang chủ, các module, Admin; React vẽ lại thì gắn lại)
         const paintToggle = button => {
-          const label = collapsed() ? "Mở thanh bên" : "Thu gọn thanh bên";
-          button.setAttribute("aria-expanded", String(!collapsed()));
+          const open = mobileNav() ? mobileOpen() : !collapsed();
+          const label = mobileNav() ? (open ? "Đóng menu" : "Mở menu") : (open ? "Thu gọn thanh bên" : "Mở thanh bên");
+          button.setAttribute("aria-expanded", String(open));
           button.setAttribute("aria-label", label);
           button.title = label;
-          button.innerHTML = collapsed() ? ICON.expand : ICON.collapse;
+          button.innerHTML = mobileNav() ? SV('<path d="M4 6h16M4 12h16M4 18h16"/>') : (collapsed() ? ICON.expand : ICON.collapse);
         };
         const placeToggles = () => {
           const rows = [document.querySelector("#barcode-home .barcode-home__header"), ...document.querySelectorAll(".uid-topbar__inner, .ss-screen .ss-top"), document.querySelector("#root header > div")];
@@ -10474,7 +10501,7 @@ async function rpc(name,args,retry=true){
           const current = route();
           let target = null;
           if (!current || current === "home") target = '[data-an-route="home"]';
-          else if (/^admin(?:\/|$)/.test(current)) target = adminReady ? `[data-an-hash="${ADMIN.some(([hash]) => hash === "#" + current) ? "#" + current : "#admin/lenh-in"}"]` : '[data-an-tile="barcode-admin"]';
+          else if (/^admin(?:\/|$)/.test(current)) target = `[data-an-hash="${ADMIN.some(([hash]) => hash === "#" + current) ? "#" + current : "#admin/lenh-in"}"]`;
           else if (ROUTE[current]) target = `[data-an-tile="${ROUTE[current]}"]`;
           const active = target && nav.querySelector(target);
           nav.querySelectorAll(".an-item[aria-current]").forEach(button => { if (button !== active) button.removeAttribute("aria-current"); });
@@ -10492,18 +10519,24 @@ async function rpc(name,args,retry=true){
 
         const build = () => {
           const groups = [...groupsRoot.querySelectorAll(".barcode-home__group")];
-          const next = `${adminReady}|` + groups.map(home => tiles(home).map(tile => tile.id).join(",")).join("|");
+          const adminMode = /^admin(?:\/|$)/.test(route());
+          const next = `${adminMode}|${adminReady}|` + groups.map(home => tiles(home).map(tile => tile.id).join(",")).join("|");
           if (next === shape) return markCurrent();
           shape = next;
+          nav.dataset.mode = adminMode ? "admin" : "app";
+          foot.hidden = !(adminMode && adminReady);
+          if (adminMode) {
+            scroll.innerHTML = item('data-an-route="home"', "Về trang chủ", HOME_ICON, "Trang chủ").replace('class="an-item"', 'class="an-item an-back"')
+              + group("admin", "Quản trị", ADMIN.map(([hash, label, icon, short]) => item(`data-an-hash="${hash}"`, label, icon, short)).join(""), 0);
+            return markCurrent();
+          }
           let html = group("home", "WH-MATERIAL", item('data-an-route="home"', "Trang chủ"), 0);
           groups.forEach((home, index) => {
             const tone = home.dataset.tone || "print", name = home.querySelector("h2")?.textContent.trim() || "";
-            let items = tiles(home).filter(tile => !(adminReady && tile.id === "barcode-admin")).map(tile => item(`data-an-tile="${tile.id}"`, LABEL[tile.id] || tile.textContent.trim())).join("");
-            if (tone === "admin" && adminReady) items += ADMIN.map(([hash, label]) => item(`data-an-hash="${hash}"`, label)).join("");
+            const items = tiles(home).map(tile => item(`data-an-tile="${tile.id}"`, LABEL[tile.id] || tile.textContent.trim())).join("");
             html += group(tone, name, items, index + 1);
           });
           scroll.innerHTML = html;
-          foot.hidden = !adminReady;
           markCurrent();
         };
 
@@ -10519,7 +10552,15 @@ async function rpc(name,args,retry=true){
         setCollapsed(saved, false);
 
         document.addEventListener("click", event => {
-          if (event.target.closest(".an-toggle")) setCollapsed(!collapsed(), true);
+          if (!event.target.closest(".an-toggle")) return;
+          if (mobileNav()) {
+            document.documentElement.classList.toggle("app-nav-mobile-open");
+            document.querySelectorAll(".an-toggle").forEach(paintToggle);
+          } else setCollapsed(!collapsed(), true);
+        });
+        backdrop.addEventListener("click", () => {
+          document.documentElement.classList.remove("app-nav-mobile-open");
+          document.querySelectorAll(".an-toggle").forEach(paintToggle);
         });
         nav.addEventListener("click", event => {
           const button = event.target.closest("button");
@@ -10527,6 +10568,7 @@ async function rpc(name,args,retry=true){
           if (button.dataset.anTile) document.getElementById(button.dataset.anTile)?.click();
           else if (button.dataset.anHash) location.hash = button.dataset.anHash;
           else if (button.dataset.anRoute === "home") location.hash = "#home";
+          if (mobileNav()) document.documentElement.classList.remove("app-nav-mobile-open");
         });
 
         Object.entries(TITLE).forEach(([id, tileId]) => {
@@ -10544,13 +10586,190 @@ async function rpc(name,args,retry=true){
         // Hộp đăng nhập Admin che toàn màn: thanh bên không nhận phím Tab phía sau
         new MutationObserver(() => { nav.inert = document.documentElement.classList.contains("admin-auth-lock"); })
           .observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
-        addEventListener("hashchange", () => { markCurrent(); setTimeout(markCurrent, 300); });
+        addEventListener("hashchange", () => { document.documentElement.classList.remove("app-nav-mobile-open"); build(); setTimeout(markCurrent, 300); });
+        addEventListener("resize", () => { document.documentElement.classList.remove("app-nav-mobile-open"); document.querySelectorAll(".an-toggle").forEach(paintToggle); });
         addEventListener("print-sku-admin-ready", () => { adminReady = true; build(); });
         addEventListener("print-sku-admin-logout", () => { adminReady = false; build(); });
         build();
         // Ô KÍCH HOẠT MÁY được chèn lúc DOMContentLoaded (sau script này)
         if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", build);
         setTimeout(markCurrent, 300);
+      })();
+    </script>
+    <style id="admin-command-header-b-style">
+      /* Header B · Điều hành: một hàng lệnh trên desktop, hai hàng ưu tiên trạng thái/KPI trên mobile. */
+      .ss-screen .ss-top {
+        position: sticky; top: 0; z-index: 42;
+        display: grid; grid-template-columns: auto auto minmax(150px, 1fr) auto auto auto auto;
+        grid-template-areas: "menu mark title status kpi meta action";
+        gap: 14px; min-height: 82px; padding: 10px 24px;
+        box-sizing: border-box; box-shadow: 0 5px 18px rgba(22, 58, 46, .055);
+      }
+      .ss-screen .ss-top > .an-toggle { grid-area: menu; }
+      .ss-screen .ss-top-mark { grid-area: mark; width: 48px; height: 48px; border-radius: 14px; }
+      .ss-screen .ss-top-mark svg { width: 24px; height: 24px; }
+      .ss-screen .ss-top-title { grid-area: title; align-self: center; }
+      .ss-screen .ss-top-title::before { content: "WH-MATERIAL"; display: block; margin-bottom: 2px; color: #087a5b; font-size: 10px; font-weight: 800; letter-spacing: .07em; }
+      .ss-screen .ss-top h1 { color: #132d25; font-size: clamp(17px, 1.35vw, 22px); line-height: 1.15; }
+      .ss-screen .ss-top-sub { margin: 3px 0 0; color: #667872; font-size: 12px; }
+      .ss-screen .ss-top-chips { display: none; }
+      .ss-screen .ss-top-end { display: contents; }
+      .ss-screen .ss-connection { grid-area: status; justify-self: end; min-height: 38px; padding: 0 15px; font-size: 12px; white-space: nowrap; }
+      .ss-command-kpi { grid-area: kpi; display: inline-flex; align-items: center; gap: 8px; min-height: 38px; padding: 0 15px; border-radius: 12px; background: #e9f6f1; color: #075f44; font-size: 12px; font-weight: 800; white-space: nowrap; }
+      .ss-command-kpi[data-tone="warn"] { background: #fff5df; color: #825400; }
+      .ss-command-kpi svg, .ss-command-meta svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+      .ss-command-meta { grid-area: meta; display: grid; gap: 1px; min-width: 108px; color: #687a74; font-size: 10px; line-height: 1.25; }
+      .ss-command-meta strong { max-width: 180px; overflow: hidden; color: #31483f; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+      .ss-screen .ss-top-refresh { grid-area: action; display: inline-flex; align-items: center; justify-content: center; gap: 9px; width: auto !important; min-width: 48px; height: 44px !important; padding: 0 17px !important; border: 0 !important; border-radius: 13px !important; background: #087a5b !important; box-shadow: 0 7px 16px rgba(8, 122, 91, .2); color: #fff !important; }
+      .ss-screen .ss-top-refresh::after { content: attr(aria-label); font-size: 12px; font-weight: 800; white-space: nowrap; }
+      .ss-screen .pj-top-logout { justify-self: end; }
+
+      @media (min-width: 1024px) and (max-width: 1199px) {
+        .ss-screen .ss-top { grid-template-columns: auto auto minmax(120px, 1fr) auto auto auto; grid-template-areas: "menu mark title status kpi action"; gap: 8px; padding-inline: 14px; }
+        .ss-command-meta { display: none; }
+        .ss-screen .ss-top-refresh { width: 44px !important; padding: 0 !important; }
+        .ss-screen .ss-top-refresh::after { display: none; }
+      }
+
+      /* Header Cấu hình do React dựng: cùng ngôn ngữ thị giác với bốn màn HTML. */
+      #root header.ss-command-react { position: sticky; top: 0; z-index: 42; padding: 10px 24px; background: #fff; backdrop-filter: none; box-shadow: 0 5px 18px rgba(22, 58, 46, .055); }
+      #root header.ss-command-react > div:first-child { min-height: 62px; }
+      #root header.ss-command-react .ss-top-mark { width: 48px; height: 48px; border-radius: 14px; }
+      #root header.ss-command-react .ss-top-title::before { content: "WH-MATERIAL"; display: block; color: #087a5b; font-size: 10px; font-weight: 800; letter-spacing: .07em; }
+      #root header.ss-command-react .ss-top-title h1 { color: #132d25; font-size: 22px; }
+      .ss-command-react-kpis { display: flex; align-items: center; gap: 9px; margin-left: auto; }
+      .ss-command-react-kpis .ss-command-kpi { min-height: 38px; }
+      .ss-command-react-refresh { min-height: 44px; padding: 0 17px; border: 0; border-radius: 13px; background: #087a5b; box-shadow: 0 7px 16px rgba(8, 122, 91, .2); color: #fff; font-size: 12px; font-weight: 800; cursor: pointer; }
+
+      @media (max-width: 1023px) {
+        html { --app-nav-w: 0px; }
+        #app-nav-backdrop { position: fixed; inset: 0; z-index: 998; visibility: hidden; border: 0; background: rgba(7, 27, 21, .38); opacity: 0; transition: opacity .18s ease, visibility .18s; }
+        html.app-nav-mobile-open #app-nav-backdrop { visibility: visible; opacity: 1; }
+        #app-nav { position: fixed; inset: 0 auto 0 0; z-index: 999; display: flex; width: min(84vw, 320px); border-right: 1px solid #dce7e3; background: #edf3f0; transform: translateX(-105%); transition: transform .2s ease; }
+        html.app-nav-mobile-open #app-nav { transform: translateX(0); }
+        #app-nav .an-scroll { display: flex; flex: 1; flex-direction: column; gap: 18px; min-height: 0; overflow-y: auto; padding: 24px 14px 16px; }
+        #app-nav .an-head { display: flex; align-items: center; gap: 9px; margin: 0 0 6px 4px; font-size: 14px; font-weight: 800; }
+        #app-nav .an-head::before { content: ""; width: 14px; height: 14px; border-radius: 4px; background: var(--tone, #087a5b); }
+        #app-nav .an-list { display: grid; gap: 2px; margin-left: 10px; padding-left: 12px; border-left: 2px solid #d9e4df; }
+        #app-nav .an-item { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 0 12px; border: 0; border-radius: 12px; background: transparent; color: #4f625b; font: 600 14px/1.2 var(--wms-font); text-align: left; }
+        #app-nav .an-item::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: #9db2a9; }
+        #app-nav .an-item[aria-current="page"] { background: #fff; color: #075f44; box-shadow: 0 4px 14px rgba(23, 37, 31, .08); }
+        #app-nav .an-item[aria-current="page"]::before { background: #087a5b; }
+        #app-nav .an-foot { display: block; padding: 10px 14px 20px; border-top: 1px solid #dce7e3; }
+        #app-nav .an-foot[hidden] { display: none; }
+        #app-nav .an-foot .an-item::before { display: none; }
+        :is(#root, body) .an-toggle { display: grid !important; position: relative; z-index: 69; place-items: center; width: 42px !important; height: 42px !important; min-height: 0 !important; padding: 0 !important; border: 0 !important; border-radius: 12px !important; background: #087a5b !important; box-shadow: 0 4px 12px rgba(8, 122, 91, .2) !important; color: #fff !important; }
+        :is(#root, body) .an-toggle svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+        .ss-screen .ss-side { display: none !important; }
+        .ss-screen .ss-shell { display: block; }
+        .ss-screen .ss-top {
+          grid-template-columns: auto 42px minmax(0, 1fr) auto;
+          grid-template-areas: "menu mark title status" "kpi kpi meta meta";
+          gap: 10px 11px; min-height: 112px; padding: 10px 12px;
+        }
+        .ss-screen .ss-top-mark { display: grid; width: 42px; height: 42px; border-radius: 12px; }
+        .ss-screen .ss-top-title::before { display: none; }
+        .ss-screen .ss-top h1 { overflow: hidden; font-size: 17px; text-overflow: ellipsis; white-space: nowrap; }
+        .ss-screen .ss-top-sub { display: block; overflow: hidden; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+        .ss-screen .ss-connection { min-height: 34px; max-width: 132px; padding: 0 11px; overflow: hidden; font-size: 11px; text-overflow: ellipsis; }
+        .ss-command-kpi { justify-self: start; min-height: 34px; padding: 0 12px; font-size: 11px; }
+        .ss-command-meta { justify-self: end; align-self: center; text-align: right; }
+        .ss-screen .ss-top-refresh, .ss-screen .pj-top-logout { display: none !important; }
+        .ss-screen .pj-top-home { display: none !important; }
+        #root header.ss-command-react { padding: 9px 12px; }
+        #root header.ss-command-react > div:first-child { display: grid; grid-template-columns: 42px 42px minmax(0, 1fr) auto; gap: 10px; min-height: 52px; }
+        #root header.ss-command-react .ss-top-mark { display: grid; width: 42px; height: 42px; }
+        #root header.ss-command-react .ss-top-title::before { display: none; }
+        #root header.ss-command-react .ss-top-title h1 { font-size: 18px; }
+        #root header.ss-command-react nav { display: none; }
+        .ss-command-react-kpis { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; width: 100%; margin: 0; padding-top: 8px; border-top: 1px solid #e4ece8; }
+        .ss-command-react-kpis .ss-command-kpi { justify-content: center; }
+        .ss-command-react-refresh { display: none; }
+      }
+      @media (min-width: 1024px) { #app-nav-backdrop { display: none; } }
+      @media (max-width: 430px) {
+        .ss-screen .ss-top { grid-template-columns: 42px 38px minmax(0, 1fr) auto; }
+        .ss-screen .ss-top-mark { width: 38px; height: 38px; }
+        .ss-screen .ss-connection { max-width: 110px; }
+      }
+      @media print { #app-nav, .an-toggle, .ss-command-kpi, .ss-command-meta, .ss-command-react-kpis { display: none !important; } }
+    </style>
+    <script id="admin-command-header-b-script">
+      (() => {
+        const svg = body => `<svg viewBox="0 0 24 24" aria-hidden="true">${body}</svg>`;
+        const ICON = {
+          box: svg('<path d="m21 8-9 5-9-5"/><path d="m3 8 9-5 9 5v8l-9 5-9-5z"/><path d="M12 13v8"/>'),
+          alert: svg('<path d="M10.3 2.9 1.8 17a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 2.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4M12 17h.01"/>')
+        };
+        const text = id => document.getElementById(id)?.textContent.trim() || "";
+        const number = id => text(id).replace(/[^0-9]/g, "") || "0";
+        const timeValue = ids => ids.map(text).filter(Boolean).join(" · ").replace(/^—\s*·\s*/, "") || "—";
+        const configs = [
+          { screen: "print-jobs-screen", kpi: () => document.querySelector("#pj-stat-day strong")?.textContent.trim() || "0 lệnh", tone: "", label: "Hoạt động hôm nay", meta: () => text("pj-top-sub").replace(/^Cả kho\s*·?\s*/i, "") || "Chưa cập nhật" },
+          { screen: "sku-sync-screen", kpi: () => `${number("ss-sku-added")} SKU mới`, tone: "", label: "Cập nhật gần nhất", meta: () => timeValue(["ss-last-done", "ss-last-done-rel"]) },
+          { screen: "group-uid-sync-screen", kpi: () => `${number("gu-added")} UID mới`, tone: "", label: "Thay đổi gần nhất", meta: () => timeValue(["gu-last-incremental", "gu-last-incremental-rel"]) },
+          { screen: "inventory-audit-screen", kpi: () => `${number("ia-count-action")} SKU cần kiểm kê`, tone: "warn", label: "Đọc lúc", meta: () => timeValue(["ia-read-at", "ia-read-rel"]) }
+        ];
+        let painting = false;
+        const enhanceStatic = config => {
+          const screen = document.getElementById(config.screen), header = screen?.querySelector(".ss-top");
+          if (!header) return;
+          header.dataset.commandHeader = "b";
+          if (!header.querySelector(":scope > .an-toggle")) {
+            const toggle = document.createElement("button");
+            const mobile = matchMedia("(max-width: 1023px)").matches;
+            toggle.type = "button"; toggle.className = "an-toggle"; toggle.setAttribute("aria-controls", "app-nav");
+            toggle.setAttribute("aria-expanded", String(!mobile)); toggle.setAttribute("aria-label", mobile ? "Mở menu" : "Thu gọn thanh bên");
+            toggle.title = toggle.getAttribute("aria-label");
+            toggle.innerHTML = mobile ? svg('<path d="M4 6h16M4 12h16M4 18h16"/>') : svg('<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="m16 15-3-3 3-3"/>');
+            header.prepend(toggle);
+          }
+          let kpi = header.querySelector(".ss-command-kpi");
+          if (!kpi) {
+            kpi = document.createElement("span"); kpi.className = "ss-command-kpi"; kpi.dataset.tone = config.tone;
+            const end = header.querySelector(".ss-top-end"); header.insertBefore(kpi, end);
+          }
+          const nextKpi = `${config.tone === "warn" ? ICON.alert : ICON.box}<span>${config.kpi()}</span>`;
+          if (kpi.innerHTML !== nextKpi) kpi.innerHTML = nextKpi;
+          let meta = header.querySelector(".ss-command-meta");
+          if (!meta) {
+            meta = document.createElement("span"); meta.className = "ss-command-meta";
+            const end = header.querySelector(".ss-top-end"); header.insertBefore(meta, end);
+          }
+          const nextMeta = `<span>${config.label}</span><strong>${config.meta()}</strong>`;
+          if (meta.innerHTML !== nextMeta) meta.innerHTML = nextMeta;
+        };
+        const sectionValue = heading => {
+          const h = [...document.querySelectorAll("#root h3")].find(node => node.textContent.trim() === heading);
+          if (!h) return "—";
+          const sectionText = h.parentElement?.innerText.split("\n").map(value => value.trim()).filter(Boolean) || [];
+          return sectionText.find(value => value !== heading && !/^(Đổi tên|Chép|Xoá sổ tay)$/.test(value)) || "—";
+        };
+        const enhanceReact = () => {
+          if (location.hash !== "#admin/cauhinh") return;
+          const header = document.querySelector("#root header"), row = header?.querySelector(":scope > div:first-child"), title = row?.querySelector("h1");
+          if (!header || !row || title?.textContent.trim() !== "Cấu hình") return;
+          header.classList.add("ss-command-react");
+          let kpis = row.querySelector(".ss-command-react-kpis");
+          if (!kpis) {
+            kpis = document.createElement("div"); kpis.className = "ss-command-react-kpis";
+            const status = row.lastElementChild; row.insertBefore(kpis, status);
+          }
+          const select = [...document.querySelectorAll('#root select')].find(node => node.getAttribute("aria-label") === "Mẫu tem");
+          const template = select?.selectedOptions?.[0]?.textContent.match(/\d+(?:[,.]\d+)?\s*×\s*\d+(?:[,.]\d+)?\s*mm/i)?.[0] || "40 × 60 mm";
+          const next = `<span class="ss-command-kpi">${ICON.box}<span>${sectionValue("Tên máy")}</span></span><span class="ss-command-kpi">${ICON.box}<span>Tem · ${template}</span></span><button type="button" class="ss-command-react-refresh">Kiểm tra lại</button>`;
+          if (kpis.innerHTML !== next) {
+            kpis.innerHTML = next;
+            kpis.querySelector("button").onclick = () => [...document.querySelectorAll("#root button")].find(button => button.textContent.trim() === "Thử kết nối")?.click();
+          }
+        };
+        const paint = () => {
+          if (painting) return; painting = true;
+          requestAnimationFrame(() => { configs.forEach(enhanceStatic); enhanceReact(); painting = false; });
+        };
+        new MutationObserver(paint).observe(document.body, { childList: true, subtree: true, characterData: true });
+        addEventListener("hashchange", () => setTimeout(paint, 0));
+        paint();
       })();
     </script>
   </body>

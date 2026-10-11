@@ -77,11 +77,12 @@ const mockRoutes = async page => page.route('**/*', async route => {
         // Về trang chủ từ giao diện Admin (mục Trang chủ ở thanh trái chung trên máy tính, mũi tên ở header điện thoại)
         await openAdmin();
         if (width >= 1024) {
-          assert.equal((await page.locator('#app-nav .an-head').first().innerText()).trim(), 'WH-MATERIAL');
+          assert.equal((await page.locator('#app-nav .an-head').first().innerText()).trim(), 'Quản trị', 'chế độ Quản trị: chỉ nhóm Quản trị');
           assert.equal(await page.locator('#print-jobs-screen .ss-side').isVisible(), false, 'thanh bên riêng của Admin ẩn');
-          await page.locator('#app-nav .an-item[aria-label="Trang chủ"]').click();
+          await page.locator('#app-nav .an-item[aria-label="Về trang chủ"]').click();
         } else {
-          await page.locator('#print-jobs-screen header button[aria-label="Về trang chủ WH-MATERIAL"]').click();
+          await page.locator('#print-jobs-screen header .an-toggle').click();
+          await page.locator('#app-nav .an-item[aria-label="Về trang chủ"]').click();
         }
         await page.waitForFunction(() => location.hash === '#home');
         await page.locator('#barcode-home').waitFor({ state: 'visible' });
@@ -89,7 +90,8 @@ const mockRoutes = async page => page.route('**/*', async route => {
         // Không còn thanh admin nổi, nút Dữ liệu UID và màn nạp Excel; Đăng xuất có đúng một nút trong thanh điều hướng
         await openAdmin();
         for (const id of ['#admin-session', '#admin-uid-data', '#admin-sku-sync', '#group-uid-import-screen']) assert.equal(await page.locator(id).count(), 0, id + ' đã bị xóa');
-        const logout = page.locator(width >= 1024 ? '#app-nav .an-foot [data-admin-logout]' : '#print-jobs-screen header button[data-admin-logout]');
+        if (width < 1024) await page.locator('#print-jobs-screen header .an-toggle').click();
+        const logout = page.locator('#app-nav .an-foot [data-admin-logout]');
         await logout.waitFor({ state: 'visible' });
         assert.equal(await page.locator('[data-admin-logout]:visible').count(), 1);
         assert.equal(width >= 1024 ? (await logout.innerText()).trim() : await logout.getAttribute('aria-label'), 'Đăng xuất');
@@ -102,6 +104,7 @@ const mockRoutes = async page => page.route('**/*', async route => {
 
         // Đăng xuất → trang chủ, phiên bị xóa
         await openAdmin();
+        if (width < 1024) await page.locator('#print-jobs-screen header .an-toggle').click();
         await logout.click();
         await page.waitForFunction(() => location.hash === '#home');
         assert.equal(await page.evaluate(key => sessionStorage.getItem(key), SESSION_KEY), null);

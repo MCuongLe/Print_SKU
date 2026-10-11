@@ -1,7 +1,7 @@
 // Thanh điều hướng trái chung (11/10/2026, khối #app-nav-theme + script app-nav-script): máy tính ≥ 1024 px có thanh trái 264 px dựng từ các ô trang chủ
 // (WH-MATERIAL › Trang chủ + 4 nhóm theo màu, mục đang mở đánh dấu aria-current); nút thu gọn ở đầu thanh trên từng màn, thu gọn = ẩn hẳn thanh
 // và nhớ trên máy; nhóm Quản trị đổi sang các mục Admin
-// sau khi đăng nhập và thay thanh bên riêng của Admin; nút quay lại trang chủ ẩn. Điện thoại/máy tính bảng giữ như cũ. Dữ liệu giả, không gọi Supabase thật.
+// sau khi đăng nhập và thay thanh bên riêng của Admin. Điện thoại/máy tính bảng dùng cùng menu dưới dạng drawer mở bằng hamburger. Dữ liệu giả, không gọi Supabase thật.
 // Chạy với python -m http.server 8000 (đổi bằng biến BASE).
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const assert = require('node:assert/strict');
@@ -109,15 +109,19 @@ const navState = page => page.evaluate(() => {
       console.log('PASS 1440px: thanh trái 264 px, WH-MATERIAL › Trang chủ + 4 nhóm, mục đang mở đúng 10 module, nút thu gọn ở thanh trên, bấm mục mở module, thu gọn ẩn hẳn + nhớ trên máy, không ra giấy in');
     }
 
-    // --- Admin: nhóm Quản trị mở các mục Admin, thay thanh bên riêng; Đăng xuất ở chân thanh ---
+    // --- Admin: ở #admin/* thanh trái chỉ còn Về trang chủ + nhóm Quản trị (ô icon + tên ngắn) + Đăng xuất; thay thanh bên riêng ---
     {
       const { context, page, errors } = await open(browser, 1280, 800, { admin: true });
       await page.goto(BASE + '#admin/sku-sync');
       await page.locator('#app-nav .an-item[aria-label="Lệnh in"]').waitFor();
       let s = await navState(page);
       assert.deepEqual(s.current, ['Đồng bộ SKU']);
-      for (const label of ['Lệnh in', 'Đồng bộ SKU', 'Đồng bộ Group UID', 'Kiểm kê SKU', 'Cấu hình', 'Đăng xuất']) assert.ok(s.items.includes(label), `có mục ${label}`);
-      assert.equal(s.items.includes('Quản trị'), false, 'đã đăng nhập: mục Quản trị thay bằng các mục Admin');
+      assert.deepEqual(s.items, ['Về trang chủ', 'Lệnh in', 'Đồng bộ SKU', 'Đồng bộ Group UID', 'Kiểm kê SKU', 'Cấu hình', 'Đăng xuất'], 'chế độ Quản trị: chỉ Về trang chủ + 5 mục Admin + Đăng xuất');
+      assert.deepEqual(s.heads, ['Quản trị']);
+      const look = await page.evaluate(() => [...document.querySelectorAll('#app-nav .an-item')].map(b => { const i = b.querySelector('.an-ico'), r = i && i.getBoundingClientRect(); return `${b.querySelector('span').textContent}|${r ? Math.round(r.width) : 0}|${i ? getComputedStyle(i).backgroundColor : ''}`; }));
+      assert.deepEqual(look.map(t => t.split('|')[0]), ['Trang chủ', 'Lệnh in', 'Đồng bộ SKU', 'Đồng bộ UID', 'Kiểm kê', 'Cấu hình', 'Đăng xuất'], 'tên ngắn');
+      assert.ok(look.every(t => t.split('|')[1] === '36'), 'mỗi mục một ô icon 36 px');
+      assert.equal(look[2].split('|')[2], 'rgb(91, 63, 184)', 'mục đang mở: ô icon tím đặc');
       assert.equal(await page.locator('#sku-sync-screen .ss-side').isVisible(), false, 'thanh bên riêng của Admin ẩn');
       assert.equal(Math.round(await page.evaluate(() => document.querySelector('#sku-sync-screen .ss-top').getBoundingClientRect().left)), 264);
       await page.locator('#app-nav .an-item[aria-label="Cấu hình"]').click();
@@ -125,28 +129,47 @@ const navState = page => page.evaluate(() => {
       assert.equal(new URL(page.url()).hash, '#admin/cauhinh');
       assert.equal(await page.locator('#root aside').isVisible(), false, 'Cấu hình: thanh bên React ẩn');
       assert.deepEqual((await navState(page)).current, ['Cấu hình']);
+      // Về trang chủ: thanh trở lại đủ nhóm; đã đăng nhập vẫn chỉ một mục Quản trị, không Đăng xuất
+      await page.locator('#app-nav .an-item[aria-label="Về trang chủ"]').click();
+      await page.locator('#barcode-home').waitFor({ state: 'visible' });
+      s = await navState(page);
+      assert.deepEqual(s.heads, ['WH-MATERIAL', 'In tem', 'Vận hành kho', 'Kiểm tra', 'Quản trị']);
+      assert.ok(s.items.includes('Quản trị') && !s.items.includes('Lệnh in') && !s.items.includes('Đăng xuất'), 'màn thường: nhóm Quản trị chỉ một mục Quản trị');
+      await page.locator('#app-nav .an-item[aria-label="Quản trị"]').click();
+      await page.locator('#print-jobs-screen').waitFor({ state: 'visible' });
+      assert.deepEqual((await navState(page)).current, ['Lệnh in']);
       await page.locator('#app-nav .an-foot [data-admin-logout]').click();
       await page.locator('#barcode-home').waitFor({ state: 'visible' });
       s = await navState(page);
       assert.ok(s.items.includes('Quản trị') && !s.items.includes('Lệnh in') && !s.items.includes('Đăng xuất'), 'đăng xuất: nhóm Quản trị về như cũ');
       assert.deepEqual(errors, []);
       await context.close();
-      console.log('PASS 1280px Admin: mục Admin trong nhóm Quản trị, thanh bên riêng ẩn, chuyển Cấu hình, Đăng xuất ở chân thanh');
+      console.log('PASS 1280px Admin: chế độ Quản trị (Về trang chủ + 5 mục ô icon + Đăng xuất), thanh bên riêng ẩn, chuyển Cấu hình, về trang chủ thanh đủ nhóm, Đăng xuất');
     }
 
-    // --- Dưới 1024 px: không có thanh trái, nút quay lại vẫn hiện ---
+    // --- Dưới 1024 px: thanh điều hướng thành drawer hamburger, nút quay lại của module thường vẫn hiện ---
     for (const [width, height] of [[1023, 800], [390, 844]]) {
       const { context, page, errors } = await open(browser, width, height);
       await page.goto(BASE + '#find-sku');
       await page.locator('#find-sku-screen').waitFor({ state: 'visible' });
       const s = await navState(page);
-      assert.equal(s.display, 'none', `${width}px: không có thanh trái`);
+      assert.equal(s.display, 'flex', `${width}px: drawer được dựng nhưng đang nằm ngoài màn hình`);
       assert.equal(await page.locator('#fsk-back').isVisible(), true, `${width}px: nút quay lại vẫn hiện`);
       assert.equal(Math.round(await page.evaluate(() => document.getElementById('find-sku-screen').getBoundingClientRect().left)), 0);
-      assert.deepEqual(s.toggles, [], `${width}px: không có nút thu gọn`);
+      assert.deepEqual(s.toggles, ['false'], `${width}px: có một nút hamburger đang đóng`);
+      const toggle = page.locator('#find-sku-screen .an-toggle');
+      assert.equal(await toggle.getAttribute('aria-label'), 'Mở menu');
+      await toggle.click();
+      assert.equal(await page.evaluate(() => document.documentElement.classList.contains('app-nav-mobile-open')), true, `${width}px: hamburger mở drawer`);
+      assert.equal(await toggle.getAttribute('aria-expanded'), 'true');
+      await page.waitForFunction(() => document.getElementById('app-nav').getBoundingClientRect().left >= -1);
+      assert.equal(Math.abs(Math.round(await page.evaluate(() => document.getElementById('app-nav').getBoundingClientRect().left))), 0);
+      await page.locator('#app-nav-backdrop').click({ position: { x: width - 1, y: 20 } });
+      await page.waitForFunction(() => !document.documentElement.classList.contains('app-nav-mobile-open'));
+      assert.equal(await page.evaluate(() => document.documentElement.classList.contains('app-nav-mobile-open')), false, `${width}px: backdrop đóng drawer`);
       assert.deepEqual(errors, []);
       await context.close();
-      console.log(`PASS ${width}px: giữ như cũ (không thanh trái, có nút quay lại)`);
+      console.log(`PASS ${width}px: drawer hamburger mở/đóng, nội dung không lùi và nút quay lại vẫn hoạt động`);
     }
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });
