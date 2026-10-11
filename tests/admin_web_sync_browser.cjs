@@ -7,7 +7,7 @@ const assert = require('node:assert/strict');
 const BASE = 'http://127.0.0.1:8000/';
 const SESSION_KEY = 'print-sku-admin-session-v1';
 const ago = minutes => new Date(Date.now() - minutes * 60000).toISOString();
-const NAV = ['Lệnh in', 'Đồng bộ SKU', 'Đồng bộ Group UID', 'Kiểm kê SKU', 'Thiết bị in', 'Cấu hình'];
+const NAV = ['Lệnh in', 'Đồng bộ SKU', 'Đồng bộ Group UID', 'Kiểm kê SKU', 'Cấu hình'];
 const SCREENS = [['#admin/lenh-in', 'Lệnh in', 'print-jobs-screen'], ['#admin/sku-sync', 'Đồng bộ SKU', 'sku-sync-screen'], ['#admin/group-uid-sync', 'Đồng bộ Group UID', 'group-uid-sync-screen'], ['#admin/kiem-ke', 'Kiểm kê SKU', 'inventory-audit-screen'], ['#admin/cauhinh', 'Cấu hình', null]];
 
 const SKU_CHANGES = {

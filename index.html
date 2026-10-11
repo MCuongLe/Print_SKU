@@ -9891,13 +9891,14 @@ var FSK_CORE = (function () {
     <section class="ss-screen" id="print-jobs-screen" aria-labelledby="print-jobs-heading" hidden>
       <div class="ss-shell"><aside class="ss-side"><div class="ss-brand"><b>H</b><span>WH-MATERIAL</span></div><nav class="ss-nav" aria-label="Điều hướng Quản trị"><button type="button" data-admin-hash="#admin/lenh-in" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>Lệnh in</button><button type="button" data-admin-hash="#admin/sku-sync"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7h-9M17 4l3 3-3 3M4 17h9M7 14l-3 3 3 3"/></svg>Đồng bộ SKU</button><button type="button" data-admin-hash="#admin/group-uid-sync"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/><circle cx="18" cy="17" r="2"/></svg>Đồng bộ Group UID</button><button type="button" data-admin-hash="#admin/cauhinh"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1v.1h-4v-.1a1.7 1.7 0 0 0-1.1-1.6 1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1-.4h-.1v-4H3A1.7 1.7 0 0 0 4.6 8.5a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1v-.1h4V3A1.7 1.7 0 0 0 15.5 4.6a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 9c.12.36.33.7.6 1 .27.27.62.48 1 .6h.1v4H21c-.38.12-.73.33-1 .6-.27.27-.48.62-.6 1Z"/></svg>Cấu hình</button></nav><div class="ss-side-foot"><button type="button" data-admin-hash="#home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>Về trang chủ</button><button type="button" data-admin-logout><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>Đăng xuất</button></div></aside>
         <div class="ss-main"><header class="ss-top"><button type="button" class="pj-icon pj-top-home" data-admin-hash="#home" aria-label="Về trang chủ WH-MATERIAL"><svg class="pj-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg></button><span class="ss-top-mark" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg></span><div class="ss-top-title"><h1 id="print-jobs-heading">Lệnh in</h1><p class="ss-top-sub" id="pj-top-sub">Cả kho</p></div><div class="ss-top-chips" id="pj-top-chips" aria-live="polite"></div><div class="ss-top-end"><span class="ss-connection" id="pj-connection" data-state="error">Máy in</span><button type="button" class="pj-icon ss-top-refresh" id="pj-top-refresh" aria-label="Làm mới" title="Làm mới"><svg class="pj-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg></button></div><button type="button" class="pj-icon pj-top-logout" data-admin-logout aria-label="Đăng xuất"><svg class="pj-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg></button></header><main class="ss-content">
+          <div class="as-tabs" role="tablist" aria-label="Vận hành in" id="pj-tabs"><button class="as-tab" type="button" role="tab" aria-selected="true" data-pj-tab="jobs">Lệnh in</button><button class="as-tab" type="button" role="tab" aria-selected="false" tabindex="-1" data-pj-tab="devices">Thiết bị<b id="pj-tab-devices-count">0</b></button></div>
           <section class="pj-stats" aria-label="Tình trạng in">
             <div class="pj-stat" id="pj-stat-printer"><span><svg class="pj-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>Máy in</span><strong>—</strong><small>&nbsp;</small></div>
             <div class="pj-stat" id="pj-stat-queue"><span><svg class="pj-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 22h14"/><path d="M5 2h14"/><path d="M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22"/><path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2"/></svg>Đang chờ</span><strong>—</strong><small>&nbsp;</small></div>
             <div class="pj-stat" id="pj-stat-day"><span><svg class="pj-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg><em id="pj-day-label" style="font-style:normal">Hôm nay</em></span><strong>—</strong><small>&nbsp;</small></div>
             <div class="pj-stat" id="pj-stat-failed"><span><svg class="pj-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>Lỗi</span><strong>—</strong><small>&nbsp;</small></div>
           </section>
-          <section class="ss-panel">
+          <section class="ss-panel" id="pj-jobs-panel">
             <div class="pj-bar">
               <div class="pj-day"><button type="button" class="pj-icon" id="pj-prev" aria-label="Ngày trước"><svg class="pj-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></button><input type="date" id="pj-date" aria-label="Ngày"><button type="button" class="pj-icon" id="pj-next" aria-label="Ngày sau"><svg class="pj-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></button><button type="button" class="pj-today" id="pj-today" hidden>Hôm nay</button></div>
               <div class="pj-types" role="group" aria-label="Loại lệnh"><button type="button" class="pj-type" data-pj-type="all" aria-pressed="true">Tất cả <b id="pj-count-all">0</b></button><button type="button" class="pj-type" data-pj-type="sku" aria-pressed="false"><svg class="pj-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M8 7v10"/><path d="M12 7v10"/><path d="M17 7v10"/></svg>SKU <b id="pj-count-sku">0</b></button><button type="button" class="pj-type" data-pj-type="group_uid" aria-pressed="false"><svg class="pj-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5 6.3 6.3a2.4 2.4 0 0 1 0 3.4L17 19"/><path d="M9.586 5.586A2 2 0 0 0 8.172 5H3a1 1 0 0 0-1 1v5.172a2 2 0 0 0 .586 1.414L8.29 18.29a2.426 2.426 0 0 0 3.42 0l3.58-3.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="6.5" cy="9.5" r=".5"/></svg>UID <b id="pj-count-uid">0</b></button></div>
@@ -9908,7 +9909,33 @@ var FSK_CORE = (function () {
             <div class="pj-list" id="pj-list"></div>
             <p class="ss-status" id="pj-status" aria-live="polite"></p>
           </section>
+          <section id="pdm-panel" aria-label="Thiết bị in" hidden>
+            <div class="pdm-strip">
+              <div class="pdm-codebox" id="pdm-codebox" hidden><div><span>Mã kích hoạt · 30 phút</span><b id="pdm-code-text">XXXX-XXXX</b><em id="pdm-code-sub"></em></div><button type="button" class="pdm-icon" id="pdm-code-copy" aria-label="Chép mã" title="Chép mã"><svg class="pj-svg" viewBox="0 0 24 24" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg></button><button type="button" class="pdm-icon" id="pdm-code-revoke" data-tone="bad" aria-label="Thu hồi mã" title="Thu hồi mã"><svg class="pj-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>
+              <div id="pdm-nocode"><span>Mã kích hoạt · 30 phút</span><strong>Chưa có mã</strong><em>Tạo mã rồi đọc cho nhân viên nhập trên máy</em></div>
+              <div><span>Máy này</span><strong id="pdm-this">—</strong></div>
+              <span class="pdm-sep"></span>
+              <button type="button" class="pdm-switch" id="pdm-legacy" aria-pressed="true" hidden>Khoá chung cũ</button>
+              <button class="ss-primary" id="pdm-create" type="button"><svg class="pj-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5"/></svg><span>Tạo mã kích hoạt</span></button>
+            </div>
+            <div class="ss-progress" id="pdm-progress" aria-hidden="true"><i></i></div><p class="ss-status" id="pdm-status" aria-live="polite"></p>
+            <section class="ss-metrics pdm-metrics" aria-label="Tổng quan thiết bị"><button class="ss-metric" type="button" data-pdm-filter="on" aria-pressed="false"><span data-ico="check">Máy đang bật</span><strong id="pdm-m-on">—</strong></button><button class="ss-metric" type="button" data-pdm-filter="off" aria-pressed="false"><span data-ico="ban">Máy đã tắt</span><strong id="pdm-m-off">—</strong></button><button class="ss-metric" type="button" data-pdm-filter="all" aria-pressed="true"><span data-ico="box">Lệnh in hôm nay</span><strong id="pdm-m-jobs">—</strong></button><div class="ss-metric"><span data-ico="clock">Mã đang hiệu lực</span><strong id="pdm-m-codes">—</strong></div></section>
+            <section class="ss-panel">
+              <div class="ss-panel-head"><div><h2 id="pdm-list-title">Máy đã kích hoạt</h2><p id="pdm-note"></p></div><div class="as-tools" id="pdm-tools" hidden></div></div>
+              <div class="as-tags" id="pdm-tags" hidden></div>
+              <div class="ss-table-wrap"><table class="ss-table pdm-table"><thead><tr id="pdm-head"><th>Máy</th><th>Kích hoạt</th><th>Dùng gần nhất</th><th>In gần nhất</th><th class="n">Lệnh in</th><th>Trạng thái</th></tr></thead><tbody id="pdm-body"><tr><td colspan="6" class="ss-empty">Đang tải…</td></tr></tbody></table></div>
+              <div class="as-pager" id="pdm-pager" hidden></div>
+            </section>
+          </section>
         </main></div></div>
+      <dialog class="as-dialog" id="pdm-dialog" data-size="sm" aria-labelledby="pdm-d-title">
+        <div class="as-d-head"><span class="as-d-mark" aria-hidden="true"><svg class="pj-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5"/></svg></span><div class="as-d-title"><h2 id="pdm-d-title">Máy</h2><p id="pdm-d-sub"></p></div><span id="pdm-d-status"></span><button type="button" class="pj-icon" data-as-close aria-label="Đóng" title="Đóng"><svg class="pj-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>
+        <div class="as-d-body"><div class="pdm-facts" id="pdm-d-facts"></div>
+          <div class="pdm-d-row"><input id="pdm-d-rename" type="text" maxlength="60" aria-label="Tên máy"><button type="button" class="pdm-d-btn" id="pdm-d-save">Lưu tên</button><button type="button" class="pdm-d-btn" id="pdm-d-toggle" data-tone="bad">Tắt máy</button></div>
+          <p class="ss-status" id="pdm-d-note"></p>
+          <h3 class="pdm-d-h"><span data-ico="box">Lệnh in hôm nay</span><b class="as-chip" id="pdm-d-jobs-count">0</b></h3><div class="pdm-jobs" id="pdm-d-jobs"></div>
+        </div>
+      </dialog>
       <dialog class="pj-dialog" id="pj-dialog" aria-labelledby="pj-d-title">
         <div class="pj-d-head"><span class="pj-badge" id="pj-d-status"></span><h2 id="pj-d-title"></h2><button type="button" class="pj-icon" id="pj-d-close" aria-label="Đóng"><svg class="pj-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>
         <div class="pj-d-meta" id="pj-d-meta"></div>
@@ -9924,7 +9951,7 @@ var FSK_CORE = (function () {
       // máy chủ tự dựng lệnh mới từ lệnh gốc, trình duyệt chỉ gửi số thứ tự dòng.
       (()=>{
         const $=id=>document.getElementById(id),screen=$("print-jobs-screen"),root=$("root"),dialog=$("pj-dialog");
-        const ROUTE="#admin/lenh-in",OTHER=new Set(["#admin/sku-sync","#admin/group-uid-sync","#admin/kiem-ke","#admin/thiet-bi"]),KNOWN=new Set([ROUTE,"#admin/cauhinh",...OTHER]);
+        const ROUTE="#admin/lenh-in",TAB=ROUTE+"/thiet-bi",OTHER=new Set(["#admin/sku-sync","#admin/group-uid-sync","#admin/kiem-ke"]),KNOWN=new Set([ROUTE,TAB,"#admin/thiet-bi","#admin/cauhinh",...OTHER]),atRoute=()=>location.hash===ROUTE||location.hash===TAB;
         const API=window.PrintSkuQueue?.supabaseUrl||"https://ikzhitdqkoatlmkrxuuh.supabase.co",KEY=window.PrintSkuQueue?.publishableKey||"sb_publishable_mBl--Ep5nNxuC4Xvyi1gfg_SLGEcRhI";
         const TYPE={sku:"SKU",group_uid:"UID",location:"Vị trí",fabric_relaxation:"Fabric"},STATUS={queued:"Chờ",printing:"Đang in",completed:"Xong",failed:"Lỗi",cancelled:"Huỷ"};
         const SOURCE={"web-find-sku":"TÌM SKU","web-group-uid":"PRINT UID","web-cut-group-uid":"Cắt UID","web-location":"Mã vị trí"},FINAL=new Set(["completed","failed","cancelled"]);
@@ -9988,7 +10015,7 @@ async function rpc(name,args,retry=true){
           const jobs=data?.jobs||[];
           $("pj-list").innerHTML=jobs.length?`<div class="pj-row pj-head" aria-hidden="true"><span>Giờ</span><span>Loại</span><span>Nội dung</span><span>Nguồn</span><span class="pj-num pj-lines">Dòng</span><span class="pj-num">Tem</span><span class="pj-num">Trạng thái</span></div>`+jobs.map(j=>{
             const first=j.first||{},extra=j.itemCount>1?` +${num(j.itemCount-1)}`:"",sub=subtitle(j.type,first);
-            return `<button type="button" class="pj-row" data-job="${esc(j.id)}"><span class="pj-time">${esc(clock(j.createdAt))}</span><span class="pj-kind">${svg(j.type,15)}${esc(TYPE[j.type]||j.type)}</span><span class="pj-main"><strong>${esc(title(j.type,first)||id8(j.id))}${esc(extra)}</strong>${sub||reprinted(j)?`<small>${reprinted(j)?'<span class="pj-re">In lại</span>':""}${esc(sub)}</small>`:""}</span><span class="pj-src">${esc(source(j.source))}</span><span class="pj-num pj-lines">${num(j.itemCount)}</span><span class="pj-num pj-tem"><b>${num(j.copies)}</b> tem</span><span class="pj-end">${badge(j.status)}</span></button>`}).join(""):`<div class="pj-empty">${view.q?"Không có lệnh khớp":"Chưa có lệnh in"}</div>`;
+            return `<button type="button" class="pj-row" data-job="${esc(j.id)}"><span class="pj-time">${esc(clock(j.createdAt))}</span><span class="pj-kind">${svg(j.type,15)}${esc(TYPE[j.type]||j.type)}</span><span class="pj-main"><strong>${esc(title(j.type,first)||id8(j.id))}${esc(extra)}</strong>${sub||reprinted(j)?`<small>${reprinted(j)?'<span class="pj-re">In lại</span>':""}${esc(sub)}</small>`:""}</span><span class="pj-src">${esc(source(j.deviceName||j.source))}</span><span class="pj-num pj-lines">${num(j.itemCount)}</span><span class="pj-num pj-tem"><b>${num(j.copies)}</b> tem</span><span class="pj-end">${badge(j.status)}</span></button>`}).join(""):`<div class="pj-empty">${view.q?"Không có lệnh khớp":"Chưa có lệnh in"}</div>`;
         }
 
         async function loadJobs(quiet=false){
@@ -10019,7 +10046,7 @@ async function rpc(name,args,retry=true){
           const status=$("pj-d-status");status.dataset.status=state(j.status);status.textContent=STATUS[state(j.status)];
           $("pj-d-title").textContent=`${TYPE[j.type]||j.type} · ${id8(j.id)}`;
           const dates=[...new Set(items.map(it=>it.printedDate).filter(Boolean))];
-          const meta=[`${clock(j.createdAt,true)}${j.completedAt?` → ${clock(j.completedAt,true)}`:""}`,source(j.source),`${num(items.length)} dòng · ${num(j.copies)} tem`];
+          const meta=[`${clock(j.createdAt,true)}${j.completedAt?` → ${clock(j.completedAt,true)}`:""}`,source(j.deviceName||j.source),`${num(items.length)} dòng · ${num(j.copies)} tem`];
           if(j.type==="sku"&&dates.length===1)meta.push(`Ngày in ${dates[0]}`);
           let html=meta.map(m=>`<span>${esc(m)}</span>`).join("");
           if(j.reprintOf)html+=`<span>In lại từ <button type="button" data-open-job="${esc(j.reprintOf)}">${esc(id8(j.reprintOf))}</button></span>`;
@@ -10095,11 +10122,11 @@ async function rpc(name,args,retry=true){
         async function route(){
           // #admin/tongquan, #admin/hangdoi (đã gộp vào đây) và mọi hash Admin lạ đều về Lệnh in
           if(/^#admin(?:\/|$)/.test(location.hash)&&!KNOWN.has(location.hash)){location.replace(ROUTE);return}
-          if(location.hash!==ROUTE){if(!screen.hidden){screen.hidden=true;stop()}if(!OTHER.has(location.hash))root.hidden=false;setTimeout(addNav,50);return}
+          if(!atRoute()){if(!screen.hidden){screen.hidden=true;stop()}if(!OTHER.has(location.hash))root.hidden=false;setTimeout(addNav,50);return}
           root.hidden=true;["sku-sync-screen","group-uid-sync-screen"].forEach(id=>{const other=$(id);if(other)other.hidden=true});
           screen.hidden=false;
           const token=await window.PrintSkuAdminAccess?.getToken?.();
-          if(!token||location.hash!==ROUTE)return;
+          if(!token||!atRoute())return;
           if(!timer)timer=setInterval(()=>{if(!screen.hidden&&document.visibilityState==="visible"){loadPrinter();if(view.day===view.today)loadJobs(true)}},20000);
           if(!loaded){loaded=true;view.day=null}
           refresh();
@@ -10563,54 +10590,44 @@ async function rpc(name,args,retry=true){
       })();
     </script>
     
-    <style id="print-devices-admin-style">
-      /* Admin · Thiết bị in (hướng C, 10/10/2026): mã kích hoạt chung 30 phút, danh sách máy đã kích hoạt, khoá chung cũ. Chỉ desktop. */
-      .pdm-code{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:14px;margin-top:14px;padding:16px 18px;border:1px solid #bfe0d2;border-radius:16px;background:#f1faf6}
-      .pdm-code[hidden]{display:none}.pdm-code b{display:block;color:#005f41;font-size:32px;font-weight:800;letter-spacing:.16em;line-height:1.1}.pdm-code small{display:block;margin-top:6px;color:#60736b;font-size:12px}
-      .pdm-legacy{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin-top:14px;padding:14px 16px;border:1px solid #e3b64d;border-radius:14px;background:#fffaeb}
-      .pdm-legacy[hidden]{display:none}.pdm-legacy[data-off=true]{border-color:#dce7e3;background:#f6f8f7}.pdm-legacy strong{display:block;font-size:14px}.pdm-legacy span{color:#60736b;font-size:12px}
-      .pdm-switch{display:inline-flex;align-items:center;gap:8px;min-height:38px;padding:0 14px;border:1px solid #d9e2de;border-radius:999px;background:#fff;color:#4f625b;font-size:13px;font-weight:700;cursor:pointer}
-      .pdm-switch[aria-pressed=true]{border-color:#1aa774;background:#e3f5ec;color:#0f6a49}.pdm-switch:disabled{opacity:.5;cursor:not-allowed}
-      .pdm-actions{display:flex;flex-wrap:wrap;gap:6px}.pdm-actions button{min-height:36px;padding:0 12px;border:1px solid #d9e2de;border-radius:10px;background:#fff;color:#17251f;font-size:12px;font-weight:700;cursor:pointer}
-      .pdm-actions button[data-tone=bad]{color:#8f2f2a}.pdm-actions button:disabled{opacity:.5;cursor:not-allowed}
+    <style id="print-devices-tab-style">
+      /* Lệnh in · tab Thiết bị (11/10/2026): mã kích hoạt chung 30 phút, danh sách máy đã kích hoạt theo khuôn Admin (thẻ số lọc,
+         bảng UI.createList, popup as-dialog). Chỉ desktop. */
+      #pj-tabs{margin-bottom:16px}
+      #pdm-panel[hidden]{display:none}
+      .pdm-strip{display:flex;flex-wrap:wrap;align-items:center;gap:12px 18px;margin-bottom:16px;padding:14px 18px;border:1px solid #dce7e3;border-radius:16px;background:#fff}
+      .pdm-strip>div{display:flex;flex-direction:column;gap:3px;min-width:0}.pdm-strip span{color:#60736b;font-size:12px;font-weight:600}
+      .pdm-strip strong{font-size:14px;font-weight:600;color:#17382d}.pdm-strip em{color:#60736b;font-size:12px;font-style:normal}
+      .pdm-strip .pdm-sep{flex:1}
+      .pdm-strip>.pdm-codebox{flex-direction:row;align-items:center;gap:10px}.pdm-codebox>div{display:flex;flex-direction:column;gap:3px}.pdm-codebox b{color:#005f41;font-size:26px;font-weight:800;letter-spacing:.14em;line-height:1.1}
+      .pdm-icon{display:inline-grid;place-items:center;width:36px;height:36px;border:1px solid #d9e2de;border-radius:10px;background:#fff;color:#17251f;cursor:pointer}.pdm-icon svg{width:16px;height:16px}
+      .pdm-icon[data-tone=bad]{color:#8f2f2a}.pdm-icon:disabled{opacity:.5;cursor:not-allowed}
+      .pdm-switch{display:inline-flex;align-items:center;gap:8px;min-height:36px;padding:0 14px;border:1px solid #d9e2de;border-radius:999px;background:#fff;color:#4f625b;font-size:13px;font-weight:600;cursor:pointer}
+      .pdm-switch[aria-pressed=true]{border-color:#e3b64d;background:#fff3d6;color:#8a5b00}.pdm-switch:disabled{opacity:.5;cursor:not-allowed}
       .pdm-metrics{grid-template-columns:repeat(4,minmax(0,1fr))}
+      button.ss-metric[data-pdm-filter][aria-pressed=true]{outline:2px solid #005f41;outline-offset:-2px}
       .pdm-table td.pdm-name b{display:block;font-size:14px}.pdm-table td.pdm-name small{display:block;color:#60736b;font-size:12px;overflow-wrap:anywhere}
-      .pdm-table td.pdm-num{text-align:right;font-variant-numeric:tabular-nums}.pdm-table tr[data-off=true] td{color:#60736b}
-      .pdm-empty{padding:28px 12px;color:#60736b;text-align:center}
-      .pdm-this{display:block;margin:6px 0 0;color:#60736b;font-size:13px}
-      #print-devices-screen .ss-panel h2{margin:0 0 10px;font-size:15px}
+      .pdm-table td.n{text-align:right;font-variant-numeric:tabular-nums}.pdm-table tr[data-pdm-id]{cursor:pointer}.pdm-table tr[data-off=true] td{color:#60736b}
+      .pdm-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 22px}
+      .pdm-fact span{display:block;color:#60736b;font-size:12px;font-weight:600}.pdm-fact strong{display:block;margin-top:3px;color:#17382d;font-size:14px;font-weight:600;overflow-wrap:anywhere}.pdm-fact em{display:block;margin-top:1px;color:#60736b;font-size:12px;font-style:normal}
+      .pdm-d-h{display:flex;align-items:center;gap:8px;margin:22px 0 8px;color:#17382d;font-size:14px;font-weight:600}
+      .pdm-d-row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:14px}.pdm-d-row input{flex:1;min-width:200px;min-height:40px;padding:0 12px;border:1.5px solid #d9e2de;border-radius:12px;font:600 14px inherit}
+      .pdm-d-btn{min-height:40px;padding:0 14px;border:1px solid #d9e2de;border-radius:12px;background:#fff;color:#17251f;font:600 13px inherit;cursor:pointer}.pdm-d-btn[data-tone=bad]{color:#8f2f2a}.pdm-d-btn[data-tone=ok]{border-color:#005f41;background:#005f41;color:#fff}.pdm-d-btn:disabled{opacity:.5;cursor:not-allowed}
+      .pdm-jobs{display:grid;gap:6px}.pdm-job{display:grid;grid-template-columns:52px 54px minmax(0,1fr) 60px 80px;gap:10px;align-items:center;padding:9px 12px;border:1px solid #edf2f0;border-radius:12px;background:#fff;text-align:left;font:inherit;cursor:pointer}
+      .pdm-job:hover{background:#f6f8f7}.pdm-job .t{color:#60736b;font-size:12px}.pdm-job .k{font-size:12px;font-weight:600;color:#005f41}.pdm-job .m{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}.pdm-job .n{text-align:right;color:#60736b;font-size:12px}
+      .pdm-empty{padding:18px 0;color:#60736b;font-size:13px}
     </style>
-    <section class="ss-screen" id="print-devices-screen" aria-labelledby="print-devices-heading" hidden>
-      <div class="ss-shell"><aside class="ss-side"><div class="ss-brand"><b>H</b><span>WH-MATERIAL</span></div><nav class="ss-nav" aria-label="Điều hướng Quản trị">
-        <button type="button" data-admin-hash="#admin/lenh-in"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>Lệnh in</button>
-        <button type="button" data-admin-hash="#admin/sku-sync"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7h-9M17 4l3 3-3 3M4 17h9M7 14l-3 3 3 3"/></svg>Đồng bộ SKU</button>
-        <button type="button" data-admin-hash="#admin/group-uid-sync"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/><circle cx="18" cy="17" r="2"/></svg>Đồng bộ Group UID</button>
-        <button type="button" data-admin-hash="#admin/kiem-ke"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Kiểm kê SKU</button>
-        <button type="button" data-admin-hash="#admin/thiet-bi" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5"/></svg>Thiết bị in</button>
-        <button type="button" data-admin-hash="#admin/cauhinh"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1v.1h-4v-.1a1.7 1.7 0 0 0-1.1-1.6 1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.6-1.1H3v-4h.1A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1V3h4v.1a1.7 1.7 0 0 0 1.1 1.6 1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 9a1.7 1.7 0 0 0 1.6 1.1h.1v4h-.1a1.7 1.7 0 0 0-1.6 1.1z"/></svg>Cấu hình</button>
-      </nav><div class="ss-side-foot"><button type="button" data-admin-hash="#home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>Về trang chủ</button><button type="button" data-admin-logout><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>Đăng xuất</button></div></aside>
-      <div class="ss-main"><header class="ss-top"><span class="ss-top-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5"/></svg></span><div class="ss-top-title"><h1 id="print-devices-heading">Thiết bị in</h1><p class="ss-top-sub" id="pdm-top-sub">Máy đã kích hoạt</p></div><div class="ss-top-chips" id="pdm-top-chips" aria-live="polite"></div><div class="ss-top-end"><button type="button" class="pj-icon ss-top-refresh" id="pdm-top-refresh" aria-label="Tải lại" title="Tải lại"><svg class="pj-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg></button></div></header>
-      <main class="ss-content">
-        <section class="ss-hero"><div><h2>Mã kích hoạt chung · 30 phút</h2><span class="pdm-this" id="pdm-this"></span></div><div class="as-hero-actions"><button class="ss-primary" id="pdm-create" type="button"><svg class="pj-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/></svg><span>Tạo mã kích hoạt</span></button></div></section>
-        <div class="pdm-code" id="pdm-code" hidden><div><b id="pdm-code-text">XXXX-XXXX</b><small id="pdm-code-exp"></small></div><div class="pdm-actions"><button type="button" id="pdm-code-copy">Chép mã</button><button type="button" id="pdm-code-revoke" data-tone="bad">Thu hồi</button></div></div>
-        <div class="pdm-legacy" id="pdm-legacy" hidden><div><strong>Khoá chung cũ · máy chưa kích hoạt vẫn in được</strong><span id="pdm-legacy-sub"></span></div><button type="button" class="pdm-switch" id="pdm-legacy-switch" aria-pressed="true">Đang bật</button></div>
-        <div class="ss-progress" id="pdm-progress" aria-hidden="true"><i></i></div><p class="ss-status" id="pdm-status" aria-live="polite"></p>
-        <section class="ss-metrics pdm-metrics" aria-label="Tổng quan thiết bị"><div class="ss-metric"><span data-ico="check">Máy đang bật</span><strong id="pdm-m-on">—</strong></div><div class="ss-metric"><span data-ico="ban">Máy đã tắt</span><strong id="pdm-m-off">—</strong></div><div class="ss-metric"><span data-ico="box">Lệnh in hôm nay</span><strong id="pdm-m-jobs">—</strong></div><div class="ss-metric"><span data-ico="clock">Mã đang hiệu lực</span><strong id="pdm-m-codes">—</strong></div></section>
-        <section class="ss-panel"><h2 id="pdm-list-title">Máy đã kích hoạt</h2><div class="ss-table-wrap"><table class="ss-table pdm-table"><thead><tr><th scope="col">Máy</th><th scope="col">Kích hoạt</th><th scope="col">Dùng gần nhất</th><th scope="col">In gần nhất</th><th scope="col" class="pdm-num">Lệnh in</th><th scope="col">Trạng thái</th><th scope="col"></th></tr></thead><tbody id="pdm-body"></tbody></table></div></section>
-      </main></div></div>
-      <dialog class="pdv" id="pdm-rename" aria-labelledby="pdm-rename-title"><form method="dialog" novalidate><div class="pdv__head"><h2 class="pdv__title" id="pdm-rename-title">Đổi tên máy</h2></div><label class="pdv__label" for="pdm-rename-input">Tên máy</label><input id="pdm-rename-input" type="text" maxlength="60" autocomplete="off"><p class="pdv__status" id="pdm-rename-status"></p><div class="pdv__actions"><button type="button" class="pdv__btn" id="pdm-rename-cancel">Huỷ</button><button type="submit" class="pdv__btn pdv__btn--ok" id="pdm-rename-ok">Lưu</button></div></form></dialog>
-    </section>
-    <script id="print-devices-admin-script">
+    <script id="print-devices-tab-script">
       (() => {
-        const ROUTE="#admin/thiet-bi",$=id=>document.getElementById(id),screen=$("print-devices-screen"),root=$("root");
-        const UI=window.AdminSyncUI||{};
-        const esc=UI.esc||(s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])));
+        const ROUTE="#admin/lenh-in",TAB_ROUTE="#admin/lenh-in/thiet-bi",OLD_ROUTE="#admin/thiet-bi",$=id=>document.getElementById(id),screen=$("print-jobs-screen");
+        const UI=window.AdminSyncUI||{},esc=UI.esc||(s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))),ico=UI.ico||(()=>"");
         const q=window.PrintSkuQueue,API=q.supabaseUrl,KEY=q.publishableKey;
         const num=n=>Number(n||0).toLocaleString("vi-VN");
         const dt=v=>v?new Date(v).toLocaleString("vi-VN",{hour:"2-digit",minute:"2-digit",day:"2-digit",month:"2-digit"}):"—";
+        const clock=v=>v?new Date(v).toLocaleTimeString("vi-VN",{hour:"2-digit",minute:"2-digit"}):"—";
         const rel=v=>{if(!v)return"chưa dùng";const m=Math.round((Date.now()-Date.parse(v))/60000);if(m<1)return"vừa xong";if(m<60)return`${m} phút trước`;const h=Math.round(m/60);if(h<48)return`${h} giờ trước`;return`${Math.round(h/24)} ngày trước`};
+        const ua=s=>String(s||"").replace(/^Mozilla\/5\.0\s*/,"").slice(0,70);
         const say=(text,tone="")=>{const el=$("pdm-status");el.textContent=text;el.dataset.tone=tone;el.setAttribute("aria-live",tone==="error"?"assertive":"polite")};
-        const busy=on=>{$("pdm-progress").dataset.busy=String(on);$("pdm-top-refresh").disabled=on};
         async function rpc(name,args={},retry=true){
           const token=window.PrintSkuAdminAccess?.peekToken?.()||await window.PrintSkuAdminAuth.accessToken();
           const response=await fetch(`${API}/rest/v1/rpc/${name}`,{method:"POST",headers:{apikey:KEY,Authorization:`Bearer ${token}`,"Content-Type":"application/json"},body:JSON.stringify(args),signal:AbortSignal.timeout(20000)});
@@ -10620,87 +10637,132 @@ async function rpc(name,args,retry=true){
           if(!body?.ok)throw Object.assign(new Error(body?.error?.message||"Supabase từ chối yêu cầu"),{code:body?.error?.code});
           return body.data;
         }
-        let data=null,code=null,timer=0,seq=0;
-        const legacy=()=>(data?.legacyKeys||[]).find(k=>k.isPublic);
+        const COLS=[{label:"Máy",sort:"name"},{label:"Kích hoạt",sort:"act",first:"desc"},{label:"Dùng gần nhất",sort:"seen",first:"desc"},{label:"In gần nhất",sort:"print",first:"desc"},{label:"Lệnh in",sort:"count",first:"desc",cls:"n"},{label:"Trạng thái",sort:"on"}];
+        const CSVH=["Tên máy","Trạng thái","Kích hoạt lúc","Dùng gần nhất","In gần nhất","Tổng lệnh in","Lệnh in hôm nay","Trình duyệt"];
+        const state={data:null,code:null,filter:"all",busy:false,loaded:false,device:null,jobs:[]};
+        const list=UI.createList?UI.createList({tools:$("pdm-tools"),tagsBox:$("pdm-tags"),head:$("pdm-head"),body:$("pdm-body"),pager:$("pdm-pager"),note:$("pdm-note")}):null;
+        const devices=()=>state.data?.devices||[],legacy=()=>(state.data?.legacyKeys||[]).find(k=>k.isPublic);
+        const atTab=()=>location.hash===TAB_ROUTE;
+        const busy=on=>{$("pdm-progress").dataset.busy=String(on)};
+
+        function rowFor(d){
+          const badge=`<span class="ss-badge" data-status="${d.enabled?"completed":"failed"}">${d.enabled?"Đang bật":"Đã tắt"}</span>`;
+          return{cells:[`<div class="pdm-name"><b>${esc(d.name)}</b><small>${esc(ua(d.userAgent)||"—")}</small></div>`,esc(dt(d.activatedAt)),esc(rel(d.lastSeenAt)),esc(rel(d.lastPrintAt)),`${num(d.printCount)}${d.jobsToday?` <small>(+${num(d.jobsToday)} hôm nay)</small>`:""}`,badge],
+            text:[d.name,d.userAgent].join(" "),facets:{on:d.enabled?"Đang bật":"Đã tắt"},sort:{name:d.name,act:Date.parse(d.activatedAt)||0,seen:Date.parse(d.lastSeenAt)||0,print:Date.parse(d.lastPrintAt)||0,count:Number(d.printCount)||0,on:d.enabled?0:1},
+            attrs:`data-pdm-id="${esc(d.id)}" data-off="${!d.enabled}"`,csv:[d.name,d.enabled?"Đang bật":"Đã tắt",d.activatedAt,d.lastSeenAt||"",d.lastPrintAt||"",d.printCount,d.jobsToday||0,d.userAgent||""]};
+        }
+        const filtered=()=>devices().filter(d=>state.filter==="all"||(state.filter==="on"?d.enabled:!d.enabled));
+        function renderList(keep=true){
+          $("pdm-list-title").textContent=state.filter==="on"?"Máy đang bật":state.filter==="off"?"Máy đã tắt":"Máy đã kích hoạt";
+          if(list)list.show({columns:COLS,rows:filtered().map(rowFor),facets:[{id:"on",label:"Trạng thái",icon:"check"}],filename:"thiet-bi-in",csvHead:CSVH,empty:state.loaded?"Chưa có máy nào. Tạo mã rồi nhập trên từng máy.":"Đang tải…",keep});
+          else $("pdm-body").innerHTML=filtered().map(d=>`<tr ${rowFor(d).attrs}>${rowFor(d).cells.map(c=>`<td>${c}</td>`).join("")}</tr>`).join("");
+        }
         function renderCode(){
-          const box=$("pdm-code");
-          if(!code||Date.parse(code.expiresAt)<=Date.now()){box.hidden=true;return}
-          const row=(data?.codes||[]).find(c=>c.id===code.id),left=Math.max(0,Math.ceil((Date.parse(code.expiresAt)-Date.now())/60000));
-          box.hidden=false;$("pdm-code-text").textContent=code.code;
-          $("pdm-code-exp").textContent=`Hiệu lực tới ${dt(code.expiresAt)} · còn ${num(left)} phút · đã kích hoạt ${num(row?.useCount||0)} máy`;
+          const box=$("pdm-codebox"),c=state.code;
+          if(!c||Date.parse(c.expiresAt)<=Date.now()){box.hidden=true;$("pdm-nocode").hidden=false;return}
+          const row=(state.data?.codes||[]).find(x=>x.id===c.id),left=Math.max(0,Math.ceil((Date.parse(c.expiresAt)-Date.now())/60000));
+          box.hidden=false;$("pdm-nocode").hidden=true;$("pdm-code-text").textContent=c.code;
+          $("pdm-code-sub").textContent=`Còn ${num(left)} phút · tới ${clock(c.expiresAt)} · đã kích hoạt ${num(row?.useCount||0)} máy`;
         }
-        function render(){
-          const devices=data?.devices||[],on=devices.filter(d=>d.enabled),off=devices.filter(d=>!d.enabled),codes=(data?.codes||[]).filter(c=>c.active),jobs=devices.reduce((n,d)=>n+Number(d.jobsToday||0),0),lk=legacy();
-          $("pdm-m-on").textContent=num(on.length);$("pdm-m-off").textContent=num(off.length);$("pdm-m-jobs").textContent=num(jobs);$("pdm-m-codes").textContent=num(codes.length);
-          $("pdm-top-chips").innerHTML=`<span class="as-chip" data-tone="${on.length?"new":"warn"}">${num(on.length)} máy đang bật</span>${lk?`<span class="as-chip" data-tone="${lk.enabled?"warn":"new"}">${lk.enabled?"Khoá chung đang bật":"Chỉ máy đã kích hoạt"}</span>`:""}`;
-          const legacyBox=$("pdm-legacy");legacyBox.hidden=!lk;
-          if(lk){legacyBox.dataset.off=String(!lk.enabled);$("pdm-legacy-sub").textContent=lk.enabled?"Tắt khi mọi máy đã kích hoạt: từ đó chỉ máy trong danh sách mới in được.":"Đã tắt · chỉ máy đã kích hoạt mới in được.";const sw=$("pdm-legacy-switch");sw.setAttribute("aria-pressed",String(lk.enabled));sw.textContent=lk.enabled?"Đang bật":"Đã tắt"}
-          const me=window.PrintSkuDevice;$("pdm-this").textContent=me?.activated?.()?`Máy này: ${me.name()||"đã kích hoạt"}`:"Máy này chưa kích hoạt";
-          $("pdm-body").innerHTML=devices.length?devices.map(d=>`<tr data-id="${esc(d.id)}" data-off="${!d.enabled}"><td class="pdm-name"><b>${esc(d.name)}</b><small>${esc(String(d.userAgent||"").replace(/^Mozilla\/5\.0\s*/,"").slice(0,70))}</small></td><td>${esc(dt(d.activatedAt))}</td><td>${esc(rel(d.lastSeenAt))}</td><td>${esc(rel(d.lastPrintAt))}</td><td class="pdm-num">${num(d.printCount)}${d.jobsToday?` <small>(+${num(d.jobsToday)} hôm nay)</small>`:""}</td><td><span class="ss-badge" data-status="${d.enabled?"completed":"failed"}">${d.enabled?"Đang bật":"Đã tắt"}</span></td><td><div class="pdm-actions"><button type="button" data-act="rename">Đổi tên</button><button type="button" data-act="toggle"${d.enabled?' data-tone="bad"':""}>${d.enabled?"Tắt":"Bật"}</button></div></td></tr>`).join(""):`<tr><td colspan="7" class="pdm-empty">Chưa có máy nào kích hoạt. Tạo mã rồi nhập trên từng máy.</td></tr>`;
-          $("pdm-top-sub").textContent=`${num(devices.length)} máy · cập nhật ${new Date().toLocaleTimeString("vi-VN",{hour:"2-digit",minute:"2-digit"})}`;
-          renderCode();
+        function renderMetrics(){
+          const all=devices(),on=all.filter(d=>d.enabled),off=all.filter(d=>!d.enabled),codes=(state.data?.codes||[]).filter(c=>c.active),jobs=all.reduce((n,d)=>n+Number(d.jobsToday||0),0);
+          $("pdm-m-on").textContent=state.loaded?num(on.length):"—";$("pdm-m-off").textContent=state.loaded?num(off.length):"—";$("pdm-m-jobs").textContent=state.loaded?num(jobs):"—";$("pdm-m-codes").textContent=state.loaded?num(codes.length):"—";
+          screen.querySelectorAll("button.ss-metric[data-pdm-filter]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.pdmFilter===state.filter)));
+          const lk=legacy(),sw=$("pdm-legacy");sw.hidden=!lk;
+          if(lk){sw.setAttribute("aria-pressed",String(lk.enabled));sw.textContent=lk.enabled?"Khoá chung cũ: đang bật":"Khoá chung cũ: đã tắt";sw.title=lk.enabled?"Máy chưa kích hoạt vẫn in được. Tắt khi mọi máy đã kích hoạt.":"Chỉ máy đã kích hoạt mới in được."}
+          const me=window.PrintSkuDevice;$("pdm-this").textContent=me?.activated?.()?(me.name()||"đã kích hoạt"):"chưa kích hoạt";
+          const tab=$("pj-tab-devices-count");if(tab)tab.textContent=num(on.length);
         }
+        function render(keep=true){renderMetrics();renderCode();renderList(keep)}
         async function load(quiet=false){
-          const mine=++seq;if(!quiet)busy(true);
-          try{data=await rpc("print_devices_admin");if(mine!==seq)return;render();say("")}
-          catch(error){if(mine===seq)say(error.message||"Không tải được danh sách máy","error")}
-          finally{if(mine===seq)busy(false)}
+          if(!quiet)busy(true);
+          try{state.data=await rpc("print_devices_admin");state.loaded=true;render();say("")}
+          catch(error){say(error.message||"Không tải được danh sách máy","error")}
+          finally{busy(false)}
         }
         async function create(){
           const btn=$("pdm-create");btn.disabled=true;
-          try{code=await rpc("print_activation_create",{p_minutes:30,p_note:""});say("");await load(true);renderCode()}
+          try{state.code=await rpc("print_activation_create",{p_minutes:30,p_note:""});await load(true)}
           catch(error){say(error.message||"Không tạo được mã","error")}
           finally{btn.disabled=false}
         }
         async function revoke(){
-          if(!code)return;
-          try{await rpc("print_activation_revoke",{p_id:code.id});code=null;renderCode();say("Đã thu hồi mã","ok");load(true)}
+          if(!state.code)return;
+          try{await rpc("print_activation_revoke",{p_id:state.code.id});state.code=null;say("Đã thu hồi mã","ok");await load(true)}
           catch(error){say(error.message||"Không thu hồi được","error")}
-        }
-        async function toggle(id){
-          const d=(data?.devices||[]).find(x=>x.id===id);if(!d)return;
-          if(d.enabled&&window.WhDialog&&!await window.WhDialog.confirm({tone:"warning",title:`Tắt máy ${d.name}`,facts:["Máy này sẽ không in được nữa"],confirmText:"Tắt máy",cancelText:"Huỷ"}))return;
-          try{await rpc("print_device_set_enabled",{p_id:id,p_enabled:!d.enabled});await load(true)}
-          catch(error){say(error.message||"Không đổi được trạng thái","error")}
         }
         async function legacyToggle(){
           const lk=legacy();if(!lk)return;
-          if(lk.enabled&&window.WhDialog&&!await window.WhDialog.confirm({tone:"warning",title:"Tắt khoá chung cũ",facts:[`${num((data?.devices||[]).filter(d=>d.enabled).length)} máy đã kích hoạt`],list:["Máy chưa kích hoạt sẽ bị từ chối in","Bật lại được bất cứ lúc nào"],confirmText:"Tắt khoá chung",cancelText:"Huỷ"}))return;
-          const sw=$("pdm-legacy-switch");sw.disabled=true;
+          if(lk.enabled&&window.WhDialog&&!await window.WhDialog.confirm({tone:"warning",title:"Tắt khoá chung cũ",facts:[`${num(devices().filter(d=>d.enabled).length)} máy đã kích hoạt`],list:["Máy chưa kích hoạt sẽ bị từ chối in","Bật lại được bất cứ lúc nào"],confirmText:"Tắt khoá chung",cancelText:"Huỷ"}))return;
+          const sw=$("pdm-legacy");sw.disabled=true;
           try{await rpc("print_access_key_set_enabled",{p_name:lk.name,p_enabled:!lk.enabled});await load(true)}
           catch(error){say(error.message||"Không đổi được khoá chung","error")}
           finally{sw.disabled=false}
         }
-        const renameDialog=$("pdm-rename");let renameId=null;
-        function openRename(id){const d=(data?.devices||[]).find(x=>x.id===id);if(!d)return;renameId=id;$("pdm-rename-input").value=d.name;$("pdm-rename-status").textContent="";if(!renameDialog.open)renameDialog.showModal();setTimeout(()=>$("pdm-rename-input").focus(),30)}
-        renameDialog.querySelector("form").onsubmit=async e=>{e.preventDefault();const name=$("pdm-rename-input").value.replace(/\s+/g," ").trim();if(!name){$("pdm-rename-status").textContent="Nhập tên máy";return}
-          try{await rpc("print_device_rename",{p_id:renameId,p_name:name});renameDialog.close();await load(true)}catch(error){$("pdm-rename-status").textContent=error.message||"Không đổi được tên"}};
-        $("pdm-rename-cancel").onclick=()=>renameDialog.close();renameDialog.addEventListener("click",e=>{if(e.target===renameDialog)renameDialog.close()});
-        const icon=()=>'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5"/></svg>';
-        // Thêm mục "Thiết bị in" ngay trước "Cấu hình" ở thanh bên tĩnh của các màn Admin vanilla và ở thanh bên React (Cấu hình).
-        function ensureNav(){
-          document.querySelectorAll(".ss-nav").forEach(nav=>{if(nav.querySelector('[data-admin-hash="#admin/thiet-bi"]'))return;const ref=nav.querySelector('[data-admin-hash="#admin/cauhinh"]');if(!ref)return;const b=document.createElement("button");b.type="button";b.dataset.adminHash=ROUTE;b.innerHTML=`${icon()}Thiết bị in`;b.onclick=()=>location.hash=ROUTE;ref.before(b)});
-          const nav=root.querySelector("aside nav");
-          if(nav&&!nav.querySelector("[data-print-devices-nav]")){const ref=[...nav.querySelectorAll("button")].find(b=>b.textContent.trim()==="Cấu hình");if(ref){const b=document.createElement("button");b.type="button";b.dataset.printDevicesNav="true";b.className=ref.className.replace("bg-brand-light text-brand border-l-4 border-brand font-bold","text-slate-500 border-l-4 border-transparent hover:bg-slate-50");b.innerHTML=`<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5"/></svg><span class="text-sm">Thiết bị in</span>`;b.onclick=()=>location.hash=ROUTE;ref.before(b)}}
+        // Popup máy: thông tin + lệnh in hôm nay của máy (bấm mở popup lệnh in sẵn có) + tắt/bật + đổi tên
+        const dialog=$("pdm-dialog");
+        function renderDevice(){
+          const d=state.device;if(!d)return;
+          $("pdm-d-title").textContent=d.name;$("pdm-d-sub").textContent=ua(d.userAgent)||"Trình duyệt không rõ";
+          $("pdm-d-status").innerHTML=`<span class="ss-badge" data-status="${d.enabled?"completed":"failed"}">${d.enabled?"Đang bật":"Đã tắt"}</span>`;
+          const fact=(l,v,s="")=>`<div class="pdm-fact"><span>${esc(l)}</span><strong>${esc(v)}</strong>${s?`<em>${esc(s)}</em>`:""}</div>`;
+          $("pdm-d-facts").innerHTML=[fact("Kích hoạt lúc",dt(d.activatedAt)),fact("Dùng gần nhất",d.lastSeenAt?dt(d.lastSeenAt):"—",rel(d.lastSeenAt)),fact("In gần nhất",d.lastPrintAt?dt(d.lastPrintAt):"—",rel(d.lastPrintAt)),fact("Tổng lệnh in",num(d.printCount),d.jobsToday?`+${num(d.jobsToday)} hôm nay`:"")].join("");
+          $("pdm-d-rename").value=d.name;$("pdm-d-toggle").textContent=d.enabled?"Tắt máy":"Bật máy";$("pdm-d-toggle").dataset.tone=d.enabled?"bad":"ok";$("pdm-d-note").textContent="";
+          const jobs=state.jobs;$("pdm-d-jobs-count").textContent=num(jobs.length);
+          $("pdm-d-jobs").innerHTML=jobs.length?jobs.map(j=>`<button type="button" class="pdm-job" data-pdm-job="${esc(j.id)}"><span class="t">${esc(clock(j.createdAt))}</span><span class="k">${esc(j.type==="group_uid"?"UID":j.type==="sku"?"SKU":"Khác")}</span><span class="m">${esc(j.first?.productName||j.first?.groupUid||j.first?.code||j.first?.sku||"")}${j.itemCount>1?` +${num(j.itemCount-1)}`:""}</span><span class="n">${num(j.copies)} tem</span><span class="ss-badge" data-status="${esc(j.status)}">${esc(j.status==="completed"?"Xong":j.status==="failed"?"Lỗi":"Đang in")}</span></button>`).join(""):`<p class="pdm-empty">Hôm nay máy này chưa in.</p>`;
         }
-        function stop(){clearInterval(timer);timer=0;if(renameDialog.open)renameDialog.close()}
+        async function openDevice(id){
+          const d=devices().find(x=>x.id===id);if(!d)return;
+          state.device=d;state.jobs=[];renderDevice();
+          if(UI.openDialog)UI.openDialog(dialog);else if(!dialog.open)dialog.showModal();
+          try{const r=await rpc("print_admin_jobs",{p_day:null,p_type:"all",p_query:"",p_device:id});if(state.device?.id===id){state.jobs=r.jobs||[];renderDevice()}}
+          catch(error){$("pdm-d-note").textContent=error.message||"Không tải được lệnh in của máy"}
+        }
+        async function toggleDevice(){
+          const d=state.device;if(!d)return;
+          if(d.enabled&&window.WhDialog&&!await window.WhDialog.confirm({tone:"warning",title:`Tắt máy ${d.name}`,facts:["Máy này sẽ không in được nữa"],confirmText:"Tắt máy",cancelText:"Huỷ"}))return;
+          const b=$("pdm-d-toggle");b.disabled=true;
+          try{await rpc("print_device_set_enabled",{p_id:d.id,p_enabled:!d.enabled});await load(true);state.device=devices().find(x=>x.id===d.id)||d;renderDevice()}
+          catch(error){$("pdm-d-note").textContent=error.message||"Không đổi được trạng thái"}
+          finally{b.disabled=false}
+        }
+        async function renameDevice(){
+          const d=state.device,name=$("pdm-d-rename").value.replace(/\s+/g," ").trim();if(!d)return;
+          if(!name){$("pdm-d-note").textContent="Nhập tên máy";return}
+          const b=$("pdm-d-save");b.disabled=true;
+          try{await rpc("print_device_rename",{p_id:d.id,p_name:name});await load(true);state.device=devices().find(x=>x.id===d.id)||d;renderDevice();$("pdm-d-note").textContent="Đã đổi tên"}
+          catch(error){$("pdm-d-note").textContent=error.message||"Không đổi được tên"}
+          finally{b.disabled=false}
+        }
+        // Tab: ẩn/hiện phần Lệnh in và phần Thiết bị; hash là nguồn sự thật để Back và link thẳng hoạt động
+        function applyTab(){
+          const dev=atTab();
+          screen.querySelectorAll("[data-pj-tab]").forEach(b=>{const on=(b.dataset.pjTab==="devices")===dev;b.setAttribute("aria-selected",String(on));b.tabIndex=on?0:-1});
+          screen.querySelector(".pj-stats").hidden=dev;screen.querySelector("#pj-jobs-panel").hidden=dev;$("pdm-panel").hidden=!dev;
+          const title=$("print-jobs-heading");if(title)title.textContent=dev?"Thiết bị in":"Lệnh in";
+        }
+        let timer=0;
         async function route(){
-          ensureNav();
-          if(location.hash!==ROUTE){if(!screen.hidden){screen.hidden=true;stop()}return}
-          const token=await window.PrintSkuAdminAccess?.getToken?.();
-          if(!token||location.hash!==ROUTE)return;
-          root.hidden=true;document.querySelectorAll(".ss-screen").forEach(s=>{if(s!==screen)s.hidden=true});screen.hidden=false;
-          if(!timer)timer=setInterval(()=>{if(!screen.hidden&&document.visibilityState==="visible"){load(true);renderCode()}},20000);
-          load();
+          if(location.hash===OLD_ROUTE){location.replace(TAB_ROUTE);return}
+          if(location.hash!==ROUTE&&location.hash!==TAB_ROUTE){clearInterval(timer);timer=0;if(dialog.open)dialog.close();return}
+          applyTab();
+          if(screen.hidden)return; // chưa đăng nhập: script Lệnh in sẽ phát print-sku-admin-ready
+          if(!timer)timer=setInterval(()=>{if(!screen.hidden&&atTab()&&document.visibilityState==="visible"){load(true)}else if(!screen.hidden&&atTab())renderCode()},20000);
+          if(atTab()||!state.loaded)load(atTab()?false:true);
         }
-        if(UI.hydrate)try{UI.hydrate(screen)}catch(_){}
-        screen.querySelectorAll("[data-admin-hash]").forEach(b=>b.onclick=()=>location.hash=b.dataset.adminHash);
-        $("pdm-create").onclick=create;$("pdm-code-revoke").onclick=revoke;$("pdm-top-refresh").onclick=()=>load();$("pdm-legacy-switch").onclick=legacyToggle;
+        $("pj-tabs").addEventListener("click",e=>{const b=e.target.closest("[data-pj-tab]");if(!b)return;location.hash=b.dataset.pjTab==="devices"?TAB_ROUTE:ROUTE});
+        $("pj-tabs").addEventListener("keydown",e=>{if(e.key!=="ArrowLeft"&&e.key!=="ArrowRight")return;const tabs=[...screen.querySelectorAll("[data-pj-tab]")],i=tabs.findIndex(b=>b.getAttribute("aria-selected")==="true"),next=tabs[(i+(e.key==="ArrowRight"?1:tabs.length-1))%tabs.length];next.focus();next.click();e.preventDefault()});
+        $("pdm-create").onclick=create;$("pdm-code-revoke").onclick=revoke;$("pdm-legacy").onclick=legacyToggle;
         $("pdm-code-copy").onclick=async()=>{try{await navigator.clipboard.writeText($("pdm-code-text").textContent);say("Đã chép mã","ok")}catch(_){say("Không chép được, hãy đọc mã cho nhân viên","error")}};
-        $("pdm-body").onclick=e=>{const b=e.target.closest("button[data-act]");if(!b)return;const id=b.closest("tr")?.dataset.id;if(b.dataset.act==="toggle")toggle(id);else openRename(id)};
-        new MutationObserver(ensureNav).observe(root,{childList:true,subtree:true});
+        screen.querySelectorAll("button.ss-metric[data-pdm-filter]").forEach(b=>b.onclick=()=>{state.filter=b.dataset.pdmFilter;render(false)});
+        $("pdm-body").addEventListener("click",e=>{const tr=e.target.closest("tr[data-pdm-id]");if(tr)openDevice(tr.dataset.pdmId)});
+        $("pdm-d-toggle").onclick=toggleDevice;$("pdm-d-save").onclick=renameDevice;
+        $("pdm-d-jobs").addEventListener("click",e=>{const b=e.target.closest("[data-pdm-job]");if(b&&window.PrintSkuPrintJobs)window.PrintSkuPrintJobs.openJob(b.dataset.pdmJob)});
+        if(UI.bindDialogs)try{UI.bindDialogs(screen)}catch(_){}
+        if(UI.hydrate)try{UI.hydrate($("pdm-panel"))}catch(_){}
+        new MutationObserver(()=>{if(!screen.hidden&&(location.hash===ROUTE||location.hash===TAB_ROUTE)&&!state.loaded&&!state.busy){state.busy=true;load(true).finally(()=>{state.busy=false})}}).observe(screen,{attributes:true,attributeFilter:["hidden"]});
         addEventListener("hashchange",route);addEventListener("print-sku-admin-ready",route);
-        window.PrintSkuDevicesAdmin={refresh:load};
+        window.PrintSkuDevicesAdmin={refresh:load,open:openDevice};
         route();
       })();
     </script>

@@ -145,7 +145,7 @@ Từ 10/10/2026 (`supabase/print_devices_v1.sql`), máy chủ chỉ nhận lện
 Triển khai:
 
 1. Chạy migration: `python scripts/apply_supabase_sql.py supabase/print_devices_v1.sql`. Migration chèn khoá chuyển tiếp `legacy-public` nên máy chưa kích hoạt vẫn in được như cũ.
-2. Admin vào **Quản trị → Thiết bị in** (`#admin/thiet-bi`), bấm **Tạo mã kích hoạt**. Mã dạng `XXXX-XXXX`, hiệu lực 30 phút, dùng được cho nhiều máy trong thời gian đó, chỉ hiện rõ một lần.
+2. Admin vào **Quản trị → Lệnh in → tab Thiết bị** (`#admin/lenh-in/thiet-bi`), bấm **Tạo mã kích hoạt**. Mã dạng `XXXX-XXXX`, hiệu lực 30 phút, dùng được cho nhiều máy trong thời gian đó, chỉ hiện rõ một lần.
 3. Trên từng máy, mở trang chủ, bấm ô **KÍCH HOẠT MÁY** (chỉ hiện khi máy chưa có khoá), nhập mã và tên máy. Ô biến mất là xong. Máy bị máy chủ từ chối cũng tự mở hộp này.
 4. Khi mọi máy đã có trong danh sách, tắt **Khoá chung cũ** trong màn Thiết bị in. Từ đó chỉ máy đã kích hoạt mới in được; bật lại được bất cứ lúc nào.
 
