@@ -143,7 +143,7 @@ const fs = require('node:fs');
       const scanner = page.locator('.pss');
       await page.waitForFunction(() => document.querySelector('.pss')?.dataset.state === 'warn');
       assert.match(await scanner.locator('.pss-card').innerText(), /Mã này không phải Group UID.*422467418/s);
-      assert.equal(await scanner.locator('.pss-type span').textContent(), 'Gõ tay mã UID');
+      assert.equal(await scanner.locator('.pss-type').getAttribute('aria-label'), 'Gõ tay mã UID');
       await page.evaluate(() => { window.testNextCode = '1028269999000001'; });
       await scanner.locator('[data-act="again"]').click();
       await scanner.waitFor({ state: 'detached' });

@@ -409,10 +409,17 @@ python scripts/apply_supabase_sql.py supabase/cut_group_uid_v7_admin_delete.sql
 
 Nút camera cạnh ô **Mã SKU** mở lớp quét toàn màn hình `window.PrintSkuScanUI` (script
 `print-sku-scan-ui` trong `index.html`; component React cũ trong bundle chỉ còn là vỏ gọi nó):
-khung 4 góc, đèn pin nếu máy hỗ trợ, 1×/2×/3×, "Gõ tay mã SKU"; nút Back của điện thoại đóng lớp
+khung 4 góc, đèn pin nếu máy hỗ trợ, 1×/2×/3×, "Gõ tay"; nút Back của điện thoại đóng lớp
 quét. Chỉ đọc mã nằm trong khung (tem có nhiều mã không bị đọc nhầm). Đọc được mã thì tra
 `SKU_Name` trước: đúng SKU → khung xanh + bíp + rung rồi điền vào ô (hộp gợi ý Combo vẫn chạy như
-cũ); không có trong danh mục → giữ camera, hỏi "Vẫn dùng mã này" / "Quét tiếp".
+cũ); không có trong danh mục → giữ camera, thẻ chỉ có tiêu đề + mã + 2 nút icon "Dùng mã này" / "Quét tiếp".
+
+**Đợt 4 (11/10/2026, camera):** không có câu hướng dẫn khi quét (khung ngắm tự nói lên việc cần làm; dòng trạng thái chỉ hiện khi
+đang mở camera / kiểm tra / đúng mã). Nút gõ tay chỉ ghi "Gõ tay" kèm icon bàn phím (tên đầy đủ ở `aria-label`). Lỗi camera hiện thẻ
+icon camera tắt + tên lỗi ngắn và luôn có **Gõ tay**: "Camera đang bị chặn" (kèm icon ổ khoá chỉ chỗ mở quyền), "Camera đang bận",
+"Không nạp được bộ đọc mã" có thêm **Thử lại** — mở lại camera ngay trong lớp quét, không phải đóng rồi mở; "Không có camera",
+"Cần HTTPS để mở camera" thì không. Điện thoại xoay ngang: khung ngắm bên trái, nút + thẻ thành cột bên phải. Đóng, ẩn tab (chuyển
+app) hay nút Back đều tắt camera (`wms-camera-lifecycle`). TÌM SKU cũng bỏ câu "Đưa tem vào khung". Test: `tests/scanner_states_browser.cjs`.
 
 Bộ đọc dùng chung `window.PrintSkuScanner.Jp()` → `doc(video, vung?)` (cả PRINT SKU, Xả vải, TÌM SKU):
 `vung` là `{x, y, w, h}` theo tỉ lệ khung hình, nhiều mã thì lấy mã gần tâm nhất. Máy không có
@@ -424,7 +431,7 @@ không đọc được QR và mã vạch ngang do lỗi đảo màu của ZXing 
 Ô Mã SKU có nút bàn phím **chỉ còn icon** (Keyboard / KeyboardOff; `aria-label` và `title` là "Hiện bàn phím" / "Ẩn bàn phím"), nằm cùng hàng bên phải ô Mã SKU (cùng cách ẩn bàn phím như Cắt UID, Sample, Xả vải) — để dùng máy
 quét cầm tay không bị bàn phím che; mặc định ẩn, nhớ theo từng máy (`print-sku-ban-phim`). Công tắc áp dụng cho cả bốn ô của form
 (Mã SKU, Tên hàng, Số lượng in lên tem, Số bản in): khi ẩn, sau lần quét focus nhảy sang ô kế tiếp cũng không bật bàn phím ảo; muốn gõ tay
-thì bấm nút icon để hiện. Bấm "Gõ tay mã SKU" trong lớp quét thì bàn phím tự bật lại. Số lượng in lên tem và Số bản in luôn nằm một hàng (bộ tăng giảm
+thì bấm nút icon để hiện. Bấm "Gõ tay" trong lớp quét thì bàn phím tự bật lại. Số lượng in lên tem và Số bản in luôn nằm một hàng (bộ tăng giảm
 gọn, nút −/+ vẫn 44 px; kiểm ở 320–1280 px).
 
 ## Tìm SKU bằng camera

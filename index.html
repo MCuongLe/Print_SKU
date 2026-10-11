@@ -387,7 +387,7 @@
       .pss[data-state="open"] .pss-spin,.pss[data-state="checking"] .pss-spin{display:block}
       @keyframes pss-spin{to{transform:rotate(360deg)}}
       .pss-status{position:absolute;top:calc(100% + 16px);left:50%;width:max-content;max-width:min(90vw,440px);margin:0;padding:8px 14px;border-radius:18px;background:rgba(0,0,0,.62);font-size:14px;font-weight:600;text-align:center;overflow-wrap:anywhere;transform:translateX(-50%)}
-      .pss-status[hidden]{display:none}
+      .pss-status[hidden],.pss-status:empty{display:none}
       .pss-status[data-tone="ok"]{background:rgba(0,150,103,.92)}.pss-status[data-tone="warn"]{background:rgba(176,112,20,.94)}
       .pss-top{position:absolute;top:0;left:0;right:0;display:flex;align-items:center;gap:12px;padding:calc(10px + env(safe-area-inset-top)) 14px 24px;background:linear-gradient(rgba(0,0,0,.55),transparent)}
       .pss-title{flex:1;font-size:18px;text-align:center}
@@ -409,9 +409,18 @@
       .pss-card code{display:block;margin:6px 0 4px;font:600 18px/1.3 var(--wms-font);letter-spacing:0;overflow-wrap:anywhere}
       .pss-card p{margin:6px 0 14px;color:#526861;font-size:13px;line-height:1.45}
       .pss-acts{display:flex;gap:8px}
-      .pss-acts button{flex:1;min-height:48px;border-radius:24px;font:inherit;font-weight:600;cursor:pointer}
+      .pss-acts button{display:inline-flex;flex:1;align-items:center;justify-content:center;gap:8px;min-height:48px;border-radius:24px;font:inherit;font-weight:600;cursor:pointer}
+      .pss-acts svg{width:20px;height:20px;flex:none}
+      .pss-err{display:flex;align-items:center;gap:10px}.pss-err svg{width:24px;height:24px;flex:none;color:#b5402f}
+      .pss-card p svg{display:inline-block;width:16px;height:16px;margin-right:6px;vertical-align:-3px}
       .pss-primary{border:0;background:#005f41;color:#fff}
       .pss-secondary{border:1px solid #cfe0da;background:#fff;color:#005f41}
+      /* Màn ngang thấp (điện thoại xoay ngang): khung ngắm bên trái, nút và thẻ thành cột bên phải — không đè nhau. */
+      @media(orientation:landscape) and (max-height:540px){
+        .pss-guide{top:52%;left:36%;width:min(56vw,64vh,380px)}
+        .pss-bottom{top:0;left:auto;width:min(44vw,340px);align-content:end;justify-items:stretch;padding:72px 16px calc(16px + env(safe-area-inset-bottom));background:linear-gradient(90deg,transparent,rgba(0,0,0,.6))}
+        .pss-zoom{justify-self:center}.pss-type{justify-content:center}.pss-card{width:100%}
+      }
       @media(prefers-reduced-motion:reduce){.pss-spin{animation-duration:2.4s}.pss-guide i{transition:none}}
       @media print{.pss{display:none!important}}
     </style>
@@ -427,7 +436,23 @@
         const ICON_X = SVG + '<path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>';
         const ICON_TORCH = SVG + '<path d="M12 13v1M17 2a1 1 0 0 1 1 1v4a3 3 0 0 1-.6 1.8l-.6.8A4 4 0 0 0 16 12v8a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2v-8a4 4 0 0 0-.8-2.4l-.6-.8A3 3 0 0 1 6 7V3a1 1 0 0 1 1-1zM6 6h12"/></svg>';
         const ICON_KEYS = SVG + '<path d="M10 8h.01M12 12h.01M14 8h.01M16 12h.01M18 8h.01M6 8h.01M7 16h10M8 12h.01"/><rect width="20" height="16" x="2" y="4" rx="2"/></svg>';
-        const HINT = "Đưa mã vào khung — máy tự đọc";
+        const ICON_CAMOFF = SVG + '<path d="M14.564 14.558a3 3 0 1 1-4.122-4.121"/><path d="m2 2 20 20"/><path d="M20 20H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1.997a2 2 0 0 0 .819-.175"/><path d="M9.695 4.024A2 2 0 0 1 10.004 4h3.993a2 2 0 0 1 1.76 1.05l.486.9A2 2 0 0 0 18.003 7H20a2 2 0 0 1 2 2v7.344"/></svg>';
+        const ICON_LOCK = SVG + '<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>';
+        const ICON_RETRY = SVG + '<path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>';
+        const ICON_CHECK = SVG + '<path d="M20 6 9 17l-5-5"/></svg>';
+        const ICON_SCAN = SVG + '<path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 12h10"/></svg>';
+        // Đợt 4 (11/10/2026): khung ngắm tự nói lên việc cần làm — không có câu hướng dẫn khi đang quét.
+        const HINT = "";
+        // Lỗi camera: [tiêu đề ngắn, dòng phụ có icon, có nút Thử lại] — luôn kèm nút Gõ tay, không để ngõ cụt.
+        const FAIL = {
+          https: ["Cần HTTPS để mở camera", "", false],
+          nocam: ["Máy không mở được camera", "", false],
+          engine: ["Không nạp được bộ đọc mã", "", true],
+          denied: ["Camera đang bị chặn", ICON_LOCK + "Cho phép ở ổ khoá trên thanh địa chỉ", true],
+          notfound: ["Không có camera", "", false],
+          busy: ["Camera đang bận", "", true],
+          other: ["Không mở được camera", "", true]
+        };
 
         // Vùng khung ngắm quy ra tỉ lệ trên khung hình gốc của video (video hiển thị kiểu object-fit: cover,
         // có thể đang phóng bằng CSS transform — getBoundingClientRect đã tính cả phóng).
@@ -479,11 +504,11 @@
             `<button class="pss-icon" type="button" data-act="torch" aria-label="Bật đèn" aria-pressed="false" hidden>${ICON_TORCH}</button></div>` +
             '<div class="pss-bottom"><div class="pss-card" hidden></div>' +
             '<div class="pss-zoom" role="group" aria-label="Thu phóng" hidden><button type="button" data-zoom="1" aria-pressed="true">1×</button><button type="button" data-zoom="2" aria-pressed="false">2×</button><button type="button" data-zoom="3" aria-pressed="false">3×</button></div>' +
-            `<button class="pss-type" type="button" data-act="type">${ICON_KEYS}<span>Gõ tay mã SKU</span></button></div>`;
+            `<button class="pss-type" type="button" data-act="type">${ICON_KEYS}<span>Gõ tay</span></button></div>`;
           const $ = selector => root.querySelector(selector);
           const video = $("video"), guide = $(".pss-guide"), statusEl = $(".pss-status"), card = $(".pss-card"), torchBtn = $('[data-act="torch"]'), zoomBox = $(".pss-zoom"), typeBtn = $(".pss-type");
           $(".pss-title").textContent = title;
-          typeBtn.querySelector("span").textContent = typeLabel;
+          typeBtn.setAttribute("aria-label", typeLabel); typeBtn.title = typeLabel;
           const status = (text, tone = "") => { statusEl.textContent = text; statusEl.dataset.tone = tone; };
           const state = name => { root.dataset.state = name; };
 
@@ -514,11 +539,14 @@
               else target?.focus();
             }, 80);
           };
-          const fail = text => {
+          const fail = (kind, detail = "") => {
+            const [title, hint, retry] = FAIL[kind] || FAIL.other;
             state("error"); zoomBox.hidden = true; typeBtn.hidden = true; statusEl.hidden = true;
-            card.innerHTML = '<b>Không mở được camera</b><p></p><div class="pss-acts"><button class="pss-primary" type="button" data-act="type">Gõ tay mã SKU</button></div>';
-            card.querySelector("p").textContent = text;
-            card.querySelector('[data-act="type"]').textContent = typeLabel;
+            card.innerHTML = `<div class="pss-err">${ICON_CAMOFF}<b></b></div>` + (hint || (kind === "other" && detail) ? `<p>${hint}</p>` : "") +
+              `<div class="pss-acts">${retry ? `<button class="pss-secondary" type="button" data-act="retry">${ICON_RETRY}Thử lại</button>` : ""}<button class="pss-primary" type="button" data-act="type">${ICON_KEYS}Gõ tay</button></div>`;
+            card.querySelector("b").textContent = title;
+            if (!hint && kind === "other" && detail) card.querySelector("p").textContent = detail;
+            card.querySelector('[data-act="type"]').setAttribute("aria-label", typeLabel);
             card.hidden = false;
           };
           const setZoom = async level => {
@@ -546,10 +574,9 @@
           };
           const reject = (code, offline) => {
             pending = code; state("warn");
-            status(check ? notFound : offline ? "Chưa kiểm tra được danh mục SKU" : "Mã không có trong danh mục SKU", "warn");
+            status("", "warn");
             card.innerHTML = `<b></b><code></code>` +
-              (check ? "" : `<p>${offline ? "Mạng đang chập chờn. Nếu chắc đây là mã SKU thì vẫn dùng được — tên hàng sẽ tra lại sau." : "Có thể là mã vạch nhà cung cấp hoặc mã UID. Đưa đúng mã SKU trên tem vào khung, hoặc dùng mã này nếu chắc chắn."}</p>`) +
-              '<div class="pss-acts"><button class="pss-secondary" type="button" data-act="use">Vẫn dùng mã này</button><button class="pss-primary" type="button" data-act="again">Quét tiếp</button></div>';
+              `<div class="pss-acts"><button class="pss-secondary" type="button" data-act="use">${ICON_CHECK}Dùng mã này</button><button class="pss-primary" type="button" data-act="again">${ICON_SCAN}Quét tiếp</button></div>`;
             card.querySelector("b").textContent = check ? notFound : offline ? "Chưa kiểm tra được danh mục SKU" : "Mã này không có trong danh mục SKU";
             card.querySelector("code").textContent = code;
             card.hidden = false; zoomBox.hidden = true; typeBtn.hidden = true;
@@ -585,6 +612,7 @@
             if (act === "close") finish(null);
             else if (act === "type") typeInstead();
             else if (act === "again") resume();
+            else if (act === "retry") { card.hidden = true; typeBtn.hidden = false; statusEl.hidden = false; state("open"); status("Đang mở camera…"); start(); }
             else if (act === "use" && pending) { const code = pending; pending = null; finish(code); }
             else if (act === "torch" && track) {
               const on = !torch;
@@ -600,20 +628,17 @@
           window.addEventListener("popstate", onPop);
           document.addEventListener("keydown", onKey);
 
-          (async () => {
+          const start = async () => {
             const S = window.PrintSkuScanner;
             if (!S || !S.gl() || !S.k0()) {
-              return fail(S && S.gl() ? "Trang phải chạy trên HTTPS thì trình duyệt mới cho mở camera. Mở bằng địa chỉ https:// rồi thử lại." : "Máy hoặc trình duyệt này không cho dùng camera.");
+              return fail(S && S.gl() ? "https" : "nocam");
             }
             try { eng = await S.Jp(); } catch (_) { eng = null; }
             if (closed) return;
-            if (!eng) return fail("Không nạp được bộ đọc mã. Gõ tay mã SKU giúp — vẫn in được bình thường.");
+            if (!eng) return fail("engine");
             try { stream = await S.ev(); } catch (error) {
               const name = error?.name || "";
-              return fail(name === "NotAllowedError" ? "Bạn đã từ chối quyền camera. Mở lại quyền trong cài đặt trình duyệt (biểu tượng ổ khoá cạnh địa chỉ), rồi thử lại."
-                : name === "NotFoundError" ? "Không thấy camera nào trên máy này."
-                : name === "NotReadableError" ? "Camera đang bị app khác chiếm. Đóng app camera/quay phim rồi thử lại."
-                : `Không mở được camera: ${name || "lỗi không rõ"}`);
+              return fail(name === "NotAllowedError" || name === "SecurityError" ? "denied" : name === "NotFoundError" || name === "OverconstrainedError" ? "notfound" : name === "NotReadableError" ? "busy" : "other", name);
             }
             if (closed) { stream.getTracks().forEach(t => t.stop()); return; }
             video.srcObject = stream;
@@ -626,7 +651,8 @@
             zoomBox.hidden = false;
             state("scan"); status(HINT);
             raf = requestAnimationFrame(tick);
-          })();
+          };
+          start();
           return () => finish(null, true);
         };
         // Quét Group UID (CẮT UID, XẢ VẢI, IN TEM GROUP UID): không tra SKU_Name. Group UID luôn 16 chữ số (28.418/28.418 mã,
@@ -3891,7 +3917,7 @@ Error generating stack: `+y.message+`
       .fsk-camera[data-busy="true"] .fsk-spin{display:block}
       @keyframes fsk-spin{to{transform:rotate(360deg)}}
       .fsk-cam-status{position:absolute;top:calc(100% + 16px);left:50%;width:max-content;max-width:min(88vw,420px);margin:0;padding:8px 14px;border-radius:18px;background:rgba(0,0,0,.62);color:#fff;font-size:14px;font-weight:600;line-height:1.35;text-align:center;transform:translateX(-50%)}
-      .fsk-cam-status[data-tone="ok"]{background:rgba(0,150,103,.9)}.fsk-cam-status[data-tone="warn"]{background:rgba(176,112,20,.94)}
+      .fsk-cam-status:empty{display:none}.fsk-cam-status[data-tone="ok"]{background:rgba(0,150,103,.9)}.fsk-cam-status[data-tone="warn"]{background:rgba(176,112,20,.94)}
       .fsk-cam-top{position:absolute;top:0;left:0;right:0;display:flex;align-items:center;gap:12px;padding:calc(10px + env(safe-area-inset-top)) 14px 24px;background:linear-gradient(rgba(0,0,0,.55),transparent)}
       .fsk-cam-title{flex:1;font-size:18px;text-align:center}
       .fsk-cam-icon{display:grid;flex:none;place-items:center;width:48px;height:48px;padding:0;border:0;border-radius:50%;background:rgba(0,0,0,.45);color:#fff;cursor:pointer}
@@ -6632,7 +6658,7 @@ var FSK_CORE = (function () {
           // Bộ quét QR/mã vạch dùng chung với XẢ VẢI / PRINT SKU (native BarcodeDetector hoặc ZXing).
           if (state.scanEngine === null) { try { state.scanEngine = (await window.PrintSkuScanner?.Jp?.()) || false; } catch (_) { state.scanEngine = false; } }
           setZoom(1);
-          camStatus("Đưa tem vào khung", "");
+          camStatus("", "");
           tell("");
           state.raf = requestAnimationFrame(tick);
         };
