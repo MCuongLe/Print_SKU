@@ -538,9 +538,10 @@ máy tính bảng giữ ô trang chủ + nút quay lại. Thanh 264 px dựng t�
 bấm mục = bấm ô): nhóm WH-MATERIAL › Trang chủ rồi 4 nhóm theo màu trang chủ (ô vuông màu + tên nhóm 14/700, mục con 16/400 có chấm trên đường dọc,
 mục đang mở nền trắng + vạch màu nhóm, `aria-current="page"`), thanh cuộn mảnh chỉ hiện khi rê chuột. Nút thu gọn (ô xanh, icon bảng) nằm đầu thanh
 trên của từng màn — trang chủ, module, Admin, IN TEM SKU/Cấu hình (React vẽ lại thì gắn lại); thu gọn là **ẩn hẳn thanh**, nội dung tràn hết bề
-rộng, nhớ trên máy (`localStorage` `wh-app-nav-collapsed`). Nhóm Quản trị: chưa đăng nhập là mục Quản trị (mở hộp đăng nhập); đã đăng nhập đổi
-thành Lệnh in, Đồng bộ SKU, Đồng bộ Group UID, Kiểm kê SKU, Cấu hình + **Đăng xuất** ở chân thanh — thay thanh bên riêng của Admin (`.ss-side`,
-`#root aside` ẩn từ 1024 px). Admin báo trạng thái qua `PrintSkuAdminAccess.isAuthorized()` (sự kiện `print-sku-admin-ready` có thể bắn trước khi
+rộng, nhớ trên máy (`localStorage` `wh-app-nav-collapsed`). Màn thường: nhóm Quản trị chỉ Kích hoạt máy + Quản trị (mở hộp đăng nhập nếu chưa có
+phiên). **Chế độ Quản trị** (mọi `#admin/*`): thanh chỉ còn ← Trang chủ (ô icon xanh), nhóm Quản trị 5 mục mỗi mục một ô icon 36 px + tên ngắn
+(Lệnh in, Đồng bộ SKU, Đồng bộ UID, Kiểm kê, Cấu hình — tên đầy đủ ở `aria-label`/`title`; mục đang mở ô tím đặc) và **Đăng xuất** ở chân thanh —
+thay thanh bên riêng của Admin (`.ss-side`, `#root aside` ẩn từ 1024 px). Admin báo trạng thái qua `PrintSkuAdminAccess.isAuthorized()` (sự kiện `print-sku-admin-ready` có thể bắn trước khi
 script cuối body chạy). Nút "← WH-MATERIAL" ẩn vì đã có mục Trang chủ; dưới tên module có tên nhóm viết hoa giãn chữ theo màu nhóm. Nội dung lùi
 bằng `--app-nav-w`; chỉ chuyển động khi bấm thu gọn (CSS cuối body tới sau lần vẽ đầu nên không để trượt lúc tải). Không ra giấy in.
 Test: `tests/app_nav_browser.cjs`.

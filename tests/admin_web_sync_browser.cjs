@@ -90,7 +90,7 @@ const navItems = page => page.evaluate(() => {
   const vis = e => { const b = e.getBoundingClientRect(); return b.width > 0 && b.height > 0 && getComputedStyle(e).display !== 'none'; };
   const btns = [...document.querySelectorAll('#app-nav [data-an-hash]')].filter(vis);
   const cs = e => getComputedStyle(e), active = btns.filter(b => b.getAttribute('aria-current') === 'page');
-  return { names: btns.map(b => b.textContent.trim()), active: active.map(b => b.textContent.trim()), h: Math.round(btns[0].getBoundingClientRect().height), font: cs(btns[0]).fontSize, weights: [...new Set(btns.map(b => `${b.getAttribute('aria-current') === 'page' ? 'on' : 'off'}:${cs(b).fontWeight}`))].sort() };
+  return { names: btns.map(b => b.getAttribute('aria-label')), active: active.map(b => b.getAttribute('aria-label')), h: Math.round(btns[0].getBoundingClientRect().height), font: cs(btns[0]).fontSize, weights: [...new Set(btns.map(b => `${b.getAttribute('aria-current') === 'page' ? 'on' : 'off'}:${cs(b).fontWeight}`))].sort() };
 });
 
 (async () => {
@@ -122,7 +122,7 @@ const navItems = page => page.evaluate(() => {
           assert.equal(m.mark, '38x38', `${hash}: icon module`); assert.equal(m.markIcon, true); assert.notEqual(m.sub, '', `${hash}: thiếu dòng phụ`);
           assert.deepEqual(nav.names, NAV, `${hash}: thứ tự menu`);
           assert.deepEqual(nav.active, [title], `${hash}: đúng một mục đang chọn`);
-          assert.equal(nav.h, 40); assert.equal(nav.font, '16px'); assert.deepEqual(nav.weights, ['off:400', 'on:600'], `${hash}: mục đang mở đậm 600, mục khác 400`);
+          assert.equal(nav.h, 48, `${hash}: mục Admin có ô icon 36 px`); assert.equal(nav.font, '16px'); assert.deepEqual(nav.weights, ['off:400', 'on:600'], `${hash}: mục đang mở đậm 600, mục khác 400`);
         }
         // thanh trên vẫn ở đỉnh; trong popup chi tiết, hàng tiêu đề bảng dính ở đỉnh vùng cuộn của popup
         await go(page, '#admin/sku-sync'); await page.locator('#sku-sync-preview').click();

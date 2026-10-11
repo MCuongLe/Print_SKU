@@ -109,7 +109,7 @@ const mock = (page, state) => page.route('**/*', async route => {
     assert.equal((await page.locator('#print-jobs-heading').textContent()).trim(), 'Thiết bị in');
     // Menu Admin (nhóm Quản trị ở thanh trái chung) về 5 mục, không còn "Thiết bị in"
     await page.locator('#app-nav [data-an-hash]').first().waitFor();
-    const names = (await page.locator('#app-nav [data-an-hash]').allTextContents()).map(t => t.trim());
+    const names = await page.locator('#app-nav [data-an-hash]').evaluateAll(list => list.map(b => b.getAttribute('aria-label')));
     assert.deepEqual(names, ['Lệnh in', 'Đồng bộ SKU', 'Đồng bộ Group UID', 'Kiểm kê SKU', 'Cấu hình']);
     await page.locator('#pdm-body tr[data-pdm-id="d1"]').waitFor();
     assert.equal(await page.locator('#pdm-m-on').textContent(), '1'); assert.equal(await page.locator('#pdm-m-off').textContent(), '1');
