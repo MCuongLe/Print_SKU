@@ -36,3 +36,6 @@ sku-refresh-snippet.js
 
 # Gói nén extension để gửi sang máy khác (đóng lại từ thư mục extension khi cần)
 /extension/*.rar
+
+# Thư viện chỉ dùng khi chạy test (axe-core) — cài bằng npm install, không commit
+node_modules/

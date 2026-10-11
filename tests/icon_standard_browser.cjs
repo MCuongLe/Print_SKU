@@ -65,7 +65,7 @@ const audit = guide => {
       // Xả vải: nút bàn phím chỉ là icon ở mọi khổ, tên nằm ở aria-label
       await page.goto(BASE + '#xa-vai'); await page.locator('#xa-vai-keyboard').waitFor({ state: 'visible' });
       const kb = await page.locator('#xa-vai-keyboard').evaluate(b => ({ w: Math.round(b.getBoundingClientRect().width), font: getComputedStyle(b).fontSize, label: b.getAttribute('aria-label') }));
-      assert.ok(kb.w <= 48 && kb.font === '0px' && /bàn phím/.test(kb.label), `${width}px: nút bàn phím Xả vải chỉ icon (${JSON.stringify(kb)})`);
+      assert.ok(kb.w <= 52 && kb.font === '0px' && /bàn phím/.test(kb.label), `${width}px: nút bàn phím Xả vải chỉ icon, vuông bằng điều khiển thường (${JSON.stringify(kb)})`);
       await page.locator('#xa-vai-keyboard').click();
       assert.match(await page.locator('#xa-vai-keyboard').getAttribute('aria-label'), /bàn phím/, 'bấm xong vẫn có tên');
       assert.deepEqual(errors, [], `${width}px: lỗi JavaScript`);

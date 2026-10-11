@@ -56,15 +56,15 @@ const BASE = process.env.BASE || 'http://127.0.0.1:8000/';
       });
       assert.equal(sku.overflow, false, `${width}px: IN TEM SKU tràn ngang`);
       if (mobile) {
-        assert.equal(sku.num, '22 22 50% rgb(255, 255, 255) rgb(0, 103, 71)', 'số thứ tự khối: chấm tròn 22 px, chữ trắng');
+        assert.equal(sku.num, '22 22 50% rgb(255, 255, 255) rgb(0, 95, 65)', 'số thứ tự khối: chấm tròn 22 px, chữ trắng, xanh thương hiệu --wms-brand (chuẩn chung)');
         assert.equal(sku.title, '18px/600', 'tiêu đề khối 18 px');
         assert.equal(sku.radius, '14px'); assert.equal(sku.shadow, 'none', 'thẻ phẳng');
         assert.ok(sku.addH >= 46, `nút Thêm vào danh sách ≥ 46 px (${sku.addH})`); assert.equal(sku.addR, '12px');
       } else {
-        assert.notEqual(sku.num.split(' ')[4], 'rgb(0, 103, 71)', 'máy tính giữ số thứ tự cũ');
+        assert.match(sku.num, /^30 30 50% /, 'máy tính: chấm tròn 30 px theo chuẩn chung');
       }
       assert.deepEqual(errors, []);
-      console.log(`PASS ${width}px: trang chủ ${home.cols} cột (${home.count} ô, ô cuối ${home.bottom}px), IN TEM SKU ${mobile ? 'cùng kiểu đợt 1' : 'giữ nguyên'}`);
+      console.log(`PASS ${width}px: trang chủ ${home.cols} cột (${home.count} ô, ô cuối ${home.bottom}px), IN TEM SKU ${mobile ? 'cùng kiểu đợt 1' : 'chấm tròn 30 px'}`);
       await context.close();
     }
   } finally { await browser.close(); }

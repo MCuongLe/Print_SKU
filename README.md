@@ -69,6 +69,35 @@ số ("In lại 6 tem", "Xoá 3 vị trí"). `tone`: `default` (Enter = đồng 
 dạng trượt từ đáy. Đang dùng ở 9 chỗ: IN TEM SKU (Combo, > 30 tem), PRINT UID (Combo, Lot/Roll, > 30 tem), Cắt UID (Lot/Roll, bỏ đánh
 dấu ADJ), Đối chiếu ADJ (tick giúp), Mã vị trí (xoá khỏi hàng đợi), Lệnh in (in lại). Test: `tests/wh_dialog_browser.cjs`.
 
+## Chuẩn giao diện chung
+
+Từ 11/10/2026 (khối `#ui-standard`, biến `--ui-*`, test `tests/ui_standard_browser.cjs`) mọi ô trang chủ và Admin (Admin chỉ máy tính)
+theo một chuẩn; màu thương hiệu duy nhất `--wms-brand` (#005F41):
+
+| Thành phần | Máy tính ≥ 801 px | Điện thoại ≤ 800 px |
+|---|---|---|
+| Thẻ khối, thẻ số liệu, dải thông tin, popup | bo 22 px, viền 1 px | bo 14 px, viền 1 px, không bóng |
+| Tiêu đề khối | chấm tròn số 30 px nền xanh + chữ 18 px/600 | chấm tròn 22 px + chữ 18 px/600 |
+| Ô nhập | cao 52 px, bo 13 px, chữ 16 px | cao 48 px, bo 10 px, chữ 16 px |
+| Nút hành động (chính / phụ) | cao 52 px, viên thuốc, chữ 16 px/600 | cao 48 px, bo 12 px, chữ 16 px/600 |
+| Nút chỉ có icon cạnh ô nhập | vuông 52 px | vuông 48 px |
+| Nút icon nằm trong ô | 44 px | 40 px |
+| Điều khiển gọn: tab, ô tìm/lọc trên thanh công cụ, chip lọc, nút trong dòng, nút icon thanh công cụ Admin | cao 44 px, chữ 14 px/600 | cao 44 px |
+
+Tiêu đề khối không bị ẩn ở khổ nào (TÌM SKU, CHUYỂN ĐỔI ĐƠN VỊ trên điện thoại nay cũng hiện "1 Quét nhận diện", "2 Số liệu cân"…).
+Tiêu đề trang Admin 22 px/600, tiêu đề nhóm Cấu hình 18 px/600. Lịch sử Group UID (khung kiểu Admin) và Rủi ro lưu trữ dùng cùng chuẩn
+thẻ/nút/ô nhập. CSS mới chỉ dùng các biến `--ui-*`. Mốc hiệu năng 11/10/2026 (localhost, trang chủ, trung vị 3 lần): máy tính FCP 100 ms,
+load 152 ms; điện thoại giả lập CPU ×4 FCP 372 ms, load 891 ms; tải 1.619 KB, heap 4,8 MB.
+
+## Khả năng tiếp cận (axe)
+
+`tests/a11y_axe_browser.cjs` quét bằng [axe-core](https://github.com/dequelabs/axe-core) (WCAG 2.0/2.1/2.2 mức A + AA và best-practice) 11 màn
+trang chủ ở 390 + 1280 px và 5 màn Admin ở 1280 px — yêu cầu 0 lỗi. axe-core chỉ dùng khi chạy test (khai báo trong `package.json` ở gốc repo,
+cài một lần bằng `npm install`, thư mục `node_modules/` không commit); app vẫn là một trang tĩnh, không tải thêm gì. Lần quét đầu 11/10/2026
+tìm và đã sửa: chữ xám `text-slate-400` của IN TEM SKU/Cấu hình chỉ đạt 3,4:1 (nay #5C6F68 ≥ 4,5:1), thẻ số liệu bằng 0 bị làm mờ bằng
+opacity (nay chữ xám đủ tương phản), hộp chọn "Mẫu tem" thiếu nhãn, nút "WH-MATERIAL" của Chuyển đổi đơn vị có tên đọc không chứa chữ
+đang hiện, và 14 thẻ `<main>` lồng trong vùng màn hình (đổi thành `<div>`, mỗi màn vẫn là một vùng có tên).
+
 ## Chuẩn icon
 
 Từ 11/10/2026 (khối `#icon-standard`, test `tests/icon_standard_browser.cjs`): icon Lucide nét 2 px, tô `currentColor`, chỉ 4 cỡ —
