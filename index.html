@@ -1770,7 +1770,7 @@ Error generating stack: `+y.message+`
               <div class="uid-add__row">
                 <input id="uid-code" autocomplete="off" placeholder="Group UID" required>
                 <button class="uid-add__cam act-icon act-icon--camera" id="uid-camera" type="button" aria-label="Quét bằng camera" title="Quét bằng camera" hidden></button>
-                <button class="uid-add__btn act-icon act-icon--add" id="uid-add" type="submit">Thêm</button>
+                <button class="uid-add__btn act-icon act-icon--add" id="uid-add" type="submit">Thêm vào danh sách</button>
               </div>
               <button class="uid-import" id="uid-import" type="button">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V4"></path><path d="M7 9l5-5 5 5"></path><path d="M4 16v3a1.5 1.5 0 0 0 1.5 1.5h13A1.5 1.5 0 0 0 20 19v-3"></path></svg>
@@ -1783,25 +1783,31 @@ Error generating stack: `+y.message+`
                 <b class="uid-panel__num">2</b>
                 <h2 id="uid-pending-title">Chưa gán SKU</h2>
                 <span class="uid-badge" id="uid-pending-count">0</span>
+                <button class="uid-sheet-open" id="uid-sheet-open" type="button" aria-label="Mở danh sách Group UID" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></button>
               </div>
-              <label class="uid-selectall">
-                <input type="checkbox" id="uid-select-all" disabled>
-                <span>Chọn tất cả</span>
-                <em id="uid-selected-count">Đã chọn 0</em>
-              </label>
+              <div class="uid-selectbar">
+                <label class="uid-selectall">
+                  <input type="checkbox" id="uid-select-all" disabled>
+                  <span>Chọn tất cả</span>
+                  <em id="uid-selected-count">Đã chọn 0</em>
+                </label>
+                <button class="uid-bulkdel" id="uid-bulk-delete" type="button" disabled><span>Xóa đã chọn</span></button>
+              </div>
+              <label class="uid-search"><input id="uid-search" type="search" autocomplete="off" placeholder="Group UID, Lot, Roll" aria-label="Tìm Group UID, Lot, Roll"></label>
               <div class="uid-panel__list" id="uid-pending"></div>
+              <button class="uid-more" id="uid-more" type="button" hidden><span>Xem tất cả</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></button>
             </section>
           </div>
           <div class="uid-col">
             <section class="uid-card uid-assign" aria-labelledby="uid-assign-title">
-              <div class="uid-panel__head"><b class="uid-panel__num">3</b><h2 id="uid-assign-title">Gán SKU</h2></div>
+              <div class="uid-panel__head"><b class="uid-panel__num">3</b><h2 id="uid-assign-title">Gán SKU</h2><span class="uid-head-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5" fill="currentColor"/></svg></span></div>
               <div class="uid-tabs" role="tablist" aria-label="Chế độ gán SKU">
                 <button id="uid-tab-manual" type="button" role="tab" aria-selected="true">Gán theo tick chọn</button>
                 <button id="uid-tab-auto" type="button" role="tab" aria-selected="false">Gán tự động</button>
               </div>
               <div class="uid-map" id="uid-map-manual" role="tabpanel" aria-label="Gán SKU cho UID đã chọn">
                 <div class="uid-map__grid">
-                  <label>SKU<input id="uid-bulk-sku" autocomplete="off" placeholder="SKU"></label>
+                  <label>SKU<span class="uid-skurow"><input id="uid-bulk-sku" autocomplete="off" placeholder="SKU"><button class="uid-sku-btn uid-sku-btn--scan" id="uid-sku-scan" type="button" aria-label="Quét SKU" title="Quét SKU" hidden></button><button class="uid-sku-btn uid-sku-btn--kb" id="uid-sku-kb" type="button" aria-pressed="false" aria-label="Ẩn bàn phím" title="Ẩn bàn phím"></button></span></label>
                   <label>Tên sản phẩm<input id="uid-bulk-product" autocomplete="off" placeholder="Tự điền theo SKU"></label>
                   <label>Lot<input id="uid-bulk-lot" autocomplete="off" maxlength="20" placeholder="VD: B"></label>
                   <label>Roll<input id="uid-bulk-roll" autocomplete="off" maxlength="20" placeholder="VD: 56"></label>
@@ -1836,6 +1842,15 @@ Error generating stack: `+y.message+`
           </div>
         </div>
       </div>
+      <dialog class="uid-sheet" id="uid-sheet" aria-labelledby="uid-sheet-title">
+        <div class="uid-sheet__grab" aria-hidden="true"></div>
+        <div class="uid-sheet__head"><h2 id="uid-sheet-title">Danh sách Group UID</h2><button class="uid-sheet__close" type="button" data-sheet="close" aria-label="Đóng"></button></div>
+        <label class="uid-search uid-sheet__search"><input id="uid-sheet-search" type="search" autocomplete="off" placeholder="Group UID, Lot, Roll" aria-label="Tìm Group UID, Lot, Roll"></label>
+        <div class="uid-sheet__chips" role="group" aria-label="Lọc"><button type="button" data-sheet-filter="all"></button><button type="button" data-sheet-filter="pending"></button><button type="button" data-sheet-filter="mapped"></button></div>
+        <label class="uid-selectall uid-sheet__all"><input type="checkbox" id="uid-sheet-all"><span>Chọn tất cả</span><em id="uid-sheet-count">Đã chọn 0</em></label>
+        <div class="uid-sheet__list" id="uid-sheet-list"></div>
+        <div class="uid-sheet__foot"><div class="uid-sheet__sum"><b id="uid-sheet-picked">Đã chọn 0</b><span id="uid-sheet-total">Tổng 0 Group UID</span></div><button class="uid-bulkdel uid-bulkdel--outline" type="button" data-sheet="bulk"><span>Xóa đã chọn</span></button><button class="uid-sheet__ok" type="button" data-sheet="close">Xác nhận</button></div>
+      </dialog>
     </section>
     <script>
       (() => {
@@ -1874,6 +1889,15 @@ Error generating stack: `+y.message+`
         const autoHelp = document.getElementById("uid-auto-help");
         const groupUid = document.getElementById("uid-code");
         const status = document.getElementById("uid-status");
+        const searchInput = document.getElementById("uid-search");
+        const bulkDelete = document.getElementById("uid-bulk-delete");
+        const moreButton = document.getElementById("uid-more");
+        const sheetOpen = document.getElementById("uid-sheet-open");
+        const sheet = document.getElementById("uid-sheet");
+        const sheetSearch = document.getElementById("uid-sheet-search");
+        const sheetList = document.getElementById("uid-sheet-list");
+        const sheetAll = document.getElementById("uid-sheet-all");
+        let sheetFilter = "all";
         const pending = [];
         const mapped = [];
         const autoRows = [{ id: 1, sku: "", qty: 1, name: "", autoName: "" }];
@@ -2134,7 +2158,7 @@ Error generating stack: `+y.message+`
             } catch (_) { failed += batch.length; }
             for (const code of batch) {
               const row = found.get(code);
-              const item = { id: nextId++, groupUid: code, selected: false,
+              const item = { id: nextId++, groupUid: code, selected: false, addedAt: Date.now(),
                 sku: row?.sku || "", productName: String(row?.product_name || "").trim(),
                 lot: row?.lot || "", roll: row?.roll || "" };
               if (item.productName) { mapped.push(item); ready++; }
@@ -2364,6 +2388,55 @@ Error generating stack: `+y.message+`
           }
         });
 
+        const fold = value => String(value ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/gi, "d").toLowerCase();
+        const two = n => String(n).padStart(2, "0");
+        const addedText = time => { if (!time) return ""; const d = new Date(time); return `Thêm: ${two(d.getDate())}/${two(d.getMonth() + 1)}/${d.getFullYear()} ${two(d.getHours())}:${two(d.getMinutes())}`; };
+        // Dòng UID dùng chung cho thẻ Chưa gán SKU và tấm kéo lên (pick = có ô chọn; more = dòng thứ 4 trở đi, điện thoại ẩn)
+        const uidRow = (item, index, pick, more = false) => {
+          const lotRoll = [item.lot ? `Lot: ${escapeHtml(item.lot)}` : "", item.roll ? `Roll: ${escapeHtml(item.roll)}` : ""].filter(Boolean).join('<i aria-hidden="true">|</i>');
+          return `
+            <article class="uid-row uid-row--rich${more ? " uid-row--more" : ""}" data-id="${item.id}" data-selected="${Boolean(item.selected)}">
+              ${pick ? `<label class="uid-select" aria-label="Chọn UID ${index + 1}"><input type="checkbox" data-field="selected" ${item.selected ? "checked" : ""}></label>` : '<span class="uid-row__done" aria-hidden="true"></span>'}
+              <div class="uid-row__body"><code class="uid-row__code" title="${escapeHtml(item.groupUid)}">${escapeHtml(item.groupUid)}</code>${lotRoll ? `<span class="uid-row__lot">${lotRoll}</span>` : ""}${!pick && (item.sku || item.productName) ? `<span class="uid-row__lot">${escapeHtml([item.sku, item.productName].filter(Boolean).join(" · "))}</span>` : ""}${item.addedAt ? `<span class="uid-row__time">${addedText(item.addedAt)}</span>` : ""}</div>
+              <div class="uid-row__tools">
+                <button class="uid-row__icon uid-row__icon--copy" type="button" data-action="copy" aria-label="Chép UID ${index + 1}" title="Chép"></button>
+                <button class="uid-row__icon uid-row__icon--remove" type="button" data-action="remove" aria-label="Xóa UID ${index + 1}" title="Xóa">×</button>
+              </div>
+            </article>`;
+        };
+        const renderSheet = () => {
+          if (!sheet.open) return;
+          const query = fold(sheetSearch.value.trim()), selected = pending.filter(item => item.selected).length, total = pending.length + mapped.length;
+          const labels = { all: `Tất cả (${total})`, pending: `Chưa gán SKU (${pending.length})`, mapped: `Đã gán (${mapped.length})` };
+          sheet.querySelectorAll("[data-sheet-filter]").forEach(chip => { chip.textContent = labels[chip.dataset.sheetFilter]; chip.setAttribute("aria-pressed", String(chip.dataset.sheetFilter === sheetFilter)); });
+          const match = item => !query || fold([item.groupUid, item.lot, item.roll, item.sku, item.productName].join(" ")).includes(query);
+          const rows = [
+            ...(sheetFilter === "mapped" ? [] : pending.map((item, index) => [item, index, true]).filter(([item]) => match(item))),
+            ...(sheetFilter === "pending" ? [] : mapped.map((item, index) => [item, index, false]).filter(([item]) => match(item)))
+          ];
+          sheetList.innerHTML = rows.length ? rows.map(([item, index, pick]) => uidRow(item, index, pick).replace('class="uid-row ', `data-list="${pick ? "pending" : "mapped"}" class="uid-row `)).join("") : '<div class="uid-empty">Không có Group UID phù hợp.</div>';
+          sheetAll.checked = pending.length > 0 && selected === pending.length;
+          sheetAll.indeterminate = selected > 0 && selected < pending.length;
+          sheetAll.disabled = !pending.length;
+          document.getElementById("uid-sheet-count").textContent = `Đã chọn ${selected}`;
+          document.getElementById("uid-sheet-picked").textContent = `Đã chọn ${selected}`;
+          document.getElementById("uid-sheet-total").textContent = `Tổng ${total} Group UID`;
+          sheet.querySelector('[data-sheet="bulk"]').disabled = !selected;
+        };
+        const copyUid = async code => {
+          try { await navigator.clipboard.writeText(code); }
+          catch (_) { const area = document.createElement("textarea"); area.value = code; document.body.append(area); area.select(); try { document.execCommand("copy"); } catch (_) {} area.remove(); }
+          setStatus(`Đã chép ${code}.`, "ok");
+        };
+        const removeSelected = async () => {
+          const chosen = pending.filter(item => item.selected);
+          if (!chosen.length) return;
+          const ok = window.WhDialog?.confirm ? await window.WhDialog.confirm({ tone: "warning", title: `Xóa ${chosen.length} Group UID đã chọn`, list: chosen.map(item => item.groupUid), confirmText: "Xóa" }) : confirm(`Xóa ${chosen.length} Group UID đã chọn?`);
+          if (!ok) return;
+          for (let i = pending.length - 1; i >= 0; i -= 1) if (pending[i].selected) pending.splice(i, 1);
+          setStatus(`Đã xóa ${chosen.length} Group UID khỏi khung chờ gán.`);
+          renderAll();
+        };
         const renderAll = () => {
           const selected = pending.filter(item => item.selected).length;
           pendingCount.textContent = String(pending.length);
@@ -2375,14 +2448,15 @@ Error generating stack: `+y.message+`
           selectAll.disabled = !pending.length;
           applyMapping.disabled = !selected;
           WmsPrint.render(printAll, { label: mapped.length ? `Xác nhận in ${mapped.length} tem` : "Xác nhận in", disabled: !mapped.length || lookingUp.size > 0, key: mapped.length });
+          const query = fold(searchInput.value.trim());
+          const shown = pending.map((item, index) => [item, index]).filter(([item]) => !query || fold([item.groupUid, item.lot, item.roll].join(" ")).includes(query));
           pendingElement.innerHTML = pending.length
-            ? pending.map((item, index) => `
-            <article class="uid-row" data-id="${item.id}" data-selected="${item.selected}">
-              <label class="uid-select" aria-label="Chọn UID ${index + 1}"><input type="checkbox" data-field="selected" ${item.selected ? "checked" : ""}></label>
-              <code class="uid-row__code" title="${escapeHtml(item.groupUid)}">${escapeHtml(item.groupUid)}</code>
-              <button class="uid-row__icon uid-row__icon--remove" type="button" data-action="remove" aria-label="Xóa UID ${index + 1}" title="Xóa">×</button>
-            </article>`).join("")
+            ? (shown.length ? shown.map(([item, index], order) => uidRow(item, index, true, !query && order >= 3)).join("") : '<div class="uid-empty">Không có Group UID phù hợp.</div>')
             : '<div class="uid-empty">Chưa có Group UID chờ gán.</div>';
+          moreButton.hidden = query !== "" || pending.length <= 3;
+          sheetOpen.hidden = !(pending.length + mapped.length);
+          bulkDelete.disabled = !selected;
+          renderSheet();
           readyElement.innerHTML = mapped.length
             ? mapped.map((item, index) => `
             <article class="uid-row uid-row--ready" data-id="${item.id}">
@@ -2398,10 +2472,12 @@ Error generating stack: `+y.message+`
         };
 
         pendingElement.addEventListener("click", event => {
-          const row = event.target.closest(".uid-row");
-          if (!row || event.target.dataset.action !== "remove") return;
+          const row = event.target.closest(".uid-row"), action = event.target.closest("[data-action]")?.dataset.action;
+          if (!row || !action) return;
           const index = pending.findIndex(item => item.id === Number(row.dataset.id));
           if (index < 0) return;
+          if (action === "copy") return copyUid(pending[index].groupUid);
+          if (action !== "remove") return;
           pending.splice(index, 1);
           setStatus("Đã xóa Group UID khỏi khung chờ gán.");
           renderAll();
@@ -2431,6 +2507,44 @@ Error generating stack: `+y.message+`
             setStatus("Đã xóa Group UID khỏi khung sẵn sàng in.");
           } else return;
           renderAll();
+        });
+
+        searchInput.addEventListener("input", () => renderAll());
+        bulkDelete.addEventListener("click", removeSelected);
+        // Tấm "Danh sách Group UID": mở bằng › hoặc Xem tất cả; lọc, tìm, chọn, chép, xoá, Xóa đã chọn
+        const openSheet = () => { sheetFilter = "all"; sheetSearch.value = ""; sheet.showModal(); renderSheet(); };
+        sheetOpen.addEventListener("click", openSheet);
+        moreButton.addEventListener("click", openSheet);
+        sheetSearch.addEventListener("input", renderSheet);
+        sheetAll.addEventListener("change", () => { pending.forEach(item => { item.selected = sheetAll.checked; }); renderAll(); });
+        sheet.addEventListener("click", event => {
+          if (event.target === sheet || event.target.closest('[data-sheet="close"]')) { sheet.close(); return; }
+          if (event.target.closest('[data-sheet="bulk"]')) { removeSelected(); return; }
+          const chip = event.target.closest("[data-sheet-filter]");
+          if (chip) { sheetFilter = chip.dataset.sheetFilter; renderSheet(); return; }
+          const row = event.target.closest(".uid-row"), action = event.target.closest("[data-action]")?.dataset.action;
+          if (!row || !action) return;
+          const list = row.dataset.list === "mapped" ? mapped : pending, index = list.findIndex(item => item.id === Number(row.dataset.id));
+          if (index < 0) return;
+          if (action === "copy") return copyUid(list[index].groupUid);
+          if (action === "remove") { const [item] = list.splice(index, 1); setStatus(`Đã xóa ${item.groupUid}.`); renderAll(); }
+        });
+        sheet.addEventListener("change", event => {
+          if (event.target.dataset.field !== "selected") return;
+          const item = pending.find(entry => entry.id === Number(event.target.closest(".uid-row")?.dataset.id));
+          if (item) { item.selected = event.target.checked; renderAll(); }
+        });
+        addEventListener("hashchange", () => { if (sheet.open && location.hash !== "#group-uid") sheet.close(); });
+        // Ô SKU khi gán: quét bằng camera (lớp quét SKU dùng chung) và nút ẩn/hiện bàn phím (máy quét cầm tay không cần bàn phím ảo)
+        const skuScan = document.getElementById("uid-sku-scan"), skuKeyboard = document.getElementById("uid-sku-kb");
+        if (window.PrintSkuScanUI?.canOpen()) skuScan.hidden = false;
+        skuScan.addEventListener("click", () => window.PrintSkuScanUI?.open({ typeFocus: "#uid-bulk-sku", onCode: code => { bulkSku.value = code; bulkSku.dispatchEvent(new Event("input", { bubbles: true })); } }));
+        skuKeyboard.addEventListener("click", () => {
+          const hide = bulkSku.inputMode !== "none";
+          bulkSku.inputMode = hide ? "none" : "text";
+          const label = hide ? "Hiện bàn phím" : "Ẩn bàn phím";
+          skuKeyboard.setAttribute("aria-pressed", String(hide)); skuKeyboard.setAttribute("aria-label", label); skuKeyboard.title = label;
+          bulkSku.blur(); setTimeout(() => bulkSku.focus(), 60);
         });
 
         selectAll.addEventListener("change", () => {
@@ -11090,5 +11204,89 @@ async function rpc(name,args,retry=true){
         sync();
       })();
     </script>
+    <style id="uid-mockup">
+      /* IN TEM GROUP UID theo mẫu (11/10/2026) */
+      #uid-code { padding-left: 46px; background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235c6f68' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M3 5v14M7 5v14M10 5v14M14 5v14M17 5v14M21 5v14'/%3E%3C/svg%3E") 14px center / 20px no-repeat; }
+      #uid-screen .uid-import { border-style: solid; background: #fff; }
+      #uid-screen .uid-panel__head { position: relative; }
+      #uid-screen .uid-head-icon { display: grid; place-items: center; margin-left: auto; color: #005f41; }
+      #uid-screen :is(.uid-head-icon, .uid-sheet-open, .uid-more) svg { width: 20px; height: 20px; }
+      .uid-sheet-open { display: grid; place-items: center; width: 40px; height: 40px; margin: 0 -8px 0 0; padding: 0; border: 0; border-radius: 12px; background: transparent; color: #4f625b; cursor: pointer; }
+      .uid-sheet-open[hidden] { display: none; }
+      #uid-screen .uid-badge { margin-left: auto; }
+      #uid-screen .uid-panel__head .uid-badge ~ .uid-sheet-open { margin-left: 4px; }
+      .uid-selectbar { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+      .uid-selectbar .uid-selectall { flex: 1; margin: 0; }
+      .uid-selectbar .uid-selectall em { display: none; }
+      .uid-bulkdel { display: inline-flex; flex: none; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 14px; border: 0; border-radius: 12px; background: #fdecec; color: #c62828; font: 600 14px/1 var(--wms-font); cursor: pointer; }
+      .uid-bulkdel::before { content: ""; width: 20px; height: 20px; background-color: currentColor; -webkit-mask: var(--i-trash) center / contain no-repeat; mask: var(--i-trash) center / contain no-repeat; }
+      .uid-bulkdel:disabled { opacity: .5; cursor: default; }
+      .uid-bulkdel--outline { border: 1.5px solid #e2a3a3; background: #fff; }
+      /* Ô tìm theo chuẩn ô nhập (cao --ui-ctl, bo --ui-in-r), icon kính lúp vẽ trong ô */
+      .uid-search { display: block; margin-bottom: 10px; }
+      #uid-screen .uid-search input { width: 100%; height: var(--ui-ctl, 52px); box-sizing: border-box; padding: 0 14px 0 46px; border: 1px solid transparent; border-radius: var(--ui-in-r, 13px); background: #f1f5f3 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235c6f68' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.3-4.3'/%3E%3C/svg%3E") 14px center / 20px no-repeat; color: #17251f; font: 400 16px/1.2 var(--wms-font); outline: none; box-shadow: none; }
+      #uid-screen .uid-search input:focus { border-color: var(--wms-brand, #005f41); background-color: #fff; }
+      #uid-screen .uid-row--rich { grid-template-columns: 26px minmax(0, 1fr) auto; align-items: center; min-height: 64px; }
+      .uid-row--rich .uid-row__body { display: grid; gap: 2px; min-width: 0; }
+      .uid-row--rich .uid-row__code { overflow: hidden; font-size: 16px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+      .uid-row__lot, .uid-row__time { overflow: hidden; color: #4f625b; font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
+      .uid-row__lot i { margin: 0 8px; color: #b7c5bf; font-style: normal; }
+      .uid-row__time { color: #5c6f68; font-size: 13px; }
+      .uid-row--rich .uid-row__tools { display: flex; gap: 8px; }
+      .uid-row__icon--copy { --ico: var(--i-copy); color: #005f41; background: #fff; }
+      .uid-row__icon--copy::before { content: ""; display: block; width: 20px; height: 20px; margin: auto; background-color: currentColor; -webkit-mask: var(--ico) center / contain no-repeat; mask: var(--ico) center / contain no-repeat; }
+      .uid-row__done { width: 20px; height: 20px; justify-self: center; background-color: #16845b; -webkit-mask: var(--i-check) center / contain no-repeat; mask: var(--i-check) center / contain no-repeat; }
+      .uid-more { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; min-height: 44px; margin-top: 6px; border: 0; background: transparent; color: #005f41; font: 600 14px/1 var(--wms-font); cursor: pointer; }
+      .uid-more[hidden] { display: none; }
+      /* Ô Group UID + camera một hàng, nút Thêm vào danh sách xuống hàng riêng (mọi bề rộng, như mẫu); ô SKU và Tên sản phẩm chiếm cả hàng */
+      #uid-form .uid-add__row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 9px; }
+      #uid-form .uid-add__row .uid-add__btn { grid-column: 1 / -1; }
+      #uid-form .uid-add__row:not(.has-camera) input { grid-column: 1 / -1; }
+      #uid-screen .uid-map__grid > label:nth-child(-n + 2) { grid-column: 1 / -1; }
+      .uid-skurow { display: flex; gap: 8px; }
+      .uid-skurow input { flex: 1; min-width: 0; }
+      .uid-sku-btn { display: grid; flex: none; place-items: center; width: var(--ui-ctl, 48px); height: var(--ui-ctl, 48px); padding: 0; border: 1px solid var(--wms-border, #d9e2de); border-radius: 13px; background: #fff; color: #005f41; cursor: pointer; }
+      .uid-sku-btn[hidden] { display: none; }
+      .uid-sku-btn::before { content: ""; width: 22px; height: 22px; background-color: currentColor; -webkit-mask: var(--ico) center / contain no-repeat; mask: var(--ico) center / contain no-repeat; }
+      .uid-sku-btn--scan { --ico: var(--i-camera); background: #e6f3ef; border-color: transparent; }
+      .uid-sku-btn--kb { --ico: var(--i-keyboard); }
+      .uid-sku-btn--kb[aria-pressed="true"] { --ico: var(--i-keyboard-off); }
+      /* Tấm kéo lên */
+      .uid-sheet { position: fixed; inset: auto 0 0; width: min(100%, 720px); max-width: none; max-height: 88vh; margin: 0 auto; padding: 0; border: 0; border-radius: 22px 22px 0 0; background: #fff; color: #17251f; font-family: var(--wms-font); box-shadow: 0 -12px 40px rgba(7, 27, 21, .25); }
+      .uid-sheet[open] { display: flex; flex-direction: column; }
+      .uid-sheet::backdrop { background: rgba(7, 27, 21, .45); }
+      .uid-sheet__grab { width: 44px; height: 4px; margin: 10px auto 4px; border-radius: 2px; background: #c9d4cf; }
+      .uid-sheet__head { display: flex; align-items: center; gap: 12px; padding: 6px 16px 10px; }
+      .uid-sheet__head h2 { flex: 1; margin: 0; font-size: 18px; font-weight: 700; }
+      .uid-sheet__close { display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 12px; background: transparent; color: #17251f; cursor: pointer; }
+      .uid-sheet__close::before { content: ""; width: 22px; height: 22px; background-color: currentColor; -webkit-mask: var(--i-x) center / contain no-repeat; mask: var(--i-x) center / contain no-repeat; }
+      .uid-sheet__search { margin: 0 16px 10px; }
+      .uid-sheet__chips { display: flex; gap: 8px; padding: 0 16px 10px; overflow-x: auto; }
+      .uid-sheet__chips button { flex: none; min-height: 40px; padding: 0 16px; border: 1px solid #dbe5e0; border-radius: 999px; background: #fff; color: #17251f; font: 600 14px/1 var(--wms-font); cursor: pointer; }
+      .uid-sheet__chips button[aria-pressed="true"] { border-color: #005f41; background: #005f41; color: #fff; }
+      .uid-sheet__all { margin: 0 16px 8px; }
+      .uid-sheet__list { display: grid; flex: 1; align-content: start; gap: 8px; min-height: 0; overflow-y: auto; padding: 0 16px 12px; }
+      .uid-sheet__foot { display: flex; align-items: center; gap: 10px; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); border-top: 1px solid #e3eae6; }
+      .uid-sheet__sum { flex: 1; min-width: 0; }
+      .uid-sheet__sum b { display: block; font-size: 16px; font-weight: 700; }
+      .uid-sheet__sum span { display: block; color: #5c6f68; font-size: 13px; }
+      .uid-sheet__ok { display: inline-flex; flex: none; align-items: center; gap: 8px; min-height: 48px; padding: 0 18px; border: 0; border-radius: 13px; background: #005f41; color: #fff; font: 700 16px/1 var(--wms-font); cursor: pointer; }
+      .uid-sheet__ok::before { content: ""; width: 20px; height: 20px; background-color: currentColor; -webkit-mask: var(--i-check) center / contain no-repeat; mask: var(--i-check) center / contain no-repeat; }
+      @media (max-width: 1023px) {
+        #uid-pending .uid-row--more { display: none; }
+      }
+      @media (min-width: 1024px) {
+        .uid-sheet-open, .uid-more { display: none !important; }
+      }
+      @media (max-width: 420px) {
+        .uid-bulkdel { padding: 0 12px; }
+        .uid-sheet__foot .uid-bulkdel span { display: none; }
+        .uid-sheet__foot .uid-bulkdel { width: 48px; padding: 0; }
+      }
+      @media (max-width: 359px) {
+        .uid-bulkdel span { display: none; }
+        .uid-bulkdel { width: 44px; padding: 0; }
+      }
+    </style>
   </body>
 </html>

@@ -70,7 +70,7 @@ const assert = require('node:assert/strict');
       const box = async id => page.locator(id).evaluate(e => { const r = e.getBoundingClientRect(); return { top: Math.round(r.top), left: Math.round(r.left) }; });
       const [codeBox, cameraBox, addBox] = [await box('#uid-code'), await box('#uid-camera'), await box('#uid-add')];
       assert.equal(cameraBox.top, codeBox.top);
-      assert.equal(addBox.top > codeBox.top, width <= 620);
+      assert.equal(addBox.top > codeBox.top, true, 'nút Thêm vào danh sách xuống hàng riêng dưới ô Group UID + camera (mẫu 11/10/2026)');
       await page.evaluate(() => {
         const canvas = document.createElement('canvas'); canvas.width = 320; canvas.height = 240;
         const ctx = canvas.getContext('2d'); setInterval(() => { ctx.fillStyle = '#345'; ctx.fillRect(0, 0, 320, 240); }, 100);

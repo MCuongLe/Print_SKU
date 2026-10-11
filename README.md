@@ -563,6 +563,14 @@ Chọn tất cả + xoá tem đã chọn (hỏi lại bằng WhDialog) và tổn
 lọc Tất cả / Đã chọn / Chưa chọn, In tem). **In tem vẫn in cả danh sách** như React (ô chọn dùng cho xoá nhiều). Thẻ 1 đổi tên "Nhập thông tin
 tem" + icon nhãn; ô SKU giữ gợi ý "SKU" (chuẩn không câu hướng dẫn). Test: `tests/sku_queue_browser.cjs`.
 
+**IN TEM GROUP UID theo mẫu (11/10/2026, khối `#uid-mockup` + sửa trong script màn).** Ô Group UID có icon mã vạch, camera cùng hàng, nút
+**Thêm vào danh sách** xuống hàng riêng (mọi bề rộng); Nhập Excel viền liền. Thẻ **Chưa gán SKU**: chip số + › (điện thoại), hàng Chọn tất cả +
+**Xóa đã chọn** (hỏi lại bằng WhDialog), ô tìm Group UID / Lot / Roll (chuẩn ô nhập), mỗi dòng UID + "Lot | Roll" + "Thêm: dd/mm/yyyy hh:mm" (giờ thêm
+lưu ở `addedAt` khi tra xong) + **chép** + xoá; điện thoại hiện 3 dòng đầu + "Xem tất cả". Tấm **Danh sách Group UID** (› hoặc Xem tất cả): tìm,
+lọc Tất cả / Chưa gán SKU / Đã gán (UID đã gán không có ô chọn, có SKU · tên), Chọn tất cả, "Đã chọn N / Tổng M Group UID", Xóa đã chọn, Xác nhận.
+Thẻ **Gán SKU** có icon nhãn; ô SKU và Tên sản phẩm chiếm cả hàng, ô SKU có quét (lớp quét SKU dùng chung) và nút ẩn/hiện bàn phím. Test:
+`tests/group_uid_mockup_browser.cjs`.
+
 **Bố cục điện thoại (10/10/2026).** Toàn màn hình bỏ các câu hướng dẫn (thông báo sau khi đọc tem/chọn SKU, mẹo gõ mã, "Lưu trên máy này…", đuôi "kiểm tra mạng rồi bấm…"
 của các thông báo lỗi); chỉ giữ trạng thái và lỗi ngắn. Bước 1: nút Bật camera và nút Chọn ảnh (chỉ icon, vẫn có tên cho trình đọc màn hình) cùng một hàng. Bước 2: thẻ SKU gọn
 (SKU · chip đơn vị · nút Đổi), bỏ các câu giải thích đơn vị/cách nhập và thông báo "nhập số lượng và số tem"; nút **Tính mm từ cân** thay khối giải thích; **Số tem**
