@@ -25,6 +25,26 @@ test('parseNumber đọc số kiểu Việt lẫn Anh', () => {
   assert.ok(Number.isNaN(CORE.parseNumber('abc')));
 });
 
+test('parseNumber: số bắt đầu bằng 0 và dấu hỗn hợp không bị đọc thành hàng nghìn', () => {
+  // Đúng 3 chữ số sau dấu: "0,125 kg" là 0,125 chứ không phải 125.
+  assert.equal(CORE.parseNumber('0.125'), 0.125);
+  assert.equal(CORE.parseNumber('0,125'), 0.125);
+  assert.equal(CORE.parseNumber('-0,5'), -0.5);
+  // Phần trước dài hơn một nhóm hàng nghìn thì không thể là hàng nghìn.
+  assert.equal(CORE.parseNumber('1250.125'), 1250.125);
+  // Lẫn hai loại dấu: dấu cuối là thập phân.
+  assert.equal(CORE.parseNumber('1,250.125'), 1250.125);
+  assert.equal(CORE.parseNumber('1.250,125'), 1250.125);
+  // Hàng nghìn đúng kiểu vẫn đọc như cũ.
+  assert.equal(CORE.parseNumber('1.000'), 1000);
+  assert.equal(CORE.parseNumber('12.345'), 12345);
+  assert.equal(CORE.parseNumber('123.456'), 123456);
+  assert.equal(CORE.parseNumber('1.234.567'), 1234567);
+  assert.equal(CORE.parseNumber('1,234,567'), 1234567);
+  // Số tự điền từ tên SKU (khổ vải) ghi 2 chữ số thập phân để đọc lại không bị nhầm.
+  assert.equal(CORE.parseNumber(String(Number((147.955).toFixed(2)))), 147.96);
+});
+
 test('convertWeight: đúng công thức AuditFactory (lô 0,9 kg · 10 cuộn · lõi 50 gr · cuộn nguyên 120 gr cả lõi · 5.000.000 mm)', () => {
   const r = CORE.convertWeight({ specMm: 5000000, total: 0.9, unit: 'kg', cones: 10, coreG: 50, fullG: 120, fullIncludesCore: true });
   assert.equal(r.ok, true);

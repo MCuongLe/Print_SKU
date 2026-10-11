@@ -3271,6 +3271,9 @@ Error generating stack: `+y.message+`
 
         exportButton.addEventListener("click", async () => {
           if (!items.length) return;
+          const capacity = DATA_ROW_LAST - DATA_ROW_FIRST + 1;
+          // Mẫu biên bản chỉ có `capacity` dòng dữ liệu: dòng dư không vào file, nên hỏi trước thay vì để mất lặng lẽ.
+          if (items.length > capacity && !await window.WhDialog.confirm({ tone: "warning", title: `Biên bản chỉ ghi được ${capacity} dòng`, facts: [`${items.length} dòng trong PO`, `${items.length - capacity} dòng bị bỏ`], list: items.slice(capacity).map(item => String(item.sku ?? "").trim() || item.name || "").filter(Boolean), confirmText: `Xuất ${capacity} dòng` })) return;
           exportButton.disabled = true;
           setStatus("Đang tạo biên bản…");
           try {
@@ -3324,7 +3327,7 @@ Error generating stack: `+y.message+`
             setCell("C7", null);
             writeText("C8", fields.po.value);
             const quantityTotals = new Map();
-            items.forEach(item => {
+            items.slice(0, capacity).forEach(item => {
               const unit = normalizeUnit(item.unit) || "pcs";
               quantityTotals.set(unit, (quantityTotals.get(unit) || 0) + (Math.floor(Number(item.qty)) || 0));
             });
@@ -3417,7 +3420,8 @@ Error generating stack: `+y.message+`
             link.click();
             link.remove();
             setTimeout(() => URL.revokeObjectURL(link.href), 10000);
-            setStatus(`Đã xuất biên bản ${items.length} dòng — Insp date để trống cho QC.${unresolved ? ` Chưa tra được SKU Normal cho ${unresolved} dòng.` : ""}`, unresolved ? "error" : "ok");
+            const written = Math.min(items.length, capacity), cut = items.length - written;
+            setStatus(`Đã xuất biên bản ${written}${cut ? `/${items.length}` : ""} dòng — Insp date để trống cho QC.${cut ? ` ${cut} dòng cuối chưa có trong biên bản.` : ""}${unresolved ? ` Chưa tra được SKU Normal cho ${unresolved} dòng.` : ""}`, unresolved || cut ? "error" : "ok");
           } catch (error) {
             setStatus(`Không xuất được file: ${String(error?.message || error)}`, "error");
           } finally {
@@ -6023,8 +6027,12 @@ var FSK_CORE = (function () {
     var digits;
     if (i < 0) digits = t;
     else {
-      var after = t.slice(i + 1), before = t.slice(0, i).replace(/[.,]/g, "");
-      digits = after.length === 3 ? before + after : before + "." + after;
+      var after = t.slice(i + 1), head = t.slice(0, i), before = head.replace(/[.,]/g, "");
+      // Đúng 3 chữ số sau dấu cuối chỉ là hàng nghìn khi phần trước là các nhóm hợp lệ (1–3 chữ số, không bắt đầu bằng 0,
+      // rồi từng nhóm 3 chữ số) và không lẫn hai loại dấu: "1.250" → 1250, nhưng "0,125" → 0,125 và "1,250.125" → 1250,125.
+      var other = t.charAt(i) === "," ? "." : ",";
+      var thousands = after.length === 3 && head.indexOf(other) < 0 && /^[1-9]\d{0,2}([.,]\d{3})*$/.test(head);
+      digits = thousands ? before + after : before + "." + after;
     }
     var v = parseFloat(digits);
     if (!isFinite(v)) return NaN;
@@ -6417,6 +6425,9 @@ var FSK_CORE = (function () {
         };
         const resetLabel = () => {
           state.run += 1;
+          // Lần đọc AI đang chạy (nếu có) thành cũ và bị bỏ kết quả; finally của nó không nhả cờ, nên phải nhả ở đây
+          // không thì lần đọc mới bị chặn mãi (nút Đọc lại khoá, tự chụp và quét QR dừng) cho tới khi tải lại trang.
+          state.reading = false; readButton.disabled = false; cameraBox.dataset.busy = "false"; shotButton.disabled = false;
           state.tokens = []; state.removed = new Set(); state.rawSplit = "";
           raw.value = ""; renderTags();
           // Kết quả của tem trước không được nằm lại trong lúc đọc tem mới — người dùng sẽ chọn nhầm.
@@ -7262,7 +7273,7 @@ var FSK_CORE = (function () {
             $("uc-picked-spec").textContent = [spec && `${fmt(spec / 1000)} m/cuộn`, tex && `Tex ${fmt(tex, 1)}`].filter(Boolean).join(" · ") || "Chưa có quy cách/Tex";
           } else if (material === "fabric") {
             const spec = FSK_CORE.fabricFromName(hit.pn);
-            if (spec.widthCm) { fields.fabricWidth.value = String(Number(spec.widthCm.toFixed(3))); state.fabricWidthUnit = "cm"; pressed("uc-fabric-width-unit", "unit", "cm"); }
+            if (spec.widthCm) { fields.fabricWidth.value = String(Number(spec.widthCm.toFixed(2))); /* 2 chữ số: đúng 3 chữ số thập phân bị đọc thành hàng nghìn */ state.fabricWidthUnit = "cm"; pressed("uc-fabric-width-unit", "unit", "cm"); }
             if (spec.gsm) fields.fabricGsm.value = String(spec.gsm);
             $("uc-picked-spec").textContent = [spec.widthCm && `khổ ${fmt(spec.widthCm, 1)} cm`, spec.gsm && `${fmt(spec.gsm)} gsm`].filter(Boolean).join(" · ") || "Chưa có khổ/GSM";
           } else $("uc-picked-spec").textContent = "Chưa nhận diện được loại hàng";
