@@ -83,14 +83,17 @@
           return r.slice(l.length).replace(/^[-_/. ]+/, "") || r;
         };
         let lotRollContext;
+        // Agent 0.9.0 tự chọn bố cục đáy tem: một hàng cỡ 24→18, không vừa thì hai hàng cỡ 22 (ROLL vẫn canh phải),
+        // một chuỗi quá rộng thì thu tới cỡ 14. Web chỉ còn cảnh báo khi một chuỗi đơn lẻ ở cỡ 14 vẫn rộng hơn khung —
+        // lúc đó tem in ra chắc chắn mất chữ. (Trước 0.9.0: cảnh báo khi hai chuỗi cỡ 24 không chung một hàng.)
         const lotRollOverlaps = items => {
           lotRollContext = lotRollContext || document.createElement("canvas").getContext("2d");
           if (!lotRollContext) return [];
-          lotRollContext.font = "24px Arial, Helvetica, sans-serif";
+          lotRollContext.font = "14px Arial, Helvetica, sans-serif";
           const width = text => lotRollContext.measureText(text).width;
           return items.filter(item => {
             const lot = String(item.lot || "").trim(), roll = labelRoll(lot, item.roll);
-            return Boolean(lot && roll) && width(`LOT: ${lot}`) + LOT_ROLL_GAP + width(`ROLL: ${roll}`) > LOT_ROLL_SPAN;
+            return (lot && width(`LOT: ${lot}`) > LOT_ROLL_SPAN) || (roll && width(`ROLL: ${roll}`) > LOT_ROLL_SPAN);
           });
         };
         const confirmLotRoll = async items => {

@@ -1,5 +1,6 @@
 import { barcodeRects } from "./code128.mjs";
 import { escapeXml, svgDocument, wrapText } from "./common.mjs";
+import { estimateTextWidth, fitLotRoll } from "./text-layout.mjs";
 
 // Khung tên sản phẩm trên tem Group UID. Ở cỡ 22 (mặc định) chân dòng đầu ở
 // y=145, mỗi dòng cách 25: có SKU thì dòng cuối ≤ y=270 (6 dòng, chừa vùng SKU
@@ -11,6 +12,9 @@ export const GROUP_UID_NAME_LAYOUT = {
   lastBaselineNoSku: 295,
 };
 export const GROUP_UID_NAME_MAX_WIDTH_PX = 296; // vùng chữ: x=12 → x=308, bằng bề rộng barcode
+// Đáy tem: barcode SKU kết thúc ở y=418, còn 62 chấm. Một hàng: chân chữ y=452 (như cũ). Hai hàng cỡ 22:
+// LOT chân y=440 (đỉnh chữ ≈ 424, không chạm barcode), ROLL chân y=470 (đuôi chữ ≈ 475 < 480), vẫn canh phải.
+export const GROUP_UID_LOT_ROLL_LAYOUT = { oneRow: 452, twoRows: [440, 470] };
 
 export function groupUidNameBaseline(fontSize, index) {
   return GROUP_UID_NAME_LAYOUT.top + fontSize + index * (fontSize + 3);
@@ -45,9 +49,17 @@ export function renderGroupUidLabel(payload) {
   // người vận hành vẫn ghi bút. Bỏ trống thì không vẽ, tem giữ nguyên như cũ.
   const lot = String(payload.lot || "").trim();
   const roll = String(payload.roll || "").trim();
+  // 0.9.0: cỡ chữ và số hàng do render.mjs đo thật (payload.lotRollFit); không có thì ước lượng tại chỗ.
+  const fit = payload.lotRollFit && Number(payload.lotRollFit.fontSize) > 0
+    ? payload.lotRollFit
+    : fitLotRoll(lot, roll, { measureAt: estimateTextWidth });
+  const footerSize = Number(fit.fontSize) || 24;
+  const twoRows = Number(fit.rows) === 2 && Boolean(lot && roll);
+  const lotY = twoRows ? GROUP_UID_LOT_ROLL_LAYOUT.twoRows[0] : GROUP_UID_LOT_ROLL_LAYOUT.oneRow;
+  const rollY = twoRows ? GROUP_UID_LOT_ROLL_LAYOUT.twoRows[1] : GROUP_UID_LOT_ROLL_LAYOUT.oneRow;
   const footer =
-    (lot ? `<text x="12" y="452" font-size="24">LOT: ${escapeXml(lot)}</text>` : "") +
-    (roll ? `<text x="308" y="452" font-size="24" text-anchor="end">ROLL: ${escapeXml(roll)}</text>` : "");
+    (lot ? `<text x="12" y="${lotY}" font-size="${footerSize}">LOT: ${escapeXml(lot)}</text>` : "") +
+    (roll ? `<text x="308" y="${rollY}" font-size="${footerSize}" text-anchor="end">ROLL: ${escapeXml(roll)}</text>` : "");
   return svgDocument(
     topBarcode.rects +
     `<text x="160" y="103" font-size="25" text-anchor="middle">${escapeXml(payload.groupUid)}</text>` +

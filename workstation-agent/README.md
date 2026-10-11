@@ -1,6 +1,21 @@
 # Print SKU UID Agent
 
-Agent Windows độc lập phục vụ ứng dụng Print SKU. Bản 0.7.0 dùng tem Fabric Relaxation viết tay hoàn toàn; frontend chỉ chọn số lượng tem.
+Agent Windows độc lập phục vụ ứng dụng Print SKU. Bản 0.9.0 in tem SKU, Group UID và mã vị trí (tem Fabric Relaxation đã bỏ) tem.
+
+## Cập nhật 0.9.0 — Lot dài không đè Roll, bỏ tem Fabric Relaxation
+
+- **Đáy tem Group UID tự chọn bố cục theo bề rộng chữ thật** (đo cùng lần gọi PowerShell với tên sản phẩm,
+  không thêm lần gọi): một hàng ở cỡ 24 → 22 → 20 → 18 như cũ; không vừa thì **hai hàng cỡ 22**, LOT ở trên
+  (chân chữ y=440), ROLL ở dưới **vẫn canh phải** (y=470); một chuỗi đơn lẻ quá rộng thì thu theo tỷ lệ, tối
+  thiểu 14. Preview đơn lẻ không đo được thì ước lượng bằng `estimateTextWidth`. Web chỉ còn hỏi "Vẫn in?"
+  khi một chuỗi ở cỡ 14 vẫn rộng hơn khung 296 chấm.
+- **Bỏ tem Fabric Relaxation** (web đã gỡ màn TEM XẢ VẢI 11/10/2026): không còn template, test, lệnh
+  `preview:fabric`/`dry-run:fabric`; capability chỉ còn `sku:v1`, `group_uid:v1`, `location:v1`,
+  `location:name-optional`, nên hàng đợi không giao lệnh Fabric cho agent nữa.
+- Test: 177/177 (sửa 3 test từng dùng giá trị thế chỗ `[SKU_DA_XOA]` sau khi xoá dữ liệu thật).
+
+Không cần migration Supabase. Cài ZIP như bản 0.8.9 bằng `install-agent.ps1` (giữ nguyên `config\.env` và
+`temp`). Sau khi cài, in thử một tem Group UID có Lot dài để xem hai hàng ở đáy tem.
 
 ## Cập nhật 0.8.9 — agent chết thì tự chạy lại, không chết im lặng nữa
 
@@ -166,23 +181,6 @@ Bản 0.8.0 báo lệnh "failed" mỗi khi mạng tới Supabase chập chờn, 
 
 Không cần migration Supabase và không đổi `index.html`. Cài ZIP như bình thường
 bằng `powershell/install-agent.ps1` (giữ nguyên `config/.env` và thư mục `temp`).
-
-## Cập nhật Fabric Relaxation
-
-Chờ lệnh in hiện tại hoàn tất, dừng agent cũ rồi cài ZIP theo quy trình hiện có.
-Giữ nguyên `config/.env` và token máy trạm. Chạy `powershell/install-agent.ps1`
-bằng quyền Administrator để cập nhật cùng Scheduled Task, không tạo agent thứ hai.
-
-Quản trị hệ thống cần chạy `deployment/print_queue_v4_fabric_relaxation_handwritten.sql`
-trong Supabase SQL Editor một lần và đưa `deployment/index.html` lên nơi phục vụ web.
-Thư mục `deployment` trong ZIP là tài liệu/file triển khai web và database,
-không phải cấu hình máy trạm. Migration chỉ mở rộng CHECK constraint và enqueue/claim;
-agent cũ tiếp tục dùng SKU/UID, agent 0.7.0 tự báo capability Fabric v1/v2/v3.
-
-Chọn FABRIC RELAXATION trên web và nhập số tem. Tem 40 × 60 mm,
-hai tem mỗi hàng; Mã hàng, Lot, Ngày và Giờ đều để trống để ghi tay.
-`npm run dry-run:fabric` tạo ảnh và TSPL để xem trước, không gọi máy in.
-Sau khi cập nhật, thử 1, 2 và 3 tem để kiểm tra căn giấy thực tế.
 
 ## Yêu cầu phát triển
 

@@ -75,10 +75,8 @@ export function loadConfig(options = {}) {
     // 0.8.9: vòng quét đứng quá số ms này khi không in thì agent tự thoát (mã 3) để Task Scheduler chạy lại.
     // 0 = tắt; giá trị khác 0 tối thiểu 5 phút (> nhịp hỏi thưa dài nhất AGENT_IDLE_POLL_MS + thời hạn các bước).
     loopStallMs: loopStall(get("LOOP_STALL_MS")),
-    dpi: positiveInt(get("LABEL_DPI"), 203, 150, 600),
     density: positiveInt(get("LABEL_DENSITY"), 12, 0, 15),
     speed: positiveInt(get("LABEL_SPEED"), 3, 1, 10),
-    logLevel: get("LOG_LEVEL", "info"),
     logDir: path.join(ROOT_DIR, "logs"),
     previewDir: path.join(ROOT_DIR, "preview"),
     tempDir: path.join(ROOT_DIR, "temp")

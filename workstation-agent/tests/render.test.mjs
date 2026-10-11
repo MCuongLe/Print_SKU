@@ -32,8 +32,8 @@ test("hai Group UID khác nhau ghép chung một hàng giấy", async () => {
   const job = {
     id: "dry-uid-batch", nonce: "dry-uid-batch-1", type: "group_uid", copies: 2, templateVersion: 1,
     payload: { items: [
-      { groupUid: "[UID_DA_XOA]", sku: "[SKU_DA_XOA]", productName: "Vải woven NSB", copies: 1 },
-      { groupUid: "[UID_DA_XOA]", sku: "[SKU_DA_XOA]", productName: "Vải woven NSB", copies: 1 }
+      { groupUid: "1028260000000001", sku: "900000001", productName: "Vải woven NSB", copies: 1 },
+      { groupUid: "1028260000000001", sku: "900000001", productName: "Vải woven NSB", copies: 1 }
     ] }
   };
   const tspl = await renderJobTspl(job, config);
@@ -44,8 +44,8 @@ test("ba tem Group UID chỉ tốn hai hàng giấy", async () => {
   const job = {
     id: "dry-uid-odd", nonce: "dry-uid-odd-1", type: "group_uid", copies: 3, templateVersion: 1,
     payload: { items: [
-      { groupUid: "[UID_DA_XOA]", sku: "", productName: "Vải woven NSB", copies: 1 },
-      { groupUid: "[UID_DA_XOA]", sku: "", productName: "Vải woven NSB", copies: 2 }
+      { groupUid: "1028260000000001", sku: "", productName: "Vải woven NSB", copies: 1 },
+      { groupUid: "1028260000000001", sku: "", productName: "Vải woven NSB", copies: 2 }
     ] }
   };
   const tspl = await renderJobTspl(job, config);

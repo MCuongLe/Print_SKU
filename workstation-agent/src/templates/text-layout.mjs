@@ -225,3 +225,49 @@ export function productNameCandidates(value, { measureAt, maxWidthPx, fontSizes,
   const first = all.findIndex((candidate) => candidate.fits);
   return all.slice(first === -1 ? all.length - 1 : first);
 }
+
+// ---- LOT / ROLL ở đáy tem Group UID (0.9.0) ----
+// Trước 0.9.0 hai chuỗi in cố định cỡ 24 trên một hàng (LOT trái x=12, ROLL phải x=308) nên Lot dài
+// đè lên Roll (RULES 08/10/2026). Nay chọn bố cục theo bề rộng chữ thật, cùng cách tem SKU chọn cỡ
+// số lượng/ngày: một hàng ở cỡ 24 → 18; không vừa thì hai hàng cỡ 22 (LOT trên, ROLL dưới vẫn canh phải);
+// một chuỗi đơn lẻ vẫn rộng hơn khung thì thu theo tỷ lệ, tối thiểu 14.
+export const LOT_ROLL_SPAN_PX = 296; // x=12 → x=308, bằng bề rộng barcode
+export const LOT_ROLL_GAP_PX = 10;
+export const LOT_ROLL_ONE_ROW_SIZES = [24, 22, 20, 18];
+export const LOT_ROLL_TWO_ROW_SIZE = 22;
+export const LOT_ROLL_MIN_SIZE = 14;
+export const LOT_ROLL_FONT_SIZES = [24, 22, 20, 18, 14]; // các cỡ cần đo sẵn (cỡ khác suy theo tỷ lệ)
+export const lotRollTexts = (lot, roll) => ({
+  lot: String(lot ?? "").trim() ? `LOT: ${String(lot).trim()}` : "",
+  roll: String(roll ?? "").trim() ? `ROLL: ${String(roll).trim()}` : ""
+});
+
+/**
+ * `measureAt(text, size)` đồng bộ (bảng đã đo hoặc estimateTextWidth).
+ * @returns {{ rows: 1|2, fontSize: number }}
+ */
+export function fitLotRoll(lot, roll, { measureAt }) {
+  const texts = lotRollTexts(lot, roll);
+  const measure = (text, size) => (text ? measureAt(text, size) : 0);
+  // Cỡ không có trong bảng đo: bề rộng tỷ lệ thuận cỡ chữ (đã đo, xem fitFooter).
+  const widthAt = (text, size) => (LOT_ROLL_FONT_SIZES.includes(size)
+    ? measure(text, size)
+    : (measure(text, LOT_ROLL_TWO_ROW_SIZE) * size) / LOT_ROLL_TWO_ROW_SIZE);
+  if (!texts.lot || !texts.roll) {
+    const only = texts.lot || texts.roll;
+    if (!only) return { rows: 1, fontSize: LOT_ROLL_ONE_ROW_SIZES[0] };
+    const size = LOT_ROLL_ONE_ROW_SIZES.find((s) => widthAt(only, s) <= LOT_ROLL_SPAN_PX);
+    if (size) return { rows: 1, fontSize: size };
+    const scaled = Math.floor((LOT_ROLL_TWO_ROW_SIZE * LOT_ROLL_SPAN_PX) / Math.max(1, widthAt(only, LOT_ROLL_TWO_ROW_SIZE)));
+    return { rows: 1, fontSize: Math.max(LOT_ROLL_MIN_SIZE, Math.min(LOT_ROLL_ONE_ROW_SIZES[0], scaled)) };
+  }
+  for (const size of LOT_ROLL_ONE_ROW_SIZES) {
+    if (widthAt(texts.lot, size) + LOT_ROLL_GAP_PX + widthAt(texts.roll, size) <= LOT_ROLL_SPAN_PX) return { rows: 1, fontSize: size };
+  }
+  const widest = (size) => Math.max(widthAt(texts.lot, size), widthAt(texts.roll, size));
+  for (const size of [LOT_ROLL_TWO_ROW_SIZE, 20, 18]) {
+    if (widest(size) <= LOT_ROLL_SPAN_PX) return { rows: 2, fontSize: size };
+  }
+  const scaled = Math.floor((LOT_ROLL_TWO_ROW_SIZE * LOT_ROLL_SPAN_PX) / Math.max(1, widest(LOT_ROLL_TWO_ROW_SIZE)));
+  return { rows: 2, fontSize: Math.max(LOT_ROLL_MIN_SIZE, Math.min(LOT_ROLL_TWO_ROW_SIZE, scaled)) };
+}

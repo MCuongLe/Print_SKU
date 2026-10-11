@@ -24,8 +24,8 @@ test("chấp nhận một lệnh gồm nhiều SKU", () => {
 
 test("chấp nhận một lệnh gồm nhiều Group UID", () => {
   const result = normalizeJob({ id: "4", nonce: "n4", type: "group_uid", copies: 3, payload: { items: [
-    { groupUid: "[UID_DA_XOA]", sku: "[SKU_DA_XOA]", productName: "Vải woven NSB", copies: 1 },
-    { groupUid: "[UID_DA_XOA]", sku: "", productName: "Vải woven NSB", copies: 2 }
+    { groupUid: "1028260000000001", sku: "900000001", productName: "Vải woven NSB", copies: 1 },
+    { groupUid: "1028260000000001", sku: "", productName: "Vải woven NSB", copies: 2 }
   ] } });
   assert.equal(result.ok, true);
   assert.equal(result.job.payload.items.length, 2);
@@ -33,7 +33,7 @@ test("chấp nhận một lệnh gồm nhiều Group UID", () => {
 
 test("batch Group UID phải khớp tổng số bản", () => {
   const result = normalizeJob({ id: "5", nonce: "n5", type: "group_uid", copies: 5, payload: { items: [
-    { groupUid: "[UID_DA_XOA]", productName: "Vải woven NSB", copies: 1 }
+    { groupUid: "1028260000000001", productName: "Vải woven NSB", copies: 1 }
   ] } });
   assert.equal(result.ok, false);
   assert.match(result.errors.join(" "), /không khớp/);
@@ -53,7 +53,7 @@ test("không cho in quá 500 tem", () => {
 test("group_uid nhan Lot va Roll, va chung khong bat buoc", () => {
   const coLot = normalizeJob({
     id: "j1", nonce: "n1", type: "group_uid", templateVersion: 1, copies: 1,
-    payload: { items: [{ groupUid: "[UID_DA_XOA]", sku: "[SKU_DA_XOA]",
+    payload: { items: [{ groupUid: "1028260000000001", sku: "900000001",
                          productName: "Vai Pique", lot: "B", roll: "56", copies: 1 }] }
   });
   assert.equal(coLot.ok, true, coLot.errors?.join("; "));
@@ -62,7 +62,7 @@ test("group_uid nhan Lot va Roll, va chung khong bat buoc", () => {
 
   const khongLot = normalizeJob({
     id: "j2", nonce: "n2", type: "group_uid", templateVersion: 1, copies: 1,
-    payload: { items: [{ groupUid: "[UID_DA_XOA]", productName: "Vai Pique", copies: 1 }] }
+    payload: { items: [{ groupUid: "1028260000000001", productName: "Vai Pique", copies: 1 }] }
   });
   assert.equal(khongLot.ok, true, khongLot.errors?.join("; "));
   assert.equal(khongLot.job.payload.items[0].lot, "");

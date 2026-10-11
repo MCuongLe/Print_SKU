@@ -18,7 +18,7 @@ test("template Group UID không vẽ vùng SKU khi bỏ trống", () => {
 const LONG_NAME = "Thun nhung 7mm/W.TT.S-07-323H_Triều Vĩ/65%polyester,*35%spandex/None/XANH NAVY KHÓI 19-4117 TCX_ WKF-12473/none/7mm/mm";
 
 test("template SKU: tên sản phẩm nằm trên cùng, tối đa 8 dòng, không đè QR", () => {
-  const svg = renderSkuLabel({ sku: "[SKU_DA_XOA]", productName: LONG_NAME, quantity: "", printedDate: "09-09-26" });
+  const svg = renderSkuLabel({ sku: "900000001", productName: LONG_NAME, quantity: "", printedDate: "09-09-26" });
   assert.match(svg, /XANH NAVY/);
   const lines = [...svg.matchAll(/<text x="12" y="(\d+)" font-size="22">/g)].map(match => Number(match[1]));
   assert.ok(lines.length >= 1 && lines.length <= 8, `số dòng tên = ${lines.length}`);
@@ -30,7 +30,7 @@ test("template SKU: tên sản phẩm nằm trên cùng, tối đa 8 dòng, khô
 
 test("template SKU: tên dài đúng 8 dòng hiển thị trọn vẹn (không cắt), mọi phần tử nằm trong mép tem", () => {
   const NAME_8_LINES = "Thun nhung 7mm/W.TT.S-07-323H_Triều Vĩ/65%polyester,*35%spandex/None/XANH NAVY KHÓI 19-4117 TCX_ WKF-12473 phu lieu them chi tiet mau sac/none/7mm/mm";
-  const svg = renderSkuLabel({ sku: "[SKU_DA_XOA]", productName: NAME_8_LINES, quantity: "12", printedDate: "24-09-26" });
+  const svg = renderSkuLabel({ sku: "900000001", productName: NAME_8_LINES, quantity: "12", printedDate: "24-09-26" });
   const lines = [...svg.matchAll(/<text x="12" y="(\d+)" font-size="22">/g)];
   assert.equal(lines.length, 8, "tên đủ dài phải hiển thị đúng 8 dòng, không bị cắt bớt");
   assert.match(svg, /mau sac\/none\/7mm\/mm/, "dòng cuối cùng của tên phải còn nguyên trong tem");
@@ -45,15 +45,15 @@ test("template SKU: tên dài đúng 8 dòng hiển thị trọn vẹn (không c
 });
 
 test("template SKU: có mã QR ở giữa và số SKU in đậm dưới QR", () => {
-  const svg = renderSkuLabel({ sku: "[SKU_DA_XOA]", productName: "Hóa chất pha Silicon", quantity: "", printedDate: "11-09-26" });
+  const svg = renderSkuLabel({ sku: "900000001", productName: "Hóa chất pha Silicon", quantity: "", printedDate: "11-09-26" });
   const rectCount = (svg.match(/<rect /g) || []).length;
   assert.ok(rectCount > 30, `QR phải có nhiều rect, đếm được ${rectCount}`);
-  assert.match(svg, /font-size="32" font-weight="700" text-anchor="middle">[SKU_DA_XOA]<\/text>/);
+  assert.match(svg, /font-size="32" font-weight="700" text-anchor="middle">900000001<\/text>/);
   assert.doesNotMatch(svg, /y="15"/); // không còn barcode Code128 ở đỉnh
 });
 
 test("template Group UID có SKU giữ tên tối đa 6 dòng, không tràn vào vùng SKU", () => {
-  const svg = renderGroupUidLabel({ groupUid: "[UID_DA_XOA]", sku: "[SKU_DA_XOA]", productName: LONG_NAME });
+  const svg = renderGroupUidLabel({ groupUid: "1028260000000001", sku: "900000001", productName: LONG_NAME });
   const lines = [...svg.matchAll(/<text x="12" y="(\d+)" font-size="22">/g)].map(match => Number(match[1]));
   assert.ok(lines.length <= 6, `số dòng tên = ${lines.length}`);
   assert.ok(Math.max(...lines) < 332, `dòng cuối y=${Math.max(...lines)}`);
@@ -95,7 +95,7 @@ test("template SKU thu nhỏ font số lượng khi nhiều ký tự", () => {
 
 test("tem Group UID in Lot va Roll o day tem", () => {
   const svg = renderGroupUidLabel({
-    groupUid: "[UID_DA_XOA]", sku: "[SKU_DA_XOA]",
+    groupUid: "1028260000000001", sku: "900000001",
     productName: "Vai Pique/SK9115_Shaoxing Sukun/88% Nylon 12% Spandex",
     lot: "B", roll: "56"
   });
@@ -108,7 +108,7 @@ test("tem Group UID in Lot va Roll o day tem", () => {
 
 test("tem Group UID bo trong Lot/Roll thi khong ve gi them", () => {
   const svg = renderGroupUidLabel({
-    groupUid: "[UID_DA_XOA]", sku: "[SKU_DA_XOA]", productName: "Vai Pique"
+    groupUid: "1028260000000001", sku: "900000001", productName: "Vai Pique"
   });
   assert.ok(!svg.includes("LOT:"), "khong duoc ve LOT khi bo trong");
   assert.ok(!svg.includes("ROLL:"), "khong duoc ve ROLL khi bo trong");
@@ -116,7 +116,7 @@ test("tem Group UID bo trong Lot/Roll thi khong ve gi them", () => {
 
 test("tem Group UID chi co Lot, khong co Roll", () => {
   const svg = renderGroupUidLabel({
-    groupUid: "[UID_DA_XOA]", productName: "Vai Pique", lot: "B"
+    groupUid: "1028260000000001", productName: "Vai Pique", lot: "B"
   });
   assert.match(svg, /LOT: B/);
   assert.ok(!svg.includes("ROLL:"));

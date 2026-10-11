@@ -22,26 +22,9 @@ export function normalizeJob(input) {
   if (!source.id) errors.push("Thiếu id của lệnh in");
   if (!source.nonce) errors.push("Thiếu nonce chống gửi trùng");
   if (!copies) errors.push("Số tem phải từ 1 đến 500");
-  if (!['sku', 'group_uid', 'fabric_relaxation', 'location'].includes(type)) errors.push("Loại tem không được hỗ trợ");
+  if (!['sku', 'group_uid', 'location'].includes(type)) errors.push("Loại tem không được hỗ trợ");
 
   let normalizedPayload = {};
-  if (type === "fabric_relaxation") {
-    if (templateVersion === 1) {
-      const itemCode = String(payload.itemCode ?? "").trim();
-      if (!SKU_PATTERN.test(itemCode)) errors.push("Mã hàng phải có 1–40 ký tự: chữ, số, dấu chấm, gạch ngang hoặc gạch dưới");
-      normalizedPayload = { itemCode };
-    } else if (templateVersion === 2) {
-      const itemCodes = Array.isArray(payload.itemCodes) ? payload.itemCodes.map(value => String(value ?? "").trim()) : [];
-      if (itemCodes.length < 1 || itemCodes.length > 5) errors.push("Mỗi tem phải có từ 1 đến 5 mã hàng");
-      itemCodes.forEach((itemCode, index) => {
-        if (!SKU_PATTERN.test(itemCode)) errors.push(`Mã hàng dòng ${index + 1} không hợp lệ`);
-      });
-      normalizedPayload = { itemCodes };
-    } else if (templateVersion === 3) {
-      if (payload.handwritten !== true) errors.push("Tem viết tay không hợp lệ");
-      normalizedPayload = { handwritten: true };
-    } else errors.push("Phiên bản tem Fabric Relaxation không được hỗ trợ");
-  }
   if (type === "sku") {
     const normalizeSku = (item) => ({
       sku: cleanText(item.sku, 40),

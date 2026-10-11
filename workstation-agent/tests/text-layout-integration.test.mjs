@@ -60,20 +60,20 @@ test("planProductNames: khong co measureText thi tra nguyen entries, khong doi g
   assert.equal(result, entries, "phai tra ve chinh mang dau vao khi khong bat do chu that");
 });
 
-test("planProductNames: do ca ten tem Group UID (cung logic tem SKU), bo qua fabric_relaxation", async () => {
+test("planProductNames: do ca ten tem Group UID (cung logic tem SKU), bo qua tem khong co ten", async () => {
   // Tu 30/09/2026 tem Group UID cung chia dong theo be rong chu that de khong
-  // mat duoi ten; tem Fabric khong in ten san pham nen khong duoc do.
+  // mat duoi ten; tem vi tri co buoc do rieng (planLocationLabels) nen khong duoc do o day.
   const measureText = fakeMeasureText();
   const entries = [
     { type: "group_uid", copies: 1, payload: { groupUid: "X", productName: "Ten UID" } },
     { type: "sku", copies: 1, payload: { sku: "A", productName: "Ten SKU" } },
-    { type: "fabric_relaxation", copies: 1, payload: { handwritten: true } },
+    { type: "location", copies: 1, payload: { items: [{ code: "Z99-T01-001-01-01-01", name: "", copies: 1 }] } },
   ];
   const result = await planProductNames(entries, {}, measureText, null);
   assert.ok(Array.isArray(result[0].payload.productNameLines), "group_uid phai co productNameLines");
   assert.equal(result[0].payload.footerFit, undefined, "tem Group UID khong co hang so luong/ngay");
   assert.ok(Array.isArray(result[1].payload.productNameLines));
-  assert.equal(result[2], entries[2], "fabric_relaxation giu nguyen");
+  assert.equal(result[2], entries[2], "tem vi tri giu nguyen o buoc nay");
   assert.equal(measureText.calls.length, 2, "van dung hai lan goi cho ca lo");
   assert.ok(measureText.calls[0].texts.some((t) => t.includes("UID")), "ten Group UID phai duoc do");
 });
@@ -116,7 +116,7 @@ test("planProductNames: vong 2 phat hien dong con vuot thi tach bot, khong de tr
   };
 
   const productName = "Opened end/No.3 Plastic Zipper";
-  const entries = [{ type: "sku", copies: 1, payload: { sku: "[SKU_DA_XOA]", productName } }];
+  const entries = [{ type: "sku", copies: 1, payload: { sku: "900000001", productName } }];
   const result = await planProductNames(entries, {}, measureText, null);
   const { productNameLines, productNameFontSize } = result[0].payload;
 
@@ -137,7 +137,7 @@ test("planProductNames: ten dai duoc chia dong theo be rong that, khac ket qua d
   // = 300px, vua lot vao maxWidthPx=296? Kiem tra dung tinh nang, khong hardcode gia tri.
   const measureText = fakeMeasureText();
   const entries = [{ type: "sku", copies: 1, payload: {
-    sku: "[SKU_DA_XOA]",
+    sku: "900000001",
     productName: "O-E L-S SAB-255LK3557-2/100% Polyester/none/DARK NAVY 14-4122"
   } }];
   const result = await planProductNames(entries, {}, measureText, null);

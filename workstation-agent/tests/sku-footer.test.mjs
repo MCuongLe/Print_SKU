@@ -103,8 +103,9 @@ test("planProductNames do so luong va ngay trong vong 1, van dung HAI lan goi", 
   const entries = [{ type: "sku", copies: 1, payload: { sku: "100000001", productName: "SP", quantity: "300000000", printedDate: "30/09/26" } }];
   const [planned] = await planProductNames(entries, {}, measureText, null);
   assert.equal(measureText.calls.length, 2);
-  assert.deepEqual(measureText.calls[0].extra.map((group) => group.texts), [["300.000.000"], ["30/09/26"]]);
-  assert.deepEqual(measureText.calls[0].extra.map((group) => group.sizes), [QUANTITY_FONT_SIZES, DATE_FONT_SIZES]);
+  // 0.9.0: nhóm đo thứ ba là LOT/ROLL của tem Group UID — lô chỉ có tem SKU thì nhóm rỗng, vẫn không thêm lần gọi.
+  assert.deepEqual(measureText.calls[0].extra.map((group) => group.texts), [["300.000.000"], ["30/09/26"], []]);
+  assert.deepEqual(measureText.calls[0].extra.map((group) => group.sizes), [QUANTITY_FONT_SIZES, DATE_FONT_SIZES, [24, 22, 20, 18, 14]]);
   const width = (text, size) => text.length * 20 * (size / 22);
   const { quantityFontSize, dateFontSize } = planned.payload.footerFit;
   assert.ok(width("300.000.000", quantityFontSize) + FOOTER_GAP_PX + width("30/09/26", dateFontSize) <= FOOTER_SPAN_PX, "phải dùng số đo thật, không phải ước lượng");

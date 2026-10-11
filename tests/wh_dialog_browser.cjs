@@ -107,13 +107,15 @@ const focused = (page, cls) => box(page).locator(cls).evaluate(button => button 
       await page.waitForFunction(() => window.__both.length === 2);
       assert.deepEqual(await page.evaluate(() => window.__both), [['Hộp 1', true], ['Hộp 2', false]]);
 
-      // Cảnh báo Lot/Roll dùng chung (PRINT UID, Cắt UID): không đè → true không hỏi; đè → hộp cảnh báo
+      // Cảnh báo Lot/Roll dùng chung (PRINT UID, Cắt UID). Agent 0.9.0 tự xuống hai hàng khi dài, nên web chỉ còn hỏi khi
+      // một chuỗi ở cỡ 14 vẫn rộng hơn 296 chấm: ngắn → true; dài vừa (hai hàng) → true không hỏi; cực dài → hộp cảnh báo
       assert.equal(await page.evaluate(() => window.PrintSkuQueue.confirmLotRoll([{ groupUid: 'U1', lot: '5', roll: '2' }])), true);
-      await page.evaluate(() => { window.__answer = 'chưa'; window.PrintSkuQueue.confirmLotRoll([{ groupUid: '1028260900000999', lot: 'LOT-MAU-RAT-DAI-01', roll: 'ROLL-MAU-RAT-DAI-02' }]).then(value => { window.__answer = value; }); });
+      assert.equal(await page.evaluate(() => window.PrintSkuQueue.confirmLotRoll([{ groupUid: 'U2', lot: 'LOT-MAU-RAT-DAI-01', roll: 'ROLL-MAU-RAT-DAI-02' }])), true, 'agent 0.9.0 in hai hàng, web không hỏi');
+      await page.evaluate(() => { window.__answer = 'chưa'; window.PrintSkuQueue.confirmLotRoll([{ groupUid: '1028260900000999', lot: 'LOT-MAU-RAT-DAI-01-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX', roll: 'ROLL-MAU-RAT-DAI-02' }]).then(value => { window.__answer = value; }); });
       await box(page).waitFor({ state: 'visible' });
       assert.equal(await box(page).getAttribute('data-tone'), 'warning');
       assert.equal((await box(page).locator('.whd-title').textContent()).trim(), 'Lot và Roll có thể đè nhau trên tem');
-      assert.match(await box(page).locator('.whd-list li').first().textContent(), /^1028260900000999 · LOT LOT-MAU-RAT-DAI-01 · ROLL ROLL-MAU-RAT-DAI-02$/);
+      assert.match(await box(page).locator('.whd-list li').first().textContent(), /^1028260900000999 · LOT LOT-MAU-RAT-DAI-01-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX · ROLL ROLL-MAU-RAT-DAI-02$/);
       assert.equal((await box(page).locator('.whd-cancel').textContent()).trim(), 'Dừng kiểm tra');
       assert.equal(await focused(page, '.whd-cancel'), true);
       await box(page).locator('.whd-cancel').click();
