@@ -1,5 +1,9 @@
 # Hướng tự động đồng bộ SKU lên Supabase
 
+> **Ghi chú 11/10/2026:** đây là đề xuất ban đầu, `scripts/auto_sync_all.py` chưa từng được viết. Hướng đã triển khai là Chrome extension
+> `extension/inside-po-connector` (đọc Inside/WMS bằng phiên đăng nhập của tab) kết hợp Edge Function `sku-sync` và `group-uid-sync`,
+> chạy từ màn Admin; xem README và `docs/THIET_KE_DONG_BO_GROUP_UID_VA_DASHBOARD.md`. Nội dung dưới đây giữ lại làm tham khảo.
+
 ## Mục tiêu
 
 Xây dựng một worker chạy theo lịch để tự lấy và đồng bộ các dữ liệu sau mà không cần người dùng gửi yêu cầu qua chat:

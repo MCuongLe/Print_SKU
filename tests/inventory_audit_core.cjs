@@ -25,17 +25,15 @@ const inventory = core.normalizeInventoryPage({ count: 5, page: 1, size: 500, re
 assert.equal(inventory.rows.length, 4, "count_inbin <= 0 phải bị loại dù tổng quantity còn dương");
 assert.equal(inventory.rows[0].qty, 2, "count_inbin phải được ưu tiên hơn quantity");
 
-const now = Date.parse("2026-10-10T12:00:00+07:00");
+// Đối chiếu tồn kho với ngày duyệt (mốc 30 ngày) chạy ở Admin trong index.html, không còn bản trong extension.
 const approved = core.normalizeApprovedPage({ count: 3, records: [
   { checklist_id: 1, warehouse_id: 1177, warehouse_name: "WH - MATERIAL - MTG", plan_object_code: "A", status_name: "APPROVED", approved_at_tz: "2026-09-10T12:00:00+07:00", approved_by_name: "manager-a" },
   { checklist_id: 2, warehouse_id: 1177, warehouse_name: "WH - MATERIAL - MTG", plan_object_code: "B", status_name: "APPROVED", approved_at_tz: "2026-09-09T11:59:59+07:00", approved_by_name: "manager-b" },
   { checklist_id: 3, warehouse_id: 1339, warehouse_name: "WH - MATERIAL - GARMENT", plan_object_code: "C", status_name: "CANCELED", approved_at_tz: "2026-10-09T12:00:00+07:00" },
 ] });
-const result = core.reconcile(inventory.rows, approved.rows, now, 30);
-assert.deepEqual(JSON.parse(JSON.stringify(result.summary)), { total: 3, never: 1, recent: 1, overdue: 1, qty: 10 });
-assert.equal(result.rows.find(r => r.sku === "A").status, "recent", "đúng 30 ngày vẫn là trong hạn");
-assert.equal(result.rows.find(r => r.sku === "A").qty, 5, "phải cộng mọi vị trí");
-assert.equal(result.rows.find(r => r.sku === "B").status, "overdue");
-assert.equal(result.rows.find(r => r.sku === "C").status, "never");
+assert.deepEqual(approved.rows.map(row => row.sku), ["A", "B"], "chỉ giữ checklist APPROVED, bỏ CANCELED");
+assert.equal(approved.rows[0].approvedAt, "2026-09-10T12:00:00+07:00");
+assert.equal(approved.rows[0].approvedBy, "manager-a");
+assert.equal(approved.total, 3, "total lấy từ count của WMS, không phải số dòng đã lọc");
 
-console.log("inventory_audit_core: company switch, qty>0, aggregation and 30-day boundary passed");
+console.log("inventory_audit_core: company switch, qty>0 and approved-only filter passed");

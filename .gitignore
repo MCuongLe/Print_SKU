@@ -26,3 +26,13 @@ sku-refresh-snippet.js
 
 # Nhật ký thay đổi nội bộ: giữ trên máy, không đưa lên repo public
 /RULES.md
+
+# Kết quả chạy script và export (chứa dữ liệu SKU, Group UID thật) cùng thư mục nháp: giữ trên máy
+/outputs/
+/tmp/
+
+# Bộ nhớ đệm của Supabase CLI
+/supabase/.temp/
+
+# Gói nén extension để gửi sang máy khác (đóng lại từ thư mục extension khi cần)
+/extension/*.rar

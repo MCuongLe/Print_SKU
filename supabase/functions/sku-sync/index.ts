@@ -353,7 +353,6 @@ Deno.serve(async request => {
     if (action === "apply") return await apply(request, body);
     if (action === "history") return await history(request, body);
     if (action === "detail") return await detail(request, body);
-    if (action === "health") return reply(request, 200, { ok: true, data: { extensionRequired: true, user: user.username }, meta: { updatedAt: new Date().toISOString(), schemaVersion: 1 } });
     return fail(request, 400, "UNKNOWN_ACTION", "Thao tác không được hỗ trợ");
   } catch (error) {
     const message = clean((error as Error).message, 500);
