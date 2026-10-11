@@ -34,10 +34,12 @@
   }
 
   async function getJson(url, deniedMessage, companyIds = "") {
+    // Lấy phiên trước vòng thử lại: hết phiên phải báo "đăng nhập lại" ngay, không bị coi là lỗi mạng rồi thử lại.
+    const headers = requestHeaders(companyIds);
     for (let attempt = 0; attempt < 3; attempt += 1) {
       let response;
       try {
-        response = await fetch(url, { headers: requestHeaders(companyIds), credentials: "omit" });
+        response = await fetch(url, { headers, credentials: "omit" });
       } catch {
         if (attempt < 2) { await new Promise(resolve => setTimeout(resolve, 350 * (attempt + 1))); continue; }
         throw new Error("WMS tạm ngắt kết nối; hãy tải lại tab WMS rồi thử lại");
@@ -64,13 +66,7 @@
     url.searchParams.set("size", String(size));
     if (payload?.from) url.searchParams.set("from_updated_at", String(new Date(payload.from).getTime()));
     if (payload?.to) url.searchParams.set("to_updated_at", String(new Date(payload.to).getTime()));
-    const session = auth();
-    const headers = { Accept: "application/json", Authorization: `Bearer ${session.token}` };
-    if (session.company) headers["company-ids"] = session.company;
-    const response = await fetch(url, { headers, credentials: "omit" });
-    if (response.status === 401 || response.status === 403) throw new Error("Phiên WMS không còn quyền đọc Group UID; hãy đăng nhập lại");
-    if (!response.ok) throw new Error(`WMS trả mã ${response.status}`);
-    const normalized = core.normalizePage(await response.json());
+    const normalized = core.normalizePage(await getJson(url, "Phiên WMS không còn quyền đọc Group UID; hãy đăng nhập lại"));
     return {
       page, size, total: normalized.total,
       totalPages: Math.max(1, Math.ceil(normalized.total / size)),
@@ -90,13 +86,7 @@
     url.searchParams.set("warehouse_ids", CUT_WAREHOUSE_ID);
     if (payload?.from) url.searchParams.set("from_updated_at", String(new Date(payload.from).getTime()));
     if (payload?.to) url.searchParams.set("to_updated_at", String(new Date(payload.to).getTime()));
-    const session = auth();
-    const headers = { Accept: "application/json", Authorization: `Bearer ${session.token}` };
-    if (session.company) headers["company-ids"] = session.company;
-    const response = await fetch(url, { headers, credentials: "omit" });
-    if (response.status === 401 || response.status === 403) throw new Error("Phiên WMS không còn quyền đọc lịch sử Group UID; hãy đăng nhập lại bằng tài khoản Admin");
-    if (!response.ok) throw new Error(`WMS lịch sử trả mã ${response.status}`);
-    const normalized = core.normalizeHistoryPage(await response.json());
+    const normalized = core.normalizeHistoryPage(await getJson(url, "Phiên WMS không còn quyền đọc lịch sử Group UID; hãy đăng nhập lại bằng tài khoản Admin"));
     return {
       page, size, total: normalized.total,
       totalPages: Math.max(1, Math.ceil(normalized.total / size)),

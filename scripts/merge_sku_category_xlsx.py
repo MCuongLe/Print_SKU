@@ -130,9 +130,16 @@ def merge_workbook(
         updated = 0
         unchanged = 0
         empty_skus = 0
+        incomplete_rows = 0
+        duplicate_skus = 0
         changed_fields: dict[str, int] = {}
         batch: list[tuple[object, ...]] = []
         updates: list[tuple[object, ...]] = []
+        seen: set[str] = set()
+        # Tên và trạng thái là hai trường quyết định SKU có hiện/được in hay không: rỗng thì bỏ cả dòng,
+        # không ghi đè dữ liệu cũ và không chèn dòng rác (giống chốt chặn của apply_sku_rows.py).
+        # Chỉ kiểm cột có trong file, để file không có cột trạng thái vẫn nạp được như trước.
+        required_present = [name for name in ("product_name", "status") if name in selected]
         for values in rows:
             values = (values + [""] * len(source_columns))[: len(source_columns)]
             sku = values[selected["sku"]].strip()
@@ -142,6 +149,14 @@ def merge_workbook(
 
             mapped = {name: values[index].strip() for name, index in selected.items()}
             mapped["status"] = status_value(str(mapped.get("status", "")))
+            if any(not mapped[name] for name in required_present):
+                incomplete_rows += 1
+                continue
+            # SKU xuất hiện nhiều lần trong file: giữ dòng đầu, như apply_sku_rows.py.
+            if sku in seen:
+                duplicate_skus += 1
+                continue
+            seen.add(sku)
             mapped["category_id"] = category_id
             mapped["category_name"] = category_name
             tracked_values = tuple(mapped[name] for name in tracked_columns)
@@ -206,6 +221,8 @@ def merge_workbook(
             "changed_fields": changed_fields,
             "unchanged": unchanged,
             "empty_skus_skipped": empty_skus,
+            "incomplete_rows_skipped": incomplete_rows,
+            "duplicate_skus_skipped": duplicate_skus,
             "category_rows": category_count,
             "total_rows": total_rows,
             "distinct_skus": distinct_skus,

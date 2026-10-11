@@ -3,8 +3,20 @@ const SKU_PATTERN = /^[0-9A-Za-z._-]{1,40}$/;
 // Mã vị trí kho: chữ IN HOA, số và . _ / - (print_enqueue trên Supabase dùng đúng mẫu này).
 const LOCATION_PATTERN = /^[0-9A-Z][0-9A-Z._\/-]{0,39}$/;
 
+const MAX_CODE_LENGTH = 40;
+
 function cleanText(value, maxLength) {
   return String(value ?? "").trim().replace(/\s+/g, " ").slice(0, maxLength);
+}
+
+// Mã định danh (SKU, Group UID) không được cắt bớt hay gộp khoảng trắng: mã bị sửa là in ra tem của một mã KHÁC.
+// Dài quá hoặc sai mẫu thì để bước kiểm bên dưới từ chối cả lệnh.
+function rawCode(value) {
+  return String(value ?? "").trim();
+}
+
+function validGroupUid(code) {
+  return code.length >= 1 && code.length <= MAX_CODE_LENGTH && ASCII_BARCODE.test(code);
 }
 
 function validCopies(value) {
@@ -27,7 +39,7 @@ export function normalizeJob(input) {
   let normalizedPayload = {};
   if (type === "sku") {
     const normalizeSku = (item) => ({
-      sku: cleanText(item.sku, 40),
+      sku: rawCode(item.sku),
       productName: cleanText(item.productName, 180),
       quantity: cleanText(item.quantity, 40),
       printedDate: cleanText(item.printedDate, 20),
@@ -56,8 +68,8 @@ export function normalizeJob(input) {
     // Lot và Roll không bắt buộc: trước đây người vận hành ghi bút lên tem.
     // Bỏ trống thì template không vẽ dòng đó.
     const normalizeUid = (item) => ({
-      groupUid: cleanText(item.groupUid, 40),
-      sku: cleanText(item.sku, 40),
+      groupUid: rawCode(item.groupUid),
+      sku: rawCode(item.sku),
       productName: cleanText(item.productName ?? item.materialName, 180),
       lot: cleanText(item.lot, 20),
       roll: cleanText(item.roll, 20),
@@ -67,7 +79,7 @@ export function normalizeJob(input) {
       const items = payload.items.slice(0, 100).map(normalizeUid);
       if (!items.length) errors.push("Danh sách Group UID đang trống");
       items.forEach((item, index) => {
-        if (!item.groupUid || !ASCII_BARCODE.test(item.groupUid)) errors.push(`Group UID dòng ${index + 1} không hợp lệ`);
+        if (!validGroupUid(item.groupUid)) errors.push(`Group UID dòng ${index + 1} không hợp lệ`);
         if (item.sku && !SKU_PATTERN.test(item.sku)) errors.push(`SKU dòng ${index + 1} không hợp lệ`);
         if (!item.productName) errors.push(`Thiếu tên sản phẩm dòng ${index + 1}`);
         if (!item.copies) errors.push(`Số bản dòng ${index + 1} không hợp lệ`);
@@ -78,7 +90,7 @@ export function normalizeJob(input) {
     } else {
       normalizedPayload = normalizeUid(payload);
       delete normalizedPayload.copies;
-      if (!normalizedPayload.groupUid || !ASCII_BARCODE.test(normalizedPayload.groupUid)) errors.push("Group UID không hợp lệ");
+      if (!validGroupUid(normalizedPayload.groupUid)) errors.push("Group UID không hợp lệ");
       if (normalizedPayload.sku && !SKU_PATTERN.test(normalizedPayload.sku)) errors.push("SKU không hợp lệ");
       if (!normalizedPayload.productName) errors.push("Thiếu tên sản phẩm");
     }

@@ -66,6 +66,7 @@ async function fetchAll(path: string, pageSize = 1000): Promise<Json[]> {
   const rows: Json[] = [];
   for (let start = 0; start < 50000; start += pageSize) {
     const response = await db(path, { headers: { Range: `${start}-${start + pageSize - 1}` } });
+    if (response.status === 416) break;
     const page = await jsonResponse(response, "Đọc database") as Json[];
     rows.push(...page);
     if (page.length < pageSize) break;
@@ -84,6 +85,7 @@ async function authenticate(request: Request): Promise<{ id: string; username: s
   const authorization = request.headers.get("authorization") ?? "";
   if (!/^Bearer\s+\S+$/i.test(authorization)) throw new Error("AUTH:Phiên Admin không hợp lệ");
   const userResponse = await fetch(`${SUPABASE_URL}/auth/v1/user`, { headers: { apikey: SERVICE_KEY, Authorization: authorization } });
+  if (userResponse.status === 401 || userResponse.status === 403) throw new Error("AUTH:Phiên Admin không hợp lệ");
   const user = await jsonResponse(userResponse, "Xác minh người dùng") as Json;
   const roles = await fetchAll(`user_roles?select=username,role&user_id=eq.${encodeURIComponent(String(user.id))}&limit=1`);
   if (!roles[0] || roles[0].role !== "admin") throw new Error("FORBIDDEN:Chỉ Admin được đồng bộ SKU");

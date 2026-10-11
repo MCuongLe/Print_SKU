@@ -277,3 +277,23 @@ test("detail: báo cáo cảnh báo xem lại được từ lịch sử", async 
   assert.equal(result.body.data.changes.sourceIssues[0].type, "partial_combo_description");
   assert.equal(result.body.data.change_counts.comboOrphaned, 1);
 });
+
+test("preview: bảng đúng 1000 dòng, database trả 416 ở trang kế thì vẫn đọc đủ, không báo lỗi", async () => {
+  for (let index = 0; index < 1000; index += 1) links.push(remoteLink(`C${index}`, `N${index}`));
+  const inner = globalThis.fetch;
+  globalThis.fetch = async (url, init = {}) => {
+    const start = Number(String(init.headers?.Range ?? "").split("-")[0]);
+    if (String(url).includes("/sku_combo_links") && start >= links.length) return new Response("{}", { status: 416 });
+    return inner(url, init);
+  };
+  const result = await call({ action: "preview", snapshot: snapshot(iso(-1 * MIN)) });
+  assert.equal(result.status, 200, JSON.stringify(result.body));
+});
+
+test("auth: token sai hoặc hết hạn trả 401 AUTH, không phải 500", async () => {
+  const inner = globalThis.fetch;
+  globalThis.fetch = async (url, init = {}) => new URL(String(url)).pathname === "/auth/v1/user" ? json({ message: "invalid JWT" }, 401) : inner(url, init);
+  const result = await call({ action: "history" });
+  assert.equal(result.status, 401, JSON.stringify(result.body));
+  assert.equal(result.body.error.code, "AUTH");
+});

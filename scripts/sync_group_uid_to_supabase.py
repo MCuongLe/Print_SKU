@@ -35,6 +35,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import sys
 import time
@@ -102,6 +103,10 @@ def parse_rows(source: Path) -> tuple[list[dict[str, object]], list[dict[str, ob
             qty = float(qty_raw) if qty_raw else 0.0
         except ValueError:
             bad.append({"row": row_no, "group_uid_code": code, "reason": f"Qty không phải số: {qty_raw!r}"})
+            continue
+        if not math.isfinite(qty):
+            # NaN/inf/1e999 lọt qua so sánh `qty < 0` rồi json.dumps ra "NaN"/"Infinity" (không phải JSON): PostgREST từ chối cả lô.
+            bad.append({"row": row_no, "group_uid_code": code, "reason": f"Qty không phải số hữu hạn: {qty_raw!r}"})
             continue
         if qty < 0:
             bad.append({"row": row_no, "group_uid_code": code, "reason": f"Qty âm: {qty}"})

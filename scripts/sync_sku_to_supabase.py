@@ -57,12 +57,16 @@ def active_skus(database: Path, include_inactive: bool = False) -> list[dict[str
             WHERE TRIM(sku) <> ''
               AND TRIM(product_name) <> ''
               AND (? OR status = '1')
-            ORDER BY sku
+            ORDER BY TRIM(sku), rowid
             """,
             (1 if include_inactive else 0,),
         ).fetchall()
     finally:
         connection.close()
+
+    # Một lô upsert không được chứa cùng một SKU hai lần (Postgres: "ON CONFLICT DO UPDATE command cannot
+    # affect row a second time"). SKU trùng trong sku.db thì lấy dòng nhập sau cùng.
+    rows = list({str(row[0]).strip(): row for row in rows}.values())
 
     updated_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
     return [
