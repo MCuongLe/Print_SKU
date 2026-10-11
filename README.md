@@ -86,6 +86,12 @@ CSS cũ đã được quy đổi tại chỗ; khối `#type-standard` cuối tra
 
 ## Quản trị (Admin)
 
+**Chuyển mục mượt (11/10/2026):** `PrintSkuAdminAccess.getToken()` trả token ngay khi trong phiên trang đã xác nhận Admin và token JWT còn hạn ≥ 1 phút
+(trước đây mỗi lần bấm menu đều chờ 2 lượt gọi `/auth/v1/user` + `user_roles`, màn cũ ẩn trước nên lộ nền đen 0,2–0,6 giây). Token hết hạn thì vẫn
+kiểm lại/refresh như cũ; mọi lời gọi dữ liệu vẫn qua `PrintSkuAdminAuth.accessToken()`. Quay lại Đồng bộ SKU / Group UID giữ nội dung cũ và tải
+lại ngầm (không khoá nút, không chạy thanh tải). Icon "Kiểm kê SKU" chèn vào menu React (màn Cấu hình) có sẵn kích thước 18 px — trước bị thành
+khối đen 300 × 150. Test: `tests/admin_switch_browser.cjs`.
+
 Giao diện Admin (`#admin/lenh-in`, `#admin/cauhinh`, `#admin/sku-sync`, `#admin/group-uid-sync`, `#admin/kiem-ke`) vào từ ô **QUẢN TRỊ** (nhóm "Quản trị", cuối trang chủ) — không còn
 nút bánh răng trong header IN TEM SKU. Chưa có phiên thì hiện hộp thoại đăng nhập Supabase (tài khoản có vai trò `admin`); **Hủy**, **Về trang chủ** và **Đăng xuất**
 đều quay về `#home`. **Đăng xuất** nằm ở cuối thanh bên Admin (desktop) hoặc là icon ở hàng tiêu đề (điện thoại); không còn thanh nổi hiện tên Admin. Thương hiệu trong Admin và hộp thoại đăng nhập là "WH-MATERIAL" (trước đây là "In tem SKU"). Test: `tests/admin_entry_browser.cjs`.

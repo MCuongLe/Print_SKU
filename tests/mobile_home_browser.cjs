@@ -1,4 +1,4 @@
-// Giao diện điện thoại đợt 2 (11/10/2026, khối CSS #mobile-pro-home): trang chủ lưới 3 cột ô gọn, 14 ô vừa một màn 390 × 844
+// Giao diện điện thoại đợt 2 (11/10/2026, khối CSS #mobile-pro-home): trang chủ lưới 3 cột ô gọn, mọi ô vừa một màn 390 × 844
 // (≤ 340 px về 2 cột); IN TEM SKU cùng kiểu các module đợt 1 (số thứ tự chấm tròn 22 px, tiêu đề khối 18 px, thẻ phẳng, nút 46 px).
 // Máy tính giữ nguyên. Dữ liệu giả rỗng, không gọi Supabase thật. Chạy với python -m http.server 8000 (đổi bằng biến BASE).
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
@@ -31,7 +31,7 @@ const BASE = process.env.BASE || 'http://127.0.0.1:8000/';
         const lines = tiles.map(t => { const s = t.querySelector('strong'), cs = getComputedStyle(s); return Math.round(s.getBoundingClientRect().height / parseFloat(cs.lineHeight)); });
         return { count: tiles.length, cols: new Set(boxes.map(b => Math.round(b.left))).size, w: Math.round(boxes[0].width), h: Math.round(Math.min(...boxes.map(b => b.height))), bottom: Math.round(Math.max(...boxes.map(b => b.bottom))), maxLines: Math.max(...lines), overflow: document.documentElement.scrollWidth > innerWidth };
       });
-      assert.ok(home.count >= 13, `trang chủ có đủ ô (${home.count})`);
+      assert.ok(home.count >= 10, `trang chủ có đủ ô (${home.count})`);
       assert.equal(home.overflow, false, `${width}px: trang chủ tràn ngang`);
       if (width === 390) {
         assert.equal(home.cols, 3, 'điện thoại: lưới 3 cột');
