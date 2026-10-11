@@ -482,6 +482,11 @@ tiêu điểm nhẹ, nút 46 px. Tab Cắt UID / Xả vải là nút chọn li�
 đầy đủ, có số tròn. Nút bàn phím của Xả vải và Gom hàng mẫu là icon cạnh ô quét. IN TEM GROUP UID đánh số lại theo thứ tự trên màn: 1 Thêm · 2 Chưa gán SKU · 3 Gán SKU ·
 4 Sẵn sàng in. Dòng "Tìm thấy N …" của Tra cứu không hiện khi đang ở tab Quét. Gom hàng mẫu bỏ câu hướng dẫn mở bao. Test: `tests/mobile_modules_browser.cjs`.
 
+Đợt 2 (11/10/2026, khối CSS `#mobile-pro-home`, chỉ điện thoại): trang chủ ≤ 620 px là lưới 3 cột ô gọn (icon 40 px, tên 13 px tối đa
+2 dòng) — 14 ô vừa một màn 390 × 844 thay vì cuộn 1,5 màn; ≤ 340 px về 2 cột. IN TEM SKU ≤ 800 px theo kiểu đợt 1: số thứ tự khối chấm tròn
+22 px, tiêu đề khối 18 px, thẻ phẳng bo 14 px, ô nhập tiêu điểm nhẹ, nút Thêm vào danh sách 46 px bo 12 px (font đã chuẩn từ đợt chuẩn chữ).
+Máy tính giữ nguyên. Test: `tests/mobile_home_browser.cjs`.
+
 **Bố cục điện thoại (10/10/2026).** Toàn màn hình bỏ các câu hướng dẫn (thông báo sau khi đọc tem/chọn SKU, mẹo gõ mã, "Lưu trên máy này…", đuôi "kiểm tra mạng rồi bấm…"
 của các thông báo lỗi); chỉ giữ trạng thái và lỗi ngắn. Bước 1: nút Bật camera và nút Chọn ảnh (chỉ icon, vẫn có tên cho trình đọc màn hình) cùng một hàng. Bước 2: thẻ SKU gọn
 (SKU · chip đơn vị · nút Đổi), bỏ các câu giải thích đơn vị/cách nhập và thông báo "nhập số lượng và số tem"; nút **Tính mm từ cân** thay khối giải thích; **Số tem**

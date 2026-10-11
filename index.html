@@ -4863,6 +4863,31 @@ Error generating stack: `+y.message+`
         :is(#uid-screen, #ins-screen, #sample-screen) .uid-status:empty { display: none; }
       }
     </style>
+    <style id="mobile-pro-home">
+      /* Đợt 2 (11/10/2026, chỉ điện thoại): trang chủ lưới 3 cột ô gọn (14 ô gần vừa một màn, ≤ 340 px về 2 cột);
+         IN TEM SKU cùng kiểu các module đợt 1 — số thứ tự chấm tròn 22 px, tiêu đề khối 18 px, thẻ phẳng, ô nhập tiêu điểm nhẹ, nút 46 px. */
+      @media (max-width: 620px) {
+        #barcode-home .barcode-home__groups { gap: 12px; padding-top: 14px; }
+        #barcode-home .barcode-home__choices { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+        #barcode-home .barcode-choice { justify-content: flex-start; gap: 6px; min-height: 96px; padding: 10px 6px 8px; }
+        #barcode-home .barcode-choice .barcode-choice__icon { width: 40px; height: 40px; border-radius: 12px; }
+        #barcode-home .barcode-choice .barcode-choice__icon svg { width: 22px; height: 22px; }
+        #barcode-home .barcode-choice strong { font-size: 13px; line-height: 1.25; overflow-wrap: anywhere; }
+      }
+      @media (max-width: 340px) {
+        #barcode-home .barcode-home__choices { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      }
+      @media (max-width: 800px) {
+        #root > main > section.rounded-2xl { border-color: #e1e9e5 !important; border-radius: 14px; box-shadow: none !important; }
+        #root > main > section > p.items-baseline { align-items: center; }
+        #root > main > section > p.items-baseline > b { display: inline-grid; flex: none; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: #006747; color: #fff !important; font-size: 12px; font-weight: 600; letter-spacing: 0; }
+        #root > main > section > p.items-baseline > span { font-size: 18px; font-weight: 600; }
+        #root > main > section label.uppercase { color: #5c6f68; }
+        #root > main > section input.rounded-xl { border-radius: 10px; }
+        #root > main > section input.rounded-xl:focus { border-color: #0b7a55; box-shadow: 0 0 0 3px rgba(0, 119, 84, .15); }
+        #root > main > section button.rounded-full.bg-brand { min-height: 46px; border-radius: 12px; font-size: 16px; }
+      }
+    </style>
 <script>
 /* ===== NDS-ENGINE (bat dau) =====
  * Bo doi chieu chu tren tem <-> danh muc SKU, chay 100% trong trinh duyet. Chep NGUYEN tu
