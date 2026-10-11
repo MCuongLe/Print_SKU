@@ -115,7 +115,7 @@ const navItems = page => page.evaluate(() => {
           const nav = await navItems(page);
           seen.push({ hash, m, nav });
           assert.equal(m.sideW, 264, `${hash}: thanh bên ${m.sideW}`);
-          assert.equal(m.topH, 64, `${hash}: thanh trên ${m.topH}`);
+          assert.equal(m.topH, 80, `${hash}: thanh trên ${m.topH} (chuẩn thanh trên máy tính 80 px, nền ảnh nhóm)`);
           assert.equal(m.topPos, 'sticky', `${hash}: thanh trên phải dính`);
           assert.equal(m.title, title, `${hash}: tiêu đề`);
           assert.equal(m.titleFont, '18px'); assert.equal(m.titleWeight, '700', `${hash}: tiêu đề phải đậm`);
@@ -170,11 +170,13 @@ const navItems = page => page.evaluate(() => {
       }
 
       // ---------- 5) Chip tóm tắt + nút làm mới trên thanh trên ----------
+      // Header B (99745a5): chip cũ vẫn tính nhưng ẩn, thay bằng một ô KPI trên thanh trên
       {
         const { context, page } = await open(browser, { width });
         const chips = sel => page.locator(sel + ' .as-chip').allInnerTexts().then(a => a.map(t => t.replace(/\s+/g, ' ').trim()));
-        await go(page, '#admin/lenh-in'); await page.locator('#pj-top-chips .as-chip').nth(2).waitFor();
+        await go(page, '#admin/lenh-in'); await page.locator('#pj-top-chips .as-chip').nth(2).waitFor({ state: 'attached' });
         assert.deepEqual(await chips('#pj-top-chips'), ['5 lệnh hôm nay', '1 đang chờ', '1 lỗi'], 'chip Lệnh in');
+        await page.waitForFunction(() => /5 lệnh/.test(document.querySelector('#print-jobs-screen .ss-command-kpi')?.textContent || ''));
         assert.match((await page.locator('#pj-top-sub').innerText()).trim(), /^Cả kho · cập nhật \d{2}:\d{2}$/);
         const jobsBefore = page.calls.filter(c => c === 'print_admin_jobs').length;
         await page.locator('#pj-top-refresh').click();
@@ -183,15 +185,17 @@ const navItems = page => page.evaluate(() => {
         assert.equal(await page.locator('#pj-top-refresh svg.pj-svg').count(), 1, 'icon làm mới dùng nét, không tô đặc');
 
         await go(page, '#admin/sku-sync'); assert.deepEqual(await chips('#sku-top-chips'), [], 'chưa kiểm tra thì chưa có chip');
-        await page.locator('#sku-sync-preview').click(); await page.locator('#sku-top-chips .as-chip').nth(1).waitFor();
+        await page.locator('#sku-sync-preview').click(); await page.locator('#sku-top-chips .as-chip').nth(1).waitFor({ state: 'attached' });
         assert.deepEqual(await chips('#sku-top-chips'), ['60 thay đổi', '2 cảnh báo'], 'chip Đồng bộ SKU');
+        await page.waitForFunction(() => /60 SKU mới/.test(document.querySelector('#sku-sync-screen .ss-command-kpi')?.textContent || ''));
         const hist = page.calls.filter(c => c === 'sku-sync:history').length;
         await page.locator('#sku-top-refresh').click(); await page.waitForTimeout(600);
         assert.ok(page.calls.filter(c => c === 'sku-sync:history').length > hist, 'làm mới SKU phải tải lại lịch sử');
 
         await go(page, '#admin/group-uid-sync'); assert.deepEqual(await chips('#gu-top-chips'), [], 'chưa đối chiếu thì chưa có chip');
-        await page.locator('#gu-run-full').click(); await page.locator('#gu-top-chips .as-chip').nth(1).waitFor();
+        await page.locator('#gu-run-full').click(); await page.locator('#gu-top-chips .as-chip').nth(1).waitFor({ state: 'attached' });
         assert.deepEqual(await chips('#gu-top-chips'), ['1 thay đổi', '4 cảnh báo'], 'chip Đồng bộ Group UID');
+        await page.waitForFunction(() => /1 UID mới/.test(document.querySelector('#group-uid-sync-screen .ss-command-kpi')?.textContent || ''));
         const gh = page.calls.filter(c => c === 'group-uid-sync:history').length;
         await page.locator('#gu-top-refresh').click(); await page.waitForTimeout(600);
         assert.ok(page.calls.filter(c => c === 'group-uid-sync:history').length > gh, 'làm mới Group UID phải tải lại lịch sử');
@@ -224,7 +228,7 @@ const navItems = page => page.evaluate(() => {
         for (const hash of ['#admin/lenh-in', '#admin/sku-sync', '#admin/group-uid-sync', '#admin/kiem-ke', '#admin/cauhinh']) {
           await go(page, hash); await page.waitForTimeout(700);
           const m = await page.evaluate(() => { const top = [...document.querySelectorAll('.ss-top, #root aside + div > header')].find(e => e.getBoundingClientRect().width > 0); const chips = top.querySelector('.ss-top-chips'), sub = top.querySelector('.ss-top-sub'); return { h: Math.round(top.getBoundingClientRect().height), chips: chips ? getComputedStyle(chips).display : 'none', sub: getComputedStyle(sub).display, overflow: document.documentElement.scrollWidth > innerWidth }; });
-          assert.equal(m.h, 64, hash); assert.equal(m.chips, 'none', hash + ': chip ẩn ở cửa sổ hẹp'); assert.equal(m.sub, 'none', hash + ': dòng phụ ẩn ở cửa sổ hẹp'); assert.equal(m.overflow, false, hash + ': tràn ngang');
+          assert.equal(m.h, 80, hash); assert.equal(m.chips, 'none', hash + ': chip ẩn ở cửa sổ hẹp'); assert.equal(m.sub, 'none', hash + ': dòng phụ ẩn ở cửa sổ hẹp'); assert.equal(m.overflow, false, hash + ': tràn ngang');
         }
         assert.deepEqual(page.errors, []); await context.close();
       }

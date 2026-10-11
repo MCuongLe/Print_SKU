@@ -68,9 +68,9 @@ const navState = page => page.evaluate(() => {
         assert.equal(s.overflow, false, `#${route}: không tràn ngang`);
         assert.deepEqual(s.toggles, ['true'], `#${route}: một nút thu gọn ở đầu thanh trên`);
       }
-      // Tên nhóm dưới tiêu đề module, màu theo nhóm
+      // Tên nhóm dưới tiêu đề module (chữ trắng trên ảnh nền nhóm của thanh trên)
       const eyebrow = await page.evaluate(() => { const h = document.getElementById('storage-risk-title'), a = getComputedStyle(h, '::after'); return `${a.content}|${a.fontSize}|${a.textTransform}|${a.color}`; });
-      assert.equal(eyebrow, '"Kiểm tra"|12px|uppercase|rgb(138, 91, 0)');
+      assert.equal(eyebrow, '"Kiểm tra"|12px|uppercase|rgba(255, 255, 255, 0.9)', 'tên nhóm dưới tiêu đề: chữ trắng trên ảnh nền nhóm');
 
       // Bấm mục = bấm ô trang chủ
       await page.locator('#app-nav .an-item[aria-label="Tìm SKU"]').click();

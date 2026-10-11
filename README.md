@@ -144,7 +144,7 @@ nút bánh răng trong header IN TEM SKU. Chưa có phiên thì hiện hộp tho
 
 **Khung chung của Admin (web).** Admin chỉ dùng trên máy tính (từ 768 px), không thiết kế cho điện thoại. Bốn màn dùng cùng một khung: thanh bên 276 px
 (từ 1024 px là thanh trái chung của cả app — xem "Thanh điều hướng trái"),
-thanh trên 64 px **dính khi cuộn**, menu cùng thứ tự Lệnh in → Đồng bộ SKU → Đồng bộ Group UID → Cấu hình, tiêu đề thanh trên = tên mục. Cấu hình vẫn
+thanh trên 80 px (từ 11/10/2026 theo chuẩn thanh trên chung, nền ảnh tím của nhóm Quản trị) **dính khi cuộn**, menu cùng thứ tự Lệnh in → Đồng bộ SKU → Đồng bộ Group UID → Cấu hình, tiêu đề thanh trên = tên mục. Cấu hình vẫn
 nằm trong khung React cũ nhưng được ép cùng kiểu bằng CSS (khối `#admin-web-sync`, vì bundle React đã minify); các mục Đồng bộ chèn vào menu React đứng
 trước Cấu hình và không còn lớp "đang chọn". Tiêu đề bảng của dashboard dính ngay dưới thanh trên. Chữ dùng màu `--wms-muted` (`#60736b`), cỡ ≥ 12 px.
 Lỗi (máy chủ, chưa kết nối Extension) hiện thành **dải đỏ có icon** ở dòng trạng thái (`data-tone="error"`, `aria-live="assertive"`); Đồng bộ SKU và
@@ -545,6 +545,15 @@ thay thanh bên riêng của Admin (`.ss-side`, `#root aside` ẩn từ 1024 px)
 script cuối body chạy). Nút "← WH-MATERIAL" ẩn vì đã có mục Trang chủ; dưới tên module có tên nhóm viết hoa giãn chữ theo màu nhóm. Nội dung lùi
 bằng `--app-nav-w`; chỉ chuyển động khi bấm thu gọn (CSS cuối body tới sau lần vẽ đầu nên không để trượt lúc tải). Không ra giấy in.
 Test: `tests/app_nav_browser.cjs`.
+
+**Ảnh nền 4 nhóm + chuẩn thanh trên (11/10/2026, khối `#group-banners` cuối `index.html`).** 4 ảnh người dùng gửi (nén 1280 px webp
+~12–17 KB/ảnh, nhúng data URI ở biến `--grp-img-print/ops/check/admin`): In tem xanh lá (máy in tem), Vận hành kho xanh dương (xe nâng), Kiểm tra
+cam (bảng kiểm), Quản trị tím (laptop). Dùng ở thanh tiêu đề 4 thẻ nhóm trang chủ và thanh trên của mọi màn theo nhóm — module (`.uid-topbar`),
+IN TEM SKU (`#root > header`), Admin (`.ss-top`, Cấu hình `#root header.ss-command-react`). Ảnh neo phải, rộng tối đa `--gb-w` (thanh trên 760 px,
+thẻ nhóm 380 px), phần trái tô `--gb-fill` mờ dần vào ảnh, lớp tối `--gb-shade` bên trái (điện thoại giữ đậm tới 72 % bề ngang) cho chữ trắng —
+đo điểm ảnh sáng nhất dưới chữ ≥ 4,5 ở mọi màn. **Chuẩn thanh trên:** máy tính cao 80 px; chữ trắng; ô icon / nút thanh trái / nút quay lại nền trắng
+mờ; chip trạng thái nền trắng; Admin tiêu đề 18/700, ô icon 38, icon KPI 16, chữ ≥ 12 / đậm ≤ 700, bỏ dòng "WH-MATERIAL". Điện thoại giữ chiều cao
+cũ. Map nhóm ↔ màn nằm trong CSS (ID màn). Test: `tests/group_banners_browser.cjs`.
 
 **Bố cục điện thoại (10/10/2026).** Toàn màn hình bỏ các câu hướng dẫn (thông báo sau khi đọc tem/chọn SKU, mẹo gõ mã, "Lưu trên máy này…", đuôi "kiểm tra mạng rồi bấm…"
 của các thông báo lỗi); chỉ giữ trạng thái và lỗi ngắn. Bước 1: nút Bật camera và nút Chọn ảnh (chỉ icon, vẫn có tên cho trình đọc màn hình) cùng một hàng. Bước 2: thẻ SKU gọn

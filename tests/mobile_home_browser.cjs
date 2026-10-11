@@ -53,8 +53,9 @@ const BASE = process.env.BASE || 'http://127.0.0.1:8000/';
       assert.equal(head.size, width >= 1200 ? '960px auto' : 'cover', 'màn ≥ 1200 px: ảnh giữ rộng 960 px, không phóng theo bề rộng màn');
       assert.equal(head.color, 'rgb(255, 255, 255)');
       assert.equal(head.h, mobile ? 112 : 148, `đầu trang cao ${head.h}px`);
-      // Máy tính ≥ 1024 px: đầu trang bắt đầu bằng nút thu gọn thanh trái, thẳng mép thẻ nhóm
-      if (mobile) { assert.equal(head.markX, 16); assert.equal(head.toggleX, null); } else assert.equal(head.toggleX, head.groupX, 'máy tính: nút thu gọn thẳng mép thẻ nhóm');
+      // Đầu trang bắt đầu bằng nút thanh trái (máy tính: thu gọn, thẳng mép thẻ nhóm; điện thoại: ☰ mở menu kéo ở mép 16 px), icon kho đứng sau
+      if (mobile) assert.equal(head.toggleX, 16); else assert.equal(head.toggleX, head.groupX, 'máy tính: nút thu gọn thẳng mép thẻ nhóm');
+      assert.ok(head.markX > head.toggleX, 'icon kho sau nút thanh trái');
       if (width === 390) {
         assert.equal(home.cols, 3, 'điện thoại: lưới 3 cột');
         assert.ok(home.bottom <= height * 1.25, `điện thoại 390 × 844: trang chủ cuộn tối đa ~1,25 màn (ô cuối ở ${home.bottom}px)`);
