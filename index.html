@@ -10234,11 +10234,16 @@ async function rpc(name,args,retry=true){
           else $("pdm-body").innerHTML=filtered().map(d=>`<tr ${rowFor(d).attrs}>${rowFor(d).cells.map(c=>`<td>${c}</td>`).join("")}</tr>`).join("");
         }
         function renderCode(){
-          const box=$("pdm-codebox"),c=state.code;
+          // 12/10/2026: mã còn hạn do máy chủ trả về (code_plain) — mọi Admin và sau khi tải lại đều thấy; Admin khác thu hồi thì mất ngay.
+          const box=$("pdm-codebox"),codes=state.data?.codes||[],live=codes.find(x=>x.active&&x.code);
+          let c=state.code;
+          if(c&&state.data&&!codes.some(x=>x.id===c.id&&x.active))c=null;
+          if((!c||Date.parse(c.expiresAt)<=Date.now())&&live)c={id:live.id,code:live.code,expiresAt:live.expiresAt};
+          state.code=c;
           if(!c||Date.parse(c.expiresAt)<=Date.now()){box.hidden=true;$("pdm-nocode").hidden=false;return}
-          const row=(state.data?.codes||[]).find(x=>x.id===c.id),left=Math.max(0,Math.ceil((Date.parse(c.expiresAt)-Date.now())/60000));
+          const row=codes.find(x=>x.id===c.id),left=Math.max(0,Math.ceil((Date.parse(c.expiresAt)-Date.now())/60000));
           box.hidden=false;$("pdm-nocode").hidden=true;$("pdm-code-text").textContent=c.code;
-          $("pdm-code-sub").textContent=`Còn ${num(left)} phút · tới ${clock(c.expiresAt)} · đã kích hoạt ${num(row?.useCount||0)} máy`;
+          $("pdm-code-sub").textContent=`Còn ${num(left)} phút · tới ${clock(c.expiresAt)} · đã kích hoạt ${num(row?.useCount||0)} máy${row?.createdBy?` · ${row.createdBy} tạo`:""}`;
         }
         function renderMetrics(){
           const all=devices(),on=all.filter(d=>d.enabled),off=all.filter(d=>!d.enabled),codes=(state.data?.codes||[]).filter(c=>c.active),jobs=all.reduce((n,d)=>n+Number(d.jobsToday||0),0);

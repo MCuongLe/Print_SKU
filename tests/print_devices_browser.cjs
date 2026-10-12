@@ -34,7 +34,7 @@ const mock = (page, state) => page.route('**/*', async route => {
     devices: [
       { id: 'd1', name: state.d1name || 'Máy kho 01', enabled: state.d1on !== false, activatedAt: ago(600), lastSeenAt: ago(1), lastPrintAt: ago(30), printCount: 42, jobsToday: 5, userAgent: 'Mozilla/5.0 (Linux; Android 12) Chrome' },
       { id: 'd2', name: 'PDA cũ', enabled: false, activatedAt: ago(3000), lastSeenAt: ago(2000), lastPrintAt: null, printCount: 3, jobsToday: 0, userAgent: '' }],
-    codes: state.code ? [{ id: 'c1', note: '', createdAt: ago(1), expiresAt: state.code.expiresAt, revokedAt: null, useCount: 1, active: true }] : [],
+    codes: state.code ? [{ id: 'c1', note: '', createdAt: ago(1), expiresAt: state.code.expiresAt, revokedAt: null, useCount: 1, active: true, code: state.code.code, createdBy: 'Test Admin' }] : [],
     legacyKeys: [{ name: 'legacy-public', enabled: !state.legacyOff, createdAt: ago(9000), isPublic: true }], now: new Date().toISOString() });
   if (rpc === 'print_activation_create') { state.code = { id: 'c1', code: 'ABCD-2345', expiresAt: new Date(Date.now() + 30 * 60000).toISOString(), minutes: body.p_minutes }; return ok(state.code); }
   if (rpc === 'print_activation_revoke') { state.code = null; return ok({ id: body.p_id, revoked: true }); }
@@ -134,6 +134,10 @@ const mock = (page, state) => page.route('**/*', async route => {
     assert.match(await page.locator('#pdm-code-sub').textContent(), /Còn (29|30) phút .* đã kích hoạt 1 máy/);
     assert.equal(state.calls.find(c => c.rpc === 'print_activation_create').body.p_minutes, 30);
     assert.equal(await page.locator('#pdm-m-codes').textContent(), '1');
+    // Tải lại trang (hoặc Admin khác mở): mã còn hạn vẫn hiện nhờ máy chủ trả code_plain
+    await page.reload(); await page.locator('#pdm-codebox:not([hidden])').waitFor();
+    assert.equal(await page.locator('#pdm-code-text').textContent(), 'ABCD-2345', 'mã hiện lại sau khi tải trang');
+    assert.match(await page.locator('#pdm-code-sub').textContent(), /Test Admin tạo/);
     await page.locator('#pdm-code-revoke').click();
     await page.locator('#pdm-codebox[hidden]').waitFor({ state: 'attached' });
     assert.ok(state.calls.some(c => c.rpc === 'print_activation_revoke' && c.body.p_id === 'c1'));
