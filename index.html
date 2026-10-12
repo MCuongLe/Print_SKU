@@ -12115,5 +12115,34 @@ async function rpc(name,args,retry=true){
         .ss-screen .ss-hero .as-hero-sep { display: none; }
       }
     </style>
+    <style id="cap-vai-polish">
+      /* Soát Cấp vải 12/10/2026 */
+      /* Dòng thông báo trống thì ẩn (trước giữ chỗ 22 px + lề → hàng tab cách thẻ 48 px, các màn cùng kiểu 12–14 px) */
+      #cap-vai-message:empty { display: none; }
+      /* Nút camera / bàn phím cạnh ô Group UID có khung như Cắt Group UID (trước là icon trơn) */
+      #cap-vai-form :is(#cap-vai-camera, #cap-vai-keyboard) { flex: none; box-sizing: border-box; width: var(--ui-ctl, 52px); min-width: var(--ui-ctl, 52px); height: var(--ui-ctl, 52px); min-height: 0; margin: 0; padding: 0; border: 1px solid var(--wms-border, #d9e2de); border-radius: var(--ui-in-r, 13px); background: #fff; color: var(--wms-muted, #60736b); cursor: pointer; }
+      #cap-vai-form #cap-vai-camera, #cap-vai-form #cap-vai-keyboard[aria-pressed="false"] { border-color: rgba(0, 95, 65, .35); background: rgba(0, 95, 65, .07); color: var(--wms-brand, #005f41); }
+      #cap-vai-form #cap-vai-camera[hidden] { display: none; }
+      /* Số thứ tự cách tên thẻ 8 px ở mọi bề rộng (trước chỉ điện thoại; máy tính dính sát "❶Quét Group UID") */
+      :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) .cut-card h2 { display: flex; align-items: center; gap: 8px; }
+      /* Danh sách cuộn trên điện thoại: 3 dòng — Group UID + trạng thái; SKU · Lot · Roll; số mét · vị trí (trước 6 dòng có nhãn, ~185 px/cuộn) */
+      @media (max-width: 620px) {
+        #cap-vai-screen .cv-table tbody tr[data-state] { display: grid; grid-template-columns: max-content max-content minmax(0, 1fr) auto auto; grid-template-areas: "uid uid uid st act" "sku lot roll st act" "qty loc loc loc loc"; align-items: baseline; gap: 4px 12px; padding: 10px 12px; }
+        #cap-vai-screen .cv-table tr[data-state] td { display: block; min-width: 0; font-size: 13px; line-height: 1.35; }
+        #cap-vai-screen .cv-table tr[data-state] td::before { content: none; }
+        #cap-vai-screen .cv-table tr[data-state] td[data-label="STT"] { display: none; }
+        #cap-vai-screen .cv-table tr[data-state] td:is([data-label="Lot"], [data-label="Roll"], .n) { white-space: nowrap; }
+        #cap-vai-screen .cv-table tr[data-state] td[data-label="UID"] { grid-area: uid; font-weight: 700; }
+        #cap-vai-screen .cv-table tr[data-state] td[data-label="SKU"] { grid-area: sku; }
+        #cap-vai-screen .cv-table tr[data-state] td[data-label="Lot"] { grid-area: lot; }
+        #cap-vai-screen .cv-table tr[data-state] td[data-label="Roll"] { grid-area: roll; }
+        #cap-vai-screen .cv-table tr[data-state] td.n { grid-area: qty; }
+        #cap-vai-screen .cv-table tr[data-state] td[data-label="Vị trí"] { grid-area: loc; }
+        #cap-vai-screen .cv-table tr[data-state] td[data-label="Trạng thái"] { grid-area: st; align-self: start; justify-self: end; text-align: right; }
+        #cap-vai-screen .cv-table tr[data-state] td.cv-act { position: static; grid-area: act; align-self: start; }
+        #cap-vai-screen .cv-table tr[data-state] td:is([data-label="Lot"], [data-label="Roll"], [data-label="Vị trí"])::before { content: attr(data-label); display: inline; margin-right: 4px; color: var(--wms-muted, #60736b); font-weight: 400; }
+        #cap-vai-screen .cv-table tr[data-state] td.n::after { content: " m"; color: var(--wms-muted, #60736b); }
+      }
+    </style>
   </body>
 </html>
