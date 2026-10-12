@@ -9359,7 +9359,7 @@ var FSK_CORE = (function () {
         <div class="ss-main"><header class="ss-top"><span class="ss-top-mark" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/><circle cx="18" cy="17" r="2"/></svg></span><div class="ss-top-title"><h1 id="group-uid-sync-heading">Đồng bộ Group UID</h1><p class="ss-top-sub">WMS → Supabase</p></div><div class="ss-top-chips" id="gu-top-chips" aria-live="polite"></div><div class="ss-top-end"><span class="ss-connection" id="gu-connection">Đang kiểm tra Extension</span><button type="button" class="pj-icon ss-top-refresh" id="gu-top-refresh" aria-label="Tải lại lịch sử" title="Tải lại lịch sử"><svg class="pj-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg></button></div></header><div class="ss-content">
           <section class="ss-hero"><div><h2>Đối chiếu dữ liệu WMS</h2></div><div class="gu-hero-actions as-hero-actions"><button class="ss-secondary" id="gu-run-incremental" type="button">Kiểm tra thay đổi</button><button class="ss-secondary" id="gu-run-full" type="button">Đối chiếu toàn bộ</button><i class="as-hero-sep" aria-hidden="true"></i><button class="ss-secondary as-icon-btn" id="gu-cancel" type="button" disabled aria-label="Hủy xem trước" title="Hủy xem trước"><svg class="pj-svg" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg></button><button class="ss-primary" id="gu-apply" type="button" disabled>Cập nhật Supabase</button></div></section>
           <div class="as-strip" id="gu-strip"><div id="gu-strip-inc"><span data-ico="clock">Thay đổi gần nhất</span><strong id="gu-last-incremental">—</strong><em id="gu-last-incremental-rel"></em></div><div><span data-ico="history">Đối chiếu toàn bộ</span><strong id="gu-last-full">—</strong><em id="gu-last-full-rel"></em></div><div><span data-ico="database">Lần tới lấy từ</span><strong id="gu-next-from">—</strong></div><div><span data-ico="layers">Phiên hiện tại</span><strong id="gu-range">—</strong></div><div class="as-histcell"><button type="button" class="as-histbtn" id="gu-history-btn" aria-haspopup="dialog"><span data-ico="history">Lịch sử</span><strong id="gu-hist-last">—</strong><em id="gu-hist-count"></em></button></div></div>
-          <div class="ss-progress" id="gu-progress" aria-hidden="true"><i></i></div><div class="gu-progress-label"><span id="gu-status" aria-live="polite">Sẵn sàng kiểm tra dữ liệu.</span><span id="gu-pages">—</span></div><div class="as-warns" id="gu-warn" role="status" hidden></div>
+          <div class="ss-progress" id="gu-progress" aria-hidden="true"><i></i></div><div class="gu-progress-label"><span id="gu-status" aria-live="polite">Sẵn sàng kiểm tra dữ liệu.</span><span id="gu-pages"></span></div><div class="as-warns" id="gu-warn" role="status" hidden></div>
           <section class="ss-metrics" aria-label="Kết quả đối chiếu Group UID"><div class="ss-metric"><span data-ico="database">UID nguồn</span><strong id="gu-source">0</strong></div><button class="ss-metric" type="button" data-gu-kind="added"><span data-ico="plus">UID mới</span><strong id="gu-added">0</strong></button><button class="ss-metric" type="button" data-gu-kind="updated"><span data-ico="refresh">UID cập nhật</span><strong id="gu-updated">0</strong></button><div class="ss-metric"><span data-ico="equal">Không đổi</span><strong id="gu-unchanged">0</strong></div><button class="ss-metric" type="button" data-gu-kind="missing"><span data-ico="xcircle">Thiếu trên WMS</span><strong id="gu-missing">0</strong></button><button class="ss-metric" type="button" data-gu-kind="stale_source"><span data-ico="history">WMS cũ hơn</span><strong id="gu-issues">0</strong></button></section>
           <div class="as-bar" id="gu-bar" role="img" aria-label="Cơ cấu kết quả đối chiếu"></div><div class="as-legend" id="gu-legend"></div>
           <dialog class="as-dialog" id="gu-dialog" data-size="lg" aria-labelledby="gu-change-title">
@@ -9406,7 +9406,7 @@ var FSK_CORE = (function () {
           $("gu-source").textContent=num(src);$("gu-added").textContent=num(c.added);$("gu-updated").textContent=num(c.updated);$("gu-unchanged").textContent=num(c.unchanged);$("gu-missing").textContent=num(c.missing);$("gu-issues").textContent=num(c.issues);
           [["gu-missing",c.missing],["gu-issues",c.issues]].forEach(([id,n])=>$(id).closest(".ss-metric").dataset.alert=String(Number(n||0)>0));document.querySelectorAll("[data-gu-kind]").forEach(b=>{b.dataset.zero=String(!countOf(run,b.dataset.guKind))});
           KINDS.forEach(k=>{const n=countOf(run,k),el=$(`gu-tab-${k}`);el.textContent=num(n);el.closest(".as-tab").dataset.zero=String(n===0)});
-          $("gu-range").textContent=rangeText(run);pages.textContent=run?.pageCount||run?.page_count?`${num(run.pageCount||run.page_count)} trang · ${num(src)} UID`:"—";
+          $("gu-range").textContent=rangeText(run);pages.textContent=run?.pageCount||run?.page_count?`${num(run.pageCount||run.page_count)} trang · ${num(src)} UID`:"";
           const prev=Number(run?.verification?.previousFullCount||0),delta=run?.mode==="full"&&prev>0&&Number(src)>0?Number(src)-prev:null;
           UI.bar($("gu-bar"),$("gu-legend"),[{label:"Không đổi",value:c.unchanged,color:"#b9cdc5"},{label:"Cập nhật",value:c.updated,color:"#4f86d9"},{label:"Mới",value:c.added,color:"#1aa774"},{label:"WMS cũ hơn",value:c.issues,color:"#e0a02f"}],delta===null?"":`So với lần toàn bộ trước: ${delta>=0?"+":"−"}${num(Math.abs(delta))} (${num(prev)} → ${num(src)})`);
         }
@@ -9567,7 +9567,7 @@ var FSK_CORE = (function () {
           <section id="pdm-panel" aria-label="Thiết bị in" hidden>
             <div class="pdm-strip">
               <div class="pdm-codebox" id="pdm-codebox" hidden><div><span>Mã kích hoạt · 30 phút</span><b id="pdm-code-text">XXXX-XXXX</b><em id="pdm-code-sub"></em></div><button type="button" class="pdm-icon" id="pdm-code-copy" aria-label="Chép mã" title="Chép mã"><svg class="pj-svg" viewBox="0 0 24 24" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg></button><button type="button" class="pdm-icon" id="pdm-code-revoke" data-tone="bad" aria-label="Thu hồi mã" title="Thu hồi mã"><svg class="pj-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>
-              <div id="pdm-nocode"><span>Mã kích hoạt · 30 phút</span><strong>Chưa có mã</strong><em>Tạo mã rồi đọc cho nhân viên nhập trên máy</em></div>
+              <div id="pdm-nocode"><span>Mã kích hoạt · 30 phút</span><strong>Chưa có mã</strong></div>
               <div><span>Máy này</span><strong id="pdm-this">—</strong></div>
               <span class="pdm-sep"></span>
               <button type="button" class="pdm-switch" id="pdm-legacy" aria-pressed="true" hidden>Khoá chung cũ</button>
@@ -10326,7 +10326,7 @@ async function rpc(name,args,retry=true){
         const filtered=()=>devices().filter(d=>state.filter==="all"||(state.filter==="on"?d.enabled:!d.enabled));
         function renderList(keep=true){
           $("pdm-list-title").textContent=state.filter==="on"?"Máy đang bật":state.filter==="off"?"Máy đã tắt":"Máy đã kích hoạt";
-          if(list)list.show({columns:COLS,rows:filtered().map(rowFor),facets:[{id:"on",label:"Trạng thái",icon:"check"}],filename:"thiet-bi-in",csvHead:CSVH,empty:state.loaded?"Chưa có máy nào. Tạo mã rồi nhập trên từng máy.":"Đang tải…",keep});
+          if(list)list.show({columns:COLS,rows:filtered().map(rowFor),facets:[{id:"on",label:"Trạng thái",icon:"check"}],filename:"thiet-bi-in",csvHead:CSVH,empty:state.loaded?"Chưa có máy nào.":"Đang tải…",keep});
           else $("pdm-body").innerHTML=filtered().map(d=>`<tr ${rowFor(d).attrs}>${rowFor(d).cells.map(c=>`<td>${c}</td>`).join("")}</tr>`).join("");
         }
         function renderCode(){
@@ -10659,12 +10659,13 @@ async function rpc(name,args,retry=true){
         const LABEL = { "barcode-print-sku": "In tem SKU", "barcode-print-uid": "In tem Group UID", "barcode-location": "Mã vị trí", "barcode-cut-uid": "Cắt Group UID", "barcode-uid-history": "Lịch sử Group UID", "barcode-find-sku": "Tìm SKU", "barcode-unit-converter": "Chuyển đổi đơn vị", "barcode-xa-vai": "Theo dõi xả vải", "barcode-inspection": "Kiểm tra đầu vào", "barcode-storage-risk": "Rủi ro lưu trữ", "barcode-activate": "Kích hoạt máy", "barcode-admin": "Quản trị" };
         const ROUTE = { worker: "barcode-print-sku", "group-uid": "barcode-print-uid", location: "barcode-location", "cut-group-uid": "barcode-cut-uid", "group-uid-history": "barcode-uid-history", "find-sku": "barcode-find-sku", "unit-converter": "barcode-unit-converter", "xa-vai": "barcode-xa-vai", inspection: "barcode-inspection", "storage-risk": "barcode-storage-risk" };
         const TITLE = { "uid-title": "barcode-print-uid", "loc-title": "barcode-location", "cut-title": "barcode-cut-uid", "uh-title": "barcode-uid-history", "fsk-title": "barcode-find-sku", "uc-title": "barcode-unit-converter", "xa-vai-title": "barcode-xa-vai", "ins-title": "barcode-inspection", "storage-risk-title": "barcode-storage-risk" };
+        // Icon mục Admin = icon trên thanh trên của từng màn (12/10/2026: trước đây khác ở Đồng bộ UID, Kiểm kê)
         const ADMIN = [
-          ["#admin/lenh-in", "Lệnh in", SV('<path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6"/><rect x="6" y="14" width="12" height="8" rx="1"/>')],
-          ["#admin/sku-sync", "Đồng bộ SKU", SV('<path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/>')],
-          ["#admin/group-uid-sync", "Đồng bộ Group UID", SV('<path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/>'), "Đồng bộ UID"],
-          ["#admin/kiem-ke", "Kiểm kê SKU", SV('<rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/>'), "Kiểm kê"],
-          ["#admin/cauhinh", "Cấu hình", SV('<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>')]
+          ["#admin/lenh-in", "Lệnh in", SV('<path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/>')],
+          ["#admin/sku-sync", "Đồng bộ SKU", SV('<path d="M20 7h-9M17 4l3 3-3 3M4 17h9M7 14l-3 3 3 3"/>')],
+          ["#admin/group-uid-sync", "Đồng bộ Group UID", SV('<path d="M4 7h16M4 12h16M4 17h10"/><circle cx="18" cy="17" r="2"/>'), "Đồng bộ UID"],
+          ["#admin/kiem-ke", "Kiểm kê SKU", SV('<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>'), "Kiểm kê"],
+          ["#admin/cauhinh", "Cấu hình", SV('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1v.1h-4v-.1a1.7 1.7 0 0 0-1.1-1.6 1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1-.4h-.1v-4H3A1.7 1.7 0 0 0 4.6 8.5a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1v-.1h4V3A1.7 1.7 0 0 0 15.5 4.6a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 9c.12.36.33.7.6 1 .27.27.62.48 1 .6h.1v4H21c-.38.12-.73.33-1 .6-.27.27-.48.62-.6 1Z"/>')]
         ];
         const HOME_ICON = SV('<path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>');
         const KEY = "wh-app-nav-collapsed";
@@ -11415,6 +11416,25 @@ async function rpc(name,args,retry=true){
       @media (max-width: 359px) {
         .uid-bulkdel span { display: none; }
         .uid-bulkdel { width: 44px; padding: 0; }
+      }
+    </style>
+    <style id="admin-polish">
+      /* Soát Admin 12/10/2026. Thanh trên gọn: bỏ ô KPI và mốc giờ (trùng các thẻ ngay bên dưới) — còn tên màn, dòng phụ, trạng thái kết nối,
+         nút làm mới (script Header B vẫn tính, chỉ ẩn). */
+      .ss-screen .ss-top .ss-command-kpi, .ss-screen .ss-top .ss-command-meta, #root header.ss-command-react .ss-command-react-kpis .ss-command-kpi { display: none !important; }
+      .ss-screen .ss-top { grid-template-columns: auto auto minmax(150px, 1fr) auto auto; grid-template-areas: "menu mark title status action"; }
+      @media (max-width: 1023px) {
+        .ss-screen .ss-top { grid-template-columns: auto auto minmax(0, 1fr) auto; grid-template-areas: "menu mark title status"; min-height: 64px; }
+      }
+      /* Nút Tạo mã kích hoạt: icon cạnh chữ, chữ trắng 14 (trước bị quy tắc ".pdm-strip span" làm chữ xám 12 và svg xuống dòng) */
+      #pdm-create { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+      #pdm-create svg { width: 20px; height: 20px; }
+      #pdm-create span { color: inherit; font-size: 14px; font-weight: 600; }
+      /* Đồng bộ SKU / Group UID: cửa sổ hẹp thì tên khối ở trên, hàng nút xuống dòng riêng, bỏ vạch ngăn (trước vạch bị lẻ khi nút xuống dòng) */
+      @media (max-width: 1199px) {
+        .ss-screen .ss-hero { flex-direction: column; align-items: stretch; gap: 14px; }
+        .ss-screen .ss-hero .as-hero-actions { justify-content: flex-start; }
+        .ss-screen .ss-hero .as-hero-sep { display: none; }
       }
     </style>
   </body>

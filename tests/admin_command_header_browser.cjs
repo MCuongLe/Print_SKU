@@ -1,4 +1,5 @@
 // Header B · Điều hành: kiểm tra 5 module Admin ở desktop/mobile.
+// 12/10/2026 (soát Admin): thanh trên gọn — ô KPI và mốc giờ ẩn vì trùng các thẻ ngay bên dưới (script vẫn tính, chỉ không hiện).
 // Chạy với python -m http.server 8000. Supabase/auth được giả lập; không ghi dữ liệu.
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const assert = require('node:assert/strict');
@@ -40,8 +41,9 @@ const mockRoutes = page => page.route('**/*', route => {
         const header = page.locator(`${screen} .ss-top[data-command-header="b"]`);
         await header.waitFor({ state: 'visible' });
         await header.locator(':scope > .an-toggle').waitFor({ state: 'visible' });
-        assert.equal(await header.locator('.ss-command-kpi').isVisible(), true, `${route}: KPI hiện`);
-        assert.equal(await header.locator('.ss-command-meta').isVisible(), true, `${route}: thời điểm cập nhật hiện`);
+        assert.equal(await header.locator('.ss-command-kpi').count(), 1, `${route}: KPI vẫn được tính`);
+        assert.equal(await header.locator('.ss-command-kpi').isVisible(), false, `${route}: KPI ẩn (trùng thẻ bên dưới)`);
+        assert.equal(await header.locator('.ss-command-meta').isVisible(), false, `${route}: mốc giờ ẩn (trùng thẻ bên dưới)`);
         assert.equal(await header.locator('.ss-connection').isVisible(), true, `${route}: trạng thái kết nối hiện`);
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, `${route}: không tràn ngang`);
         assert.equal(await header.locator('.ss-top-refresh').isVisible(), width >= 1024, `${route}: hành động chính chỉ hiện đủ nhãn trên desktop`);
@@ -50,7 +52,8 @@ const mockRoutes = page => page.route('**/*', route => {
       await page.goto(BASE + '#admin/cauhinh');
       const configHeader = page.locator('#root header.ss-command-react');
       await configHeader.waitFor({ state: 'visible' });
-      assert.equal(await configHeader.locator('.ss-command-react-kpis .ss-command-kpi').count(), 2, 'Cấu hình: có chip máy và mẫu tem');
+      assert.equal(await configHeader.locator('.ss-command-react-kpis .ss-command-kpi').count(), 2, 'Cấu hình: chip máy và mẫu tem vẫn được tính');
+      assert.equal(await configHeader.locator('.ss-command-react-kpis .ss-command-kpi').first().isVisible(), false, 'Cấu hình: chip máy / mẫu tem ẩn (trùng thẻ Tên máy, Mẫu tem)');
       assert.equal(await configHeader.locator('.ss-command-react-refresh').isVisible(), width >= 1024, 'Cấu hình: hành động Kiểm tra lại responsive');
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, 'Cấu hình: không tràn ngang');
 
@@ -61,7 +64,7 @@ const mockRoutes = page => page.route('**/*', route => {
       }
       assert.deepEqual(errors, []);
       await context.close();
-      console.log(`PASS ${width}px: 5 header B có trạng thái, KPI, cập nhật, responsive và không tràn ngang`);
+      console.log(`PASS ${width}px: 5 header B gọn (trạng thái + làm mới, KPI/mốc giờ ẩn), responsive và không tràn ngang`);
     }
   } finally {
     await browser.close();

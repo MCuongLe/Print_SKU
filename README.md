@@ -557,6 +557,12 @@ thẻ nhóm 380 px), phần trái tô `--gb-fill` mờ dần vào ảnh, lớp t
 mờ; chip trạng thái nền trắng; Admin tiêu đề 18/700, ô icon 38, icon KPI 16, chữ ≥ 12 / đậm ≤ 700, bỏ dòng "WH-MATERIAL". Điện thoại giữ chiều cao
 cũ. Map nhóm ↔ màn nằm trong CSS (ID màn). Test: `tests/group_banners_browser.cjs`.
 
+**Soát Admin (12/10/2026, khối `#admin-polish`).** Thanh trên Admin gọn: ẩn ô KPI và mốc giờ của Header B (trùng các thẻ ngay bên
+dưới — script vẫn tính) → còn tên màn, dòng phụ, trạng thái kết nối/Extension, nút làm mới (Cấu hình: Kiểm tra lại + trạng thái máy in). Icon mục
+Admin ở thanh trái = icon trên thanh trên của từng màn. Tab Thiết bị: nút Tạo mã kích hoạt icon cạnh chữ, chữ trắng 14 (quy tắc `.pdm-strip span`
+từng làm chữ xám 12); bỏ câu hướng dẫn. Đồng bộ SKU / Group UID < 1200 px: tên khối trên, hàng nút dưới, không vạch ngăn lẻ. Đồng bộ Group UID chưa
+có lượt thì không hiện dấu "—" ở dòng trạng thái. Ghi chú: "Tin cũ" là trạng thái có sẵn của ô máy in (thông tin máy in đã cũ).
+
 **IN TEM SKU theo mẫu (11/10/2026, khối `#sku-queue-ui` + script `sku-queue-ui-script`).** Bundle React không có chọn/sửa/xoá nhiều tem nên
 danh sách chờ in của React (`ul.divide-y`) bị ẩn và thay bằng danh sách mới đọc lại từ nó (SKU, tên, số lượng in lên tem, số bản): mỗi dòng ô chọn
 (tem mới mặc định đã chọn), số lượng + "N bản", nút **Sửa** (đưa tem về ô nhập rồi bỏ khỏi danh sách — React tra danh mục có thể xoá tên nên điền
