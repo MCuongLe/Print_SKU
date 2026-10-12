@@ -10467,15 +10467,19 @@ async function rpc(name,args,retry=true){
         </div>
         <p class="cut-message" id="cap-vai-message" aria-live="polite" style="margin-bottom:14px"></p>
         <div class="cut-grid">
-        <section class="cut-card" data-panel="scan"><h2><span>1</span>Quét Group UID</h2>
-          <div class="cv-plan-row"><select class="cut-input" id="cap-vai-plan" aria-label="Đợt cấp vải" title="Đợt cấp vải"></select><button class="cut-icon-btn cv-sound" id="cap-vai-sound" type="button" aria-pressed="true" aria-label="Tắt âm báo" title="Tắt âm báo"></button></div>
-          <div class="cv-prog" id="cap-vai-prog" hidden>
-            <div class="cv-prog__top"><strong id="cap-vai-done">0</strong><span>/ <b id="cap-vai-total">0</b> cuộn</span><em id="cap-vai-meters"></em></div>
-            <div class="cv-bar" role="progressbar" aria-label="Tiến độ cấp vải" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i id="cap-vai-bar"></i></div>
-            <div class="cv-chips" id="cap-vai-chips"></div>
+        <section class="cut-card" data-panel="scan"><div class="cv-head"><h2><span>1</span>Quét Group UID</h2><span class="cv-head__tools"><b class="cv-mini" id="cap-vai-mini"></b><button class="cut-icon-btn cv-sound" id="cap-vai-sound" type="button" aria-pressed="true" aria-label="Tắt âm báo" title="Tắt âm báo"></button><button class="cut-icon-btn cv-fold" id="cap-vai-fold" type="button" aria-expanded="true" aria-controls="cap-vai-summary" aria-label="Thu gọn" title="Thu gọn"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></span></div>
+          <div class="cv-sum" id="cap-vai-summary">
+            <span class="cv-sum__ico" aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5" fill="currentColor"/></svg></span>
+            <div class="cv-sum__main"><select class="cut-input" id="cap-vai-plan" aria-label="Đợt cấp vải" title="Đợt cấp vải"></select>
+              <div class="cv-prog" id="cap-vai-prog" hidden>
+                <div class="cv-bar" role="progressbar" aria-label="Tiến độ cấp vải" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i id="cap-vai-bar"></i></div>
+                <div class="cv-prog__line"><span><b id="cap-vai-done">0</b> / <b id="cap-vai-total">0</b> cuộn</span><em id="cap-vai-meters"></em></div>
+              </div>
+            </div>
+            <div class="cv-chips cv-sum__chips" id="cap-vai-chips" hidden></div>
           </div>
-          <form class="cut-scan" id="cap-vai-form"><input class="cut-input cut-input--scan" id="cap-vai-code" autocomplete="off" inputmode="none" placeholder="Group UID" maxlength="40" required><button class="act-icon act-icon--camera" id="cap-vai-camera" type="button" aria-label="Quét bằng camera" title="Quét bằng camera" hidden></button><button class="act-icon act-icon--keyboard" id="cap-vai-keyboard" type="button" aria-controls="cap-vai-code" aria-label="Hiện bàn phím" title="Hiện bàn phím" aria-pressed="true"></button><button class="cut-primary act-icon act-icon--check" id="cap-vai-submit" type="submit">Quét</button></form>
-          <div class="cv-recent" id="cap-vai-recent" hidden></div>
+          <form class="cut-scan" id="cap-vai-form"><input class="cut-input cut-input--scan" id="cap-vai-code" autocomplete="off" inputmode="none" placeholder="Group UID" maxlength="40" required><button class="act-icon act-icon--camera" id="cap-vai-camera" type="button" aria-label="Quét bằng camera" title="Quét bằng camera" hidden></button><button class="act-icon act-icon--keyboard" id="cap-vai-keyboard" type="button" aria-controls="cap-vai-code" aria-label="Hiện bàn phím" title="Hiện bàn phím" aria-pressed="true"></button><button class="cut-primary act-icon act-icon--check" id="cap-vai-submit" type="submit"><span>Quét</span></button></form>
+          <details class="cv-more" id="cap-vai-more" hidden><summary><span>Xem chi tiết</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="cv-chips" id="cap-vai-chips-more"></div><div class="cv-recent" id="cap-vai-recent" hidden></div></details>
         </section>
         <section class="cut-card" data-panel="loc"><h2><span>2</span>Vị trí cần đến</h2>
           <div class="cv-filters" id="cap-vai-loc-filters" role="group" aria-label="Lọc vị trí"></div>
@@ -10564,6 +10568,14 @@ async function rpc(name,args,retry=true){
         const paintSound=()=>{soundBtn.innerHTML=svg(S.sound?ICON.soundOn:ICON.soundOff,20);const label=S.sound?'Tắt âm báo':'Bật âm báo';soundBtn.setAttribute('aria-pressed',String(S.sound));soundBtn.setAttribute('aria-label',label);soundBtn.title=label};
         soundBtn.addEventListener('click',()=>{S.sound=!S.sound;store.set(K.sound,S.sound?'bat':'tat');paintSound();if(S.sound)cue('ok');code.focus()});
         paintSound();
+        // Thẻ Quét gọn: nút ^ ẩn khối đợt cấp + tiến độ (đầu thẻ còn số đã quét / tổng); "Xem chi tiết" = chip có chữ + lượt quét gần đây. Nhớ theo máy.
+        const scanCard=form.closest('.cut-card'),foldBtn=$('cap-vai-fold'),moreBox=$('cap-vai-more'),FOLD='cap-vai-thu-gon',MORE='cap-vai-chi-tiet';
+        const paintFold=()=>{const folded=store.get(FOLD)==='1',label=folded?'Mở rộng':'Thu gọn';scanCard.toggleAttribute('data-fold',folded);foldBtn.setAttribute('aria-expanded',String(!folded));foldBtn.setAttribute('aria-label',label);foldBtn.title=label};
+        foldBtn.addEventListener('click',()=>{store.set(FOLD,scanCard.hasAttribute('data-fold')?'0':'1');paintFold()});
+        paintFold();
+        moreBox.open=store.get(MORE)==='1';
+        moreBox.addEventListener('toggle',()=>store.set(MORE,moreBox.open?'1':'0'));
+        const paintMore=()=>{moreBox.hidden=!$('cap-vai-chips-more').innerHTML&&recentBox.hidden};
 
         // ---- Hiển thị ----
         const planLabel=p=>`${p.name} · ${p.scanned}/${p.total}${p.status==='closed'?' · đã đóng':''}`;
@@ -10574,13 +10586,15 @@ async function rpc(name,args,retry=true){
         };
         const renderProgress=()=>{
           const box=$('cap-vai-prog'),t=tally(),has=Boolean(S.plan);
-          box.hidden=!has;if(!has)return;
+          box.hidden=!has;$('cap-vai-chips').hidden=!has;if(!has){$('cap-vai-chips-more').innerHTML='';$('cap-vai-mini').textContent='';paintMore();return}
           const denom=t.total-t.unmatched,pct=denom?Math.min(100,Math.round(t.scanned/denom*100)):0;
           $('cap-vai-done').textContent=t.scanned;$('cap-vai-total').textContent=denom;
           $('cap-vai-meters').textContent=`${num(t.mScanned)} / ${num(t.mMatched)} m`;
           const bar=$('cap-vai-bar');bar.style.width=`${pct}%`;bar.parentElement.setAttribute('aria-valuenow',String(pct));
-          const chip=(tone,icon,n,label)=>`<span class="cv-chip" data-tone="${tone}">${svg(icon)}<b>${n}</b> ${label}</span>`;
-          $('cap-vai-chips').innerHTML=chip('ok',ICON.ok,t.scanned,'đã quét')+chip('idle',ICON.clock,t.todo,'còn lại')+(t.unmatched?chip('bad',ICON.warn,t.unmatched,'chưa ghép'):'')+(S.plan.status==='closed'?chip('warn',ICON.lock,'','đã đóng'):'');
+          const chip=(tone,icon,n,label)=>`<span class="cv-chip" data-tone="${tone}" title="${`${n} ${label}`.trim()}">${svg(icon)}<b>${n}</b><span>${label}</span></span>`;
+          const chips=chip('ok',ICON.ok,t.scanned,'đã quét')+chip('idle',ICON.clock,t.todo,'còn lại')+(t.unmatched?chip('bad',ICON.warn,t.unmatched,'chưa ghép'):'');
+          $('cap-vai-chips').innerHTML=chips;$('cap-vai-chips-more').innerHTML=chips+(S.plan.status==='closed'?chip('warn',ICON.lock,'','đã đóng'):'');
+          $('cap-vai-mini').textContent=`${t.scanned}/${denom}`;paintMore();
           $('cap-vai-todo-count').textContent=t.todo;
         };
         const FILTERS=[['todo','Chưa quét'],['scanned','Đã quét'],['unmatched','Chưa ghép'],['all','Tất cả']];
@@ -10695,7 +10709,7 @@ async function rpc(name,args,retry=true){
         pop.addEventListener('click',event=>{if(event.target===pop||event.target.closest('[data-pop-close]'))hidePop()});
         document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!pop.hidden&&!screen.hidden)hidePop()});
         const paintRecent=()=>{
-          recentBox.hidden=!S.recent.length;
+          recentBox.hidden=!S.recent.length;paintMore();
           recentBox.innerHTML=S.recent.map(x=>`<div data-tone="${x.tone}">${svg(ICON[x.tone])}<code>${esc(x.uid)}</code><span>${esc(x.short)} · ${esc(x.at)}</span></div>`).join('');
         };
         const hhmm=()=>fmtAt(new Date()).slice(0,5);
@@ -12142,6 +12156,75 @@ async function rpc(name,args,retry=true){
         #cap-vai-screen .cv-table tr[data-state] td.cv-act { position: static; grid-area: act; align-self: start; }
         #cap-vai-screen .cv-table tr[data-state] td:is([data-label="Lot"], [data-label="Roll"], [data-label="Vị trí"])::before { content: attr(data-label); display: inline; margin-right: 4px; color: var(--wms-muted, #60736b); font-weight: 400; }
         #cap-vai-screen .cv-table tr[data-state] td.n::after { content: " m"; color: var(--wms-muted, #60736b); }
+      }
+    </style>
+    <style id="cap-vai-compact">
+      /* Cấp vải · thẻ Quét Group UID gọn 12/10/2026 (mockup "Đề xuất thiết kế thu gọn") */
+      /* Đầu thẻ: tiêu đề | số đã quét / tổng (chỉ khi thu gọn) · âm báo · thu gọn */
+      #cap-vai-screen .cv-head { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; }
+      #cap-vai-screen .cv-head h2 { flex: 1 1 auto; min-width: 0; margin: 0; }
+      #cap-vai-screen .cv-head__tools { display: inline-flex; flex: none; align-items: center; gap: 2px; margin: -6px -6px -6px 0; }
+      #cap-vai-screen .cv-head__tools button { display: inline-grid; place-items: center; box-sizing: border-box; width: 44px; min-width: 44px; height: 44px; min-height: 0; margin: 0; padding: 0; border: 0; border-radius: 12px; background: transparent; color: var(--wms-muted, #60736b); cursor: pointer; }
+      #cap-vai-screen .cv-head__tools .cv-sound[aria-pressed="true"] { color: var(--wms-brand, #005f41); }
+      #cap-vai-screen .cv-head__tools .cv-sound[aria-pressed="false"] { background: transparent; }
+      #cap-vai-screen .cv-head__tools svg { width: 20px; height: 20px; }
+      #cap-vai-screen .cv-fold svg { transition: transform .2s ease; }
+      #cap-vai-screen .cv-fold[aria-expanded="true"] svg { transform: rotate(180deg); }
+      #cap-vai-screen .cv-mini { display: none; margin-right: 6px; font: 600 14px/1 var(--wms-font); color: var(--wms-brand, #005f41); font-variant-numeric: tabular-nums; white-space: nowrap; }
+      #cap-vai-screen [data-fold] .cv-mini:not(:empty) { display: inline; }
+      #cap-vai-screen [data-fold] #cap-vai-summary { display: none; }
+      /* Khối đợt cấp: icon | chọn đợt + thanh tiến độ + "x / y cuộn" · mét | chip ✓ 🕐 (⚠) */
+      #cap-vai-screen .cv-sum { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px 14px; margin: 0 0 12px; padding: 12px 14px 12px 12px; border: 1px solid var(--wms-border, #d9e2de); border-radius: 14px; background: var(--wms-surface, #fff); }
+      #cap-vai-screen .cv-sum__ico { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 14px; background: rgba(0, 95, 65, .08); color: var(--wms-brand, #005f41); }
+      #cap-vai-screen .cv-sum__ico svg { width: 24px; height: 24px; }
+      #cap-vai-screen .cv-sum__main { display: grid; gap: 10px; min-width: 0; }
+      #cap-vai-screen .cv-sum__main select { width: 100%; min-width: 0; text-overflow: ellipsis; }
+      #cap-vai-screen .cv-sum .cv-prog { gap: 6px; margin: 0; padding: 0; border: 0; border-radius: 0; background: none; }
+      #cap-vai-screen .cv-sum .cv-prog[hidden] { display: none; }
+      #cap-vai-screen .cv-prog__line { display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 12px; font-size: 14px; line-height: 1.35; color: var(--wms-muted, #60736b); font-variant-numeric: tabular-nums; }
+      #cap-vai-screen .cv-prog__line b { color: var(--wms-text, #17251f); font-weight: 700; }
+      #cap-vai-screen .cv-prog__line b:first-child { color: var(--wms-brand, #005f41); }
+      #cap-vai-screen .cv-prog__line em { margin-left: auto; font-style: normal; font-size: 13px; white-space: nowrap; }
+      #cap-vai-screen .cv-chip svg { width: 16px; height: 16px; }
+      #cap-vai-screen .cv-sum__chips { flex-wrap: nowrap; gap: 6px; }
+      #cap-vai-screen .cv-sum__chips[hidden] { display: none; }
+      #cap-vai-screen .cv-sum__chips .cv-chip { position: relative; justify-content: flex-start; min-height: 32px; padding: 0 10px; }
+      #cap-vai-screen .cv-sum__chips .cv-chip > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+      #cap-vai-screen .cv-sum__chips .cv-chip[data-tone="ok"] { border-color: #bfe3d0; background: #f1faf5; }
+      #cap-vai-screen .cv-sum__chips .cv-chip[data-tone="bad"] { border-color: #f0c9c4; background: #fff6f4; }
+      #cap-vai-screen .cv-sum__chips .cv-chip[data-tone="idle"] { color: var(--wms-muted, #60736b); }
+      /* Hàng quét: một hàng ở mọi bề rộng — ô Group UID có icon quét, camera, bàn phím, Quét */
+      #cap-vai-screen #cap-vai-form.cut-scan { display: flex; flex-direction: row; align-items: stretch; gap: 8px; }
+      #cap-vai-screen #cap-vai-form #cap-vai-code { flex: 1 1 auto; width: auto; min-width: 0; padding-left: 44px; padding-right: 12px; background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%2360736b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 7V5a2 2 0 0 1 2-2h2'/%3E%3Cpath d='M17 3h2a2 2 0 0 1 2 2v2'/%3E%3Cpath d='M21 17v2a2 2 0 0 1-2 2h-2'/%3E%3Cpath d='M7 21H5a2 2 0 0 1-2-2v-2'/%3E%3Cpath d='M7 12h10'/%3E%3C/svg%3E") no-repeat 14px 50% / 20px 20px; }
+      #cap-vai-screen #cap-vai-form #cap-vai-submit { flex: none; grid-column: auto; width: auto; padding: 0 22px; }
+      /* Xem chi tiết */
+      #cap-vai-screen .cv-more { margin-top: 12px; border-top: 1px solid var(--wms-border, #d9e2de); }
+      #cap-vai-screen .cv-more[hidden] { display: none; }
+      #cap-vai-screen .cv-more > summary { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; list-style: none; cursor: pointer; font: 600 14px/1 var(--wms-font); color: var(--wms-muted, #60736b); }
+      #cap-vai-screen .cv-more > summary::-webkit-details-marker { display: none; }
+      #cap-vai-screen .cv-more > summary svg { width: 16px; height: 16px; transition: transform .2s ease; }
+      #cap-vai-screen .cv-more[open] > summary svg { transform: rotate(180deg); }
+      #cap-vai-screen .cv-more #cap-vai-chips-more:empty { display: none; }
+      #cap-vai-screen .cv-more .cv-recent { margin-top: 10px; }
+      @media (hover: hover) {
+        #cap-vai-screen .cv-head__tools button:hover { background: var(--wms-bg, #f4f7f6); color: var(--wms-brand, #005f41); }
+        #cap-vai-screen .cv-more > summary:hover { color: var(--wms-brand, #005f41); }
+      }
+      @media (prefers-reduced-motion: reduce) { #cap-vai-screen :is(.cv-fold, .cv-more > summary) svg { transition: none; } }
+      @media (max-width: 620px) {
+        #cap-vai-screen .cv-sum__chips { flex-direction: column; align-items: stretch; }
+      }
+      @media (max-width: 480px) {
+        #cap-vai-screen .cv-sum { grid-template-columns: minmax(0, 1fr) auto; gap: 10px; padding: 12px; }
+        #cap-vai-screen .cv-sum__ico { display: none; }
+        #cap-vai-screen #cap-vai-form.cut-scan { gap: 6px; }
+        #cap-vai-screen #cap-vai-form #cap-vai-code { padding-left: 40px; background-position: 12px 50%; }
+        #cap-vai-screen #cap-vai-form #cap-vai-submit { position: relative; width: var(--ui-ctl, 48px); min-width: var(--ui-ctl, 48px); padding: 0; gap: 0; }
+        #cap-vai-screen #cap-vai-form #cap-vai-submit > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+      }
+      /* Máy ≤ 380 px: bỏ icon trong ô Group UID để đủ chỗ hiện mã */
+      @media (max-width: 380px) {
+        #cap-vai-screen #cap-vai-form #cap-vai-code { padding-left: 12px; background-image: none; }
       }
     </style>
   </body>

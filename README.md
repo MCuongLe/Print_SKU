@@ -597,6 +597,12 @@ cạnh ô Group UID có khung như Cắt Group UID; số thứ tự cách tên t
 trước dính sát); tab Danh sách trên điện thoại gọn 3 dòng mỗi cuộn (Group UID + trạng thái; SKU · Lot · Roll; số mét · vị trí), ~92 px thay ~185 px;
 máy tính giữ bảng.
 
+**Cấp vải · thẻ Quét Group UID gọn (12/10/2026, khối `#cap-vai-compact`).** Đầu thẻ: tiêu đề + nút âm báo + nút thu gọn (^). Khối đợt cấp:
+icon tem (ẩn ≤ 480 px) | chọn đợt, thanh tiến độ, "x / y cuộn" · mét | chip ✓ đã quét, 🕐 còn lại (⚠ chưa ghép khi có; chữ chỉ đọc màn hình + title).
+Hàng quét một hàng ở mọi bề rộng: ô Group UID có icon quét (bỏ icon ≤ 380 px), camera, bàn phím, Quét (≤ 480 px chỉ icon ✓, tên nút vẫn "Quét").
+"Xem chi tiết" (`<details>`) chứa chip có chữ (+ "đã đóng") và lượt quét gần đây; ẩn khi chưa có đợt và chưa quét. Thu gọn ẩn khối đợt cấp, đầu thẻ
+hiện số đã quét / tổng. Trạng thái thu gọn và Xem chi tiết nhớ theo máy (`localStorage` `cap-vai-thu-gon`, `cap-vai-chi-tiet`). Giữ nguyên id cũ.
+
 **IN TEM SKU theo mẫu (11/10/2026, khối `#sku-queue-ui` + script `sku-queue-ui-script`).** Bundle React không có chọn/sửa/xoá nhiều tem nên
 danh sách chờ in của React (`ul.divide-y`) bị ẩn và thay bằng danh sách mới đọc lại từ nó (SKU, tên, số lượng in lên tem, số bản): mỗi dòng ô chọn
 (tem mới mặc định đã chọn), số lượng + "N bản", nút **Sửa** (đưa tem về ô nhập rồi bỏ khỏi danh sách — React tra danh mục có thể xoá tên nên điền
