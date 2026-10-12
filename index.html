@@ -1630,131 +1630,20 @@ Error generating stack: `+y.message+`
         addEventListener("hashchange", () => setTimeout(update, 0));
       })();
     </script>
-    <style id="storage-risk-theme">
-      .storage-risk { position: fixed; inset: 0; z-index: 75; min-height: 100vh; overflow-y: auto; color: #17251f; background: #f3f7f5; font-family: var(--wms-font); }
-      .storage-risk[hidden] { display: none; }
-      .storage-risk__top { border-bottom: 1px solid #dce7e3; background: #fff; }
-      .storage-risk__top-inner { display: flex; align-items: center; gap: 13px; max-width: 1120px; min-height: 74px; margin: auto; padding: 0 22px; }
-      .storage-risk__mark { display: grid; flex: 0 0 42px; width: 42px; height: 42px; place-items: center; border-radius: 13px; color: #fff; background: #a9252d; box-shadow: 0 8px 20px rgba(169,37,45,.2); }
-      .storage-risk__mark svg { width: 24px; height: 24px; }
-      .storage-risk__heading { min-width: 0; flex: 1; }
-      .storage-risk__heading h1 { margin: 0; color: #173129; font-size: 18px; line-height: 1.2; }
-      .storage-risk__heading p { margin: 4px 0 0; color: #6a7e77; font-size: 12px; }
-      .storage-risk__back { min-height: 40px; padding: 0 16px; border: 1px solid #d6e2de; border-radius: 11px; color: #315b4d; background: #f8faf9; font-weight: 600; cursor: pointer; }
-      .storage-risk__main { max-width: 1120px; margin: auto; padding: 28px 22px 70px; }
-      .storage-risk__intro { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 18px; }
-      .storage-risk__intro small { display: block; margin-bottom: 7px; color: #a9252d; font-size: 12px; font-weight: 600; letter-spacing: 0; text-transform: none; }
-      .storage-risk__intro h2 { margin: 0; color: #153a2e; font-size: 22px; line-height: 1.16; }
-      .storage-risk__intro p { max-width: 590px; margin: 8px 0 0; color: #667a73; font-size: 13px; line-height: 1.55; }
-      .storage-risk__total { flex: 0 0 auto; padding: 14px 18px; border: 1px solid #efcfd2; border-radius: 16px; background: #fff7f7; text-align: right; }
-      .storage-risk__total span { display: block; color: #805158; font-size: 12px; font-weight: 600; }
-      .storage-risk__total strong { display: block; margin-top: 3px; color: #a9252d; font-size: 28px; font-variant-numeric: tabular-nums; }
-      .storage-risk__grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 16px; }
-      .storage-risk__card { position: relative; overflow: hidden; padding: 23px; border: 1px solid #e3d4d5; border-radius: 20px; color: inherit; background: #fff; box-shadow: 0 10px 28px rgba(40,65,56,.06); font: inherit; text-align: left; cursor: pointer; transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease; }
-      .storage-risk__card:hover { transform: translateY(-2px); border-color: #d8b7ba; box-shadow: 0 15px 34px rgba(40,65,56,.1); }
-      .storage-risk__card:focus-visible { outline: 3px solid rgba(0,95,65,.2); outline-offset: 3px; }
-      .storage-risk__card::before { position: absolute; inset: 0 auto 0 0; width: 5px; background: #bd3039; content: ""; }
-      .storage-risk__card--warning { border-color: #eadcbd; }
-      .storage-risk__card--warning::before { background: #b37400; }
-      .storage-risk__card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
-      .storage-risk__level { display: inline-flex; align-items: center; gap: 6px; margin-bottom: 12px; padding: 5px 9px; border-radius: 999px; color: #9d2029; background: #fbe9ea; font-size: 12px; font-weight: 600; letter-spacing: 0; text-transform: none; }
-      .storage-risk__card--warning .storage-risk__level { color: #8b5a00; background: #fff3d9; }
-      .storage-risk__count { color: #a9252d; font-size: 28px; line-height: 1; font-variant-numeric: tabular-nums; }
-      .storage-risk__card--warning .storage-risk__count { color: #9a6400; }
-      .storage-risk__card h3 { margin: 0; color: #1b3b31; font-size: 18px; }
-      .storage-risk__card p { margin: 9px 0 0; color: #64776f; font-size: 13px; line-height: 1.55; }
-      .storage-risk__action { display: grid; grid-template-columns: auto 1fr; gap: 8px 12px; margin: 18px 0 0; padding: 14px; border-radius: 13px; background: #f7faf9; }
-      .storage-risk__action b { color: #173e31; font-size: 12px; }
-      .storage-risk__action span { color: #62766e; font-size: 12px; line-height: 1.45; }
-      .storage-risk__open { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 16px; padding-top: 14px; border-top: 1px solid #e6eeeb; color: #006747; font-size: 12px; font-weight: 600; }
-      .storage-risk__scope { display: flex; align-items: center; gap: 9px; margin: 17px 0 0; padding: 12px 14px; border: 1px solid #dde8e4; border-radius: 13px; color: #657870; background: #fff; font-size: 12px; }
-      .storage-risk__scope b { color: #254d3f; }
-      .storage-risk__status { min-height: 20px; margin: 12px 2px 0; color: #6a7e77; font-size: 12px; }
-      .storage-risk__detail[hidden],.storage-risk__overview[hidden] { display: none; }
-      .storage-risk__detail-back { display: inline-flex; align-items: center; min-height: 42px; margin-bottom: 18px; padding: 0 14px; border: 1px solid #d7e3df; border-radius: 11px; color: #315b4d; background: #fff; font-weight: 600; cursor: pointer; }
-      .storage-risk__detail-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 22px; margin-bottom: 18px; }
-      .storage-risk__detail-head small { display: block; margin-bottom: 7px; color: #a9252d; font-size: 12px; font-weight: 600; letter-spacing: 0; text-transform: none; }
-      .storage-risk__detail[data-kind="multiple"] .storage-risk__detail-head small { color: #946000; }
-      .storage-risk__detail-head h2 { margin: 0; color: #153a2e; font-size: 22px; }
-      .storage-risk__detail-head p { max-width: 680px; margin: 8px 0 0; color: #667a73; font-size: 13px; line-height: 1.55; }
-      .storage-risk__updated { flex: 0 0 auto; padding: 8px 11px; border: 1px solid #dce7e3; border-radius: 999px; color: #62766e; background: #fff; font-size: 12px; font-weight: 600; }
-      .storage-risk__kpis { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; margin-bottom: 16px; }
-      .storage-risk__kpi { padding: 16px; border: 1px solid #dce7e3; border-radius: 15px; background: #fff; box-shadow: 0 8px 22px rgba(40,65,56,.045); }
-      .storage-risk__kpi span { display: block; color: #6b7e77; font-size: 12px; font-weight: 600; }
-      .storage-risk__kpi strong { display: block; margin-top: 7px; color: #173e31; font-size: 22px; font-variant-numeric: tabular-nums; }
-      .storage-risk__toolbar { display: flex; gap: 10px; margin-bottom: 14px; padding: 12px; border: 1px solid #dce7e3; border-radius: 15px; background: #fff; }
-      .storage-risk__search { min-width: 0; flex: 1; height: 44px; padding: 0 13px; border: 1px solid #ccdcd6; border-radius: 10px; color: #17251f; background: #fff; font-size: 14px; outline: none; }
-      .storage-risk__search:focus { border-color: #087b58; box-shadow: 0 0 0 3px rgba(8,123,88,.12); }
-      .storage-risk__search-btn { min-width: 92px; height: 44px; padding: 0 16px; border: 0; border-radius: 10px; color: #fff; background: #006747; font-weight: 600; cursor: pointer; }
-      .storage-risk__results { display: grid; gap: 12px; }
-      .storage-risk__row { padding: 17px; border: 1px solid #dce7e3; border-radius: 16px; background: #fff; box-shadow: 0 7px 20px rgba(40,65,56,.04); }
-      .storage-risk__row-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 15px; }
-      .storage-risk__sku { color: #163e31; font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; }
-      .storage-risk__name { max-width: 780px; margin: 5px 0 0; color: #526860; font-size: 12px; line-height: 1.45; }
-      .storage-risk__meta { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 11px; }
-      .storage-risk__chip { display: inline-flex; align-items: center; min-height: 28px; padding: 4px 9px; border-radius: 999px; color: #365a4d; background: #edf4f1; font-size: 12px; font-weight: 600; }
-      .storage-risk__chip--danger { color: #98232b; background: #fbe9ea; }
-      .storage-risk__chip--warning { color: #835600; background: #fff1d2; }
-      .storage-risk__normals { display: grid; gap: 8px; margin-top: 14px; padding-top: 13px; border-top: 1px solid #e6eeeb; }
-      .storage-risk__normal { display: grid; grid-template-columns: minmax(100px,auto) 1fr auto; align-items: center; gap: 10px; padding: 10px 11px; border-radius: 11px; background: #f6f9f8; }
-      .storage-risk__normal b { color: #204b3d; font-size: 12px; }
-      .storage-risk__normal span { overflow: hidden; color: #61756e; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
-      .storage-risk__normal em { color: #315b4d; font-size: 12px; font-style: normal; font-weight: 600; }
-      .storage-risk__normal[data-available="false"] { background: #fff3f3; }
-      .storage-risk__empty { padding: 34px 18px; border: 1px dashed #cddbd6; border-radius: 16px; color: #667a73; background: #fff; text-align: center; }
-      @media (max-width: 680px) {
-        .storage-risk__top-inner,.storage-risk__main { padding-left: 14px; padding-right: 14px; }
-        .storage-risk__heading p { display: none; }
-        .storage-risk__back { width: 42px; padding: 0; font-size: 0; }
-        .storage-risk__back::before { content: "←"; font-size: 16px; }
-        .storage-risk__intro { align-items: stretch; flex-direction: column; gap: 14px; }
-        .storage-risk__total { text-align: left; }
-        .storage-risk__grid { grid-template-columns: 1fr; }
-        .storage-risk__card { padding: 20px; }
-        .storage-risk__detail-head { flex-direction: column; gap: 10px; }
-        .storage-risk__kpis { grid-template-columns: 1fr; }
-        .storage-risk__toolbar { align-items: stretch; flex-direction: column; }
-        .storage-risk__search-btn { width: 100%; }
-        .storage-risk__row-head { flex-direction: column; gap: 8px; }
-        .storage-risk__normal { grid-template-columns: 1fr auto; }
-        .storage-risk__normal span { grid-column: 1 / -1; grid-row: 2; white-space: normal; }
-      }
-      @media print { .storage-risk { display: none!important; } }
-    </style>
-    <section class="storage-risk" id="storage-risk-screen" aria-labelledby="storage-risk-title" hidden>
-      <header class="uid-topbar"><div class="uid-topbar__inner"><button class="uid-back" id="storage-risk-back" type="button" aria-label="Quay lại trang chủ WH-MATERIAL">WH-MATERIAL</button><span class="uid-topbar__mark" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3M12 9v4M12 17h.01"/></svg></span><div class="uid-topbar__name"><h1 id="storage-risk-title">RỦI RO LƯU TRỮ</h1><span>Kiểm soát quan hệ SKU Combo và SKU Normal</span></div></div></header>
-      <div class="storage-risk__main">
-        <div class="storage-risk__overview" id="storage-risk-overview">
-          <div class="storage-risk__intro">
-            <div><small>Phần 1 · Quan hệ Normal &amp; Combo</small><h2>Các quan hệ cần rà soát</h2></div>
-            <div class="storage-risk__total"><span>Tổng trường hợp rủi ro</span><strong id="storage-risk-total">65</strong></div>
-          </div>
-          <div class="storage-risk__grid">
-          <button class="storage-risk__card" data-storage-risk="missing" type="button">
-            <div class="storage-risk__card-head"><div><span class="storage-risk__level">Ưu tiên cao</span><h3>Combo thiếu liên kết</h3></div><strong class="storage-risk__count">6</strong></div>
-            <span class="storage-risk__open">Chi tiết<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></span>
-          </button>
-          <button class="storage-risk__card storage-risk__card--warning" data-storage-risk="multiple" type="button">
-            <div class="storage-risk__card-head"><div><span class="storage-risk__level">Cần xác minh</span><h3>Combo có nhiều Normal</h3></div><strong class="storage-risk__count">59</strong></div>
-            <span class="storage-risk__open">Chi tiết<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></span>
-          </button>
-          </div>
-          <p class="storage-risk__scope"><span>Phạm vi kiểm tra: <b id="storage-risk-scope">1.660 SKU Combo</b></span></p>
-          <p class="storage-risk__status" id="storage-risk-summary-status" role="status" aria-live="polite"></p>
-        </div>
-        <section class="storage-risk__detail" id="storage-risk-detail" hidden>
-          <button class="storage-risk__detail-back" id="storage-risk-detail-back" type="button" aria-label="Quay lại Tổng quan rủi ro">Tổng quan rủi ro</button>
-          <div class="storage-risk__detail-head">
-            <div><small id="storage-risk-detail-level">Dashboard rủi ro</small><h2 id="storage-risk-detail-title">Chi tiết rủi ro</h2><p id="storage-risk-detail-copy"></p></div>
-            <span class="storage-risk__updated" id="storage-risk-updated">Dữ liệu hiện tại</span>
-          </div>
-          <div class="storage-risk__kpis" id="storage-risk-kpis"></div>
-          <form class="storage-risk__toolbar" id="storage-risk-search-form">
-            <input class="storage-risk__search" id="storage-risk-search" type="search" autocomplete="off" placeholder="Tìm SKU Combo, tên sản phẩm hoặc category…" aria-label="Tìm trong dashboard rủi ro">
-            <button class="storage-risk__search-btn act-icon act-icon--search" type="submit">Tìm kiếm</button>
-          </form>
-          <p class="storage-risk__status" id="storage-risk-detail-status" role="status" aria-live="polite"></p>
-          <div class="storage-risk__results" id="storage-risk-results"></div>
+    <section class="cut-screen" id="storage-risk-screen" aria-labelledby="storage-risk-title" hidden>
+      <header class="uid-topbar"><div class="uid-topbar__inner"><button class="uid-back" id="storage-risk-back" type="button" aria-label="Quay lại trang chủ WH-MATERIAL">WH-MATERIAL</button><span class="uid-topbar__mark" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3M12 9v4M12 17h.01"/></svg></span><div class="uid-topbar__name"><h1 id="storage-risk-title">RỦI RO LƯU TRỮ</h1><span>Hàng chưa lên kệ</span></div><button class="uid-topbar__admin" id="sr-admin" type="button" aria-pressed="false" aria-label="Đăng nhập Admin" title="Đăng nhập Admin"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path class="uid-topbar__admin-check" d="m9 12 2 2 4-4"/></svg></button></div></header>
+      <div class="ss-content ia-content">
+        <section class="ss-hero"><div><h2>Hàng chưa lên kệ</h2></div><div class="as-hero-actions" id="sr-admin-tools" hidden><button class="ss-primary" id="sr-run" type="button"><svg id="sr-run-ico" class="pj-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg><span>Đọc và đồng bộ WMS</span></button></div></section>
+        <div class="as-strip" id="sr-strip"><div><span data-ico="clock">Cập nhật lúc</span><strong id="sr-read-at">—</strong><em id="sr-read-rel"></em></div><div><span data-ico="database">Kho đã đọc</span><strong id="sr-wh-main">—</strong><em id="sr-wh-sub"></em></div><div><span data-ico="check">Đã đối soát</span><strong id="sr-cover-main">—</strong><em id="sr-cover-sub"></em></div><div><span data-ico="calendar">Mốc ngày</span><strong>7 / 30 ngày</strong><em>Từ ngày tạo dòng tồn</em></div></div>
+        <p class="ss-status" id="sr-status" aria-live="polite">Đang tải dữ liệu…</p><div class="as-warns" id="sr-warn" role="status" hidden></div>
+        <section class="ss-metrics ia-metrics" aria-label="Tổng quan hàng chưa lên kệ"><div class="ss-metric"><span data-ico="box">Dòng chưa lên kệ</span><strong id="sr-total">—</strong><small id="sr-total-sub">SKU × vị trí</small></div><button class="ss-metric" type="button" data-tone="never" data-sr-level="high"><span data-ico="alert">Rủi ro cao</span><strong id="sr-high">—</strong><small>Quá 30 ngày hoặc vị trí lạ</small></button><button class="ss-metric" type="button" data-tone="overdue" data-sr-level="mid"><span data-ico="clock">Cần xử lý</span><strong id="sr-mid">—</strong><small>8–30 ngày hoặc chưa rõ ngày</small></button><button class="ss-metric" type="button" data-tone="recent" data-sr-level="low"><span data-ico="check">Theo dõi</span><strong id="sr-low">—</strong><small>≤ 7 ngày</small></button></section>
+        <div class="as-bar" id="sr-bar" role="img" aria-label="Cơ cấu mức rủi ro"></div><div class="as-legend" id="sr-legend"></div>
+        <section class="ss-panel">
+          <div class="as-tabs" role="tablist" aria-label="Mức rủi ro"><button class="as-tab" type="button" role="tab" aria-selected="true" data-sr-tab="all">Tất cả<b id="sr-count-all">0</b></button><button class="as-tab" type="button" role="tab" aria-selected="false" data-sr-tab="high">Rủi ro cao<b id="sr-count-high">0</b></button><button class="as-tab" type="button" role="tab" aria-selected="false" data-sr-tab="mid">Cần xử lý<b id="sr-count-mid">0</b></button><button class="as-tab" type="button" role="tab" aria-selected="false" data-sr-tab="low">Theo dõi<b id="sr-count-low">0</b></button></div>
+          <div class="ss-panel-head"><div><h2 id="sr-list-title">Tất cả</h2><p id="sr-note"></p></div><div class="as-tools" id="sr-tools" hidden></div></div>
+          <div class="as-tags" id="sr-tags" hidden></div>
+          <div class="ss-table-wrap"><table class="ss-table sr-table"><thead><tr id="sr-head"><th>SKU</th><th>Kho</th><th>Sản phẩm</th><th class="n">Số lượng</th><th>Vị trí</th><th>Từ ngày</th><th>Mức</th></tr></thead><tbody id="sr-body"><tr><td colspan="7" class="ss-empty">Chưa có dữ liệu.</td></tr></tbody></table></div>
+          <div class="as-pager" id="sr-pager" hidden></div>
         </section>
       </div>
     </section>
@@ -1947,135 +1836,6 @@ Error generating stack: `+y.message+`
           }
         };
 
-        const storageRiskOverview = document.getElementById("storage-risk-overview");
-        const storageRiskDetail = document.getElementById("storage-risk-detail");
-        const storageRiskResults = document.getElementById("storage-risk-results");
-        const storageRiskDetailStatus = document.getElementById("storage-risk-detail-status");
-        const storageRiskSummaryStatus = document.getElementById("storage-risk-summary-status");
-        const storageRiskSearch = document.getElementById("storage-risk-search");
-        let storageRiskKind = "";
-        let storageRiskSummaryLoaded = false;
-        const storageRiskNumber = new Intl.NumberFormat("vi-VN");
-        const storageRiskEscape = value => String(value ?? "")
-          .replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")
-          .replaceAll('"', "&quot;").replaceAll("'", "&#039;");
-        const storageRiskApi = async (kind, search = "") => {
-          const queue = window.PrintSkuQueue;
-          if (!queue?.supabaseUrl || !queue?.publishableKey) throw new Error("Chưa có cấu hình Supabase");
-          const accessToken = kind === "summary"
-            ? window.PrintSkuAdminAccess?.peekToken()
-            : await window.PrintSkuAdminAccess?.getToken();
-          if (!accessToken) throw new Error("ADMIN_REQUIRED");
-          const response = await fetch(`${queue.supabaseUrl}/rest/v1/rpc/sku_combo_risk_dashboard`, {
-            method: "POST",
-            headers: {
-              apikey: queue.publishableKey,
-              Authorization: `Bearer ${accessToken}`,
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ p_kind: kind, p_search: search, p_limit: 100, p_offset: 0 }),
-            signal: AbortSignal.timeout(12000)
-          });
-          if (!response.ok) throw new Error(`HTTP ${response.status}`);
-          const payload = await response.json();
-          if (!payload?.ok || !payload?.data) throw new Error("Dữ liệu dashboard không hợp lệ");
-          return payload.data;
-        };
-        const storageRiskLoadSummary = async (force = false) => {
-          if (storageRiskSummaryLoaded && !force) return;
-          storageRiskSummaryStatus.textContent = "Đang cập nhật số liệu rủi ro…";
-          try {
-            const data = await storageRiskApi("summary");
-            document.getElementById("storage-risk-total").textContent = storageRiskNumber.format(data.total || 0);
-            document.getElementById("storage-risk-scope").textContent = `${storageRiskNumber.format(data.scope || 0)} SKU Combo`;
-            const missing = document.querySelector('[data-storage-risk="missing"] .storage-risk__count');
-            const multiple = document.querySelector('[data-storage-risk="multiple"] .storage-risk__count');
-            if (missing) missing.textContent = storageRiskNumber.format(data.missing || 0);
-            if (multiple) multiple.textContent = storageRiskNumber.format(data.multiple || 0);
-            storageRiskSummaryStatus.textContent = "";
-            storageRiskSummaryLoaded = true;
-          } catch (error) {
-            storageRiskSummaryStatus.textContent = error?.message === "ADMIN_REQUIRED"
-              ? "Cần đăng nhập Admin để xem số liệu mới nhất."
-              : "Chưa tải được số liệu mới.";
-          }
-        };
-        const storageRiskKpi = (label, value) => `<div class="storage-risk__kpi"><span>${storageRiskEscape(label)}</span><strong>${storageRiskEscape(value)}</strong></div>`;
-        const storageRiskRenderItems = (kind, data) => {
-          const items = Array.isArray(data.items) ? data.items : [];
-          if (!items.length) {
-            storageRiskResults.innerHTML = '<div class="storage-risk__empty">Không có SKU phù hợp với điều kiện tìm kiếm.</div>';
-            return;
-          }
-          storageRiskResults.innerHTML = items.map(item => {
-            const sku = storageRiskEscape(item.comboSku);
-            const name = storageRiskEscape(item.comboName || "Chưa có tên sản phẩm");
-            const category = storageRiskEscape(item.categoryName || "Chưa có category");
-            if (kind === "missing") return `<article class="storage-risk__row">
-              <div class="storage-risk__row-head"><div><div class="storage-risk__sku">${sku}</div><p class="storage-risk__name">${name}</p></div><span class="storage-risk__chip storage-risk__chip--danger">Thiếu liên kết</span></div>
-              <div class="storage-risk__meta"><span class="storage-risk__chip">${category}</span><span class="storage-risk__chip">Đang hoạt động</span><span class="storage-risk__chip storage-risk__chip--danger">0 SKU Normal</span></div>
-            </article>`;
-            const normals = (Array.isArray(item.normals) ? item.normals : []).map(normal => `<div class="storage-risk__normal" data-available="${normal.available ? "true" : "false"}">
-              <b>${storageRiskEscape(normal.normalSku)}</b><span title="${storageRiskEscape(normal.normalName)}">${storageRiskEscape(normal.normalName || "Chưa có tên")}</span><em>${storageRiskEscape(normal.quantity)} đơn vị${normal.available ? "" : " · Không khả dụng"}</em>
-            </div>`).join("");
-            return `<article class="storage-risk__row">
-              <div class="storage-risk__row-head"><div><div class="storage-risk__sku">${sku}</div><p class="storage-risk__name">${name}</p></div><span class="storage-risk__chip storage-risk__chip--warning">${storageRiskNumber.format(item.normalCount || 0)} SKU Normal</span></div>
-              <div class="storage-risk__meta"><span class="storage-risk__chip">${category}</span><span class="storage-risk__chip storage-risk__chip--warning">Cần xác minh quan hệ</span></div>
-              <div class="storage-risk__normals">${normals}</div>
-            </article>`;
-          }).join("");
-        };
-        const storageRiskOpenDetail = async kind => {
-          storageRiskKind = kind;
-          storageRiskOverview.hidden = true;
-          storageRiskDetail.hidden = false;
-          storageRiskDetail.dataset.kind = kind;
-          storageRiskResults.innerHTML = "";
-          storageRiskSearch.value = "";
-          const missing = kind === "missing";
-          document.getElementById("storage-risk-detail-level").textContent = missing ? "Ưu tiên cao" : "Cần xác minh";
-          document.getElementById("storage-risk-detail-title").textContent = missing ? "Combo thiếu liên kết" : "Combo có nhiều Normal";
-          document.getElementById("storage-risk-detail-copy").textContent = "";
-          await storageRiskLoadDetail();
-          document.getElementById("storage-risk-detail-back").focus();
-        };
-        const storageRiskLoadDetail = async () => {
-          if (!storageRiskKind) return;
-          storageRiskDetailStatus.textContent = "Đang tải dashboard chi tiết…";
-          storageRiskResults.setAttribute("aria-busy", "true");
-          try {
-            const data = await storageRiskApi(storageRiskKind, storageRiskSearch.value.trim());
-            const missing = storageRiskKind === "missing";
-            const ratio = data.scope ? `${((Number(data.riskTotal || 0) / Number(data.scope)) * 100).toLocaleString("vi-VN", { maximumFractionDigits: 2 })}%` : "0%";
-            document.getElementById("storage-risk-kpis").innerHTML = missing
-              ? storageRiskKpi("Combo thiếu liên kết", storageRiskNumber.format(data.riskTotal || 0)) + storageRiskKpi("Tỷ lệ trên phạm vi", ratio) + storageRiskKpi("Kết quả đang hiển thị", storageRiskNumber.format(data.filteredTotal || 0))
-              : storageRiskKpi("Combo cần xác minh", storageRiskNumber.format(data.riskTotal || 0)) + storageRiskKpi("Tổng liên kết Normal", storageRiskNumber.format(data.totalLinks || 0)) + storageRiskKpi("Nhiều nhất / Combo", storageRiskNumber.format(data.maxLinks || 0));
-            document.getElementById("storage-risk-updated").textContent = `Cập nhật ${new Date(data.generatedAt).toLocaleString("vi-VN", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" })}`;
-            storageRiskDetailStatus.textContent = `Hiển thị ${storageRiskNumber.format((data.items || []).length)} / ${storageRiskNumber.format(data.filteredTotal || 0)} trường hợp.`;
-            storageRiskRenderItems(storageRiskKind, data);
-          } catch (error) {
-            const needsAdmin = error?.message === "ADMIN_REQUIRED";
-            storageRiskDetailStatus.textContent = needsAdmin ? "Đăng nhập Admin để xem dữ liệu rủi ro chi tiết." : "Không tải được dashboard. Kiểm tra kết nối rồi thử lại.";
-            storageRiskResults.innerHTML = `<div class="storage-risk__empty">${needsAdmin ? "Dashboard đang chờ xác thực Admin." : "Dữ liệu chi tiết chưa sẵn sàng."}</div>`;
-          } finally {
-            storageRiskResults.removeAttribute("aria-busy");
-          }
-        };
-        const storageRiskCloseDetail = () => {
-          storageRiskKind = "";
-          storageRiskDetail.hidden = true;
-          storageRiskOverview.hidden = false;
-        };
-        document.querySelectorAll("[data-storage-risk]").forEach(card => card.addEventListener("click", () => storageRiskOpenDetail(card.dataset.storageRisk)));
-        document.getElementById("storage-risk-detail-back").addEventListener("click", storageRiskCloseDetail);
-        document.getElementById("storage-risk-search-form").addEventListener("submit", event => { event.preventDefault(); storageRiskLoadDetail(); });
-        window.addEventListener("print-sku-admin-ready", () => {
-          storageRiskSummaryLoaded = false;
-          if (route() !== "storage-risk") return;
-          storageRiskLoadSummary(true);
-          if (storageRiskKind) storageRiskLoadDetail();
-        });
-
         const renderRoute = () => {
           const current = route();
           const uidOpen = current === "group-uid";
@@ -2098,8 +1858,6 @@ Error generating stack: `+y.message+`
           if (insScreen) insScreen.hidden = !insOpen;
           const storageRiskScreen = document.getElementById("storage-risk-screen");
           if (storageRiskScreen) storageRiskScreen.hidden = !storageRiskOpen;
-          if (storageRiskOpen) storageRiskLoadSummary();
-          else storageRiskCloseDetail();
           home.hidden = !homeOpen;
           const root = document.getElementById("root");
           if (root) root.inert = uidOpen || cutUidOpen || findSkuOpen || unitConverterOpen || homeOpen || insOpen || storageRiskOpen || xaVaiOpen || locationOpen;
@@ -9886,7 +9644,7 @@ async function rpc(name,args,retry=true){
         const list=UI.createList({tools:$("ia-tools"),tagsBox:$("ia-tags"),head:$("ia-head"),body:$("ia-body"),pager:$("ia-pager"),note:$("ia-note")});
         const shortWh=n=>String(n||"").replace(/^WH\s*-\s*MATERIAL\s*-\s*/i,"")||String(n||"—");
         function parseDate(value){const raw=String(value||"").trim();if(!raw)return NaN;return Date.parse(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}/.test(raw)&&!/[zZ]|[+-]\d{2}:?\d{2}$/.test(raw)?`${raw.replace(" ","T")}+07:00`:raw)}
-        function reconcile(inventoryRows,approvedRows,now=Date.now(),thresholdDays=30){const latest=new Map(),stock=new Map(),key=r=>`${r.warehouseId}|${r.sku}`;for(const row of approvedRows){const time=parseDate(row.approvedAt),k=key(row),old=latest.get(k);if(Number.isFinite(time)&&(!old||time>old.time))latest.set(k,{...row,time})}for(const row of inventoryRows){const qty=Number(row.qty)||0;if(qty<=0||!row.sku)continue;const k=key(row);let item=stock.get(k);if(!item){item={warehouseId:Number(row.warehouseId),warehouseName:row.warehouseName||"—",sku:String(row.sku),productName:row.productName||"",uom:row.uom||"",qty:0,locations:new Map()};stock.set(k,item)}item.qty+=qty;const loc=row.location||"Chưa có vị trí";item.locations.set(loc,(item.locations.get(loc)||0)+qty)}const rows=[...stock.entries()].map(([k,item])=>{const checked=latest.get(k),elapsed=checked?Math.max(0,now-checked.time):null,status=!checked?"never":elapsed>thresholdDays*DAY?"overdue":"recent";return{...item,qty:Number(item.qty.toFixed(6)),locations:[...item.locations.entries()].map(([location,qty])=>({location,qty:Number(qty.toFixed(6))})).sort((a,b)=>b.qty-a.qty),lastApprovedAt:checked?.approvedAt||"",lastApprovedBy:checked?.approvedBy||"",daysSinceApproved:checked?Math.floor(elapsed/DAY):null,status}}).sort((a,b)=>({never:0,overdue:1,recent:2}[a.status]-({never:0,overdue:1,recent:2}[b.status])||(b.daysSinceApproved??1e9)-(a.daysSinceApproved??1e9)||a.sku.localeCompare(b.sku)));const summary=rows.reduce((s,r)=>(s.total++,s[r.status]++,s.qty+=r.qty,s),{total:0,never:0,recent:0,overdue:0,qty:0});summary.qty=Number(summary.qty.toFixed(6));return{rows,summary}}
+        function reconcile(inventoryRows,approvedRows,now=Date.now(),thresholdDays=30){const latest=new Map(),stock=new Map(),key=r=>`${r.warehouseId}|${r.sku}`;for(const row of approvedRows){const time=parseDate(row.approvedAt),k=key(row),old=latest.get(k);if(Number.isFinite(time)&&(!old||time>old.time))latest.set(k,{...row,time})}const held=[];for(const row of inventoryRows){const qty=Number(row.qty)||0,total=Number(row.total)||0;if(!row.sku)continue;const loc=row.location||"Chưa có vị trí";if(qty<=0){if(total>0)held.push({warehouseId:Number(row.warehouseId),warehouseName:row.warehouseName||"—",sku:String(row.sku),productName:row.productName||"",uom:row.uom||"",location:loc,total,since:row.since||""});continue}const k=key(row);let item=stock.get(k);if(!item){item={warehouseId:Number(row.warehouseId),warehouseName:row.warehouseName||"—",sku:String(row.sku),productName:row.productName||"",uom:row.uom||"",qty:0,locations:new Map()};stock.set(k,item)}item.qty+=qty;const cur=item.locations.get(loc)||{qty:0,total:0,since:""};cur.qty+=qty;cur.total+=Math.max(total,qty);if(row.since&&(!cur.since||row.since<cur.since))cur.since=row.since;item.locations.set(loc,cur)}const rows=[...stock.entries()].map(([k,item])=>{const checked=latest.get(k),elapsed=checked?Math.max(0,now-checked.time):null,status=!checked?"never":elapsed>thresholdDays*DAY?"overdue":"recent";return{...item,qty:Number(item.qty.toFixed(6)),locations:[...item.locations.entries()].map(([location,v])=>({location,qty:Number(v.qty.toFixed(6)),...(v.total>v.qty?{total:Number(v.total.toFixed(6))}:{}),...(v.since?{since:v.since}:{})})).sort((a,b)=>b.qty-a.qty),lastApprovedAt:checked?.approvedAt||"",lastApprovedBy:checked?.approvedBy||"",daysSinceApproved:checked?Math.floor(elapsed/DAY):null,status}}).sort((a,b)=>({never:0,overdue:1,recent:2}[a.status]-({never:0,overdue:1,recent:2}[b.status])||(b.daysSinceApproved??1e9)-(a.daysSinceApproved??1e9)||a.sku.localeCompare(b.sku)));const summary=rows.reduce((s,r)=>(s.total++,s[r.status]++,s.qty+=r.qty,s),{total:0,never:0,recent:0,overdue:0,qty:0});summary.qty=Number(summary.qty.toFixed(6));return{rows,summary,held}}
         function extensionRequest(type,payload={},timeout=180000){return window.PrintSkuBridgeReady(type).then(()=>new Promise((resolve,reject)=>{const requestId=`inventory-audit-${Date.now()}-${Math.random().toString(36).slice(2)}`,timer=setTimeout(()=>{removeEventListener("message",listener);reject(new Error("Extension phản hồi quá lâu; kiểm tra tab WMS rồi thử lại"))},timeout),listener=event=>{const response=event.data;if(event.source!==window||event.origin!==location.origin||response?.source!=="HASAKI_INSIDE_CONNECTOR"||response.requestId!==requestId)return;clearTimeout(timer);removeEventListener("message",listener);response.ok?resolve(response.data):reject(new Error(response.error?.message||"Extension không trả dữ liệu kiểm kê"))};addEventListener("message",listener);postMessage({source:"PRINT_SKU_APP",requestId,type,payload},location.origin)}))}
         function say(text,tone=""){const el=$("ia-status");el.textContent=text;el.dataset.tone=tone;el.setAttribute("aria-live",tone==="error"?"assertive":"polite")}
         function progress(done,total){$("ia-progress").querySelector("i").style.width=total?`${Math.min(100,done/total*100)}%`:"0%"}
@@ -9983,7 +9741,7 @@ async function rpc(name,args,retry=true){
             const payload=result.rows.map(r=>{const t=parseDate(r.lastApprovedAt);return{warehouse_id:r.warehouseId,warehouse_name:r.warehouseName,sku:r.sku,product_name:r.productName||null,qty:r.qty,uom:r.uom||null,locations:r.locations,last_approved_at:Number.isFinite(t)?new Date(t).toISOString():null,last_approved_by:r.lastApprovedBy||null}});
             say(`Đang lưu ${num(payload.length)} SKU…`);progress(0,payload.length);
             try{
-            const started=await adminRpc("sku_count_save_start",{p_warehouses:warehouses.map(w=>({warehouseId:w.warehouseId,warehouseName:w.warehouseName,companyName:w.companyName||""})),p_missing:missing,p_source_counts:{stockRows:inventory.rows.length,approvedRows:approved.rows.length}});
+            const started=await adminRpc("sku_count_save_start",{p_warehouses:warehouses.map(w=>({warehouseId:w.warehouseId,warehouseName:w.warehouseName,companyName:w.companyName||""})),p_missing:missing,p_source_counts:{stockRows:inventory.rows.length,approvedRows:approved.rows.length,heldTotal:result.held.length,held:result.held.slice(0,500)}});
             for(let i=0;i<payload.length;i+=500){await adminRpc("sku_count_save_chunk",{p_run_id:started.runId,p_rows:payload.slice(i,i+500)});progress(Math.min(payload.length,i+500),payload.length)}
             await adminRpc("sku_count_save_finish",{p_run_id:started.runId});
             }catch(error){throw new Error(`Chưa lưu được bản đồng bộ: ${error.message}`)}
@@ -10029,6 +9787,191 @@ async function rpc(name,args,retry=true){
         document.addEventListener("visibilitychange",()=>{if(!document.hidden&&active()&&!state.busy&&Date.now()-state.loadedAt>120000)load({quiet:true})});
         window.HasakiInventoryAuditDashboard=Object.freeze({reconcile,classify,refresh:run,load});
         metrics();syncAdmin();route();
+      })();
+    </script>
+    <style id="storage-risk-style">
+      /* RỦI RO LƯU TRỮ · Hàng chưa lên kệ (12/10/2026) — cùng khung với Kiểm kê SKU: .uid-topbar + bộ ss-*/as-*/ia-*.
+         Mọi người xem bản chụp Kiểm kê đã lưu; nút đồng bộ WMS chỉ hiện khi đã đăng nhập Admin. */
+      #storage-risk-screen .ia-content{width:min(1200px,calc(100% - 40px));padding-top:22px}
+      #storage-risk-screen .as-hero-actions[hidden]{display:none}
+      #sr-admin-tools{display:flex;flex-wrap:wrap;align-items:center;gap:12px}#sr-run{display:inline-flex;align-items:center;gap:8px}
+      .sr-table td:nth-child(1){white-space:nowrap}.sr-table th.n,.sr-table td.n{text-align:right}.sr-table th.n .as-th{flex-direction:row-reverse}.sr-table td.n{font-variant-numeric:tabular-nums}
+      @media(max-width:760px){
+        #storage-risk-screen .ia-content{display:flex;flex-direction:column;width:calc(100% - 28px);padding-top:14px}
+        #storage-risk-screen .ia-content>.ss-hero>div:first-child{display:none}
+        #storage-risk-screen .ss-hero:has(#sr-admin-tools[hidden]){display:none}
+        #storage-risk-screen .ss-hero{padding:12px}#sr-admin-tools{flex-direction:column-reverse;align-items:stretch;gap:8px}#sr-admin-tools .ss-primary{width:100%}
+        #storage-risk-screen #sr-strip{grid-template-columns:repeat(2,minmax(0,1fr))}
+        .sr-table thead{display:none}.sr-table,.sr-table tbody{display:block}
+        .sr-table tr{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 10px;padding:12px 14px;border-top:1px solid #edf2f0}
+        .sr-table td{display:block!important;padding:0!important;border:0;white-space:normal}
+        .sr-table td[colspan]{grid-column:1/-1}
+        .sr-table td:nth-child(1){grid-column:1;grid-row:1}.sr-table td:nth-child(7){grid-column:2;grid-row:1;justify-self:end}
+        .sr-table td:nth-child(3){grid-column:1/-1;grid-row:2}
+        .sr-table td:nth-child(4){grid-column:1;grid-row:3}.sr-table td:nth-child(2){grid-column:2;grid-row:3;justify-self:end}
+        .sr-table td:nth-child(5){grid-column:1/-1;grid-row:4}.sr-table td:nth-child(6){grid-column:1/-1;grid-row:5}
+        .sr-table td.n{text-align:left}.sr-table td:nth-child(6):has(.as-empty){display:none!important}
+      }
+    </style>
+    <script id="storage-risk-script">
+      (()=>{
+        const $=id=>document.getElementById(id),screen=$("storage-risk-screen");
+        if(!screen||!window.AdminSyncUI)return;
+        const UI=window.AdminSyncUI,{esc,num,dt,rel,ico,chip}=UI;
+        const ROUTE="storage-risk",DAY=86400000,STALE_MS=24*3600000,MID_DAYS=7,HIGH_DAYS=30,root=$("root"),adminBtn=$("sr-admin");
+        // Hai kho bắt buộc có trong bản chụp: thiếu kho nào là cảnh báo, không bao giờ hiện thành "0 rủi ro".
+        const EXPECTED=[{label:"WH - MATERIAL - MTG",test:/MATERIAL\s*-\s*MTG/i},{label:"WH - MATERIAL - GARMENT",test:/MATERIAL\s*-\s*GARMENT/i}];
+        // Chống bỏ sót: chỉ "kệ thật" (vùng đã biết + mã kệ khác 00) mới được loại khỏi màn này. Vùng ảo 00-00-00-NN (kể cả vùng mới sau này),
+        // vùng lạ, sai định dạng hay không có vị trí đều bị coi là CHƯA lên kệ.
+        const SHELF_ZONES=new Set(["KHO","XV","CAT","BAIXE"]);
+        const LEVELS={high:{text:"Rủi ro cao",tone:"bad",icon:"alert",order:0},mid:{text:"Cần xử lý",tone:"warn",icon:"clock",order:1},low:{text:"Theo dõi",tone:"new",icon:"check",order:2}};
+        const TABS={all:"Tất cả",high:"Rủi ro cao",mid:"Cần xử lý",low:"Theo dõi"};
+        const COLS=[{label:"SKU",sort:"sr_sku"},{label:"Kho",sort:"sr_wh"},{label:"Sản phẩm"},{label:"Số lượng",sort:"sr_qty",first:"desc",cls:"n"},{label:"Vị trí",sort:"sr_loc"},{label:"Từ ngày",sort:"sr_days",first:"desc"},{label:"Mức",sort:"sr_level"}];
+        const CSVH=["SKU","Kho","Tên sản phẩm","Số lượng In-BIN","Tổng mọi trạng thái","ĐVT","Vị trí","Vùng","Giữ chỗ","Từ ngày","Số ngày","Mức","Tồn trên kệ"];
+        const state={run:null,rows:[],cover:{locations:0,shelf:0,virtual:0,unknown:0,held:0},counts:{all:0,high:0,mid:0,low:0},warn:[],tab:"all",busy:false,loading:false,loaded:false,loadedAt:0,admin:false};
+        const list=UI.createList({tools:$("sr-tools"),tagsBox:$("sr-tags"),head:$("sr-head"),body:$("sr-body"),pager:$("sr-pager"),note:$("sr-note")});
+        const shortWh=n=>String(n||"").replace(/^WH\s*-\s*MATERIAL\s*-\s*/i,"")||String(n||"—");
+        const parseDate=v=>{const raw=String(v||"").trim();if(!raw)return NaN;return Date.parse(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}/.test(raw)&&!/[zZ]|[+-]\d{2}:?\d{2}$/.test(raw)?`${raw.replace(" ","T")}+07:00`:raw)};
+        function classifyLocation(raw){
+          const code=String(raw||"").trim().toUpperCase(),p=code.split("-");
+          if(p.length===6&&p[0]==="F0"){
+            if(/^00-00-00-\d+$/.test(p.slice(2).join("-")))return{kind:"virtual",zone:p[1],code};
+            if(SHELF_ZONES.has(p[1])&&p[2]!=="00"&&p.slice(3).every(s=>/^\d+$/.test(s)))return{kind:"shelf",zone:p[1],code};
+          }
+          return{kind:"unknown",zone:p.length>1?p.slice(0,2).join("-"):(code||"—"),code};
+        }
+        function daysOf(r,now){const t=parseDate(r.since);return Number.isFinite(t)?Math.floor(Math.max(0,now-t)/DAY):null}
+        function levelOf(r,now=Date.now()){
+          if(r.kind==="unknown")return"high";
+          const days=daysOf(r,now);
+          return days===null?"mid":days>HIGH_DAYS?"high":days>MID_DAYS?"mid":"low";
+        }
+        // Dựng danh sách từ bản chụp Kiểm kê: mọi dòng tồn đều được phân loại; chỉ "kệ thật" bị loại. Dòng giữ chỗ (In-BIN = 0) lấy từ sourceCounts.held.
+        function build(data,now=Date.now()){
+          const run=data?.run||null,out={run,rows:[],cover:{locations:0,shelf:0,virtual:0,unknown:0,held:0},warn:[]};
+          if(!run)return out;
+          const sc=run.sourceCounts||{},names=(run.warehouses||[]).map(w=>String(w.warehouseName||""));
+          for(const r of data.rows||[]){
+            const placed=(Array.isArray(r.locations)?r.locations:[]).map(l=>({l,c:classifyLocation(l.location)}));
+            const shelfQty=placed.reduce((n,p)=>n+(p.c.kind==="shelf"?Number(p.l.qty)||0:0),0);
+            for(const {l,c} of placed){
+              out.cover.locations++;out.cover[c.kind]++;
+              if(c.kind==="shelf")continue;
+              const qty=Number(l.qty)||0;
+              out.rows.push({warehouseId:Number(r.warehouseId),warehouseName:r.warehouseName||"—",sku:String(r.sku),productName:r.productName||"",uom:r.uom||"",location:c.code||String(l.location||"—"),kind:c.kind,zone:c.zone,qty,total:Math.max(Number(l.total)||0,qty),since:l.since||"",held:false,shelfQty:Number(shelfQty.toFixed(6))});
+            }
+          }
+          const held=Array.isArray(sc.held)?sc.held:[],heldTotal=Math.max(Number(sc.heldTotal)||0,held.length);
+          for(const h of held){
+            const c=classifyLocation(h.location);out.cover.held++;out.cover[c.kind]++;
+            if(c.kind==="shelf")continue;
+            out.rows.push({warehouseId:Number(h.warehouseId),warehouseName:h.warehouseName||"—",sku:String(h.sku),productName:h.productName||"",uom:h.uom||"",location:c.code||String(h.location||"—"),kind:c.kind,zone:c.zone,qty:0,total:Number(h.total)||0,since:h.since||"",held:true,shelfQty:0});
+          }
+          for(const r of out.rows){r.days=daysOf(r,now);r.level=levelOf(r,now)}
+          out.rows.sort((a,b)=>LEVELS[a.level].order-LEVELS[b.level].order||(b.days??-1)-(a.days??-1)||a.sku.localeCompare(b.sku)||a.location.localeCompare(b.location));
+          const missing=[...(run.missing||[])];
+          for(const e of EXPECTED)if(!names.some(n=>e.test.test(n))&&!missing.some(m=>e.test.test(m)))missing.push(e.label);
+          missing.forEach(n=>out.warn.push(`Chưa đọc được kho: ${n}`));
+          const readAt=Date.parse(run.readAt);
+          if(Number.isFinite(readAt)&&now-readAt>STALE_MS)out.warn.push(`Bản chụp đã cũ: ${rel(readAt)}`);
+          const stockRows=Number(sc.stockRows);
+          if(Number.isFinite(stockRows)&&stockRows!==out.cover.locations+heldTotal)out.warn.push(`Lệch ${num(Math.abs(stockRows-out.cover.locations-heldTotal))} dòng so với số dòng WMS đã đọc`);
+          if(heldTotal>held.length)out.warn.push(`${num(heldTotal-held.length)} dòng giữ chỗ chưa hiển thị hết`);
+          const noDate=out.rows.filter(r=>r.kind!=="unknown"&&r.days===null).length;
+          if(noDate)out.warn.push(`${num(noDate)} dòng chưa có ngày vào vị trí`);
+          return out;
+        }
+        function say(text,tone=""){const el=$("sr-status");el.textContent=text;el.dataset.tone=tone;el.setAttribute("aria-live",tone==="error"?"assertive":"polite")}
+        function setBusy(on){state.busy=on;$("sr-run").disabled=on;$("sr-run").querySelector("span").textContent=on?"Đang đồng bộ…":"Đọc và đồng bộ WMS";$("sr-run-ico").classList.toggle("ia-spin",on)}
+        const rowsOf=tab=>state.rows.filter(r=>tab==="all"||r.level===tab);
+        function rowFor(r){
+          const lv=LEVELS[r.level],parts=String(r.productName||"").split("/").map(p=>p.trim()),head=parts.shift()||"Chưa có tên",t=parseDate(r.since),dated=Number.isFinite(t);
+          const shown=r.held?r.total:r.qty,reserve=r.held?"giữ chỗ":r.total>r.qty?`+${num(r.total-r.qty)} giữ chỗ`:"",sub=[r.uom,reserve,r.shelfQty>0?`${num(r.shelfQty)} trên kệ`:""].filter(Boolean).join(" · ");
+          const levelText=r.kind==="unknown"?"Vị trí lạ":r.level==="mid"&&!dated?"Chưa rõ ngày":lv.text,zoneLabel=r.kind==="unknown"?"Vị trí lạ":r.zone;
+          const date=dated?`<b class="ia-date">${esc(dt(t))}</b><span class="as-run-meta">${esc(num(r.days))} ngày</span>`:'<span class="as-empty">—</span>';
+          return{cells:[`<code data-copy="${esc(r.sku)}" title="Bấm để sao chép">${esc(r.sku)}</code>`,`<span class="as-chip" title="${esc(r.warehouseName)}">${esc(shortWh(r.warehouseName))}</span>`,`<div class="as-name ia-pname" title="${esc(r.productName||"")}"><b>${esc(head)}</b>${parts.length?`<span> / ${esc(parts.join(" / "))}</span>`:""}</div>`,`<div class="ia-qty"><b>${num(shown)}</b><small>${esc(sub)}</small></div>`,`<div class="ia-locs"><span class="ia-loc">${esc(r.location)}</span></div>`,date,chip(levelText,lv.tone,lv.icon)],
+            text:[r.sku,r.productName,r.warehouseName,r.location,r.zone].join(" "),facets:{wh:r.warehouseName,zone:zoneLabel},sort:{sr_sku:r.sku,sr_wh:r.warehouseName,sr_qty:shown,sr_loc:r.location,sr_days:r.days??undefined,sr_level:lv.order},
+            csv:[r.sku,r.warehouseName,r.productName,r.qty,r.total,r.uom,r.location,zoneLabel,r.held||r.total>r.qty?"Có":"",dated?dt(t):"",r.days??"",levelText,r.shelfQty]};
+        }
+        function renderList(keep=true){$("sr-list-title").textContent=TABS[state.tab];list.show({columns:COLS,rows:rowsOf(state.tab).map(rowFor),facets:[{id:"wh",label:"Kho",icon:"database"},{id:"zone",label:"Vùng",icon:"pin"}],filename:"hang-chua-len-ke",csvHead:CSVH,sheet:"Hàng chưa lên kệ",empty:state.run?"Không có hàng chưa lên kệ.":"Chưa có dữ liệu."},{keep})}
+        function metrics(){
+          const has=state.loaded&&Boolean(state.run),c=state.counts,show=n=>has?num(n):"—";
+          $("sr-total").textContent=show(c.all);$("sr-total-sub").textContent=has?`${num(new Set(state.rows.map(r=>`${r.warehouseId}|${r.sku}`)).size)} SKU`:"SKU × vị trí";
+          $("sr-high").textContent=show(c.high);$("sr-mid").textContent=show(c.mid);$("sr-low").textContent=show(c.low);
+          Object.keys(TABS).forEach(k=>{$(`sr-count-${k}`).textContent=num(c[k])});
+          screen.querySelectorAll("button.ss-metric[data-sr-level]").forEach(b=>{b.dataset.zero=String(!has||!Number(c[b.dataset.srLevel]));b.setAttribute("aria-pressed",String(b.dataset.srLevel===state.tab))});
+          UI.bar($("sr-bar"),$("sr-legend"),[{label:"Rủi ro cao",value:c.high,color:"#d9695f"},{label:"Cần xử lý",value:c.mid,color:"#e0a02f"},{label:"Theo dõi",value:c.low,color:"#1aa774"}]);
+          const readAt=state.run?Date.parse(state.run.readAt):NaN,wh=(state.run?.warehouses||[]),cv=state.cover;
+          $("sr-read-at").textContent=Number.isFinite(readAt)?dt(readAt):"—";$("sr-read-rel").textContent=Number.isFinite(readAt)?rel(readAt):"";
+          $("sr-wh-main").textContent=wh.map(w=>shortWh(w.warehouseName)).join(" + ")||"—";$("sr-wh-sub").textContent=wh.map(w=>w.companyName).filter(Boolean).join(" · ");
+          $("sr-cover-main").textContent=has?`${num(cv.locations+cv.held)} dòng tồn`:"—";$("sr-cover-sub").textContent=has?`${num(cv.shelf)} kệ · ${num(cv.virtual)} ảo · ${num(cv.unknown)} lạ`:"";
+          const warn=$("sr-warn");warn.hidden=!(has&&state.warn.length);warn.innerHTML=has?state.warn.map(t=>`<span class="as-warn">${ico("alert")}${esc(t)}</span>`).join(""):"";
+        }
+        function render(keep=true){metrics();renderList(keep)}
+        function setTab(tab){if(!TABS[tab])return;state.tab=tab;screen.querySelectorAll(".as-tab[data-sr-tab]").forEach(b=>b.setAttribute("aria-selected",String(b.dataset.srTab===tab)));metrics();renderList(true)}
+        function apply(data){
+          const b=build(data,Date.now()),counts={all:b.rows.length,high:0,mid:0,low:0};b.rows.forEach(r=>{counts[r.level]++});
+          Object.assign(state,{run:b.run,rows:b.rows,cover:b.cover,warn:b.warn,counts,loaded:true,loadedAt:Date.now()});
+          render(false);
+          if(!b.run)say("Chưa có bản đồng bộ kiểm kê.");
+          else say(b.rows.length?`Đã tải ${num(b.rows.length)} dòng chưa lên kệ.`:`Không có hàng chưa lên kệ trong ${num(b.cover.locations+b.cover.held)} dòng tồn.`);
+        }
+        const anonRpc=async(name,args={})=>{
+          const q=window.PrintSkuQueue,response=await fetch(`${q.supabaseUrl}/rest/v1/rpc/${name}`,{method:"POST",headers:{apikey:q.publishableKey,Authorization:`Bearer ${q.publishableKey}`,"Content-Type":"application/json"},body:JSON.stringify(args),signal:AbortSignal.timeout(60000)});
+          const result=await response.json().catch(()=>null);
+          if(!response.ok||!result)throw new Error(result?.message||`Supabase HTTP ${response.status}`);
+          if(!result.ok)throw new Error(result.error?.message||"Supabase từ chối yêu cầu");
+          return result.data;
+        };
+        async function load({quiet=false}={}){
+          if(state.loading)return;state.loading=true;if(!quiet)say("Đang tải dữ liệu…");
+          try{apply(await anonRpc("sku_count_overview"))}catch(error){say(error.message||"Không tải được dữ liệu.","error")}finally{state.loading=false}
+        }
+        // Admin: dùng chung bộ đồng bộ của Kiểm kê SKU (đọc WMS qua Extension → lưu bản chụp), rồi đọc lại bản chụp mới.
+        async function run(){
+          if(state.busy||!state.admin)return;
+          const audit=window.HasakiInventoryAuditDashboard,ia=$("ia-status");
+          if(!audit?.refresh||!ia){say("Chưa tải được bộ đồng bộ kiểm kê; hãy tải lại trang.","error");return}
+          setBusy(true);say("Đang đọc WMS qua Extension…");ia.textContent="";ia.dataset.tone="";
+          try{
+            await audit.refresh();
+            const message=ia.textContent,failed=ia.dataset.tone==="error";
+            if(!message){say("Chưa chạy được đồng bộ; hãy đăng nhập Admin rồi thử lại.","error");return}
+            await load({quiet:true});
+            if(failed)say(message,"error");
+            else say(state.rows.length?`Đã đồng bộ. ${num(state.rows.length)} dòng chưa lên kệ.`:"Đã đồng bộ. Không có hàng chưa lên kệ.");
+          }finally{setBusy(false)}
+        }
+        function syncAdmin(){
+          state.admin=Boolean(window.PrintSkuAdminAccess?.peekToken());
+          const label=state.admin?"Đang là Admin · bấm để thoát":"Đăng nhập Admin";
+          adminBtn.setAttribute("aria-pressed",String(state.admin));adminBtn.setAttribute("aria-label",label);adminBtn.title=label;
+          $("sr-admin-tools").hidden=!state.admin;
+        }
+        adminBtn.addEventListener("click",async()=>{
+          if(state.admin){
+            if(await window.WhDialog.confirm({icon:"undo",title:"Thoát quyền Admin?",confirmText:"Thoát",cancelText:"Ở lại"})){window.PrintSkuAdminAccess.logout();syncAdmin();say("Đã thoát quyền Admin.")}
+            return;
+          }
+          if(await window.PrintSkuAdminAccess?.getToken()){syncAdmin();say("Đã đăng nhập Admin.")}
+        });
+        // ---- Vào/ra màn ----
+        const active=()=>location.hash.replace(/^#/,"").split("&")[0]===ROUTE;
+        let wasOn=false;
+        function route(){
+          const on=active();screen.hidden=!on;
+          if(!on){wasOn=false;return}
+          if(root)root.inert=true;
+          if(!wasOn){wasOn=true;syncAdmin();if(!state.loaded||Date.now()-state.loadedAt>30000)load()}
+        }
+        UI.hydrate(screen);
+        screen.addEventListener("click",e=>{const t=e.target.closest("[data-sr-tab],button.ss-metric[data-sr-level]");if(t&&t.dataset.zero!=="true")setTab(t.dataset.srTab||t.dataset.srLevel)});
+        $("sr-run").onclick=run;
+        addEventListener("hashchange",route);
+        addEventListener("print-sku-admin-ready",syncAdmin);addEventListener("print-sku-admin-logout",syncAdmin);
+        document.addEventListener("visibilitychange",()=>{if(!document.hidden&&active()&&!state.busy&&Date.now()-state.loadedAt>120000)load({quiet:true})});
+        window.HasakiStorageRisk=Object.freeze({classifyLocation,levelOf,build,load,refresh:run});
+        metrics();renderList(false);syncAdmin();route();
       })();
     </script>
     <style id="uidhist-style">
@@ -10639,7 +10582,7 @@ async function rpc(name,args,retry=true){
       @media screen {
         /* Thẻ */
         :is(#uid-screen, #ins-screen, #location-screen, #cut-group-uid-screen, #xa-vai-screen, #find-sku-screen, #unit-converter-screen) :is(.uid-card, .uid-panel, .cut-card),
-        #storage-risk-screen .storage-risk__card, #uidhist-screen :is(.ss-panel, .as-strip, .ss-metric, .ss-hero), #inventory-audit-screen :is(.ss-panel, .as-strip, .ss-metric, .ss-hero),
+        #storage-risk-screen :is(.ss-panel, .as-strip, .ss-metric, .ss-hero), #uidhist-screen :is(.ss-panel, .as-strip, .ss-metric, .ss-hero), #inventory-audit-screen :is(.ss-panel, .as-strip, .ss-metric, .ss-hero),
         .ss-screen :is(.ss-panel, .ss-hero, .as-strip, .ss-metric, .pj-stat), .as-dialog, #root section.rounded-2xl { border-radius: var(--ui-card-r); }
         /* Tiêu đề khối: chấm tròn số + chữ 18/600 (TÌM SKU, CHUYỂN ĐỔI ĐƠN VỊ trên điện thoại cũng hiện như các module khác) */
         :is(#uid-screen, #ins-screen) .uid-panel__num,
@@ -10650,7 +10593,7 @@ async function rpc(name,args,retry=true){
         :is(#uid-screen, #ins-screen) .uid-panel__head h2, :is(#ins-screen, #location-screen, #cut-group-uid-screen, #xa-vai-screen, #find-sku-screen, #unit-converter-screen) .cut-card h2,
         #unit-converter-screen .uc-lookup > summary > strong, #root > main > section > p.items-baseline > span { font-size: 18px; font-weight: 600; }
         #root > main > section > p.items-baseline { align-items: center; }
-        .ss-screen .ss-hero h2, #uidhist-screen .ss-hero h2, #inventory-audit-screen .ss-hero h2 { font-weight: 600; }
+        .ss-screen .ss-hero h2, #uidhist-screen .ss-hero h2, #inventory-audit-screen .ss-hero h2, #storage-risk-screen .ss-hero h2 { font-weight: 600; }
         /* Tương phản (axe, WCAG AA ≥ 4,5:1): chữ nhạt của bundle React và thẻ số liệu đang 0 dùng xám #5C6F68 / #60736B thay vì làm mờ */
         button.ss-metric[data-zero=true] { opacity: 1; }
         button.ss-metric[data-zero=true] :is(span, strong, small) { color: #60736b; }
@@ -10667,7 +10610,7 @@ async function rpc(name,args,retry=true){
         :is(#uid-screen, #ins-screen, #location-screen, #cut-group-uid-screen, #xa-vai-screen, #find-sku-screen, #unit-converter-screen) :is(.cut-primary, .cut-secondary):not(.act-icon--keyboard):not(.cut-tab),
         :is(#uid-screen, #ins-screen) :is(.uid-add__btn, .uid-import, .uid-submit, .uid-map__apply),
         #unit-converter-screen :is(.uc-next-action, .uc-reset-action),
-        #root > main > section button.rounded-full.bg-brand, #uidhist-screen :is(.uh-btn, .uh-run), #inventory-audit-screen :is(.ss-primary, .ss-secondary):not(.as-icon-btn), .ss-screen :is(.ss-primary, .ss-secondary):not(.as-icon-btn) { min-height: var(--ui-ctl); border-radius: var(--ui-btn-r); font-size: 16px; font-weight: 600; }
+        #root > main > section button.rounded-full.bg-brand, #uidhist-screen :is(.uh-btn, .uh-run), #inventory-audit-screen :is(.ss-primary, .ss-secondary):not(.as-icon-btn), #storage-risk-screen :is(.ss-primary, .ss-secondary):not(.as-icon-btn), .ss-screen :is(.ss-primary, .ss-secondary):not(.as-icon-btn) { min-height: var(--ui-ctl); border-radius: var(--ui-btn-r); font-size: 16px; font-weight: 600; }
         #unit-converter-screen :is(.uc-next-action, .uc-reset-action) small { display: none; }
         #unit-converter-screen #uc-next, #unit-converter-screen #uc-clear { box-sizing: border-box; height: var(--ui-ctl); min-height: 0; padding-block: 0; }
         #unit-converter-screen :is(#uc-next, #uc-clear) .uc-action-icon { width: 24px; height: 24px; }
@@ -10679,7 +10622,7 @@ async function rpc(name,args,retry=true){
         #root .adm-group { font-size: 18px; font-weight: 600; }
         /* Nút chỉ có icon: cạnh ô nhập / nút hành động thì vuông bằng điều khiển thường; nằm trong ô thì 44 / 40; thanh công cụ Admin 44 */
         #uid-screen #uid-camera, #cut-group-uid-screen :is(#cut-camera, #cut-keyboard), #unit-converter-screen #uc-camera, #find-sku-screen #fsk-more-open, #xa-vai-screen #xa-vai-keyboard,
-        #xa-vai-screen .cut-card[data-panel="scan"] > #xa-vai-keyboard, #root #f-sku-kb, .ss-screen .as-icon-btn, #uidhist-screen .as-icon-btn, #inventory-audit-screen .as-icon-btn { box-sizing: border-box; width: var(--ui-ctl); min-width: var(--ui-ctl); height: var(--ui-ctl); min-height: 0; padding: 0; }
+        #xa-vai-screen .cut-card[data-panel="scan"] > #xa-vai-keyboard, #root #f-sku-kb, .ss-screen .as-icon-btn, #uidhist-screen .as-icon-btn, #inventory-audit-screen .as-icon-btn, #storage-risk-screen .as-icon-btn { box-sizing: border-box; width: var(--ui-ctl); min-width: var(--ui-ctl); height: var(--ui-ctl); min-height: 0; padding: 0; }
         #xa-vai-screen #xa-vai-camera, #uidhist-screen .uh-scan, #root > main > section button.absolute.right-1\.5 { width: var(--ui-icon-in); height: var(--ui-icon-in); min-height: 0; }
         .ss-screen :is(.pj-icon, .ss-top-refresh) { width: var(--ui-compact); height: var(--ui-compact); }
       }

@@ -43,18 +43,26 @@
 
   function normalizeInventoryPage(payload) {
     const sourceRows = recordsOf(payload);
-    const rows = sourceRows.map(row => ({
-      inventoryId: Number(row.inventory_id) || null,
-      warehouseId: Number(row.warehouse_id),
-      warehouseName: clean(row.warehouse_name, 160),
-      sku: clean(row.sku, 80),
-      productName: clean(row.product_name, 500),
-      location: clean(row.location_description, 160),
+    const rows = sourceRows.map(row => {
       // Stock Location đã gộp theo SKU/vị trí. count_inbin là tồn trạng thái In-BIN;
       // quantity chỉ là fallback cho phiên bản WMS cũ có cùng ý nghĩa.
-      qty: finite(row.count_inbin ?? row.quantity ?? row.qty),
-      uom: clean(row.uom, 40),
-    })).filter(row => Number.isInteger(row.warehouseId) && row.sku && row.qty > 0);
+      const qty = finite(row.count_inbin ?? row.quantity ?? row.qty);
+      return {
+        inventoryId: Number(row.inventory_id) || null,
+        warehouseId: Number(row.warehouse_id),
+        warehouseName: clean(row.warehouse_name, 160),
+        sku: clean(row.sku, 80),
+        productName: clean(row.product_name, 500),
+        location: clean(row.location_description, 160),
+        qty,
+        // Tổng mọi trạng thái (In-BIN + picklist/đóng gói...). Dòng In-BIN = 0 nhưng total > 0 vẫn được giữ lại
+        // (qty = 0) để màn Rủi ro lưu trữ không bỏ sót hàng giữ chỗ; Kiểm kê chỉ tính dòng qty > 0.
+        total: Math.max(finite(row.quantity), qty),
+        // Ngày tạo dòng tồn ở vị trí (giờ WMS), không chắc là ngày hàng vào vị trí.
+        since: clean(row.created_at, 40),
+        uom: clean(row.uom, 40),
+      };
+    }).filter(row => Number.isInteger(row.warehouseId) && row.sku && (row.qty > 0 || row.total > 0));
     return { rows, sourceRows: sourceRows.length, total: Math.max(sourceRows.length, finite(payload?.count)), page: Math.max(1, finite(payload?.page) || 1), size: Math.max(1, finite(payload?.size) || 500) };
   }
 
