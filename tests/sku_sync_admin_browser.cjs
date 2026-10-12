@@ -153,11 +153,11 @@ const cells = async page => (await page.locator('#ss-change-body tr').evaluateAl
       assert.deepEqual(await page.locator('.as-group > h3').evaluateAll(nodes => nodes.map(n => n.textContent.trim())), ['SKU', 'Combo', 'Cảnh báo']);
       assert.equal(await page.locator('.as-group .ss-metric > span svg').count(), 9, 'mỗi thẻ có icon');
       assert.equal((await page.locator('#ss-last-done').innerText()).trim() !== '—', true, 'dải lần đồng bộ gần nhất có dữ liệu');
-      // Tìm không phân biệt dấu + xuất CSV
+      // Tìm không phân biệt dấu + xuất Excel
       await page.locator('#ss-tools input').fill('chi irisa'); assert.equal(await page.locator('#ss-change-body tr').count(), 1); assert.equal((await page.locator('#ss-change-note').innerText()).trim(), '1 / 2 dòng');
       const [download] = await Promise.all([page.waitForEvent('download'), page.locator('#ss-tools [data-as-export]').click()]);
-      assert.match(download.suggestedFilename(), /^sku-sync-sku-added-\d{8}-\d{4}\.csv$/);
-      const csv = require('node:fs').readFileSync(await download.path(), 'utf8'); assert.equal(csv.charCodeAt(0), 0xfeff, 'CSV có BOM để Excel đọc đúng tiếng Việt'); assert.match(csv, /"SKU","Sản phẩm","Nhóm hàng"\r\n"900000002"/); assert.equal(csv.includes('900000001'), false, 'chỉ xuất các dòng đang lọc');
+      assert.match(download.suggestedFilename(), /^sku-sync-sku-added-\d{8}-\d{4}\.xlsx$/);
+      const book = require('./xlsx_read.cjs').readXlsx(require('node:fs').readFileSync(await download.path())); assert.deepEqual(book.table[0], ['SKU', 'Sản phẩm', 'Nhóm hàng'], 'tiêu đề cột tiếng Việt đọc đúng'); assert.equal(book.table[1][0], '900000002'); assert.equal(JSON.stringify(book.table).includes('900000001'), false, 'chỉ xuất các dòng đang lọc'); assert.equal(book.table.length, 2, 'tiêu đề + 1 dòng đang lọc');
       await page.locator('#ss-tools input').fill('');
       // Esc đóng popup; bấm nền (ngoài hộp) cũng đóng
       await closeDlg(page); await openKind(page, 'sku-added');

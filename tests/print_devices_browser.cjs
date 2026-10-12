@@ -125,7 +125,7 @@ const mock = (page, state) => page.route('**/*', async route => {
     assert.equal((await page.locator('#pdm-list-title').textContent()).trim(), 'Máy đã tắt');
     await page.locator('button.ss-metric[data-pdm-filter="all"]').click();
     await page.waitForFunction(() => document.querySelectorAll('#pdm-body tr[data-pdm-id]').length === 2);
-    // Bộ công cụ chung: tìm + CSV có mặt
+    // Bộ công cụ chung: tìm + xuất Excel có mặt
     assert.equal(await page.locator('#pdm-tools').isHidden(), false, 'bộ công cụ bảng hiện');
     // Tạo mã 30 phút → chép → thu hồi
     await page.locator('#pdm-create').click();

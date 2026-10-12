@@ -91,15 +91,17 @@ const mockExtension = () => addEventListener("message", event => {
         assert.equal(await page.locator("#ia-d-title").innerText(), "SKU-OLD", "Enter trên dòng mở chi tiết");
         await page.keyboard.press("Escape");
         const [download] = await Promise.all([page.waitForEvent("download"), page.locator("#ia-tools [data-as-export]").click()]);
-        assert.equal(download.suggestedFilename().startsWith("kiem-ke-sku-"), true);
-        const csv = require("node:fs").readFileSync(await download.path(), "utf8");
-        assert.equal(csv.charCodeAt(0), 0xfeff);
-        assert.equal(csv.trim().split(String.fromCharCode(13, 10)).length, 4, "tiêu đề + 3 dòng");
-        assert.equal(csv.includes("SKU-NEVER") && csv.includes("Chưa kiểm kê"), true);
+        assert.match(download.suggestedFilename(), /^kiem-ke-sku-.*\.xlsx$/);
+        const book = require("./xlsx_read.cjs").readXlsx(require("node:fs").readFileSync(await download.path()));
+        assert.equal(book.table.length, 4, "tiêu đề + 3 dòng");
+        assert.equal(book.table[0][0], "SKU");
+        const text = JSON.stringify(book.table);
+        assert.equal(text.includes("SKU-NEVER") && text.includes("Chưa kiểm kê"), true);
+        assert.equal(typeof book.table[1][3], "number", "Tồn In-BIN ra số, không phải chữ");
       }
       assert.deepEqual(errors, []);
       await context.close();
     }
-    console.log("inventory_audit_browser: two companies, 3 statuses, tabs, filters, sort, detail dialog, CSV and responsive layout passed");
+    console.log("inventory_audit_browser: two companies, 3 statuses, tabs, filters, sort, detail dialog, Excel export and responsive layout passed");
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });
