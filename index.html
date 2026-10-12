@@ -10512,7 +10512,7 @@ async function rpc(name,args,retry=true){
         const $=id=>document.getElementById(id),screen=$('cap-vai-screen');
         if(!screen)return;
         const ROUTE='cap-vai',active=()=>location.hash.replace(/^#/,'').split('&')[0]===ROUTE;
-        const K={plan:'cap-vai-dot',tab:'cap-vai-cum',keyboard:'cap-vai-ban-phim',sound:'cap-vai-am-thanh'};
+        const K={plan:'cap-vai-dot',tab:'cap-vai-cum',keyboard:'cap-vai-ban-phim',sound:'cap-vai-am-thanh',me:'cap-vai-may'};
         const store={get:k=>{try{return localStorage.getItem(k)}catch(_){return null}},set:(k,v)=>{try{localStorage.setItem(k,v)}catch(_){}}};
         const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
         const nf=new Intl.NumberFormat('vi-VN',{maximumFractionDigits:2}),num=v=>nf.format(Number(v)||0);
@@ -10535,7 +10535,7 @@ async function rpc(name,args,retry=true){
         };
 
         const code=$('cap-vai-code'),form=$('cap-vai-form'),message=$('cap-vai-message'),planSel=$('cap-vai-plan'),adminBtn=$('cap-vai-admin'),soundBtn=$('cap-vai-sound'),keyboardBtn=$('cap-vai-keyboard'),cameraBtn=$('cap-vai-camera'),pop=$('cap-vai-popup'),popCard=$('cap-vai-pop-card'),recentBox=$('cap-vai-recent'),locsBox=$('cap-vai-locs'),locFiltersBox=$('cap-vai-loc-filters'),rowsBody=$('cap-vai-rows'),table=$('cap-vai-table'),filtersBox=$('cap-vai-filters'),searchInput=$('cap-vai-q'),plansBox=$('cap-vai-plans'),tools=$('cap-vai-tools'),fileInput=$('cap-vai-file');
-        const S={plans:[],planId:'',plan:null,lines:[],products:{},filter:'todo',locFilter:'todo',locOpen:new Set(),q:'',tab:'scan',admin:false,busy:false,sound:store.get(K.sound)!=='tat',recent:[],queue:[],pumping:false};
+        const S={plans:[],planId:'',plan:null,lines:[],products:{},filter:'todo',locFilter:'todo',locOpen:new Set(),q:'',tab:'scan',admin:false,busy:false,sound:store.get(K.sound)!=='tat',recent:[],queue:[],pumping:false,touch:new Map(),mine:new Set(),loadedAt:0};
         const tell=(text,tone='')=>{message.textContent=text||'';message.dataset.tone=tone};
 
         // ---- Supabase RPC: quét/xem công khai (khoá công khai như Xả vải), nhập/xoá/đóng đợt cần token Admin ----
@@ -10560,6 +10560,9 @@ async function rpc(name,args,retry=true){
         const lineKind=l=>l.scannedAt?'scanned':l.state==='matched'?'todo':'unmatched';
         const tally=()=>{const t={total:S.lines.length,scanned:0,todo:0,unmatched:0,mMatched:0,mScanned:0};for(const l of S.lines){const k=lineKind(l),m=Number(l.qtyM)||0;t[k]++;if(k!=='unmatched')t.mMatched+=m;if(k==='scanned')t.mScanned+=m}return t};
         const deviceName=()=>{try{return String(window.PrintSkuDevice?.name?.()||'').slice(0,60)}catch(_){return ''}};
+        // Máy chưa kích hoạt in thì không có tên: dùng mã ngắn riêng của trình duyệt này để biết "ai quét" khi nhiều người cùng quét.
+        const myId=(()=>{let v=store.get(K.me);if(!/^Máy [0-9A-Z]{4}$/.test(v||'')){v='Máy '+Math.random().toString(36).slice(2,6).toUpperCase().padEnd(4,'0');store.set(K.me,v)}return v})();
+        const scannerName=()=>deviceName()||myId;
 
         // ---- Âm báo: tiếng cao = cấp, 2 tiếng giữa = cảnh báo, tiếng trầm = không cấp ----
         let audio=null;
@@ -10665,24 +10668,35 @@ async function rpc(name,args,retry=true){
         const renderAll=()=>{renderPlanSelect();renderProgress();if(S.tab==='loc')renderLoc();else $('cap-vai-loc-count').textContent=groupLocs().filter(g=>locRemain(g)>0).length;if(S.tab==='list')renderList();renderPlans();renderTools()};
 
         // ---- Tải dữ liệu ----
+        // Số đã quét của đợt đang mở lấy theo các dòng đang hiện (đã gộp kết quả quét vừa xong), tránh nhãn/thẻ đợt nhảy lùi khi danh sách về muộn.
+        const syncCounts=()=>{const i=S.plans.findIndex(p=>p.id===S.planId);if(i<0||!S.plan||S.plan.id!==S.planId)return;const t=tally();S.plans[i]={...S.plans[i],scanned:t.scanned,qtyScanned:t.mScanned}};
         const loadPlans=async()=>{
           const r=await rpc('fabric_issue_list');
           S.plans=r.data?.plans||[];
           if(!S.plans.some(p=>p.id===S.planId)){const saved=store.get(K.plan);S.planId=(S.plans.find(p=>p.id===saved)||S.plans.find(p=>p.status==='open')||S.plans[0])?.id||''}
+          syncCounts();
         };
         const loadPlan=async()=>{
           const id=S.planId;
           if(!id){S.plan=null;S.lines=[];S.products={};renderAll();return}
+          const t0=Date.now();
           const r=await rpc('fabric_issue_get',{p_plan_id:id});
           if(id!==S.planId)return;
           if(!r.ok){if(r.error?.code==='PLAN_NOT_FOUND'){S.planId='';await loadPlans();return loadPlan()}throw new Error(r.error?.message||'Không tải được đợt cấp vải')}
-          S.plan=r.data.plan;S.lines=r.data.lines||[];S.products=r.data.products||{};
+          // Bản chụp của máy chủ lấy lúc nhận yêu cầu: lượt quét/bỏ quét của máy này xong SAU lúc gửi có thể chưa có trong đó → giữ bản mới hơn của máy này.
+          const lines=r.data.lines||[],now=Date.now();
+          for(const[lid,touch]of S.touch){
+            if(touch.at<now-60000){S.touch.delete(lid);continue}
+            if(touch.at>=t0){const k=lines.findIndex(x=>x.id===lid);if(k>=0)lines[k]=touch.line}
+          }
+          S.plan=r.data.plan;S.lines=lines;S.products=r.data.products||{};S.loadedAt=now;
           const i=S.plans.findIndex(p=>p.id===id);if(i>=0)S.plans[i]=r.data.plan;
+          syncCounts();if(i>=0)S.plan=S.plans[i];
           renderAll();
         };
         const refresh=async()=>{try{await loadPlans();await loadPlan();return true}catch(e){tell(`Không tải được đợt cấp vải: ${e.message}`,'error');return false}};
         const selectPlan=async id=>{
-          S.planId=id;store.set(K.plan,id);S.recent=[];paintRecent();paintResult(null);tell('');
+          S.planId=id;store.set(K.plan,id);S.recent=[];S.touch.clear();paintRecent();paintResult(null);tell('');
           try{await loadPlan()}catch(e){tell(`Không tải được đợt cấp vải: ${e.message}`,'error')}
           renderAll();
         };
@@ -10715,7 +10729,7 @@ async function rpc(name,args,retry=true){
         const hhmm=()=>fmtAt(new Date()).slice(0,5);
         const pushRecent=(uid,tone,short)=>{S.recent.unshift({uid,tone,short,at:hhmm()});S.recent.length=Math.min(S.recent.length,6);paintRecent()};
         const patchLine=(line,plan)=>{
-          if(line){const i=S.lines.findIndex(x=>x.id===line.id);if(i>=0)S.lines[i]=line}
+          if(line){const i=S.lines.findIndex(x=>x.id===line.id);if(i>=0)S.lines[i]=line;S.touch.set(line.id,{line,at:Date.now()})}
           if(plan){S.plan=plan;const i=S.plans.findIndex(p=>p.id===plan.id);if(i>=0)S.plans[i]=plan}
           renderAll();
         };
@@ -10724,11 +10738,11 @@ async function rpc(name,args,retry=true){
         const scanOne=async uid=>{
           if(!S.planId){const r={tone:'error',title:'Chưa chọn đợt cấp vải',uid,facts:'',note:''};paintResult(r);cue('error');return}
           try{
-            const r=await rpc('fabric_issue_scan',{p_plan_id:S.planId,p_group_uid:uid,p_by:deviceName()});
+            const r=await rpc('fabric_issue_scan',{p_plan_id:S.planId,p_group_uid:uid,p_by:scannerName()});
             if(r.ok){
               const{result,line,plan}=r.data;patchLine(line,plan);
-              if(result==='issued'){paintResult({tone:'ok',title:'CẤP GROUP UID NÀY',uid,line,plan});pushRecent(uid,'ok','Đã cấp');cue('ok');tell(`Đã quét ${plan.scanned}/${plan.matched} cuộn.`,'ok')}
-              else{paintResult({tone:'warn',title:'ĐÃ QUÉT TRƯỚC ĐÓ',uid,line,plan,note:`${fmtAt(line.scannedAt)}${line.scannedBy?` · ${line.scannedBy}`:''}`});pushRecent(uid,'warn','Đã quét rồi');cue('warn');tell('UID này đã được cấp trước đó.','warn')}
+              if(result==='issued'){S.mine.add(uid);paintResult({tone:'ok',title:'CẤP GROUP UID NÀY',uid,line,plan});pushRecent(uid,'ok','Đã cấp');cue('ok');tell(`Đã quét ${plan.scanned}/${plan.matched} cuộn.`,'ok')}
+              else{const mine=S.mine.has(uid)||(line.scannedBy&&line.scannedBy===scannerName());paintResult({tone:'warn',title:mine?'BẠN ĐÃ QUÉT UID NÀY':'MÁY KHÁC ĐÃ QUÉT UID NÀY',uid,line,plan,note:`${fmtAt(line.scannedAt)}${mine?'':` · ${line.scannedBy||'máy khác'}`}`});pushRecent(uid,'warn',mine?'Bạn đã quét':'Máy khác đã quét');cue('warn');tell(mine?'UID này bạn đã quét rồi.':'UID này máy khác đã cấp trước đó.','warn')}
               return;
             }
             const e=r.error||{},d=r.data||null;
@@ -10758,6 +10772,7 @@ async function rpc(name,args,retry=true){
           for(const[key,t]of Object.entries(tabs)){const on=key===name;t.btn.setAttribute('aria-selected',String(on));t.panel.dataset.active=String(on)}
           if(name==='list')renderList();
           if(name==='loc')renderLoc();
+          if((name==='loc'||name==='list')&&active()&&S.planId&&Date.now()-S.loadedAt>5000)loadPlan().catch(()=>{});
           if(name==='scan')setTimeout(()=>code.focus(),50);
         };
         for(const[key,t]of Object.entries(tabs))t.btn.addEventListener('click',()=>setTab(key));
