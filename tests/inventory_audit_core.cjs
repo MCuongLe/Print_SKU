@@ -20,7 +20,7 @@ const inventory = core.normalizeInventoryPage({ count: 5, page: 1, size: 500, re
   { warehouse_id: 1177, warehouse_name: "WH - MATERIAL - MTG", sku: "A", product_name: "Vải A", location_description: "A-02", count_inbin: 3 },
   { warehouse_id: 1177, warehouse_name: "WH - MATERIAL - MTG", sku: "B", product_name: "Vải B", location_description: "B-01", count_inbin: 4 },
   { warehouse_id: 1339, warehouse_name: "WH - MATERIAL - GARMENT", sku: "C", product_name: "Chỉ C", location_description: "C-01", count_inbin: 1 },
-  { warehouse_id: 1339, warehouse_name: "WH - MATERIAL - GARMENT", sku: "Z", count_inbin: 0, quantity: 10, location_description: "F0-AJ-00-00-00-00", created_at: "2026-10-01 08:00:00" },
+  { warehouse_id: 1339, warehouse_name: "WH - MATERIAL - GARMENT", sku: "Z", count_inbin: 0, quantity: 10, location_description: "F0-AJ-00-00-00-00", created_at: "2025-12-04 06:12:53", updated_at: "2026-10-12 15:17:20" },
   { warehouse_id: 1339, warehouse_name: "WH - MATERIAL - GARMENT", sku: "EMPTY", count_inbin: 0, quantity: 0 },
 ] });
 assert.equal(inventory.rows.length, 5, "dòng In-BIN = 0 nhưng tổng quantity > 0 được giữ (qty = 0) để không bỏ sót hàng giữ chỗ; dòng tồn 0 hẳn bị loại");
@@ -30,7 +30,15 @@ assert.equal(inventory.rows[1].total, 3, "thiếu quantity thì total = In-BIN")
 const held = inventory.rows.find(row => row.sku === "Z");
 assert.equal(held.qty, 0, "hàng giữ chỗ không tính vào tồn In-BIN của Kiểm kê");
 assert.equal(held.total, 10);
-assert.equal(held.since, "2026-10-01 08:00:00", "giữ ngày tạo dòng tồn để tính số ngày ở vị trí");
+assert.equal(held.modified, "2026-10-12 15:17:20", "giữ Modified date để tính số ngày ở vị trí");
+assert.equal(held.created, "2025-12-04 06:12:53", "giữ ngày tạo làm dự phòng");
+assert.equal(inventory.rows[0].modified, "", "WMS không trả updated_at thì để trống, không tự điền ngày khác");
+// Hàng đã lấy (chỉ có quantity + count_picked, không có count_inbin) vẫn là tồn tại vị trí.
+const picked = core.normalizeInventoryPage({ records: [
+  { warehouse_id: 1177, warehouse_name: "WH - MATERIAL - MTG", sku: "P", location_description: "F0-A0-00-00-00-00", quantity: 430, count_picked: 430, created_at: "2025-12-04 06:12:53", updated_at: "2026-10-12 15:17:20" },
+] });
+assert.equal(picked.rows.length, 1);
+assert.equal(picked.rows[0].qty, 430, "thiếu count_inbin thì lấy quantity, không bỏ hàng đã lấy");
 assert.equal(inventory.rows.filter(row => row.qty > 0).length, 4, "Kiểm kê vẫn chỉ thấy 4 dòng In-BIN > 0");
 
 // Đối chiếu tồn kho với ngày duyệt (mốc 30 ngày) chạy ở Admin trong index.html, không còn bản trong extension.

@@ -15,7 +15,7 @@ const mockExtension = () => addEventListener("message", event => {
   if (!r || r.source !== "PRINT_SKU_APP") return;
   const now = Date.now(), wmsTime = ms => new Date(ms + 7 * 3600000).toISOString().slice(0, 19).replace("T", " ");
   let data;
-  if (r.type === "PING_WMS") data = { version: "0.8.0" };
+  if (r.type === "PING_WMS") data = { version: "0.8.1" };
   else if (r.type === "GET_SKU_COUNT_WAREHOUSES") data = { warehouses: [
     { warehouseId: 1177, warehouseName: "WH - MATERIAL - MTG", companyId: 1002, companyName: "Cty Mastige" },
     { warehouseId: 1339, warehouseName: "WH - MATERIAL - GARMENT", companyId: 1005, companyName: "Cty Garment" },
@@ -23,33 +23,34 @@ const mockExtension = () => addEventListener("message", event => {
   else if (r.type === "GET_SKU_COUNT_APPROVED_PAGE") data = { page: 1, size: 500, total: 0, totalPages: 1, rows: [] };
   else if (r.type === "GET_SKU_COUNT_INVENTORY_PAGE") data = r.payload.warehouseIds[0] === 1177
     ? { page: 1, size: 500, total: 2, totalPages: 1, rows: [
-      { warehouseId: 1177, warehouseName: "WH - MATERIAL - MTG", sku: "SKU-A0", productName: "Vải chờ lên kệ", location: "F0-A0-00-00-00-00", qty: 4, total: 4, since: wmsTime(now - 12 * 86400000), uom: "m" },
-      { warehouseId: 1177, warehouseName: "WH - MATERIAL - MTG", sku: "SKU-KE", productName: "Vải trên kệ", location: "F0-KHO-511-09-01-01", qty: 9, total: 12, since: wmsTime(now - 90 * 86400000), uom: "m" },
+      { warehouseId: 1177, warehouseName: "WH - MATERIAL - MTG", sku: "SKU-A0", productName: "Vải chờ lên kệ", location: "F0-A0-00-00-00-00", qty: 4, total: 4, modified: wmsTime(now - 12 * 86400000), created: wmsTime(now - 300 * 86400000), uom: "m" },
+      { warehouseId: 1177, warehouseName: "WH - MATERIAL - MTG", sku: "SKU-KE", productName: "Vải trên kệ", location: "F0-KHO-511-09-01-01", qty: 9, total: 12, modified: wmsTime(now - 90 * 86400000), created: wmsTime(now - 90 * 86400000), uom: "m" },
     ] }
     : { page: 1, size: 500, total: 1, totalPages: 1, rows: [
-      { warehouseId: 1339, warehouseName: "WH - MATERIAL - GARMENT", sku: "SKU-HELD", productName: "Sợi giữ chỗ", location: "F0-AJ-00-00-00-00", qty: 0, total: 6, since: wmsTime(now - 2 * 86400000), uom: "cuộn" },
+      { warehouseId: 1339, warehouseName: "WH - MATERIAL - GARMENT", sku: "SKU-HELD", productName: "Sợi giữ chỗ", location: "F0-AJ-00-00-00-00", qty: 0, total: 6, modified: wmsTime(now - 2 * 86400000), created: wmsTime(now - 200 * 86400000), uom: "cuộn" },
     ] };
   else data = {};
   postMessage({ source: "HASAKI_INSIDE_CONNECTOR", requestId: r.requestId, ok: true, data }, location.origin);
 });
 
-// Bản chụp có đủ ba mức, vị trí lạ, vùng ảo mới đánh số (TF-02), dòng chưa có ngày và dòng giữ chỗ trong sourceCounts.
+// Bản chụp có đủ ba mức, vị trí lạ, vùng ảo mới đánh số (TF-02), dòng chưa có ngày, dòng chỉ có ngày tạo (bản chụp cũ), dòng tạo từ lâu nhưng vừa sửa (SKU-PICK) và dòng giữ chỗ trong sourceCounts.
 const snapshot = (over = {}) => {
   const now = Date.now(), at = days => wms(now - days * DAY);
   const rows = [
-    { ...MTG, sku: "SKU-SHELF-1", productName: "Vải A/Cotton", qty: 100, uom: "m", locations: [{ location: "F0-KHO-511-09-01-01", qty: 90 }, { location: "F0-A0-00-00-00-00", qty: 10, since: at(40) }] },
-    { ...MTG, sku: "SKU-AJ", productName: "Dây thun", qty: 5, uom: "m", locations: [{ location: "F0-AJ-00-00-00-00", qty: 5, total: 8, since: at(10) }] },
+    { ...MTG, sku: "SKU-SHELF-1", productName: "Vải A/Cotton", qty: 100, uom: "m", locations: [{ location: "F0-KHO-511-09-01-01", qty: 90 }, { location: "F0-A0-00-00-00-00", qty: 10, modified: at(40), created: at(300) }] },
+    { ...MTG, sku: "SKU-AJ", productName: "Dây thun", qty: 5, uom: "m", locations: [{ location: "F0-AJ-00-00-00-00", qty: 5, total: 8, modified: at(10), created: at(100) }] },
     { ...MTG, sku: "SKU-VR", productName: "Vải trả NCC", qty: 3, uom: "m", locations: [{ location: "F0-VR-00-00-00-00", qty: 3, since: at(3) }] },
     { ...MTG, sku: "SKU-IT", productName: "Chỉ IT", qty: 1, uom: "cuộn", locations: [{ location: "F0-IT-00-00-00-00", qty: 1 }] },
-    { ...MTG, sku: "SKU-TF", productName: "Phụ liệu qua TF", qty: 7, uom: "cái", locations: [{ location: "F0-TF-00-00-00-02", qty: 7, since: at(1) }] },
-    { ...GARMENT, sku: "SKU-ODD", productName: "Sợi lạ", qty: 2, uom: "cuộn", locations: [{ location: "F1-VP-01-01-01-01", qty: 2, since: at(1) }] },
+    { ...MTG, sku: "SKU-TF", productName: "Phụ liệu qua TF", qty: 7, uom: "cái", locations: [{ location: "F0-TF-00-00-00-02", qty: 7, modified: at(1), created: at(50) }] },
+    { ...GARMENT, sku: "SKU-ODD", productName: "Sợi lạ", qty: 2, uom: "cuộn", locations: [{ location: "F1-VP-01-01-01-01", qty: 2, modified: at(1) }] },
+    { ...MTG, sku: "SKU-PICK", productName: "Keo dựng/5S", qty: 430, uom: "mm", locations: [{ location: "F0-A0-00-00-00-00", qty: 430, modified: at(0.01), created: at(311) }] },
     { ...GARMENT, sku: "SKU-OK", productName: "Sợi trên kệ", qty: 4, uom: "cuộn", locations: [{ location: "F0-KHO-505-11-03-01", qty: 4 }] },
   ].map(r => ({ ...r, lastApprovedAt: null, lastApprovedBy: null }));
   return {
     run: { id: "run-1", readAt: new Date(now - 3 * 3600000).toISOString(), thresholdDays: 30, rowCount: rows.length, missing: [], warehouses: [MTG, GARMENT],
-      sourceCounts: { stockRows: 10, approvedRows: 0, heldTotal: 2, held: [
-        { ...GARMENT, sku: "SKU-HELD", productName: "Sợi giữ chỗ", uom: "cuộn", location: "F0-AJ-00-00-00-00", total: 6, since: at(2) },
-        { ...GARMENT, sku: "SKU-HELD-KE", productName: "Sợi giữ chỗ trên kệ", uom: "cuộn", location: "F0-KHO-505-11-03-01", total: 3, since: at(2) },
+      sourceCounts: { stockRows: 11, approvedRows: 0, heldTotal: 2, held: [
+        { ...GARMENT, sku: "SKU-HELD", productName: "Sợi giữ chỗ", uom: "cuộn", location: "F0-AJ-00-00-00-00", total: 6, modified: at(2), created: at(200) },
+        { ...GARMENT, sku: "SKU-HELD-KE", productName: "Sợi giữ chỗ trên kệ", uom: "cuộn", location: "F0-KHO-505-11-03-01", total: 3, modified: at(2) },
       ] }, ...over.run },
     rows,
   };
@@ -97,18 +98,21 @@ const open = async (browser, { width = 1280, admin = false, data = null } = {}) 
     // ---- 1) Người xem: phân loại, mức, bộ lọc, Excel, không có dấu vết màn Combo cũ ----
     for (const width of [1280, 375]) {
       const { backend, context, page, errors } = await open(browser, { width, data: snapshot() });
-      await page.waitForFunction(() => document.getElementById("sr-total").textContent === "7");
-      assert.deepEqual(await page.evaluate(() => ["high", "mid", "low"].map(k => document.getElementById(`sr-${k}`).textContent)), ["2", "2", "3"]);
-      assert.equal(await page.locator("#sr-cover-main").innerText(), "10 dòng tồn", "đối soát: mọi dòng tồn đều được phân loại, kể cả giữ chỗ");
-      assert.equal(await page.locator("#sr-cover-sub").innerText(), "3 kệ · 6 ảo · 1 lạ");
-      assert.equal((await page.locator("#sr-warn").innerText()).trim(), "1 dòng chưa có ngày vào vị trí", "bản chụp đủ 2 kho, mới, khớp số dòng: chỉ còn cảnh báo thiếu ngày của SKU-IT");
+      await page.waitForFunction(() => document.getElementById("sr-total").textContent === "8");
+      assert.deepEqual(await page.evaluate(() => ["high", "mid", "low"].map(k => document.getElementById(`sr-${k}`).textContent)), ["2", "2", "4"]);
+      assert.equal(await page.locator("#sr-cover-main").innerText(), "11 dòng tồn", "đối soát: mọi dòng tồn đều được phân loại, kể cả giữ chỗ");
+      assert.equal(await page.locator("#sr-cover-sub").innerText(), "3 kệ · 7 ảo · 1 lạ");
+      const baseWarn = await page.locator("#sr-warn").innerText();
+      assert.match(baseWarn, /1 dòng chưa có Modified date, tính tạm theo ngày tạo/, "SKU-VR chỉ có ngày tạo (bản chụp cũ) phải được nêu");
+      assert.match(baseWarn, /1 dòng chưa có ngày\b/, "SKU-IT không có ngày nào");
+      assert.doesNotMatch(baseWarn, /Chưa đọc được kho|Bản chụp đã cũ|Lệch/, "bản chụp đủ 2 kho, mới, khớp số dòng: không có cảnh báo khác");
       assert.equal(await page.locator("#sr-admin-tools").isHidden(), true, "người xem không có nút đồng bộ WMS");
       assert.deepEqual([...new Set(backend.state.calls.map(c => c.rpc).filter(r => r !== "print_queue_status"))], ["sku_count_overview"], "chỉ đọc bản chụp, không gọi Extension, không còn RPC Combo");
       assert.equal(backend.state.calls.find(c => c.rpc === "sku_count_overview").admin, false, "đọc bằng khoá công khai");
       assert.equal(await page.locator("[data-storage-risk], #storage-risk-detail, #storage-risk-total").count(), 0, "màn Combo cũ đã bị gỡ");
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `${width}px không được tràn ngang`);
       const skus = () => page.locator("#sr-body tr code").allInnerTexts();
-      assert.deepEqual(await skus(), ["SKU-SHELF-1", "SKU-ODD", "SKU-AJ", "SKU-IT", "SKU-VR", "SKU-HELD", "SKU-TF"], "cao → cần xử lý → theo dõi, trong mỗi mức ngày lâu nhất lên trước");
+      assert.deepEqual(await skus(), ["SKU-SHELF-1", "SKU-ODD", "SKU-AJ", "SKU-IT", "SKU-VR", "SKU-HELD", "SKU-TF", "SKU-PICK"], "cao → cần xử lý → theo dõi, trong mỗi mức ngày lâu nhất lên trước");
       if (width === 1280) {
         assert.equal(await page.locator("#sr-head th").count(), 7);
         assert.equal(await page.locator(".sr-table").evaluate(t => t.parentElement.scrollWidth <= t.parentElement.clientWidth), true, "bảng vừa khung, không cuộn ngang");
@@ -118,24 +122,29 @@ const open = async (browser, { width = 1280, admin = false, data = null } = {}) 
         assert.match(text, /Vị trí lạ/);
         assert.match(text, /Chưa rõ ngày/, "dòng chưa có ngày không bị coi là an toàn");
         assert.match(text, /\+3 giữ chỗ/, "phần giữ chỗ trong vị trí được hiện riêng");
+        const pick = await page.locator("#sr-body tr", { hasText: "SKU-PICK" }).innerText();
+        assert.match(pick, /Theo dõi/, "tạo từ 311 ngày trước nhưng vừa sửa: tính theo Modified date nên chỉ là Theo dõi");
+        assert.match(pick, /0 ngày/);
+        assert.doesNotMatch(pick, /Rủi ro cao/);
+        assert.match(await page.locator("#sr-body tr", { hasText: "SKU-VR" }).innerText(), /3 ngày · ngày tạo/, "dòng chỉ có ngày tạo ghi rõ đang tính theo ngày tạo");
         assert.match(text, /90 trên kệ/, "hiện phần đã lên kệ của cùng SKU");
         assert.doesNotMatch(text, /SKU-OK|F0-KHO-511-09-01-01|SKU-HELD-KE/, "hàng đã trên kệ (kể cả giữ chỗ trên kệ) không nằm trong màn này");
         await page.locator('[data-sr-tab="high"]').click();
         assert.deepEqual(await skus(), ["SKU-SHELF-1", "SKU-ODD"]);
         await page.locator('button.ss-metric[data-sr-level="low"]').click();
-        assert.deepEqual(await skus(), ["SKU-VR", "SKU-HELD", "SKU-TF"], "bấm thẻ Theo dõi lọc đúng nhóm");
+        assert.deepEqual(await skus(), ["SKU-VR", "SKU-HELD", "SKU-TF", "SKU-PICK"], "bấm thẻ Theo dõi lọc đúng nhóm");
         await page.locator('[data-sr-tab="all"]').click();
         await page.locator("#sr-tools input").fill("tra ncc");
         assert.deepEqual(await skus(), ["SKU-VR"], "tìm không dấu theo tên sản phẩm");
         await page.locator("#sr-tools input").fill("");
         await page.locator('[data-as-sort="sr_qty"]').click();
-        assert.deepEqual(await skus(), ["SKU-SHELF-1", "SKU-TF", "SKU-HELD", "SKU-AJ", "SKU-VR", "SKU-ODD", "SKU-IT"], "bấm Số lượng lần đầu sắp giảm dần (hàng giữ chỗ tính theo tổng)");
+        assert.deepEqual(await skus(), ["SKU-PICK", "SKU-SHELF-1", "SKU-TF", "SKU-HELD", "SKU-AJ", "SKU-VR", "SKU-ODD", "SKU-IT"], "bấm Số lượng lần đầu sắp giảm dần (hàng giữ chỗ tính theo tổng)");
         const [download] = await Promise.all([page.waitForEvent("download"), page.locator("#sr-tools [data-as-export]").click()]);
         assert.match(download.suggestedFilename(), /^hang-chua-len-ke-.*\.xlsx$/);
         // Mức tính lúc xem: đẩy giờ máy lên 21 ngày thì dòng 10 ngày thành rủi ro cao mà không cần đồng bộ lại
         await page.evaluate(() => { const real = Date.now; Date.now = () => real() + 21 * 86400000; });
         await page.evaluate(() => window.HasakiStorageRisk.load());
-        assert.deepEqual(await page.evaluate(() => ["high", "mid", "low"].map(k => document.getElementById(`sr-${k}`).textContent)), ["3", "4", "0"], "mức tính theo giờ lúc xem: AJ 31 ngày thành cao, VR/HELD/TF vào cần xử lý");
+        assert.deepEqual(await page.evaluate(() => ["high", "mid", "low"].map(k => document.getElementById(`sr-${k}`).textContent)), ["3", "5", "0"], "mức tính theo giờ lúc xem: AJ 31 ngày thành cao, VR/HELD/TF/PICK vào cần xử lý");
         assert.match(await page.locator("#sr-warn").innerText(), /Bản chụp đã cũ/, "quá 24 giờ thì cảnh báo bản chụp cũ");
       } else {
         assert.equal(await page.locator(".sr-table thead").isVisible(), false, "điện thoại: bảng thành thẻ");
@@ -168,7 +177,7 @@ const open = async (browser, { width = 1280, admin = false, data = null } = {}) 
       assert.match(warn, /Chưa đọc được kho: WH - MATERIAL - GARMENT/, "bản chụp thiếu một kho phải báo rõ");
       assert.match(warn, /Bản chụp đã cũ/);
       assert.match(warn, /Lệch \d+ dòng/, "số dòng đã lưu không khớp số dòng WMS đã đọc");
-      assert.match(warn, /dòng chưa có ngày vào vị trí/, "dòng thiếu ngày được nêu số lượng");
+      assert.match(warn, /dòng chưa có ngày\b/, "dòng thiếu ngày được nêu số lượng");
       assert.deepEqual(errors, []);
       await context.close();
     }
@@ -205,7 +214,11 @@ const open = async (browser, { width = 1280, admin = false, data = null } = {}) 
       assert.deepEqual(saved.map(r => r.sku).sort(), ["SKU-A0", "SKU-KE"], "Kiểm kê vẫn chỉ lưu SKU có In-BIN > 0");
       const ke = saved.find(r => r.sku === "SKU-KE").locations[0];
       assert.equal(ke.total, 12, "lưu tổng mọi trạng thái khi khác In-BIN");
-      assert.match(saved.find(r => r.sku === "SKU-A0").locations[0].since, /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/, "lưu ngày tạo dòng tồn ở vị trí");
+      const a0 = saved.find(r => r.sku === "SKU-A0").locations[0];
+      assert.match(a0.modified, /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/, "lưu Modified date của dòng tồn");
+      assert.match(a0.created, /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/, "lưu kèm ngày tạo");
+      assert.notEqual(a0.modified, a0.created);
+      assert.match(start.body.p_source_counts.held[0].modified, /^\d{4}-\d{2}-\d{2} /, "dòng giữ chỗ cũng giữ Modified date");
       assert.equal(backend.state.calls.filter(c => c.rpc === "sku_count_overview").at(-1).admin, false, "đọc lại bằng khoá công khai như mọi người");
       assert.equal(await page.locator("#sr-run").isDisabled(), false, "nút dùng lại được sau khi xong");
       const texts = (await page.locator("#sr-body tr code").allInnerTexts()).sort();

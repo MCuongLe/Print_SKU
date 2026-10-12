@@ -58,8 +58,10 @@
         // Tổng mọi trạng thái (In-BIN + picklist/đóng gói...). Dòng In-BIN = 0 nhưng total > 0 vẫn được giữ lại
         // (qty = 0) để màn Rủi ro lưu trữ không bỏ sót hàng giữ chỗ; Kiểm kê chỉ tính dòng qty > 0.
         total: Math.max(finite(row.quantity), qty),
-        // Ngày tạo dòng tồn ở vị trí (giờ WMS), không chắc là ngày hàng vào vị trí.
-        since: clean(row.created_at, 40),
+        // Modified date (giờ WMS) là mốc tính số ngày ở vị trí: dòng tồn có thể tạo từ lâu nhưng vừa bị sửa (lấy hàng, điều chỉnh).
+        // Ngày tạo giữ kèm để dự phòng khi WMS không trả updated_at.
+        modified: clean(row.updated_at, 40),
+        created: clean(row.created_at, 40),
         uom: clean(row.uom, 40),
       };
     }).filter(row => Number.isInteger(row.warehouseId) && row.sku && (row.qty > 0 || row.total > 0));
