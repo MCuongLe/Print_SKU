@@ -10,8 +10,7 @@ const SESSION_KEY = 'print-sku-admin-session-v1';
 const ROUTES = [
   ['#admin/lenh-in', '#print-jobs-screen'],
   ['#admin/sku-sync', '#sku-sync-screen'],
-  ['#admin/group-uid-sync', '#group-uid-sync-screen'],
-  ['#admin/kiem-ke', '#inventory-audit-screen']
+  ['#admin/group-uid-sync', '#group-uid-sync-screen']
 ];
 
 const mockRoutes = page => page.route('**/*', route => {

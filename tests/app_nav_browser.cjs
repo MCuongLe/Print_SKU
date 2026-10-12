@@ -10,7 +10,7 @@ const assert = require('node:assert/strict');
 const BASE = process.env.BASE || 'http://127.0.0.1:8000/';
 const b64 = value => Buffer.from(JSON.stringify(value)).toString('base64url');
 const JWT = `${b64({ alg: 'HS256' })}.${b64({ sub: '1', exp: Math.floor(Date.now() / 1000) + 3600 })}.s`;
-const ROUTES = { worker: 'In tem SKU', 'group-uid': 'In tem Group UID', location: 'Mã vị trí', 'cut-group-uid': 'Cắt Group UID', 'group-uid-history': 'Lịch sử Group UID', 'find-sku': 'Tìm SKU', 'unit-converter': 'Chuyển đổi đơn vị', 'xa-vai': 'Theo dõi xả vải', inspection: 'Kiểm tra đầu vào', 'storage-risk': 'Rủi ro lưu trữ' };
+const ROUTES = { worker: 'In tem SKU', 'group-uid': 'In tem Group UID', location: 'Mã vị trí', 'cut-group-uid': 'Cắt Group UID', 'group-uid-history': 'Lịch sử Group UID', 'find-sku': 'Tìm SKU', 'unit-converter': 'Chuyển đổi đơn vị', 'xa-vai': 'Theo dõi xả vải', inspection: 'Kiểm tra đầu vào', 'storage-risk': 'Rủi ro lưu trữ', 'inventory-audit': 'Kiểm kê SKU' };
 
 const open = async (browser, width, height, { admin = false } = {}) => {
   const mobile = width < 800;
@@ -134,10 +134,10 @@ const navState = page => page.evaluate(() => {
       await page.locator('#app-nav .an-item[aria-label="Lệnh in"]').waitFor();
       let s = await navState(page);
       assert.deepEqual(s.current, ['Đồng bộ SKU']);
-      assert.deepEqual(s.items, ['Về trang chủ', 'Lệnh in', 'Đồng bộ SKU', 'Đồng bộ Group UID', 'Kiểm kê SKU', 'Cấu hình', 'Đăng xuất'], 'chế độ Quản trị: chỉ Về trang chủ + 5 mục Admin + Đăng xuất');
+      assert.deepEqual(s.items, ['Về trang chủ', 'Lệnh in', 'Đồng bộ SKU', 'Đồng bộ Group UID', 'Cấu hình', 'Đăng xuất'], 'chế độ Quản trị: chỉ Về trang chủ + 4 mục Admin + Đăng xuất');
       assert.deepEqual(s.heads, ['Quản trị']);
       const look = await page.evaluate(() => [...document.querySelectorAll('#app-nav .an-item')].map(b => { const i = b.querySelector('.an-ico'), r = i && i.getBoundingClientRect(); return `${b.querySelector('span').textContent}|${r ? Math.round(r.width) : 0}|${i ? getComputedStyle(i).backgroundColor : ''}`; }));
-      assert.deepEqual(look.map(t => t.split('|')[0]), ['Trang chủ', 'Lệnh in', 'Đồng bộ SKU', 'Đồng bộ UID', 'Kiểm kê', 'Cấu hình', 'Đăng xuất'], 'tên ngắn');
+      assert.deepEqual(look.map(t => t.split('|')[0]), ['Trang chủ', 'Lệnh in', 'Đồng bộ SKU', 'Đồng bộ UID', 'Cấu hình', 'Đăng xuất'], 'tên ngắn');
       assert.ok(look.every(t => t.split('|')[1] === '36'), 'mỗi mục một ô icon 36 px');
       assert.equal(look[2].split('|')[2], 'rgb(91, 63, 184)', 'mục đang mở: ô icon tím đặc');
       assert.equal(await page.locator('#sku-sync-screen .ss-side').isVisible(), false, 'thanh bên riêng của Admin ẩn');

@@ -6,8 +6,8 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const assert = require('node:assert/strict');
 
 const BASE = process.env.BASE || 'http://127.0.0.1:8000/';
-const USER = ['home', 'worker', 'group-uid', 'location', 'cut-group-uid', 'find-sku', 'unit-converter', 'xa-vai', 'inspection', 'storage-risk', 'group-uid-history'];
-const ADMIN = ['admin/lenh-in', 'admin/sku-sync', 'admin/group-uid-sync', 'admin/kiem-ke', 'admin/cauhinh'];
+const USER = ['home', 'worker', 'group-uid', 'location', 'cut-group-uid', 'find-sku', 'unit-converter', 'xa-vai', 'inspection', 'storage-risk', 'group-uid-history', 'inventory-audit'];
+const ADMIN = ['admin/lenh-in', 'admin/sku-sync', 'admin/group-uid-sync', 'admin/cauhinh'];
 
 // Chạy trong trang: liệt kê chữ lệch chuẩn trong màn đang hiện (phần tử gốc nằm ở giữa màn hình)
 const audit = () => {

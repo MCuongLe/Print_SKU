@@ -1,7 +1,7 @@
 // Chuyển mục Admin mượt (11/10/2026): đã xác nhận Admin trong phiên và token JWT còn hạn thì bấm menu hiện màn mới ngay khung hình kế
 // tiếp (trước đây chờ 2 lượt gọi mạng kiểm quyền nên lộ nền đen 0,2–0,6 giây); quay lại Đồng bộ SKU / Group UID không khoá nút, tải lại
-// ngầm; token hết hạn thì vẫn kiểm lại qua mạng. Menu là thanh trái chung (máy tính ≥ 1024 px, 11/10/2026). Icon "Kiểm kê SKU" trong menu React
-// màn Cấu hình (còn hiện ở 768–1023 px) đúng cỡ (20 px theo thang icon), không thành khối đen.
+// ngầm; token hết hạn thì vẫn kiểm lại qua mạng. Menu là thanh trái chung (máy tính ≥ 1024 px, 11/10/2026).
+// 12/10/2026: Kiểm kê SKU đã ra trang chủ (#inventory-audit), không còn là mục Admin.
 // Supabase, Edge Function và Extension đều giả lập (trễ 300 ms). Chạy với python -m http.server 8000 (đổi bằng biến BASE).
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const assert = require('node:assert/strict');
@@ -55,7 +55,7 @@ const clickAndMeasure = (page, label) => page.evaluate(async text => {
     await page.goto(BASE + '#admin/lenh-in');
     await page.locator('#print-jobs-screen').waitFor({ state: 'visible' });
     await page.waitForTimeout(800);
-    for (const [label, id] of [['Đồng bộ SKU', 'sku-sync-screen'], ['Đồng bộ Group UID', 'group-uid-sync-screen'], ['Kiểm kê SKU', 'inventory-audit-screen'], ['Cấu hình', 'root'], ['Lệnh in', 'print-jobs-screen']]) {
+    for (const [label, id] of [['Đồng bộ SKU', 'sku-sync-screen'], ['Đồng bộ Group UID', 'group-uid-sync-screen'], ['Cấu hình', 'root'], ['Lệnh in', 'print-jobs-screen']]) {
       const m = await clickAndMeasure(page, label);
       assert.equal(m.screen, id, `${label}: khung hình đầu đã là màn mới (thấy ${m.screen}, không được lộ nền)`);
       await page.waitForTimeout(700);
@@ -72,16 +72,6 @@ const clickAndMeasure = (page, label) => page.evaluate(async text => {
     }
     assert.equal(await page.locator('#sku-sync-preview').isDisabled(), false);
 
-    // Icon menu "Kiểm kê SKU" trong màn Cấu hình (React; máy tính ≥ 1024 px dùng thanh trái chung nên đo ở 900 px)
-    await clickAndMeasure(page, 'Cấu hình');
-    await page.setViewportSize({ width: 900, height: 800 });
-    await page.locator('#root aside nav button', { hasText: 'Kiểm kê SKU' }).waitFor({ state: 'visible' });
-    const icon = await page.evaluate(() => { const b = [...document.querySelectorAll('#root aside nav button')].find(e => e.textContent.trim() === 'Kiểm kê SKU'); const s = b.querySelector('svg').getBoundingClientRect(); return { w: Math.round(s.width), h: Math.round(s.height), btn: Math.round(b.getBoundingClientRect().height), fill: getComputedStyle(b.querySelector('svg')).fill }; });
-    assert.deepEqual([icon.w, icon.h], [20, 20], 'icon Kiểm kê SKU 20 px (thang icon đợt 3)');
-    assert.equal(icon.fill, 'none', 'icon nét, không tô đen');
-    const ref = await page.evaluate(() => Math.round([...document.querySelectorAll('#root aside nav button')].find(e => e.textContent.trim() === 'Cấu hình').getBoundingClientRect().height));
-    assert.equal(icon.btn, ref, 'dòng Kiểm kê SKU cao bằng các mục khác');
-    await page.setViewportSize({ width: 1280, height: 800 });
     assert.deepEqual(errors, []);
     await context.close();
 
@@ -96,6 +86,6 @@ const clickAndMeasure = (page, label) => page.evaluate(async text => {
     await page.locator('#sku-sync-screen').waitFor({ state: 'visible' });
     assert.deepEqual(errors, []);
     await context.close();
-    console.log('PASS 1280px: chuyển mục Admin hiện màn mới ngay khung hình kế tiếp, getToken không chờ mạng khi token còn hạn, quay lại không khoá nút, token hết hạn vẫn kiểm lại, icon Kiểm kê SKU 20 px');
+    console.log('PASS 1280px: chuyển mục Admin hiện màn mới ngay khung hình kế tiếp, getToken không chờ mạng khi token còn hạn, quay lại không khoá nút, token hết hạn vẫn kiểm lại');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

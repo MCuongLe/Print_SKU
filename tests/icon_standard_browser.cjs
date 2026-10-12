@@ -6,8 +6,8 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const assert = require('node:assert/strict');
 
 const BASE = process.env.BASE || 'http://127.0.0.1:8000/';
-const USER = ['home', 'worker', 'group-uid', 'location', 'cut-group-uid', 'find-sku', 'unit-converter', 'xa-vai', 'inspection', 'storage-risk', 'group-uid-history'];
-const ADMIN = ['admin/lenh-in', 'admin/sku-sync', 'admin/group-uid-sync', 'admin/kiem-ke', 'admin/cauhinh'];
+const USER = ['home', 'worker', 'group-uid', 'location', 'cut-group-uid', 'find-sku', 'unit-converter', 'xa-vai', 'inspection', 'storage-risk', 'group-uid-history', 'inventory-audit'];
+const ADMIN = ['admin/lenh-in', 'admin/sku-sync', 'admin/group-uid-sync', 'admin/cauhinh'];
 const b64 = o => Buffer.from(JSON.stringify(o)).toString('base64url');
 const JWT = `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64({ sub: '00000000-0000-0000-0000-000000000001', exp: Math.floor(Date.now() / 1000) + 3600 })}.sig`;
 const GUIDE = ['Quét hoặc nhập', 'Quét mã hoặc gõ tay', 'Nhập hoặc quét', 'để tra tên', 'bỏ trống nếu không có', 'danh sách đang trống', 'Hoặc dùng file', 'Import từ file', 'Chọn file PO', 'Nhập file Excel', 'Xem trong Tra cứu', 'Mở dashboard', 'không SKU thì chọn'];
