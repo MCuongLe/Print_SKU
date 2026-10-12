@@ -44,7 +44,12 @@ const fakeExtension = (data, version) => {
 };
 
 // --- Supabase giả: mô phỏng group_uid_moves_* (đối chiếu logic với supabase/group_uid_moves_v1.sql + v2_lookup.sql) ---
-const db = new Map(), reads = new Map(), rpcCalls = [];
+const db = new Map(), reads = new Map(), rpcCalls = [], comboCalls = [];
+// Liên kết Combo → Normal giả (sku_combo_lookup): 422266614 có 1 Normal, 422427353 có 3 Normal, còn lại không phải Combo.
+const comboRows = sku => ({
+  "422266614": [["422500005", 914]],
+  "422427353": [["422500001", 1], ["422500002", 2], ["422500003", 1]],
+}[sku] || []).map(([normal, quantity]) => ({ normal_sku: normal, product_name: `Chỉ mẫu ${normal}`, category_name: "Phụ liệu", quantity, available: true }));
 function lookup(a) {
   const loc = (a.p_location || "").trim().toLowerCase(), sku = (a.p_sku || "").trim().toLowerCase(), wh = (a.p_warehouse || "").trim(), match = ["to", "from", "any"].includes(a.p_match) ? a.p_match : "to";
   const all = [...db.values()].sort((x, y) => Date.parse(x.moved_at) - Date.parse(y.moved_at) || x.history_id - y.history_id), byUid = new Map();
@@ -85,6 +90,10 @@ async function mock(page) {
     if (url.startsWith(BASE)) return route.continue();
     if (url.endsWith("/auth/v1/user")) return json({ id: "00000000-0000-4000-8000-000000000001" });
     if (url.includes("/rest/v1/user_roles")) return json([{ username: "Admin", role: "admin" }]);
+    if (url.includes("/rest/v1/rpc/sku_combo_lookup")) {
+      const sku = JSON.parse(route.request().postData() || "{}").p_sku; comboCalls.push(sku);
+      return json(comboRows(sku));
+    }
     const match = /\/rest\/v1\/rpc\/(group_uid_moves_[a-z_]+)/.exec(url);
     if (match) {
       const headers = route.request().headers(), args = JSON.parse(route.request().postData() || "{}");
@@ -216,6 +225,51 @@ async function open(browser, width, { admin }) {
       await page.waitForFunction(() => /Hiển thị 0 \/ 7\.000/.test(document.getElementById("uh-message").textContent));
       await page.locator("#uh-sku").fill(""); await wait(within30);
 
+      // --- SKU Combo: dán mã Combo thì gợi ý SKU Normal (Group UID lưu theo SKU Normal) ---
+      const picker = page.locator("dialog.sku-combo-dialog"), lookups = () => rpcCalls.filter(c => c.name === "group_uid_moves_lookup");
+      const setRange = async days => { await openFilter(); await page.locator(`[data-uh-range="${days}"]`).click(); await closeFilter(); };
+      const calls0 = comboCalls.length;
+      await page.locator("#uh-sku").fill("42250001");
+      await wait(count(r => inRange(r) && skuOf(r.group_uid_code).includes("42250001")));
+      assert.equal(comboCalls.length, calls0, "mã chưa đủ 9 số thì không tra Combo");
+      await page.locator("#uh-sku").fill("422266614");
+      await picker.waitFor({ state: "visible" });
+      assert.equal(await picker.locator(".sku-combo-code").innerText(), "422266614");
+      assert.equal((await picker.locator("h2").innerText()).trim(), "Chọn SKU Normal để tra cứu");
+      assert.match(await picker.locator(".sku-combo-note-text").innerText(), /Group UID lưu theo SKU Normal/);
+      assert.equal(await picker.locator(".sku-combo-option").count(), 1);
+      assert.match(await picker.locator(".sku-combo-option").first().innerText(), /422500005/);
+      await picker.locator(".sku-combo-option").first().click();
+      await picker.waitFor({ state: "detached" });
+      await page.waitForFunction(() => document.getElementById("uh-sku").value === "422500005");
+      await until(() => lookups().at(-1).args.p_sku === "422500005");
+      await page.waitForFunction(() => /SKU Combo 422266614 → SKU Normal 422500005/.test(document.getElementById("uh-message").textContent));
+      await wait(count(r => inRange(r) && skuOf(r.group_uid_code).includes("422500005")));
+      // Đã chọn Normal: đổi khoảng ngày chạy lại tìm kiếm không hỏi lại
+      const asked = comboCalls.length;
+      await setRange(90); await wait(count(r => Date.parse(r.moved_at) >= since(90) && skuOf(r.group_uid_code).includes("422500005")));
+      assert.equal(comboCalls.length, asked, "mã đã chọn không hỏi lại"); assert.equal(await picker.count(), 0);
+      await setRange(30); await wait(count(r => inRange(r) && skuOf(r.group_uid_code).includes("422500005")));
+      // Combo nhiều Normal: huỷ thì không tìm và tự chạy lại không hỏi lại; Enter hỏi lại rồi chọn Normal thứ hai
+      await page.locator("#uh-sku").fill("422427353");
+      await picker.waitFor({ state: "visible" });
+      assert.equal(await picker.locator(".sku-combo-option").count(), 3, "Combo có 3 Normal");
+      const searches = lookups().length;
+      await picker.locator(".sku-combo-close").click(); await picker.waitFor({ state: "detached" });
+      assert.equal(await page.locator("#uh-sku").inputValue(), "422427353", "huỷ giữ nguyên mã đã nhập");
+      await setRange(7); await page.waitForTimeout(700);
+      assert.equal(await picker.count(), 0, "đã huỷ thì tìm tự động không bật lại hộp chọn");
+      assert.equal(lookups().length, searches, "huỷ thì không gửi lượt tìm");
+      await page.locator("#uh-sku").press("Enter"); await picker.waitFor({ state: "visible" });
+      await picker.locator(".sku-combo-option").nth(1).click(); await picker.waitFor({ state: "detached" });
+      await page.waitForFunction(() => document.getElementById("uh-sku").value === "422500002");
+      await dialog.waitFor({ state: "visible" }); await page.keyboard.press("Escape"); await dialog.waitFor({ state: "hidden" });
+      await setRange(30);
+      // 9 số nhưng không phải Combo: tra một lần, không hộp chọn, tìm bình thường
+      await page.locator("#uh-sku").fill("422500009"); await until(() => lookups().at(-1).args.p_sku === "422500009");
+      assert.equal(comboCalls.at(-1), "422500009"); assert.equal(await picker.count(), 0);
+      await page.locator("#uh-sku").fill(""); await wait(within30);
+
       // --- Sao chép UID trong popup, quét camera (SKU / vị trí) mở thẳng kết quả ---
       await page.locator('[data-uh-kind="all"]').click(); await dialog.waitFor({ state: "visible" });
       const firstUid = (await page.locator("#uh-body code[data-copy]").first().innerText()).trim();
@@ -308,7 +362,7 @@ async function open(browser, width, { admin }) {
       assert.deepEqual(errors, []);
       await context.close();
     }
-    console.log("group_uid_moves_browser: ô trang chủ, xem không đăng nhập, thẻ số liệu → popup bảng (tab, trang, sao chép), popup bộ lọc + chip, quét camera mở kết quả, Admin đọc từ WMS tăng dần và responsive passed");
+    console.log("group_uid_moves_browser: ô trang chủ, xem không đăng nhập, thẻ số liệu → popup bảng (tab, trang, sao chép), popup bộ lọc + chip, SKU Combo gợi ý SKU Normal, quét camera mở kết quả, Admin đọc từ WMS tăng dần và responsive passed");
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });
 

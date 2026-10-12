@@ -10124,20 +10124,37 @@ async function rpc(name,args,retry=true){
         }
         function setTab(tab) { state.tab = tab; dialog.querySelectorAll("[data-uh-tab]").forEach(b => b.setAttribute("aria-selected", String(b.dataset.uhTab === tab))); }
         function openResults(tab = "all") { setTab(tab); renderList(false); UI.openDialog(dialog); }
-        let seq = 0, timer = 0;
-        async function search() {
+        let seq = 0, timer = 0, comboChecked = "", comboDeclined = "", comboNote = "";
+        // SKU Combo: Group UID lưu theo SKU Normal nên lọc bằng mã Combo ra 0 lượt. Dán/nhập đúng 9 số mà là Combo thì hỏi SKU Normal
+        // (cùng hộp chọn + RPC sku_combo_lookup với TÌM SKU/CẮT UID) rồi lọc theo mã đã chọn. Mã đã kiểm tra không hỏi lại; huỷ thì
+        // không hỏi lại cho tới khi mã đổi hoặc người dùng bấm Enter/Xem kết quả. Trả false = huỷ lượt tìm.
+        async function resolveCombo(mine, explicit) {
+          const sku = skuInput.value.trim(), picker = window.SkuComboPicker;
+          if (!/^\d{9}$/.test(sku) || !picker?.chooseNormal || comboChecked === sku) return true;
+          if (comboDeclined === sku && !explicit) return false;
+          const valid = () => mine === seq && active() && skuInput.value.trim() === sku;
+          const choice = await picker.chooseNormal(sku, valid, "Group UID lưu theo SKU Normal.", "Chọn SKU Normal để tra cứu");
+          if (!valid()) return false;
+          if (choice === "cancel" || choice === null) { comboDeclined = sku; return false; }
+          comboDeclined = "";
+          if (choice && typeof choice === "object") { skuInput.value = choice.normal_sku; comboChecked = choice.normal_sku; comboNote = `SKU Combo ${sku} → SKU Normal ${choice.normal_sku}`; renderChips(); }
+          else comboChecked = sku;
+          return true;
+        }
+        async function search(explicit = false) {
           const mine = ++seq; renderChips();
           try {
+            if (!await resolveCombo(mine, explicit)) return false;
             const data = await anonRpc("group_uid_moves_lookup", { p_warehouse: whSelect.value, p_location: locInput.value.trim(), p_match: state.match, p_sku: skuInput.value.trim(), p_from: fromIso(), p_to: toIso(), p_limit: LOOKUP_LIMIT });
             if (mine !== seq) return false;
             Object.assign(state, { rows: data.items || [], total: Number(data.total) || 0, truncated: Boolean(data.truncated), loaded: true });
             renderMetrics(); if (dialog.open) renderList(true);
-            if (!state.busy) state.truncated ? tell(`Hiển thị ${num(state.rows.length)} / ${num(state.total)} lượt mới nhất; thu hẹp bộ lọc để xem đủ`, "warn") : tell("");
+            if (!state.busy) state.truncated ? tell(`Hiển thị ${num(state.rows.length)} / ${num(state.total)} lượt mới nhất; thu hẹp bộ lọc để xem đủ`, "warn") : tell(comboNote, comboNote ? "ok" : "");
             return true;
           } catch (error) { if (mine === seq) tell(error.message || "Không tải được lịch sử Group UID.", "error"); return false; }
         }
         const queue = () => { clearTimeout(timer); renderChips(); timer = setTimeout(search, 350); };
-        const searchAndShow = () => { clearTimeout(timer); return search().then(ok => { if (ok) openResults("all"); }); };
+        const searchAndShow = () => { clearTimeout(timer); return search(true).then(ok => { if (ok) openResults("all"); }); };
         async function loadOverview() { state.overview = await anonRpc("group_uid_moves_overview"); renderOverview(); }
         function setRange(range) {
           state.range = range;
@@ -10222,7 +10239,7 @@ async function rpc(name,args,retry=true){
         addEventListener("hashchange", route);
 
         // ---- Tìm và bộ lọc ----
-        skuInput.addEventListener("input", queue); locInput.addEventListener("input", queue); whSelect.addEventListener("change", () => { clearTimeout(timer); search(); });
+        skuInput.addEventListener("input", () => { comboNote = ""; queue(); }); locInput.addEventListener("input", queue); whSelect.addEventListener("change", () => { clearTimeout(timer); search(); });
         [skuInput, locInput].forEach(input => input.addEventListener("keydown", event => { if (event.key === "Enter") { event.preventDefault(); input.blur(); searchAndShow(); } }));
         [fromInput, toInput].forEach(input => input.addEventListener("change", queue));
         screen.querySelectorAll(".uh-field").forEach(field => field.addEventListener("click", event => { if (!event.target.closest("button, input")) field.querySelector("input").focus(); }));
