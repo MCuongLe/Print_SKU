@@ -603,7 +603,8 @@ máy tính giữ bảng.
 
 **Cấp vải · thẻ Quét Group UID gọn (12/10/2026, khối `#cap-vai-compact`).** Đầu thẻ: tiêu đề + nút âm báo + nút thu gọn (^). Khối đợt cấp:
 icon tem (ẩn ≤ 480 px) | chọn đợt, thanh tiến độ, "x / y cuộn" · mét | chip ✓ đã quét, 🕐 còn lại (⚠ chưa ghép khi có; chữ chỉ đọc màn hình + title).
-Hàng quét một hàng ở mọi bề rộng: ô Group UID có icon quét (bỏ icon ≤ 380 px), camera, bàn phím, Quét (≤ 480 px chỉ icon ✓, tên nút vẫn "Quét").
+Hàng quét (mockup thứ 2): một ô Group UID liền — icon quét | vạch | mã | cụm camera · bàn phím nằm trong ô (`.cv-field__tools`, nền xanh nhạt, vạch giữa;
+bàn phím đang bật = nền trắng); nút ✓ Quét bên phải trên máy tính, dưới và rộng hết trên điện thoại (≤ 620 px). Chữ trong ô giữ "Group UID".
 "Xem chi tiết" (`<details>`) chứa chip có chữ (+ "đã đóng") và lượt quét gần đây; ẩn khi chưa có đợt và chưa quét. Thu gọn ẩn khối đợt cấp, đầu thẻ
 hiện số đã quét / tổng. Trạng thái thu gọn và Xem chi tiết nhớ theo máy (`localStorage` `cap-vai-thu-gon`, `cap-vai-chi-tiet`). Giữ nguyên id cũ.
 
