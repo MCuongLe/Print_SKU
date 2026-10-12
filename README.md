@@ -380,10 +380,15 @@ web đi qua RPC `fabric_issue_*`).
   hoá (bỏ khoảng trắng, `12.0` → `12`, bỏ số 0 đầu, không phân biệt hoa/thường); không khớp thì thử Roll Code dạng
   `<batch>-<roll>`. Dòng không ghép được ghi lý do — *Không có UID*, *UID không còn Available* (kèm trạng thái WMS),
   *Trùng dòng*, *Nhiều UID khớp* — và không đoán bừa. Đồng bộ thêm Group UID xong thì bấm *Ghép lại*.
-- **Quét**: ai cũng quét được (khoá công khai như Xả vải), bằng máy quét cầm tay hoặc camera. Kết quả: *Cấp Group UID này*
-  (xanh), *Đã quét trước đó* (vàng, kèm giờ và máy), *Không cấp* (đỏ: không thuộc đợt, hoặc UID chưa có dữ liệu — kèm tên
-  đợt khác nếu UID thuộc một đợt đang mở), *Đợt đã đóng*. Mã quét liên tiếp xếp hàng tuần tự; âm báo bật/tắt bằng nút loa.
-  Tab *Danh sách cuộn* lọc Chưa quét / Đã quét / Chưa ghép và tự làm mới mỗi 20 giây để thấy máy quét khác.
+- **Quét**: ai cũng quét được (khoá công khai như Xả vải), bằng máy quét cầm tay hoặc camera. Mỗi lần quét hiện pop-up giữa
+  màn hình: *Cấp Group UID này* (xanh, tự đóng sau 1,6 giây), *Đã quét trước đó* (vàng, kèm giờ và máy), *Không cấp* (đỏ: không
+  thuộc đợt, hoặc UID chưa có dữ liệu — kèm tên đợt khác nếu UID thuộc một đợt đang mở), *Đợt đã đóng*; vàng/đỏ ở lại tới khi
+  chạm, bấm Esc hoặc quét mã khác. Pop-up không chiếm con trỏ nên máy quét cầm tay bắn tiếp được. Mã quét liên tiếp xếp hàng
+  tuần tự; âm báo bật/tắt bằng nút loa.
+- **Vị trí cần đến**: tab *Vị trí* gom cuộn theo vị trí kệ (`group_uid_details.location`, sắp theo mã vị trí): mỗi vị trí hiện
+  số UID còn phải quét / tổng và số mét còn lại, bấm vào để xem từng cuộn (Roll, Lot, UID). Lọc Còn lại / Đã xong / Tất cả; cuộn
+  chưa ghép UID gom ở thẻ đỏ riêng. Tab *Danh sách cuộn* lọc Chưa quét / Đã quét / Chưa ghép; cả hai tự làm mới mỗi 20 giây để
+  thấy máy quét khác.
 - **Admin** còn có *Ghép lại*, *Đóng đợt / Mở lại*, *Xóa đợt* và bỏ dấu đã quét từng cuộn.
 - **Số mét**: tiến độ tính theo Packing List; từng cuộn hiện số mét WMS (đổi từ mm khi tên SKU kết thúc `/mm`) và "PL …"
   khi khác Packing List.

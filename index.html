@@ -10347,20 +10347,27 @@ async function rpc(name,args,retry=true){
       #cap-vai-screen .cut-scan :is(#cap-vai-camera,#cap-vai-keyboard){box-sizing:border-box;width:var(--ui-ctl,46px);min-width:var(--ui-ctl,46px);height:var(--ui-ctl,46px);min-height:0;padding:0}
       #cap-vai-screen .cut-scan [hidden]{display:none}
       @media(max-width:800px){#cap-vai-screen .cut-scan{grid-template-columns:minmax(0,1fr) var(--ui-ctl,46px) var(--ui-ctl,46px)}#cap-vai-screen .cut-scan #cap-vai-submit{grid-column:1/-1}}
-      #cap-vai-screen .cv-result{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:6px 14px;margin-top:14px;padding:14px 16px;border:2px solid var(--cv-c);border-radius:16px;background:var(--cv-bg)}
-      #cap-vai-screen .cv-result[hidden]{display:none}
-      #cap-vai-screen .cv-result[data-tone="ok"]{--cv-c:#16845b;--cv-t:#0f6e49;--cv-bg:#e8f6ef}
-      #cap-vai-screen .cv-result[data-tone="warn"]{--cv-c:#b7791f;--cv-t:#7a4f00;--cv-bg:#fdf3e3}
-      #cap-vai-screen .cv-result[data-tone="error"]{--cv-c:#c2413b;--cv-t:#a82f29;--cv-bg:#fdecea}
-      #cap-vai-screen .cv-result__ico{display:grid;place-items:center;width:46px;height:46px;border-radius:50%;background:var(--cv-c);color:#fff}
-      #cap-vai-screen .cv-result__ico svg{width:26px;height:26px}
-      #cap-vai-screen .cv-result h3{margin:0;font-size:17px;line-height:1.25;letter-spacing:0;color:var(--cv-t)}
-      #cap-vai-screen .cv-result__uid{margin-top:2px;font:700 20px/1.2 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.02em;word-break:break-all}
-      #cap-vai-screen .cv-facts{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px}
-      #cap-vai-screen .cv-fact{display:inline-flex;align-items:baseline;gap:5px;padding:5px 10px;border:1px solid rgba(23,37,31,.12);border-radius:999px;background:#fff;font-size:13px}
+      #cap-vai-screen .cv-pop{position:fixed;inset:0;z-index:90;display:grid;place-items:center;padding:16px;background:rgba(15,35,28,.5);-webkit-tap-highlight-color:transparent}
+      #cap-vai-screen .cv-pop[hidden]{display:none}
+      #cap-vai-screen .cv-pop__card{position:relative;overflow:hidden;display:grid;justify-items:center;gap:8px;width:min(420px,100%);max-height:calc(100dvh - 32px);overflow-y:auto;padding:26px 20px 20px;border-radius:22px;background:var(--cv-bg);border:3px solid var(--cv-c);box-shadow:0 24px 60px rgba(13,40,30,.35);text-align:center;animation:cvpop-in .16s ease-out}
+      #cap-vai-screen .cv-pop__card[data-tone="ok"]{--cv-c:#16845b;--cv-t:#0f6e49;--cv-bg:#e8f6ef}
+      #cap-vai-screen .cv-pop__card[data-tone="warn"]{--cv-c:#b7791f;--cv-t:#7a4f00;--cv-bg:#fdf3e3}
+      #cap-vai-screen .cv-pop__card[data-tone="error"]{--cv-c:#c2413b;--cv-t:#a82f29;--cv-bg:#fdecea}
+      #cap-vai-screen .cv-pop__ico{display:grid;place-items:center;width:72px;height:72px;border-radius:50%;background:var(--cv-c);color:#fff}
+      #cap-vai-screen .cv-pop__ico svg{width:42px;height:42px}
+      #cap-vai-screen .cv-pop h3{margin:6px 0 0;font-size:21px;line-height:1.25;letter-spacing:0;color:var(--cv-t)}
+      #cap-vai-screen .cv-pop__uid{font:700 22px/1.2 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.02em;word-break:break-all;color:var(--wms-text,#17251f)}
+      #cap-vai-screen .cv-facts{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin-top:4px}
+      #cap-vai-screen .cv-fact{display:inline-flex;align-items:baseline;gap:5px;padding:5px 11px;border:1px solid rgba(23,37,31,.12);border-radius:999px;background:#fff;font-size:14px}
       #cap-vai-screen .cv-fact i{font-style:normal;color:var(--wms-muted,#60736b);font-size:12px}
       #cap-vai-screen .cv-fact b{font-weight:700}
-      #cap-vai-screen .cv-result__note{grid-column:1/-1;margin:0;font-size:13px;color:var(--wms-muted,#60736b)}
+      #cap-vai-screen .cv-pop__note{margin:2px 0 0;font-size:14px;color:var(--cv-t)}
+      #cap-vai-screen .cv-pop__count{margin:2px 0 0;font-size:13px;color:var(--wms-muted,#60736b);font-variant-numeric:tabular-nums}
+      #cap-vai-screen .cv-pop__close{margin-top:10px;display:inline-grid;place-items:center;width:100%;min-height:48px;border:1px solid var(--cv-c);border-radius:14px;background:#fff;color:var(--cv-t);font:600 15px var(--wms-font);cursor:pointer}
+      #cap-vai-screen .cv-pop__bar{position:absolute;left:0;bottom:0;height:5px;width:100%;background:var(--cv-c);transform-origin:left;animation:cvpop-bar var(--cv-auto,1.6s) linear forwards}
+      @keyframes cvpop-in{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:none}}
+      @keyframes cvpop-bar{from{transform:scaleX(1)}to{transform:scaleX(0)}}
+      @media(prefers-reduced-motion:reduce){#cap-vai-screen .cv-pop__card{animation:none}#cap-vai-screen .cv-pop__bar{animation:none;display:none}}
       #cap-vai-screen .cv-recent{display:grid;gap:6px;margin-top:14px}
       #cap-vai-screen .cv-recent[hidden]{display:none}
       #cap-vai-screen .cv-recent div{display:flex;align-items:center;gap:10px;min-height:38px;padding:0 12px;border-radius:10px;background:var(--wms-bg,#f4f7f6);font-size:13px}
@@ -10400,6 +10407,40 @@ async function rpc(name,args,retry=true){
       #cap-vai-screen #cap-vai-message{color:#0f6e49}
       #cap-vai-screen #cap-vai-message[data-tone="error"]{color:#a82f29}
       #cap-vai-screen #cap-vai-message[data-tone="warn"]{color:#7a4f00}
+      #cap-vai-screen .cv-locs{display:grid;gap:10px}
+      #cap-vai-screen .cv-loc{border:1px solid var(--wms-border,#d9e2de);border-radius:14px;background:var(--wms-surface,#fff);overflow:hidden}
+      #cap-vai-screen .cv-loc[data-state="done"]{background:#f1faf5;border-color:#bfe3d0}
+      #cap-vai-screen .cv-loc[data-state="bad"]{background:#fff6f4;border-color:#f0c9c4}
+      #cap-vai-screen .cv-loc__head{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;align-items:center;gap:10px;width:100%;padding:12px 14px;border:0;background:transparent;color:var(--wms-text,#17251f);text-align:left;font:inherit;cursor:pointer}
+      #cap-vai-screen .cv-loc__ico{display:grid;place-items:center;width:38px;height:38px;border-radius:12px;background:#e3edf8;color:#0b47a6}
+      #cap-vai-screen .cv-loc[data-state="done"] .cv-loc__ico{background:#d6efe2;color:#0f6e49}
+      #cap-vai-screen .cv-loc[data-state="bad"] .cv-loc__ico{background:#f9dcd8;color:#a82f29}
+      #cap-vai-screen .cv-loc__ico svg{width:22px;height:22px}
+      #cap-vai-screen .cv-loc__body{display:grid;gap:5px;min-width:0}
+      #cap-vai-screen .cv-loc__body strong{font:700 13px/1.3 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;overflow-wrap:anywhere}
+      #cap-vai-screen .cv-loc[data-state="bad"] .cv-loc__body strong{font:700 15px/1.25 var(--wms-font)}
+      #cap-vai-screen .cv-loc__body small{color:var(--wms-muted,#60736b);font-size:12px}
+      #cap-vai-screen .cv-loc__n{display:grid;justify-items:end;line-height:1.1;white-space:nowrap;font-variant-numeric:tabular-nums}
+      #cap-vai-screen .cv-loc__n b{font-size:26px;font-weight:700;color:var(--wms-text,#17251f)}
+      #cap-vai-screen .cv-loc[data-state="done"] .cv-loc__n b{color:#0f6e49}
+      #cap-vai-screen .cv-loc[data-state="bad"] .cv-loc__n b{color:#a82f29}
+      #cap-vai-screen .cv-loc__n small{font-size:12px;color:var(--wms-muted,#60736b)}
+      #cap-vai-screen .cv-loc__chev{width:16px;height:16px;color:var(--wms-muted,#60736b);transition:transform .15s}
+      #cap-vai-screen .cv-loc__head[aria-expanded="true"] .cv-loc__chev{transform:rotate(180deg)}
+      #cap-vai-screen .cv-loc__rows{display:grid;border-top:1px solid var(--wms-border,#d9e2de)}
+      #cap-vai-screen .cv-loc__rows[hidden]{display:none}
+      #cap-vai-screen .cv-lr{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:4px 10px;padding:9px 14px;border-top:1px solid rgba(23,37,31,.06)}
+      #cap-vai-screen .cv-lr:first-child{border-top:0}
+      #cap-vai-screen .cv-lr svg{width:18px;height:18px;flex:none;color:var(--wms-muted,#60736b)}
+      #cap-vai-screen .cv-lr[data-state="scanned"]{background:rgba(22,132,91,.07)}
+      #cap-vai-screen .cv-lr[data-state="scanned"] svg{color:#0f6e49}
+      #cap-vai-screen .cv-lr[data-state="scanned"] .cv-lr__main small{color:#4a5d55}
+      #cap-vai-screen .cv-lr[data-state="unmatched"] svg{color:#a82f29}
+      #cap-vai-screen .cv-lr__main{display:grid;gap:2px;min-width:0}
+      #cap-vai-screen .cv-lr__main b{font-size:14px}
+      #cap-vai-screen .cv-lr__main small{color:var(--wms-muted,#60736b);font-size:12px;overflow-wrap:anywhere}
+      #cap-vai-screen .cv-lr__m{font-size:13px;color:var(--wms-text,#17251f);white-space:nowrap;font-variant-numeric:tabular-nums}
+      @media(max-width:520px){#cap-vai-screen .cut-tab .fsk-tab-n{display:none}}
       #cap-vai-screen .cv-warnline{margin-top:4px;color:#a82f29;font-size:12px;font-weight:600}
       @media(max-width:620px){
         #cap-vai-screen .cv-table td[data-label="STT"]{display:none}
@@ -10420,8 +10461,9 @@ async function rpc(name,args,retry=true){
       <div class="cut-main">
         <div class="cut-tabs" role="tablist">
           <button class="cut-tab" id="cap-vai-tab-scan" type="button" role="tab" data-tab="scan" aria-selected="true"><i class="fsk-tab-n" aria-hidden="true">1</i><span class="tab-l">Quét Group UID</span><span class="tab-s">Quét</span></button>
-          <button class="cut-tab" id="cap-vai-tab-list" type="button" role="tab" data-tab="list" aria-selected="false"><i class="fsk-tab-n" aria-hidden="true">2</i><span class="tab-l">Danh sách cuộn</span><span class="tab-s">Danh sách</span> <b class="cut-badge" id="cap-vai-todo-count">0</b></button>
-          <button class="cut-tab" id="cap-vai-tab-plans" type="button" role="tab" data-tab="plans" aria-selected="false"><i class="fsk-tab-n" aria-hidden="true">3</i><span class="tab-l">Đợt cấp vải</span><span class="tab-s">Đợt cấp</span> <b class="cut-badge" id="cap-vai-plan-count">0</b></button>
+          <button class="cut-tab" id="cap-vai-tab-loc" type="button" role="tab" data-tab="loc" aria-selected="false"><i class="fsk-tab-n" aria-hidden="true">2</i><span class="tab-l">Vị trí cần đến</span><span class="tab-s">Vị trí</span> <b class="cut-badge" id="cap-vai-loc-count">0</b></button>
+          <button class="cut-tab" id="cap-vai-tab-list" type="button" role="tab" data-tab="list" aria-selected="false"><i class="fsk-tab-n" aria-hidden="true">3</i><span class="tab-l">Danh sách cuộn</span><span class="tab-s">Danh sách</span> <b class="cut-badge" id="cap-vai-todo-count">0</b></button>
+          <button class="cut-tab" id="cap-vai-tab-plans" type="button" role="tab" data-tab="plans" aria-selected="false"><i class="fsk-tab-n" aria-hidden="true">4</i><span class="tab-l">Đợt cấp vải</span><span class="tab-s">Đợt cấp</span> <b class="cut-badge" id="cap-vai-plan-count">0</b></button>
         </div>
         <p class="cut-message" id="cap-vai-message" aria-live="polite" style="margin-bottom:14px"></p>
         <div class="cut-grid">
@@ -10433,15 +10475,18 @@ async function rpc(name,args,retry=true){
             <div class="cv-chips" id="cap-vai-chips"></div>
           </div>
           <form class="cut-scan" id="cap-vai-form"><input class="cut-input cut-input--scan" id="cap-vai-code" autocomplete="off" inputmode="none" placeholder="Group UID" maxlength="40" required><button class="act-icon act-icon--camera" id="cap-vai-camera" type="button" aria-label="Quét bằng camera" title="Quét bằng camera" hidden></button><button class="act-icon act-icon--keyboard" id="cap-vai-keyboard" type="button" aria-controls="cap-vai-code" aria-label="Hiện bàn phím" title="Hiện bàn phím" aria-pressed="true"></button><button class="cut-primary act-icon act-icon--check" id="cap-vai-submit" type="submit">Quét</button></form>
-          <div class="cv-result" id="cap-vai-result" hidden aria-live="assertive"></div>
           <div class="cv-recent" id="cap-vai-recent" hidden></div>
         </section>
-        <section class="cut-card" data-panel="list"><h2><span>2</span>Danh sách cuộn</h2>
+        <section class="cut-card" data-panel="loc"><h2><span>2</span>Vị trí cần đến</h2>
+          <div class="cv-filters" id="cap-vai-loc-filters" role="group" aria-label="Lọc vị trí"></div>
+          <div class="cv-locs" id="cap-vai-locs"></div>
+        </section>
+        <section class="cut-card" data-panel="list"><h2><span>3</span>Danh sách cuộn</h2>
           <div class="cv-filters" id="cap-vai-filters" role="group" aria-label="Lọc cuộn"></div>
           <form class="cut-searchbar" id="cap-vai-search" role="search"><input class="cut-input" id="cap-vai-q" type="search" placeholder="Lọc UID, lot, roll, vị trí…" autocomplete="off"></form>
           <div class="cut-table-wrap"><table class="cut-table cv-table" id="cap-vai-table"><thead><tr><th>STT</th><th>SKU</th><th>Lot</th><th>Roll</th><th>Group UID</th><th class="n">Số mét</th><th>Vị trí</th><th>Trạng thái</th><th class="cv-act"></th></tr></thead><tbody id="cap-vai-rows"><tr><td colspan="9" class="cut-empty">Chưa có dữ liệu.</td></tr></tbody></table></div>
         </section>
-        <section class="cut-card" data-panel="plans"><h2><span>3</span>Đợt cấp vải</h2>
+        <section class="cut-card" data-panel="plans"><h2><span>4</span>Đợt cấp vải</h2>
           <div class="cut-actions cv-tools" id="cap-vai-tools" hidden>
             <input id="cap-vai-file" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>
             <button class="cut-primary act-icon act-icon--import" id="cap-vai-import" type="button">Nhập Packing List</button>
@@ -10452,6 +10497,9 @@ async function rpc(name,args,retry=true){
           <div class="cut-list cv-plans" id="cap-vai-plans"></div>
         </section>
       </div></div>
+      <div class="cv-pop" id="cap-vai-popup" role="alertdialog" aria-labelledby="cap-vai-pop-title" aria-live="assertive" hidden>
+        <div class="cv-pop__card" id="cap-vai-pop-card" data-tone="ok"></div>
+      </div>
     </section>
     <script id="cap-vai-script">
       // CẤP VẢI (12/10/2026, supabase/fabric_issue_v1.sql): Admin nhập Packing List (.xlsx) → Supabase ghép Group UID theo SKU + Lot + Roll;
@@ -10474,14 +10522,16 @@ async function rpc(name,args,retry=true){
           error:'<circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/>',
           clock:'<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
           undo:'<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11"/>',
+          pin:'<path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/>',
+          chev:'<path d="m6 9 6 6 6-6"/>',
           lock:'<rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
           pack:'<path d="m16 16 2 2 4-4"/><path d="M21 10V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l2-1.14"/><path d="m7.5 4.27 9 5.15"/><polyline points="3.29 7 12 12 20.71 7"/><line x1="12" x2="12" y1="22" y2="12"/>',
           soundOn:'<path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z"/><path d="M16 9a5 5 0 0 1 0 6"/><path d="M19.364 18.364a9 9 0 0 0 0-12.728"/>',
           soundOff:'<path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z"/><line x1="22" x2="16" y1="9" y2="15"/><line x1="16" x2="22" y1="9" y2="15"/>'
         };
 
-        const code=$('cap-vai-code'),form=$('cap-vai-form'),message=$('cap-vai-message'),planSel=$('cap-vai-plan'),adminBtn=$('cap-vai-admin'),soundBtn=$('cap-vai-sound'),keyboardBtn=$('cap-vai-keyboard'),cameraBtn=$('cap-vai-camera'),resultBox=$('cap-vai-result'),recentBox=$('cap-vai-recent'),rowsBody=$('cap-vai-rows'),table=$('cap-vai-table'),filtersBox=$('cap-vai-filters'),searchInput=$('cap-vai-q'),plansBox=$('cap-vai-plans'),tools=$('cap-vai-tools'),fileInput=$('cap-vai-file');
-        const S={plans:[],planId:'',plan:null,lines:[],products:{},filter:'todo',q:'',tab:'scan',admin:false,busy:false,sound:store.get(K.sound)!=='tat',recent:[],queue:[],pumping:false};
+        const code=$('cap-vai-code'),form=$('cap-vai-form'),message=$('cap-vai-message'),planSel=$('cap-vai-plan'),adminBtn=$('cap-vai-admin'),soundBtn=$('cap-vai-sound'),keyboardBtn=$('cap-vai-keyboard'),cameraBtn=$('cap-vai-camera'),pop=$('cap-vai-popup'),popCard=$('cap-vai-pop-card'),recentBox=$('cap-vai-recent'),locsBox=$('cap-vai-locs'),locFiltersBox=$('cap-vai-loc-filters'),rowsBody=$('cap-vai-rows'),table=$('cap-vai-table'),filtersBox=$('cap-vai-filters'),searchInput=$('cap-vai-q'),plansBox=$('cap-vai-plans'),tools=$('cap-vai-tools'),fileInput=$('cap-vai-file');
+        const S={plans:[],planId:'',plan:null,lines:[],products:{},filter:'todo',locFilter:'todo',locOpen:new Set(),q:'',tab:'scan',admin:false,busy:false,sound:store.get(K.sound)!=='tat',recent:[],queue:[],pumping:false};
         const tell=(text,tone='')=>{message.textContent=text||'';message.dataset.tone=tone};
 
         // ---- Supabase RPC: quét/xem công khai (khoá công khai như Xả vải), nhập/xoá/đóng đợt cần token Admin ----
@@ -10549,6 +10599,43 @@ async function rpc(name,args,retry=true){
           table.dataset.admin=String(S.admin);
           rowsBody.innerHTML=shown.length?shown.map(l=>{const k=lineKind(l);return `<tr data-state="${k}" data-uid="${esc(l.groupUid||'')}"><td data-label="STT">${esc(l.no)}</td><td data-label="SKU"><b>${esc(l.sku)}</b>${l.color?`<small>${esc(l.color)}</small>`:''}</td><td data-label="Lot">${esc(l.lot||'—')}</td><td data-label="Roll">${esc(l.roll)}</td><td data-label="UID">${l.groupUid?`<span class="cv-mono">${esc(l.groupUid)}</span>`:'—'}</td><td class="n" data-label="Số mét">${qtyCell(l)}</td><td data-label="Vị trí">${esc(l.location||'—')}</td><td data-label="Trạng thái">${statusCell(l)}</td><td class="cv-act">${k==='scanned'&&S.admin?`<button class="cv-undo" type="button" data-undo="${esc(l.groupUid)}" aria-label="Bỏ dấu đã quét" title="Bỏ dấu đã quét">${svg(ICON.undo)}</button>`:''}</td></tr>`}).join(''):`<tr><td colspan="9" class="cut-empty">${S.plan?'Không có cuộn phù hợp.':'Chưa có dữ liệu.'}</td></tr>`;
         };
+        // ---- Vị trí cần đến: gom cuộn theo vị trí kệ, mỗi vị trí còn bao nhiêu UID phải quét ----
+        const collator=new Intl.Collator('vi',{numeric:true,sensitivity:'base'});
+        const groupLocs=()=>{
+          const m=new Map();
+          for(const l of S.lines){
+            const k=lineKind(l),type=k==='unmatched'?'unmatched':l.location?'loc':'noloc',key=type==='loc'?`${l.warehouse||''}|${l.location}`:type;
+            let g=m.get(key);
+            if(!g){g={key,type,location:l.location||'',warehouse:l.warehouse||'',lines:[],total:0,scanned:0,mTodo:0,mAll:0};m.set(key,g)}
+            g.lines.push(l);g.total++;g.mAll+=Number(l.qtyM)||0;
+            if(k==='scanned')g.scanned++;else if(k==='todo')g.mTodo+=Number(l.qtyM)||0;
+          }
+          const order={loc:0,noloc:1,unmatched:2};
+          return [...m.values()].sort((a,b)=>order[a.type]-order[b.type]||collator.compare(a.location,b.location)||collator.compare(a.warehouse,b.warehouse));
+        };
+        const locRemain=g=>g.type==='unmatched'?g.total:g.total-g.scanned;
+        const locState=g=>g.type==='unmatched'?'bad':locRemain(g)?'todo':'done';
+        const shortWh=name=>String(name||'').replace(/^WH\s*-\s*MATERIAL\s*-\s*/i,'')||String(name||'');
+        const LOC_FILTERS=[['todo','Còn lại'],['done','Đã xong'],['all','Tất cả']];
+        const locRow=l=>{
+          const k=lineKind(l),icon=k==='scanned'?ICON.ok:k==='todo'?ICON.clock:ICON.warn;
+          const sub=k==='unmatched'?(l.note||STATE_TEXT[l.state]||'Chưa ghép'):[l.lot?`Lot ${l.lot}`:'',l.groupUid].filter(Boolean).join(' · ');
+          return `<div class="cv-lr" data-state="${k}">${svg(icon)}<span class="cv-lr__main"><b>Roll ${esc(l.roll)}</b><small>${esc(sub)}</small></span><span class="cv-lr__m">${num(qtyOf(l))} m</span></div>`;
+        };
+        const renderLoc=()=>{
+          const groups=groupLocs(),whs=new Set(groups.filter(g=>g.type==='loc').map(g=>g.warehouse));
+          const counts={todo:groups.filter(g=>locRemain(g)>0).length,done:groups.filter(g=>locState(g)==='done').length,all:groups.length};
+          locFiltersBox.innerHTML=LOC_FILTERS.map(([key,label])=>`<button class="cv-chip" type="button" data-locfilter="${key}" aria-pressed="${S.locFilter===key}">${label}<b>${counts[key]}</b></button>`).join('');
+          const shown=groups.filter(g=>S.locFilter==='all'||(S.locFilter==='todo'?locRemain(g)>0:locState(g)==='done'));
+          locsBox.innerHTML=shown.length?shown.map(g=>{
+            const st=locState(g),remain=locRemain(g),open=S.locOpen.has(g.key),pct=g.type==='unmatched'||!g.total?0:Math.round(g.scanned/g.total*100);
+            const title=g.type==='loc'?g.location:g.type==='noloc'?'Chưa có vị trí':'Chưa ghép UID';
+            const sub=[g.type==='loc'&&whs.size>1?shortWh(g.warehouse):'',st==='done'||g.type==='unmatched'?`${num(g.mAll)} m`:`còn ${num(g.mTodo)} m`].filter(Boolean).join(' · ');
+            const rows=open?[...g.lines].sort((a,b)=>(lineKind(a)==='scanned')-(lineKind(b)==='scanned')||a.no-b.no).map(locRow).join(''):'';
+            return `<section class="cv-loc" data-state="${st}"><button class="cv-loc__head" type="button" data-loc="${esc(g.key)}" aria-expanded="${open}"><span class="cv-loc__ico">${svg(g.type==='unmatched'?ICON.warn:ICON.pin,22)}</span><span class="cv-loc__body"><strong>${esc(title)}</strong><small>${esc(sub)}</small><span class="cv-bar"><i style="width:${pct}%"></i></span></span><span class="cv-loc__n">${st==='done'?`${svg(ICON.ok,26)}<small>${g.scanned}/${g.total}</small>`:`<b>${remain}</b><small>${g.type==='unmatched'?'cuộn':`/ ${g.total} cuộn`}</small>`}</span><span class="cv-loc__chev">${svg(ICON.chev,18)}</span></button><div class="cv-loc__rows"${open?'':' hidden'}>${rows}</div></section>`;
+          }).join(''):`<div class="cut-empty">${S.plan?'Không có vị trí phù hợp.':'Chưa có dữ liệu.'}</div>`;
+          $('cap-vai-loc-count').textContent=counts.todo;
+        };
         const renderPlans=()=>{
           plansBox.innerHTML=S.plans.length?S.plans.map(p=>{
             const denom=Math.max(0,p.matched),pct=denom?Math.min(100,p.scanned/denom*100):0,miss=p.total-p.matched;
@@ -10561,7 +10648,7 @@ async function rpc(name,args,retry=true){
           const tg=$('cap-vai-toggle');tg.disabled=!has;tg.textContent=closed?'Mở lại đợt':'Đóng đợt';
           $('cap-vai-delete').disabled=!has;
         };
-        const renderAll=()=>{renderPlanSelect();renderProgress();if(S.tab==='list')renderList();renderPlans();renderTools()};
+        const renderAll=()=>{renderPlanSelect();renderProgress();if(S.tab==='loc')renderLoc();else $('cap-vai-loc-count').textContent=groupLocs().filter(g=>locRemain(g)>0).length;if(S.tab==='list')renderList();renderPlans();renderTools()};
 
         // ---- Tải dữ liệu ----
         const loadPlans=async()=>{
@@ -10590,12 +10677,23 @@ async function rpc(name,args,retry=true){
 
         // ---- Thẻ kết quả quét + danh sách gần đây ----
         const fact=(label,value)=>value?`<span class="cv-fact"><i>${label}</i><b>${esc(value)}</b></span>`:'';
+        // Pop-up kết quả quét giữa màn hình (không phải <dialog> modal để ô quét vẫn giữ con trỏ — máy quét cầm tay bắn tiếp được):
+        // cấp đúng tự đóng sau AUTO_MS, cảnh báo / không cấp ở lại tới khi chạm, bấm Esc hoặc có kết quả quét mới.
+        const AUTO_MS=1600;
+        let popTimer=0;
+        const hidePop=()=>{clearTimeout(popTimer);if(pop.hidden)return;pop.hidden=true;popCard.innerHTML='';if(S.tab==='scan'&&!screen.hidden)setTimeout(()=>code.focus(),0)};
         const paintResult=r=>{
-          if(!r){resultBox.hidden=true;resultBox.innerHTML='';return}
+          clearTimeout(popTimer);
+          if(!r){hidePop();return}
           const l=r.line||{},pl=Number(l.qtyM)||0,diff=wmsMeters(l)!=null&&Math.abs(wmsMeters(l)-pl)>=.01,facts=r.facts||[fact('SKU',l.sku),fact('Lot',l.lot),fact('Roll',l.roll),fact('Số mét',l.sku?`${num(qtyOf(l))} m`:''),diff?fact('Packing',`${num(pl)} m`):'',fact('Vị trí',l.location)].join('');
-          resultBox.dataset.tone=r.tone;resultBox.hidden=false;
-          resultBox.innerHTML=`<span class="cv-result__ico">${svg(ICON[r.tone],26)}</span><div><h3>${esc(r.title)}</h3><div class="cv-result__uid">${esc(r.uid)}</div></div><div class="cv-facts">${facts}</div>${r.note?`<p class="cv-result__note">${esc(r.note)}</p>`:''}`;
+          const count=r.plan&&r.plan.matched?`${r.plan.scanned}/${r.plan.matched} cuộn`:'';
+          popCard.dataset.tone=r.tone;
+          popCard.innerHTML=`<span class="cv-pop__ico">${svg(ICON[r.tone],42)}</span><h3 id="cap-vai-pop-title">${esc(r.title)}</h3><div class="cv-pop__uid">${esc(r.uid)}</div><div class="cv-facts">${facts}</div>${r.note?`<p class="cv-pop__note">${esc(r.note)}</p>`:''}${count?`<p class="cv-pop__count">${esc(count)}</p>`:''}<button class="cv-pop__close" type="button" data-pop-close>Đóng</button>${r.tone==='ok'?`<i class="cv-pop__bar" style="--cv-auto:${AUTO_MS}ms"></i>`:''}`;
+          pop.hidden=false;
+          if(r.tone==='ok')popTimer=setTimeout(hidePop,AUTO_MS);
         };
+        pop.addEventListener('click',event=>{if(event.target===pop||event.target.closest('[data-pop-close]'))hidePop()});
+        document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!pop.hidden&&!screen.hidden)hidePop()});
         const paintRecent=()=>{
           recentBox.hidden=!S.recent.length;
           recentBox.innerHTML=S.recent.map(x=>`<div data-tone="${x.tone}">${svg(ICON[x.tone])}<code>${esc(x.uid)}</code><span>${esc(x.short)} · ${esc(x.at)}</span></div>`).join('');
@@ -10615,8 +10713,8 @@ async function rpc(name,args,retry=true){
             const r=await rpc('fabric_issue_scan',{p_plan_id:S.planId,p_group_uid:uid,p_by:deviceName()});
             if(r.ok){
               const{result,line,plan}=r.data;patchLine(line,plan);
-              if(result==='issued'){paintResult({tone:'ok',title:'CẤP GROUP UID NÀY',uid,line});pushRecent(uid,'ok','Đã cấp');cue('ok');tell(`Đã quét ${plan.scanned}/${plan.matched} cuộn.`,'ok')}
-              else{paintResult({tone:'warn',title:'ĐÃ QUÉT TRƯỚC ĐÓ',uid,line,note:`${fmtAt(line.scannedAt)}${line.scannedBy?` · ${line.scannedBy}`:''}`});pushRecent(uid,'warn','Đã quét rồi');cue('warn');tell('UID này đã được cấp trước đó.','warn')}
+              if(result==='issued'){paintResult({tone:'ok',title:'CẤP GROUP UID NÀY',uid,line,plan});pushRecent(uid,'ok','Đã cấp');cue('ok');tell(`Đã quét ${plan.scanned}/${plan.matched} cuộn.`,'ok')}
+              else{paintResult({tone:'warn',title:'ĐÃ QUÉT TRƯỚC ĐÓ',uid,line,plan,note:`${fmtAt(line.scannedAt)}${line.scannedBy?` · ${line.scannedBy}`:''}`});pushRecent(uid,'warn','Đã quét rồi');cue('warn');tell('UID này đã được cấp trước đó.','warn')}
               return;
             }
             const e=r.error||{},d=r.data||null;
@@ -10639,12 +10737,13 @@ async function rpc(name,args,retry=true){
         applyKeyboard();
 
         // ---- Tab ----
-        const tabs={scan:{btn:$('cap-vai-tab-scan'),panel:screen.querySelector('.cut-card[data-panel="scan"]')},list:{btn:$('cap-vai-tab-list'),panel:screen.querySelector('.cut-card[data-panel="list"]')},plans:{btn:$('cap-vai-tab-plans'),panel:screen.querySelector('.cut-card[data-panel="plans"]')}};
+        const tabs={scan:{btn:$('cap-vai-tab-scan'),panel:screen.querySelector('.cut-card[data-panel="scan"]')},loc:{btn:$('cap-vai-tab-loc'),panel:screen.querySelector('.cut-card[data-panel="loc"]')},list:{btn:$('cap-vai-tab-list'),panel:screen.querySelector('.cut-card[data-panel="list"]')},plans:{btn:$('cap-vai-tab-plans'),panel:screen.querySelector('.cut-card[data-panel="plans"]')}};
         const setTab=name=>{
           if(!tabs[name])return;
           S.tab=name;store.set(K.tab,name);
           for(const[key,t]of Object.entries(tabs)){const on=key===name;t.btn.setAttribute('aria-selected',String(on));t.panel.dataset.active=String(on)}
           if(name==='list')renderList();
+          if(name==='loc')renderLoc();
           if(name==='scan')setTimeout(()=>code.focus(),50);
         };
         for(const[key,t]of Object.entries(tabs))t.btn.addEventListener('click',()=>setTab(key));
@@ -10667,6 +10766,8 @@ async function rpc(name,args,retry=true){
           code.focus();
         },0));
 
+        locFiltersBox.addEventListener('click',event=>{const b=event.target.closest('[data-locfilter]');if(!b)return;S.locFilter=b.dataset.locfilter;renderLoc()});
+        locsBox.addEventListener('click',event=>{const b=event.target.closest('[data-loc]');if(!b)return;const key=b.dataset.loc;S.locOpen.has(key)?S.locOpen.delete(key):S.locOpen.add(key);renderLoc()});
         // ---- Danh sách: lọc, tìm, bỏ dấu đã quét (Admin) ----
         filtersBox.addEventListener('click',event=>{const b=event.target.closest('[data-filter]');if(!b)return;S.filter=b.dataset.filter;renderList()});
         searchInput.addEventListener('input',()=>{S.q=searchInput.value;renderList()});
@@ -10828,7 +10929,7 @@ async function rpc(name,args,retry=true){
         const schedule=()=>{clearTimeout(timer);if(!active())return;timer=setTimeout(async()=>{if(!document.hidden&&!S.busy&&!S.pumping){try{await loadPlans();await loadPlan()}catch(_){}}schedule()},20000)};
         const route=async()=>{
           const on=active();screen.hidden=!on;
-          if(!on){clearTimeout(timer);return}
+          if(!on){clearTimeout(timer);hidePop();return}
           syncAdmin();
           await refresh();schedule();
           if(S.tab==='scan')setTimeout(()=>code.focus(),50);
