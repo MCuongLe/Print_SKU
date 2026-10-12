@@ -10733,6 +10733,27 @@ async function rpc(name,args,retry=true){
           document.documentElement.classList.remove("app-nav-mobile-open");
           document.querySelectorAll(".an-toggle").forEach(paintToggle);
         });
+        // Bấm vào khoảng trống của trang thì thu thanh trái (máy tính, thanh đang mở) — không cần bấm nút thu gọn
+        const INTERACTIVE = 'button, a[href], input, select, textarea, label, summary, video, canvas, [role="button"], [role="tab"], [role="checkbox"], [role="switch"], [contenteditable=""], [contenteditable="true"], [tabindex]:not([tabindex="-1"])';
+        const SCREENS = "#barcode-home, .cut-screen, .uid-screen, .storage-risk, .ss-screen, #root";
+        const solid = el => {
+          const cs = getComputedStyle(el);
+          if (cs.position === "fixed" || cs.boxShadow !== "none" || cs.backgroundImage !== "none") return true;
+          if (["Top", "Right", "Bottom", "Left"].some(side => parseFloat(cs[`border${side}Width`]) > 0 && cs[`border${side}Style`] !== "none")) return true;
+          const [r, g, b, a = 1] = (cs.backgroundColor.match(/[\d.]+/g) || []).map(Number);
+          return a > .5 && r >= 250 && g >= 250 && b >= 250; // nền trắng = thẻ; nền xám nhạt của trang vẫn là khoảng trống
+        };
+        const blank = target => {
+          if (!(target instanceof Element) || target.closest(INTERACTIVE) || target.closest("#app-nav, dialog, header, [role=dialog]")) return false;
+          const screen = target.closest(SCREENS);
+          if (!screen) return false;
+          for (let el = target; el && el !== screen; el = el.parentElement) if (solid(el)) return false;
+          return true;
+        };
+        document.addEventListener("click", event => {
+          if (mobileNav() || collapsed() || event.button !== 0 || String(getSelection?.() || "")) return;
+          if (blank(event.target)) setCollapsed(true, true);
+        });
         nav.addEventListener("click", event => {
           const button = event.target.closest("button");
           if (!button) return;

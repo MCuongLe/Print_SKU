@@ -46,7 +46,8 @@ const CODES = ['1028260925000001', '1028260925000002', '1028260925000003', '1028
 
       // Chép UID
       await page.locator('#uid-pending .uid-row').first().locator('[data-action="copy"]').click();
-      assert.equal((await page.locator('#uid-status').textContent()).trim(), 'Đã chép 1028260925000001.');
+      // Chép qua clipboard là bất đồng bộ: chờ dòng trạng thái đổi (đọc ngay sau click có lúc còn dòng cũ khi máy chạy nặng)
+      await page.waitForFunction(() => document.getElementById('uid-status').textContent.trim() === 'Đã chép 1028260925000001.', null, { timeout: 5000 });
 
       // Chọn 2 → Xóa đã chọn (hỏi lại)
       assert.equal(await page.locator('#uid-bulk-delete').isDisabled(), true);

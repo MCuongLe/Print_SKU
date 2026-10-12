@@ -1,5 +1,6 @@
 // Thanh điều hướng trái chung (11/10/2026, khối #app-nav-theme + script app-nav-script): máy tính ≥ 1024 px có thanh trái 264 px dựng từ các ô trang chủ
-// (WH-MATERIAL › Trang chủ + 4 nhóm theo màu, mục đang mở đánh dấu aria-current); nút thu gọn ở đầu thanh trên từng màn, thu gọn = ẩn hẳn thanh
+// (WH-MATERIAL › Trang chủ + 4 nhóm theo màu, mục đang mở đánh dấu aria-current); nút thu gọn ở đầu thanh trên từng màn (hoặc bấm khoảng trống
+// của trang), thu gọn = ẩn hẳn thanh
 // và nhớ trên máy; nhóm Quản trị đổi sang các mục Admin
 // sau khi đăng nhập và thay thanh bên riêng của Admin. Điện thoại/máy tính bảng dùng cùng menu dưới dạng drawer mở bằng hamburger. Dữ liệu giả, không gọi Supabase thật.
 // Chạy với python -m http.server 8000 (đổi bằng biến BASE).
@@ -100,13 +101,30 @@ const navState = page => page.evaluate(() => {
       s = await navState(page);
       assert.equal(s.visibility, 'visible'); assert.deepEqual(s.toggles, ['true']);
 
+      // Bấm vào khoảng trống của trang thì thu thanh (không cần nút); bấm trong thẻ / thanh trên thì giữ nguyên
+      await page.goto(BASE + '#find-sku');
+      await page.locator('#find-sku-screen').waitFor({ state: 'visible' });
+      assert.equal((await navState(page)).visibility, 'visible');
+      const card = await page.locator('#find-sku-screen .cut-card').first().boundingBox();
+      await page.mouse.click(card.x + 8, card.y + 8);
+      await page.mouse.click(900, 40);
+      assert.equal((await navState(page)).visibility, 'visible', 'bấm trong thẻ / thanh trên: giữ thanh trái');
+      await page.mouse.click(900, 820);
+      await page.waitForTimeout(300);
+      s = await navState(page);
+      assert.equal(s.visibility, 'hidden', 'bấm khoảng trống: thu thanh trái');
+      assert.deepEqual(s.toggles, ['false']);
+      await page.locator('#find-sku-screen .an-toggle').click();
+      await page.waitForTimeout(300);
+      assert.equal((await navState(page)).visibility, 'visible');
+
       // In: thanh trái không ra giấy
       await page.emulateMedia({ media: 'print' });
       assert.equal(await page.evaluate(() => getComputedStyle(document.getElementById('app-nav')).display), 'none');
       await page.emulateMedia({ media: 'screen' });
       assert.deepEqual(errors, []);
       await context.close();
-      console.log('PASS 1440px: thanh trái 264 px, WH-MATERIAL › Trang chủ + 4 nhóm, mục đang mở đúng 10 module, nút thu gọn ở thanh trên, bấm mục mở module, thu gọn ẩn hẳn + nhớ trên máy, không ra giấy in');
+      console.log('PASS 1440px: thanh trái 264 px, WH-MATERIAL › Trang chủ + 4 nhóm, mục đang mở đúng 10 module, nút thu gọn ở thanh trên, bấm khoảng trống thu thanh, bấm mục mở module, thu gọn ẩn hẳn + nhớ trên máy, không ra giấy in');
     }
 
     // --- Admin: ở #admin/* thanh trái chỉ còn Về trang chủ + nhóm Quản trị (ô icon + tên ngắn) + Đăng xuất; thay thanh bên riêng ---
