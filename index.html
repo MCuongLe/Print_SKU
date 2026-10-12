@@ -2392,10 +2392,11 @@ Error generating stack: `+y.message+`
         const two = n => String(n).padStart(2, "0");
         const addedText = time => { if (!time) return ""; const d = new Date(time); return `Thêm: ${two(d.getDate())}/${two(d.getMonth() + 1)}/${d.getFullYear()} ${two(d.getHours())}:${two(d.getMinutes())}`; };
         // Dòng UID dùng chung cho thẻ Chưa gán SKU và tấm kéo lên (pick = có ô chọn; more = dòng thứ 4 trở đi, điện thoại ẩn)
-        const uidRow = (item, index, pick, more = false) => {
+        const uidRow = (item, index, pick, more = false, drag = false) => {
           const lotRoll = [item.lot ? `Lot: ${escapeHtml(item.lot)}` : "", item.roll ? `Roll: ${escapeHtml(item.roll)}` : ""].filter(Boolean).join('<i aria-hidden="true">|</i>');
           return `
-            <article class="uid-row uid-row--rich${more ? " uid-row--more" : ""}" data-id="${item.id}" data-selected="${Boolean(item.selected)}">
+            <article class="uid-row uid-row--rich${more ? " uid-row--more" : ""}${drag ? " has-drag" : ""}" data-id="${item.id}" data-selected="${Boolean(item.selected)}">
+              ${drag ? `<button class="uid-row__drag" type="button" data-drag aria-label="Đổi thứ tự UID ${index + 1}"></button>` : ""}
               ${pick ? `<label class="uid-select" aria-label="Chọn UID ${index + 1}"><input type="checkbox" data-field="selected" ${item.selected ? "checked" : ""}></label>` : '<span class="uid-row__done" aria-hidden="true"></span>'}
               <div class="uid-row__body"><code class="uid-row__code" title="${escapeHtml(item.groupUid)}">${escapeHtml(item.groupUid)}</code>${lotRoll ? `<span class="uid-row__lot">${lotRoll}</span>` : ""}${!pick && (item.sku || item.productName) ? `<span class="uid-row__lot">${escapeHtml([item.sku, item.productName].filter(Boolean).join(" · "))}</span>` : ""}${item.addedAt ? `<span class="uid-row__time">${addedText(item.addedAt)}</span>` : ""}</div>
               <div class="uid-row__tools">
@@ -2414,7 +2415,7 @@ Error generating stack: `+y.message+`
             ...(sheetFilter === "mapped" ? [] : pending.map((item, index) => [item, index, true]).filter(([item]) => match(item))),
             ...(sheetFilter === "pending" ? [] : mapped.map((item, index) => [item, index, false]).filter(([item]) => match(item)))
           ];
-          sheetList.innerHTML = rows.length ? rows.map(([item, index, pick]) => uidRow(item, index, pick).replace('class="uid-row ', `data-list="${pick ? "pending" : "mapped"}" class="uid-row `)).join("") : '<div class="uid-empty">Không có Group UID phù hợp.</div>';
+          sheetList.innerHTML = rows.length ? rows.map(([item, index, pick]) => uidRow(item, index, pick, false, pick && !query && sheetFilter !== "mapped").replace('class="uid-row ', `data-list="${pick ? "pending" : "mapped"}" class="uid-row `)).join("") : '<div class="uid-empty">Không có Group UID phù hợp.</div>';
           sheetAll.checked = pending.length > 0 && selected === pending.length;
           sheetAll.indeterminate = selected > 0 && selected < pending.length;
           sheetAll.disabled = !pending.length;
@@ -2451,7 +2452,7 @@ Error generating stack: `+y.message+`
           const query = fold(searchInput.value.trim());
           const shown = pending.map((item, index) => [item, index]).filter(([item]) => !query || fold([item.groupUid, item.lot, item.roll].join(" ")).includes(query));
           pendingElement.innerHTML = pending.length
-            ? (shown.length ? shown.map(([item, index], order) => uidRow(item, index, true, !query && order >= 3)).join("") : '<div class="uid-empty">Không có Group UID phù hợp.</div>')
+            ? (shown.length ? shown.map(([item, index], order) => uidRow(item, index, true, !query && order >= 3, !query && pending.length > 1)).join("") : '<div class="uid-empty">Không có Group UID phù hợp.</div>')
             : '<div class="uid-empty">Chưa có Group UID chờ gán.</div>';
           moreButton.hidden = query !== "" || pending.length <= 3;
           sheetOpen.hidden = !(pending.length + mapped.length);
@@ -2535,6 +2536,57 @@ Error generating stack: `+y.message+`
           if (item) { item.selected = event.target.checked; renderAll(); }
         });
         addEventListener("hashchange", () => { if (sheet.open && location.hash !== "#group-uid") sheet.close(); });
+        // Đổi thứ tự UID chờ gán: thứ tự mới = thứ tự các dòng (chỉ dòng chờ gán) trong danh sách đang kéo
+        const applyOrder = list => {
+          const ids = [...list.querySelectorAll('.uid-row[data-id]:not([data-list="mapped"])')].map(row => Number(row.dataset.id));
+          const rank = new Map(ids.map((id, i) => [id, i]));
+          pending.sort((a, b) => (rank.has(a.id) ? rank.get(a.id) : 1e9) - (rank.has(b.id) ? rank.get(b.id) : 1e9));
+        };
+        const moveBy = (id, step) => {
+          const from = pending.findIndex(item => item.id === id), to = from + step;
+          if (from < 0 || to < 0 || to >= pending.length) return;
+          [pending[from], pending[to]] = [pending[to], pending[from]];
+          renderAll();
+          setStatus(`Đã chuyển ${pending[to].groupUid} lên vị trí ${to + 1}.`);
+          document.querySelector(`#uid-screen .uid-row[data-id="${id}"] [data-drag]`)?.focus();
+        };
+        [pendingElement, sheetList].forEach(list => {
+          list.addEventListener("keydown", event => {
+            const handle = event.target.closest("[data-drag]");
+            if (!handle || !["ArrowUp", "ArrowDown"].includes(event.key)) return;
+            event.preventDefault();
+            moveBy(Number(handle.closest(".uid-row").dataset.id), event.key === "ArrowUp" ? -1 : 1);
+          });
+          list.addEventListener("pointerdown", event => {
+            const handle = event.target.closest("[data-drag]");
+            if (!handle || event.button > 0) return;
+            event.preventDefault();
+            const row = handle.closest(".uid-row"), scroller = list.closest(".uid-sheet__list") || list.closest("#uid-screen") || document.scrollingElement;
+            const startId = Number(row.dataset.id), before = pending.map(item => item.id).join(",");
+            row.classList.add("is-dragging");
+            const siblings = () => [...list.querySelectorAll('.uid-row[data-id]:not([data-list="mapped"])')].filter(node => node !== row && node.getBoundingClientRect().height);
+            const move = moveEvent => {
+              const y = moveEvent.clientY;
+              const box = scroller.getBoundingClientRect?.() || { top: 0, bottom: innerHeight };
+              if (y < box.top + 48) scroller.scrollTop -= 12; else if (y > box.bottom - 48) scroller.scrollTop += 12;
+              for (const other of siblings()) {
+                const r = other.getBoundingClientRect(), mid = r.top + r.height / 2, rowBox = row.getBoundingClientRect();
+                if (y < mid && rowBox.top > r.top) { other.before(row); break; }
+                if (y > mid && rowBox.top < r.top) { other.after(row); }
+              }
+            };
+            const end = () => {
+              removeEventListener("pointermove", move); removeEventListener("pointerup", end); removeEventListener("pointercancel", end);
+              row.classList.remove("is-dragging");
+              applyOrder(list);
+              const changed = pending.map(item => item.id).join(",") !== before;
+              renderAll();
+              if (changed) { const at = pending.findIndex(item => item.id === startId); setStatus(`Đã chuyển ${pending[at].groupUid} tới vị trí ${at + 1}.`); }
+            };
+            // Nghe trên cửa sổ: dòng bị chuyển chỗ trong DOM thì trình duyệt nhả bắt con trỏ, sự kiện không còn về tay kéo
+            addEventListener("pointermove", move); addEventListener("pointerup", end); addEventListener("pointercancel", end);
+          });
+        });
         // Ô SKU khi gán: quét bằng camera (lớp quét SKU dùng chung) và nút ẩn/hiện bàn phím (máy quét cầm tay không cần bàn phím ảo)
         const skuScan = document.getElementById("uid-sku-scan"), skuKeyboard = document.getElementById("uid-sku-kb");
         if (window.PrintSkuScanUI?.canOpen()) skuScan.hidden = false;
@@ -11277,6 +11329,13 @@ async function rpc(name,args,retry=true){
       .uid-sheet__sum span { display: block; color: #5c6f68; font-size: 13px; }
       .uid-sheet__ok { display: inline-flex; flex: none; align-items: center; gap: 8px; min-height: 48px; padding: 0 18px; border: 0; border-radius: 13px; background: #005f41; color: #fff; font: 700 16px/1 var(--wms-font); cursor: pointer; }
       .uid-sheet__ok::before { content: ""; width: 20px; height: 20px; background-color: currentColor; -webkit-mask: var(--i-check) center / contain no-repeat; mask: var(--i-check) center / contain no-repeat; }
+      /* Tay kéo ⋮⋮ đổi thứ tự (dòng chờ gán) */
+      #uid-screen .uid-row--rich.has-drag { grid-template-columns: 24px 26px minmax(0, 1fr) auto; }
+      .uid-row__drag { display: grid; place-items: center; width: 24px; height: 44px; margin: 0 -6px 0 -4px; padding: 0; border: 0; border-radius: 8px; background: transparent; color: #9db2a9; cursor: grab; touch-action: none; }
+      .uid-row__drag::before { content: ""; width: 20px; height: 20px; background-color: currentColor; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='9' cy='5' r='1'/%3E%3Ccircle cx='9' cy='12' r='1'/%3E%3Ccircle cx='9' cy='19' r='1'/%3E%3Ccircle cx='15' cy='5' r='1'/%3E%3Ccircle cx='15' cy='12' r='1'/%3E%3Ccircle cx='15' cy='19' r='1'/%3E%3C/svg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='9' cy='5' r='1'/%3E%3Ccircle cx='9' cy='12' r='1'/%3E%3Ccircle cx='9' cy='19' r='1'/%3E%3Ccircle cx='15' cy='5' r='1'/%3E%3Ccircle cx='15' cy='12' r='1'/%3E%3Ccircle cx='15' cy='19' r='1'/%3E%3C/svg%3E") center / contain no-repeat; }
+      .uid-row__drag:hover, .uid-row__drag:focus-visible { color: #005f41; }
+      .uid-row__drag:focus-visible { outline: 2px solid #005f41; outline-offset: 1px; }
+      .uid-row.is-dragging { position: relative; z-index: 2; box-shadow: 0 10px 24px rgba(23, 37, 31, .18); cursor: grabbing; }
       @media (max-width: 1023px) {
         #uid-pending .uid-row--more { display: none; }
       }

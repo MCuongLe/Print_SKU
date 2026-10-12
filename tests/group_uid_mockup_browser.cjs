@@ -1,6 +1,6 @@
 // IN TEM GROUP UID theo mẫu (11/10/2026, khối #uid-mockup): dòng chờ gán có Lot/Roll + giờ thêm + chép + xoá, ô tìm, Chọn tất cả + Xóa đã chọn,
 // điện thoại hiện 3 dòng + "Xem tất cả" mở tấm "Danh sách Group UID" (lọc Tất cả / Chưa gán SKU / Đã gán, tìm, chọn, Xác nhận);
-// thẻ Gán SKU có nút ẩn/hiện bàn phím cho ô SKU. Supabase giả lập. Chạy với python -m http.server 8000 (đổi bằng biến BASE).
+// thẻ Gán SKU có nút ẩn/hiện bàn phím cho ô SKU; tay kéo ⋮⋮ đổi thứ tự UID chờ gán (12/10/2026). Supabase giả lập. Chạy với python -m http.server 8000 (đổi bằng biến BASE).
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const assert = require('node:assert/strict');
 
@@ -59,6 +59,23 @@ const CODES = ['1028260925000001', '1028260925000002', '1028260925000003', '1028
       await page.waitForFunction(() => document.querySelector('#uid-pending-count').textContent === '2');
       assert.deepEqual((await rows()).map(t => t.split(' ')[0]), ['1028260925000003', '1028260925000004']);
 
+      // Kéo ⋮⋮ đổi thứ tự (Gán tự động lấy UID từ đầu khung chờ): kéo dòng 2 lên trên dòng 1, rồi phím mũi tên xuống trả lại
+      const order = () => page.evaluate(() => [...document.querySelectorAll('#uid-pending .uid-row')].map(r => r.querySelector('.uid-row__code').textContent));
+      const handle = page.locator('#uid-pending .uid-row').nth(1).locator('[data-drag]');
+      const [hb, first] = [await handle.boundingBox(), await page.locator('#uid-pending .uid-row').first().boundingBox()];
+      await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(hb.x + hb.width / 2, first.y + 6, { steps: 8 });
+      await page.mouse.up();
+      assert.deepEqual(await order(), ['1028260925000004', '1028260925000003'], 'kéo thả đổi thứ tự');
+      assert.match(await page.locator('#uid-status').textContent(), /1028260925000004 tới vị trí 1/);
+      await page.locator('#uid-pending .uid-row').first().locator('[data-drag]').focus();
+      await page.keyboard.press('ArrowDown');
+      assert.deepEqual(await order(), ['1028260925000003', '1028260925000004'], 'phím mũi tên đổi thứ tự');
+      await page.locator('#uid-search').fill('L3');
+      assert.equal(await page.locator('#uid-pending [data-drag]').count(), 0, 'đang tìm thì ẩn tay kéo');
+      await page.locator('#uid-search').fill('');
+
       // Ô SKU khi gán: nút ẩn/hiện bàn phím
       await page.locator('#uid-sku-kb').click();
       assert.equal(await page.locator('#uid-sku-kb').getAttribute('aria-pressed'), 'true');
@@ -88,7 +105,7 @@ const CODES = ['1028260925000001', '1028260925000002', '1028260925000003', '1028
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
       assert.deepEqual(errors, []);
       await context.close();
-      console.log(`PASS ${width}px: dòng chờ gán Lot/Roll + giờ thêm, tìm, chép, Xóa đã chọn, bàn phím ô SKU${mobile ? ', 3 dòng + Xem tất cả, tấm Danh sách Group UID (lọc, chọn, tìm, Xác nhận)' : ''}`);
+      console.log(`PASS ${width}px: dòng chờ gán Lot/Roll + giờ thêm, tìm, chép, Xóa đã chọn, kéo thả + phím mũi tên đổi thứ tự, bàn phím ô SKU${mobile ? ', 3 dòng + Xem tất cả, tấm Danh sách Group UID (lọc, chọn, tìm, Xác nhận)' : ''}`);
     }
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });
