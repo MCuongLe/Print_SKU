@@ -10605,6 +10605,7 @@ async function rpc(name,args,retry=true){
         const statusCell=l=>{
           const k=lineKind(l);
           if(k==='scanned')return `<span class="cv-st" data-tone="ok">${svg(ICON.ok)}${esc(fmtAt(l.scannedAt))}</span>${l.scannedBy?`<small>${esc(l.scannedBy)}</small>`:''}`;
+          if(k==='todo'&&l.elsewhere)return `<span class="cv-st" data-tone="warn">${svg(ICON.warn)}Đã cấp ở đợt khác</span><small>${esc(l.elsewhere.plan)} · ${esc(fmtAt(l.elsewhere.at))}</small>`;
           if(k==='todo')return `<span class="cv-st" data-tone="idle">${svg(ICON.clock)}Chưa quét</span>`;
           return `<span class="cv-st" data-tone="${l.state==='not_found'?'bad':'warn'}">${svg(ICON.warn)}${esc(l.note||STATE_TEXT[l.state]||'Chưa ghép')}</span>`;
         };
@@ -10635,8 +10636,8 @@ async function rpc(name,args,retry=true){
         const shortWh=name=>String(name||'').replace(/^WH\s*-\s*MATERIAL\s*-\s*/i,'')||String(name||'');
         const LOC_FILTERS=[['todo','Còn lại'],['done','Đã xong'],['all','Tất cả']];
         const locRow=l=>{
-          const k=lineKind(l),icon=k==='scanned'?ICON.ok:k==='todo'?ICON.clock:ICON.warn;
-          const sub=k==='unmatched'?(l.note||STATE_TEXT[l.state]||'Chưa ghép'):[l.lot?`Lot ${l.lot}`:'',l.groupUid].filter(Boolean).join(' · ');
+          const k=lineKind(l),icon=k==='scanned'?ICON.ok:k==='todo'&&!l.elsewhere?ICON.clock:ICON.warn;
+          const sub=k==='unmatched'?(l.note||STATE_TEXT[l.state]||'Chưa ghép'):k==='todo'&&l.elsewhere?`Đã cấp ở ${l.elsewhere.plan} · ${fmtAt(l.elsewhere.at)}`:[l.lot?`Lot ${l.lot}`:'',l.groupUid].filter(Boolean).join(' · ');
           return `<div class="cv-lr" data-state="${k}">${svg(icon)}<span class="cv-lr__main"><b>Roll ${esc(l.roll)}</b><small>${esc(sub)}</small></span><span class="cv-lr__m">${num(qtyOf(l))} m</span></div>`;
         };
         const renderLoc=()=>{
@@ -10746,11 +10747,11 @@ async function rpc(name,args,retry=true){
               return;
             }
             const e=r.error||{},d=r.data||null;
-            const titles={NOT_IN_PLAN:'KHÔNG CẤP · KHÔNG THUỘC ĐỢT',UID_UNKNOWN:'KHÔNG CẤP · UID CHƯA CÓ DỮ LIỆU',PLAN_CLOSED:'ĐỢT CẤP VẢI ĐÃ ĐÓNG',PLAN_NOT_FOUND:'ĐỢT CẤP VẢI ĐÃ BỊ XÓA',INVALID_UID:'MÃ KHÔNG HỢP LỆ'};
-            const note=d?.otherPlan?`Thuộc đợt: ${d.otherPlan.name}`:titles[e.code]?'':(e.message||'');
+            const titles={NOT_IN_PLAN:'KHÔNG CẤP · KHÔNG THUỘC ĐỢT',UID_UNKNOWN:'KHÔNG CẤP · UID CHƯA CÓ DỮ LIỆU',PLAN_CLOSED:'ĐỢT CẤP VẢI ĐÃ ĐÓNG',PLAN_NOT_FOUND:'ĐỢT CẤP VẢI ĐÃ BỊ XÓA',INVALID_UID:'MÃ KHÔNG HỢP LỆ',ISSUED_ELSEWHERE:'KHÔNG CẤP · ĐÃ CẤP Ở ĐỢT KHÁC'};
+            const note=e.code==='ISSUED_ELSEWHERE'&&d?.otherPlan?`${d.otherPlan.name} · ${fmtAt(d.otherPlan.scannedAt)}${d.otherPlan.scannedBy?` · ${d.otherPlan.scannedBy}`:''}`:d?.otherPlan?`Thuộc đợt: ${d.otherPlan.name}`:titles[e.code]?'':(e.message||'');
             const line=d?{sku:d.sku,lot:d.lot,roll:d.roll,location:d.location,wmsQty:null}:{};
             paintResult({tone:e.code==='PLAN_CLOSED'?'warn':'error',title:titles[e.code]||e.message||'KHÔNG CẤP',uid,line:d?line:null,facts:d?[fact('SKU',d.sku),fact('Lot',d.lot),fact('Roll',d.roll),fact('Vị trí',d.location),/^available$/i.test(d.wmsStatus||'')?'':fact('WMS',d.wmsStatus)].join(''):'',note});
-            pushRecent(uid,e.code==='PLAN_CLOSED'?'warn':'error',e.code==='NOT_IN_PLAN'?'Ngoài đợt':e.code==='UID_UNKNOWN'?'Không có UID':'Không cấp');
+            pushRecent(uid,e.code==='PLAN_CLOSED'?'warn':'error',e.code==='NOT_IN_PLAN'?'Ngoài đợt':e.code==='UID_UNKNOWN'?'Không có UID':e.code==='ISSUED_ELSEWHERE'?'Đã cấp đợt khác':'Không cấp');
             cue(e.code==='PLAN_CLOSED'?'warn':'error');tell(e.message||'Không cấp được UID này.','error');
             if(e.code==='PLAN_NOT_FOUND')refresh();
           }catch(e){paintResult({tone:'error',title:'CHƯA RÕ ĐÃ GHI HAY CHƯA',uid,facts:'',note:e.message});cue('error');tell(`Chưa rõ đã ghi hay chưa: ${e.message}`,'error')}
@@ -10936,6 +10937,7 @@ async function rpc(name,args,retry=true){
           S.busy=true;tell('Đang đọc Packing List…');
           try{
             const plan=parsePacking(await readWorkbook(file),file.name);
+            if(S.plans.some(p=>p.name===plan.name))plan.name=`${plan.name} · ${fmtAt(new Date())}`.slice(0,120);
             const bySku=new Map();for(const l of plan.lines){const x=bySku.get(l.sku)||{n:0,m:0,color:l.color};x.n++;x.m+=l.qtyM;bySku.set(l.sku,x)}
             const totalM=plan.lines.reduce((s,l)=>s+l.qtyM,0),unitIsM=u=>/^(m|mét|met)$/i.test(u);
             const facts=[`${plan.lines.length} cuộn · ${num(totalM)} m`,...plan.needs.map(n=>`${n.sku} cần ${num(n.requiredM)} ${unitIsM(n.unit)||!n.unit?'m':n.unit}`)];
@@ -10945,9 +10947,9 @@ async function rpc(name,args,retry=true){
             const d=await adminRpc('fabric_issue_import',{p_plan:plan});
             S.planId=d.plan.id;store.set(K.plan,S.planId);S.recent=[];paintRecent();paintResult(null);
             await loadPlans();await loadPlan();
-            const miss=d.plan.total-d.plan.matched;
+            const miss=d.plan.total-d.plan.matched,shared=d.overlap?.shared||0,issued=d.overlap?.issuedElsewhere||0;
             S.filter=miss?'unmatched':'todo';
-            tell(miss?`Ghép ${d.plan.matched}/${d.plan.total} cuộn · ${miss} cuộn chưa ghép.`:`Ghép đủ ${d.plan.total}/${d.plan.total} cuộn.`,miss?'warn':'ok');
+            tell((miss?`Ghép ${d.plan.matched}/${d.plan.total} cuộn · ${miss} cuộn chưa ghép.`:`Ghép đủ ${d.plan.total}/${d.plan.total} cuộn.`)+(shared?` ${shared} cuộn trùng đợt khác${issued?` (${issued} đã cấp)`:''}.`:''),miss||shared?'warn':'ok');
             setTab(miss?'list':'scan');
           }catch(e){tell(e.message||'Không nhập được Packing List','error')}
           finally{S.busy=false}

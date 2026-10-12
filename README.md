@@ -389,6 +389,10 @@ web đi qua RPC `fabric_issue_*`).
   số UID còn phải quét / tổng và số mét còn lại, bấm vào để xem từng cuộn (Roll, Lot, UID). Lọc Còn lại / Đã xong / Tất cả; cuộn
   chưa ghép UID gom ở thẻ đỏ riêng. Tab *Danh sách cuộn* lọc Chưa quét / Đã quét / Chưa ghép; cả hai tự làm mới mỗi 20 giây để
   thấy máy quét khác.
+- **Không cấp trùng giữa các đợt** (`supabase/fabric_issue_v2_no_double_issue.sql`): UID đã quét ở đợt khác thì quét lại ở đợt
+  này báo đỏ *Đã cấp ở đợt khác* (tên đợt, giờ, máy) và không đánh dấu thêm; muốn cấp lại thì Admin bỏ dấu ở đợt cũ. Hai máy
+  quét cùng UID ở hai đợt cùng lúc vẫn chỉ một nơi được cấp (khoá tư vấn theo UID). Danh sách/Vị trí đánh dấu sẵn cuộn đã cấp ở
+  đợt khác; nhập lại file cảnh báo số cuộn trùng đợt khác và tên đợt trùng tự thêm giờ nhập.
 - **Admin** còn có *Ghép lại*, *Đóng đợt / Mở lại*, *Xóa đợt* và bỏ dấu đã quét từng cuộn.
 - **Số mét**: tiến độ tính theo Packing List; từng cuộn hiện số mét WMS (đổi từ mm khi tên SKU kết thúc `/mm`) và "PL …"
   khi khác Packing List.
