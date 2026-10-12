@@ -365,6 +365,29 @@ Triển khai theo đúng thứ tự:
 Kiểm thử không cần mạng: `node --test` trong `workstation-agent` (tem, đo chữ, lệnh in) và
 `node tests/location_browser.cjs` khi server local chạy cổng 8000 (mọi kết nối Supabase/in bị giả lập).
 
+## Cấp vải
+
+Ô **CẤP VẢI** (`#cap-vai`, nhóm Vận hành kho): nhập Packing List (.xlsx) → ghép Group UID theo SKU + Lot + Roll →
+quét UID để báo "Cấp Group UID này" và đánh dấu đã quét. Nạp schema một lần:
+`python scripts/apply_supabase_sql.py supabase/fabric_issue_v1.sql` (chỉ thêm bảng/hàm; bảng bật RLS, chỉ `service_role`,
+web đi qua RPC `fabric_issue_*`).
+
+- **Nhập (chỉ Admin)**: đăng nhập Admin bằng nút khiên ở thanh trên → tab *Đợt cấp vải* → *Nhập Packing List*. File được
+  đọc ngay trên trình duyệt (không gửi file lên server), chỉ danh sách cuộn đi lên Supabase. Bảng Packing List tìm theo tên
+  sheet "Packing" hoặc theo tiêu đề cột ROLLS NO / LOT NO / QTY; mỗi dòng `COLOR: … (SKU 9 số)` đặt SKU cho các dòng bên
+  dưới, dòng SUB TOTAL bị bỏ qua. Sheet nào có cột "Mã NPL" + "Định mức cấp phát" thì lấy số cần cấp theo SKU (chỉ hiển thị).
+- **Ghép UID** (`fabric_issue_find_uid`): chỉ UID `Available`, cùng SKU; Lot = Batch Code, Roll = Roll Code sau khi chuẩn
+  hoá (bỏ khoảng trắng, `12.0` → `12`, bỏ số 0 đầu, không phân biệt hoa/thường); không khớp thì thử Roll Code dạng
+  `<batch>-<roll>`. Dòng không ghép được ghi lý do — *Không có UID*, *UID không còn Available* (kèm trạng thái WMS),
+  *Trùng dòng*, *Nhiều UID khớp* — và không đoán bừa. Đồng bộ thêm Group UID xong thì bấm *Ghép lại*.
+- **Quét**: ai cũng quét được (khoá công khai như Xả vải), bằng máy quét cầm tay hoặc camera. Kết quả: *Cấp Group UID này*
+  (xanh), *Đã quét trước đó* (vàng, kèm giờ và máy), *Không cấp* (đỏ: không thuộc đợt, hoặc UID chưa có dữ liệu — kèm tên
+  đợt khác nếu UID thuộc một đợt đang mở), *Đợt đã đóng*. Mã quét liên tiếp xếp hàng tuần tự; âm báo bật/tắt bằng nút loa.
+  Tab *Danh sách cuộn* lọc Chưa quét / Đã quét / Chưa ghép và tự làm mới mỗi 20 giây để thấy máy quét khác.
+- **Admin** còn có *Ghép lại*, *Đóng đợt / Mở lại*, *Xóa đợt* và bỏ dấu đã quét từng cuộn.
+- **Số mét**: tiến độ tính theo Packing List; từng cuộn hiện số mét WMS (đổi từ mm khi tên SKU kết thúc `/mm`) và "PL …"
+  khi khác Packing List.
+
 ## Cắt Group UID
 
 Mở **CẮT GROUP UID** ở WH-MATERIAL hoặc `#cut-group-uid`. Người dùng quét một
