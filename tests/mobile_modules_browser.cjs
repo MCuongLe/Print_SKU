@@ -51,11 +51,11 @@ const SCREENS = { 'group-uid': 'uid-screen', inspection: 'ins-screen', 'cut-grou
       assert.equal(await page.locator('#cut-message').isVisible(), true, 'tab Tra cứu vẫn hiện số kết quả');
 
       if (mobile) {
-        // Nút bàn phím là icon cạnh ô quét
+        // Nút bàn phím là icon cạnh ô quét hoặc nằm trong ô (ô Group UID liền, 14/10/2026)
         for (const [hash, input, keyboard] of [['xa-vai', '#xa-vai-code', '#xa-vai-keyboard']]) {
           await open(hash);
-          const box = await page.evaluate(([i, k]) => { const a = document.querySelector(i).getBoundingClientRect(), b = document.querySelector(k).getBoundingClientRect(); return { sameRow: Math.abs((a.top + a.bottom) / 2 - (b.top + b.bottom) / 2) <= 6, right: b.left >= a.right, w: Math.round(b.width) }; }, [input, keyboard]);
-          assert.equal(box.sameRow && box.right, true, `${hash}: nút bàn phím phải nằm cạnh ô quét`);
+          const box = await page.evaluate(([i, k]) => { const a = document.querySelector(i).getBoundingClientRect(), b = document.querySelector(k).getBoundingClientRect(); return { sameRow: Math.abs((a.top + a.bottom) / 2 - (b.top + b.bottom) / 2) <= 6, right: b.left >= a.right || b.left >= a.left && b.right <= a.right, w: Math.round(b.width) }; }, [input, keyboard]);
+          assert.equal(box.sameRow && box.right, true, `${hash}: nút bàn phím phải nằm cạnh hoặc trong ô quét`);
           assert.ok(box.w <= 48, `${hash}: nút bàn phím chỉ là icon (${box.w}px)`);
         }
       }

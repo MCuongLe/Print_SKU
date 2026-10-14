@@ -603,10 +603,14 @@ máy tính giữ bảng.
 
 **Cấp vải · thẻ Quét Group UID gọn (12/10/2026, khối `#cap-vai-compact`).** Đầu thẻ: tiêu đề + nút âm báo + nút thu gọn (^). Khối đợt cấp:
 icon tem (ẩn ≤ 480 px) | chọn đợt, thanh tiến độ, "x / y cuộn" · mét | chip ✓ đã quét, 🕐 còn lại (⚠ chưa ghép khi có; chữ chỉ đọc màn hình + title).
-Hàng quét (mockup thứ 2): một ô Group UID liền — icon quét | vạch | mã | cụm camera · bàn phím nằm trong ô (`.cv-field__tools`, nền xanh nhạt, vạch giữa;
-bàn phím đang bật = nền trắng); nút ✓ Quét bên phải trên máy tính, dưới và rộng hết trên điện thoại (≤ 620 px). Chữ trong ô giữ "Group UID".
-"Xem chi tiết" (`<details>`) chứa chip có chữ (+ "đã đóng") và lượt quét gần đây; ẩn khi chưa có đợt và chưa quét. Thu gọn ẩn khối đợt cấp, đầu thẻ
+Hàng quét = ô Group UID liền (khối chung `#scan-field`, xem dưới). "Xem chi tiết" (`<details>`) chứa chip có chữ (+ "đã đóng") và lượt quét gần đây; ẩn khi chưa có đợt và chưa quét. Thu gọn ẩn khối đợt cấp, đầu thẻ
 hiện số đã quét / tổng. Trạng thái thu gọn và Xem chi tiết nhớ theo máy (`localStorage` `cap-vai-thu-gon`, `cap-vai-chi-tiet`). Giữ nguyên id cũ.
+
+**Ô Group UID liền (14/10/2026, khối `#scan-field`; mockup Cấp vải 12/10).** Dùng chung cho Cắt Group UID, Theo dõi xả vải, Cấp vải: `.scan-field`
+= icon quét | vạch | mã | `.scan-field__tools` (camera · bàn phím nằm trong ô, nền xanh nhạt, vạch giữa; bàn phím đang bật = nền trắng; camera ẩn thì
+ô bớt lề phải). Nút chính (Lưu tem / Bắt đầu xả vải / Quét) bên phải trên máy tính, dưới và rộng hết ≤ 620 px. Xả vải: nút bàn phím trước nằm ngoài
+form (form `display: contents`) nay vào trong ô; nút camera trước là icon khung quét nay là icon camera như hai màn kia. Chữ trong ô giữ "Group UID".
+Test `ui_standard` kiểm nút trong ô cao = ô nhập − 8 và nằm gọn trong ô; `mobile_modules` chấp nhận nút bàn phím cạnh hoặc trong ô.
 
 **IN TEM SKU theo mẫu (11/10/2026, khối `#sku-queue-ui` + script `sku-queue-ui-script`).** Bundle React không có chọn/sửa/xoá nhiều tem nên
 danh sách chờ in của React (`ul.divide-y`) bị ẩn và thay bằng danh sách mới đọc lại từ nó (SKU, tên, số lượng in lên tem, số bản): mỗi dòng ô chọn
