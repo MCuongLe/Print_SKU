@@ -1072,12 +1072,12 @@ Error generating stack: `+y.message+`
       .pdv__icon{display:grid;flex:none;place-items:center;width:42px;height:42px;border-radius:12px;background:rgba(0,95,65,.1);color:#005f41}.pdv__icon svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
       .pdv__title{margin:0;font-size:18px;font-weight:700;line-height:1.3}
       .pdv__label{display:block;margin:14px 0 6px;color:#60736b;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
-      .pdv input{width:100%;min-height:52px;padding:0 14px;border:1.5px solid #d9e2de;border-radius:14px;background:#fff;color:#17251f;font:600 16px/1.2 inherit;outline:none}
+      .pdv input{width:100%;min-height:52px;padding:0 14px;border:1.5px solid #d9e2de;border-radius:14px;background:#fff;color:#17251f;font-family:inherit;font-size:16px;font-weight:600;line-height:1.2;outline:none}
       .pdv input:focus{border-color:#005f41;box-shadow:0 0 0 3px rgba(0,95,65,.14)}
-      .pdv__code{font-size:22px!important;font-weight:800!important;letter-spacing:.14em;text-transform:uppercase;text-align:center}
+      .pdv__code{font-size:22px!important;font-weight:700!important;letter-spacing:.14em;text-transform:uppercase;text-align:center}
       .pdv__status{min-height:20px;margin:10px 0 0;color:#60736b;font-size:13px}.pdv__status[data-tone=error]{color:#8f2f2a;font-weight:700}.pdv__status[data-tone=ok]{color:#0f6a49;font-weight:700}
       .pdv__actions{display:flex;gap:10px;margin-top:16px}
-      .pdv__btn{flex:1;min-height:48px;border:1.5px solid #d9e2de;border-radius:14px;background:#fff;color:#17251f;font:700 15px inherit;cursor:pointer}
+      .pdv__btn{flex:1;min-height:48px;border:1.5px solid #d9e2de;border-radius:14px;background:#fff;color:#17251f;font-family:inherit;font-size:16px;font-weight:600;cursor:pointer}
       .pdv__btn--ok{border-color:#005f41;background:#005f41;color:#fff}.pdv__btn:disabled{opacity:.55;cursor:not-allowed}
       .barcode-choice[hidden]{display:none}
       @media(max-width:767px){dialog.pdv{width:100%;max-width:none;margin:auto 0 0;border-radius:20px 20px 0 0}}
@@ -12316,6 +12316,13 @@ async function rpc(name,args,retry=true){
       @media (hover: hover) { #pdm-dialog .pdm-d-btn:not([data-tone=ok]):not(:disabled):hover { background: #f6f8f7; } }
       /* Bảng Thiết bị: tên máy trên, trình duyệt dưới (quy tắc cũ "td.pdm-name" không khớp ô div nên dính liền "may-kho-01(Windows NT…") */
       .pdm-table .pdm-name b, .pdm-table .pdm-name small { display: block; }
+    </style>
+    <style id="dlg-polish">
+      /* Popup có thanh tìm + Xuất Excel trên điện thoại (14/10/2026): nút Xuất Excel giữ cỡ vừa chữ, ô tìm lấy phần còn lại
+         (trước ".as-tools > * { flex: 1 1 auto }" làm nút chiếm 212/347 px, ô tìm còn 125 px → chữ gợi ý bị cụt). */
+      @media (max-width: 760px) {
+        .as-dialog .as-d-head .as-tools > .as-export { flex: none; }
+      }
     </style>
   </body>
 </html>

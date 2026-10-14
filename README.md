@@ -208,6 +208,8 @@ Trong màn Thiết bị in còn có: tắt/bật và đổi tên từng máy, s�
 
 Popup máy (14/10/2026, khối `#pdm-polish`): thân popup có lề, 4 ô thông tin một hàng trên nền nhạt, ô tên + nút cao 44 chữ hệ thống, dòng lệnh in
 không bị cắt nhãn trạng thái. Trình duyệt hiện gọn kiểu "Android 10 · Chrome 141" (popup + bảng; chuỗi User-Agent đầy đủ ở title, ô tìm và CSV).
+Hộp KÍCH HOẠT MÁY (14/10/2026): sửa `font: … inherit` sai cú pháp → ô tên máy và nút Huỷ / Kích hoạt 16/600 (trước rơi về 400), mã kích hoạt 700.
+Popup có thanh tìm + Xuất Excel trên điện thoại (khối `#dlg-polish`, vd. Lịch sử Group UID): nút Xuất Excel giữ cỡ vừa chữ, ô tìm lấy phần còn lại.
 
 ## Nạp schema lên Supabase
 
