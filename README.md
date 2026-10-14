@@ -627,6 +627,10 @@ Chọn tất cả + xoá tem đã chọn (hỏi lại bằng WhDialog) và tổn
 lọc Tất cả / Đã chọn / Chưa chọn, In tem). **In tem vẫn in cả danh sách** như React (ô chọn dùng cho xoá nhiều). Thẻ 1 đổi tên "Nhập thông tin
 tem" + icon nhãn; ô SKU giữ gợi ý "SKU" (chuẩn không câu hướng dẫn). Test: `tests/sku_queue_browser.cjs`.
 
+**IN TEM GROUP UID + IN TEM SKU · thanh trên điện thoại (14/10/2026, khối `#uid-topbar-narrow`).** ≤ 440 px: tên màn dòng trên, trạng thái
+máy in dòng dưới trong cùng thanh, nút Admin (nếu có) bên phải (trước cùng một hàng nên 360–390 px cắt "IN TEM GROUP U…" / "IN TEM SK…").
+Trạng thái khi máy trạm in không báo về quá 45 giây hoặc không gọi được máy chủ: **"Mất kết nối máy in"** (trước "Chưa rõ máy in").
+
 **IN TEM GROUP UID · Lấy từ WMS (14/10/2026, Extension 0.8.3).** Nút **Lấy từ WMS** cạnh Nhập Excel (chỉ hiện từ 801 px: điện thoại không có Extension) mở tấm `#uid-wms`:
 đọc Group UID trạng thái **New** của WH - MATERIAL - MTG (1177) và WH - MATERIAL - GARMENT (1339) qua lệnh chỉ đọc `GET_GROUP_UID_NEW_PAGE`
 (500 dòng/trang). WMS chỉ lọc được kho, trạng thái và mốc cập nhật (`from_updated_at` + `to_updated_at`, cần đủ cả hai); **không có bộ lọc ngày tạo
@@ -635,10 +639,10 @@ là tập cha của khoảng ngày tạo. Bộ lọc: chip kho (không bỏ hế
 có số đếm. Thu hẹp bộ lọc không gọi lại WMS; mở rộng kho hoặc khoảng ngày thì đọc lại. Chọn từng UID hoặc Chọn tất cả (cả phần chưa hiện), **Thêm N vào danh sách**
 đưa qua đúng đường nhập tay (`addGroupUids`: tra Supabase, có SKU vào Sẵn sàng in, chưa có vào Chưa gán SKU) và lấy Lot / Roll của WMS (`batch_code`,
 `roll_code`) làm gợi ý khi Supabase chưa có. UID đã có trong danh sách hiện nhãn "Đã có", khoá ô chọn. Cổng cho tấm là `window.PrintSkuUid {has, add}`.
+**Chỉ Admin được đọc từ WMS** (như Lịch sử Group UID): chưa có phiên thì bấm nút sẽ mở hộp đăng nhập Admin dùng chung, đăng nhập xong tự mở tấm; hết phiên giữa chừng thì tấm đóng lại và hỏi đăng nhập. Đây là cổng giao diện (Extension tự đọc bằng phiên WMS của máy). Thanh trên IN TEM GROUP UID có **khiên Admin** (`#uid-admin`, cùng kiểu Cắt Group UID / Lịch sử Group UID / Kiểm kê SKU / Rủi ro lưu trữ / Cấp vải: trắng khi chưa đăng nhập, nền xanh + dấu tick khi là Admin, bấm khi là Admin thì hỏi thoát); mọi màn có việc cần Admin đều dùng khiên này.
 Đo 14/10/2026: 5.590 UID New (Garment 4.213, MTG 1.377; ~2,5 MB), 7 ngày = 84. Test: `tests/group_uid_wms_picker_browser.cjs`, `tests/group_uid_new_core.cjs`.
 
 **IN TEM GROUP UID theo mẫu (11/10/2026, khối `#uid-mockup` + sửa trong script màn).** Ô Group UID có icon mã vạch, camera cùng hàng, nút
-**Chỉ Admin được đọc từ WMS** (như Lịch sử Group UID): chưa có phiên thì bấm nút sẽ mở hộp đăng nhập Admin dùng chung, đăng nhập xong tự mở tấm; hết phiên giữa chừng thì tấm đóng lại và hỏi đăng nhập. Đây là cổng giao diện (Extension tự đọc bằng phiên WMS của máy). Thanh trên IN TEM GROUP UID có **khiên Admin** (`#uid-admin`, cùng kiểu Cắt Group UID / Lịch sử Group UID / Kiểm kê SKU / Rủi ro lưu trữ / Cấp vải: trắng khi chưa đăng nhập, nền xanh + dấu tick khi là Admin, bấm khi là Admin thì hỏi thoát); mọi màn có việc cần Admin đều dùng khiên này.
 **Thêm vào danh sách** xuống hàng riêng (mọi bề rộng); Nhập Excel viền liền. Thẻ **Chưa gán SKU**: chip số + › (điện thoại), hàng Chọn tất cả +
 **Xóa đã chọn** (hỏi lại bằng WhDialog), ô tìm Group UID / Lot / Roll (chuẩn ô nhập), mỗi dòng UID + "Lot | Roll" + "Thêm: dd/mm/yyyy hh:mm" (giờ thêm
 lưu ở `addedAt` khi tra xong) + **chép** + xoá; điện thoại hiện 3 dòng đầu + "Xem tất cả". Tay kéo **⋮⋮** (12/10/2026) đổi thứ tự UID
