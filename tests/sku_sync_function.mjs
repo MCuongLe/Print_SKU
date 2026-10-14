@@ -25,7 +25,7 @@ let runs, skus, links, handler;
 function iso(offsetMs) { return new Date(Date.now() + offsetMs).toISOString(); }
 function makeRun(over = {}) {
   return {
-    id: RUN_A, status: "previewed", source: "inside-extension", cutoff: "26-10-01 00:00:00",
+    id: RUN_A, status: "previewed", source: "inside-extension", mode: "incremental", cutoff: "26-10-01 00:00:00",
     source_generated_at: iso(-2 * MIN), source_counts: {}, change_counts: { skuAdded: 1 }, changes: {},
     staged_skus: [{ sku: "900000001", product_name: "SKU thu nghiem", category_id: "954", category_name: "Thời Trang (Phụ Liệu)", status: "1" }],
     staged_combo_links: [], verification: {}, error_message: null, created_by: "user-1",
@@ -296,4 +296,94 @@ test("auth: token sai hoặc hết hạn trả 401 AUTH, không phải 500", asy
   const result = await call({ action: "history" });
   assert.equal(result.status, 401, JSON.stringify(result.body));
   assert.equal(result.body.error.code, "AUTH");
+});
+
+// ---- Đối chiếu toàn bộ (sku_sync_full_v1, 14/10/2026) ----
+function fullSnapshot(rows, over = {}) {
+  return { ...snapshot(iso(-1 * MIN)), full: true, mode: "full", cutoff: "", normalRows: rows, ...over };
+}
+function sourceSku(sku, over = {}) {
+  return { sku, product_name: `SKU ${sku}`, category_id: "954", category_name: "x", status: "1", modified: "26-10-07 10:00:00", ...over };
+}
+
+test("full: so với cả bảng — SKU mới, sửa, không đổi và SKU không còn trên Inside (chỉ báo, không xoá)", async () => {
+  const cat = "Thời Trang (Phụ Liệu)";
+  skus.push({ ...remoteSku("A"), category_name: cat }, { ...remoteSku("B"), category_name: cat }, remoteSku("C"));
+  const result = await call({ action: "preview", mode: "full", snapshot: fullSnapshot([sourceSku("A"), sourceSku("B", { product_name: "SKU B doi ten" }), sourceSku("D")]) });
+  assert.equal(result.status, 200, JSON.stringify(result.body));
+  const c = result.body.data.changeCounts;
+  assert.deepEqual([c.skuAdded, c.skuUpdated, c.skuUnchanged, c.skuMissing], [1, 1, 1, 1]);
+  assert.deepEqual(result.body.data.changes.skus.missing.map(row => row.sku), ["C"]);
+  assert.equal(result.body.data.mode, "full");
+  assert.equal(runs[0].mode, "full");
+  assert.equal(runs[0].verification.fullDropPercent, 0, "3 SKU nguồn so với 3 SKU database: không giảm");
+  assert.equal(runs[0].verification.previousFullCount, null);
+  assert.equal(skus.length, 3, "xem trước không ghi gì");
+});
+
+test("full: Extension cũ không gửi cờ full thì từ chối, không tạo lượt", async () => {
+  const result = await call({ action: "preview", mode: "full", snapshot: { ...fullSnapshot([sourceSku("A")]), full: undefined } });
+  assert.equal(result.status, 400);
+  assert.equal(result.body.error.code, "INCOMPLETE_SOURCE");
+  assert.equal(runs.length, 0);
+});
+
+test("full: nguồn ít hơn 20% so với bảng hiện có (lần đầu) thì chặn, không tạo lượt", async () => {
+  for (let index = 0; index < 10; index += 1) skus.push(remoteSku(`S${index}`));
+  const result = await call({ action: "preview", mode: "full", snapshot: fullSnapshot(Array.from({ length: 7 }, (_, index) => sourceSku(`S${index}`))) });
+  assert.equal(result.status, 409, JSON.stringify(result.body));
+  assert.equal(result.body.error.code, "SAFETY_LIMIT");
+  assert.match(result.body.error.message, /30%/);
+  assert.equal(runs.length, 0);
+});
+
+test("full: có lần toàn bộ trước thì so với số SKU nguồn của lần đó; giảm 5% chỉ ghi nhận, không chặn", async () => {
+  runs.push(makeRun({ id: RUN_B, mode: "full", status: "completed", source_counts: { normalRows: 100 }, created_at: iso(-60 * MIN), source_generated_at: iso(-60 * MIN), completed_at: iso(-59 * MIN) }));
+  for (let index = 0; index < 10; index += 1) skus.push(remoteSku(`S${index}`));
+  const result = await call({ action: "preview", mode: "full", snapshot: fullSnapshot(Array.from({ length: 95 }, (_, index) => sourceSku(`S${index}`))) });
+  assert.equal(result.status, 200, JSON.stringify(result.body));
+  assert.deepEqual([result.body.data.verification.previousFullCount, result.body.data.verification.baselineCount, result.body.data.verification.fullDropPercent], [100, 100, 5]);
+});
+
+test("full: trần 30.000 dòng ghi (gia tăng vẫn 2.000); danh sách chi tiết cắt 1.000 nhưng đếm đủ", async () => {
+  const rows = Array.from({ length: 2500 }, (_, index) => sourceSku(`N${String(index).padStart(5, "0")}`));
+  const blocked = await call({ action: "preview", snapshot: { ...snapshot(iso(-1 * MIN)), normalRows: rows } });
+  assert.equal(blocked.status, 409, "gia tăng 2.500 dòng mới vượt ngưỡng 2.000");
+  assert.equal(blocked.body.error.code, "SAFETY_LIMIT");
+  const result = await call({ action: "preview", mode: "full", snapshot: fullSnapshot(rows) });
+  assert.equal(result.status, 200, JSON.stringify(result.body));
+  assert.equal(result.body.data.changeCounts.skuAdded, 2500);
+  assert.equal(result.body.data.changes.skus.added.length, 1000);
+  assert.equal(runs.at(-1).staged_skus.length, 2500, "mọi dòng vẫn chờ ghi");
+});
+
+test("full: gia tăng không báo SKU thiếu trên Inside dù bảng có SKU khác", async () => {
+  skus.push(remoteSku("ZZZ"));
+  const result = await call({ action: "preview", snapshot: snapshot(iso(-1 * MIN)) });
+  assert.equal(result.status, 200);
+  assert.equal(result.body.data.changeCounts.skuMissing, 0);
+  assert.deepEqual(result.body.data.changes.skus.missing, []);
+  assert.equal(runs[0].mode, "incremental");
+});
+
+test("history: mốc Toàn bộ gần nhất chỉ tính lượt toàn bộ đã hoàn tất", async () => {
+  runs.push(makeRun({ id: RUN_A, status: "completed", created_at: iso(-10 * MIN), source_generated_at: iso(-10 * MIN), completed_at: iso(-9 * MIN) }));
+  let result = await call({ action: "history" });
+  assert.equal(result.body.data.lastFullAt, null, "chỉ có lượt gia tăng");
+  assert.equal(result.body.data.lastSuccessAt, runs[0].completed_at);
+  runs.push(makeRun({ id: RUN_B, mode: "full", status: "completed", created_at: iso(-3 * 24 * 60 * MIN), source_generated_at: iso(-3 * 24 * 60 * MIN), completed_at: iso(-3 * 24 * 60 * MIN + MIN) }));
+  result = await call({ action: "history" });
+  assert.equal(result.body.data.lastFullAt, runs[1].completed_at);
+  assert.equal(result.body.data.runs[0].mode, "incremental");
+});
+
+test("apply: lượt toàn bộ hơn 3.000 dòng ghi được và xác minh bằng cả bảng; giữ số liệu kiểm chứng của bản xem trước", async () => {
+  const staged = Array.from({ length: 3100 }, (_, index) => ({ sku: `F${index}`, product_name: `SKU F${index}`, category_id: "954", category_name: "Thời Trang (Phụ Liệu)", status: index % 2 ? "1" : "0" }));
+  runs.push(makeRun({ mode: "full", staged_skus: staged, verification: { previousFullCount: 3000, fullDropPercent: 0, skuMissing: 2 } }));
+  const result = await call({ action: "apply", runId: RUN_A });
+  assert.equal(result.status, 200, JSON.stringify(result.body));
+  assert.equal(skus.length, 3100);
+  assert.equal(result.body.data.verification.skuVerified, 3100);
+  assert.equal(result.body.data.verification.previousFullCount, 3000);
+  assert.equal(result.body.data.verification.skuMissing, 2);
 });

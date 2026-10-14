@@ -44,9 +44,10 @@ const mockRoutes = async page => page.route('**/*', async route => {
   if (url.endsWith('/auth/v1/user')) return json({ id: '00000000-0000-0000-0000-000000000001' });
   if (url.includes('/rest/v1/user_roles')) return json([{ username: 'Test Admin', role: 'admin' }]);
   if (url.includes('/functions/v1/sku-sync')) {
-    const { action, runId } = JSON.parse(route.request().postData() || '{}');
+    const { action, runId, mode } = JSON.parse(route.request().postData() || '{}');
     const ok = data => json({ ok: true, data });
-    if (action === 'history') return ok({ runs: RUNS, lastSuccessAt: ago(119), lastSnapshotAt: ago(120) });
+    if (action === 'history') return ok({ runs: RUNS, lastSuccessAt: ago(119), lastSnapshotAt: ago(120), lastFullAt: null });
+    if (action === 'preview' && mode === 'full') return ok({ runId: 'run-full', status: 'previewed', mode: 'full', sourceCounts: { ...SOURCE_COUNTS, normalRows: 97 }, changeCounts: { ...CHANGE_COUNTS, skuMissing: 1 }, changes: { ...CHANGES, skus: { ...CHANGES.skus, missing: [{ sku: '900000009', product_name: 'SKU cũ', category_name: 'Thời Trang', status: '0' }] } }, verification: { previousFullCount: 100, baselineCount: 100, fullDropPercent: 3, skuMissing: 1 } });
     if (action === 'preview') return ok({ runId: 'run-fresh', status: 'previewed', sourceCounts: SOURCE_COUNTS, changeCounts: CHANGE_COUNTS, changes: CHANGES });
     if (action === 'apply') return ok({ status: 'completed', verification: { skuVerified: 3, comboVerified: 0, skuCount: 100 } });
     if (action === 'detail') {
@@ -92,7 +93,7 @@ const cells = async page => (await page.locator('#ss-change-body tr').evaluateAl
       await page.goto(BASE + '#admin/sku-sync');
       await page.locator('#sku-sync-screen').waitFor({ state: 'visible' });
       await page.locator('#ss-history tr[data-run]').first().waitFor({ state: 'attached' });
-      const calls = []; page.on('request', request => { if (request.url().includes('/functions/v1/sku-sync')) calls.push(JSON.parse(request.postData() || '{}').action); });
+      const calls = []; page.on('request', request => { if (request.url().includes('/functions/v1/sku-sync')) { const body = JSON.parse(request.postData() || '{}'); calls.push(body.action + (body.mode === 'full' ? ':full' : '')); } });
 
       // Menu và nút Về trang chủ/Đăng xuất dùng icon SVG, không dùng ký tự
       const navButtons = page.locator('#sku-sync-screen .ss-nav button');
@@ -128,6 +129,22 @@ const cells = async page => (await page.locator('#ss-change-body tr').evaluateAl
       assert.equal(await dlg(page).isVisible(), false, 'mở lượt cũ không tự bật popup chi tiết');
       assert.equal(await page.locator('#ss-apply').isDisabled(), true);
 
+      // Đối chiếu toàn bộ (14/10/2026): thẻ mốc toàn bộ cảnh báo khi chưa chạy; nút riêng gửi mode full; ô Thiếu trên Inside; cảnh báo giảm so với mốc
+      assert.equal(await page.locator('#ss-strip-full').getAttribute('data-stale'), 'true');
+      assert.match(await page.locator('#ss-last-full-rel').innerText(), /^Chưa chạy, nên đối chiếu toàn bộ$/);
+      await page.locator('#sku-sync-full').click();
+      await page.waitForFunction(() => /Đối chiếu xong/.test(document.getElementById('sku-sync-status').textContent));
+      assert.equal(calls.includes('preview:full'), true, 'Edge nhận mode full');
+      assert.match(await page.locator('#sku-sync-status').innerText(), /Có 7 cảnh báo\. Tổng SKU nguồn giảm 3% so với mốc 100\./);
+      assert.equal((await page.locator('#ss-sku-missing').innerText()).trim(), '1');
+      assert.equal(await page.locator('#ss-sku-missing').evaluate(node => node.closest('.ss-metric').dataset.alert), 'true');
+      await openKind(page, 'sku-missing');
+      assert.equal((await page.locator('#ss-change-title').innerText()).trim(), 'SKU không còn trên Inside');
+      assert.deepEqual(await headers(page), ['SKU', 'Sản phẩm', 'Nhóm hàng', 'Trong Supabase']);
+      assert.deepEqual(await cells(page), [['900000009', 'SKU cũ', 'Thời Trang', 'Ngừng']]);
+      await closeDlg(page);
+      assert.equal(await page.locator('#sku-sync-full').isDisabled(), false);
+
       // Tạo preview: ô cảnh báo sáng lên, tiêu đề bảng đổi theo từng nhóm
       await page.locator('#sku-sync-preview').click();
       await page.waitForFunction(() => /cảnh báo/.test(document.getElementById('sku-sync-status').textContent));
@@ -151,7 +168,7 @@ const cells = async page => (await page.locator('#ss-change-body tr').evaluateAl
       assert.equal(await page.locator('#ss-change-body .as-name b').count(), 2, 'phần đầu tên sản phẩm in đậm');
       // Thẻ chia 3 cụm có tiêu đề, mọi thẻ có icon
       assert.deepEqual(await page.locator('.as-group > h3').evaluateAll(nodes => nodes.map(n => n.textContent.trim())), ['SKU', 'Combo', 'Cảnh báo']);
-      assert.equal(await page.locator('.as-group .ss-metric > span svg').count(), 9, 'mỗi thẻ có icon');
+      assert.equal(await page.locator('.as-group .ss-metric > span svg').count(), 10, 'mỗi thẻ có icon');
       assert.equal((await page.locator('#ss-last-done').innerText()).trim() !== '—', true, 'dải lần đồng bộ gần nhất có dữ liệu');
       // Tìm không phân biệt dấu + xuất Excel
       await page.locator('#ss-tools input').fill('chi irisa'); assert.equal(await page.locator('#ss-change-body tr').count(), 1); assert.equal((await page.locator('#ss-change-note').innerText()).trim(), '1 / 2 dòng');

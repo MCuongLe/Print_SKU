@@ -63,16 +63,42 @@
     }).filter(row => row.sku && row.product_name && row.modified);
   }
 
+  async function fetchProductPage(category, page) {
+    const url = new URL("/sales/product", location.origin);
+    Object.entries({ kw: "", category_id: category.id, barcode: "0", status: "", type: "0", pushweb: "", config: "", stocking_status: "0", hide_kw: "", limit: "200", page: String(page) })
+      .forEach(([key, value]) => url.searchParams.set(key, value));
+    const doc = await fetchDocument(url);
+    return { rows: parseProductPage(doc, category), sourceRowCount: doc.querySelectorAll("table tbody tr").length };
+  }
+
   async function fetchChangedProducts(category, cutoff) {
     const result = [];
     for (let page = 1; page <= 200; page += 1) {
-      const url = new URL("/sales/product", location.origin);
-      Object.entries({ kw: "", category_id: category.id, barcode: "0", status: "", type: "0", pushweb: "", config: "", stocking_status: "0", hide_kw: "", limit: "200", page: String(page) })
-        .forEach(([key, value]) => url.searchParams.set(key, value));
-      const rows = parseProductPage(await fetchDocument(url), category);
+      const { rows } = await fetchProductPage(category, page);
       if (!rows.length) break;
       result.push(...rows.filter(row => row.modified >= cutoff));
       if (rows.some(row => row.modified < cutoff)) break;
+    }
+    return result;
+  }
+
+  // Đối chiếu toàn bộ: đọc hết trang của một nhóm hàng, 6 trang song song; dừng ở trang không đủ 200 dòng (trang cuối),
+  // trang trống, hoặc trang lặp lại nội dung (Inside trả trang cuối cho số trang vượt quá).
+  async function fetchAllProducts(category) {
+    const result = [];
+    const seenFirst = new Set();
+    const batchSize = 6;
+    for (let first = 1; first <= 400; first += batchSize) {
+      const pages = await Promise.all(Array.from({ length: batchSize }, (_, index) => fetchProductPage(category, first + index)));
+      let done = false;
+      for (const page of pages) {
+        const head = page.rows[0]?.sku;
+        if (!page.sourceRowCount || (head && seenFirst.has(head))) { done = true; break; }
+        if (head) seenFirst.add(head);
+        result.push(...page.rows);
+        if (page.sourceRowCount < 200) { done = true; break; }
+      }
+      if (done) break;
     }
     return result;
   }
@@ -149,14 +175,20 @@
 
   async function getSkuSyncData(payload) {
     if (!skuCore) throw new Error("Extension chưa tải bộ đọc SKU; hãy Reload extension rồi thử lại");
-    const cutoff = skuCore.cutoffKey(payload?.cutoff);
-    const groups = await Promise.all(SKU_CATEGORIES.map(category => fetchChangedProducts(category, cutoff)));
+    const full = payload?.full === true;
+    const cutoff = full ? "" : skuCore.cutoffKey(payload?.cutoff);
+    // Toàn bộ: từng nhóm hàng tuần tự (mỗi nhóm 6 trang song song) để không dồn hơn 40 yêu cầu lên Inside cùng lúc.
+    const groups = [];
+    if (full) for (const category of SKU_CATEGORIES) groups.push(await fetchAllProducts(category));
+    else groups.push(...await Promise.all(SKU_CATEGORIES.map(category => fetchChangedProducts(category, cutoff))));
     const normalBySku = new Map();
     groups.flat().forEach(row => normalBySku.set(row.sku, row));
     const comboData = await fetchAllComboLinks();
     const comboRows = comboData.rows;
     return {
       generatedAt: new Date().toISOString(),
+      mode: full ? "full" : "incremental",
+      full,
       cutoff,
       categories: SKU_CATEGORIES,
       normalRows: [...normalBySku.values()],

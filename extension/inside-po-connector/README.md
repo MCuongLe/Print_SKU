@@ -37,6 +37,8 @@ Phiên bản 0.6.1 đọc đầy đủ Combo nhiều thành phần, Group UID hi
 
 Phiên bản 0.7.1 thêm lệnh chỉ đọc `GET_GROUP_UID_MOVES_PAGE` cho ô LỊCH SỬ GROUP UID: lịch sử `Transfer location` của mọi kho tài khoản được xem, 500 dòng/trang (WMS không lọc endpoint này theo `company-ids` nên chỉ cần một lượt đọc). Sau khi cập nhật extension phải Reload trong `chrome://extensions` và tải lại trang Print SKU.
 
+Phiên bản 0.8.2 thêm cờ `full: true` cho `GET_SKU_SYNC_DATA` (nút **Đối chiếu toàn bộ** ở `#admin/sku-sync`): đọc hết trang sản phẩm của từng nhóm hàng (6 trang song song, dừng ở trang không đủ 200 dòng hoặc trang lặp), không lọc theo Modified; kết quả mang `mode: "full"`. Không có cờ thì vẫn đọc theo mốc như cũ.
+
 Phiên bản 0.8.1 mở rộng `GET_SKU_COUNT_INVENTORY_PAGE` cho màn RỦI RO LƯU TRỮ (Hàng chưa lên kệ): mỗi dòng tồn kèm `total` (tổng mọi trạng thái), `modified` (Modified date `updated_at`, mốc tính số ngày ở vị trí) và `created` (ngày tạo, dự phòng khi thiếu Modified date). Dòng In-BIN = 0 nhưng `total > 0` (hàng giữ chỗ) không còn bị bỏ khỏi kết quả mà trả `qty = 0`; Kiểm kê SKU vẫn chỉ tính dòng `qty > 0`. Sau khi cập nhật extension phải Reload trong `chrome://extensions`, tải lại trang Print SKU, rồi Admin đồng bộ lại Kiểm kê SKU để bản chụp có Modified date.
 
 Cập nhật lịch sử Group UID (chỉ Admin):

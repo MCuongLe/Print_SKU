@@ -17,6 +17,11 @@ const COMBO_FIELDS = [
   "combo_status", "source_modified_at", "source_component_count", "combo_scope_complete",
 ];
 const MAX_WRITES = 2000;
+// Lượt toàn bộ đọc hết Inside (~22.000 SKU) và lần đầu nạp bù SKU ngừng hoạt động: trần riêng, DB check 30.000 (sku_sync_full_v1.sql).
+const MAX_ROWS_FULL = 60000;
+const MAX_WRITES_FULL = 30000;
+// Nguồn toàn bộ nhỏ hơn mốc (lần toàn bộ trước, hoặc bảng hiện có ở lần đầu) quá ngưỡng này là đọc thiếu trang, không phải Inside thật sự bớt SKU.
+const FULL_DROP_BLOCK_PERCENT = 20;
 const PREVIEW_TTL_MS = 30 * 60 * 1000;
 const DETAIL_LIMIT = 1000;
 const SOURCE_ISSUE_TYPES = new Set(["invalid_combo_relation", "unparsed_combo_description", "partial_combo_description"]);
@@ -119,8 +124,8 @@ function fieldChanges(before: Json, after: Json, fields: string[]): Json {
   for (const field of fields) if (!sameValue(field, before[field], after[field])) changes[field] = { before: before[field] ?? null, after: after[field] ?? null };
   return changes;
 }
-function normalRows(value: unknown): Json[] {
-  if (!Array.isArray(value) || value.length > 5000) throw new Error("Danh sách SKU vượt giới hạn 5.000 dòng thay đổi");
+function normalRows(value: unknown, max = 5000): Json[] {
+  if (!Array.isArray(value) || value.length > max) throw new Error(`Danh sách SKU vượt giới hạn ${max.toLocaleString("vi-VN")} dòng`);
   const seen = new Set<string>();
   return value.map((raw, index) => {
     const row = raw as Json;
@@ -174,9 +179,14 @@ async function updateRun(id: string, patch: Json, status?: string): Promise<Json
 async function preview(request: Request, user: { id: string; username: string }, body: Json): Promise<Response> {
   const source = body.snapshot as Json;
   if (!source || !Array.isArray(source.categories) || source.categories.length !== CATEGORIES.size) return fail(request, 400, "INCOMPLETE_SOURCE", "Extension chưa lấy đủ 7 category SKU");
-  const skus = normalRows(source.normalRows);
+  const full = body.mode === "full" || source.mode === "full";
+  if (full && source.full !== true) return fail(request, 400, "INCOMPLETE_SOURCE", "Extension chưa đọc toàn bộ Inside (cần Extension 0.8.2 trở lên)");
+  const skus = normalRows(source.normalRows, full ? MAX_ROWS_FULL : 5000);
   const combos = comboRows(source.comboRows);
-  const remoteSkus = await fetchBySkus(skus.map(row => String(row.sku)));
+  // Toàn bộ: so với cả bảng (kể cả SKU ngừng hoạt động) để thấy SKU không còn trên Inside; gia tăng chỉ đọc các SKU nguồn gửi lên.
+  const remoteSkus = full
+    ? await fetchAll("SKU_Name?select=sku,product_name,category_id,category_name,status&order=sku.asc")
+    : await fetchBySkus(skus.map(row => String(row.sku)));
   const remoteSkuByCode = new Map(remoteSkus.map(row => [String(row.sku), row]));
   const stagedSkus: Json[] = [], skuAdded: Json[] = [], skuUpdated: Json[] = [];
   let skuUnchanged = 0;
@@ -187,9 +197,21 @@ async function preview(request: Request, user: { id: string; username: string },
     if (Object.keys(fields).length) { stagedSkus.push(row); skuUpdated.push({ sku: row.sku, fields }); }
     else skuUnchanged += 1;
   }
+  // SKU có trong database nhưng Inside không còn trả về: chỉ báo để Admin xử lý (Inside xoá, đổi nhóm hàng, hoặc nạp tay), không tự xoá/ngừng.
+  const sourceSkus = new Set(skus.map(row => String(row.sku)));
+  const skuMissingAll = full ? remoteSkus.filter(row => !sourceSkus.has(String(row.sku))).map(row => ({ sku: row.sku, product_name: row.product_name, category_name: row.category_name, status: row.status })) : [];
+  let verification: Json = {};
+  if (full) {
+    const previousFull = (await fetchAll("sku_sync_runs?select=source_counts&mode=eq.full&status=eq.completed&order=completed_at.desc&limit=1"))[0];
+    const previousFullCount = Number((previousFull?.source_counts as Json | undefined)?.normalRows) || null;
+    const baseline = previousFullCount ?? remoteSkus.length;
+    const drop = baseline > 0 && skus.length < baseline ? Math.round((baseline - skus.length) * 10000 / baseline) / 100 : 0;
+    verification = { previousFullCount, baselineCount: baseline, fullDropPercent: drop, skuMissing: skuMissingAll.length };
+    if (drop >= FULL_DROP_BLOCK_PERCENT) return fail(request, 409, "SAFETY_LIMIT", `Inside chỉ trả ${skus.length.toLocaleString("vi-VN")} SKU, ít hơn ${drop.toLocaleString("vi-VN")}% so với mốc ${baseline.toLocaleString("vi-VN")}; có thể đọc thiếu trang, hãy kiểm tra tab Inside rồi thử lại`);
+  }
 
   const allCodes = [...new Set(combos.flatMap(row => [String(row.combo_sku), String(row.normal_sku)]))];
-  const products = await fetchBySkus(allCodes);
+  const products = full ? remoteSkus : await fetchBySkus(allCodes);
   const productByCode = new Map(products.map(row => [String(row.sku), row]));
   skus.forEach(row => productByCode.set(String(row.sku), row));
   const remoteLinks = await fetchAll("sku_combo_links?select=*");
@@ -249,22 +271,24 @@ async function preview(request: Request, user: { id: string; username: string },
     if (Object.keys(fields).length) { stagedLinks.push(cleanRow); comboUpdated.push({ comboSku: row.combo_sku, normalSku: row.normal_sku, fields }); }
     else comboUnchanged += 1;
   }
-  if (stagedSkus.length > MAX_WRITES || stagedLinks.length > MAX_WRITES) return fail(request, 409, "SAFETY_LIMIT", "Số dòng thay đổi vượt ngưỡng 2.000; cần kiểm tra nguồn trước khi cập nhật");
+  const maxWrites = full ? MAX_WRITES_FULL : MAX_WRITES;
+  if (stagedSkus.length > maxWrites || stagedLinks.length > maxWrites) return fail(request, 409, "SAFETY_LIMIT", `Số dòng thay đổi vượt ngưỡng ${maxWrites.toLocaleString("vi-VN")}; cần kiểm tra nguồn trước khi cập nhật`);
   const issues = sourceIssueRows(source.sourceIssues);
   const excluded = excludedCounts.bothMissing + excludedCounts.oneMissing + excludedCounts.outOfCategory;
   const sourceCounts = { normalRows: skus.length, comboRows: combos.length, selectedComboLinks: candidates.length, excludedComboLinks: excluded, excludedBreakdown: excludedCounts, sourceIssues: issues.total };
-  const changeCounts = { skuAdded: skuAdded.length, skuUpdated: skuUpdated.length, skuUnchanged, comboAdded: comboAdded.length, comboUpdated: comboUpdated.length, comboUnchanged, comboOrphaned: orphanedAll.length };
+  const changeCounts = { skuAdded: skuAdded.length, skuUpdated: skuUpdated.length, skuUnchanged, skuMissing: skuMissingAll.length, comboAdded: comboAdded.length, comboUpdated: comboUpdated.length, comboUnchanged, comboOrphaned: orphanedAll.length };
+  // Danh sách chi tiết tối đa 1.000 dòng mỗi nhóm (lượt toàn bộ có thể hàng nghìn); số đếm vẫn đủ.
   const changes = {
-    skus: { added: skuAdded, updated: skuUpdated },
+    skus: { added: skuAdded.slice(0, DETAIL_LIMIT), updated: skuUpdated.slice(0, DETAIL_LIMIT), missing: skuMissingAll.slice(0, DETAIL_LIMIT) },
     combos: { added: comboAdded, updated: comboUpdated, orphaned: orphanedAll.slice(0, DETAIL_LIMIT), excluded: excludedMissing },
     sourceIssues: issues.items,
   };
   const run = await insertRun({
-    status: "previewed", source: "inside-extension", cutoff: clean(source.cutoff, 40), source_generated_at: sourceTime(source.generatedAt),
+    status: "previewed", source: "inside-extension", mode: full ? "full" : "incremental", cutoff: clean(source.cutoff, 40), source_generated_at: sourceTime(source.generatedAt),
     source_counts: sourceCounts, change_counts: changeCounts, changes, staged_skus: stagedSkus,
-    staged_combo_links: stagedLinks, created_by: user.id,
+    staged_combo_links: stagedLinks, verification, created_by: user.id,
   });
-  return reply(request, 200, { ok: true, data: { runId: run.id, status: run.status, sourceCounts, changeCounts, changes }, meta: { updatedAt: run.created_at, schemaVersion: 1 } });
+  return reply(request, 200, { ok: true, data: { runId: run.id, status: run.status, mode: full ? "full" : "incremental", sourceCounts, changeCounts, changes, verification }, meta: { updatedAt: run.created_at, schemaVersion: 1 } });
 }
 async function upsert(table: string, conflict: string, rows: Json[]): Promise<void> {
   for (let start = 0; start < rows.length; start += 400) {
@@ -305,7 +329,9 @@ async function apply(request: Request, body: Json): Promise<Response> {
     const now = new Date().toISOString();
     await upsert("SKU_Name", "sku", stagedSkus.map(row => ({ ...row, updated_at: now })));
     await upsert("sku_combo_links", "combo_sku,normal_sku", stagedLinks.map(row => ({ ...row, imported_at: now })));
-    const actualSkus = await fetchBySkus(stagedSkus.map(row => String(row.sku)));
+    const actualSkus = stagedSkus.length > 3000
+      ? await fetchAll("SKU_Name?select=sku,product_name,category_id,category_name,status&order=sku.asc")
+      : await fetchBySkus(stagedSkus.map(row => String(row.sku)));
     const actualSkuByCode = new Map(actualSkus.map(row => [String(row.sku), row]));
     const allLinks = stagedLinks.length ? await fetchAll("sku_combo_links?select=*") : [];
     const actualLinkByPair = new Map(allLinks.map(row => [`${row.combo_sku}\u0000${row.normal_sku}`, row]));
@@ -320,6 +346,7 @@ async function apply(request: Request, body: Json): Promise<Response> {
     });
     if (errors.length) throw new Error(errors.slice(0, 20).join("; "));
     const verification = {
+      ...((run.verification as Json | null) ?? {}),
       skuVerified: stagedSkus.length, comboVerified: stagedLinks.length,
       skuCount: await countTable("SKU_Name"), comboLinkCount: await countTable("sku_combo_links"), errors: [],
     };
@@ -332,14 +359,15 @@ async function apply(request: Request, body: Json): Promise<Response> {
 }
 async function history(request: Request, body: Json): Promise<Response> {
   const limit = Math.min(Math.max(Number(body.limit) || 20, 1), 50);
-  const runs = await fetchAll(`sku_sync_runs?select=id,status,cutoff,source_counts,change_counts,verification,error_message,created_at,completed_at,created_by&order=created_at.desc&limit=${limit}`);
+  const runs = await fetchAll(`sku_sync_runs?select=id,status,mode,cutoff,source_counts,change_counts,verification,error_message,created_at,completed_at,created_by&order=created_at.desc&limit=${limit}`);
   // Mốc đọc tiếp theo tính từ lúc đọc nguồn của lượt hoàn tất gần nhất, không phải lúc bấm cập nhật; truy vấn riêng để không phụ thuộc 20 lượt gần nhất.
   const latest = (await fetchAll("sku_sync_runs?select=source_generated_at,completed_at&status=eq.completed&order=source_generated_at.desc&limit=1"))[0];
-  return reply(request, 200, { ok: true, data: { runs, lastSuccessAt: latest?.completed_at ?? null, lastSnapshotAt: latest?.source_generated_at ?? null }, meta: { updatedAt: new Date().toISOString(), schemaVersion: 1 } });
+  const latestFull = (await fetchAll("sku_sync_runs?select=source_generated_at,completed_at&mode=eq.full&status=eq.completed&order=completed_at.desc&limit=1"))[0];
+  return reply(request, 200, { ok: true, data: { runs, lastSuccessAt: latest?.completed_at ?? null, lastSnapshotAt: latest?.source_generated_at ?? null, lastFullAt: latestFull?.completed_at ?? null, lastFullSnapshotAt: latestFull?.source_generated_at ?? null }, meta: { updatedAt: new Date().toISOString(), schemaVersion: 1 } });
 }
 async function detail(request: Request, body: Json): Promise<Response> {
   const runId = clean(body.runId, 80);
-  const runs = await fetchAll(`sku_sync_runs?select=id,status,cutoff,source_counts,change_counts,changes,verification,error_message,created_at,completed_at&id=eq.${encodeURIComponent(runId)}&limit=1`);
+  const runs = await fetchAll(`sku_sync_runs?select=id,status,mode,cutoff,source_counts,change_counts,changes,verification,error_message,created_at,completed_at&id=eq.${encodeURIComponent(runId)}&limit=1`);
   return runs[0] ? reply(request, 200, { ok: true, data: runs[0], meta: { updatedAt: new Date().toISOString(), schemaVersion: 1 } }) : fail(request, 404, "NOT_FOUND", "Không thấy lượt đồng bộ");
 }
 
