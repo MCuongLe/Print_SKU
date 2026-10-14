@@ -83,8 +83,10 @@ const makeBackend = (initial = null) => {
       assert.equal(await page.locator("#ia-overdue").innerText(), "1");
       assert.equal(await page.locator("#ia-admin-tools").isHidden(), true, "người xem không có nút đồng bộ WMS");
       assert.equal(await page.locator("#ia-admin").getAttribute("aria-pressed"), "false");
-      assert.deepEqual(backend.state.calls.map(c => c.rpc), ["sku_count_overview"], "người xem chỉ đọc bản chụp, không gọi Extension hay ghi");
-      assert.equal(backend.state.calls[0].admin, false, "đọc bằng khoá công khai");
+      // App In SKU (#root) luôn chạy nền, hỏi print_queue_status lúc tải và mỗi 15 giây ở mọi màn — chỉ đọc, không thuộc Kiểm kê.
+      const reads = backend.state.calls.filter(c => c.rpc !== "print_queue_status");
+      assert.deepEqual(reads.map(c => c.rpc), ["sku_count_overview"], "người xem chỉ đọc bản chụp, không gọi Extension hay ghi");
+      assert.equal(reads[0].admin, false, "đọc bằng khoá công khai");
       assert.equal(await page.locator("#ia-body tr").count(), 2, "mặc định chỉ hiện SKU cần kiểm kê");
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `${width}px không được tràn ngang`);
       if (width === 1280) {
@@ -170,7 +172,7 @@ const makeBackend = (initial = null) => {
       assert.deepEqual(backend.state.calls.filter(c => c.rpc.startsWith("sku_count_")).map(c => c.rpc),
         ["sku_count_overview", "sku_count_save_start", "sku_count_save_chunk", "sku_count_save_finish", "sku_count_overview"], "đọc → bắt đầu → ghi → chốt → đọc lại");
       assert.equal(backend.state.calls.find(c => c.rpc === "sku_count_save_start").admin, true, "ghi bằng phiên Admin");
-      assert.equal(backend.state.calls.at(-1).admin, false, "đọc lại bằng khoá công khai như mọi người");
+      assert.equal(backend.state.calls.filter(c => c.rpc.startsWith("sku_count_")).at(-1).admin, false, "đọc lại bằng khoá công khai như mọi người");
       const saved = backend.state.snapshot.rows;
       assert.deepEqual(saved.map(r => r.sku).sort(), ["SKU-NEVER", "SKU-OLD", "SKU-RECENT"]);
       assert.equal(saved.find(r => r.sku === "SKU-NEVER").lastApprovedAt, null, "chưa kiểm kê lưu ngày rỗng");
