@@ -41,7 +41,7 @@ const fakeExtension = data => {
 };
 
 const lookups = [];
-async function open(browser, width) {
+async function open(browser, width, { stub = true } = {}) {
   const page = await browser.newPage({ viewport: { width, height: 900 } });
   const errors = [];
   page.on("pageerror", error => errors.push(error.message));
@@ -58,8 +58,18 @@ async function open(browser, width) {
   });
   await page.addInitScript(fakeExtension, wms);
   await page.goto(`${BASE}#group-uid`);
+  // Phiên Admin giả (đọc từ WMS chỉ cho Admin): __admin quyết định accessToken thành công hay báo hết phiên; getToken thật sự mở hộp đăng nhập nên chỉ đếm lượt gọi.
+  if (stub) await page.evaluate(() => {
+    window.__admin = true; window.__getTokenCalls = 0;
+    window.PrintSkuAdminAuth = { accessToken: async () => { if (!window.__admin) throw new Error("Phiên Admin đã hết hạn. Hãy đăng nhập lại."); return "test-admin-token"; } };
+    window.PrintSkuAdminAccess = { ...window.PrintSkuAdminAccess, peekToken: () => window.__admin ? "test-admin-token" : "", logout: () => { window.__admin = false; dispatchEvent(new Event("print-sku-admin-logout")); },
+      getToken: async () => { window.__getTokenCalls++; return window.__admin ? "test-admin-token" : ""; } };
+    dispatchEvent(new Event("print-sku-admin-ready"));
+  });
   return { page, errors };
 }
+const loggedIn = page => page.evaluate(() => { window.__admin = true; dispatchEvent(new Event("print-sku-admin-ready")); });
+const isOpen = page => page.locator("#uid-wms").evaluate(d => d.open);
 const calls = (page, type) => page.evaluate(t => window.__extCalls.filter(c => c.type === t).map(c => c.payload), type);
 const listed = page => page.locator("#uid-wms-list .uid-wms__item").count();
 const totalText = page => page.locator("#uid-wms-total").innerText();
@@ -210,11 +220,78 @@ async function narrow(browser, width) {
   await page.close();
 }
 
+// Đọc từ WMS chỉ dành cho Admin: chưa có phiên thì không mở tấm, không gọi Extension, mở hộp đăng nhập; đăng nhập xong tự mở; hết phiên giữa chừng thì đóng tấm.
+async function gate(browser) {
+  const { page, errors } = await open(browser, 1280);
+  await page.evaluate(() => { window.__admin = false; });
+  await page.locator("#uid-wms-open").click();
+  await page.waitForFunction(() => window.__getTokenCalls === 1);
+  assert.equal(await isOpen(page), false, "chưa đăng nhập Admin: không mở tấm");
+  assert.deepEqual(await page.evaluate(() => window.__extCalls.map(c => c.type).filter(t => t !== "PING")), [], "chưa đăng nhập Admin: không gọi Extension");
+  await page.evaluate(() => dispatchEvent(new Event("print-sku-admin-ready")));
+  await page.waitForFunction(() => window.__getTokenCalls === 2);
+  assert.equal(await isOpen(page), false, "chưa có phiên (accessToken vẫn từ chối): vẫn đóng, hỏi đăng nhập lại");
+  await loggedIn(page); await ready(page);
+  assert.equal(await isOpen(page), true, "đăng nhập xong tự mở tấm");
+  assert.equal((await calls(page, "GET_GROUP_UID_NEW_PAGE")).length, 1);
+  // Hết phiên giữa chừng: tải lại → đóng tấm, mở hộp đăng nhập, không gọi thêm WMS
+  await page.evaluate(() => { window.__admin = false; });
+  await page.locator("#uid-wms-load").click();
+  await page.waitForFunction(() => window.__getTokenCalls === 3);
+  assert.equal(await isOpen(page), false, "hết phiên: đóng tấm");
+  assert.equal((await calls(page, "GET_GROUP_UID_NEW_PAGE")).length, 1, "hết phiên: không gọi thêm WMS");
+  await loggedIn(page);
+  assert.equal(await isOpen(page), true, "đăng nhập lại: mở lại tấm");
+  assert.ok(await listed(page) > 0, "dữ liệu đã tải vẫn còn");
+  // Đăng nhập Admin ở nơi khác (không có yêu cầu mở tấm) không được tự bật tấm
+  await page.keyboard.press("Escape");
+  await loggedIn(page);
+  assert.equal(await isOpen(page), false);
+  assert.deepEqual(errors, []);
+  await page.close();
+  // Không giả lập: hộp đăng nhập Admin thật của trang hiện ra
+  const real = await open(browser, 1280, { stub: false });
+  await real.page.locator("#uid-wms-open").click();
+  await real.page.waitForFunction(() => !document.getElementById("admin-auth").hidden);
+  assert.equal(await isOpen(real.page), false);
+  assert.deepEqual(await real.page.evaluate(() => window.__extCalls.map(c => c.type).filter(t => t !== "PING")), []);
+  await real.page.close();
+}
+
+// Khiên Admin ở thanh trên (cùng Cắt Group UID, Lịch sử Group UID, Kiểm kê SKU…): trắng khi chưa đăng nhập, xanh có dấu tick khi là Admin, bấm khi là Admin thì hỏi thoát.
+async function shield(browser, width) {
+  const { page, errors } = await open(browser, width);
+  const button = page.locator("#uid-admin"), state = () => button.getAttribute("aria-pressed");
+  assert.equal(await state(), "true", "đã là Admin: khiên xanh");
+  assert.equal(await button.getAttribute("aria-label"), "Đang là Admin · bấm để thoát");
+  const box = await button.boundingBox();
+  assert.ok(box.width >= 44 && box.height >= 44 && box.x + box.width <= width, "khiên đủ 44 px và nằm trong màn hình");
+  const look = await button.evaluate(e => ({ back: getComputedStyle(e).backgroundColor, check: getComputedStyle(e.querySelector(".uid-topbar__admin-check")).display, size: e.querySelector("svg").getBoundingClientRect().width }));
+  assert.equal(look.back, "rgb(0, 95, 65)", "nền xanh thương hiệu như các màn khác"); assert.notEqual(look.check, "none", "có dấu tick"); assert.equal(look.size, 20);
+  await button.click();
+  const confirm = page.locator("dialog.whd"); await confirm.waitFor({ state: "visible" });
+  await confirm.locator(".whd-ok").click(); await confirm.waitFor({ state: "hidden" });
+  assert.equal(await state(), "false", "thoát Admin: khiên trắng");
+  assert.equal(await button.getAttribute("aria-label"), "Đăng nhập Admin");
+  await button.click(); // chưa là Admin: mở hộp đăng nhập dùng chung (ở đây chỉ đếm lượt gọi)
+  await page.waitForFunction(() => window.__getTokenCalls === 1);
+  await loggedIn(page);
+  assert.equal(await state(), "true", "đăng nhập xong: khiên xanh");
+  const name = await page.locator("#uid-title").boundingBox(), pill = await page.locator("#uid-printer-pill").boundingBox();
+  const apart = (a, b) => a.x + a.width <= b.x + 1 || b.x + b.width <= a.x + 1 || a.y + a.height <= b.y + 1 || b.y + b.height <= a.y + 1;
+  assert.ok(apart(name, pill) && apart(name, box) && apart(pill, box), "tên màn · máy in · khiên không đè nhau");
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, "không tràn ngang");
+  assert.deepEqual(errors, []);
+  await page.close();
+}
+
 (async () => {
   const browser = await chromium.launch({ channel: "chrome", headless: true });
   try {
     await desktop(browser);
+    await gate(browser);
+    for (const width of [1280, 390]) await shield(browser, width);
     for (const width of [820, 375]) await narrow(browser, width);
-    console.log("group_uid_wms_picker_browser: đạt (1280 / 820 / 375)");
+    console.log("group_uid_wms_picker_browser: đạt (1280 / 820 / 375, cổng Admin)");
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exit(1); });

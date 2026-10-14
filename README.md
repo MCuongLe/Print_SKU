@@ -638,6 +638,7 @@ có số đếm. Thu hẹp bộ lọc không gọi lại WMS; mở rộng kho ho
 Đo 14/10/2026: 5.590 UID New (Garment 4.213, MTG 1.377; ~2,5 MB), 7 ngày = 84. Test: `tests/group_uid_wms_picker_browser.cjs`, `tests/group_uid_new_core.cjs`.
 
 **IN TEM GROUP UID theo mẫu (11/10/2026, khối `#uid-mockup` + sửa trong script màn).** Ô Group UID có icon mã vạch, camera cùng hàng, nút
+**Chỉ Admin được đọc từ WMS** (như Lịch sử Group UID): chưa có phiên thì bấm nút sẽ mở hộp đăng nhập Admin dùng chung, đăng nhập xong tự mở tấm; hết phiên giữa chừng thì tấm đóng lại và hỏi đăng nhập. Đây là cổng giao diện (Extension tự đọc bằng phiên WMS của máy). Thanh trên IN TEM GROUP UID có **khiên Admin** (`#uid-admin`, cùng kiểu Cắt Group UID / Lịch sử Group UID / Kiểm kê SKU / Rủi ro lưu trữ / Cấp vải: trắng khi chưa đăng nhập, nền xanh + dấu tick khi là Admin, bấm khi là Admin thì hỏi thoát); mọi màn có việc cần Admin đều dùng khiên này.
 **Thêm vào danh sách** xuống hàng riêng (mọi bề rộng); Nhập Excel viền liền. Thẻ **Chưa gán SKU**: chip số + › (điện thoại), hàng Chọn tất cả +
 **Xóa đã chọn** (hỏi lại bằng WhDialog), ô tìm Group UID / Lot / Roll (chuẩn ô nhập), mỗi dòng UID + "Lot | Roll" + "Thêm: dd/mm/yyyy hh:mm" (giờ thêm
 lưu ở `addedAt` khi tra xong) + **chép** + xoá; điện thoại hiện 3 dòng đầu + "Xem tất cả". Tay kéo **⋮⋮** (12/10/2026) đổi thứ tự UID
