@@ -153,5 +153,35 @@
     return { rows: [...unique.values()], total: responseTotal(payload, source.length), sourceRows: source.length };
   }
 
-  globalThis.HasakiGroupUidSyncCore = Object.freeze({ clean, normalizeRow, normalizePage, normalizeHistoryPage, normalizeMovesPage, responseRows, responseTotal });
+  // Group UID trạng thái New (status_id 1) để chọn in tem. Dòng group-uid-infos có created_by_name / created_at_tz; UID mới chưa có SKU/sản phẩm
+  // (đo 14/10/2026: 5.590 UID New ở hai kho WH - MATERIAL, 0 UID có products), một phần đã có batch_code/roll_code.
+  const NEW_STATUS_ID = 1;
+
+  function normalizeNewUidPage(payload) {
+    const source = responseRows(payload);
+    const unique = new Map();
+    source.forEach((raw, index) => {
+      const status = clean(raw?.status_name ?? raw?.status, 100);
+      if (Number(raw?.status_id) !== NEW_STATUS_ID && !/^new$/i.test(status)) return;
+      const code = clean(raw?.group_uid_code, 40);
+      if (!/^\d{6,40}$/.test(code)) throw new Error(`UID mới dòng ${index + 1} có Group UID không hợp lệ`);
+      const created = raw?.created_at_tz ?? raw?.created_at;
+      const warehouseId = raw?.warehouse_id == null || raw.warehouse_id === "" ? NaN : Number(raw.warehouse_id);
+      unique.set(code, {
+        group_uid_code: code,
+        warehouse_id: Number.isInteger(warehouseId) ? warehouseId : null,
+        warehouse: clean(raw?.warehouse_name ?? raw?.warehouse, 240) || null,
+        type: clean(raw?.group_uid_type_name, 80) || null,
+        created_by: clean(raw?.created_by_name ?? raw?.created_by, 240) || null,
+        created_at: isoDate(created),
+        updated_at: isoDate(raw?.updated_at_tz ?? raw?.updated_at ?? created),
+        location: clean(raw?.location_description ?? raw?.location, 240) || null,
+        batch_code: clean(raw?.batch_code, 120) || null,
+        roll_code: clean(raw?.roll_code, 120) || null,
+      });
+    });
+    return { rows: [...unique.values()], total: responseTotal(payload, source.length), sourceRows: source.length };
+  }
+
+  globalThis.HasakiGroupUidSyncCore = Object.freeze({ clean, normalizeRow, normalizePage, normalizeHistoryPage, normalizeMovesPage, normalizeNewUidPage, responseRows, responseTotal });
 })();

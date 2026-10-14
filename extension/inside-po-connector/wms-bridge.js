@@ -123,6 +123,37 @@
     };
   }
 
+  // Group UID trạng thái New của hai kho WH - MATERIAL (MTG 1177, GARMENT 1339) để chọn in tem. WMS lọc được status_ids, warehouse_ids và
+  // from/to_updated_at (cần đủ cả hai mốc); KHÔNG lọc ngày tạo / người tạo — app lọc hai điều kiện đó phía trình duyệt.
+  // UID New chưa đổi thì updated_at = created_at, nên mốc from (= ngày tạo sớm nhất) là tập cha an toàn của khoảng ngày tạo.
+  const NEW_UID_WAREHOUSES = [1177, 1339];
+  async function readNewUidPage(payload) {
+    if (!core?.normalizeNewUidPage) throw new Error("Extension chưa tải bộ đọc UID mới; hãy Reload extension");
+    const { page, size } = pageInput(payload);
+    const wanted = Array.isArray(payload?.warehouseIds) && payload.warehouseIds.length ? payload.warehouseIds : NEW_UID_WAREHOUSES;
+    const ids = [...new Set(wanted.map(Number).filter(id => NEW_UID_WAREHOUSES.includes(id)))];
+    if (!ids.length) throw new Error("Chưa chọn kho hợp lệ (WH - MATERIAL - MTG hoặc GARMENT)");
+    const url = new URL(API);
+    url.searchParams.set("active_tab", "group-list");
+    url.searchParams.set("page", String(page));
+    url.searchParams.set("size", String(size));
+    url.searchParams.set("status_ids", "1");
+    url.searchParams.set("warehouse_ids", ids.join(","));
+    if (payload?.from) {
+      url.searchParams.set("from_updated_at", String(new Date(payload.from).getTime()));
+      url.searchParams.set("to_updated_at", String(payload?.to ? new Date(payload.to).getTime() : Date.now()));
+    }
+    const normalized = core.normalizeNewUidPage(await getJson(url, "Phiên WMS không còn quyền đọc Group UID; hãy đăng nhập lại"));
+    return {
+      page, size, total: normalized.total,
+      totalPages: Math.max(1, Math.ceil(normalized.total / size)),
+      rows: normalized.rows,
+      sourceRows: normalized.sourceRows,
+      warehouseIds: ids,
+      generatedAt: new Date().toISOString(),
+    };
+  }
+
   function pageInput(payload) {
     return { page: Math.max(1, Number(payload?.page) || 1), size: Math.min(500, Math.max(1, Number(payload?.size) || 500)) };
   }
@@ -194,11 +225,12 @@
   }
 
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    if (sender.id !== chrome.runtime.id || !["GET_GROUP_UID_PAGE", "GET_GROUP_UID_HISTORY_PAGE", "GET_GROUP_UID_MOVES_PAGE", "GET_SKU_COUNT_WAREHOUSES", "GET_SKU_COUNT_APPROVED_PAGE", "GET_SKU_COUNT_INVENTORY_PAGE"].includes(message?.type)) return false;
+    if (sender.id !== chrome.runtime.id || !["GET_GROUP_UID_PAGE", "GET_GROUP_UID_HISTORY_PAGE", "GET_GROUP_UID_MOVES_PAGE", "GET_GROUP_UID_NEW_PAGE", "GET_SKU_COUNT_WAREHOUSES", "GET_SKU_COUNT_APPROVED_PAGE", "GET_SKU_COUNT_INVENTORY_PAGE"].includes(message?.type)) return false;
     const readers = {
       GET_GROUP_UID_PAGE: readPage,
       GET_GROUP_UID_HISTORY_PAGE: readHistoryPage,
       GET_GROUP_UID_MOVES_PAGE: readMovesPage,
+      GET_GROUP_UID_NEW_PAGE: readNewUidPage,
       GET_SKU_COUNT_WAREHOUSES: readCountWarehouses,
       GET_SKU_COUNT_APPROVED_PAGE: readApprovedCountPage,
       GET_SKU_COUNT_INVENTORY_PAGE: readInventoryPage,

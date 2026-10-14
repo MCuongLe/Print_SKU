@@ -1668,10 +1668,16 @@ Error generating stack: `+y.message+`
                 <button class="uid-add__cam act-icon act-icon--camera" id="uid-camera" type="button" aria-label="Quét bằng camera" title="Quét bằng camera" hidden></button>
                 <button class="uid-add__btn act-icon act-icon--add" id="uid-add" type="submit">Thêm vào danh sách</button>
               </div>
+              <div class="uid-add__tools">
               <button class="uid-import" id="uid-import" type="button">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V4"></path><path d="M7 9l5-5 5 5"></path><path d="M4 16v3a1.5 1.5 0 0 0 1.5 1.5h13A1.5 1.5 0 0 0 20 19v-3"></path></svg>
                 Nhập Excel
               </button>
+              <button class="uid-import uid-wms-open" id="uid-wms-open" type="button" title="Lấy Group UID New từ WMS">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 13v8l-4-4"></path><path d="m12 21 4-4"></path><path d="M4.393 15.269A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.436 8.284"></path></svg>
+                Lấy từ WMS
+              </button>
+              </div>
               <input id="uid-import-file" type="file" accept=".xlsx" hidden>
             </form>
             <section class="uid-card uid-panel" aria-labelledby="uid-pending-title">
@@ -1747,7 +1753,165 @@ Error generating stack: `+y.message+`
         <div class="uid-sheet__list" id="uid-sheet-list"></div>
         <div class="uid-sheet__foot"><div class="uid-sheet__sum"><b id="uid-sheet-picked">Đã chọn 0</b><span id="uid-sheet-total">Tổng 0 Group UID</span></div><button class="uid-bulkdel uid-bulkdel--outline" type="button" data-sheet="bulk"><span>Xóa đã chọn</span></button><button class="uid-sheet__ok" type="button" data-sheet="close">Xác nhận</button></div>
       </dialog>
+      <dialog class="uid-sheet" id="uid-wms" aria-labelledby="uid-wms-title">
+        <div class="uid-sheet__grab" aria-hidden="true"></div>
+        <div class="uid-sheet__head"><h2 id="uid-wms-title">Group UID mới trên WMS</h2><button class="uid-sheet__close" type="button" data-wms="close" aria-label="Đóng"></button></div>
+        <div class="uid-wms__filters">
+          <div class="uid-wms__row" role="group" aria-label="Kho"><button class="uid-wms__chip" type="button" data-wms-wh="1177" aria-pressed="true" title="WH - MATERIAL - MTG">MTG</button><button class="uid-wms__chip" type="button" data-wms-wh="1339" aria-pressed="true" title="WH - MATERIAL - GARMENT">Garment</button></div>
+          <div class="uid-wms__row" role="group" aria-label="Ngày tạo"><button class="uid-wms__chip" type="button" data-wms-range="1" aria-pressed="false">Hôm nay</button><button class="uid-wms__chip" type="button" data-wms-range="7" aria-pressed="true">7 ngày</button><button class="uid-wms__chip" type="button" data-wms-range="30" aria-pressed="false">30 ngày</button><button class="uid-wms__chip" type="button" data-wms-range="all" aria-pressed="false">Tất cả</button><button class="uid-wms__chip" type="button" data-wms-range="custom" aria-pressed="false" aria-label="Chọn ngày" title="Chọn ngày"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg></button></div>
+          <div class="uid-wms__dates" id="uid-wms-dates" hidden><input id="uid-wms-from" type="date" aria-label="Từ ngày tạo"><input id="uid-wms-to" type="date" aria-label="Đến ngày tạo"></div>
+          <div class="uid-wms__by"><select id="uid-wms-by" aria-label="Người tạo"><option value="">Tất cả người tạo</option></select><button class="uid-wms__load" id="uid-wms-load" type="button" aria-label="Tải lại từ WMS" title="Tải lại từ WMS"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg></button></div>
+        </div>
+        <p class="uid-wms__status" id="uid-wms-status" aria-live="polite"></p>
+        <label class="uid-selectall uid-sheet__all"><input type="checkbox" id="uid-wms-all" disabled><span>Chọn tất cả</span><em id="uid-wms-picked">Đã chọn 0</em></label>
+        <div class="uid-sheet__list" id="uid-wms-list"></div>
+        <button class="uid-wms__more" id="uid-wms-more" type="button" hidden><span>Xem thêm</span></button>
+        <div class="uid-sheet__foot"><div class="uid-sheet__sum"><b id="uid-wms-sum">0 UID</b><span id="uid-wms-total"></span></div><button class="uid-sheet__ok" id="uid-wms-add" type="button" disabled>Thêm vào danh sách</button></div>
+      </dialog>
     </section>
+    <style id="uid-wms-style">
+      /* Lấy Group UID trạng thái New từ WMS (Extension) để chọn in tem: tấm kéo lên dùng khung .uid-sheet */
+      #uid-wms { width: min(100%, 860px); }
+      .uid-wms__filters { display: grid; gap: 10px; padding: 0 16px 10px; }
+      .uid-wms__row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+      .uid-wms__chip { display: inline-flex; flex: none; align-items: center; justify-content: center; gap: 6px; min-height: 44px; padding: 0 16px; border: 1px solid #dbe5e0; border-radius: 999px; background: #fff; color: #17251f; font: 600 14px/1 var(--wms-font); cursor: pointer; }
+      .uid-wms__chip svg { width: 20px; height: 20px; }
+      .uid-wms__chip[aria-pressed="true"] { border-color: #005f41; background: #005f41; color: #fff; }
+      .uid-wms__dates { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+      .uid-wms__dates[hidden] { display: none; }
+      .uid-wms__dates input, .uid-wms__by select { box-sizing: border-box; width: 100%; min-height: 48px; padding: 0 14px; border: 1.5px solid var(--wms-border, #d9e2de); border-radius: 13px; background: #fff; color: #17251f; font: 600 16px/1.3 var(--wms-font); outline: none; }
+      .uid-wms__by { display: flex; gap: 8px; }
+      .uid-wms__by select { flex: 1; min-width: 0; }
+      .uid-wms__load { display: inline-grid; flex: none; place-items: center; width: 48px; height: 48px; padding: 0; border: 1px solid #dbe5e0; border-radius: 13px; background: #fff; color: #005f41; cursor: pointer; }
+      .uid-wms__load svg { width: 20px; height: 20px; }
+      .uid-wms__load:disabled { opacity: .5; cursor: not-allowed; }
+      .uid-wms__load[data-busy="true"] svg { animation: spin 1s linear infinite; }
+      .uid-wms__status { min-height: 20px; margin: 0 16px 8px; color: #5c6f68; font: 600 13px/1.4 var(--wms-font); }
+      .uid-wms__status[data-tone="error"] { color: #c2413b; }
+      .uid-wms__item { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--wms-border, #d9e2de); border-radius: 14px; background: #fff; cursor: pointer; }
+      .uid-wms__item input { width: 22px; height: 22px; margin: 0; accent-color: #00a873; }
+      .uid-wms__item[data-have="1"] { background: #f4f7f6; cursor: default; }
+      .uid-wms__item[data-have="1"] .uid-wms__main { opacity: .6; }
+      .uid-wms__code { display: block; color: #005f41; font: 700 16px/1.2 var(--wms-font); font-variant-numeric: tabular-nums; }
+      .uid-wms__meta { display: block; margin-top: 3px; color: #5c6f68; font-size: 13px; overflow-wrap: anywhere; }
+      .uid-wms__tag { display: inline-flex; align-items: center; min-height: 26px; padding: 0 10px; border-radius: 999px; background: #e3f5ec; color: #0f6a49; font-size: 12px; font-weight: 700; white-space: nowrap; }
+      .uid-wms__more { display: flex; align-items: center; justify-content: center; gap: 6px; width: calc(100% - 32px); min-height: 44px; margin: 0 16px 12px; border: 0; background: transparent; color: #005f41; font: 600 14px/1 var(--wms-font); cursor: pointer; }
+      .uid-wms__more[hidden] { display: none; }
+      .uid-wms__empty { padding: 28px 10px; color: #5c6f68; text-align: center; font-size: 14px; }
+      .uid-sheet__ok:disabled { opacity: .45; cursor: not-allowed; }
+      .uid-add__tools { display: flex; gap: 8px; margin-top: 9px; }
+      .uid-add__tools .uid-import { flex: 1; min-width: 0; margin-top: 0; }
+      /* Cần Extension trên máy tính (Chrome + tab WMS): điện thoại/máy tính bảng không có nên ẩn nút */
+      @media (max-width: 800px) { .uid-wms-open { display: none; } }
+    </style>
+    <script id="uid-wms-script">
+      (() => {
+        const $ = id => document.getElementById(id), dialog = $("uid-wms");
+        if (!dialog) return;
+        const DAY = 86400000, PAGE_SIZE = 500, SHOW_STEP = 60, WAREHOUSES = [1177, 1339], NAMES = { 1177: "MTG", 1339: "Garment" };
+        // WMS chỉ lọc được kho, trạng thái New và mốc cập nhật; ngày tạo và người tạo lọc ở đây. UID New chưa đổi có updated_at = created_at nên
+        // đọc từ mốc "từ ngày" là tập cha của khoảng ngày tạo (xem supabase/RULES: đo 14/10/2026).
+        const state = { rows: [], loaded: null, picked: new Set(), shown: SHOW_STEP, wh: new Set(WAREHOUSES), range: "7", by: "", busy: false, seq: 0 };
+        const esc = value => String(value ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+        const num = value => Number(value || 0).toLocaleString("vi-VN"), pad = n => String(n).padStart(2, "0");
+        const vnDate = ms => new Date(ms + 7 * 3600000).toISOString().slice(0, 10), vnStart = day => new Date(`${day}T00:00:00+07:00`).getTime();
+        const stamp = value => { const t = typeof value === "number" ? value : Date.parse(value); if (!Number.isFinite(t)) return "—"; const d = new Date(t + 7 * 3600000); return `${pad(d.getUTCDate())}/${pad(d.getUTCMonth() + 1)}/${d.getUTCFullYear()} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`; };
+        const extensionRequest=(type,payload={},timeout=120000)=>window.PrintSkuBridgeReady(type).then(() => new Promise((resolve, reject) => {
+          const requestId = `uid-wms-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+          const timer = setTimeout(() => { removeEventListener("message", listener); reject(new Error("Extension phản hồi quá lâu; kiểm tra tab WMS rồi thử lại")); }, timeout);
+          const listener = event => {
+            const response = event.data;
+            if (event.source !== window || event.origin !== location.origin || response?.source !== "HASAKI_INSIDE_CONNECTOR" || response.requestId !== requestId) return;
+            clearTimeout(timer); removeEventListener("message", listener);
+            response.ok ? resolve(response.data) : reject(new Error(response.error?.message || "Extension không trả Group UID"));
+          };
+          addEventListener("message", listener);
+          postMessage({ source: "PRINT_SKU_APP", requestId, type, payload }, location.origin);
+        }));
+        const say = (text, tone = "") => { const el = $("uid-wms-status"); el.textContent = text; if (tone) el.dataset.tone = tone; else delete el.dataset.tone; };
+        const has = code => Boolean(window.PrintSkuUid?.has(code));
+
+        function range() {
+          if (state.range === "all") return { from: null, to: null };
+          if (state.range === "custom") { const f = $("uid-wms-from").value, t = $("uid-wms-to").value; return { from: f ? vnStart(f) : null, to: t ? vnStart(t) + DAY : null }; }
+          return { from: vnStart(vnDate(Date.now() - (Number(state.range) - 1) * DAY)), to: null };
+        }
+        const covered = () => { const l = state.loaded, r = range(); return Boolean(l) && [...state.wh].every(id => l.wh.includes(id)) && (l.from === null || (r.from !== null && r.from >= l.from)); };
+        const inRange = (row, r) => state.wh.has(row.warehouse_id) && (r.from === null || Date.parse(row.created_at) >= r.from) && (r.to === null || Date.parse(row.created_at) < r.to);
+        const scoped = () => { const r = range(); return state.rows.filter(row => inRange(row, r)); };
+        const visible = () => scoped().filter(row => !state.by || row.created_by === state.by).sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at) || String(b.group_uid_code).localeCompare(String(a.group_uid_code)));
+
+        function renderBy(rows) {
+          const counts = new Map(); rows.forEach(row => counts.set(row.created_by || "—", (counts.get(row.created_by || "—") || 0) + 1));
+          if (state.by && !counts.has(state.by)) state.by = "";
+          $("uid-wms-by").innerHTML = `<option value="">Tất cả người tạo (${num(rows.length)})</option>` + [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([name, n]) => `<option value="${esc(name)}">${esc(name)} (${num(n)})</option>`).join("");
+          $("uid-wms-by").value = state.by;
+        }
+        function itemHtml(row) {
+          const have = has(row.group_uid_code), checked = state.picked.has(row.group_uid_code);
+          const extra = [row.batch_code && `Lot ${row.batch_code}`, row.roll_code && `Roll ${row.roll_code}`, row.location].filter(Boolean).join(" · ");
+          return `<label class="uid-wms__item" data-code="${esc(row.group_uid_code)}"${have ? ' data-have="1"' : ""}><input type="checkbox" value="${esc(row.group_uid_code)}"${checked ? " checked" : ""}${have ? " disabled" : ""}><span class="uid-wms__main"><span class="uid-wms__code">${esc(row.group_uid_code)}</span><span class="uid-wms__meta">${esc(NAMES[row.warehouse_id] || row.warehouse || "—")} · ${esc(stamp(row.created_at))} · ${esc(row.created_by || "—")}</span>${extra ? `<span class="uid-wms__meta">${esc(extra)}</span>` : ""}</span>${have ? '<span class="uid-wms__tag">Đã có</span>' : ""}</label>`;
+        }
+        function render() {
+          dialog.querySelectorAll("[data-wms-wh]").forEach(b => b.setAttribute("aria-pressed", String(state.wh.has(Number(b.dataset.wmsWh)))));
+          dialog.querySelectorAll("[data-wms-range]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.wmsRange === state.range)));
+          $("uid-wms-dates").hidden = state.range !== "custom";
+          renderBy(scoped());
+          const rows = visible(), codes = new Set(rows.map(row => row.group_uid_code)), free = rows.filter(row => !has(row.group_uid_code));
+          state.picked = new Set([...state.picked].filter(code => codes.has(code) && !has(code)));
+          $("uid-wms-list").innerHTML = rows.length ? rows.slice(0, state.shown).map(itemHtml).join("") : `<div class="uid-wms__empty">${state.loaded ? "Không có Group UID New khớp bộ lọc." : "Chưa tải dữ liệu."}</div>`;
+          const more = $("uid-wms-more"); more.hidden = rows.length <= state.shown; more.querySelector("span").textContent = `Xem thêm (${num(rows.length - state.shown)})`;
+          const picked = state.picked.size, all = $("uid-wms-all");
+          all.disabled = !free.length; all.checked = free.length > 0 && picked === free.length; all.indeterminate = picked > 0 && picked < free.length;
+          $("uid-wms-picked").textContent = `Đã chọn ${num(picked)}`;
+          $("uid-wms-sum").textContent = `${num(picked)} UID`;
+          $("uid-wms-total").textContent = state.loaded ? `Tổng ${num(rows.length)} UID New${rows.length !== state.rows.length ? ` / ${num(state.rows.length)} đã tải` : ""}` : "";
+          const add = $("uid-wms-add"); add.disabled = !picked || state.busy; add.textContent = picked ? `Thêm ${num(picked)} vào danh sách` : "Thêm vào danh sách";
+        }
+        function setBusy(on) { state.busy = on; const b = $("uid-wms-load"); b.disabled = on; b.dataset.busy = String(on); render(); }
+        async function load() {
+          const mine = ++state.seq, wh = [...state.wh].sort((a, b) => a - b), { from } = range(), rows = new Map();
+          setBusy(true); say("Đang đọc Group UID New từ WMS…");
+          try {
+            await extensionRequest("PING_WMS", {}, 6000);
+            let page = 1, pages = 1;
+            while (page <= pages) {
+              if (mine !== state.seq) return;
+              say(`Đang đọc trang ${num(page)}/${num(pages)}…`);
+              const data = await extensionRequest("GET_GROUP_UID_NEW_PAGE", { warehouseIds: wh, page, size: PAGE_SIZE, from: from === null ? null : new Date(from).toISOString(), to: new Date().toISOString() });
+              pages = data.totalPages; data.rows.forEach(row => rows.set(row.group_uid_code, row)); page++;
+            }
+            if (mine !== state.seq) return;
+            state.rows = [...rows.values()]; state.loaded = { wh, from }; state.shown = SHOW_STEP;
+            say(`Đã đọc ${num(rows.size)} Group UID New lúc ${stamp(Date.now())}.`);
+          } catch (error) { if (mine === state.seq) say(error.message || "Không đọc được Group UID từ WMS.", "error"); }
+          finally { if (mine === state.seq) setBusy(false); }
+        }
+        const apply = () => { state.shown = SHOW_STEP; if (covered()) render(); else load(); };
+
+        $("uid-wms-open")?.addEventListener("click", () => { dialog.showModal(); if (!state.loaded && !state.busy) load(); else render(); });
+        dialog.addEventListener("click", event => {
+          if (event.target === dialog || event.target.closest('[data-wms="close"]')) { dialog.close(); return; }
+          const wh = event.target.closest("[data-wms-wh]"), range_ = event.target.closest("[data-wms-range]");
+          if (wh) { const id = Number(wh.dataset.wmsWh); if (state.wh.has(id) && state.wh.size === 1) return; state.wh.has(id) ? state.wh.delete(id) : state.wh.add(id); apply(); return; }
+          if (range_) { state.range = range_.dataset.wmsRange; if (state.range !== "custom") apply(); else render(); }
+        });
+        [$("uid-wms-from"), $("uid-wms-to")].forEach(input => input.addEventListener("change", apply));
+        $("uid-wms-by").addEventListener("change", event => { state.by = event.target.value; state.shown = SHOW_STEP; render(); });
+        $("uid-wms-load").addEventListener("click", () => { if (!state.busy) load(); });
+        $("uid-wms-more").addEventListener("click", () => { state.shown += SHOW_STEP; render(); });
+        $("uid-wms-list").addEventListener("change", event => { const box = event.target.closest("input[type=checkbox]"); if (!box) return; box.checked ? state.picked.add(box.value) : state.picked.delete(box.value); render(); });
+        $("uid-wms-all").addEventListener("change", event => { const free = visible().filter(row => !has(row.group_uid_code)); state.picked = event.target.checked ? new Set(free.map(row => row.group_uid_code)) : new Set(); render(); });
+        $("uid-wms-add").addEventListener("click", async () => {
+          const rows = visible().filter(row => state.picked.has(row.group_uid_code));
+          if (!rows.length) return;
+          if (!window.PrintSkuUid?.add) { say("Chưa thêm được vào danh sách in.", "error"); return; }
+          dialog.close(); state.picked = new Set();
+          await window.PrintSkuUid.add(rows);
+        });
+        render();
+      })();
+    </script>
     <script>
       (() => {
         const home = document.getElementById("barcode-home");
@@ -1895,7 +2059,7 @@ Error generating stack: `+y.message+`
           return rows[0]?.product_name ? String(rows[0].product_name) : "";
         };
 
-        const addGroupUids = async codes => {
+        const addGroupUids = async (codes, hints) => {
           const known = new Set([...pending, ...mapped].map(item => item.groupUid.toLowerCase()));
           const fresh = [];
           let skipped = 0, ready = 0, waiting = 0, failed = 0;
@@ -1926,7 +2090,7 @@ Error generating stack: `+y.message+`
               const row = found.get(code);
               const item = { id: nextId++, groupUid: code, selected: false, addedAt: Date.now(),
                 sku: row?.sku || "", productName: String(row?.product_name || "").trim(),
-                lot: row?.lot || "", roll: row?.roll || "" };
+                lot: row?.lot || hints?.get(code)?.batch_code || "", roll: row?.roll || hints?.get(code)?.roll_code || "" };
               if (item.productName) { mapped.push(item); ready++; }
               else { pending.push(item); waiting++; }
               lookingUp.delete(code.toLowerCase());
@@ -1936,6 +2100,12 @@ Error generating stack: `+y.message+`
           const message = [`${ready} UID sẵn sàng in`, `${waiting} UID chờ gán`, skipped ? `${skipped} UID trùng đã bỏ qua` : "",
             failed ? `Không tra được ${failed} UID. Có thể xóa rồi thêm lại để thử tra cứu hoặc gán thủ công.` : ""].filter(Boolean).join(". ");
           setStatus(message, failed ? "error" : waiting ? "warn" : "ok");
+        };
+
+        // Cổng cho hộp "Lấy từ WMS": biết UID đã có trong danh sách và thêm UID kèm Lot/Roll của WMS
+        window.PrintSkuUid = {
+          has: code => { const key = String(code).toLowerCase(); return lookingUp.has(key) || [...pending, ...mapped].some(item => item.groupUid.toLowerCase() === key); },
+          add: rows => addGroupUids(rows.map(row => row.group_uid_code), new Map(rows.map(row => [row.group_uid_code, row])))
         };
 
         const readZipEntries = bytes => {
