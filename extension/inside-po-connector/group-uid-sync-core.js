@@ -183,5 +183,29 @@
     return { rows: [...unique.values()], total: responseTotal(payload, source.length), sourceRows: source.length };
   }
 
-  globalThis.HasakiGroupUidSyncCore = Object.freeze({ clean, normalizeRow, normalizePage, normalizeHistoryPage, normalizeMovesPage, normalizeNewUidPage, responseRows, responseTotal });
+  // Packing List PO của WMS (inbound-packing-lists): mỗi dòng là một cuộn của PO. SKU thường là Combo (kg), mã cuộn `code`, Lot `batch_code`.
+  // Dòng chưa chia cuộn có quantity 1 và code "1" (một dòng cho cả Lot); việc loại dòng đó và đếm UID do trang làm.
+  function normalizePackingListPage(payload) {
+    const source = responseRows(payload);
+    const rows = source.map((raw, index) => {
+      const purchaseOrder = clean(raw?.purchase_order_number, 40), sku = clean(raw?.sku, 40), quantity = Number(raw?.quantity);
+      if (!/^\d{6,40}$/.test(purchaseOrder)) throw new Error(`Packing List dòng ${index + 1} có mã PO không hợp lệ`);
+      if (!/^[A-Za-z0-9._-]{1,40}$/.test(sku)) throw new Error(`Packing List dòng ${index + 1} có SKU không hợp lệ`);
+      if (!Number.isFinite(quantity) || quantity < 0) throw new Error(`Packing List dòng ${index + 1} có số lượng không hợp lệ`);
+      return {
+        purchase_order: purchaseOrder,
+        shipment: clean(raw?.inbound_shmt_number, 40) || null,
+        sku,
+        product_name: clean(raw?.product_name, 300) || null,
+        quantity,
+        code: clean(raw?.code, 60) || null,
+        batch_code: clean(raw?.batch_code, 120) || null,
+        status: clean(raw?.status_name, 60) || null,
+        delivery: clean(raw?.delivery_method, 30) || null,
+      };
+    });
+    return { rows, total: responseTotal(payload, source.length), sourceRows: source.length };
+  }
+
+  globalThis.HasakiGroupUidSyncCore = Object.freeze({ clean, normalizeRow, normalizePage, normalizeHistoryPage, normalizeMovesPage, normalizeNewUidPage, normalizePackingListPage, responseRows, responseTotal });
 })();

@@ -5,6 +5,7 @@
   const core = globalThis.HasakiGroupUidSyncCore;
   const auditCore = globalThis.HasakiInventoryAuditCore;
   const API = "https://wms-gw.inshasaki.com/api/v1/wms/group-uid-infos";
+  const PACKING_API = "https://wms-gw.inshasaki.com/api/v1/wms/inbound-packing-lists";
   const HISTORY_API = "https://wms-gw.inshasaki.com/api/v1/wms/group-uid-info-histories";
   const WAREHOUSE_API = "https://wms-gw.inshasaki.com/api/v1/wms/master-data/warehouse/by-user";
   const COMPANY_API = "https://wms-gw.inshasaki.com/api/v1/wms/master-data/company";
@@ -154,6 +155,27 @@
     };
   }
 
+  // Packing List của một hay nhiều PO (tối đa 20): lọc theo `purchase_order_numbers`, 500 dòng/trang; không có dòng nào thì trả danh sách rỗng.
+  async function readPackingListPage(payload) {
+    if (!core?.normalizePackingListPage) throw new Error("Extension chưa tải bộ đọc Packing List; hãy Reload extension");
+    const { page, size } = pageInput(payload);
+    const orders = [...new Set((Array.isArray(payload?.purchaseOrders) ? payload.purchaseOrders : []).map(value => String(value ?? "").trim()).filter(value => /^\d{6,40}$/.test(value)))].slice(0, 20);
+    if (!orders.length) throw new Error("Chưa có mã PO hợp lệ");
+    const url = new URL(PACKING_API);
+    url.searchParams.set("page", String(page));
+    url.searchParams.set("size", String(size));
+    url.searchParams.set("purchase_order_numbers", orders.join(","));
+    const normalized = core.normalizePackingListPage(await getJson(url, "Phiên WMS không còn quyền đọc Packing List; hãy đăng nhập lại"));
+    return {
+      page, size, total: normalized.total,
+      totalPages: Math.max(1, Math.ceil(normalized.total / size)),
+      rows: normalized.rows,
+      sourceRows: normalized.sourceRows,
+      purchaseOrders: orders,
+      generatedAt: new Date().toISOString(),
+    };
+  }
+
   function pageInput(payload) {
     return { page: Math.max(1, Number(payload?.page) || 1), size: Math.min(500, Math.max(1, Number(payload?.size) || 500)) };
   }
@@ -225,12 +247,13 @@
   }
 
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    if (sender.id !== chrome.runtime.id || !["GET_GROUP_UID_PAGE", "GET_GROUP_UID_HISTORY_PAGE", "GET_GROUP_UID_MOVES_PAGE", "GET_GROUP_UID_NEW_PAGE", "GET_SKU_COUNT_WAREHOUSES", "GET_SKU_COUNT_APPROVED_PAGE", "GET_SKU_COUNT_INVENTORY_PAGE"].includes(message?.type)) return false;
+    if (sender.id !== chrome.runtime.id || !["GET_GROUP_UID_PAGE", "GET_GROUP_UID_HISTORY_PAGE", "GET_GROUP_UID_MOVES_PAGE", "GET_GROUP_UID_NEW_PAGE", "GET_PACKING_LIST_PAGE", "GET_SKU_COUNT_WAREHOUSES", "GET_SKU_COUNT_APPROVED_PAGE", "GET_SKU_COUNT_INVENTORY_PAGE"].includes(message?.type)) return false;
     const readers = {
       GET_GROUP_UID_PAGE: readPage,
       GET_GROUP_UID_HISTORY_PAGE: readHistoryPage,
       GET_GROUP_UID_MOVES_PAGE: readMovesPage,
       GET_GROUP_UID_NEW_PAGE: readNewUidPage,
+      GET_PACKING_LIST_PAGE: readPackingListPage,
       GET_SKU_COUNT_WAREHOUSES: readCountWarehouses,
       GET_SKU_COUNT_APPROVED_PAGE: readApprovedCountPage,
       GET_SKU_COUNT_INVENTORY_PAGE: readInventoryPage,
