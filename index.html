@@ -9141,8 +9141,23 @@ var FSK_CORE = (function () {
             <div class="as-d-head"><span class="as-d-mark" data-ico="history" aria-hidden="true"></span><div class="as-d-title"><h2 id="gu-hist-title">Lịch sử đồng bộ Group UID</h2><p id="gu-hist-note"></p></div><button class="as-tag" id="gu-hide-failed" type="button" aria-pressed="false">Ẩn lượt lỗi</button><button type="button" class="pj-icon" id="gu-refresh" aria-label="Tải lại lịch sử" title="Tải lại lịch sử"><svg class="pj-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg></button><button type="button" class="pj-icon" data-as-close aria-label="Đóng" title="Đóng"><svg class="pj-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>
             <div class="as-d-body"><div class="ss-table-wrap"><table class="ss-table"><thead><tr><th>Thời gian</th><th>Chế độ</th><th>Trạng thái</th><th>Phạm vi</th><th>Kết quả</th><th>Thời lượng</th></tr></thead><tbody id="gu-history"><tr><td colspan="6" class="ss-empty">Đang tải lịch sử…</td></tr></tbody></table></div></div>
           </dialog>
+          <dialog class="as-dialog" id="gu-uid-dialog" aria-labelledby="gu-uid-title">
+            <div class="as-d-head"><span class="as-d-mark" data-ico="box" aria-hidden="true"></span><div class="as-d-title"><h2 id="gu-uid-title">Group UID</h2><p id="gu-uid-sub"></p></div><button type="button" class="pj-icon" id="gu-uid-copy" aria-label="Sao chép Group UID" title="Sao chép Group UID"><svg class="pj-svg" viewBox="0 0 24 24" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg></button><button type="button" class="pj-icon" data-as-close aria-label="Đóng" title="Đóng"><svg class="pj-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>
+            <div class="as-d-body" id="gu-uid-body"></div>
+          </dialog>
         </div></div></div>
     </section>
+    <style id="gu-uid-detail-style">
+      #gu-uid-dialog{width:min(560px,calc(100% - 32px));height:fit-content}
+      .gu-uid-open{cursor:pointer}.gu-uid-open:hover{text-decoration:underline}.gu-uid-open:focus-visible{outline:2px solid #1aa774;outline-offset:2px;border-radius:4px}
+      .gu-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px 22px;padding:18px 20px 22px}
+      .gu-fact{min-width:0}.gu-fact--wide{grid-column:1/-1}
+      .gu-fact>span{display:block;color:#60736b;font-size:12px;font-weight:700;text-transform:uppercase}
+      .gu-fact>strong{display:block;margin-top:3px;color:#17382d;font-size:14px;font-weight:600;overflow-wrap:anywhere}
+      .gu-fact>em{display:block;margin-top:2px;color:#60736b;font-size:12px;font-style:normal;overflow-wrap:anywhere}
+      .gu-sku{display:grid;gap:1px;margin-bottom:6px}.gu-sku:last-child{margin-bottom:0}.gu-sku b{font-weight:700}.gu-sku span{color:#60736b;font-size:13px;font-weight:400}
+      @media(max-width:760px){.gu-facts{grid-template-columns:1fr}}
+    </style>
     <script id="group-uid-sync-admin-script">
       (()=>{
         const UI=window.AdminSyncUI,{esc,num,dt,rel,dur,ico,chip,statusChip,diffLine}=UI;
@@ -9199,7 +9214,7 @@ var FSK_CORE = (function () {
         }
         function rowFor(kind,row){
           const code=row.groupUidCode||row.group_uid_code,b=row.before||row.before_data||null,a=row.after||row.after_data||null,when=row.sourceUpdatedAt||row.source_updated_at||(kind==="missing"?b?.updated_date:null);
-          const codeCell=`<code data-copy="${esc(code)}" title="Bấm để sao chép">${esc(code)}</code>`,by=String((kind==="missing"?b?.updated_by:a?.updated_by)??"").trim(),wmsCell=(when?`${esc(dt(when))}<span class="as-run-meta">${esc(rel(when))}</span>`:"—")+`<span class="as-by" title="Người cập nhật">${ico("user")}${by?esc(by):'<span class="as-empty">—</span>'}</span>`;
+          const codeCell=`<code class="gu-uid-open" data-gu-uid="${esc(code)}" role="button" tabindex="0" title="Xem chi tiết">${esc(code)}</code>`,by=String((kind==="missing"?b?.updated_by:a?.updated_by)??"").trim(),wmsCell=(when?`${esc(dt(when))}<span class="as-run-meta">${esc(rel(when))}</span>`:"—")+`<span class="as-by" title="Người cập nhật">${ico("user")}${by?esc(by):'<span class="as-empty">—</span>'}</span>`;
           let mid,text,tags=[],csvMid;const info=kind==="missing"?b:a,whName=(kind==="missing"||kind==="stale_source"?(b?.warehouse||a?.warehouse):(a?.warehouse||b?.warehouse))||"",moved=kind==="updated"&&b?.warehouse&&a?.warehouse&&b.warehouse!==a.warehouse,whCell=whName?`<span class="as-wh">${esc(whName)}</span>${moved?`<span class="as-run-meta">từ ${esc(b.warehouse)}</span>`:""}`:'<span class="as-empty">—</span>';
           if(kind==="updated"){const u=updatedCell(row);mid=u.html;text=u.text;tags=u.tags;csvMid=u.csv}
           else if(kind==="stale_source"){const s=staleCell(row);mid=s.html;text=s.text;csvMid=s.csv}
@@ -9208,10 +9223,26 @@ var FSK_CORE = (function () {
           return{cells:[codeCell,whCell,mid,wmsCell],text:`${code} ${whName} ${text} ${by}`,tags,facets:{wh:whName},sort:{code:String(code),wh:whName,wms:when?Date.parse(when):null},csv};
         }
         function tagsFor(kind,rows){if(kind==="updated")return TAGS.filter(t=>rows.some(r=>r.tags.includes(t.id)));if(kind==="added"||kind==="missing"){const seen=[...new Set(rows.flatMap(r=>r.tags))];return seen.map(id=>({id,label:id.slice(3)}))}return[]}
+        // Chi tiết một Group UID (bấm mã UID trong bảng thay đổi): SKU, Lot (batch), Roll và vị trí/số lượng/trạng thái.
+        // Hiện giá trị WMS hiện tại (UID mới/cập nhật), giá trị database (thiếu trên WMS, WMS cũ hơn); nếu khác bản kia thì ghi thêm dòng "Trước"/"WMS".
+        let detail=null,detailCode="";
+        const dash='<span class="as-empty">—</span>',plain=v=>v===undefined||v===null?"":String(v);
+        const skuLines=data=>{const p=Array.isArray(data?.products)?data.products:[];if(p.length)return p.map(i=>`<div class="gu-sku"><div><b>${esc(i.sku)}</b>${i.quantity!==undefined&&i.quantity!==null?` × ${esc(num(i.quantity))}`:""}</div>${i.product_name?`<span>${esc(i.product_name)}</span>`:""}</div>`).join("");return data?.sku?`<div class="gu-sku"><div><b>${esc(data.sku)}</b></div></div>`:dash};
+        const fact=(label,html,prev="",wide=false)=>`<div class="gu-fact${wide?" gu-fact--wide":""}"><span>${esc(label)}</span><strong>${html}</strong>${prev?`<em>${prev}</em>`:""}</div>`;
+        function openUid(code){
+          const row=detail?.rows.get(String(code));if(!row)return;
+          const kind=detail.kind,b=row.before||row.before_data||null,a=row.after||row.after_data||null,main=kind==="missing"?b:kind==="stale_source"?(b||a):(a||b),other=main&&main===b?a:b,tag=kind==="stale_source"?"WMS":"Trước";
+          const prev=(field,show=plain)=>other&&plain(main?.[field])!==plain(other?.[field])?`${tag}: ${esc(show(other?.[field])||"—")}`:"";
+          const val=(field,show=plain)=>esc(show(main?.[field]))||dash;
+          detailCode=String(code);$("gu-uid-title").textContent=detailCode;$("gu-uid-sub").textContent=LABELS[kind]||"";
+          $("gu-uid-body").innerHTML=`<div class="gu-facts">${fact("SKU",skuLines(main),other&&skuList(main)!==skuList(other)?`${tag}: ${esc(skuList(other)||"—")}`:"",true)}${fact("Batch (Lot)",val("batch_code"),prev("batch_code"))}${fact("Roll",val("roll_code"),prev("roll_code"))}${fact("Kho",val("warehouse"),prev("warehouse"))}${fact("Vị trí",val("location"),prev("location"))}${fact("Số lượng",main?.qty===undefined||main?.qty===null?dash:esc(num(main.qty)),prev("qty",v=>v===undefined||v===null?"":num(v)))}${fact("Trạng thái",main?.status?statusChip(main.status):dash,prev("status"))}</div>`;
+          UI.openDialog($("gu-uid-dialog"));
+        }
         function renderChanges(kind="added",rows){
           const [icon,tone]=KIND_ICON[kind]||["box",""];mark.dataset.tone=tone;mark.innerHTML=ico(icon);
           document.querySelectorAll(".as-tab[data-gu-tab]").forEach(b=>b.setAttribute("aria-selected",String(b.dataset.guTab===kind)));
           const all=rows||activeRun?.changes||[],built=all.filter(row=>(row.changeType||row.change_type)===kind).map(row=>rowFor(kind,row));
+          detail={kind,rows:new Map(all.filter(row=>(row.changeType||row.change_type)===kind).map(row=>[String(row.groupUidCode||row.group_uid_code),row]))};
           changeTitle.textContent=LABELS[kind]||"Chi tiết thay đổi";
           list.show({columns:COLS[kind],rows:built,tags:tagsFor(kind,built),facets:[{id:"wh",label:"Kho",icon:"database",empty:"Chưa có kho"}],total:countOf(activeRun,kind),filename:`group-uid-${kind}`,csvHead:CSVH[kind]});UI.openDialog(dlg);
         }
@@ -9243,6 +9274,9 @@ var FSK_CORE = (function () {
         const say=(text,tone="")=>{status.textContent=text;status.dataset.tone=tone;status.setAttribute("aria-live",tone==="error"?"assertive":"polite")};function addNav(){const icon='<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h16M4 17h10"/><circle cx="18" cy="17" r="2"/></svg>',nav=[...root.querySelectorAll("nav")].find(e=>e.textContent.includes("Tổng quan")&&e.textContent.includes("Cấu hình"));if(nav&&!nav.querySelector("[data-group-uid-sync-nav]")){const ref=[...nav.querySelectorAll("button")].find(b=>b.textContent.trim()==="Đồng bộ SKU")||[...nav.querySelectorAll("button")].find(b=>b.textContent.trim()==="Cấu hình");if(ref){const b=document.createElement("button");b.type="button";b.dataset.groupUidSyncNav="true";b.className=ref.className.replace("bg-brand-light text-brand border-l-4 border-brand font-bold","text-slate-500 border-l-4 border-transparent hover:bg-slate-50");b.innerHTML=`${icon}<span class="text-sm">Đồng bộ Group UID</span>`;b.onclick=()=>location.hash="#admin/group-uid-sync";ref.textContent.trim()==="Cấu hình"?ref.before(b):ref.after(b)}}const skuNav=$("sku-sync-screen")?.querySelector(".ss-nav");if(skuNav&&!skuNav.querySelector("[data-admin-hash='#admin/group-uid-sync']")){const ref=[...skuNav.querySelectorAll("button")].find(b=>b.dataset.adminHash==="#admin/sku-sync");if(ref){const b=document.createElement("button");b.type="button";b.dataset.adminHash="#admin/group-uid-sync";b.innerHTML=`${icon}Đồng bộ Group UID`;b.onclick=()=>location.hash=b.dataset.adminHash;ref.after(b)}}}
         async function route(){if(location.hash!=="#admin/group-uid-sync"){screen.hidden=true;UI.closeDialogs(screen);if(location.hash!=="#admin/sku-sync")root.hidden=false;setTimeout(addNav,50);return}const token=await window.PrintSkuAdminAccess?.getToken?.();if(!token)return;root.hidden=true;$("sku-sync-screen").hidden=true;screen.hidden=false;if(!loaded){loaded=true;setBusy(true,"Đang kiểm tra Extension và tải lịch sử…");try{await Promise.all([checkExtension(),loadHistory()]);status.textContent="Sẵn sàng kiểm tra dữ liệu."}catch(error){say(error.message||"Không tải được dữ liệu quản trị.","error")}finally{setBusy(false)}}else if(!busy)Promise.all([checkExtension(),loadHistory()]).catch(()=>{})}
         UI.hydrate(screen);$("gu-top-refresh").onclick=()=>refreshBtn.click();
+        changeBody.addEventListener("click",e=>{const t=e.target.closest("[data-gu-uid]");if(t)openUid(t.dataset.guUid)});
+        changeBody.addEventListener("keydown",e=>{if(e.key!=="Enter"&&e.key!==" ")return;const t=e.target.closest?.("[data-gu-uid]");if(t){e.preventDefault();openUid(t.dataset.guUid)}});
+        $("gu-uid-copy").onclick=()=>{if(!detailCode||!navigator.clipboard)return;const b=$("gu-uid-copy");navigator.clipboard.writeText(detailCode).then(()=>{b.title="Đã sao chép";b.setAttribute("aria-label","Đã sao chép");setTimeout(()=>{b.title="Sao chép Group UID";b.setAttribute("aria-label","Sao chép Group UID")},1500)}).catch(()=>{})};
         incBtn.onclick=()=>readAndStage("incremental");fullBtn.onclick=()=>readAndStage("full");applyBtn.onclick=apply;cancelBtn.onclick=cancelPreview;refreshBtn.onclick=async()=>{if(!busy){setBusy(true,"Đang tải lại lịch sử…");try{await loadHistory();status.textContent="Đã tải lại lịch sử."}catch(error){say(error.message,"error")}finally{setBusy(false)}}};
         hideFailedBtn.onclick=()=>{hideFailed=!hideFailed;hideFailedBtn.setAttribute("aria-pressed",String(hideFailed));renderHistory()};
         document.querySelectorAll("[data-gu-kind]").forEach(b=>b.onclick=()=>b.dataset.zero!=="true"&&selectKind(b.dataset.guKind));screen.addEventListener("click",e=>{const t=e.target.closest("[data-gu-tab]");if(t)selectKind(t.dataset.guTab)});
