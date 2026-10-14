@@ -206,6 +206,9 @@ Triển khai:
 
 Trong màn Thiết bị in còn có: tắt/bật và đổi tên từng máy, số lệnh in theo máy (`print_jobs.device_id`), thu hồi mã trước hạn. Nhập sai mã quá 30 lần trong một phút thì máy chủ tạm khoá việc kích hoạt một phút. Mất khoá (xoá dữ liệu trình duyệt, đổi máy) thì kích hoạt lại bằng mã mới.
 
+Popup máy (14/10/2026, khối `#pdm-polish`): thân popup có lề, 4 ô thông tin một hàng trên nền nhạt, ô tên + nút cao 44 chữ hệ thống, dòng lệnh in
+không bị cắt nhãn trạng thái. Trình duyệt hiện gọn kiểu "Android 10 · Chrome 141" (popup + bảng; chuỗi User-Agent đầy đủ ở title, ô tìm và CSV).
+
 ## Nạp schema lên Supabase
 
 `scripts/apply_supabase_sql.py` chạy một file `.sql` lên project qua Management API — không cần `psql`, không cần Supabase CLI, chỉ dùng thư viện chuẩn của Python.

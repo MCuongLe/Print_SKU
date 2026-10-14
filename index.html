@@ -11045,7 +11045,8 @@ async function rpc(name,args,retry=true){
         const dt=v=>v?new Date(v).toLocaleString("vi-VN",{hour:"2-digit",minute:"2-digit",day:"2-digit",month:"2-digit"}):"—";
         const clock=v=>v?new Date(v).toLocaleTimeString("vi-VN",{hour:"2-digit",minute:"2-digit"}):"—";
         const rel=v=>{if(!v)return"chưa dùng";const m=Math.round((Date.now()-Date.parse(v))/60000);if(m<1)return"vừa xong";if(m<60)return`${m} phút trước`;const h=Math.round(m/60);if(h<48)return`${h} giờ trước`;return`${Math.round(h/24)} ngày trước`};
-        const ua=s=>String(s||"").replace(/^Mozilla\/5\.0\s*/,"").slice(0,70);
+        // Trình duyệt gọn (14/10/2026): "Android 10 · Chrome 141" thay chuỗi User-Agent thô bị cắt giữa chừng; chuỗi đầy đủ ở title, tìm kiếm và CSV
+        const ua=s=>{const t=String(s||"");if(!t)return "";const m=(r,n)=>{const x=t.match(r);return x?`${n} ${x[1]}`:""};const os=m(/Android ([\d.]+)/,"Android")||m(/(?:iPhone|iPad).*?OS (\d+)/,"iOS")||(/Windows NT/.test(t)?"Windows":/Mac OS X/.test(t)?"macOS":/CrOS/.test(t)?"ChromeOS":/Linux/.test(t)?"Linux":"");const br=m(/Edg(?:A|iOS)?\/(\d+)/,"Edge")||m(/SamsungBrowser\/(\d+)/,"Samsung Internet")||m(/(?:Chrome|CriOS)\/(\d+)/,"Chrome")||m(/(?:Firefox|FxiOS)\/(\d+)/,"Firefox")||(/Safari\//.test(t)?m(/Version\/(\d+)/,"Safari"):"");return [os,br].filter(Boolean).join(" · ")||t.replace(/^Mozilla\/5\.0\s*/,"").slice(0,70)};
         const say=(text,tone="")=>{const el=$("pdm-status");el.textContent=text;el.dataset.tone=tone;el.setAttribute("aria-live",tone==="error"?"assertive":"polite")};
         async function rpc(name,args={},retry=true){
           const token=window.PrintSkuAdminAccess?.peekToken?.()||await window.PrintSkuAdminAuth.accessToken();
@@ -11066,7 +11067,7 @@ async function rpc(name,args,retry=true){
 
         function rowFor(d){
           const badge=`<span class="ss-badge" data-status="${d.enabled?"completed":"failed"}">${d.enabled?"Đang bật":"Đã tắt"}</span>`;
-          return{cells:[`<div class="pdm-name"><b>${esc(d.name)}</b><small>${esc(ua(d.userAgent)||"—")}</small></div>`,esc(dt(d.activatedAt)),esc(rel(d.lastSeenAt)),esc(rel(d.lastPrintAt)),`${num(d.printCount)}${d.jobsToday?` <small>(+${num(d.jobsToday)} hôm nay)</small>`:""}`,badge],
+          return{cells:[`<div class="pdm-name"><b>${esc(d.name)}</b><small title="${esc(d.userAgent||"")}">${esc(ua(d.userAgent)||"—")}</small></div>`,esc(dt(d.activatedAt)),esc(rel(d.lastSeenAt)),esc(rel(d.lastPrintAt)),`${num(d.printCount)}${d.jobsToday?` <small>(+${num(d.jobsToday)} hôm nay)</small>`:""}`,badge],
             text:[d.name,d.userAgent].join(" "),facets:{on:d.enabled?"Đang bật":"Đã tắt"},sort:{name:d.name,act:Date.parse(d.activatedAt)||0,seen:Date.parse(d.lastSeenAt)||0,print:Date.parse(d.lastPrintAt)||0,count:Number(d.printCount)||0,on:d.enabled?0:1},
             attrs:`data-pdm-id="${esc(d.id)}" data-off="${!d.enabled}"`,csv:[d.name,d.enabled?"Đang bật":"Đã tắt",d.activatedAt,d.lastSeenAt||"",d.lastPrintAt||"",d.printCount,d.jobsToday||0,d.userAgent||""]};
         }
@@ -11127,7 +11128,7 @@ async function rpc(name,args,retry=true){
         const dialog=$("pdm-dialog");
         function renderDevice(){
           const d=state.device;if(!d)return;
-          $("pdm-d-title").textContent=d.name;$("pdm-d-sub").textContent=ua(d.userAgent)||"Trình duyệt không rõ";
+          $("pdm-d-title").textContent=d.name;$("pdm-d-sub").textContent=ua(d.userAgent)||"Trình duyệt không rõ";$("pdm-d-sub").title=d.userAgent||"";
           $("pdm-d-status").innerHTML=`<span class="ss-badge" data-status="${d.enabled?"completed":"failed"}">${d.enabled?"Đang bật":"Đã tắt"}</span>`;
           const fact=(l,v,s="")=>`<div class="pdm-fact"><span>${esc(l)}</span><strong>${esc(v)}</strong>${s?`<em>${esc(s)}</em>`:""}</div>`;
           $("pdm-d-facts").innerHTML=[fact("Kích hoạt lúc",dt(d.activatedAt)),fact("Dùng gần nhất",d.lastSeenAt?dt(d.lastSeenAt):"—",rel(d.lastSeenAt)),fact("In gần nhất",d.lastPrintAt?dt(d.lastPrintAt):"—",rel(d.lastPrintAt)),fact("Tổng lệnh in",num(d.printCount),d.jobsToday?`+${num(d.jobsToday)} hôm nay`:"")].join("");
@@ -12296,6 +12297,25 @@ async function rpc(name,args,retry=true){
       @media (max-width: 480px) {
         :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) :is(#cut-form, #xa-vai-form, #cap-vai-form) .scan-field > .cut-input { padding-left: 56px; background-position: 14px 50%, 46px 50%, 0 0; }
       }
+    </style>
+    <style id="pdm-polish">
+      /* Popup Thiết bị in (14/10/2026): thân popup có lề (trước 0 — chữ, ô tên, dòng lệnh in sát mép, nhãn "Xong" bị cắt); 4 ô thông tin một hàng
+         trên nền nhạt; ô tên + nút cao 44, chữ hệ thống (trước "font: … inherit" sai cú pháp nên rơi về font mặc định); dòng ghi chú trống thì ẩn. */
+      #pdm-dialog .as-d-body { padding: 18px 20px 20px; }
+      #pdm-dialog .pdm-facts { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px 16px; padding: 14px 16px; border: 1px solid #edf2f0; border-radius: 14px; background: #f8faf9; }
+      #pdm-dialog .pdm-fact strong { font-size: 16px; font-variant-numeric: tabular-nums; }
+      #pdm-dialog .pdm-d-row { flex-wrap: nowrap; gap: 8px; margin-top: 16px; }
+      #pdm-dialog .pdm-d-row input { box-sizing: border-box; min-width: 0; height: 44px; min-height: 44px; padding: 0 14px; border: 1px solid #d9e2de; border-radius: 12px; background: #fff; color: #17251f; font: 600 14px/1.2 var(--wms-font, system-ui); }
+      #pdm-dialog .pdm-d-row input:focus { outline: 0; border-color: var(--wms-brand, #005f41); box-shadow: 0 0 0 3px rgba(0, 95, 65, .14); }
+      #pdm-dialog .pdm-d-btn { flex: none; height: 44px; min-height: 44px; padding: 0 16px; font: 600 14px/1 var(--wms-font, system-ui); }
+      #pdm-dialog .pdm-d-btn[data-tone=bad] { border-color: rgba(194, 65, 59, .35); color: #a82f29; }
+      #pdm-dialog #pdm-d-note:empty { display: none; }
+      #pdm-dialog .pdm-d-h { margin: 20px 0 8px; }
+      #pdm-dialog .pdm-job { grid-template-columns: 44px 40px minmax(0, 1fr) auto auto; gap: 12px; padding: 10px 12px; }
+      #pdm-dialog .pdm-empty { padding: 10px 0 0; }
+      @media (hover: hover) { #pdm-dialog .pdm-d-btn:not([data-tone=ok]):not(:disabled):hover { background: #f6f8f7; } }
+      /* Bảng Thiết bị: tên máy trên, trình duyệt dưới (quy tắc cũ "td.pdm-name" không khớp ô div nên dính liền "may-kho-01(Windows NT…") */
+      .pdm-table .pdm-name b, .pdm-table .pdm-name small { display: block; }
     </style>
   </body>
 </html>
