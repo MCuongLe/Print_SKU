@@ -1762,6 +1762,7 @@ Error generating stack: `+y.message+`
           <div class="uid-wms__row" role="group" aria-label="Ngày tạo"><button class="uid-wms__chip" type="button" data-wms-range="1" aria-pressed="false">Hôm nay</button><button class="uid-wms__chip" type="button" data-wms-range="7" aria-pressed="true">7 ngày</button><button class="uid-wms__chip" type="button" data-wms-range="30" aria-pressed="false">30 ngày</button><button class="uid-wms__chip" type="button" data-wms-range="all" aria-pressed="false">Tất cả</button><button class="uid-wms__chip" type="button" data-wms-range="custom" aria-pressed="false" aria-label="Chọn ngày" title="Chọn ngày"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg></button></div>
           <div class="uid-wms__dates" id="uid-wms-dates" hidden><input id="uid-wms-from" type="date" aria-label="Từ ngày tạo"><input id="uid-wms-to" type="date" aria-label="Đến ngày tạo"></div>
           <div class="uid-wms__by"><select id="uid-wms-by" aria-label="Người tạo"><option value="">Tất cả người tạo</option></select><button class="uid-wms__load" id="uid-wms-load" type="button" aria-label="Tải lại từ WMS" title="Tải lại từ WMS"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg></button></div>
+          <div class="uid-wms__by"><select id="uid-wms-batch" aria-label="Đợt tạo (ngày giờ · người tạo)"><option value="">Tất cả đợt tạo</option></select></div>
         </div>
         <p class="uid-wms__status" id="uid-wms-status" aria-live="polite"></p>
         <label class="uid-selectall uid-sheet__all"><input type="checkbox" id="uid-wms-all" disabled><span>Chọn tất cả</span><em id="uid-wms-picked">Đã chọn 0</em></label>
@@ -1815,7 +1816,7 @@ Error generating stack: `+y.message+`
         const DAY = 86400000, PAGE_SIZE = 500, SHOW_STEP = 60, WAREHOUSES = [1177, 1339], NAMES = { 1177: "MTG", 1339: "Garment" };
         // WMS chỉ lọc được kho, trạng thái New và mốc cập nhật; ngày tạo và người tạo lọc ở đây. UID New chưa đổi có updated_at = created_at nên
         // đọc từ mốc "từ ngày" là tập cha của khoảng ngày tạo (xem supabase/RULES: đo 14/10/2026).
-        const state = { rows: [], loaded: null, picked: new Set(), shown: SHOW_STEP, wh: new Set(WAREHOUSES), range: "7", by: "", busy: false, seq: 0 };
+        const state = { rows: [], loaded: null, picked: new Set(), shown: SHOW_STEP, wh: new Set(WAREHOUSES), range: "7", by: "", batch: "", busy: false, seq: 0 };
         const esc = value => String(value ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
         const num = value => Number(value || 0).toLocaleString("vi-VN"), pad = n => String(n).padStart(2, "0");
         const vnDate = ms => new Date(ms + 7 * 3600000).toISOString().slice(0, 10), vnStart = day => new Date(`${day}T00:00:00+07:00`).getTime();
@@ -1852,13 +1853,22 @@ Error generating stack: `+y.message+`
         const covered = () => { const l = state.loaded, r = range(); return Boolean(l) && [...state.wh].every(id => l.wh.includes(id)) && (l.from === null || (r.from !== null && r.from >= l.from)); };
         const inRange = (row, r) => state.wh.has(row.warehouse_id) && (r.from === null || Date.parse(row.created_at) >= r.from) && (r.to === null || Date.parse(row.created_at) < r.to);
         const scoped = () => { const r = range(); return state.rows.filter(row => inRange(row, r)); };
-        const visible = () => scoped().filter(row => !state.by || row.created_by === state.by).sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at) || String(b.group_uid_code).localeCompare(String(a.group_uid_code)));
+        // Đợt tạo = cùng phút + cùng người tạo, đúng như dòng "04/08/2026 15:59 · tuanlq5@hasaki.vn" hiện dưới mỗi UID (UID thường được tạo hàng loạt cho một lô cuộn)
+        const batchKey = row => `${stamp(row.created_at)} · ${row.created_by || "—"}`;
+        const visible = () => scoped().filter(row => (!state.by || row.created_by === state.by) && (!state.batch || batchKey(row) === state.batch)).sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at) || String(b.group_uid_code).localeCompare(String(a.group_uid_code)));
 
         function renderBy(rows) {
           const counts = new Map(); rows.forEach(row => counts.set(row.created_by || "—", (counts.get(row.created_by || "—") || 0) + 1));
           if (state.by && !counts.has(state.by)) state.by = "";
           $("uid-wms-by").innerHTML = `<option value="">Tất cả người tạo (${num(rows.length)})</option>` + [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([name, n]) => `<option value="${esc(name)}">${esc(name)} (${num(n)})</option>`).join("");
           $("uid-wms-by").value = state.by;
+        }
+        function renderBatch(rows) {
+          const groups = new Map();
+          rows.forEach(row => { const key = batchKey(row), group = groups.get(key); if (group) group.n++; else groups.set(key, { n: 1, at: Date.parse(row.created_at) }); });
+          if (state.batch && !groups.has(state.batch)) state.batch = "";
+          $("uid-wms-batch").innerHTML = `<option value="">Tất cả đợt tạo (${num(rows.length)})</option>` + [...groups.entries()].sort((a, b) => b[1].at - a[1].at).map(([key, group]) => `<option value="${esc(key)}">${esc(key)} (${num(group.n)})</option>`).join("");
+          $("uid-wms-batch").value = state.batch;
         }
         function itemHtml(row) {
           const have = has(row.group_uid_code), checked = state.picked.has(row.group_uid_code);
@@ -1869,7 +1879,7 @@ Error generating stack: `+y.message+`
           dialog.querySelectorAll("[data-wms-wh]").forEach(b => b.setAttribute("aria-pressed", String(state.wh.has(Number(b.dataset.wmsWh)))));
           dialog.querySelectorAll("[data-wms-range]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.wmsRange === state.range)));
           $("uid-wms-dates").hidden = state.range !== "custom";
-          renderBy(scoped());
+          const base = scoped(); renderBy(base); renderBatch(base.filter(row => !state.by || row.created_by === state.by));
           const rows = visible(), codes = new Set(rows.map(row => row.group_uid_code)), free = rows.filter(row => !has(row.group_uid_code));
           state.picked = new Set([...state.picked].filter(code => codes.has(code) && !has(code)));
           $("uid-wms-list").innerHTML = rows.length ? rows.slice(0, state.shown).map(itemHtml).join("") : `<div class="uid-wms__empty">${state.loaded ? "Không có Group UID New khớp bộ lọc." : "Chưa tải dữ liệu."}</div>`;
@@ -1928,6 +1938,7 @@ Error generating stack: `+y.message+`
         });
         [$("uid-wms-from"), $("uid-wms-to")].forEach(input => input.addEventListener("change", apply));
         $("uid-wms-by").addEventListener("change", event => { state.by = event.target.value; state.shown = SHOW_STEP; render(); });
+        $("uid-wms-batch").addEventListener("change", event => { state.batch = event.target.value; state.shown = SHOW_STEP; render(); });
         $("uid-wms-load").addEventListener("click", () => { if (!state.busy) load(); });
         $("uid-wms-more").addEventListener("click", () => { state.shown += SHOW_STEP; render(); });
         $("uid-wms-list").addEventListener("change", event => { const box = event.target.closest("input[type=checkbox]"); if (!box) return; box.checked ? state.picked.add(box.value) : state.picked.delete(box.value); render(); });

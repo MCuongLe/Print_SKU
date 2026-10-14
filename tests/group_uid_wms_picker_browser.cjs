@@ -15,6 +15,11 @@ const mk = (i, at = NOW - i * 3600000) => ({
 });
 const wms = Array.from({ length: 620 }, (_, i) => mk(i));
 wms.push(mk(7000, NOW - 40 * DAY), mk(7001, NOW - 90 * DAY));
+// Một đợt tạo: 5 UID cùng phút, cùng người tạo (tuanlq5) ở MTG, cách 5 giờ trước
+const BATCH_AT = Math.floor((NOW - 5 * 3600000) / 60000) * 60000 + 5000;
+for (let k = 0; k < 5; k++) wms.push({ ...mk(8000 + k, BATCH_AT + k * 1000), created_by: USERS[0], warehouse_id: 1177, warehouse: "WH - MATERIAL - MTG" });
+const stampVn = ms => { const d = new Date(ms + 7 * 3600000), p = n => String(n).padStart(2, "0"); return `${p(d.getUTCDate())}/${p(d.getUTCMonth() + 1)}/${d.getUTCFullYear()} ${p(d.getUTCHours())}:${p(d.getUTCMinutes())}`; };
+const BATCH_KEY = `${stampVn(BATCH_AT)} · ${USERS[0]}`;
 const vnDate = ms => new Date(ms + 7 * 3600000).toISOString().slice(0, 10), vnStart = day => Date.parse(`${day}T00:00:00+07:00`);
 const sinceDays = n => vnStart(vnDate(NOW - (n - 1) * DAY));
 const created = r => Date.parse(r.created_at);
@@ -122,7 +127,7 @@ async function desktop(browser) {
   pages = await calls(page, "GET_GROUP_UID_NEW_PAGE");
   assert.equal(pages.length, 5, "Tất cả = 622 UID nên đọc 2 trang"); assert.equal(pages[3].from, null);
   assert.deepEqual(pages.slice(3).map(p => p.page), [1, 2]);
-  assert.match(await totalText(page), /Tổng 622 UID New/);
+  assert.match(await totalText(page), new RegExp(`Tổng ${wms.length} UID New`));
   await page.locator('[data-wms-range="7"]').click();
   assert.equal((await calls(page, "GET_GROUP_UID_NEW_PAGE")).length, 5, "thu hẹp lại khoảng ngày không gọi lại");
 
@@ -144,6 +149,29 @@ async function desktop(browser) {
   await page.locator("#uid-wms-by").selectOption(mine);
   assert.match(await totalText(page), new RegExp(`Tổng ${byCount} UID New`));
   assert.ok((await page.locator("#uid-wms-list .uid-wms__meta").allInnerTexts()).every(text => !text.includes("@") || text.includes(mine)));
+
+  // Đợt tạo = cùng phút + cùng người tạo, đúng dòng "dd/mm/yyyy hh:mm · email" dưới mỗi UID; lọc người tạo thu hẹp danh sách đợt
+  assert.ok(!(await page.locator("#uid-wms-batch option").allInnerTexts()).some(text => text.startsWith(BATCH_KEY)), "đợt của người khác không hiện khi đã lọc người tạo");
+  await page.locator("#uid-wms-by").selectOption("");
+  const batchOptions = await page.locator("#uid-wms-batch option").allInnerTexts();
+  assert.ok(batchOptions[0].startsWith("Tất cả đợt tạo"));
+  assert.ok(batchOptions.includes(`${BATCH_KEY} (5)`), "đợt có đúng 5 UID cùng phút");
+  assert.ok(batchOptions.length > 20 && batchOptions.indexOf(`${BATCH_KEY} (5)`) < batchOptions.length / 2, "đợt mới nhất xếp trước");
+  await page.locator("#uid-wms-batch").selectOption(BATCH_KEY);
+  assert.match(await totalText(page), /Tổng 5 UID New/);
+  assert.equal(await listed(page), 5);
+  assert.ok((await page.locator("#uid-wms-list .uid-wms__meta").allInnerTexts()).filter(text => text.includes("@")).every(text => text.includes(BATCH_KEY)), "mọi dòng thuộc đúng đợt");
+  await page.locator("#uid-wms-all").check();
+  assert.equal(await page.locator("#uid-wms-add").innerText(), "Thêm 5 vào danh sách");
+  await page.locator("#uid-wms-all").uncheck();
+  await page.locator("#uid-wms-by").selectOption(mine);
+  assert.equal(await page.locator("#uid-wms-batch").inputValue(), "", "đổi người tạo khác đợt: bỏ chọn đợt");
+  await page.locator("#uid-wms-by").selectOption("");
+  await page.locator("#uid-wms-batch").selectOption(BATCH_KEY);
+  await page.locator('[data-wms-wh="1177"]').click(); // bỏ MTG: đợt MTG không còn nên tự bỏ chọn
+  assert.equal(await page.locator("#uid-wms-batch").inputValue(), "");
+  await page.locator('[data-wms-wh="1177"]').click();
+  await page.locator("#uid-wms-by").selectOption(mine);
 
   // Chọn tất cả (cả phần chưa hiển thị) rồi thêm vào danh sách in
   const wanted = expect({ from: sinceDays(7), by: mine });
