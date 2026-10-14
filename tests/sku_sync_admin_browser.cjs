@@ -47,7 +47,7 @@ const mockRoutes = async page => page.route('**/*', async route => {
     const { action, runId, mode } = JSON.parse(route.request().postData() || '{}');
     const ok = data => json({ ok: true, data });
     if (action === 'history') return ok({ runs: RUNS, lastSuccessAt: ago(119), lastSnapshotAt: ago(120), lastFullAt: null });
-    if (action === 'preview' && mode === 'full') return ok({ runId: 'run-full', status: 'previewed', mode: 'full', sourceCounts: { ...SOURCE_COUNTS, normalRows: 97 }, changeCounts: { ...CHANGE_COUNTS, skuMissing: 1 }, changes: { ...CHANGES, skus: { ...CHANGES.skus, missing: [{ sku: '900000009', product_name: 'SKU cũ', category_name: 'Thời Trang', status: '0' }] } }, verification: { previousFullCount: 100, baselineCount: 100, fullDropPercent: 3, skuMissing: 1 } });
+    if (action === 'preview' && mode === 'full') return ok({ runId: 'run-full', status: 'previewed', mode: 'full', sourceCounts: { ...SOURCE_COUNTS, normalRows: 97 }, changeCounts: { ...CHANGE_COUNTS, skuMissing: 1, skuSkippedInactive: 2629 }, changes: { ...CHANGES, skus: { ...CHANGES.skus, missing: [{ sku: '900000009', product_name: 'SKU cũ', category_name: 'Thời Trang', status: '0' }] } }, verification: { previousFullCount: 100, baselineCount: 100, fullDropPercent: 3, skuMissing: 1 } });
     if (action === 'preview') return ok({ runId: 'run-fresh', status: 'previewed', sourceCounts: SOURCE_COUNTS, changeCounts: CHANGE_COUNTS, changes: CHANGES });
     if (action === 'apply') return ok({ status: 'completed', verification: { skuVerified: 3, comboVerified: 0, skuCount: 100 } });
     if (action === 'detail') {
@@ -137,6 +137,8 @@ const cells = async page => (await page.locator('#ss-change-body tr').evaluateAl
       assert.equal(calls.includes('preview:full'), true, 'Edge nhận mode full');
       assert.match(await page.locator('#sku-sync-status').innerText(), /Có 7 cảnh báo\. Tổng SKU nguồn giảm 3% so với mốc 100\./);
       assert.equal((await page.locator('#ss-sku-missing').innerText()).trim(), '1');
+      assert.equal((await page.locator('#ss-sku-skipped').innerText()).trim(), '2.629', 'SKU ngừng chưa có trong database: chỉ đếm, không nạp');
+      assert.equal(await page.locator('#ss-sku-skipped').evaluate(node => node.closest('.ss-metric').tagName), 'DIV', 'ô bỏ qua không mở popup');
       assert.equal(await page.locator('#ss-sku-missing').evaluate(node => node.closest('.ss-metric').dataset.alert), 'true');
       await openKind(page, 'sku-missing');
       assert.equal((await page.locator('#ss-change-title').innerText()).trim(), 'SKU không còn trên Inside');
@@ -168,7 +170,7 @@ const cells = async page => (await page.locator('#ss-change-body tr').evaluateAl
       assert.equal(await page.locator('#ss-change-body .as-name b').count(), 2, 'phần đầu tên sản phẩm in đậm');
       // Thẻ chia 3 cụm có tiêu đề, mọi thẻ có icon
       assert.deepEqual(await page.locator('.as-group > h3').evaluateAll(nodes => nodes.map(n => n.textContent.trim())), ['SKU', 'Combo', 'Cảnh báo']);
-      assert.equal(await page.locator('.as-group .ss-metric > span svg').count(), 10, 'mỗi thẻ có icon');
+      assert.equal(await page.locator('.as-group .ss-metric > span svg').count(), 11, 'mỗi thẻ có icon');
       assert.equal((await page.locator('#ss-last-done').innerText()).trim() !== '—', true, 'dải lần đồng bộ gần nhất có dữ liệu');
       // Tìm không phân biệt dấu + xuất Excel
       await page.locator('#ss-tools input').fill('chi irisa'); assert.equal(await page.locator('#ss-change-body tr').count(), 1); assert.equal((await page.locator('#ss-change-note').innerText()).trim(), '1 / 2 dòng');

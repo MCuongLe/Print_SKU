@@ -189,10 +189,15 @@ async function preview(request: Request, user: { id: string; username: string },
     : await fetchBySkus(skus.map(row => String(row.sku)));
   const remoteSkuByCode = new Map(remoteSkus.map(row => [String(row.sku), row]));
   const stagedSkus: Json[] = [], skuAdded: Json[] = [], skuUpdated: Json[] = [];
+  // SKU ngừng hoạt động mà database chưa có thì không nạp (quyết định 14/10/2026), chỉ đếm; SKU đã có mà Inside chuyển sang ngừng vẫn cập nhật trạng thái.
+  const skippedInactive = new Set<string>();
   let skuUnchanged = 0;
   for (const row of skus) {
     const before = remoteSkuByCode.get(String(row.sku));
-    if (!before) { stagedSkus.push(row); skuAdded.push({ sku: row.sku, after: row }); continue; }
+    if (!before) {
+      if (row.status !== "1") { skippedInactive.add(String(row.sku)); continue; }
+      stagedSkus.push(row); skuAdded.push({ sku: row.sku, after: row }); continue;
+    }
     const fields = fieldChanges(before, row, SKU_FIELDS);
     if (Object.keys(fields).length) { stagedSkus.push(row); skuUpdated.push({ sku: row.sku, fields }); }
     else skuUnchanged += 1;
@@ -213,7 +218,7 @@ async function preview(request: Request, user: { id: string; username: string },
   const allCodes = [...new Set(combos.flatMap(row => [String(row.combo_sku), String(row.normal_sku)]))];
   const products = full ? remoteSkus : await fetchBySkus(allCodes);
   const productByCode = new Map(products.map(row => [String(row.sku), row]));
-  skus.forEach(row => productByCode.set(String(row.sku), row));
+  skus.forEach(row => { if (!skippedInactive.has(String(row.sku))) productByCode.set(String(row.sku), row); });
   const remoteLinks = await fetchAll("sku_combo_links?select=*");
   const remoteLinkByPair = new Map(remoteLinks.map(row => [`${row.combo_sku}\u0000${row.normal_sku}`, row]));
   const componentCounts = new Map<string, number>();
@@ -276,7 +281,7 @@ async function preview(request: Request, user: { id: string; username: string },
   const issues = sourceIssueRows(source.sourceIssues);
   const excluded = excludedCounts.bothMissing + excludedCounts.oneMissing + excludedCounts.outOfCategory;
   const sourceCounts = { normalRows: skus.length, comboRows: combos.length, selectedComboLinks: candidates.length, excludedComboLinks: excluded, excludedBreakdown: excludedCounts, sourceIssues: issues.total };
-  const changeCounts = { skuAdded: skuAdded.length, skuUpdated: skuUpdated.length, skuUnchanged, skuMissing: skuMissingAll.length, comboAdded: comboAdded.length, comboUpdated: comboUpdated.length, comboUnchanged, comboOrphaned: orphanedAll.length };
+  const changeCounts = { skuAdded: skuAdded.length, skuUpdated: skuUpdated.length, skuUnchanged, skuSkippedInactive: skippedInactive.size, skuMissing: skuMissingAll.length, comboAdded: comboAdded.length, comboUpdated: comboUpdated.length, comboUnchanged, comboOrphaned: orphanedAll.length };
   // Danh sách chi tiết tối đa 1.000 dòng mỗi nhóm (lượt toàn bộ có thể hàng nghìn); số đếm vẫn đủ.
   const changes = {
     skus: { added: skuAdded.slice(0, DETAIL_LIMIT), updated: skuUpdated.slice(0, DETAIL_LIMIT), missing: skuMissingAll.slice(0, DETAIL_LIMIT) },

@@ -387,3 +387,22 @@ test("apply: lượt toàn bộ hơn 3.000 dòng ghi được và xác minh bằ
   assert.equal(result.body.data.verification.previousFullCount, 3000);
   assert.equal(result.body.data.verification.skuMissing, 2);
 });
+
+test("SKU ngừng hoạt động chưa có trong database: không nạp, chỉ đếm; SKU đã có chuyển sang ngừng vẫn cập nhật; combo tham chiếu SKU bỏ qua bị loại", async () => {
+  skus.push({ ...remoteSku("KEEP"), category_name: "Thời Trang (Phụ Liệu)" });
+  links.length = 0;
+  const combos = Array.from({ length: 1000 }, (_, index) => ({ combo_sku: `C${index}`, normal_sku: `N${index}`, quantity: 1, combo_status: "Active", source_modified_at: "2026-10-07 10:00:00" }));
+  combos[0] = { ...combos[0], combo_sku: "KEEP", normal_sku: "OLDX" };
+  const rows = [sourceSku("OLDX", { status: "0" }), sourceSku("OLDY", { status: "0" }), sourceSku("NEWA"), sourceSku("KEEP", { status: "0" })];
+  for (const mode of ["incremental", "full"]) {
+    runs.length = 0;
+    const body = mode === "full" ? { action: "preview", mode, snapshot: fullSnapshot(rows, { comboRows: combos }) } : { action: "preview", snapshot: { ...snapshot(iso(-1 * MIN)), normalRows: rows, comboRows: combos } };
+    const result = await call(body);
+    assert.equal(result.status, 200, mode + " " + JSON.stringify(result.body));
+    const c = result.body.data.changeCounts;
+    assert.deepEqual([c.skuAdded, c.skuUpdated, c.skuSkippedInactive], [1, 1, 2], mode);
+    assert.deepEqual(runs[0].staged_skus.map(row => row.sku).sort(), ["KEEP", "NEWA"], mode + ": chỉ NEWA mới và KEEP đổi trạng thái được ghi");
+    assert.equal(runs[0].staged_skus.find(row => row.sku === "KEEP").status, "0", mode + ": SKU đã có chuyển sang ngừng vẫn cập nhật");
+    assert.equal(result.body.data.sourceCounts.excludedBreakdown.oneMissing, 1, mode + ": combo KEEP → OLDX bị loại vì OLDX không được nạp");
+  }
+});
