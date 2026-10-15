@@ -6,6 +6,8 @@
   const auditCore = globalThis.HasakiInventoryAuditCore;
   const API = "https://wms-gw.inshasaki.com/api/v1/wms/group-uid-infos";
   const PACKING_API = "https://wms-gw.inshasaki.com/api/v1/wms/inbound-packing-lists";
+  const IT_API = "https://wms-gw.inshasaki.com/api/v1/wms/internal-transfers";
+  const IT_ITEMS_API = "https://wms-gw.inshasaki.com/api/v1/wms/transfer/internal-transfer-items/list-details";
   const HISTORY_API = "https://wms-gw.inshasaki.com/api/v1/wms/group-uid-info-histories";
   const WAREHOUSE_API = "https://wms-gw.inshasaki.com/api/v1/wms/master-data/warehouse/by-user";
   const COMPANY_API = "https://wms-gw.inshasaki.com/api/v1/wms/master-data/company";
@@ -272,20 +274,40 @@
     return { ...normalized, total, totalPages: Math.max(1, Math.ceil(total / size)), warehouseIds: ids, from, to, generatedAt: new Date().toISOString() };
   }
 
+  // Phiếu IT theo số phiếu (cho IN TEM SKU): tìm đúng số phiếu (không cần khoảng ngày), rồi đọc các dòng của phiếu
+  async function readInternalTransfer(payload) {
+    if (!core?.normalizeInternalTransfer) throw new Error("Extension chưa tải bộ đọc phiếu IT; hãy Reload extension");
+    const number = String(payload?.number ?? "").trim();
+    if (!/^\d{6,40}$/.test(number)) throw new Error("Số phiếu IT không hợp lệ");
+    const denied = "Phiên WMS không còn quyền đọc phiếu IT; hãy đăng nhập lại";
+    const listUrl = new URL(IT_API);
+    listUrl.searchParams.set("page", "1");
+    listUrl.searchParams.set("size", "5");
+    listUrl.searchParams.set("internal_transfer_numbers", number);
+    const head = core.responseRows(await getJson(listUrl, denied)).find(row => String(row?.internal_transfer_number ?? "").trim() === number);
+    if (!head) throw new Error(`Không tìm thấy phiếu IT ${number}`);
+    const itemsUrl = new URL(IT_ITEMS_API);
+    itemsUrl.searchParams.set("internal_transfer_id", String(head.internal_transfer_id));
+    itemsUrl.searchParams.set("page", "1");
+    itemsUrl.searchParams.set("size", "500");
+    return { ...core.normalizeInternalTransfer(head, await getJson(itemsUrl, denied)), generatedAt: new Date().toISOString() };
+  }
+
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    if (sender.id !== chrome.runtime.id || !["GET_GROUP_UID_PAGE", "GET_GROUP_UID_HISTORY_PAGE", "GET_GROUP_UID_MOVES_PAGE", "GET_GROUP_UID_NEW_PAGE", "GET_PACKING_LIST_PAGE", "GET_SKU_COUNT_WAREHOUSES", "GET_SKU_COUNT_APPROVED_PAGE", "GET_SKU_COUNT_INVENTORY_PAGE", "GET_STOCK_IMPORT_EXPORT_PAGE"].includes(message?.type)) return false;
+    if (sender.id !== chrome.runtime.id || !["GET_GROUP_UID_PAGE", "GET_GROUP_UID_HISTORY_PAGE", "GET_GROUP_UID_MOVES_PAGE", "GET_GROUP_UID_NEW_PAGE", "GET_PACKING_LIST_PAGE", "GET_INTERNAL_TRANSFER", "GET_SKU_COUNT_WAREHOUSES", "GET_SKU_COUNT_APPROVED_PAGE", "GET_SKU_COUNT_INVENTORY_PAGE", "GET_STOCK_IMPORT_EXPORT_PAGE"].includes(message?.type)) return false;
     const readers = {
       GET_GROUP_UID_PAGE: readPage,
       GET_GROUP_UID_HISTORY_PAGE: readHistoryPage,
       GET_GROUP_UID_MOVES_PAGE: readMovesPage,
       GET_GROUP_UID_NEW_PAGE: readNewUidPage,
       GET_PACKING_LIST_PAGE: readPackingListPage,
+      GET_INTERNAL_TRANSFER: readInternalTransfer,
       GET_SKU_COUNT_WAREHOUSES: readCountWarehouses,
       GET_SKU_COUNT_APPROVED_PAGE: readApprovedCountPage,
       GET_SKU_COUNT_INVENTORY_PAGE: readInventoryPage,
       GET_STOCK_IMPORT_EXPORT_PAGE: readImportExportPage,
     };
-    const failure = message.type === "GET_STOCK_IMPORT_EXPORT_PAGE" ? "IMPORT_EXPORT_READ_FAILED" : message.type.startsWith("GET_SKU_COUNT_") ? "SKU_COUNT_READ_FAILED" : "GROUP_UID_READ_FAILED";
+    const failure = message.type === "GET_STOCK_IMPORT_EXPORT_PAGE" ? "IMPORT_EXPORT_READ_FAILED" : message.type === "GET_INTERNAL_TRANSFER" ? "INTERNAL_TRANSFER_READ_FAILED" : message.type.startsWith("GET_SKU_COUNT_") ? "SKU_COUNT_READ_FAILED" : "GROUP_UID_READ_FAILED";
     readers[message.type](message.payload || {})
       .then(data => sendResponse({ ok: true, data }))
       .catch(error => sendResponse({ ok: false, error: { code: failure, message: (auditCore || core)?.clean(error?.message || error, 300) || "Không đọc được dữ liệu WMS" } }));

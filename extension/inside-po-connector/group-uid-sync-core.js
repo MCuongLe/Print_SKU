@@ -207,5 +207,33 @@
     return { rows, total: responseTotal(payload, source.length), sourceRows: source.length };
   }
 
-  globalThis.HasakiGroupUidSyncCore = Object.freeze({ clean, normalizeRow, normalizePage, normalizeHistoryPage, normalizeMovesPage, normalizeNewUidPage, normalizePackingListPage, responseRows, responseTotal });
+  // Phiếu IT (chuyển kho nội bộ) cho IN TEM SKU: đầu phiếu từ internal-transfers, các dòng từ transfer/internal-transfer-items/list-details
+  // (WMS trả hết các dòng một lần). Mỗi dòng: SKU, tên, số lượng theo đơn vị SKU (pcs / mm / g …, có phiếu không ghi đơn vị).
+  function normalizeInternalTransfer(head, itemsPayload) {
+    const number = clean(head?.internal_transfer_number, 40), id = Number(head?.internal_transfer_id);
+    if (!/^\d{6,40}$/.test(number) || !Number.isInteger(id) || id <= 0) throw new Error("Phiếu IT trả về không hợp lệ");
+    const items = responseRows(itemsPayload).map((raw, index) => {
+      const sku = clean(raw?.sku, 40), quantity = Number(raw?.quantity);
+      if (!/^[A-Za-z0-9._-]{1,40}$/.test(sku)) throw new Error(`Phiếu IT dòng ${index + 1} có SKU không hợp lệ`);
+      if (raw?.quantity === null || raw?.quantity === "" || !Number.isFinite(quantity) || quantity < 0) throw new Error(`Phiếu IT dòng ${index + 1} có số lượng không hợp lệ`);
+      return { sku, name: clean(raw?.product_name, 300) || null, quantity, unit: clean(raw?.uom, 20) || null };
+    });
+    const created = head?.created_at_tz ?? head?.created_at;
+    let createdAt = null;
+    try { createdAt = created ? isoDate(created) : null; } catch { createdAt = null; }
+    return {
+      number, id,
+      status: clean(head?.status_name, 60) || null,
+      type: clean(head?.type_name, 60) || null,
+      fromWarehouse: clean(head?.from_warehouse_name, 240) || null,
+      toWarehouse: clean(head?.to_warehouse_name, 240) || null,
+      description: clean(head?.description, 500) || null,
+      createdBy: clean(head?.created_user_name, 240) || null,
+      createdAt,
+      totalItems: Number(head?.total_it_items) || items.length,
+      items,
+    };
+  }
+
+  globalThis.HasakiGroupUidSyncCore = Object.freeze({ clean, normalizeRow, normalizePage, normalizeHistoryPage, normalizeMovesPage, normalizeNewUidPage, normalizePackingListPage, normalizeInternalTransfer, responseRows, responseTotal });
 })();
