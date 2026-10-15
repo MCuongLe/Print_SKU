@@ -1707,6 +1707,7 @@ Error generating stack: `+y.message+`
               <div class="uid-tabs" role="tablist" aria-label="Chế độ gán SKU">
                 <button id="uid-tab-manual" type="button" role="tab" aria-selected="true">Gán theo tick chọn</button>
                 <button id="uid-tab-auto" type="button" role="tab" aria-selected="false">Gán tự động</button>
+                <button id="uid-tab-po" type="button" role="tab" aria-selected="false">Gán WMS</button>
               </div>
               <div class="uid-map" id="uid-map-manual" role="tabpanel" aria-label="Gán SKU cho UID đã chọn">
                 <div class="uid-map__grid">
@@ -1723,15 +1724,21 @@ Error generating stack: `+y.message+`
                   <option value="WH - MATERIAL - GARMENT"></option>
                   <option value="WH - MATERIAL - MTG"></option>
                 </datalist>
-                <div class="uid-po" id="uid-po-box">
-                  <input id="uid-po-input" autocomplete="off" inputmode="numeric" placeholder="Mã PO" aria-label="Mã PO">
-                  <button class="uid-po__go" id="uid-po-go" type="button" title="Lấy số UID từ Packing List WMS"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 13v8l-4-4"/><path d="m12 21 4-4"/><path d="M4.393 15.269A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.436 8.284"/></svg>Packing List</button>
-                </div>
                 <div class="uid-auto" id="uid-auto-rows"></div>
                 <button class="uid-auto__add act-icon act-icon--add" id="uid-auto-add" type="button">Thêm dòng SKU</button>
                 <div class="uid-auto__meta"><span>Sẽ gán: <strong id="uid-auto-total">0/0</strong> UID</span></div>
                 <p class="uid-help" id="uid-auto-help" aria-live="polite"></p>
                 <button class="uid-map__apply" id="uid-auto-apply" type="button" disabled>Gán tự động</button>
+              </div>
+              <div class="uid-map" id="uid-map-po" role="tabpanel" aria-label="Gán theo Packing List WMS" hidden>
+                <div class="uid-po" id="uid-po-box">
+                  <input id="uid-po-input" autocomplete="off" inputmode="numeric" placeholder="Mã PO" aria-label="Mã PO">
+                  <button class="uid-po__go" id="uid-po-go" type="button" title="Lấy số UID từ Packing List WMS"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 13v8l-4-4"/><path d="m12 21 4-4"/><path d="M4.393 15.269A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.436 8.284"/></svg>Packing List</button>
+                </div>
+                <div class="uid-auto" id="uid-po-rows"></div>
+                <div class="uid-auto__meta"><span>Sẽ gán: <strong id="uid-po-total">0/0</strong> UID</span></div>
+                <p class="uid-help" id="uid-po-help" aria-live="polite"></p>
+                <button class="uid-map__apply" id="uid-po-apply" type="button" disabled>Gán Group UID</button>
               </div>
             </section>
             <section class="uid-card uid-panel" aria-labelledby="uid-ready-title">
@@ -1958,7 +1965,9 @@ Error generating stack: `+y.message+`
       })();
     </script>
     <style id="uid-po-style">
-      /* Gán tự động: nhập mã PO → đọc Packing List WMS → điền sẵn SKU Normal và số UID (số cuộn). Cần Extension trên máy tính nên ẩn ở ≤ 800 px */
+      /* Gán WMS: nhập mã PO → đọc Packing List WMS → danh sách SKU Normal + số UID (số cuộn), tick SKU cần gán rồi Gán Group UID.
+         Cần Extension trên máy tính nên tab ẩn ở ≤ 800 px. Gán tự động (luồng cũ) giữ nguyên, không dùng các khối này. */
+      @media (max-width: 800px) { #uid-tab-po { display: none; } }
       #uid-screen .uid-po { display: flex; gap: 8px; margin-bottom: 12px; }
       #uid-screen .uid-po input { flex: 1; min-width: 0; box-sizing: border-box; height: var(--ui-ctl, 52px); padding: 0 14px; border: 1.5px solid var(--wms-border, #d9e2de); border-radius: var(--ui-in-r, 13px); outline: none; color: var(--wms-text, #17251f); background: #fff; font: 600 16px/1.3 var(--wms-font); }
       #uid-screen .uid-po input:focus { border-color: var(--wms-brand, #005f41); }
@@ -1967,30 +1976,23 @@ Error generating stack: `+y.message+`
       #uid-screen .uid-po__go svg { width: 20px; height: 20px; flex: none; }
       #uid-screen .uid-po__go:disabled { opacity: .5; cursor: not-allowed; }
       #uid-screen .uid-po__go[data-busy="true"] svg { animation: spin 1s linear infinite; }
-      /* Kết quả đọc Packing List là câu dài: màu cảnh báo / ổn đậm hơn mặc định để đủ tương phản 4,5:1 trên nền khung Gán SKU */
-      #uid-screen #uid-auto-help[data-tone="warn"] { color: #8a5a00; }
-      #uid-screen #uid-auto-help[data-tone="ok"] { color: #0f6a49; }
-      #uid-screen #uid-auto-help[data-tone="error"] { color: #c2413b; }
-      #uid-screen #uid-auto-total[data-over="true"] { color: #c2413b; }
-      /* Mỗi dòng SKU có ô tick (chỉ dòng đã tick mới được gán) */
-      #uid-screen .uid-auto__row { grid-template-columns: 44px minmax(0, 1fr) 156px var(--target-min, 44px); }
-      #uid-screen .uid-auto__name { grid-column: 2 / -1; }
-      #uid-screen .uid-auto__pick { min-height: 44px; }
-      @media (max-width: 620px) {
-        #uid-screen .uid-auto__row { grid-template-columns: 44px minmax(0, 1fr) var(--target-min, 44px); }
-        #uid-screen .uid-auto__row > .uid-auto__pick { grid-column: 1; grid-row: 1; }
-        #uid-screen .uid-auto__row > input[data-field="sku"] { grid-column: 2; grid-row: 1; }
-        #uid-screen .uid-auto__row > .uid-row__icon { grid-column: 3; grid-row: 1; }
-        #uid-screen .uid-auto__qty { grid-column: 2 / -1; grid-row: 2; }
-        #uid-screen .uid-auto__row > .uid-auto__name { grid-column: 2 / -1; grid-row: 3; }
-      }
-      @media (max-width: 800px) { #uid-screen .uid-po { display: none; } }
+      /* Mỗi dòng SKU: ô tick · SKU · số UID · tên (SKU và tên chỉ xem) */
+      #uid-map-po .uid-auto__row { grid-template-columns: 44px minmax(0, 1fr) 156px var(--target-min, 44px); }
+      #uid-map-po .uid-auto__name { grid-column: 2 / -1; }
+      #uid-map-po .uid-auto__pick { min-height: 44px; }
+      #uid-map-po .uid-auto__row > input[readonly] { cursor: default; }
+      /* Kết quả đọc Packing List là câu dài: màu cảnh báo / ổn / lỗi đậm hơn mặc định để đủ tương phản 4,5:1 trên nền khung Gán SKU */
+      #uid-screen #uid-po-help[data-tone="warn"] { color: #8a5a00; }
+      #uid-screen #uid-po-help[data-tone="ok"] { color: #0f6a49; }
+      #uid-screen #uid-po-help[data-tone="error"] { color: #c2413b; }
+      #uid-screen #uid-po-total[data-over="true"] { color: #c2413b; }
     </style>
     <script id="uid-po-script">
       (() => {
-        const $ = id => document.getElementById(id), go = $("uid-po-go"), input = $("uid-po-input");
-        if (!go || !input) return;
+        const $ = id => document.getElementById(id), go = $("uid-po-go"), input = $("uid-po-input"), list = $("uid-po-rows"), totalEl = $("uid-po-total"), helpEl = $("uid-po-help"), apply = $("uid-po-apply"), tab = $("uid-tab-po");
+        if (!go || !input || !list || !apply) return;
         const num = value => Number(value || 0).toLocaleString("vi-VN"), PAGE_SIZE = 500, MAX_UID = 500;
+        const esc = value => String(value ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
         const extensionRequest=(type,payload={},timeout=120000)=>window.PrintSkuBridgeReady(type).then(() => new Promise((resolve, reject) => {
           const requestId = `uid-po-${Date.now()}-${Math.random().toString(36).slice(2)}`;
           const timer = setTimeout(() => { removeEventListener("message", listener); reject(new Error("Extension phản hồi quá lâu; kiểm tra tab WMS rồi thử lại")); }, timeout);
@@ -2003,27 +2005,68 @@ Error generating stack: `+y.message+`
           addEventListener("message", listener);
           postMessage({ source: "PRINT_SKU_APP", requestId, type, payload }, location.origin);
         }));
-        const help = (text, tone = "") => window.PrintSkuUid?.autoHelp(text, tone);
+        let rows = [], nextRow = 1, busy = false, applying = false;
+        const help = (text, tone = "") => { helpEl.textContent = text; if (tone) helpEl.dataset.tone = tone; else delete helpEl.dataset.tone; };
+        const pendingCount = () => window.PrintSkuUid?.pendingCount?.() ?? 0;
+        const picked = () => rows.filter(row => row.selected);
+        const need = () => picked().reduce((sum, row) => sum + row.qty, 0);
+        const meter = () => {
+          const total = need(), have = pendingCount();
+          totalEl.textContent = `${total}/${have}`; totalEl.dataset.over = String(total > have);
+          apply.disabled = applying || !picked().length || picked().some(row => row.qty < 1 || row.qty > MAX_UID);
+        };
+        const render = () => {
+          list.innerHTML = rows.map(row => `
+            <div class="uid-auto__row" data-id="${row.id}">
+              <label class="uid-select uid-auto__pick" aria-label="Chọn SKU ${esc(row.sku)}"><input type="checkbox" data-field="selected"${row.selected ? " checked" : ""}></label>
+              <input data-field="sku" readonly aria-label="SKU" value="${esc(row.sku)}">
+              <div class="uid-auto__qty">
+                <button type="button" data-action="dec" aria-label="Giảm số UID">−</button>
+                <input data-field="qty" type="number" min="1" max="${MAX_UID}" value="${row.qty}" aria-label="Số UID">
+                <button type="button" data-action="inc" aria-label="Tăng số UID">+</button>
+              </div>
+              <button class="uid-row__icon uid-row__icon--remove" type="button" data-action="remove-row" aria-label="Xóa SKU ${esc(row.sku)}">×</button>
+              <input class="uid-auto__name" data-field="name" readonly aria-label="Tên SP" value="${esc(row.name)}">
+            </div>`).join("");
+          meter();
+        };
+        list.addEventListener("input", event => {
+          const row = rows.find(entry => entry.id === Number(event.target.closest(".uid-auto__row")?.dataset.id));
+          if (!row) return;
+          if (event.target.dataset.field === "selected") row.selected = event.target.checked;
+          else if (event.target.dataset.field === "qty") row.qty = Math.floor(Number(event.target.value)) || 0;
+          meter();
+        });
+        list.addEventListener("click", event => {
+          const action = event.target.dataset.action, row = rows.find(entry => entry.id === Number(event.target.closest(".uid-auto__row")?.dataset.id));
+          if (!action || !row) return;
+          // Xóa SKU khỏi danh sách (xóa được cả dòng cuối); đọc lại PO thì danh sách có lại
+          if (action === "remove-row") { rows = rows.filter(entry => entry !== row); render(); return; }
+          row.qty = Math.min(MAX_UID, Math.max(1, (Math.floor(Number(row.qty)) || 0) + (action === "inc" ? 1 : -1)));
+          render();
+        });
+        // UID chờ gán đổi (thêm, xóa, gán) thì cập nhật "Sẽ gán"
+        addEventListener("print-sku-uid-changed", meter);
+        tab?.addEventListener("click", meter);
+
         // Đọc từ WMS chỉ dành cho Admin (như tấm Lấy từ WMS): chưa có phiên thì mở hộp đăng nhập dùng chung
         const adminOk = async () => { try { return Boolean(await window.PrintSkuAdminAuth.accessToken()); } catch (_) { return false; } };
         // Combo → SKU Normal (RPC sku_combo_lookup); SKU không phải Combo trả rỗng nên giữ nguyên
         const comboLinks = async sku => {
           const q = window.PrintSkuQueue, response = await fetch(`${q.supabaseUrl}/rest/v1/rpc/sku_combo_lookup`, { method: "POST", headers: { apikey: q.publishableKey, Authorization: `Bearer ${q.publishableKey}`, "Content-Type": "application/json" }, body: JSON.stringify({ p_sku: sku }), signal: AbortSignal.timeout(10000) });
           if (!response.ok) throw new Error(`Supabase HTTP ${response.status}`);
-          const rows = await response.json();
-          return Array.isArray(rows) ? rows : [];
+          const result = await response.json();
+          return Array.isArray(result) ? result : [];
         };
         const readAll = async orders => {
           await extensionRequest("PING_WMS", {}, 6000);
-          const rows = []; let page = 1, pages = 1;
+          const all = []; let page = 1, pages = 1;
           while (page <= pages) {
             const data = await extensionRequest("GET_PACKING_LIST_PAGE", { purchaseOrders: orders, page, size: PAGE_SIZE });
-            pages = data.totalPages; rows.push(...data.rows); page++;
+            pages = data.totalPages; all.push(...data.rows); page++;
           }
-          return rows;
+          return all;
         };
-        // Một dòng Packing List là một cuộn (cây vải) nên số UID = số dòng, kể cả dòng số lượng 1 mã "1"
-        let busy = false;
         const setBusy = on => { busy = on; go.disabled = on; go.dataset.busy = String(on); };
         go.addEventListener("click", async () => {
           if (busy) return;
@@ -2034,6 +2077,7 @@ Error generating stack: `+y.message+`
             if (!await adminOk()) { help("Chưa đăng nhập Admin.", "warn"); Promise.resolve(window.PrintSkuAdminAccess?.getToken()).catch(() => {}); return; }
             help("Đang đọc Packing List từ WMS…");
             const all = await readAll(orders);
+            // Một dòng Packing List là một cuộn (cây vải) nên số UID = số dòng, kể cả dòng số lượng 1 mã "1"
             const approved = all.filter(row => !row.status || /^approved$/i.test(row.status)), others = all.length - approved.length;
             const missing = orders.filter(order => !all.some(row => row.purchase_order === order));
             const bySku = new Map(), names = new Map();
@@ -2045,21 +2089,40 @@ Error generating stack: `+y.message+`
               const normal = links[0]?.normal_sku || sku, name = links[0]?.product_name || names.get(sku) || "", entry = merged.get(normal) || { sku: normal, qty: 0, name };
               entry.qty += bySku.get(sku); merged.set(normal, entry);
             });
-            const rows = [...merged.values()].map(entry => ({ ...entry, qty: Math.min(MAX_UID, entry.qty) })), capped = [...merged.values()].filter(entry => entry.qty > MAX_UID).length;
-            const total = rows.reduce((sum, row) => sum + row.qty, 0);
+            const found = [...merged.values()], capped = found.filter(entry => entry.qty > MAX_UID).length;
+            const total = found.reduce((sum, entry) => sum + Math.min(MAX_UID, entry.qty), 0);
             const notes = [
               missing.length ? `Chưa có Packing List: ${missing.join(", ")}` : "",
               multi.length ? `Combo nhiều thành phần: ${multi.join(", ")}` : "",
               others ? `${num(others)} dòng chưa Approved` : "",
               capped ? `${num(capped)} SKU quá ${MAX_UID} UID, đã giới hạn` : "",
             ].filter(Boolean);
-            const head = rows.length ? `${orders.length > 1 ? `${orders.length} PO` : `PO ${orders[0]}`} · ${num(total)} UID · ${num(rows.length)} SKU Normal` : "";
-            if (!rows.length) { help(notes.length ? notes.join(" · ") : "Packing List chưa có dòng nào.", "warn"); return; }
-            window.PrintSkuUid.setAuto(rows, [head, ...notes].join(" · "), notes.length ? "warn" : "ok");
+            if (!found.length) { help(notes.length ? notes.join(" · ") : "Packing List chưa có dòng nào.", "warn"); return; }
+            rows = found.map(entry => ({ id: nextRow++, sku: entry.sku, name: entry.name, qty: Math.min(MAX_UID, entry.qty), selected: true }));
+            render();
+            help([`${orders.length > 1 ? `${orders.length} PO` : `PO ${orders[0]}`} · ${num(total)} UID · ${num(found.length)} SKU Normal`, ...notes].join(" · "), notes.length ? "warn" : "ok");
           } catch (error) { help(`Không đọc được Packing List: ${error.message || "lỗi WMS"}`, "warn"); }
           finally { setBusy(false); }
         });
         input.addEventListener("keydown", event => { if (event.key === "Enter") { event.preventDefault(); go.click(); } });
+
+        // Chỉ dòng đã tick được gán; thiếu UID chờ gán thì báo lỗi và không gán gì
+        apply.addEventListener("click", async () => {
+          const chosen = picked();
+          if (!chosen.length || applying) return;
+          if (chosen.some(row => row.qty < 1 || row.qty > MAX_UID)) { help(`Mỗi dòng cần số UID từ 1 đến ${MAX_UID}.`, "warn"); return; }
+          const required = need(), have = pendingCount();
+          if (required > have) { help(`Thiếu ${num(required - have)} UID chờ gán: cần ${num(required)}, đang chờ ${num(have)}`, "error"); return; }
+          applying = true; meter(); help("Đang gán…");
+          try {
+            const result = await window.PrintSkuUid.assign(chosen.map(row => ({ sku: row.sku, qty: row.qty, name: row.name })));
+            if (!result.ok) { help(result.error, "error"); return; }
+            rows = rows.filter(row => !row.selected); render();
+            help(`Đã gán ${num(result.total)} UID theo ${num(chosen.length)} dòng SKU`, "ok");
+          } catch (error) { help(`Không gán được: ${error.message || error}`, "error"); }
+          finally { applying = false; meter(); }
+        });
+        render();
       })();
     </script>
     <script>
@@ -2090,6 +2153,8 @@ Error generating stack: `+y.message+`
         const tabAuto = document.getElementById("uid-tab-auto");
         const mapManual = document.getElementById("uid-map-manual");
         const mapAuto = document.getElementById("uid-map-auto");
+        const tabPo = document.getElementById("uid-tab-po");
+        const mapPo = document.getElementById("uid-map-po");
         const importButton = document.getElementById("uid-import");
         const importFile = document.getElementById("uid-import-file");
         const autoRowsElement = document.getElementById("uid-auto-rows");
@@ -2256,11 +2321,30 @@ Error generating stack: `+y.message+`
         window.PrintSkuUid = {
           has: code => { const key = String(code).toLowerCase(); return lookingUp.has(key) || [...pending, ...mapped].some(item => item.groupUid.toLowerCase() === key); },
           add: rows => addGroupUids(rows.map(row => row.group_uid_code), new Map(rows.map(row => [row.group_uid_code, row]))),
-          autoHelp: (text, tone) => setAutoHelp(text, tone),
-          // Điền danh sách Gán tự động (SKU Normal + số UID) từ Packing List: thay các dòng hiện có, giữ nguyên nếu không có dòng nào
-          setAuto: (rows, message, tone) => {
-            if (rows.length) { autoRows.splice(0, autoRows.length, ...rows.map(row => ({ id: nextAutoId++, sku: row.sku, qty: row.qty, name: row.name || "", autoName: row.name || "", selected: true }))); renderAutoRows(); autoRows.forEach(row => { if (!row.name) lookupAutoRowName(row); }); }
-            setAutoHelp(message, tone);
+          // Tab Gán WMS: số UID đang chờ gán, và gán UID chờ theo danh sách SKU (thứ tự từ đầu khung chờ, như Gán tự động)
+          pendingCount: () => pending.length,
+          assign: async rows => {
+            const total = rows.reduce((sum, row) => sum + row.qty, 0);
+            if (total > pending.length) return { ok: false, error: `Thiếu ${total - pending.length} UID chờ gán: cần ${total}, đang chờ ${pending.length}` };
+            try {
+              const looked = {};
+              for (const row of rows) {
+                if (row.name) continue;
+                if (!(row.sku in looked)) looked[row.sku] = await fetchProductName(row.sku);
+                row.name = looked[row.sku];
+                if (!row.name) return { ok: false, error: `Không tìm thấy tên SKU ${row.sku}` };
+              }
+            } catch (error) { return { ok: false, error: `Không tra được Supabase: ${String(error?.message || error)}` }; }
+            if (total > pending.length) return { ok: false, error: `Thiếu ${total - pending.length} UID chờ gán: cần ${total}, đang chờ ${pending.length}` };
+            for (const row of rows) {
+              for (let copy = 0; copy < row.qty; copy += 1) {
+                const item = pending.shift();
+                mapped.push({ ...item, sku: row.sku, productName: row.name });
+              }
+            }
+            renderAll();
+            setStatus(`Đã gán WMS ${total} UID theo ${rows.length} dòng SKU.`, "ok");
+            return { ok: true, total };
           }
         };
 
@@ -2359,30 +2443,32 @@ Error generating stack: `+y.message+`
           }
         });
 
-        const selectAssignTab = auto => {
-          tabManual.setAttribute("aria-selected", String(!auto));
-          tabAuto.setAttribute("aria-selected", String(auto));
-          mapManual.hidden = auto;
-          mapAuto.hidden = !auto;
+        // mode: "manual" (Gán theo tick chọn), "auto" (Gán tự động), "po" (Gán WMS)
+        const selectAssignTab = mode => {
+          tabManual.setAttribute("aria-selected", String(mode === "manual"));
+          tabAuto.setAttribute("aria-selected", String(mode === "auto"));
+          tabPo?.setAttribute("aria-selected", String(mode === "po"));
+          mapManual.hidden = mode !== "manual";
+          mapAuto.hidden = mode !== "auto";
+          if (mapPo) mapPo.hidden = mode !== "po";
         };
-        tabManual.addEventListener("click", () => selectAssignTab(false));
-        tabAuto.addEventListener("click", () => selectAssignTab(true));
+        tabManual.addEventListener("click", () => selectAssignTab("manual"));
+        tabAuto.addEventListener("click", () => selectAssignTab("auto"));
+        tabPo?.addEventListener("click", () => selectAssignTab("po"));
 
         const setAutoHelp = (message, tone = "") => { autoHelp.textContent = message; autoHelp.dataset.tone = tone; };
 
         const updateAutoMeta = () => {
-          const picked = autoRows.filter(row => row.selected !== false), quantities = picked.map(row => Math.floor(Number(row.qty)) || 0);
+          const quantities = autoRows.map(row => Math.floor(Number(row.qty)) || 0);
           const total = quantities.reduce((sum, qty) => sum + qty, 0);
           autoTotal.textContent = `${total}/${pending.length}`;
-          autoTotal.dataset.over = String(total > pending.length);
-          const invalid = picked.some((row, index) => (!String(row.sku).trim() && !String(row.name).trim()) || quantities[index] < 1 || quantities[index] > 500);
-          autoApply.disabled = invalid || total < 1;
+          const invalid = autoRows.some((row, index) => (!String(row.sku).trim() && !String(row.name).trim()) || quantities[index] < 1 || quantities[index] > 500);
+          autoApply.disabled = invalid || total < 1 || total > pending.length;
         };
 
         const renderAutoRows = () => {
           autoRowsElement.innerHTML = autoRows.map(row => `
             <div class="uid-auto__row" data-id="${row.id}">
-              <label class="uid-select uid-auto__pick" aria-label="Chọn dòng SKU"><input type="checkbox" data-field="selected"${row.selected === false ? "" : " checked"}></label>
               <input data-field="sku" autocomplete="off" placeholder="SKU" value="${escapeHtml(row.sku)}">
               <div class="uid-auto__qty">
                 <button type="button" data-action="dec" aria-label="Giảm số UID">−</button>
@@ -2421,7 +2507,7 @@ Error generating stack: `+y.message+`
           const rowElement = event.target.closest(".uid-auto__row");
           const row = rowElement && autoRows.find(entry => entry.id === Number(rowElement.dataset.id));
           if (!row || !event.target.dataset.field) return;
-          row[event.target.dataset.field] = event.target.type === "checkbox" ? event.target.checked : event.target.value;
+          row[event.target.dataset.field] = event.target.value;
           if (event.target.dataset.field === "sku") lookupAutoRowName(row);
           updateAutoMeta();
         });
@@ -2450,10 +2536,10 @@ Error generating stack: `+y.message+`
         });
 
         autoApply.addEventListener("click", async () => {
-          const rows = autoRows.filter(row => row.selected !== false).map(row => ({ sku: String(row.sku).trim(), qty: Math.floor(Number(row.qty)) || 0, name: String(row.name).trim() }));
+          const rows = autoRows.map(row => ({ sku: String(row.sku).trim(), qty: Math.floor(Number(row.qty)) || 0, name: String(row.name).trim() }));
           if (rows.some(row => (!row.sku && !row.name) || row.qty < 1 || row.qty > 500)) return setAutoHelp("Mỗi dòng cần số UID từ 1 đến 500 và có SKU hoặc Tên SP.", "warn");
           const total = rows.reduce((sum, row) => sum + row.qty, 0);
-          if (total > pending.length) return setAutoHelp(`Thiếu ${total - pending.length} UID chờ gán: cần ${total}, đang chờ ${pending.length}`, "error");
+          if (total > pending.length) return setAutoHelp(`Tổng ${total} UID vượt quá ${pending.length} UID đang chờ gán.`, "warn");
           autoApply.disabled = true;
           setAutoHelp("Đang tra tên sản phẩm theo SKU…");
           try {
@@ -2470,9 +2556,7 @@ Error generating stack: `+y.message+`
                 mapped.push({ ...item, sku: row.sku || item.sku || "", productName: row.name });
               }
             }
-            // Dòng đã gán bị bỏ khỏi danh sách; dòng chưa tick (để gán sau) giữ lại
-            const left = autoRows.filter(row => row.selected === false);
-            autoRows.splice(0, autoRows.length, ...(left.length ? left : [{ id: nextAutoId++, sku: "", qty: 1, name: "", autoName: "" }]));
+            autoRows.splice(0, autoRows.length, { id: nextAutoId++, sku: "", qty: 1, name: "", autoName: "" });
             renderAutoRows();
             setAutoHelp("");
             setStatus(`Đã gán tự động ${total} UID theo ${rows.length} dòng SKU.`, "ok");
@@ -2566,6 +2650,7 @@ Error generating stack: `+y.message+`
             </article>`).join("")
             : '<div class="uid-empty">Chưa có tem sẵn sàng in.</div>';
           updateAutoMeta();
+          window.dispatchEvent(new Event("print-sku-uid-changed"));
         };
 
         pendingElement.addEventListener("click", event => {
