@@ -9320,6 +9320,7 @@ var FSK_CORE = (function () {
         const ICONS={
           search:'<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
           download:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/>',
+          upload:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/>',
           left:'<path d="m15 18-6-6 6-6"/>',right:'<path d="m9 18 6-6-6-6"/>',up:'<path d="m18 15-6-6-6 6"/>',down:'<path d="m6 9 6 6 6-6"/>',updown:'<path d="m21 16-4 4-4-4"/><path d="M17 20V4"/><path d="m3 8 4-4 4 4"/><path d="M7 4v16"/>',
           clock:'<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
           history:'<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/>',
@@ -10467,7 +10468,7 @@ async function rpc(name,args,retry=true){
         <section class="ss-hero"><div><h2>Đối chiếu công trình với WMS</h2></div><div class="as-hero-actions" id="sc-admin-tools" hidden><span class="ss-connection" id="sc-connection" data-state="idle">Extension…</span><button class="ss-primary" id="sc-run" type="button"><svg id="sc-run-ico" class="pj-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg><span>Đối chiếu</span></button></div></section>
         <div class="as-strip" id="sc-strip"><div><span data-ico="clock">Đối chiếu lúc</span><strong id="sc-read-at">—</strong><em id="sc-read-rel"></em></div><div><span data-ico="database">Kho WMS</span><strong id="sc-wh-main">—</strong><em id="sc-wh-sub"></em></div><div><span data-ico="link">App xây dựng</span><strong id="sc-app-main">—</strong><em id="sc-app-sub"></em></div><div><span data-ico="calendar">Kỳ nhập xuất</span><strong id="sc-period-main">—</strong><em id="sc-period-sub"></em></div></div>
         <div class="ss-progress" id="sc-progress" aria-hidden="true"><i></i></div><p class="ss-status" id="sc-status" aria-live="polite">Đăng nhập Admin để đối chiếu.</p><div class="as-warns" id="sc-warn" role="status" hidden></div>
-        <section class="ss-metrics ia-metrics" aria-label="Tổng quan đối chiếu"><button class="ss-metric" type="button" aria-haspopup="dialog" data-sc-open="stock" data-sc-diff="0"><span data-ico="box">SKU theo dõi</span><strong id="sc-total">—</strong><small id="sc-total-sub">SKU trong app</small></button><button class="ss-metric" type="button" aria-haspopup="dialog" data-tone="never" data-sc-open="stock" data-sc-diff="1"><span data-ico="alert">Lệch tồn</span><strong id="sc-stock">—</strong><small>Tồn app khác tồn WMS</small></button><button class="ss-metric" type="button" aria-haspopup="dialog" data-tone="overdue" data-sc-open="in" data-sc-diff="1"><span data-ico="download">Lệch nhập</span><strong id="sc-in">—</strong><small>Nhập app khác nhập WMS</small></button><button class="ss-metric" type="button" aria-haspopup="dialog" data-tone="overdue" data-sc-open="out" data-sc-diff="1"><span data-ico="up">Lệch xuất</span><strong id="sc-out">—</strong><small>Xuất app khác xuất WMS</small></button></section>
+        <section class="ss-metrics ia-metrics" aria-label="Tổng quan đối chiếu"><button class="ss-metric" type="button" aria-haspopup="dialog" data-sc-open="stock" data-sc-diff="0"><span data-ico="box">SKU theo dõi</span><strong id="sc-total">—</strong><small id="sc-total-sub">SKU trong app</small></button><button class="ss-metric" type="button" aria-haspopup="dialog" data-tone="never" data-sc-open="stock" data-sc-diff="1"><span data-ico="alert">Lệch tồn</span><strong id="sc-stock">—</strong><small>Tồn app khác tồn WMS</small></button><button class="ss-metric" type="button" aria-haspopup="dialog" data-tone="overdue" data-sc-open="in" data-sc-diff="1"><span data-ico="download">Lệch nhập</span><strong id="sc-in">—</strong><small>Nhập app khác nhập WMS</small></button><button class="ss-metric" type="button" aria-haspopup="dialog" data-tone="overdue" data-sc-open="out" data-sc-diff="1"><span data-ico="upload">Lệch xuất</span><strong id="sc-out">—</strong><small>Xuất app khác xuất WMS</small></button></section>
         <div class="as-bar" id="sc-bar" role="img" aria-label="Cơ cấu đối chiếu"></div><div class="as-legend" id="sc-legend"></div>
         <dialog class="as-dialog" id="sc-list-dialog" data-size="lg" aria-labelledby="sc-l-title">
           <div class="as-d-head"><span class="as-d-mark" id="sc-l-mark" aria-hidden="true"></span><div class="as-d-title"><h2 id="sc-l-title">Tồn kho</h2><p id="sc-note"></p></div><div class="as-tools" id="sc-tools" hidden></div><button type="button" class="pj-icon" data-as-close aria-label="Đóng" title="Đóng"><svg class="pj-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>
@@ -10500,7 +10501,7 @@ async function rpc(name,args,retry=true){
           in:["SKU","Tên sản phẩm","ĐVT","Nhập app","Nhập WMS","Chênh (app - WMS)","WMS có, app thiếu","App có, WMS không thấy","Tình trạng"],
           out:["SKU","Tên sản phẩm","ĐVT","Xuất app","Xuất WMS (Xuất sử dụng)","Chênh (app - WMS)","WMS xuất khác","Lý do xuất khác","Tình trạng"]
         };
-        const MARKS={stock:"box",in:"download",out:"up"};
+        const MARKS={stock:"box",in:"download",out:"upload"};
         const state={result:null,tab:"stock",busy:false,admin:false,extChecked:false};
         const list=UI.createList({tools:$("sc-tools"),tagsBox:$("sc-tags"),head:$("sc-head"),body:$("sc-body"),pager:$("sc-pager"),note:$("sc-note")});
         const clean=v=>String(v??"").trim(),n=v=>{const x=Number(v);return Number.isFinite(x)?x:0},round=v=>Math.round(v*1e6)/1e6;
@@ -13051,6 +13052,78 @@ async function rpc(name,args,retry=true){
         #uid-screen .uid-topbar .uid-topbar__inner > .uid-topbar__name, #root > header:not(.ss-command-react) > div > h1 { grid-column: 3; grid-row: 1; align-self: end; min-width: 0; }
         #uid-screen .uid-topbar .uid-topbar__inner > .uid-topbar__printer, #root > header:not(.ss-command-react) > div > h1 + span { grid-column: 3; grid-row: 2; justify-self: start; align-self: start; max-width: 100%; min-height: 24px; padding: 0 9px; gap: 6px; }
         #uid-screen .uid-topbar .uid-topbar__inner > .uid-topbar__admin { grid-column: 4; grid-row: 1 / 3; }
+      }
+    </style>
+    <style id="uid-wms-std">
+      /* Tấm "Lấy từ WMS" trên máy tính (14/10/2026), kiểu bộ lọc Admin (Lịch sử Group UID / Đồng bộ), mục bấm cao 44 (chuẩn chung): ngày tạo = thanh tab xám (mục chọn nền trắng),
+         kho = chip viền nhạt (bật = xanh nhạt), Người tạo / Đợt tạo = nút lọc trắng có icon + mũi tên, tải lại = nút icon viền; danh sách dạng bảng
+         (đầu bảng xám nhạt, mỗi UID một dòng). Chỉ đổi kiểu — chức năng, id và chữ giữ nguyên. Nút mở ẩn ≤ 800 px nên áp từ 801 px. */
+      @media (min-width: 801px) {
+        #uid-wms .uid-wms__filters { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; padding-bottom: 12px; }
+        #uid-wms .uid-wms__filters > .uid-wms__row { flex: none; gap: 6px; }
+        /* Ngày tạo: thanh tab như .as-tabs */
+        #uid-wms .uid-wms__row[aria-label="Ngày tạo"] { order: 0; gap: 4px; padding: 4px; border-radius: 999px; background: #eef3f1; }
+        #uid-wms .uid-wms__row[aria-label="Ngày tạo"] .uid-wms__chip { min-height: 44px; padding: 0 16px; border: 0; background: transparent; color: #5f726b; font-size: 13px; }
+        #uid-wms .uid-wms__row[aria-label="Ngày tạo"] .uid-wms__chip[data-wms-range="custom"] { padding: 0 12px; }
+        #uid-wms .uid-wms__row[aria-label="Ngày tạo"] .uid-wms__chip[aria-pressed="true"] { background: #fff; color: #005f41; box-shadow: 0 2px 8px rgba(13, 71, 52, .13); }
+        /* Kho: chip bật / tắt như .as-tag */
+        #uid-wms .uid-wms__row[aria-label="Kho"] { order: 1; flex: 1 1 300px; } /* chiếm phần còn lại của hàng 1 → Người tạo · Đợt tạo xuống hàng 2 */
+        #uid-wms .uid-wms__row[aria-label="Kho"] .uid-wms__chip { min-height: 44px; padding: 0 16px; border: 1px solid #d3e0db; background: #fff; color: #4f625b; font-size: 13px; }
+        #uid-wms .uid-wms__row[aria-label="Kho"] .uid-wms__chip[aria-pressed="true"] { border-color: #007754; background: #e5f2ee; color: #005f41; }
+        #uid-wms .uid-wms__filters > .uid-wms__dates { order: 2; flex: 1 1 100%; }
+        #uid-wms .uid-wms__dates input { min-height: 44px; height: 44px; padding: 0 12px; border: 1px solid #d3e0db; border-radius: 999px; font-size: 13px; }
+        /* Người tạo / Đợt tạo: nút lọc như .as-facet-btn (icon trái, mũi tên phải); đang lọc = xanh nhạt */
+        #uid-wms .uid-wms__filters > .uid-wms__by { display: contents; }
+        #uid-wms :is(#uid-wms-by, #uid-wms-batch) { flex: 0 1 auto; width: auto; min-width: 0; max-width: 340px; min-height: 44px; height: 44px; padding: 0 34px 0 36px; border: 1px solid #d3e0db; border-radius: 999px; color: #4f625b; font-size: 13px; font-weight: 600; text-overflow: ellipsis; cursor: pointer; -webkit-appearance: none; appearance: none; background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%234f625b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='12' cy='7' r='4'/%3E%3C/svg%3E") no-repeat 14px 50% / 16px 16px; }
+        #uid-wms #uid-wms-by { order: 3; }
+        #uid-wms #uid-wms-batch { order: 4; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%234f625b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z'/%3E%3Cpath d='m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65'/%3E%3Cpath d='m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65'/%3E%3C/svg%3E"); }
+        #uid-wms :is(#uid-wms-by, #uid-wms-batch) { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%234f625b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='12' cy='7' r='4'/%3E%3C/svg%3E"), url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%234f625b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-position: 14px 50%, right 12px center; background-size: 16px 16px, 16px 16px; background-repeat: no-repeat; }
+        #uid-wms #uid-wms-batch { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%234f625b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z'/%3E%3Cpath d='m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65'/%3E%3Cpath d='m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65'/%3E%3C/svg%3E"), url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%234f625b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); }
+        #uid-wms :is(#uid-wms-by, #uid-wms-batch):not(:has(option[value=""]:checked)) { border-color: #007754; background-color: #e5f2ee; color: #005f41; }
+        #uid-wms :is(#uid-wms-by, #uid-wms-batch):focus-visible { outline: 2px solid #1aa774; outline-offset: 2px; }
+        /* Tải lại: nút icon viền như .pj-icon, cuối hàng */
+        #uid-wms #uid-wms-load { order: 5; margin-left: auto; width: 44px; height: 44px; border: 1px solid #cbdcd6; border-radius: 12px; color: #176248; }
+        #uid-wms .uid-wms__status { flex: none; min-height: 0; margin: 0 16px 8px; }
+        #uid-wms .uid-wms__status:empty { display: none; }
+        /* Danh sách dạng bảng: "Chọn tất cả" là đầu bảng xám nhạt */
+        #uid-wms :is(.uid-wms__filters, .uid-sheet__all) { flex: none; }
+        #uid-wms .uid-sheet__all { min-height: 44px; margin-bottom: 0; border-color: #e1eae7; border-radius: 12px 12px 0 0; background: #f6f9f8; color: #5f726b; font-size: 13px; }
+        #uid-wms .uid-sheet__list { gap: 0; margin: 0 16px 12px; padding: 0; border: 1px solid #e1eae7; border-top: 0; border-radius: 0 0 12px 12px; }
+        #uid-wms .uid-wms__item { min-height: 48px; padding: 8px 14px; border: 0; border-bottom: 1px solid #edf2f0; border-radius: 0; }
+        #uid-wms .uid-wms__item:last-child { border-bottom: 0; }
+        #uid-wms .uid-wms__item:has(input:checked) { background: #f3faf7; }
+        #uid-wms .uid-wms__main { display: grid; grid-template-columns: 160px minmax(0, 1fr) minmax(0, 240px); align-items: baseline; gap: 16px; min-width: 0; }
+        #uid-wms .uid-wms__meta { margin-top: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; overflow-wrap: normal; }
+        #uid-wms .uid-wms__empty { grid-column: 1 / -1; }
+        @media (hover: hover) {
+          #uid-wms .uid-wms__item:not([data-have="1"]):hover { background: #f6f8f7; }
+          #uid-wms .uid-wms__row[aria-label="Ngày tạo"] .uid-wms__chip:not([aria-pressed="true"]):hover { color: #17251f; }
+          #uid-wms :is(.uid-wms__row[aria-label="Kho"] .uid-wms__chip, #uid-wms-by, #uid-wms-batch, #uid-wms-load):hover { border-color: #42a282; }
+        }
+      }
+    </style>
+    <style id="std-1510">
+      /* Soát chuẩn 15/10/2026. Popup chi tiết Kiểm soát công trình: nhãn "Chưa lên kệ" trong dòng vị trí dùng font chung (trước nằm trong <code> nên ra font máy đánh chữ). */
+      .ia-locrow code .as-chip { margin-left: 6px; font-family: var(--wms-font, system-ui); vertical-align: middle; }
+      /* IN TEM GROUP UID · Gán WMS: SKU + tên từ Packing List là ô chỉ xem → hiện như chữ: hàng 1 SKU đậm + số UID + xoá, hàng 2 tên nhạt hết chiều ngang */
+      @media (min-width: 801px) {
+        #uid-screen #uid-map-po .uid-auto__row { grid-template-columns: 44px minmax(0, 1fr) 156px var(--target-min, 44px); grid-template-areas: "pick sku qty del" ". name name name"; column-gap: 12px; row-gap: 4px; padding: 8px 0; }
+        #uid-screen #uid-map-po .uid-auto__row > .uid-auto__pick { grid-area: pick; }
+        #uid-screen #uid-map-po .uid-auto__row > input[data-field="sku"] { grid-area: sku; align-self: center; }
+        #uid-screen #uid-map-po .uid-auto__row > .uid-auto__name { grid-area: name; align-self: start; }
+        #uid-screen #uid-map-po .uid-auto__row > .uid-auto__qty { grid-area: qty; }
+        #uid-screen #uid-map-po .uid-auto__row > .uid-row__icon--remove { grid-area: del; }
+        #uid-screen #uid-map-po .uid-auto__row > input[readonly] { min-height: 0; height: auto; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        #uid-screen #uid-map-po .uid-auto__row > input[data-field="sku"][readonly] { color: var(--wms-text, #17251f); font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.3; }
+        #uid-screen #uid-map-po .uid-auto__row > .uid-auto__name[readonly] { color: var(--wms-muted, #60736b); font-size: 13px; font-weight: 400; line-height: 1.35; }
+      }
+      /* Trang chủ điện thoại (≤ 620 px): ô lẻ cuối nhóm (vd. Kiểm tra 4 ô → ô thứ 4 một mình một hàng) thành thẻ ngang hết hàng (icon trái, chữ phải);
+         dải tiêu đề nhóm 58 px, các nhóm cách 12 px → trang chủ trong ~1,25 màn (test mobile_home; trước ô cuối ở 1114 px). Máy tính giữ nguyên. */
+      @media (max-width: 620px) {
+        #barcode-home .barcode-home__choices > .barcode-choice:last-child:nth-child(3n + 1) { grid-column: 1 / -1; flex-direction: row; justify-content: flex-start; align-items: center; gap: 12px; min-height: 56px; padding: 8px 14px; text-align: left; }
+        #barcode-home .barcode-home__choices > .barcode-choice:last-child:nth-child(3n + 1) .barcode-choice__icon { flex: none; margin: 0; }
+        #barcode-home .barcode-home__groups { gap: 12px; }
+        #barcode-home .barcode-home__group-head { min-height: 58px; }
       }
     </style>
   </body>

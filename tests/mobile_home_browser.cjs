@@ -31,7 +31,7 @@ const BASE = process.env.BASE || 'http://127.0.0.1:8000/';
         const lines = tiles.map(t => { const s = t.querySelector('strong'), cs = getComputedStyle(s); return Math.round(s.getBoundingClientRect().height / parseFloat(cs.lineHeight)); });
         const groups = [...document.querySelectorAll('#barcode-home .barcode-home__group')];
         const firstRow = boxes.filter(b => Math.abs(b.top - boxes[0].top) < 2);
-        return { count: tiles.length, cols: firstRow.length, w: Math.round(boxes[0].width), h: Math.round(Math.min(...boxes.map(b => b.height))), bottom: Math.round(Math.max(...boxes.map(b => b.bottom))), maxLines: Math.max(...lines), overflow: document.documentElement.scrollWidth > innerWidth,
+        return { count: tiles.length, cols: firstRow.length, w: Math.round(boxes[0].width), h: Math.round(Math.min(...boxes.filter(b => b.width < boxes[0].width * 1.5).map(b => b.height))), wideH: (w => w.length ? Math.round(Math.min(...w.map(b => b.height))) : null)(boxes.filter(b => b.width >= boxes[0].width * 1.5)), bottom: Math.round(Math.max(...boxes.map(b => b.bottom))), maxLines: Math.max(...lines), overflow: document.documentElement.scrollWidth > innerWidth,
           groupCols: new Set(groups.map(g => Math.round(g.getBoundingClientRect().left))).size,
           heads: groups.map(g => { const icon = g.querySelector('.barcode-home__group-icon'), r = icon.getBoundingClientRect(); return `${g.querySelector('h2').textContent.trim()}|${g.querySelector('[data-home-count]').textContent}|${Math.round(r.width)}|${getComputedStyle(icon).borderRadius}`; }),
           counts: groups.map(g => [...g.querySelectorAll('.barcode-choice')].filter(t => !t.hidden && t.getBoundingClientRect().width > 0).length) };
@@ -61,6 +61,8 @@ const BASE = process.env.BASE || 'http://127.0.0.1:8000/';
         assert.ok(home.bottom <= height * 1.25, `điện thoại 390 × 844: trang chủ cuộn tối đa ~1,25 màn (ô cuối ở ${home.bottom}px)`);
         assert.ok(home.maxLines <= 2, `tên ô tối đa 2 dòng (${home.maxLines})`);
         assert.ok(home.h >= 88, `ô đủ lớn để chạm (${home.h}px)`);
+        // Ô lẻ cuối nhóm nằm ngang hết hàng (15/10/2026): thấp hơn nhưng rộng cả hàng, vẫn đủ chạm
+        if (home.wideH !== null) assert.ok(home.wideH >= 56, `thẻ ngang đủ lớn để chạm (${home.wideH}px)`);
       } else if (width === 320) {
         assert.equal(home.cols, 2, 'màn rất hẹp: về 2 cột');
       } else {
