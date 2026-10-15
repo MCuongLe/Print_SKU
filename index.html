@@ -10467,15 +10467,15 @@ async function rpc(name,args,retry=true){
         <section class="ss-hero"><div><h2>Đối chiếu công trình với WMS</h2></div><div class="as-hero-actions" id="sc-admin-tools" hidden><span class="ss-connection" id="sc-connection" data-state="idle">Extension…</span><button class="ss-primary" id="sc-run" type="button"><svg id="sc-run-ico" class="pj-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg><span>Đối chiếu</span></button></div></section>
         <div class="as-strip" id="sc-strip"><div><span data-ico="clock">Đối chiếu lúc</span><strong id="sc-read-at">—</strong><em id="sc-read-rel"></em></div><div><span data-ico="database">Kho WMS</span><strong id="sc-wh-main">—</strong><em id="sc-wh-sub"></em></div><div><span data-ico="link">App xây dựng</span><strong id="sc-app-main">—</strong><em id="sc-app-sub"></em></div><div><span data-ico="calendar">Kỳ nhập xuất</span><strong id="sc-period-main">—</strong><em id="sc-period-sub"></em></div></div>
         <div class="ss-progress" id="sc-progress" aria-hidden="true"><i></i></div><p class="ss-status" id="sc-status" aria-live="polite">Đăng nhập Admin để đối chiếu.</p><div class="as-warns" id="sc-warn" role="status" hidden></div>
-        <section class="ss-metrics ia-metrics" aria-label="Tổng quan đối chiếu"><div class="ss-metric"><span data-ico="box">SKU theo dõi</span><strong id="sc-total">—</strong><small id="sc-total-sub">SKU trong app</small></div><button class="ss-metric" type="button" data-tone="never" data-sc-tab="stock"><span data-ico="alert">Lệch tồn</span><strong id="sc-stock">—</strong><small>Tồn app khác tồn WMS</small></button><button class="ss-metric" type="button" data-tone="overdue" data-sc-tab="in"><span data-ico="download">Lệch nhập</span><strong id="sc-in">—</strong><small>Nhập app khác nhập WMS</small></button><button class="ss-metric" type="button" data-tone="overdue" data-sc-tab="out"><span data-ico="up">Lệch xuất</span><strong id="sc-out">—</strong><small>Xuất app khác xuất WMS</small></button></section>
+        <section class="ss-metrics ia-metrics" aria-label="Tổng quan đối chiếu"><button class="ss-metric" type="button" aria-haspopup="dialog" data-sc-open="stock" data-sc-diff="0"><span data-ico="box">SKU theo dõi</span><strong id="sc-total">—</strong><small id="sc-total-sub">SKU trong app</small></button><button class="ss-metric" type="button" aria-haspopup="dialog" data-tone="never" data-sc-open="stock" data-sc-diff="1"><span data-ico="alert">Lệch tồn</span><strong id="sc-stock">—</strong><small>Tồn app khác tồn WMS</small></button><button class="ss-metric" type="button" aria-haspopup="dialog" data-tone="overdue" data-sc-open="in" data-sc-diff="1"><span data-ico="download">Lệch nhập</span><strong id="sc-in">—</strong><small>Nhập app khác nhập WMS</small></button><button class="ss-metric" type="button" aria-haspopup="dialog" data-tone="overdue" data-sc-open="out" data-sc-diff="1"><span data-ico="up">Lệch xuất</span><strong id="sc-out">—</strong><small>Xuất app khác xuất WMS</small></button></section>
         <div class="as-bar" id="sc-bar" role="img" aria-label="Cơ cấu đối chiếu"></div><div class="as-legend" id="sc-legend"></div>
-        <section class="ss-panel">
-          <div class="as-tabs" role="tablist" aria-label="Nội dung đối chiếu"><button class="as-tab" type="button" role="tab" aria-selected="true" data-sc-tab="stock">Tồn kho<b id="sc-count-stock">0</b></button><button class="as-tab" type="button" role="tab" aria-selected="false" data-sc-tab="in">Nhập<b id="sc-count-in">0</b></button><button class="as-tab" type="button" role="tab" aria-selected="false" data-sc-tab="out">Xuất<b id="sc-count-out">0</b></button></div>
-          <div class="ss-panel-head"><div><h2 id="sc-list-title">Tồn kho</h2><p id="sc-note"></p></div><div class="as-tools" id="sc-tools" hidden></div></div>
+        <dialog class="as-dialog" id="sc-list-dialog" data-size="lg" aria-labelledby="sc-l-title">
+          <div class="as-d-head"><span class="as-d-mark" id="sc-l-mark" aria-hidden="true"></span><div class="as-d-title"><h2 id="sc-l-title">Tồn kho</h2><p id="sc-note"></p></div><div class="as-tools" id="sc-tools" hidden></div><button type="button" class="pj-icon" data-as-close aria-label="Đóng" title="Đóng"><svg class="pj-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>
+          <div class="as-d-tabs"><div class="as-tabs" role="tablist" aria-label="Nội dung đối chiếu"><button class="as-tab" type="button" role="tab" aria-selected="true" data-sc-tab="stock">Tồn kho<b id="sc-count-stock">0</b></button><button class="as-tab" type="button" role="tab" aria-selected="false" data-sc-tab="in">Nhập<b id="sc-count-in">0</b></button><button class="as-tab" type="button" role="tab" aria-selected="false" data-sc-tab="out">Xuất<b id="sc-count-out">0</b></button></div></div>
           <div class="as-tags" id="sc-tags" hidden></div>
-          <div class="ss-table-wrap"><table class="ss-table sc-table"><thead><tr id="sc-head"><th>SKU</th><th>Sản phẩm</th><th class="n">Tồn app</th><th class="n">Tồn WMS</th><th class="n">Chênh</th><th>Vị trí WMS</th><th>Tình trạng</th></tr></thead><tbody id="sc-body"><tr><td colspan="7" class="ss-empty">Chưa có dữ liệu đối chiếu.</td></tr></tbody></table></div>
+          <div class="as-d-body"><div class="ss-table-wrap"><table class="ss-table sc-table"><thead><tr id="sc-head"><th>SKU</th><th>Sản phẩm</th><th class="n">Tồn app</th><th class="n">Tồn WMS</th><th class="n">Chênh</th><th>Vị trí WMS</th><th>Tình trạng</th></tr></thead><tbody id="sc-body"><tr><td colspan="7" class="ss-empty">Chưa có dữ liệu đối chiếu.</td></tr></tbody></table></div></div>
           <div class="as-pager" id="sc-pager" hidden></div>
-        </section>
+        </dialog>
         <dialog class="as-dialog" id="sc-dialog" data-size="sm" aria-labelledby="sc-d-title">
           <div class="as-d-head"><span class="as-d-mark" id="sc-d-mark" aria-hidden="true"></span><div class="as-d-title"><h2 id="sc-d-title">SKU</h2><p id="sc-d-sub"></p></div><span id="sc-d-status"></span><button type="button" class="pj-icon" data-as-close aria-label="Đóng" title="Đóng"><svg class="pj-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>
           <div class="as-d-body ia-d-body"><div class="ia-facts" id="sc-d-facts"></div><div id="sc-d-sections"></div></div>
@@ -10500,6 +10500,7 @@ async function rpc(name,args,retry=true){
           in:["SKU","Tên sản phẩm","ĐVT","Nhập app","Nhập WMS","Chênh (app - WMS)","WMS có, app thiếu","App có, WMS không thấy","Tình trạng"],
           out:["SKU","Tên sản phẩm","ĐVT","Xuất app","Xuất WMS (Xuất sử dụng)","Chênh (app - WMS)","WMS xuất khác","Lý do xuất khác","Tình trạng"]
         };
+        const MARKS={stock:"box",in:"download",out:"up"};
         const state={result:null,tab:"stock",busy:false,admin:false,extChecked:false};
         const list=UI.createList({tools:$("sc-tools"),tagsBox:$("sc-tags"),head:$("sc-head"),body:$("sc-body"),pager:$("sc-pager"),note:$("sc-note")});
         const clean=v=>String(v??"").trim(),n=v=>{const x=Number(v);return Number.isFinite(x)?x:0},round=v=>Math.round(v*1e6)/1e6;
@@ -10582,7 +10583,7 @@ async function rpc(name,args,retry=true){
         }
         const rowsOf=tab=>[...(state.result?.rows||[])].sort((a,b)=>(a.status[tab]===b.status[tab]?0:a.status[tab]==="diff"?-1:1)||Math.abs(diffOf(b,tab))-Math.abs(diffOf(a,tab))||a.sku.localeCompare(b.sku));
         function renderList(keep=true){
-          $("sc-list-title").textContent=TABS[state.tab];
+          $("sc-l-title").textContent=TABS[state.tab];const mark=$("sc-l-mark"),bad=Number(state.result?.summary?.[state.tab]||0)>0;mark.dataset.tone=bad?"bad":"new";mark.innerHTML=ico(MARKS[state.tab]);
           list.show({columns:COLS[state.tab],rows:rowsOf(state.tab).map(s=>rowFor(s,state.tab)),tags:[{id:"diff",label:"Lệch"},{id:"ok",label:"Khớp"}],filename:`kiem-soat-cong-trinh-${state.tab}`,csvHead:CSVH[state.tab],sheet:TABS[state.tab],empty:state.result?"Không có SKU khớp bộ lọc.":"Chưa có dữ liệu đối chiếu."},{keep});
         }
         function say(text,tone=""){const el=$("sc-status");el.textContent=text;el.dataset.tone=tone;el.setAttribute("aria-live",tone==="error"?"assertive":"polite")}
@@ -10593,7 +10594,8 @@ async function rpc(name,args,retry=true){
           const r=state.result,has=Boolean(r),s=r?.summary||{total:0,stock:0,in:0,out:0,flowOnly:0,clean:0,unplaced:0};
           $("sc-total").textContent=has?num(s.total):"—";$("sc-total-sub").textContent=has&&s.unplaced?`${num(s.unplaced)} SKU chưa lên kệ`:"SKU trong app";
           for(const k of ["stock","in","out"]){$(`sc-${k}`).textContent=has?num(s[k]):"—";$(`sc-count-${k}`).textContent=num(s[k])}
-          screen.querySelectorAll("button.ss-metric[data-sc-tab]").forEach(b=>{b.dataset.zero=String(!has||!Number(s[b.dataset.scTab]));b.setAttribute("aria-pressed",String(b.dataset.scTab===state.tab))});
+          screen.querySelectorAll("button.ss-metric[data-sc-open]").forEach(b=>{b.dataset.zero=String(!has||!Number(b.dataset.scDiff==="1"?s[b.dataset.scOpen]:s.total))});
+          for(const k of ["stock","in","out"])$(`sc-count-${k}`).closest(".as-tab").dataset.zero=String(!has||!Number(s[k]));
           UI.bar($("sc-bar"),$("sc-legend"),[{label:"Khớp cả ba",value:s.clean,color:"#1aa774"},{label:"Chỉ lệch nhập hoặc xuất",value:s.flowOnly,color:"#e0a02f"},{label:"Lệch tồn",value:s.stock,color:"#d9695f"}]);
           $("sc-read-at").textContent=has?dt(r.readAt):"—";$("sc-read-rel").textContent=has?rel(r.readAt):"";
           $("sc-wh-main").textContent=has?r.warehouse.warehouseName:"—";$("sc-wh-sub").textContent=has?r.warehouse.companyName||"":"";
@@ -10603,7 +10605,15 @@ async function rpc(name,args,retry=true){
           const warn=$("sc-warn");warn.hidden=!warns.length;warn.innerHTML=warns.map(w=>`<span class="as-warn">${ico("alert")}${esc(w)}</span>`).join("");
         }
         function render(keep=true){metrics();renderList(keep)}
-        function setTab(tab){if(!TABS[tab])return;state.tab=tab;screen.querySelectorAll(".as-tab[data-sc-tab]").forEach(b=>b.setAttribute("aria-selected",String(b.dataset.scTab===tab)));metrics();renderList(true)}
+        function syncTabs(){screen.querySelectorAll(".as-tab[data-sc-tab]").forEach(b=>b.setAttribute("aria-selected",String(b.dataset.scTab===state.tab)))}
+        function setTab(tab){if(!TABS[tab])return;state.tab=tab;syncTabs();renderList(true)}
+        // Bấm ô số liệu mở popup danh sách (ô 0 dòng làm mờ, không mở); ô "lệch" mở sẵn với bộ lọc Lệch, ô SKU theo dõi mở đủ mọi dòng.
+        function openList(tab,{diff=true}={}){
+          if(!state.result||!TABS[tab])return;
+          state.tab=tab;syncTabs();renderList(false);
+          if(diff)$("sc-tags").querySelector('[data-as-tag="diff"]')?.click();
+          UI.openDialog($("sc-list-dialog"));
+        }
         const lineRow=(l,extra="")=>`<div class="sc-line"><code>${esc(l.source||"—")}</code><b>${num(l.qty)}</b><small>${esc(l.time?dt(parseTime(l.time)):"—")}${extra}</small></div>`;
         const section=(icon,title,count,body)=>`<h3 class="ia-d-h"><span>${ico(icon)}${esc(title)}</span>${count===null?"":`<b class="as-chip">${num(count)}</b>`}</h3>${body}`;
         function openDetail(key){
@@ -10709,7 +10719,8 @@ async function rpc(name,args,retry=true){
         $("sc-back").addEventListener("click",()=>{location.hash="#home"});
         UI.hydrate(screen);UI.bindDialogs(screen);UI.bindCopy($("sc-body"));
         screen.addEventListener("click",e=>{
-          const t=e.target.closest("[data-sc-tab]");if(t){if(t.dataset.zero!=="true")setTab(t.dataset.scTab);return}
+          const t=e.target.closest("[data-sc-tab]");if(t){setTab(t.dataset.scTab);return}
+          const o=e.target.closest("button.ss-metric[data-sc-open]");if(o){if(o.dataset.zero!=="true")openList(o.dataset.scOpen,{diff:o.dataset.scDiff==="1"});return}
           const row=e.target.closest("#sc-body tr[data-sc-key]");if(row&&!e.target.closest("code[data-copy]"))openDetail(row.dataset.scKey);
         });
         screen.addEventListener("keydown",e=>{if(e.key!=="Enter"&&e.key!==" ")return;const row=e.target.closest?.("#sc-body tr[data-sc-key]");if(row&&e.target===row){e.preventDefault();openDetail(row.dataset.scKey)}});

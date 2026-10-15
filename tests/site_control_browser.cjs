@@ -102,14 +102,20 @@ const open = async (browser, { width = 1280, admin = true, options = {} } = {}) 
       await context.close();
     }
 
-    // ---- 2) Admin: đối chiếu đủ ba nội dung, desktop rồi điện thoại ----
+    // ---- 2) Admin: đối chiếu rồi xem danh sách trong popup (không có bảng nằm sẵn), desktop rồi điện thoại ----
     for (const width of [1280, 375]) {
       const { context, page, errors, supabase } = await open(browser, { width });
       await page.locator("#sc-admin-tools").waitFor({ state: "visible" });
       await page.waitForFunction(() => /WMS và app xây dựng/.test(document.getElementById("sc-connection").textContent));
+      // Chưa đối chiếu: các ô làm mờ và bấm không mở popup
+      assert.deepEqual(await page.evaluate(() => [...document.querySelectorAll("button.ss-metric[data-sc-open]")].map(b => b.dataset.zero)), ["true", "true", "true", "true"]);
+      await page.locator('button.ss-metric[data-sc-open="stock"]').first().click();
+      assert.equal(await page.locator("#sc-list-dialog").evaluate(d => d.open), false, "chưa có kết quả thì ô không mở popup");
       await page.locator("#sc-run").click();
       await page.waitForFunction(() => document.getElementById("sc-total").textContent === "4");
       assert.match(await page.locator("#sc-status").innerText(), /Đã đối chiếu 4 SKU tại OFFICE - 130 AP CHANH - MTG/);
+      assert.equal(await page.locator("#sc-list-dialog").evaluate(d => d.open), false, "đối chiếu xong không tự mở popup");
+      assert.equal(await page.locator("#site-control-screen .ia-content > .ss-panel").count(), 0, "không còn bảng nằm sẵn trên màn");
       assert.deepEqual(await page.evaluate(() => ["sc-stock", "sc-in", "sc-out"].map(id => document.getElementById(id).textContent)), ["2", "1", "2"], "lệch tồn / nhập / xuất");
       assert.deepEqual(await page.evaluate(() => ["stock", "in", "out"].map(k => document.getElementById(`sc-count-${k}`).textContent)), ["2", "1", "2"]);
       assert.match(await page.locator("#sc-total-sub").innerText(), /1 SKU chưa lên kệ/);
@@ -123,43 +129,59 @@ const open = async (browser, { width = 1280, admin = true, options = {} } = {}) 
       assert.equal(new Date(mov.from).toISOString(), "2026-07-01T17:00:00.000Z", "kỳ bắt đầu 0 giờ 02/07/2026 giờ Việt Nam");
       assert.ok(mov.to >= mov.from, "kỳ có điểm cuối");
       assert.deepEqual(supabase, [], "không lưu hay đọc gì từ Supabase");
+      const skus = () => page.locator("#sc-body tr[data-sc-key] code").allInnerTexts();
+      const openTile = async (tab, diff) => { await page.locator(`button.ss-metric[data-sc-open="${tab}"][data-sc-diff="${diff}"]`).click(); await page.locator("#sc-list-dialog").waitFor({ state: "visible" }); };
+      // Ô Lệch tồn: popup mở sẵn với bộ lọc Lệch, tồn lệch nhiều nhất trước
+      await openTile("stock", 1);
+      assert.equal(await page.locator("#sc-l-title").innerText(), "Tồn kho");
+      assert.equal(await page.locator('#sc-tags .as-tag[data-as-tag="diff"]').getAttribute("aria-pressed"), "true", "ô lệch mở với bộ lọc Lệch bật sẵn");
+      assert.deepEqual(await skus(), ["900000002", "900000003"]);
+      assert.equal(await page.locator("#sc-head th").count(), 7);
+      assert.equal(await page.locator("#sc-body tr[data-sc-key]").first().innerText().then(t => /Chưa lên kệ/.test(t) && /Lệch/.test(t)), true, "SKU nằm ở vị trí ảo có nhãn Chưa lên kệ");
+      // Chuyển tab ngay trong popup, bộ lọc giữ nguyên
+      await page.locator('.as-tab[data-sc-tab="in"]').click();
+      assert.deepEqual(await skus(), ["900000004"], "tab Nhập: chỉ SKU thiếu dòng nhập ở app");
+      assert.match(await page.locator("#sc-body tr[data-sc-key]").first().innerText(), /WMS có, app thiếu 1/);
+      await page.locator('.as-tab[data-sc-tab="out"]').click();
+      assert.deepEqual(await skus(), ["900000002", "900000003"], "tab Xuất: hai SKU xuất lệch");
+      assert.match(await page.locator('#sc-body tr[data-sc-key="900000003"]').innerText(), /83/, "xuất kiểm kê hiện ở cột WMS khác, không tính vào so sánh");
+      await page.locator('#sc-tags .as-tag[data-as-tag="diff"]').click();
+      assert.deepEqual(await skus(), ["900000002", "900000003", "900000001", "900000004"], "tắt lọc Lệch thì thấy cả SKU khớp, lệch trước");
+      assert.equal((await page.locator("#sc-body").innerText()).includes("999999999"), false, "SKU ngoài danh sách app không vào bảng");
+      // Chi tiết xếp chồng trên popup danh sách; Esc đóng chi tiết, popup danh sách còn
+      await page.locator('#sc-body tr[data-sc-key="900000002"]').click();
+      assert.equal(await page.locator("#sc-dialog").evaluate(d => d.open), true, "bấm dòng mở chi tiết");
+      assert.equal(await page.locator("#sc-list-dialog").evaluate(d => d.open), true, "popup danh sách vẫn mở bên dưới");
+      assert.equal(await page.locator("#sc-d-title").innerText(), "900000002");
+      const detail = await page.locator("#sc-dialog").innerText();
+      assert.ok(detail.includes("F0-A0-00-00-00-00") && detail.includes("Chưa lên kệ"), "chi tiết liệt kê vị trí và nhãn chưa lên kệ");
+      await page.keyboard.press("Escape");
+      assert.equal(await page.locator("#sc-dialog").evaluate(d => d.open), false);
+      assert.equal(await page.locator("#sc-list-dialog").evaluate(d => d.open), true, "Esc chỉ đóng chi tiết");
       if (width === 1280) {
-        const skus = () => page.locator("#sc-body tr[data-sc-key] code").allInnerTexts();
-        assert.deepEqual(await skus(), ["900000002", "900000003", "900000001", "900000004"], "tồn lệch xếp trước, theo độ lệch giảm dần");
-        assert.equal(await page.locator("#sc-head th").count(), 7);
-        assert.equal(await page.locator("#sc-body tr[data-sc-key]").first().innerText().then(t => /Chưa lên kệ/.test(t) && /Lệch/.test(t)), true, "SKU nằm ở vị trí ảo có nhãn Chưa lên kệ");
-        assert.equal((await page.locator("#sc-body").innerText()).includes("999999999"), false, "SKU ngoài danh sách app không vào bảng");
-        await page.locator('.as-tab[data-sc-tab="in"]').click();
-        assert.deepEqual(await skus(), ["900000004", "900000001", "900000002", "900000003"], "tab Nhập: SKU thiếu dòng nhập ở app đứng đầu");
-        assert.match(await page.locator("#sc-body tr[data-sc-key]").first().innerText(), /WMS có, app thiếu 1/);
-        await page.locator('.as-tab[data-sc-tab="out"]').click();
-        assert.deepEqual(await skus(), ["900000002", "900000003", "900000001", "900000004"], "tab Xuất: lệch nhiều nhất trước");
-        assert.match(await page.locator('#sc-body tr[data-sc-key="900000003"]').innerText(), /83/, "xuất kiểm kê hiện ở cột WMS khác, không tính vào so sánh");
-        await page.locator('button.ss-metric[data-sc-tab="stock"]').click();
-        assert.equal(await page.locator('.as-tab[data-sc-tab="stock"]').getAttribute("aria-selected"), "true", "bấm thẻ Lệch tồn chuyển sang tab Tồn kho");
-        await page.locator("#sc-tags .as-tag", { hasText: "Lệch" }).click();
-        assert.deepEqual(await skus(), ["900000002", "900000003"], "lọc chỉ SKU lệch");
-        await page.locator("#sc-tags .as-tag", { hasText: "Lệch" }).click();
-        await page.locator("#sc-tools input").fill("cu tram");
-        assert.deepEqual(await skus(), ["900000002"], "tìm không dấu theo tên sản phẩm");
-        await page.locator("#sc-tools input").fill("");
-        await page.locator('#sc-body tr[data-sc-key="900000002"]').click();
-        assert.equal(await page.locator("#sc-dialog").evaluate(d => d.open), true, "bấm dòng mở chi tiết");
-        assert.equal(await page.locator("#sc-d-title").innerText(), "900000002");
-        const detail = await page.locator("#sc-dialog").innerText();
-        assert.ok(detail.includes("F0-A0-00-00-00-00") && detail.includes("Chưa lên kệ"), "chi tiết liệt kê vị trí và nhãn chưa lên kệ");
-        await page.keyboard.press("Escape");
         await page.locator('.as-tab[data-sc-tab="in"]').click();
         await page.locator('#sc-body tr[data-sc-key="900000004"]').click();
         assert.ok((await page.locator("#sc-dialog").innerText()).includes("P4B"), "chi tiết nêu dòng nhập WMS mà app chưa có");
         await page.keyboard.press("Escape");
+        await page.locator("#sc-tools input").fill("cat mau");
+        assert.deepEqual(await skus(), ["900000004"], "tìm không dấu theo tên sản phẩm");
+        await page.locator("#sc-tools input").fill("");
         const [download] = await Promise.all([page.waitForEvent("download"), page.locator("#sc-tools [data-as-export]").click()]);
         assert.match(download.suggestedFilename(), /^kiem-soat-cong-trinh-in-.*\.xlsx$/);
       } else {
-        assert.equal(await page.locator(".sc-table thead").isVisible(), false, "điện thoại: bảng thành thẻ");
+        assert.equal(await page.locator(".sc-table thead").isVisible(), false, "điện thoại: bảng trong popup thành thẻ");
         const box = await page.locator("#sc-body tr[data-sc-key]").first().boundingBox();
         assert.ok(box && box.width <= 375, "thẻ nằm trong khung điện thoại");
+        const sheet = await page.locator("#sc-list-dialog").boundingBox();
+        assert.ok(sheet && sheet.width <= 375 && sheet.x >= 0, "popup là tờ trượt vừa khung điện thoại");
       }
+      await page.keyboard.press("Escape");
+      assert.equal(await page.locator("#sc-list-dialog").evaluate(d => d.open), false, "Esc đóng popup danh sách");
+      // Ô SKU theo dõi: mở đủ mọi dòng, không lọc sẵn
+      await openTile("stock", 0);
+      assert.equal(await page.locator('#sc-tags .as-tag[data-as-tag="diff"]').getAttribute("aria-pressed"), "false");
+      assert.equal((await skus()).length, 4);
+      await page.keyboard.press("Escape");
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `${width}px không được tràn ngang`);
       assert.equal(await page.locator("#sc-run").isDisabled(), false, "nút dùng lại được sau khi xong");
       assert.deepEqual(errors, []);
@@ -215,6 +237,6 @@ const open = async (browser, { width = 1280, admin = true, options = {} } = {}) 
       assert.deepEqual(out.rows["900000001"].st, { stock: "ok", in: "ok", out: "ok" });
       await context.close();
     }
-    console.log("site_control_browser: người xem + Admin đối chiếu tồn/nhập/xuất, lệnh Extension đúng kho và kỳ, không đụng Supabase, lọc/tìm/chi tiết/Excel, thẻ trên điện thoại, các lỗi kết nối passed");
+    console.log("site_control_browser: người xem + Admin đối chiếu, danh sách tồn/nhập/xuất trong popup (ô số liệu mở popup, chi tiết xếp chồng), lệnh Extension đúng kho và kỳ, không đụng Supabase, lọc/tìm/Excel, tờ trượt trên điện thoại, các lỗi kết nối passed");
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });
