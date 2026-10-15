@@ -1970,6 +1970,20 @@ Error generating stack: `+y.message+`
       /* Kết quả đọc Packing List là câu dài: màu cảnh báo / ổn đậm hơn mặc định để đủ tương phản 4,5:1 trên nền khung Gán SKU */
       #uid-screen #uid-auto-help[data-tone="warn"] { color: #8a5a00; }
       #uid-screen #uid-auto-help[data-tone="ok"] { color: #0f6a49; }
+      #uid-screen #uid-auto-help[data-tone="error"] { color: #c2413b; }
+      #uid-screen #uid-auto-total[data-over="true"] { color: #c2413b; }
+      /* Mỗi dòng SKU có ô tick (chỉ dòng đã tick mới được gán) */
+      #uid-screen .uid-auto__row { grid-template-columns: 44px minmax(0, 1fr) 156px var(--target-min, 44px); }
+      #uid-screen .uid-auto__name { grid-column: 2 / -1; }
+      #uid-screen .uid-auto__pick { min-height: 44px; }
+      @media (max-width: 620px) {
+        #uid-screen .uid-auto__row { grid-template-columns: 44px minmax(0, 1fr) var(--target-min, 44px); }
+        #uid-screen .uid-auto__row > .uid-auto__pick { grid-column: 1; grid-row: 1; }
+        #uid-screen .uid-auto__row > input[data-field="sku"] { grid-column: 2; grid-row: 1; }
+        #uid-screen .uid-auto__row > .uid-row__icon { grid-column: 3; grid-row: 1; }
+        #uid-screen .uid-auto__qty { grid-column: 2 / -1; grid-row: 2; }
+        #uid-screen .uid-auto__row > .uid-auto__name { grid-column: 2 / -1; grid-row: 3; }
+      }
       @media (max-width: 800px) { #uid-screen .uid-po { display: none; } }
     </style>
     <script id="uid-po-script">
@@ -2008,8 +2022,7 @@ Error generating stack: `+y.message+`
           }
           return rows;
         };
-        // Một dòng Packing List là một cuộn nên số UID = số dòng. Dòng chưa chia cuộn (số lượng 1, mã "1": một dòng cho cả Lot) không đếm được nên bỏ ra và báo.
-        const unsplit = row => row.quantity === 1 && String(row.code) === "1";
+        // Một dòng Packing List là một cuộn (cây vải) nên số UID = số dòng, kể cả dòng số lượng 1 mã "1"
         let busy = false;
         const setBusy = on => { busy = on; go.disabled = on; go.dataset.busy = String(on); };
         go.addEventListener("click", async () => {
@@ -2023,9 +2036,8 @@ Error generating stack: `+y.message+`
             const all = await readAll(orders);
             const approved = all.filter(row => !row.status || /^approved$/i.test(row.status)), others = all.length - approved.length;
             const missing = orders.filter(order => !all.some(row => row.purchase_order === order));
-            const counted = approved.filter(row => !unsplit(row)), notSplit = approved.filter(unsplit);
             const bySku = new Map(), names = new Map();
-            counted.forEach(row => { bySku.set(row.sku, (bySku.get(row.sku) || 0) + 1); if (row.product_name && !names.has(row.sku)) names.set(row.sku, row.product_name); });
+            approved.forEach(row => { bySku.set(row.sku, (bySku.get(row.sku) || 0) + 1); if (row.product_name && !names.has(row.sku)) names.set(row.sku, row.product_name); });
             const resolved = await Promise.all([...bySku.keys()].map(async sku => ({ sku, links: await comboLinks(sku) })));
             const merged = new Map(), multi = [];
             resolved.forEach(({ sku, links }) => {
@@ -2037,7 +2049,6 @@ Error generating stack: `+y.message+`
             const total = rows.reduce((sum, row) => sum + row.qty, 0);
             const notes = [
               missing.length ? `Chưa có Packing List: ${missing.join(", ")}` : "",
-              notSplit.length ? `${num(notSplit.length)} dòng chưa chia cuộn (SKU ${[...new Set(notSplit.map(row => row.sku))].join(", ")})` : "",
               multi.length ? `Combo nhiều thành phần: ${multi.join(", ")}` : "",
               others ? `${num(others)} dòng chưa Approved` : "",
               capped ? `${num(capped)} SKU quá ${MAX_UID} UID, đã giới hạn` : "",
@@ -2248,7 +2259,7 @@ Error generating stack: `+y.message+`
           autoHelp: (text, tone) => setAutoHelp(text, tone),
           // Điền danh sách Gán tự động (SKU Normal + số UID) từ Packing List: thay các dòng hiện có, giữ nguyên nếu không có dòng nào
           setAuto: (rows, message, tone) => {
-            if (rows.length) { autoRows.splice(0, autoRows.length, ...rows.map(row => ({ id: nextAutoId++, sku: row.sku, qty: row.qty, name: row.name || "", autoName: row.name || "" }))); renderAutoRows(); autoRows.forEach(row => { if (!row.name) lookupAutoRowName(row); }); }
+            if (rows.length) { autoRows.splice(0, autoRows.length, ...rows.map(row => ({ id: nextAutoId++, sku: row.sku, qty: row.qty, name: row.name || "", autoName: row.name || "", selected: true }))); renderAutoRows(); autoRows.forEach(row => { if (!row.name) lookupAutoRowName(row); }); }
             setAutoHelp(message, tone);
           }
         };
@@ -2360,16 +2371,18 @@ Error generating stack: `+y.message+`
         const setAutoHelp = (message, tone = "") => { autoHelp.textContent = message; autoHelp.dataset.tone = tone; };
 
         const updateAutoMeta = () => {
-          const quantities = autoRows.map(row => Math.floor(Number(row.qty)) || 0);
+          const picked = autoRows.filter(row => row.selected !== false), quantities = picked.map(row => Math.floor(Number(row.qty)) || 0);
           const total = quantities.reduce((sum, qty) => sum + qty, 0);
           autoTotal.textContent = `${total}/${pending.length}`;
-          const invalid = autoRows.some((row, index) => (!String(row.sku).trim() && !String(row.name).trim()) || quantities[index] < 1 || quantities[index] > 500);
-          autoApply.disabled = invalid || total < 1 || total > pending.length;
+          autoTotal.dataset.over = String(total > pending.length);
+          const invalid = picked.some((row, index) => (!String(row.sku).trim() && !String(row.name).trim()) || quantities[index] < 1 || quantities[index] > 500);
+          autoApply.disabled = invalid || total < 1;
         };
 
         const renderAutoRows = () => {
           autoRowsElement.innerHTML = autoRows.map(row => `
             <div class="uid-auto__row" data-id="${row.id}">
+              <label class="uid-select uid-auto__pick" aria-label="Chọn dòng SKU"><input type="checkbox" data-field="selected"${row.selected === false ? "" : " checked"}></label>
               <input data-field="sku" autocomplete="off" placeholder="SKU" value="${escapeHtml(row.sku)}">
               <div class="uid-auto__qty">
                 <button type="button" data-action="dec" aria-label="Giảm số UID">−</button>
@@ -2408,7 +2421,7 @@ Error generating stack: `+y.message+`
           const rowElement = event.target.closest(".uid-auto__row");
           const row = rowElement && autoRows.find(entry => entry.id === Number(rowElement.dataset.id));
           if (!row || !event.target.dataset.field) return;
-          row[event.target.dataset.field] = event.target.value;
+          row[event.target.dataset.field] = event.target.type === "checkbox" ? event.target.checked : event.target.value;
           if (event.target.dataset.field === "sku") lookupAutoRowName(row);
           updateAutoMeta();
         });
@@ -2437,10 +2450,10 @@ Error generating stack: `+y.message+`
         });
 
         autoApply.addEventListener("click", async () => {
-          const rows = autoRows.map(row => ({ sku: String(row.sku).trim(), qty: Math.floor(Number(row.qty)) || 0, name: String(row.name).trim() }));
+          const rows = autoRows.filter(row => row.selected !== false).map(row => ({ sku: String(row.sku).trim(), qty: Math.floor(Number(row.qty)) || 0, name: String(row.name).trim() }));
           if (rows.some(row => (!row.sku && !row.name) || row.qty < 1 || row.qty > 500)) return setAutoHelp("Mỗi dòng cần số UID từ 1 đến 500 và có SKU hoặc Tên SP.", "warn");
           const total = rows.reduce((sum, row) => sum + row.qty, 0);
-          if (total > pending.length) return setAutoHelp(`Tổng ${total} UID vượt quá ${pending.length} UID đang chờ gán.`, "warn");
+          if (total > pending.length) return setAutoHelp(`Thiếu ${total - pending.length} UID chờ gán: cần ${total}, đang chờ ${pending.length}`, "error");
           autoApply.disabled = true;
           setAutoHelp("Đang tra tên sản phẩm theo SKU…");
           try {
@@ -2457,7 +2470,9 @@ Error generating stack: `+y.message+`
                 mapped.push({ ...item, sku: row.sku || item.sku || "", productName: row.name });
               }
             }
-            autoRows.splice(0, autoRows.length, { id: nextAutoId++, sku: "", qty: 1, name: "", autoName: "" });
+            // Dòng đã gán bị bỏ khỏi danh sách; dòng chưa tick (để gán sau) giữ lại
+            const left = autoRows.filter(row => row.selected === false);
+            autoRows.splice(0, autoRows.length, ...(left.length ? left : [{ id: nextAutoId++, sku: "", qty: 1, name: "", autoName: "" }]));
             renderAutoRows();
             setAutoHelp("");
             setStatus(`Đã gán tự động ${total} UID theo ${rows.length} dòng SKU.`, "ok");
