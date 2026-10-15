@@ -12,7 +12,7 @@ const SCREENS = [
   ['worker', '#root > header', '#root > header h1', 'print'], ['group-uid', '#uid-screen .uid-topbar', '#uid-title', 'print'], ['location', '#location-screen .uid-topbar', '#loc-title', 'print'],
   ['cut-group-uid', '#cut-group-uid-screen .uid-topbar', '#cut-title', 'ops'], ['group-uid-history', '#uidhist-screen .uid-topbar', '#uh-title', 'ops'], ['find-sku', '#find-sku-screen .uid-topbar', '#fsk-title', 'ops'],
   ['unit-converter', '#unit-converter-screen .uid-topbar', '#uc-title', 'ops'], ['xa-vai', '#xa-vai-screen .uid-topbar', '#xa-vai-title', 'ops'],
-  ['inspection', '#ins-screen .uid-topbar', '#ins-title', 'check'], ['storage-risk', '#storage-risk-screen .uid-topbar', '#storage-risk-title', 'check'], ['inventory-audit', '#inventory-audit-screen .uid-topbar', '#ia-title', 'check'],
+  ['inspection', '#ins-screen .uid-topbar', '#ins-title', 'check'], ['storage-risk', '#storage-risk-screen .uid-topbar', '#storage-risk-title', 'check'], ['inventory-audit', '#inventory-audit-screen .uid-topbar', '#ia-title', 'check'], ['site-control', '#site-control-screen .uid-topbar', '#sc-title', 'check'],
   ['admin/lenh-in', '#print-jobs-screen .ss-top', '#print-jobs-heading', 'admin'], ['admin/sku-sync', '#sku-sync-screen .ss-top', '#sku-sync-heading', 'admin'], ['admin/cauhinh', '#root header.ss-command-react', '#root header.ss-command-react h1', 'admin']
 ];
 

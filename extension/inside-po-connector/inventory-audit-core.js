@@ -68,5 +68,33 @@
     return { rows, sourceRows: sourceRows.length, total: Math.max(sourceRows.length, finite(payload?.count)), page: Math.max(1, finite(payload?.page) || 1), size: Math.max(1, finite(payload?.size) || 500) };
   }
 
-  globalThis.HasakiInventoryAuditCore = Object.freeze({ DEFAULT_WAREHOUSES, clean, fold, selectWarehouses, normalizeApprovedPage, normalizeInventoryPage });
+  // Báo cáo Import/Export của WMS: type 1 = nhập, 2 = xuất. current_quantity là tồn của SKU ngay sau dòng đó (có thể trống).
+  // Giờ lấy từ created_at_tz (có múi giờ); created_at của WMS là giờ địa phương không kèm múi giờ.
+  function normalizeImportExportPage(payload) {
+    const sourceRows = recordsOf(payload);
+    const rows = sourceRows.map(row => {
+      const type = Number(row.type);
+      return {
+        id: Number(row.id) || null,
+        warehouseId: Number(row.warehouse_id),
+        warehouseName: clean(row.warehouse_name, 160),
+        sku: clean(row.sku, 80),
+        productName: clean(row.product_name, 500),
+        kind: type === 1 ? "in" : type === 2 ? "out" : "",
+        qty: finite(row.quantity),
+        balance: row.current_quantity === undefined || row.current_quantity === null ? null : finite(row.current_quantity),
+        sourceType: clean(row.source_type, 40),
+        sourceCode: clean(row.source_code, 60),
+        mappingId: clean(row.source_mapping_id, 60),
+        reason: clean(row.reason_name, 120),
+        fromWarehouse: clean(row.stock_out, 160),
+        toWarehouse: clean(row.stock_in, 160),
+        createdAt: clean(row.created_at_tz ?? row.created_at, 40),
+        createdBy: clean(row.created_user_name, 120),
+      };
+    }).filter(row => Number.isInteger(row.warehouseId) && row.sku && row.kind);
+    return { rows, sourceRows: sourceRows.length, total: Math.max(sourceRows.length, finite(payload?.count)), page: Math.max(1, finite(payload?.page) || 1), size: Math.max(1, finite(payload?.size) || 500) };
+  }
+
+  globalThis.HasakiInventoryAuditCore = Object.freeze({ DEFAULT_WAREHOUSES, clean, fold, selectWarehouses, normalizeApprovedPage, normalizeInventoryPage, normalizeImportExportPage });
 })();

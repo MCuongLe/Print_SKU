@@ -45,6 +45,8 @@ Phiên bản 0.8.3 thêm lệnh chỉ đọc `GET_GROUP_UID_NEW_PAGE` cho nút *
 
 Phiên bản 0.8.1 mở rộng `GET_SKU_COUNT_INVENTORY_PAGE` cho màn RỦI RO LƯU TRỮ (Hàng chưa lên kệ): mỗi dòng tồn kèm `total` (tổng mọi trạng thái), `modified` (Modified date `updated_at`, mốc tính số ngày ở vị trí) và `created` (ngày tạo, dự phòng khi thiếu Modified date). Dòng In-BIN = 0 nhưng `total > 0` (hàng giữ chỗ) không còn bị bỏ khỏi kết quả mà trả `qty = 0`; Kiểm kê SKU vẫn chỉ tính dòng `qty > 0`. Sau khi cập nhật extension phải Reload trong `chrome://extensions`, tải lại trang Print SKU, rồi Admin đồng bộ lại Kiểm kê SKU để bản chụp có Modified date.
 
+Phiên bản 0.9.0 thêm hai nguồn chỉ đọc cho màn KIỂM SOÁT CÔNG TRÌNH (`#site-control`). (1) `GET_STOCK_IMPORT_EXPORT_PAGE`: báo cáo Import/Export của WMS (`/api/v2/wms/report-management/stock-import-exports`), `warehouseIds` + `companyId`, `from` / `to` (ISO hoặc mili giây; WMS cần đủ cả hai), 500 dòng/trang, mỗi trang kèm một lệnh `config_query=2` lấy tổng dòng nên mọi trang cùng báo một `totalPages`. Mỗi dòng: `sku`, `kind` (`in` = nhập, `out` = xuất), `qty`, `balance`, `sourceType`, `sourceCode`, `mappingId`, `reason`, `createdAt`. (2) `PING_HCM` và `GET_HCM_DATA` (`resource`: `stock` hoặc `wmsImports`): đọc app Hasaki Construction Management qua tab app đã đăng nhập (`hcm-bridge.js`, chạy trong `https://apps-mastige.inshasaki.com/apps/hasaki-construction-management*`). Cầu nối dùng cookie Cloudflare Access của tab và Bearer token app trong localStorage của chính tab đó, chỉ GET, chỉ hai đường dẫn cố định (`/api/stock`, `/api/wms-imports`), đọc 1.000 dòng/lượt; token không rời tab app. Manifest thêm quyền host `https://apps-mastige.inshasaki.com/*`. Sau khi cập nhật phải Reload extension trong `chrome://extensions` và tải lại trang Print SKU.
+
 Cập nhật lịch sử Group UID (chỉ Admin):
 
 1. Mở tab WMS và đăng nhập.
@@ -61,6 +63,12 @@ Dashboard kiểm kê SKU dành cho Admin:
 5. Dashboard đối chiếu tồn kho `In-BIN`, `qty > 0` với kết quả kiểm kê SKU có trạng thái `APPROVED`, rồi chia nhóm chưa kiểm kê, trong 30 ngày và quá 30 ngày.
 
 Nếu tài khoản thiếu quyền ở một công ty, dashboard vẫn hiện phần kho đọc được nhưng cảnh báo rõ kho còn thiếu; không được xem kết quả một kho là kết quả đủ hai kho.
+
+Kiểm soát công trình dành cho Admin:
+
+1. Mở hai tab: WMS (đăng nhập tài khoản có quyền kho `OFFICE - 130 AP CHANH - MTG`) và app Hasaki Construction Management (đã đăng nhập tài khoản app).
+2. Vào ô **KIỂM SOÁT CÔNG TRÌNH** trên trang chủ Print SKU, bấm biểu tượng khiên để đăng nhập Admin rồi bấm **Đối chiếu**.
+3. Extension đọc tồn và dòng nhập đã nạp của app xây dựng, tồn theo vị trí (`GET_SKU_COUNT_INVENTORY_PAGE`) và nhập xuất (`GET_STOCK_IMPORT_EXPORT_PAGE`) của kho WMS, từ ngày dòng nhập đầu tiên của app tới hiện tại. Kết quả chỉ nằm trong trình duyệt, không lưu lên Supabase.
 
 Đồng bộ Group UID dành cho Admin:
 

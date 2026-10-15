@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "HASAKI Inside PO Connector",
-  "version": "0.8.4",
-  "description": "Cầu nối chỉ đọc để lấy PO, SKU, Combo, Group UID, lịch sử chuyển vị trí và dữ liệu kiểm kê từ các phiên đang đăng nhập.",
+  "version": "0.9.0",
+  "description": "Cầu nối chỉ đọc để lấy PO, SKU, Combo, Group UID, lịch sử chuyển vị trí, dữ liệu kiểm kê, nhập xuất kho và tồn app xây dựng từ các phiên đang đăng nhập.",
   "permissions": [
     "tabs",
     "scripting"
@@ -10,7 +10,8 @@
   "host_permissions": [
     "https://inside.mastige.vn/*",
     "https://wms.inshasaki.com/*",
-    "https://wms-gw.inshasaki.com/*"
+    "https://wms-gw.inshasaki.com/*",
+    "https://apps-mastige.inshasaki.com/*"
   ],
   "background": {
     "service_worker": "background.js"
@@ -45,6 +46,15 @@
         "group-uid-sync-core.js",
         "inventory-audit-core.js",
         "wms-bridge.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://apps-mastige.inshasaki.com/apps/hasaki-construction-management*"
+      ],
+      "js": [
+        "hcm-bridge.js"
       ],
       "run_at": "document_idle"
     }

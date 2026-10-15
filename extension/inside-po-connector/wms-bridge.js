@@ -11,6 +11,7 @@
   const COMPANY_API = "https://wms-gw.inshasaki.com/api/v1/wms/master-data/company";
   const APPROVED_COUNT_API = "https://wms-gw.inshasaki.com/api/v1/wms/counting-plan/checklists/type-sku";
   const INVENTORY_API = "https://wms-gw.inshasaki.com/api/v1/wms/report-management/stock-locations/bins/count/v3";
+  const IMPORT_EXPORT_API = "https://wms-gw.inshasaki.com/api/v2/wms/report-management/stock-import-exports";
   const CUT_WAREHOUSE_ID = "1177"; // WH - MATERIAL - MTG
   const MOVE_ACTION = "4"; // Transfer location trong Group UID History
 
@@ -246,8 +247,33 @@
     return { ...normalized, totalPages: Math.max(1, Math.ceil(normalized.total / size)), warehouseIds: ids, generatedAt: new Date().toISOString() };
   }
 
+  // Báo cáo Import/Export của kho (Kiểm soát công trình). Mốc ngày là ISO hoặc mili giây; WMS đòi cả from_date lẫn to_date.
+  // Mỗi trang kèm một lệnh config_query=2 (như màn WMS) để lấy tổng dòng, nhờ vậy mọi trang cùng báo một totalPages.
+  async function readImportExportPage(payload) {
+    if (!auditCore?.normalizeImportExportPage) throw new Error("Extension chưa tải bộ đọc nhập xuất; hãy Reload extension");
+    const { page, size } = pageInput(payload), ids = warehouseIds(payload);
+    const stamp = value => /^\d{10,}$/.test(String(value ?? "")) ? Number(value) : new Date(value).getTime();
+    const from = stamp(payload?.from), to = payload?.to ? stamp(payload.to) : Date.now();
+    if (!Number.isFinite(from) || !Number.isFinite(to) || from > to) throw new Error("Khoảng ngày đọc nhập xuất không hợp lệ");
+    const build = query => {
+      const url = new URL(IMPORT_EXPORT_API);
+      url.searchParams.set("from_date", String(from));
+      url.searchParams.set("to_date", String(to));
+      url.searchParams.set("page", String(page));
+      url.searchParams.set("size", String(size));
+      url.searchParams.set("warehouse_ids", ids.join(","));
+      url.searchParams.set("config_query", String(query));
+      return url;
+    };
+    const denied = "Phiên WMS không còn quyền đọc báo cáo Import/Export; hãy đăng nhập lại";
+    const [list, count] = await Promise.all([getJson(build(1), denied, payload?.companyId), getJson(build(2), denied, payload?.companyId)]);
+    const normalized = auditCore.normalizeImportExportPage(list);
+    const total = Math.max(normalized.sourceRows, Number(count?.count) || 0);
+    return { ...normalized, total, totalPages: Math.max(1, Math.ceil(total / size)), warehouseIds: ids, from, to, generatedAt: new Date().toISOString() };
+  }
+
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    if (sender.id !== chrome.runtime.id || !["GET_GROUP_UID_PAGE", "GET_GROUP_UID_HISTORY_PAGE", "GET_GROUP_UID_MOVES_PAGE", "GET_GROUP_UID_NEW_PAGE", "GET_PACKING_LIST_PAGE", "GET_SKU_COUNT_WAREHOUSES", "GET_SKU_COUNT_APPROVED_PAGE", "GET_SKU_COUNT_INVENTORY_PAGE"].includes(message?.type)) return false;
+    if (sender.id !== chrome.runtime.id || !["GET_GROUP_UID_PAGE", "GET_GROUP_UID_HISTORY_PAGE", "GET_GROUP_UID_MOVES_PAGE", "GET_GROUP_UID_NEW_PAGE", "GET_PACKING_LIST_PAGE", "GET_SKU_COUNT_WAREHOUSES", "GET_SKU_COUNT_APPROVED_PAGE", "GET_SKU_COUNT_INVENTORY_PAGE", "GET_STOCK_IMPORT_EXPORT_PAGE"].includes(message?.type)) return false;
     const readers = {
       GET_GROUP_UID_PAGE: readPage,
       GET_GROUP_UID_HISTORY_PAGE: readHistoryPage,
@@ -257,10 +283,12 @@
       GET_SKU_COUNT_WAREHOUSES: readCountWarehouses,
       GET_SKU_COUNT_APPROVED_PAGE: readApprovedCountPage,
       GET_SKU_COUNT_INVENTORY_PAGE: readInventoryPage,
+      GET_STOCK_IMPORT_EXPORT_PAGE: readImportExportPage,
     };
+    const failure = message.type === "GET_STOCK_IMPORT_EXPORT_PAGE" ? "IMPORT_EXPORT_READ_FAILED" : message.type.startsWith("GET_SKU_COUNT_") ? "SKU_COUNT_READ_FAILED" : "GROUP_UID_READ_FAILED";
     readers[message.type](message.payload || {})
       .then(data => sendResponse({ ok: true, data }))
-      .catch(error => sendResponse({ ok: false, error: { code: message.type.startsWith("GET_SKU_COUNT_") ? "SKU_COUNT_READ_FAILED" : "GROUP_UID_READ_FAILED", message: (auditCore || core)?.clean(error?.message || error, 300) || "Không đọc được dữ liệu WMS" } }));
+      .catch(error => sendResponse({ ok: false, error: { code: failure, message: (auditCore || core)?.clean(error?.message || error, 300) || "Không đọc được dữ liệu WMS" } }));
     return true;
   });
 })();

@@ -8,12 +8,29 @@ const manifest = JSON.parse(fs.readFileSync(path.join(extensionDir, "manifest.js
 const background = fs.readFileSync(path.join(extensionDir, "background.js"), "utf8");
 
 assert.equal(manifest.manifest_version, 3);
-assert.equal(manifest.version, "0.8.4");
+assert.equal(manifest.version, "0.9.0");
 const wmsBridge = fs.readFileSync(path.join(extensionDir, "wms-bridge.js"), "utf8");
 assert.match(wmsBridge, /stock-locations\/bins\/count\/v3/);
 assert.match(wmsBridge, /ignore_zero_total/);
 assert.ok(manifest.content_scripts.some(entry => entry.js.includes("inventory-audit-core.js")));
 for (const type of ["GET_SKU_COUNT_WAREHOUSES", "GET_SKU_COUNT_APPROVED_PAGE", "GET_SKU_COUNT_INVENTORY_PAGE"]) assert.match(background, new RegExp(type));
+// Kiểm soát công trình: đọc nhập xuất kho qua WMS và tồn app xây dựng qua tab app đã đăng nhập (cùng nguồn gốc, chỉ đọc).
+for (const type of ["GET_STOCK_IMPORT_EXPORT_PAGE", "GET_HCM_DATA", "PING_HCM"]) assert.match(background, new RegExp(type));
+assert.ok(manifest.host_permissions.includes("https://apps-mastige.inshasaki.com/*"));
+const hcmEntry = manifest.content_scripts.find(entry => entry.js.includes("hcm-bridge.js"));
+assert.deepEqual(hcmEntry?.matches, ["https://apps-mastige.inshasaki.com/apps/hasaki-construction-management*"], "cầu nối app xây dựng chỉ chạy trong đúng app đó");
+const hcmPattern = background.match(/^const HCM_URL_PATTERN = .*;$/m)?.[0];
+assert.ok(hcmPattern, "Không tìm thấy HCM_URL_PATTERN");
+const hcmBox = { result: null };
+vm.runInNewContext(`${hcmPattern}
+result = HCM_URL_PATTERN;`, hcmBox);
+assert.equal(hcmBox.result.test("https://apps-mastige.inshasaki.com/apps/hasaki-construction-management/#/admin/stock/stock"), true);
+assert.equal(hcmBox.result.test("https://apps-mastige.inshasaki.com/apps/hasaki-construction-management#/admin"), true);
+assert.equal(hcmBox.result.test("https://apps-mastige.inshasaki.com/apps/hasaki-construction-management-evil/"), false);
+assert.equal(hcmBox.result.test("https://evil.example/apps/hasaki-construction-management/"), false);
+assert.equal(hcmBox.result.test("https://hasaki-zt.cloudflareaccess.com/cdn-cgi/access/login/apps-mastige.inshasaki.com?redirect_url=%2Fapps%2Fhasaki-construction-management%2F"), false, "trang đăng nhập Cloudflare không phải tab app");
+const appBridgeSource = fs.readFileSync(path.join(extensionDir, "app-bridge.js"), "utf8");
+for (const type of ["GET_STOCK_IMPORT_EXPORT_PAGE", "GET_HCM_DATA", "PING_HCM"]) assert.match(appBridgeSource, new RegExp(type));
 
 const appMatches = manifest.content_scripts.find(entry => entry.js.includes("app-bridge.js"))?.matches || [];
 assert.ok(appMatches.includes("http://localhost/*"));

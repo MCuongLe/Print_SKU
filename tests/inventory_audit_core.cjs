@@ -52,4 +52,19 @@ assert.equal(approved.rows[0].approvedAt, "2026-09-10T12:00:00+07:00");
 assert.equal(approved.rows[0].approvedBy, "manager-a");
 assert.equal(approved.total, 3, "total lấy từ count của WMS, không phải số dòng đã lọc");
 
+// Báo cáo Import/Export: type 1 = nhập, 2 = xuất; giờ lấy từ created_at_tz; dòng thiếu SKU/kho/loại bị bỏ.
+const movements = core.normalizeImportExportPage({ page: 1, size: 500, records: [
+  { id: 267157413, warehouse_id: 1151, warehouse_name: "OFFICE - 130 AP CHANH - MTG", sku: "322200644", product_name: "Backdrop", quantity: 1, current_quantity: 2, type: 1, source_type: "PURCHASE_ORDER", source_code: "1001261012030931", source_mapping_id: "10012610063063", created_at: "2026-10-15 07:41:14", created_at_tz: "2026-10-15T07:41:14+07:00", created_user_name: "a@hasaki.vn" },
+  { id: 266077815, warehouse_id: 1151, sku: "422415401", quantity: 50, type: 2, source_type: "ADJUSTMENT", reason_name: "Xuất sử dụng", created_at: "2026-10-13 12:48:03" },
+  { id: 265657070, warehouse_id: 1151, sku: "422514540", quantity: 2, type: 2, source_type: "ADJUSTMENT" },
+  { id: 1, warehouse_id: 1151, sku: "X", quantity: 5, type: 3 },
+  { id: 2, warehouse_id: 1151, sku: "", quantity: 5, type: 1 },
+  { id: 3, sku: "Y", quantity: 5, type: 1 },
+] });
+assert.deepEqual(movements.rows.map(row => [row.sku, row.kind, row.qty, row.balance]), [["322200644", "in", 1, 2], ["422415401", "out", 50, null], ["422514540", "out", 2, null]], "chỉ giữ dòng nhập/xuất hợp lệ; current_quantity trống thì balance = null");
+assert.equal(movements.rows[0].createdAt, "2026-10-15T07:41:14+07:00", "ưu tiên created_at_tz có múi giờ");
+assert.equal(movements.rows[1].createdAt, "2026-10-13 12:48:03", "thiếu created_at_tz thì dùng created_at");
+assert.equal(movements.rows[1].reason, "Xuất sử dụng");
+assert.equal(movements.sourceRows, 6, "sourceRows là số dòng WMS trả về, không phải số dòng đã lọc");
+
 console.log("inventory_audit_core: company switch, qty>0, held stock kept and approved-only filter passed");
