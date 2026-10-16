@@ -410,8 +410,8 @@ web đi qua RPC `fabric_issue_*`).
 
 Mở **CẮT GROUP UID** ở WH-MATERIAL hoặc `#cut-group-uid`. Người dùng quét một
 UID, hệ thống tra `group_uid_details` và `SKU_Name`, rồi lưu snapshot SKU, UID,
-Lot, Roll và tên sản phẩm vào bảng `cut_group_uids` (trạng thái in `pending`). Màn có 4 tab:
-**1 · Quét Group UID**, **2 · Tra cứu UID đã cắt**, **3 · Tem chờ in**, **4 · Đối chiếu**. Lệnh in dùng lại đúng loại
+Lot, Roll và tên sản phẩm vào bảng `cut_group_uids` (trạng thái in `pending`). Màn có 5 tab:
+**1 · Quét Group UID**, **2 · Tra cứu UID đã cắt**, **3 · Tem chờ in**, **4 · Đối chiếu**, **5 · Lấy mẫu theo PO**. Lệnh in dùng lại đúng loại
 `group_uid` (mẫu v1) của IN TEM GROUP UID nên không cần agent riêng; agent 0.9.0 trở lên còn tự thu nhỏ hoặc tách
 hàng LOT/ROLL khi quá dài, và web cắt phần Roll lặp lại Lot (`197/9-004` → `004`) trước khi gửi.
 
@@ -507,6 +507,40 @@ mỗi dòng bị xóa được chép vào bảng `cut_group_uid_deletions` (ai x
 ```powershell
 python scripts/apply_supabase_sql.py supabase/cut_group_uid_v7_admin_delete.sql
 ```
+
+### Tab 5 · Lấy mẫu theo PO
+
+Tab **5 · Lấy mẫu theo PO** của CẮT GROUP UID (không còn ô trang chủ riêng): Admin nhập số PO → Extension đọc Group UID và các ASN
+của PO trên WMS → app chia mẫu (UID cắt, UID chuyển QC, UID còn lại chuyển kho lưu trữ) → nhân viên quét UID để báo từng loại →
+xác nhận đẩy UID cắt đã quét sang luồng Cắt của chính màn này (Quét / Tra cứu / Tem chờ in / Đối chiếu giữ nguyên). Nạp schema một lần:
+`python scripts/apply_supabase_sql.py supabase/cut_sample_v1.sql` (chỉ thêm bảng/hàm; bảng bật RLS, chỉ `service_role`, web đi
+qua RPC `cut_sample_*`). App không ghi gì lên WMS; việc chuyển kho thật vẫn làm trên WMS. Trong tab có ba mục: *Quét*, *Danh sách*,
+*Phiên PO*; quyền Admin dùng nút khiên ở thanh trên của màn Cắt.
+
+- **Đọc PO (chỉ Admin)**: mục *Phiên PO* → nhập số PO → *Đọc từ WMS* (cần Extension 0.9.2: `GET_PO_GROUP_UID_PAGE`,
+  `GET_PO_ASN_PAGE`). UID đã mang SKU Normal, Lot = Batch Code, Roll và số lượng (g hoặc mm theo đơn vị SKU), nên không cần đổi
+  Combo. App đọc hết các trang rồi đối chiếu số UID duy nhất với tổng WMS báo; lệch thì dừng và báo đọc lại. Loại khỏi phiên (đếm
+  riêng ở bản xem trước): UID chưa nhận (không SKU hoặc số lượng ≤ 0), UID nhiều SKU, UID `Canceled`/`Closed`. ASN chưa `Received`
+  báo vàng. Phiên tối đa 5.000 UID.
+- **Quy tắc chia mẫu** (`CUT_SAMPLE_CORE`, `tests/cut_sample_core.cjs`): nhóm theo SKU Normal + Lot. **Cắt + QC phải đạt tối thiểu
+  30% số cây của mỗi lot** (làm tròn lên: `ceil(30% × n)`), mỗi bên ít nhất 1 cây khi lot có từ 2 cây. Tổng mẫu chia cho cắt : QC theo
+  tỷ lệ 20 : 10 (làm tròn gần nhất, 0,5 lên): **cắt** ưu tiên khối lượng/số mét **nhỏ nhất**, **QC** ưu tiên **lớn nhất**, hai nhóm không
+  trùng nhau (cắt chọn trước). Ví dụ: lot 10 cây = 2 cắt + 1 QC; lot 7 cây = 3 mẫu (2 + 1) chứ không phải 2; lot 12 cây = 4 mẫu (3 + 1);
+  lot 1 cây chỉ cắt (QC báo thiếu, ⚠ ở bản xem trước). Còn lại = chuyển kho lưu trữ. Hòa nhau thì theo mã UID tăng dần. Tính bằng số
+  nguyên. Bản xem trước hiện % mẫu từng lot và tổng cả phiên; hàm `cut_sample_create` cũng tự từ chối phiên có lot dưới 30%
+  (`SAMPLE_BELOW_MIN`), không tin riêng trình duyệt. PO thật 323 UID / 51 lot (2–8 cây/lot) ra 131 mẫu (cắt 80 + QC 51 = 40,6%).
+- **Phiên**: một phiên = một PO, lưu trên Supabase (`cut_sample_sessions` / `cut_sample_items`) để nhiều máy cùng quét và tải lại
+  không mất. Đọc lại cùng PO = *Thay phiên*, giữ dấu quét của UID còn cùng nhóm; một UID chỉ thuộc một phiên. Admin xóa phiên và
+  bỏ dấu quét từng UID (UID đã đẩy sang Cắt UID thì không bỏ được).
+- **Quét**: ai cũng quét được, bằng máy quét cầm tay (khóa bàn phím ảo như tab Quét Group UID, nút bàn phím để gõ tay) hoặc camera. Quét
+  trúng thì tự đánh dấu đã quét và hiện pop-up giữa màn hình: *Cắt Group UID này* (xanh lá), *Chuyển QC test* (xanh dương),
+  *Chuyển kho lưu trữ* (xám) — tự đóng sau 1,6–2,4 giây; *Đã quét UID này* (vàng), *UID không thuộc phiên* / *thuộc phiên PO khác*
+  (đỏ) ở lại tới khi chạm, bấm Esc hoặc quét mã khác. Mã quét liên tiếp xếp hàng tuần tự; âm báo bật/tắt bằng nút loa. Mỗi SKU có
+  hai thanh tiến độ (cắt, QC) và dấu *Đủ mẫu* khi cả hai đủ.
+- **Chuyển sang Cắt UID** (`cut_sample_confirm`): nút đẩy các UID **cắt** đã quét vào `cut_group_uids` (trạng thái `pending`) từ dữ
+  liệu phiên, tên sản phẩm lấy ở `SKU_Name`; từ đó Tra cứu, in tem, xuất ADJ chạy như UID quét ở tab 1 (nút *Xem ở Tra cứu* nhảy sang
+  tab 2). UID đã có ở Cắt UID chỉ được đánh dấu đã đẩy; UID chưa có tên trong `SKU_Name` không đẩy (báo lại, đẩy sau khi bổ sung). Bấm
+  nhiều lần không tạo trùng.
 
 ## Quét mã ở PRINT SKU
 

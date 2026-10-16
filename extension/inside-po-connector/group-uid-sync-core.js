@@ -207,6 +207,44 @@
     return { rows, total: responseTotal(payload, source.length), sourceRows: source.length };
   }
 
+  // Group UID của một PO (CẮT GROUP UID · lấy mẫu cắt/QC, 16/10/2026): WMS lọc theo `processing_source_code` (số PO) và các tên tham số
+  // khác bị BỎ QUA IM LẶNG (đã đo: purchase_order_number(s), keyword… đều trả cả kho) nên kiểm lại số PO của TỪNG dòng — lệch thì báo
+  // lỗi thay vì trộn UID của PO khác vào phiên. Giữ nguyên quy tắc dòng của normalizeRow, thêm số PO nguồn và loại nguồn.
+  function normalizePoGroupUidPage(payload, purchaseOrder) {
+    const source = responseRows(payload);
+    const unique = new Map();
+    source.forEach((raw, index) => {
+      const sourceCode = clean(raw?.processing_source_code, 60);
+      if (sourceCode !== purchaseOrder) throw new Error(`Group UID ${clean(raw?.group_uid_code) || index + 1} thuộc nguồn "${sourceCode || "trống"}", không phải PO ${purchaseOrder}`);
+      const row = normalizeRow(raw, index);
+      unique.set(row.group_uid_code, { ...row, purchase_order: sourceCode, source_type: clean(raw?.processing_source_type, 40) || null });
+    });
+    return { rows: [...unique.values()], total: responseTotal(payload, source.length), sourceRows: source.length };
+  }
+
+  // Các ASN (đợt nhận hàng) của một PO: lọc bằng `purchase_order_numbers` (SỐ NHIỀU); cũng kiểm số PO từng dòng.
+  function normalizePoAsnPage(payload, purchaseOrder) {
+    const source = responseRows(payload);
+    const rows = source.map((raw, index) => {
+      const order = clean(raw?.purchase_order_number, 60);
+      if (order !== purchaseOrder) throw new Error(`ASN dòng ${index + 1} thuộc "${order || "trống"}", không phải PO ${purchaseOrder}`);
+      const asnId = Number(raw?.asn_id), asnNumber = clean(raw?.asn_number, 40);
+      if (!Number.isInteger(asnId) || asnId <= 0 || !/^\d{6,40}$/.test(asnNumber)) throw new Error(`ASN dòng ${index + 1} không hợp lệ`);
+      let createdAt = null;
+      try { createdAt = isoDate(raw?.created_at_tz ?? raw?.created_at); } catch { createdAt = null; }
+      return {
+        asn_id: asnId,
+        asn_number: asnNumber,
+        type: clean(raw?.asn_type, 40) || null,
+        status: clean(raw?.status_name, 60) || null,
+        shipment: clean(raw?.inbound_shmt_number, 40) || null,
+        warehouse: clean(raw?.warehouse_name, 240) || null,
+        created_at: createdAt,
+      };
+    });
+    return { rows, total: responseTotal(payload, source.length), sourceRows: source.length };
+  }
+
   // Phiếu IT (chuyển kho nội bộ) cho IN TEM SKU: đầu phiếu từ internal-transfers, các dòng từ transfer/internal-transfer-items/list-details
   // (WMS trả hết các dòng một lần). Mỗi dòng: SKU, tên, số lượng theo đơn vị SKU (pcs / mm / g …, có phiếu không ghi đơn vị).
   function normalizeInternalTransfer(head, itemsPayload) {
@@ -235,5 +273,5 @@
     };
   }
 
-  globalThis.HasakiGroupUidSyncCore = Object.freeze({ clean, normalizeRow, normalizePage, normalizeHistoryPage, normalizeMovesPage, normalizeNewUidPage, normalizePackingListPage, normalizeInternalTransfer, responseRows, responseTotal });
+  globalThis.HasakiGroupUidSyncCore = Object.freeze({ clean, normalizeRow, normalizePage, normalizeHistoryPage, normalizeMovesPage, normalizeNewUidPage, normalizePackingListPage, normalizeInternalTransfer, responseRows, responseTotal, normalizePoGroupUidPage, normalizePoAsnPage });
 })();

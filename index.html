@@ -4073,6 +4073,7 @@ Error generating stack: `+y.message+`
           <button class="cut-tab" id="cut-tab-data" type="button" role="tab" data-tab="data" aria-selected="false"><i class="fsk-tab-n" aria-hidden="true">2</i><span class="tab-l">Tra cứu UID đã cắt</span><span class="tab-s">Tra cứu</span> <b class="cut-badge" id="cut-found">0</b></button>
           <button class="cut-tab" id="cut-tab-print" type="button" role="tab" data-tab="print" aria-selected="false"><i class="fsk-tab-n" aria-hidden="true">3</i><span class="tab-l">Tem chờ in</span><span class="tab-s">Chờ in</span> <b class="cut-badge" id="cut-count">0</b></button>
           <button class="cut-tab" id="cut-tab-adj" type="button" role="tab" data-tab="adj" aria-selected="false"><i class="fsk-tab-n" aria-hidden="true">4</i>Đối chiếu <b class="cut-badge" id="cut-adj-issues">0</b></button>
+          <button class="cut-tab" id="cut-tab-sample" type="button" role="tab" data-tab="sample" aria-selected="false"><i class="fsk-tab-n" aria-hidden="true">5</i><span class="tab-l">Lấy mẫu theo PO</span><span class="tab-s">Lấy mẫu</span></button>
         </div>
         <p class="cut-message" id="cut-message" aria-live="polite" style="margin-bottom:14px"></p>
         <div class="cut-grid">
@@ -4084,7 +4085,32 @@ Error generating stack: `+y.message+`
           <div class="cut-adj-kpis" id="cut-adj-kpis" role="group" aria-label="Lọc theo trạng thái đối chiếu"></div>
           <form class="cut-searchbar" id="cut-adj-form"><input class="cut-input" id="cut-adj-sku" placeholder="Lọc theo SKU…" autocomplete="off"><input class="cut-input" id="cut-adj-lot" style="max-width:150px" placeholder="Lọc theo Lot…" autocomplete="off"><div class="cut-daterange"><input class="cut-input" id="cut-adj-date-from" type="date" aria-label="Cắt từ ngày" title="Cắt từ ngày"><span aria-hidden="true">→</span><input class="cut-input" id="cut-adj-date-to" type="date" aria-label="Cắt đến ngày" title="Cắt đến ngày"></div><div class="cut-searchbar__end"><button class="cut-secondary act-icon act-icon--search" type="submit">Tìm kiếm</button></div></form>
           </section>
+        <section class="cut-card" data-panel="sample" id="cs-panel"><div class="cs-head"><h2><span>5</span>Lấy mẫu theo PO</h2><span class="cs-tools"><button class="cut-icon-btn cs-sound" id="cs-sound" type="button" aria-pressed="true" aria-label="Tắt âm báo" title="Tắt âm báo"></button></span></div>
+          <div class="cs-seg" role="tablist" aria-label="Lấy mẫu theo PO"><button class="cs-segbtn" id="cs-seg-scan" type="button" role="tab" data-sec="scan" aria-selected="true">Quét</button><button class="cs-segbtn" id="cs-seg-list" type="button" role="tab" data-sec="list" aria-selected="false">Danh sách <b class="cut-badge" id="cs-list-count">0</b></button><button class="cs-segbtn" id="cs-seg-plans" type="button" role="tab" data-sec="plans" aria-selected="false">Phiên PO <b class="cut-badge" id="cs-plan-count">0</b></button></div>
+          <p class="cut-message" id="cs-message" aria-live="polite"></p>
+          <div class="cs-sec" data-sec="scan"><select class="cut-input" id="cs-plan" aria-label="Phiên theo PO" title="Phiên theo PO"></select>
+          <div class="cs-totals" id="cs-totals"></div>
+          <form class="cut-scan" id="cs-form"><div class="scan-field"><input class="cut-input cut-input--scan" id="cs-code" autocomplete="off" inputmode="none" placeholder="Group UID" maxlength="40" required><span class="scan-field__tools"><button class="act-icon act-icon--camera" id="cs-camera" type="button" aria-label="Quét bằng camera" title="Quét bằng camera" hidden></button><button class="act-icon act-icon--keyboard" id="cs-keyboard" type="button" aria-controls="cs-code" aria-label="Hiện bàn phím" title="Hiện bàn phím" aria-pressed="true"></button></span></div><button class="cut-primary act-icon act-icon--check" id="cs-submit" type="submit"><span>Quét</span></button></form>
+          <div class="cs-confirm"><button class="cut-primary act-icon act-icon--check" id="cs-confirm" type="button" disabled>Chuyển sang Cắt UID</button><button class="cut-secondary" id="cs-goto-cut" type="button" hidden>Xem ở Tra cứu</button></div>
+          <div class="cs-recent" id="cs-recent" hidden></div>
+          <div class="cs-skus" id="cs-skus"></div>
+        </div>
+          <div class="cs-sec" data-sec="list" hidden>
+          <div class="cs-filters" id="cs-filters" role="group" aria-label="Lọc Group UID"></div>
+          <form class="cut-searchbar" id="cs-search" role="search"><input class="cut-input" id="cs-q" type="search" placeholder="Lọc UID, lot, roll, SKU…" autocomplete="off"></form>
+          <div class="cut-table-wrap"><table class="cut-table cs-table cs-list"><thead><tr><th>SKU</th><th>Lot</th><th>Roll</th><th>Group UID</th><th class="n">Số lượng</th><th>Nhóm</th><th>Quét lúc</th><th><span class="cs-vh">Thao tác</span></th></tr></thead><tbody id="cs-rows"><tr><td colspan="8" class="cut-empty">Chưa có dữ liệu.</td></tr></tbody></table></div>
+          <p class="cut-note" id="cs-more" hidden></p>
+        </div>
+          <div class="cs-sec" data-sec="plans" hidden>
+          <div class="cs-admin" id="cs-admin-box" hidden>
+            <form class="cut-searchbar" id="cs-po-form"><input class="cut-input" id="cs-po" inputmode="numeric" placeholder="Số PO" autocomplete="off" maxlength="40"><button class="cut-primary act-icon act-icon--load" id="cs-po-go" type="submit">Đọc từ WMS</button></form>
+            <div class="cs-preview" id="cs-preview" hidden></div>
+          </div>
+          <div class="cs-plans" id="cs-plans"></div>
+        </div>
+        </section>
       </div></div>
+      <div class="cs-pop" id="cs-pop" role="alertdialog" aria-live="assertive" aria-labelledby="cs-pop-title" hidden><div class="cs-pop__card" id="cs-pop-card"></div></div>
       <dialog class="as-dialog cut-adj-dialog" id="cut-adj-dialog" aria-labelledby="cut-adj-d-title">
         <div class="as-d-head"><span class="as-d-mark" id="cut-adj-d-mark" aria-hidden="true"></span><div class="as-d-title"><h2 id="cut-adj-d-title">Đối chiếu ADJ</h2><p id="cut-adj-total"></p></div><button class="cut-icon-btn" id="cut-adj-export" type="button" disabled title="Xuất Excel các dòng đang hiện" aria-label="Xuất Excel các dòng đang hiện"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button><button class="cut-icon-btn" type="button" data-adj-close title="Đóng" aria-label="Đóng"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>
         <div class="as-d-body"><div class="cut-table-wrap"><table class="cut-table"><thead><tr><th class="cut-th-check"><input id="cut-adj-all" type="checkbox" aria-label="Chọn tất cả UID có thể xử lý" disabled></th><th>UID</th><th>SKU</th><th>Lot</th><th>Chuẩn</th><th>WMS</th><th>Tick ADJ</th><th>Trạng thái</th></tr></thead><tbody id="cut-adj-rows"><tr><td colspan="8" class="cut-empty">Đang tải…</td></tr></tbody></table></div></div>
@@ -7880,7 +7906,7 @@ var FSK_CORE = (function () {
 
         // 3 cụm Scan/Data/Print, mỗi lần chỉ hiện đúng 1 cụm (giống tab) — bấm vào tiêu đề cụm
         // hoặc bấm nút "→" cuối mỗi cụm để nhảy sang cụm khác. Nhớ cụm đang mở theo localStorage.
-        const cutTabs={scan:{btn:tabScan,panel:screen.querySelector('.cut-card[data-panel="scan"]')},data:{btn:tabData,panel:screen.querySelector('.cut-card[data-panel="data"]')},print:{btn:tabPrint,panel:screen.querySelector('.cut-card[data-panel="print"]')},adj:{btn:document.getElementById('cut-tab-adj'),panel:screen.querySelector('.cut-card[data-panel="adj"]')}};
+        const cutTabs={scan:{btn:tabScan,panel:screen.querySelector('.cut-card[data-panel="scan"]')},data:{btn:tabData,panel:screen.querySelector('.cut-card[data-panel="data"]')},print:{btn:tabPrint,panel:screen.querySelector('.cut-card[data-panel="print"]')},adj:{btn:document.getElementById('cut-tab-adj'),panel:screen.querySelector('.cut-card[data-panel="adj"]')},sample:{btn:document.getElementById('cut-tab-sample'),panel:screen.querySelector('.cut-card[data-panel="sample"]')}};
         const TAB_STORE='cut-cum-dang-mo';
         let activeTab='scan';
         try{const saved=localStorage.getItem(TAB_STORE);if(saved&&cutTabs[saved])activeTab=saved}catch(_){}
@@ -7889,12 +7915,14 @@ var FSK_CORE = (function () {
           activeTab=name;
           try{localStorage.setItem(TAB_STORE,name)}catch(_){}
           Object.entries(cutTabs).forEach(([key,t])=>{const on=key===name;t.btn.setAttribute('aria-selected',String(on));t.panel.dataset.active=String(on)});
+          window.dispatchEvent(new CustomEvent('print-sku-cut-tab',{detail:name}));
           if(name==='scan')setTimeout(focusScan,50);
         };
         tabScan.addEventListener('click',()=>setActiveTab('scan'));
         tabData.addEventListener('click',()=>setActiveTab('data'));
         tabPrint.addEventListener('click',()=>setActiveTab('print'));
         cutTabs.adj.btn.addEventListener('click',()=>setActiveTab('adj'));
+        cutTabs.sample.btn.addEventListener('click',()=>setActiveTab('sample'));
         gotoData.addEventListener('click',()=>setActiveTab('data'));
         gotoData2.addEventListener('click',()=>setActiveTab('data'));
         setActiveTab(activeTab);
@@ -7924,7 +7952,7 @@ var FSK_CORE = (function () {
           },0);
         });
 
-        window.PrintSkuCutUi={rpc,tell,esc,fmt,computeCutQty,fmtQty,workbook,setActiveTab,isActive:active,resolveComboSku};document.getElementById('cut-back').addEventListener('click',()=>location.hash='#home');const route=()=>{screen.hidden=!active();clearTimeout(pollTimer);if(active()){Promise.all([loadOpen({quiet:true}),runSearch()]);if(activeTab==='scan')setTimeout(focusScan,50)}};window.addEventListener('hashchange',route);renderSearch();route();
+        window.PrintSkuCutUi={rpc,tell,esc,fmt,computeCutQty,fmtQty,workbook,setActiveTab,isActive:active,resolveComboSku,reload:()=>Promise.all([loadOpen({quiet:true}),runSearch()])};document.getElementById('cut-back').addEventListener('click',()=>location.hash='#home');const route=()=>{screen.hidden=!active();clearTimeout(pollTimer);if(active()){Promise.all([loadOpen({quiet:true}),runSearch()]);if(activeTab==='scan')setTimeout(focusScan,50)}};window.addEventListener('hashchange',route);renderSearch();route();
       })();
     </script>
     <style id="cut-adj-theme">
@@ -7961,6 +7989,70 @@ var FSK_CORE = (function () {
       .cut-adj-dialog .cut-table-wrap{margin:0}
       @media(max-width:800px){.cut-adj-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.cut-adj-kpi{min-height:52px;padding:8px 10px}.cut-adj-dialog .as-d-foot .cut-primary{width:100%}}
     </style>
+    <script id="cut-sample-core">
+      /* ===== CUT-SAMPLE-CORE (bat dau) ===== */
+      // Chia mẫu cắt / QC cho một phiên ASN của PO (16/10/2026). Mỗi nhóm (SKU Normal + Lot): lấy 20% số cây để CẮT
+      // (cây có số lượng NHỎ nhất) và 10% để chuyển QC test (cây có số lượng LỚN nhất); cây còn lại chuyển kho lưu trữ.
+      // QUY TẮC BẮT BUỘC (người dùng chốt 16/10/2026): cắt + QC phải đạt TỐI THIỂU 30% số cây của lot, làm tròn lên
+      // (ceil(30% × n)), và khi lot có từ 2 cây thì mỗi bên có ít nhất 1 cây. Tổng mẫu chia cho cắt : QC theo tỷ lệ 20 : 10
+      // (làm tròn gần nhất, 0,5 lên) nên lot 10 cây = 2 cắt + 1 QC; lot 7 cây = 3 mẫu (2 cắt + 1 QC) chứ không phải 2.
+      // Lot 1 cây chỉ có cây cắt (QC báo thiếu). Hai nhóm không trùng nhau (cắt chọn trước). Số lượng là khối lượng (g)
+      // hoặc số mét (mm) theo đơn vị của SKU nên so sánh được trong cùng một nhóm. Tính bằng số nguyên, không dùng số thực.
+      var CUT_SAMPLE_CORE = (function () {
+        const byCode = (a, b) => (a.groupUid < b.groupUid ? -1 : a.groupUid > b.groupUid ? 1 : 0);
+        const percentOf = (value, fallback) => (Number.isInteger(value) && value >= 1 && value <= 100 ? value : fallback);
+        // Số cây cắt / QC của một lot n cây. share = cutPercent + qcPercent là mức mẫu tối thiểu của cả lot (mặc định 30%).
+        function quota(count, cutPercent = 20, qcPercent = 10) {
+          if (count <= 1) return { sample: Math.max(0, count), cut: Math.max(0, count), qc: 0 };
+          const share = cutPercent + qcPercent;
+          const sample = Math.min(count, Math.max(2, Math.floor((count * share + 99) / 100)));
+          const cut = Math.min(sample - 1, Math.max(1, Math.floor((2 * sample * cutPercent + share) / (2 * share))));
+          return { sample, cut, qc: sample - cut };
+        }
+        // rows: [{ groupUid, sku, lot, roll?, qty }]. Trả { items, groups, skus, errors }: có lỗi thì KHÔNG được lưu phiên.
+        function plan(rows, options) {
+          const cutPercent = percentOf(options?.cutPercent, 20), qcPercent = percentOf(options?.qcPercent, 10), share = cutPercent + qcPercent;
+          const errors = [], seen = new Set(), clean = [];
+          (Array.isArray(rows) ? rows : []).forEach((raw, index) => {
+            const groupUid = String(raw?.groupUid ?? "").trim(), sku = String(raw?.sku ?? "").trim(), lot = String(raw?.lot ?? "").trim();
+            const blank = raw?.qty === null || raw?.qty === undefined || String(raw.qty).trim() === "";
+            const qty = blank ? NaN : Number(raw.qty);
+            if (!groupUid) { errors.push(`Dòng ${index + 1}: thiếu Group UID`); return; }
+            if (!sku) { errors.push(`${groupUid}: thiếu SKU`); return; }
+            if (!Number.isFinite(qty) || qty <= 0) { errors.push(`${groupUid}: số lượng không hợp lệ`); return; }
+            if (seen.has(groupUid)) { errors.push(`${groupUid}: trùng Group UID trong phiên`); return; }
+            seen.add(groupUid);
+            clean.push({ groupUid, sku, lot, roll: String(raw?.roll ?? "").trim(), qty });
+          });
+          const buckets = new Map();
+          clean.forEach(row => {
+            const key = `${row.sku}\u0000${row.lot}`;
+            if (!buckets.has(key)) buckets.set(key, []);
+            buckets.get(key).push(row);
+          });
+          const items = [], groups = [], skuTotals = new Map();
+          [...buckets.values()].sort((a, b) => (a[0].sku < b[0].sku ? -1 : a[0].sku > b[0].sku ? 1 : a[0].lot < b[0].lot ? -1 : a[0].lot > b[0].lot ? 1 : 0)).forEach(list => {
+            const total = list.length, want = quota(total, cutPercent, qcPercent);
+            const cut = [...list].sort((a, b) => a.qty - b.qty || byCode(a, b)).slice(0, want.cut);
+            const picked = new Set(cut.map(row => row.groupUid));
+            const rest = list.filter(row => !picked.has(row.groupUid)).sort((a, b) => b.qty - a.qty || byCode(a, b));
+            const qc = rest.slice(0, want.qc);
+            const store = rest.slice(qc.length);
+            const { sku, lot } = list[0];
+            if ((cut.length + qc.length) * 100 < share * total) errors.push(`${sku} · lot ${lot || "—"}: mẫu cắt + QC chưa đạt ${share}% số cây`);
+            [["cut", cut], ["qc", qc], ["store", store]].forEach(([role, part]) => part.forEach(row => items.push({ ...row, role })));
+            groups.push({ sku, lot, total, cut: cut.length, qc: qc.length, store: store.length, sample: cut.length + qc.length, qcShort: qc.length === 0 });
+            const sum = skuTotals.get(sku) || { sku, total: 0, cut: 0, qc: 0, store: 0 };
+            sum.total += total; sum.cut += cut.length; sum.qc += qc.length; sum.store += store.length;
+            skuTotals.set(sku, sum);
+          });
+          return { items, groups, skus: [...skuTotals.values()], errors };
+        }
+        return { plan, quota };
+      })();
+      if (typeof window !== "undefined") window.CutSampleCore = CUT_SAMPLE_CORE;
+      /* ===== CUT-SAMPLE-CORE (ket thuc) ===== */
+    </script>
     <script id="cut-adj-reconcile">
       // Đối chiếu UID đã cắt với history WMS kho WH - MATERIAL - MTG (supabase/cut_group_uid_v6_wms_reconcile.sql).
       // Note "Cut ... out of group ..." chính là lệnh ADJ; so với adj_exported_at (tick) và số lượng chuẩn 1 m.
@@ -11756,6 +11848,523 @@ async function rpc(name,args,retry=true){
         renderAll();route();
       })();
     </script>
+    <style id="cut-sample-style">
+      #cs-panel .cs-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}
+      #cs-panel .cs-head h2{margin:0}
+      #cs-panel .cs-sound{flex:none;display:inline-grid;place-items:center;width:var(--ui-ctl,44px);min-width:var(--ui-ctl,44px);height:var(--ui-ctl,44px);padding:0;color:var(--wms-brand,#005f41)}
+      #cs-panel .cs-sound[aria-pressed="false"]{color:var(--wms-muted,#60736b);background:var(--wms-bg,#f4f7f6)}
+      #cs-panel .cs-sound svg{width:20px;height:20px}
+      #cs-panel #cs-plan{margin-bottom:12px;text-overflow:ellipsis}
+      #cs-panel .cs-totals{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px}
+      #cs-panel .cs-chip{display:inline-flex;align-items:center;gap:6px;min-height:30px;padding:0 11px;border-radius:999px;font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+      #cs-panel .cs-chip svg{width:15px;height:15px;flex:none}
+      #cs-panel .cs-chip[data-role="cut"]{background:#e8f6ef;color:#0f6e49}
+      #cs-panel .cs-chip[data-role="qc"]{background:#e5eefb;color:#1f4e78}
+      #cs-panel .cs-chip[data-role="store"]{background:#eef1f0;color:#4f625b}
+      #cs-panel .cs-chip[data-role="warn"]{background:#fdf3e3;color:#7a4f00}
+      #cs-panel .cs-chip[data-role="bad"]{background:#fdecea;color:#a82f29}
+      #cs-panel .cs-chip[data-role="ok"]{background:#e8f6ef;color:#0f6e49}
+      #cs-panel .cs-confirm{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+      #cs-panel .cs-confirm .cut-primary{flex:1 1 220px}
+      #cs-panel .cs-confirm[hidden],#cs-panel .cs-recent[hidden],#cs-panel .cs-preview[hidden],#cs-panel .cs-admin[hidden]{display:none}
+      #cs-panel .cs-recent{display:grid;gap:6px;margin-top:12px}
+      #cs-panel .cs-recent div{display:flex;align-items:center;gap:8px;min-height:32px;padding:0 10px;border-radius:10px;background:var(--wms-bg,#f4f7f6);font-size:13px;color:var(--wms-muted,#60736b)}
+      #cs-panel .cs-recent svg{width:15px;height:15px;flex:none}
+      #cs-panel .cs-recent code{font:600 13px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--wms-text,#17251f)}
+      #cs-panel .cs-recent div[data-tone="cut"] svg{color:#16845b}#cs-panel .cs-recent div[data-tone="qc"] svg{color:#245aa8}#cs-panel .cs-recent div[data-tone="store"] svg{color:#4f625b}
+      #cs-panel .cs-recent div[data-tone="warn"] svg{color:#b7791f}#cs-panel .cs-recent div[data-tone="error"] svg{color:#c2413b}
+      #cs-panel .cs-skus{display:grid;gap:10px;margin-top:16px}
+      #cs-panel .cs-sku{display:grid;gap:10px;padding:14px;border:1px solid var(--wms-border,#d9e2de);border-radius:14px;background:var(--wms-surface,#fff)}
+      #cs-panel .cs-sku[data-done="true"]{border-color:#16845b;background:#f4fbf7}
+      #cs-panel .cs-sku__top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+      #cs-panel .cs-sku__code{display:block;font:700 16px/1.25 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--wms-text,#17251f)}
+      #cs-panel .cs-sku__name{display:block;margin-top:2px;font-size:12px;line-height:1.35;color:var(--wms-muted,#60736b);overflow-wrap:anywhere}
+      #cs-panel .cs-sku__ok{flex:none;display:inline-flex;align-items:center;gap:5px;font-size:13px;font-weight:700;color:#0f6e49}
+      #cs-panel .cs-meter{display:grid;grid-template-columns:76px minmax(0,1fr) auto;align-items:center;gap:10px;font-size:13px;font-variant-numeric:tabular-nums}
+      #cs-panel .cs-meter b{min-width:54px;text-align:right}
+      #cs-panel .cs-bar{height:9px;border-radius:99px;background:#e3ebe7;overflow:hidden}
+      #cs-panel .cs-bar>i{display:block;width:0;height:100%;border-radius:inherit;transition:width .25s ease}
+      #cs-panel .cs-meter[data-role="cut"] .cs-bar>i{background:#16845b}#cs-panel .cs-meter[data-role="qc"] .cs-bar>i{background:#245aa8}
+      #cs-panel .cs-filters{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+      #cs-panel .cs-filter{display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:0 12px;border:1px solid var(--wms-border,#d9e2de);border-radius:999px;background:#fff;color:var(--wms-muted,#60736b);font-size:13px;font-weight:700;cursor:pointer}
+      #cs-panel .cs-filter[aria-pressed="true"]{border-color:var(--wms-brand,#005f41);background:rgba(0,95,65,.08);color:var(--wms-brand,#005f41)}
+      #cs-panel .cs-filter b{font-variant-numeric:tabular-nums}
+      #cs-panel .cs-table .n{text-align:right;font-variant-numeric:tabular-nums}
+      #cs-panel .cs-table td small{display:block;color:var(--wms-muted,#60736b);font-size:11px}
+      #cs-panel .cs-table tr[data-scanned="true"] td{background:rgba(0,95,65,.04)}
+      #cs-panel .cs-act{display:inline-grid;place-items:center;width:34px;height:34px;padding:0;border:1px solid var(--wms-border,#d9e2de);border-radius:10px;background:#fff;color:var(--wms-muted,#60736b);cursor:pointer}
+      #cs-panel .cs-act svg{width:16px;height:16px}
+      #cs-panel .cs-preview{display:grid;gap:12px;margin-top:14px;padding:14px;border:1px solid var(--wms-border,#d9e2de);border-radius:14px;background:var(--wms-bg,#f4f7f6)}
+      #cs-panel .cs-preview__chips{display:flex;flex-wrap:wrap;gap:8px}
+      #cs-panel .cs-preview .cut-table-wrap{background:#fff}
+      #cs-panel .cs-preview__go{display:flex;flex-wrap:wrap;gap:8px}
+      #cs-panel .cs-preview__go .cut-primary{flex:1 1 220px}
+      #cs-panel .cs-plans{display:grid;gap:10px;margin-top:14px}
+      #cs-panel .cs-plan{display:grid;gap:10px;padding:14px;border:1px solid var(--wms-border,#d9e2de);border-radius:14px;background:var(--wms-surface,#fff)}
+      #cs-panel .cs-plan[aria-current="true"]{border-color:var(--wms-brand,#005f41);box-shadow:0 0 0 2px rgba(0,95,65,.14)}
+      #cs-panel .cs-plan__top{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 10px}
+      #cs-panel .cs-plan__po{font:700 17px/1.2 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+      #cs-panel .cs-plan__meta{font-size:12px;color:var(--wms-muted,#60736b)}
+      #cs-panel .cs-plan__chips{display:flex;flex-wrap:wrap;gap:6px}
+      #cs-panel .cs-plan__acts{display:flex;flex-wrap:wrap;gap:8px}
+      #cut-group-uid-screen .cs-pop{position:fixed;inset:0;z-index:90;display:grid;place-items:center;padding:16px;background:rgba(15,35,28,.5);-webkit-tap-highlight-color:transparent}
+      #cut-group-uid-screen .cs-pop[hidden]{display:none}
+      #cut-group-uid-screen .cs-pop__card{position:relative;overflow:hidden;display:grid;justify-items:center;gap:8px;width:min(420px,100%);max-height:calc(100dvh - 32px);overflow-y:auto;padding:26px 20px 20px;border-radius:22px;background:var(--cs-bg);border:3px solid var(--cs-c);box-shadow:0 24px 60px rgba(13,40,30,.35);text-align:center;animation:cspop-in .16s ease-out}
+      #cut-group-uid-screen .cs-pop__card[data-tone="cut"]{--cs-c:#16845b;--cs-t:#0f6e49;--cs-bg:#e8f6ef}
+      #cut-group-uid-screen .cs-pop__card[data-tone="qc"]{--cs-c:#245aa8;--cs-t:#1f4e78;--cs-bg:#e5eefb}
+      #cut-group-uid-screen .cs-pop__card[data-tone="store"]{--cs-c:#5d7068;--cs-t:#3e4f48;--cs-bg:#eef1f0}
+      #cut-group-uid-screen .cs-pop__card[data-tone="warn"]{--cs-c:#b7791f;--cs-t:#7a4f00;--cs-bg:#fdf3e3}
+      #cut-group-uid-screen .cs-pop__card[data-tone="error"]{--cs-c:#c2413b;--cs-t:#a82f29;--cs-bg:#fdecea}
+      #cut-group-uid-screen .cs-pop__ico{display:grid;place-items:center;width:72px;height:72px;border-radius:50%;background:var(--cs-c);color:#fff}
+      #cut-group-uid-screen .cs-pop__ico svg{width:42px;height:42px}
+      #cut-group-uid-screen .cs-pop h3{margin:6px 0 0;font-size:22px;font-weight:700;line-height:1.25;letter-spacing:0;color:var(--cs-t)}
+      #cut-group-uid-screen .cs-pop__uid{font:700 22px/1.2 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.02em;word-break:break-all;color:var(--wms-text,#17251f)}
+      #cs-panel .cs-facts{display:flex;flex-wrap:wrap;justify-content:center;gap:6px 14px;margin-top:2px}
+      #cs-panel .cs-fact{display:inline-flex;flex-direction:column;align-items:center;min-width:64px;font-size:12px;color:var(--wms-muted,#60736b)}
+      #cs-panel .cs-fact i{font-style:normal}#cs-panel .cs-fact b{font-size:16px;color:var(--wms-text,#17251f)}
+      #cut-group-uid-screen .cs-pop__note{margin:2px 0 0;font-size:14px;color:var(--cs-t)}
+      #cut-group-uid-screen .cs-pop__count{margin:2px 0 0;font-size:13px;color:var(--wms-muted,#60736b);font-variant-numeric:tabular-nums}
+      #cut-group-uid-screen .cs-pop__close{margin-top:10px;display:inline-grid;place-items:center;width:100%;min-height:48px;border:1px solid var(--cs-c);border-radius:14px;background:#fff;color:var(--cs-t);font:600 15px var(--wms-font);cursor:pointer}
+      #cut-group-uid-screen .cs-pop__bar{position:absolute;left:0;bottom:0;height:5px;width:100%;background:var(--cs-c);transform-origin:left;animation:cspop-bar var(--cs-auto,1.6s) linear forwards}
+      @keyframes cspop-in{from{transform:scale(.92);opacity:0}to{transform:scale(1);opacity:1}}
+      @keyframes cspop-bar{from{transform:scaleX(1)}to{transform:scaleX(0)}}
+      @media(prefers-reduced-motion:reduce){#cut-group-uid-screen .cs-pop__card,#cut-group-uid-screen .cs-pop__bar{animation:none}#cs-panel .cs-bar>i{transition:none}}
+      @media(max-width:520px){#cs-panel .cs-meter{grid-template-columns:64px minmax(0,1fr) auto}}
+      #cs-message:empty{display:none}
+      #cs-panel .cs-vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+      #cs-panel .cut-message{color:#0f6e49}
+      #cs-panel .cut-message[data-tone="warn"]{color:#7a4f00}
+      #cs-panel .cut-message[data-tone="error"]{color:#a82f29}
+      #cs-panel .cs-short{display:inline-grid;vertical-align:-2px;margin-left:4px;color:#b7791f}
+      @media(max-width:620px){
+        #cs-panel .cs-list tbody tr[data-code]{display:grid;grid-template-columns:max-content max-content minmax(0,1fr) auto;grid-template-areas:"uid uid uid act" "sku lot roll role" "qty scan scan scan";align-items:baseline;gap:4px 12px;padding:10px 12px}
+        #cs-panel .cs-list tr[data-code] td{display:block;min-width:0;font-size:13px;line-height:1.35}
+        #cs-panel .cs-list tr[data-code] td::before{content:none}
+        #cs-panel .cs-list tr[data-code] td[data-label="Group UID"]{grid-area:uid;font-weight:700}
+        #cs-panel .cs-list tr[data-code] td[data-label="SKU"]{grid-area:sku}
+        #cs-panel .cs-list tr[data-code] td[data-label="Lot"]{grid-area:lot}
+        #cs-panel .cs-list tr[data-code] td[data-label="Roll"]{grid-area:roll}
+        #cs-panel .cs-list tr[data-code] td.n{grid-area:qty;white-space:nowrap}
+        #cs-panel .cs-list tr[data-code] td[data-label="Nhóm"]{grid-area:role;justify-self:end}
+        #cs-panel .cs-list tr[data-code] td[data-label="Quét lúc"]{grid-area:scan;color:var(--wms-muted,#60736b)}
+        #cs-panel .cs-list tr[data-code] td.cs-actcell{position:static;grid-area:act;align-self:start;justify-self:end}
+        #cs-panel .cs-list tr[data-code] td:is([data-label="Lot"],[data-label="Roll"])::before{content:attr(data-label);display:inline;margin-right:4px;color:var(--wms-muted,#60736b);font-weight:400}
+        #cs-panel .cs-list tr[data-code] td[data-label="Quét lúc"] small{display:inline;margin-left:6px}
+        #cs-panel .cs-prev{min-width:0}
+        #cs-panel .cs-prev tbody tr{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px 8px}
+        #cs-panel .cs-prev tbody td{display:block;text-align:left}
+        #cs-panel .cs-prev tbody td::before{display:block;content:attr(data-label);font-size:11px;font-weight:400;color:var(--wms-muted,#60736b)}
+        #cs-panel .cs-prev tbody td[data-label="SKU"]{grid-column:span 3}#cs-panel .cs-prev tbody td[data-label="Lot"]{grid-column:span 2}
+      }
+      #cut-group-uid-screen:has(#cut-tab-sample[aria-selected="true"]) #cut-message{display:none}
+      /* 5 tab ở màn hẹp: chữ + số đếm gọn lại để tab Đối chiếu / Lấy mẫu không bị cắt */
+      @media(max-width:480px){#cut-group-uid-screen .cut-tabs{gap:1px}#cut-group-uid-screen .cut-tab{flex:1 1 auto;gap:3px;padding:0 2px;font-size:12px}#cut-group-uid-screen .cut-tab .cut-badge{min-width:18px;height:18px;padding:0 4px;font-size:12px}}
+      #cs-panel .cs-sec[hidden]{display:none}
+      #cs-panel .cs-head{margin:0 0 12px}
+      #cs-panel .cs-seg{display:flex;gap:2px;margin:0 0 12px;padding:3px;border:1px solid var(--wms-border,#d9e2de);border-radius:12px;background:var(--wms-bg,#f4f7f6)}
+      #cs-panel .cs-segbtn{flex:1 1 0;display:inline-flex;align-items:center;justify-content:center;gap:6px;min-width:0;min-height:40px;padding:0 8px;border:0;border-radius:9px;background:transparent;color:var(--wms-muted,#60736b);font:600 14px var(--wms-font);white-space:nowrap;cursor:pointer}
+      #cs-panel .cs-segbtn[aria-selected="true"]{background:#fff;color:var(--wms-brand,#005f41);box-shadow:0 1px 3px rgba(23,37,31,.14)}
+      #cs-panel .cs-segbtn .cut-badge{min-width:20px;height:20px;padding:0 5px;font-size:12px}
+      @media(max-width:800px){#cs-panel .cut-table thead,#cs-panel .cs-list thead{display:none}}
+    </style>
+    <script id="cut-sample-script">
+      // Tab LẤY MẪU THEO PO của màn CẮT GROUP UID (16/10/2026, supabase/cut_sample_v1.sql): Admin nhập số PO → Extension đọc Group UID + các ASN
+      // của PO từ WMS → CutSampleCore.plan chia mẫu (cắt 20% cây nhỏ nhất, QC 10% cây lớn nhất, mỗi lot cắt + QC ≥ 30%, còn lại lưu trữ)
+      // → lưu thành phiên trên Supabase. Nhân viên quét UID: báo CẮT / QC / LƯU TRỮ và tick đã quét. Quét xong UID cắt thì "Chuyển sang Cắt UID"
+      // đẩy chúng vào luồng Cắt cũ (cut_group_uids, trạng thái pending) rồi dùng Tra cứu / in tem / ADJ như thường. Mô hình quyền như CẤP VẢI:
+      // xem/quét = công khai qua hàm, tạo/xóa/bỏ quét = Admin (đăng nhập bằng nút khiên của màn Cắt). Tab do script Cắt UID điều khiển
+      // (sự kiện print-sku-cut-tab); màn này chỉ chạy khi đang ở #cut-group-uid và tab Lấy mẫu đang mở.
+      (() => {
+        const $ = id => document.getElementById(id), screen = $('cut-group-uid-screen'), panel = $('cs-panel');
+        if (!screen || !panel) return;
+        const ROUTE = 'cut-group-uid', active = () => location.hash.replace(/^#/, '').split('&')[0] === ROUTE && panel.dataset.active === 'true';
+        const K = { plan: 'cs-phien', tab: 'cs-cum', keyboard: 'cs-ban-phim', sound: 'cs-am-thanh', me: 'cs-may' };
+        const store = { get: k => { try { return localStorage.getItem(k) } catch (_) { return null } }, set: (k, v) => { try { localStorage.setItem(k, v) } catch (_) {} } };
+        const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        const nf = new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 2 }), num = v => nf.format(Number(v) || 0);
+        const fmtAt = value => { if (!value) return ''; const d = new Date(value); if (Number.isNaN(d.getTime())) return ''; const p = Object.fromEntries(new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Ho_Chi_Minh', hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', hourCycle: 'h23' }).formatToParts(d).map(x => [x.type, x.value])); return `${p.hour}:${p.minute} ${p.day}/${p.month}` };
+        const svg = (body, size = 16) => `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
+        const ICON = {
+          cut: '<circle cx="6" cy="6" r="3"/><path d="M8.12 8.12 12 12"/><path d="M20 4 8.12 15.88"/><circle cx="6" cy="18" r="3"/><path d="M14.8 14.8 20 20"/>',
+          qc: '<path d="M10 2v7.527a2 2 0 0 1-.211.896L4.72 20.55a1 1 0 0 0 .9 1.45h12.76a1 1 0 0 0 .9-1.45l-5.069-10.127A2 2 0 0 1 14 9.527V2"/><path d="M8.5 2h7"/><path d="M7 16h10"/>',
+          store: '<rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/>',
+          ok: '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
+          warn: '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+          error: '<circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/>',
+          undo: '<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11"/>',
+          trash: '<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>',
+          soundOn: '<path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z"/><path d="M16 9a5 5 0 0 1 0 6"/><path d="M19.364 18.364a9 9 0 0 0 0-12.728"/>',
+          soundOff: '<path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z"/><line x1="22" x2="16" y1="9" y2="15"/><line x1="16" x2="22" y1="9" y2="15"/>'
+        };
+        const ROLE = { cut: { label: 'Cắt', title: 'CẮT GROUP UID NÀY' }, qc: { label: 'QC', title: 'CHUYỂN QC TEST' }, store: { label: 'Lưu trữ', title: 'CHUYỂN KHO LƯU TRỮ' } };
+        const ROLES = ['cut', 'qc', 'store'];
+        const S = { sessions: [], sid: '', session: null, items: [], tab: 'scan', filter: 'todo', q: '', admin: false, busy: false, sound: store.get(K.sound) !== 'tat', queue: [], pumping: false, recent: [], touch: new Map(), loadedAt: 0, preview: null, pushed: 0 };
+        const names = {};
+        const code = $('cs-code'), form = $('cs-form'), message = $('cs-message'), planSel = $('cs-plan'), soundBtn = $('cs-sound'), confirmBtn = $('cs-confirm'), gotoCut = $('cs-goto-cut');
+        const tell = (text, tone = '') => { message.textContent = text || ''; message.dataset.tone = tone };
+
+        // ---- Supabase RPC: xem/quét công khai, tạo/xóa/bỏ quét cần token Admin ----
+        const post = async (name, args, token) => { const q = window.PrintSkuQueue, res = await fetch(`${q.supabaseUrl}/rest/v1/rpc/${name}`, { method: 'POST', headers: { apikey: q.publishableKey, Authorization: `Bearer ${token || q.publishableKey}`, 'Content-Type': 'application/json' }, body: JSON.stringify(args || {}), signal: AbortSignal.timeout(25000) }); return { res, body: await res.json().catch(() => null) } };
+        const missing = body => body?.code === 'PGRST202' || body?.code === '42883';
+        const rpc = async (name, args) => { const { res, body } = await post(name, args); if (missing(body)) throw new Error('Chưa có dữ liệu Lấy mẫu trên Supabase'); if (!res.ok || !body) throw new Error(body?.message || `Supabase HTTP ${res.status}`); return body };
+        const adminRpc = async (name, args, retry = true) => {
+          const token = window.PrintSkuAdminAccess?.peekToken?.() || await window.PrintSkuAdminAuth.accessToken();
+          const { res, body } = await post(name, args, token);
+          if (res.status === 401 && retry) { await window.PrintSkuAdminAuth.accessToken(); return adminRpc(name, args, false) }
+          if (missing(body)) throw new Error('Chưa có dữ liệu Lấy mẫu trên Supabase');
+          if (!res.ok || !body) throw new Error(body?.message || `Supabase HTTP ${res.status}`);
+          if (!body.ok) throw Object.assign(new Error(body.error?.message || 'Supabase từ chối yêu cầu'), { code: body.error?.code });
+          return body.data;
+        };
+        const extensionRequest = (type, payload = {}, timeout = 120000) => window.PrintSkuBridgeReady(type).then(() => new Promise((resolve, reject) => {
+          const requestId = `cs-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+          const timer = setTimeout(() => { removeEventListener('message', listener); reject(new Error('Extension phản hồi quá lâu; kiểm tra tab WMS rồi thử lại')); }, timeout);
+          const listener = event => {
+            const response = event.data;
+            if (event.source !== window || event.origin !== location.origin || response?.source !== 'HASAKI_INSIDE_CONNECTOR' || response.requestId !== requestId) return;
+            clearTimeout(timer); removeEventListener('message', listener);
+            response.ok ? resolve(response.data) : reject(new Error(response.error?.message || 'Extension không đọc được dữ liệu WMS'));
+          };
+          addEventListener('message', listener);
+          postMessage({ source: 'PRINT_SKU_APP', requestId, type, payload }, location.origin);
+        }));
+        const adminOk = async () => { try { return Boolean(await window.PrintSkuAdminAuth.accessToken()) } catch (_) { return false } };
+
+        // Tên máy quét: tên thiết bị đã kích hoạt in, không có thì mã ngắn riêng của trình duyệt này.
+        const deviceName = () => { try { return String(window.PrintSkuDevice?.name?.() || '').slice(0, 60) } catch (_) { return '' } };
+        const myId = (() => { let v = store.get(K.me); if (!/^Máy [0-9A-Z]{4}$/.test(v || '')) { v = 'Máy ' + Math.random().toString(36).slice(2, 6).toUpperCase(); store.set(K.me, v) } return v })();
+        const scannerName = () => deviceName() || myId;
+
+        // ---- Số lượng theo đơn vị SKU: tên sản phẩm kết thúc "/mm" (mét) hoặc "/g" (kg) ----
+        const unitOf = sku => String(names[sku] || '').split('/').pop().trim().toLowerCase();
+        const fmtQty = (sku, q) => { const u = unitOf(sku), n = Number(q); return u === 'mm' ? `${num(n / 1000)} m` : u === 'g' ? `${num(n / 1000)} kg` : num(n) };
+        const loadNames = async () => {
+          const need = [...new Set(S.items.map(i => i.sku))].filter(s => !(s in names));
+          for (let i = 0; i < need.length; i += 40) {
+            const part = need.slice(i, i + 40), q = window.PrintSkuQueue;
+            try {
+              const r = await fetch(`${q.supabaseUrl}/rest/v1/SKU_Name?select=sku,product_name&sku=in.(${part.map(encodeURIComponent).join(',')})`, { headers: { apikey: q.publishableKey, Authorization: `Bearer ${q.publishableKey}` }, signal: AbortSignal.timeout(8000) });
+              const rows = r.ok ? await r.json() : [];
+              part.forEach(s => { names[s] = '' });
+              (Array.isArray(rows) ? rows : []).forEach(x => { names[String(x.sku)] = String(x.product_name || '') });
+            } catch (_) { /* không có tên thì chỉ hiện mã SKU */ }
+          }
+        };
+
+        // ---- Âm báo: cắt 1 tiếng cao, QC 2 tiếng, lưu trữ 1 tiếng trầm, đã quét 2 tiếng giữa, lỗi tiếng dài ----
+        let audio = null;
+        const beep = (freq, ms, at = 0, gain = .14) => { try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); const o = audio.createOscillator(), g = audio.createGain(); o.frequency.value = freq; g.gain.value = gain; o.connect(g).connect(audio.destination); o.start(audio.currentTime + at); o.stop(audio.currentTime + at + ms / 1000) } catch (_) { /* không có âm thanh thì vẫn có màu + pop-up */ } };
+        const cue = tone => { if (!S.sound) return; if (tone === 'cut') beep(1040, 130); else if (tone === 'qc') { beep(880, 110); beep(1320, 110, .16) } else if (tone === 'store') beep(520, 150); else if (tone === 'warn') { beep(660, 120); beep(660, 120, .2) } else beep(180, 380, 0, .2) };
+        const paintSound = () => { soundBtn.innerHTML = svg(S.sound ? ICON.soundOn : ICON.soundOff, 20); const label = S.sound ? 'Tắt âm báo' : 'Bật âm báo'; soundBtn.setAttribute('aria-pressed', String(S.sound)); soundBtn.setAttribute('aria-label', label); soundBtn.title = label };
+        soundBtn.addEventListener('click', () => { S.sound = !S.sound; store.set(K.sound, S.sound ? 'bat' : 'tat'); paintSound(); if (S.sound) cue('cut'); code.focus() });
+        paintSound();
+
+        // ---- Số liệu ----
+        const tally = () => { const t = { cut: [0, 0], qc: [0, 0], store: [0, 0] }; for (const i of S.items) { t[i.role][1] += 1; if (i.scannedAt) t[i.role][0] += 1 } return t };
+        const skuStats = () => {
+          const m = new Map();
+          for (const i of S.items) {
+            let s = m.get(i.sku); if (!s) { s = { sku: i.sku, lots: new Set(), cut: [0, 0], qc: [0, 0], store: [0, 0] }; m.set(i.sku, s) }
+            s.lots.add(i.lot); s[i.role][1] += 1; if (i.scannedAt) s[i.role][0] += 1;
+          }
+          return [...m.values()].sort((a, b) => (a.sku < b.sku ? -1 : a.sku > b.sku ? 1 : 0));
+        };
+        const unpushed = () => S.items.filter(i => i.role === 'cut' && i.scannedAt && !i.pushedAt);
+
+        // ---- Hiển thị ----
+        const chip = (role, icon, text) => `<span class="cs-chip" data-role="${role}">${svg(icon)}${text}</span>`;
+        const renderPlanSelect = () => {
+          planSel.innerHTML = S.sessions.length ? S.sessions.map(p => { const c = p.counts || {}; return `<option value="${esc(p.id)}"${p.id === S.sid ? ' selected' : ''}>PO ${esc(p.po)} · cắt ${c.cutScanned || 0}/${c.cut || 0} · QC ${c.qcScanned || 0}/${c.qc || 0}</option>` }).join('') : '<option value="">Chưa có phiên</option>';
+          planSel.disabled = !S.sessions.length;
+          $('cs-plan-count').textContent = S.sessions.length;
+        };
+        const meter = (role, [done, total]) => total ? `<div class="cs-meter" data-role="${role}">${chip(role, ICON[role], ROLE[role].label)}<div class="cs-bar" role="progressbar" aria-label="${esc(ROLE[role].label)}" aria-valuemin="0" aria-valuemax="${total}" aria-valuenow="${done}"><i style="width:${Math.min(100, Math.round(done / total * 100))}%"></i></div><b>${done}/${total}</b></div>` : '';
+        const renderProgress = () => {
+          const t = tally(), box = $('cs-totals');
+          box.innerHTML = S.session ? ROLES.map(r => chip(r, ICON[r], `${ROLE[r].label} ${t[r][0]}/${t[r][1]}`)).join('') : '';
+          $('cs-skus').innerHTML = skuStats().map(s => {
+            const done = s.cut[0] >= s.cut[1] && s.qc[0] >= s.qc[1], name = names[s.sku];
+            return `<div class="cs-sku" data-done="${done}"><div class="cs-sku__top"><div><span class="cs-sku__code">${esc(s.sku)}</span><span class="cs-sku__name">${esc(name || '')}${name ? ' · ' : ''}${s.lots.size} lot</span></div>${done ? `<span class="cs-sku__ok">${svg(ICON.ok, 18)}Đủ mẫu</span>` : ''}</div>${meter('cut', s.cut)}${meter('qc', s.qc)}</div>`;
+          }).join('');
+        };
+        const renderConfirm = () => {
+          const todo = unpushed().length, t = tally(), pushed = S.items.filter(i => i.role === 'cut' && i.pushedAt).length;
+          confirmBtn.disabled = !todo || S.busy;
+          confirmBtn.textContent = todo ? `Chuyển sang Cắt UID · ${todo}` : t.cut[1] && pushed >= t.cut[1] ? 'Đã chuyển hết UID cắt' : 'Chuyển sang Cắt UID';
+          gotoCut.hidden = !(pushed || S.pushed);
+        };
+        const FILTERS = [['todo', 'Chưa quét'], ['cut', 'Cắt'], ['qc', 'QC'], ['store', 'Lưu trữ'], ['all', 'Tất cả']];
+        const MAX_ROWS = 500;
+        const renderList = () => {
+          const needle = S.q.trim().toLowerCase();
+          const pass = (i, f) => f === 'all' || (f === 'todo' ? !i.scannedAt : i.role === f);
+          const counts = Object.fromEntries(FILTERS.map(([f]) => [f, S.items.filter(i => pass(i, f)).length]));
+          $('cs-filters').innerHTML = FILTERS.map(([f, label]) => `<button class="cs-filter" type="button" data-filter="${f}" aria-pressed="${S.filter === f}">${label} <b>${counts[f]}</b></button>`).join('');
+          const shown = S.items.filter(i => pass(i, S.filter) && (!needle || [i.groupUid, i.lot, i.roll, i.sku].some(x => String(x || '').toLowerCase().includes(needle))));
+          $('cs-list-count').textContent = S.items.length;
+          const rows = shown.slice(0, MAX_ROWS).map(i => `<tr data-code="${esc(i.groupUid)}" data-scanned="${Boolean(i.scannedAt)}"><td data-label="SKU">${esc(i.sku)}</td><td data-label="Lot">${esc(i.lot || '—')}</td><td data-label="Roll">${esc(i.roll || '—')}</td><td data-label="Group UID"><b>${esc(i.groupUid)}</b></td><td class="n" data-label="Số lượng">${esc(fmtQty(i.sku, i.qty))}</td><td data-label="Nhóm">${chip(i.role, ICON[i.role], ROLE[i.role].label)}</td><td data-label="Quét lúc">${i.scannedAt ? `${esc(fmtAt(i.scannedAt))}${i.scannedBy ? `<small>${esc(i.scannedBy)}</small>` : ''}` : '—'}${i.pushedAt ? '<small>Đã chuyển luồng Cắt</small>' : ''}</td><td class="cs-actcell">${S.admin && i.scannedAt && !i.pushedAt ? `<button class="cs-act" type="button" data-unscan="${esc(i.groupUid)}" aria-label="Bỏ dấu quét ${esc(i.groupUid)}" title="Bỏ dấu quét">${svg(ICON.undo)}</button>` : ''}</td></tr>`).join('');
+          $('cs-rows').innerHTML = rows || `<tr><td colspan="8" class="cut-empty">${S.session ? 'Không có Group UID.' : 'Chưa có dữ liệu.'}</td></tr>`;
+          const more = $('cs-more'); more.hidden = shown.length <= MAX_ROWS; more.textContent = `Hiển thị ${MAX_ROWS}/${shown.length} dòng — lọc thêm để xem hết.`;
+        };
+        const renderPlans = () => {
+          $('cs-admin-box').hidden = !S.admin;
+          $('cs-plans').innerHTML = S.sessions.length ? S.sessions.map(p => {
+            const c = p.counts || {}, asns = Array.isArray(p.asns) ? p.asns : [], open = asns.filter(a => a.status && !/^received$/i.test(a.status)).length;
+            return `<div class="cs-plan" data-plan="${esc(p.id)}"${p.id === S.sid ? ' aria-current="true"' : ''}><div class="cs-plan__top"><span class="cs-plan__po">PO ${esc(p.po)}</span><span class="cs-plan__meta">${esc(fmtAt(p.updatedAt))} · ${num(c.total)} UID · ${asns.length} ASN</span></div><div class="cs-plan__chips">${chip('cut', ICON.cut, `Cắt ${c.cutScanned || 0}/${c.cut || 0}`)}${chip('qc', ICON.qc, `QC ${c.qcScanned || 0}/${c.qc || 0}`)}${chip('store', ICON.store, `Lưu trữ ${c.storeScanned || 0}/${c.store || 0}`)}${open ? chip('warn', ICON.warn, `${open} ASN chưa nhận`) : ''}</div><div class="cs-plan__acts"><button class="cut-primary" type="button" data-open="${esc(p.id)}">Mở để quét</button>${S.admin ? `<button class="cut-secondary act-icon act-icon--trash" type="button" data-delete="${esc(p.id)}">Xóa phiên</button>` : ''}</div></div>`;
+          }).join('') : '<p class="cut-empty">Chưa có phiên nào.</p>';
+        };
+        const renderAll = () => { renderPlanSelect(); renderProgress(); renderConfirm(); renderList(); renderPlans() };
+
+        // ---- Tải dữ liệu ----
+        const loadPlans = async () => {
+          const r = await rpc('cut_sample_list');
+          if (!r.ok) throw new Error(r.error?.message || 'Không đọc được danh sách phiên');
+          S.sessions = r.data?.sessions || [];
+          if (!S.sessions.some(p => p.id === S.sid)) S.sid = S.sessions.some(p => p.id === store.get(K.plan)) ? store.get(K.plan) : (S.sessions[0]?.id || '');
+        };
+        const loadPlan = async () => {
+          const id = S.sid;
+          if (!id) { S.session = null; S.items = []; renderAll(); return }
+          const t0 = Date.now(), r = await rpc('cut_sample_get', { p_session: id });
+          if (id !== S.sid) return;
+          if (!r.ok) { if (r.error?.code === 'SESSION_NOT_FOUND') { S.sid = ''; await loadPlans(); return loadPlan() } throw new Error(r.error?.message || 'Không đọc được phiên') }
+          // Lượt quét của máy này xong SAU lúc gửi yêu cầu có thể chưa nằm trong bản chụp của máy chủ: giữ bản đó; lượt xong trước thì máy chủ đã có.
+          const items = r.data.items || [], now = Date.now();
+          for (const [c, t] of S.touch) { if (t.at < t0) S.touch.delete(c); else { const i = items.findIndex(x => x.groupUid === c); if (i >= 0) items[i] = t.item } }
+          S.session = r.data.session; S.items = items; S.loadedAt = now;
+          const k = S.sessions.findIndex(p => p.id === id); if (k >= 0) S.sessions[k] = r.data.session;
+          renderAll(); loadNames().then(renderAll);
+        };
+        const refresh = async () => { try { await loadPlans(); await loadPlan(); return true } catch (e) { tell(`Không tải được phiên lấy mẫu: ${e.message}`, 'error'); return false } };
+        const selectPlan = async id => { S.sid = id; store.set(K.plan, id); S.touch.clear(); S.recent = []; hidePop(); paintRecent(); await refresh() };
+        planSel.addEventListener('change', () => selectPlan(planSel.value));
+
+        // ---- Pop-up kết quả quét: không phải <dialog> modal để ô quét vẫn giữ con trỏ (máy quét cầm tay bắn tiếp được) ----
+        const pop = $('cs-pop'), popCard = $('cs-pop-card');
+        let popTimer = 0;
+        const hidePop = () => { clearTimeout(popTimer); if (pop.hidden) return; pop.hidden = true; popCard.innerHTML = ''; if (S.tab === 'scan' && active()) setTimeout(() => code.focus(), 0) };
+        const fact = (label, value) => value ? `<span class="cs-fact"><i>${label}</i><b>${esc(value)}</b></span>` : '';
+        const AUTO = { cut: 2400, qc: 2400, store: 1600 };
+        const showPop = ({ tone, title, uid, facts = '', note = '', count = '' }) => {
+          clearTimeout(popTimer);
+          const auto = AUTO[tone] || 0, icon = ICON[tone] || ICON.error;
+          popCard.dataset.tone = tone;
+          popCard.style.setProperty('--cs-auto', `${auto / 1000}s`);
+          popCard.innerHTML = `<span class="cs-pop__ico">${svg(icon, 42)}</span><h3 id="cs-pop-title">${esc(title)}</h3><div class="cs-pop__uid">${esc(uid)}</div><div class="cs-facts">${facts}</div>${note ? `<p class="cs-pop__note">${esc(note)}</p>` : ''}${count ? `<p class="cs-pop__count">${esc(count)}</p>` : ''}<button class="cs-pop__close" type="button" data-pop-close>Đóng</button>${auto ? '<i class="cs-pop__bar" aria-hidden="true"></i>' : ''}`;
+          pop.hidden = false;
+          if (auto) popTimer = setTimeout(hidePop, auto);
+        };
+        pop.addEventListener('click', event => { if (event.target === pop || event.target.closest('[data-pop-close]')) hidePop() });
+        document.addEventListener('keydown', event => { if (event.key === 'Escape' && !pop.hidden && active()) hidePop() });
+        const paintRecent = () => { const box = $('cs-recent'); box.hidden = !S.recent.length; box.innerHTML = S.recent.map(x => `<div data-tone="${x.tone}">${svg(ICON[x.tone] || ICON.error)}<code>${esc(x.uid)}</code><span>${esc(x.short)} · ${esc(x.at)}</span></div>`).join('') };
+        const pushRecent = (uid, tone, short) => { S.recent.unshift({ uid, tone, short, at: fmtAt(new Date()).slice(0, 5) }); S.recent.length = Math.min(S.recent.length, 5); paintRecent() };
+        const patchItem = (item, counts) => {
+          const i = S.items.findIndex(x => x.groupUid === item.groupUid); if (i >= 0) S.items[i] = item;
+          S.touch.set(item.groupUid, { item, at: Date.now() });
+          if (S.session && counts) { S.session.counts = counts; const k = S.sessions.findIndex(p => p.id === S.session.id); if (k >= 0) S.sessions[k] = S.session }
+          renderAll();
+        };
+
+        // ---- Quét: hàng đợi tuần tự để máy quét tay bắn liên tục không mất mã khi mạng chậm ----
+        const scanOne = async uid => {
+          if (!S.sid) { showPop({ tone: 'error', title: 'CHƯA CHỌN PHIÊN THEO PO', uid }); cue('error'); return }
+          try {
+            const r = await rpc('cut_sample_scan', { p_session: S.sid, p_group_uid: uid, p_by: scannerName() });
+            if (r.ok) {
+              const { result, item, counts } = r.data;
+              patchItem(item, counts);
+              const meta = ROLE[item.role], st = skuStats().find(s => s.sku === item.sku), cur = st ? st[item.role] : [0, 0];
+              const facts = [fact('SKU', item.sku), fact('Lot', item.lot), fact('Roll', item.roll), fact('Số lượng', fmtQty(item.sku, item.qty))].join('');
+              if (result === 'scanned') {
+                showPop({ tone: item.role, title: meta.title, uid, facts, count: `${meta.label} SKU ${item.sku}: ${cur[0]}/${cur[1]}` });
+                pushRecent(uid, item.role, meta.label); cue(item.role); tell(`${meta.label}: ${uid}`, 'ok');
+              } else {
+                showPop({ tone: 'warn', title: 'ĐÃ QUÉT UID NÀY', uid, facts, note: `${meta.label} · ${fmtAt(item.scannedAt)}${item.scannedBy ? ` · ${item.scannedBy}` : ''}` });
+                pushRecent(uid, 'warn', `Đã quét · ${meta.label}`); cue('warn'); tell('UID này đã được quét rồi.', 'warn');
+              }
+              return;
+            }
+            const e = r.error || {}, d = e.data || {};
+            const titles = { NOT_IN_SESSION: 'UID KHÔNG THUỘC PHIÊN NÀO', OTHER_SESSION: 'UID THUỘC PHIÊN PO KHÁC', SESSION_NOT_FOUND: 'PHIÊN ĐÃ BỊ XÓA', INVALID_UID: 'MÃ KHÔNG HỢP LỆ' };
+            showPop({ tone: 'error', title: titles[e.code] || e.message || 'KHÔNG QUÉT ĐƯỢC', uid, facts: d.item ? [fact('SKU', d.item.sku), fact('Lot', d.item.lot), fact('Roll', d.item.roll)].join('') : '', note: e.code === 'OTHER_SESSION' ? `PO ${d.po || ''} — chọn đúng phiên để quét` : titles[e.code] ? '' : (e.message || '') });
+            pushRecent(uid, 'error', e.code === 'OTHER_SESSION' ? 'PO khác' : e.code === 'NOT_IN_SESSION' ? 'Ngoài phiên' : 'Lỗi'); cue('error'); tell(e.message || 'Không quét được UID này.', 'error');
+            if (e.code === 'SESSION_NOT_FOUND') refresh();
+          } catch (e) { showPop({ tone: 'error', title: 'CHƯA RÕ ĐÃ GHI HAY CHƯA', uid, note: e.message }); cue('error'); tell(`Chưa rõ đã ghi hay chưa: ${e.message}`, 'error') }
+        };
+        const pump = async () => { if (S.pumping) return; S.pumping = true; try { while (S.queue.length) await scanOne(S.queue.shift()) } finally { S.pumping = false } };
+        form.addEventListener('submit', event => { event.preventDefault(); const uid = code.value.trim(); if (!uid) return; code.value = ''; S.queue.push(uid); pump(); code.focus() });
+        const cameraBtn = $('cs-camera'), keyboardBtn = $('cs-keyboard');
+        if (window.PrintSkuScanUI?.canOpen()) cameraBtn.hidden = false;
+        cameraBtn.addEventListener('click', () => window.PrintSkuScanUI.openGroupUid({ typeFocus: '#cs-code', onCode: c => { code.value = c; form.requestSubmit() } }));
+        let keyboardHidden = store.get(K.keyboard) !== 'hien';
+        const applyKeyboard = () => { code.inputMode = keyboardHidden ? 'none' : 'text'; const label = keyboardHidden ? 'Hiện bàn phím' : 'Ẩn bàn phím'; keyboardBtn.setAttribute('aria-label', label); keyboardBtn.title = label; keyboardBtn.setAttribute('aria-pressed', String(keyboardHidden)) };
+        keyboardBtn.addEventListener('click', () => { keyboardHidden = !keyboardHidden; store.set(K.keyboard, keyboardHidden ? 'an' : 'hien'); applyKeyboard(); code.blur(); setTimeout(() => code.focus(), 60) });
+        applyKeyboard();
+
+        // ---- Xác nhận: đẩy các UID CẮT đã quét sang luồng CẮT GROUP UID cũ ----
+        confirmBtn.addEventListener('click', async () => {
+          const todo = unpushed(); if (!todo.length || S.busy) return;
+          const left = tally().cut[1] - tally().cut[0];
+          const ok = await window.WhDialog.confirm({ icon: 'check', title: `Chuyển ${todo.length} UID sang luồng Cắt UID`, facts: left ? [`Còn ${left} UID cắt chưa quét`] : [], list: todo.map(i => i.groupUid), confirmText: `Chuyển ${todo.length} UID`, cancelText: 'Chưa' });
+          if (!ok) return;
+          S.busy = true; renderConfirm(); tell('Đang chuyển sang luồng Cắt UID…');
+          try {
+            const r = await rpc('cut_sample_confirm', { p_session: S.sid });
+            if (!r.ok) throw new Error(r.error?.message || 'Không chuyển được');
+            const d = r.data; S.pushed += d.pushed + d.alreadyCut;
+            await loadPlan();
+            window.PrintSkuCutUi?.reload?.().catch(() => {});
+            const parts = [`Đã chuyển ${d.pushed} UID sang Cắt UID`, d.alreadyCut ? `${d.alreadyCut} UID đã có sẵn ở Cắt UID` : '', d.missingName?.length ? `${d.missingName.length} UID chưa có tên SP trong SKU_Name nên chưa chuyển (${d.missingName.slice(0, 3).join(', ')}${d.missingName.length > 3 ? '…' : ''})` : ''].filter(Boolean);
+            tell(`${parts.join(' · ')}.`, d.missingName?.length ? 'warn' : 'ok');
+          } catch (e) { tell(`Chưa chuyển được: ${e.message}`, 'error') } finally { S.busy = false; renderConfirm(); code.focus() }
+        });
+        gotoCut.addEventListener('click', async () => { const ui = window.PrintSkuCutUi; try { await ui?.reload?.() } catch (_) { /* Tra cứu tự tải lại khi vào */ } ui?.setActiveTab('data') });
+
+        // ---- Danh sách: lọc, tìm, bỏ dấu quét (Admin) ----
+        $('cs-filters').addEventListener('click', event => { const b = event.target.closest('[data-filter]'); if (!b) return; S.filter = b.dataset.filter; renderList() });
+        $('cs-q').addEventListener('input', () => { S.q = $('cs-q').value; renderList() });
+        $('cs-search').addEventListener('submit', event => event.preventDefault());
+        $('cs-rows').addEventListener('click', async event => {
+          const b = event.target.closest('[data-unscan]'); if (!b || S.busy) return;
+          const uid = b.dataset.unscan;
+          if (!await window.WhDialog.confirm({ tone: 'danger', icon: 'undo', title: 'Bỏ dấu đã quét', list: [uid], confirmText: 'Bỏ dấu quét', cancelText: 'Giữ' })) return;
+          S.busy = true;
+          try { const d = await adminRpc('cut_sample_unscan', { p_session: S.sid, p_group_uid: uid }); patchItem(d.item, d.counts); tell(`Đã bỏ dấu quét ${uid}.`, 'ok') } catch (e) { tell(e.message, 'error') } finally { S.busy = false }
+        });
+
+        // ---- Admin: đọc PO từ WMS, xem trước phiên, tạo / xóa phiên ----
+        // Quyền Admin do nút khiên ở thanh trên của màn Cắt quản lý (đăng nhập / thoát); tab này chỉ đọc trạng thái và nghe sự kiện.
+        const syncAdmin = () => { S.admin = Boolean(window.PrintSkuAdminAccess?.peekToken?.()); renderPlans(); renderList() };
+        addEventListener('print-sku-admin-ready', syncAdmin); addEventListener('print-sku-admin-logout', syncAdmin);
+
+        // Quy tắc loại UID khỏi phiên (đếm riêng để Admin thấy): đã hủy/đóng, nhiều SKU, chưa nhận (không SKU hoặc số lượng ≤ 0).
+        const classify = rows => {
+          const usable = [], skipped = { closed: 0, multi: 0, notReceived: 0 };
+          for (const r of rows) {
+            if (/^(canceled|cancelled|closed)$/i.test(r.status || '')) skipped.closed += 1;
+            else if ((r.products || []).length > 1) skipped.multi += 1;
+            else if (!r.sku || !(r.qty > 0)) skipped.notReceived += 1;
+            else usable.push({ groupUid: r.group_uid_code, sku: r.sku, lot: r.batch_code || '', roll: r.roll_code || '', qty: r.qty });
+          }
+          return { usable, skipped };
+        };
+        const readPo = async po => {
+          await extensionRequest('PING_WMS', {}, 6000);
+          const asns = []; let asnTotal = 0;
+          for (let page = 1; page <= 10; page += 1) {
+            const r = await extensionRequest('GET_PO_ASN_PAGE', { purchaseOrder: po, page, size: 500 });
+            asnTotal = r.total; asns.push(...r.rows);
+            if (asns.length >= asnTotal || !r.rows.length) break;
+          }
+          // Đọc tới trang thiếu dòng (không chỉ tin tổng số trang) rồi đối chiếu số UID đọc được với tổng WMS báo: lệch thì đọc lại.
+          const rows = new Map(); let total = 0, totalPages = 1;
+          for (let page = 1; ; page += 1) {
+            if (page > 40) throw new Error('PO có quá nhiều Group UID để đọc một lượt');
+            if (page > 1) tell(`Đang đọc Group UID của PO ${po}: trang ${page}/${totalPages}…`);
+            const r = await extensionRequest('GET_PO_GROUP_UID_PAGE', { purchaseOrder: po, page, size: 500 });
+            if (r.purchaseOrder !== po) throw new Error('Extension trả dữ liệu của PO khác');
+            if (page === 1) { total = r.total; totalPages = r.totalPages } else if (r.total !== total) throw new Error('Dữ liệu WMS thay đổi trong lúc đọc; hãy đọc lại');
+            r.rows.forEach(row => rows.set(row.group_uid_code, row));
+            if (page >= totalPages && r.sourceRows < 500) break;
+          }
+          if (rows.size !== total) throw new Error(`Đọc được ${rows.size}/${total} Group UID; WMS đổi dữ liệu trong lúc đọc, hãy đọc lại`);
+          const { usable, skipped } = classify([...rows.values()]);
+          return { po, asns, total, skipped, plan: window.CutSampleCore.plan(usable), usable: usable.length };
+        };
+        const MAX_SESSION = 5000; // cut_sample_create nhận tối đa 5.000 UID mỗi phiên
+        const renderPreview = () => {
+          const box = $('cs-preview'), p = S.preview; box.hidden = !p; if (!p) return;
+          const received = p.asns.filter(a => /^received$/i.test(a.status || '')).length, notYet = p.asns.length - received;
+          const existing = S.sessions.find(s => s.po === p.po), scannedOld = (existing?.counts?.cutScanned || 0) + (existing?.counts?.qcScanned || 0) + (existing?.counts?.storeScanned || 0);
+          const chips = [chip('store', ICON.store, `${num(p.total)} UID trong PO`), chip('ok', ICON.ok, `${num(p.usable)} UID dùng được`),
+            p.asns.length ? chip(notYet ? 'warn' : 'ok', notYet ? ICON.warn : ICON.ok, `${p.asns.length} ASN · ${received} đã nhận${notYet ? ` · ${notYet} chưa nhận` : ''}`) : chip('warn', ICON.warn, 'Không thấy ASN'),
+            p.skipped.notReceived ? chip('warn', ICON.warn, `${p.skipped.notReceived} UID chưa nhận (chưa có SKU/số lượng)`) : '', p.skipped.multi ? chip('warn', ICON.warn, `${p.skipped.multi} UID nhiều SKU`) : '', p.skipped.closed ? chip('store', ICON.store, `${p.skipped.closed} UID đã hủy/đóng`) : '',
+            p.plan.errors.length ? chip('bad', ICON.error, `${p.plan.errors.length} lỗi dữ liệu`) : '', existing && scannedOld ? chip('warn', ICON.warn, `Phiên cũ đã quét ${scannedOld} UID · giữ dấu quét cùng nhóm`) : '', p.plan.items.length > MAX_SESSION ? chip('bad', ICON.error, `Quá ${num(MAX_SESSION)} UID/phiên`) : ''].join('');
+          const cutN = p.plan.items.filter(i => i.role === 'cut').length, qcN = p.plan.items.filter(i => i.role === 'qc').length, storeN = p.plan.items.length - cutN - qcN;
+          const rowsHtml = p.plan.groups.map(g => `<tr><td data-label="SKU">${esc(g.sku)}</td><td data-label="Lot">${esc(g.lot || '—')}</td><td class="n" data-label="Số cây">${g.total}</td><td class="n" data-label="Cắt">${g.cut}</td><td class="n" data-label="QC">${g.qc}${g.qcShort ? `<span class="cs-short" title="Lot chỉ có 1 cây nên không có cây QC" role="img" aria-label="Thiếu cây QC">${svg(ICON.warn, 14)}</span>` : ''}</td><td class="n" data-label="Lưu trữ">${g.store}</td><td class="n" data-label="Mẫu">${Math.round(g.sample / g.total * 100)}%</td></tr>`).join('');
+          box.innerHTML = `<div class="cs-preview__chips">${chips}</div>${p.plan.errors.length ? `<p class="cut-note">${esc(p.plan.errors.slice(0, 3).join(' · '))}${p.plan.errors.length > 3 ? '…' : ''}</p>` : ''}<div class="cs-preview__chips">${chip('cut', ICON.cut, `Cắt ${cutN}`)}${chip('qc', ICON.qc, `QC ${qcN}`)}${chip('store', ICON.store, `Lưu trữ ${storeN}`)}${p.plan.items.length ? chip('ok', ICON.ok, `Mẫu ${cutN + qcN}/${p.plan.items.length} · ${Math.round((cutN + qcN) / p.plan.items.length * 100)}%`) : ''}</div><div class="cut-table-wrap"><table class="cut-table cs-table cs-prev"><thead><tr><th>SKU</th><th>Lot</th><th class="n">Số cây</th><th class="n">Cắt</th><th class="n">QC</th><th class="n">Lưu trữ</th><th class="n">Mẫu</th></tr></thead><tbody>${rowsHtml || '<tr><td colspan="7" class="cut-empty">Không có Group UID dùng được.</td></tr>'}</tbody></table></div><div class="cs-preview__go"><button class="cut-primary act-icon act-icon--check" id="cs-create" type="button"${p.plan.items.length && p.plan.items.length <= MAX_SESSION && !p.plan.errors.length ? '' : ' disabled'}>${existing ? `Thay phiên PO ${esc(p.po)}` : `Tạo phiên PO ${esc(p.po)}`}</button><button class="cut-secondary" id="cs-preview-close" type="button">Hủy</button></div>`;
+        };
+        $('cs-po-form').addEventListener('submit', async event => {
+          event.preventDefault();
+          const po = $('cs-po').value.trim();
+          if (!/^\d{6,40}$/.test(po)) { tell('Nhập đúng số PO (6–40 chữ số).', 'warn'); return }
+          if (S.busy) return;
+          if (!await adminOk()) { tell('Chưa đăng nhập Admin.', 'warn'); Promise.resolve(window.PrintSkuAdminAccess?.getToken()).catch(() => {}); return }
+          S.busy = true; $('cs-po-go').disabled = true; S.preview = null; renderPreview(); tell(`Đang đọc PO ${po} từ WMS…`);
+          try {
+            if (!window.CutSampleCore) throw new Error('Bộ chia mẫu chưa sẵn sàng. Hãy tải lại trang.');
+            S.preview = await readPo(po); renderPreview();
+            tell(S.preview.plan.items.length ? `Đã đọc ${S.preview.total} Group UID của PO ${po}.` : `PO ${po} chưa có Group UID dùng được.`, S.preview.plan.items.length ? 'ok' : 'warn');
+          } catch (e) { tell(`Không đọc được PO: ${e.message}`, 'error') } finally { S.busy = false; $('cs-po-go').disabled = false }
+        });
+        $('cs-preview').addEventListener('click', async event => {
+          if (event.target.closest('#cs-preview-close')) { S.preview = null; renderPreview(); return }
+          if (!event.target.closest('#cs-create') || !S.preview || S.busy) return;
+          const p = S.preview, existing = S.sessions.find(s => s.po === p.po);
+          if (existing && !await window.WhDialog.confirm({ tone: 'warning', title: `Thay phiên PO ${p.po}?`, facts: [`${existing.counts?.total || 0} UID hiện có`, 'Giữ dấu quét của UID còn cùng nhóm'], confirmText: 'Thay phiên', cancelText: 'Giữ phiên cũ' })) return;
+          S.busy = true; tell('Đang tạo phiên…');
+          try {
+            const d = await adminRpc('cut_sample_create', { p_po: p.po, p_asns: p.asns, p_items: p.plan.items.map(i => ({ groupUid: i.groupUid, sku: i.sku, lot: i.lot, roll: i.roll, qty: i.qty, role: i.role })) });
+            S.preview = null; renderPreview();
+            S.sid = d.session.id; store.set(K.plan, S.sid); S.touch.clear();
+            await refresh(); setTab('scan');
+            tell(`${d.replaced ? 'Đã thay phiên' : 'Đã tạo phiên'} PO ${d.session.po}: ${d.session.counts.cut} cắt · ${d.session.counts.qc} QC · ${d.session.counts.store} lưu trữ${d.replaced && (d.carried || d.dropped) ? ` (giữ ${d.carried} dấu quét, mất ${d.dropped})` : ''}.`, 'ok');
+          } catch (e) { tell(`Chưa tạo được phiên: ${e.message}`, 'error') } finally { S.busy = false }
+        });
+        $('cs-plans').addEventListener('click', async event => {
+          const open = event.target.closest('[data-open]'), del = event.target.closest('[data-delete]');
+          if (open) { await selectPlan(open.dataset.open); setTab('scan'); return }
+          if (!del || S.busy) return;
+          const p = S.sessions.find(s => s.id === del.dataset.delete); if (!p) return;
+          if (!await window.WhDialog.confirm({ tone: 'danger', title: `Xóa phiên PO ${p.po}?`, facts: [`${p.counts?.total || 0} UID`, `${(p.counts?.cutScanned || 0) + (p.counts?.qcScanned || 0) + (p.counts?.storeScanned || 0)} UID đã quét`, 'UID đã chuyển sang Cắt UID vẫn giữ'], confirmText: 'Xóa phiên', cancelText: 'Giữ' })) return;
+          S.busy = true;
+          try { await adminRpc('cut_sample_delete', { p_session: p.id }); if (S.sid === p.id) { S.sid = ''; S.items = []; S.session = null } await refresh(); tell(`Đã xóa phiên PO ${p.po}.`, 'ok') } catch (e) { tell(e.message, 'error') } finally { S.busy = false }
+        });
+
+        // ---- Tab ----
+        const tabs = { scan: { btn: $('cs-seg-scan'), panel: panel.querySelector('.cs-sec[data-sec="scan"]') }, list: { btn: $('cs-seg-list'), panel: panel.querySelector('.cs-sec[data-sec="list"]') }, plans: { btn: $('cs-seg-plans'), panel: panel.querySelector('.cs-sec[data-sec="plans"]') } };
+        const setTab = name => {
+          if (!tabs[name]) return;
+          S.tab = name; store.set(K.tab, name);
+          for (const [key, t] of Object.entries(tabs)) { const on = key === name; t.btn.setAttribute('aria-selected', String(on)); t.panel.hidden = !on }
+          if (name === 'list') renderList();
+          if (name === 'plans') renderPlans();
+          if (name === 'scan' && active()) setTimeout(() => code.focus(), 50);
+        };
+        for (const [key, t] of Object.entries(tabs)) t.btn.addEventListener('click', () => setTab(key));
+        { const saved = store.get(K.tab); setTab(saved && tabs[saved] ? saved : 'scan') }
+
+        // Máy quét cầm tay gõ như bàn phím: ký tự đầu tiên ở tab Quét tự đưa vào ô quét; mất focus thì kéo về (trừ khi đang mở hộp thoại).
+        const modalOpen = () => { try { return Boolean(document.querySelector('dialog:modal,.pss')) } catch (_) { return Boolean(document.querySelector('dialog[open],.pss')) } };
+        const typingElsewhere = () => { const el = document.activeElement; return el === code || (el && /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName)) };
+        document.addEventListener('keydown', event => {
+          if (!active() || S.tab !== 'scan' || typingElsewhere() || modalOpen()) return;
+          if (event.ctrlKey || event.altKey || event.metaKey) return;
+          const key = event.key || '';
+          if (key.length !== 1 && key !== 'Unidentified' && key !== 'Process') return;
+          code.focus();
+        });
+        code.addEventListener('blur', () => setTimeout(() => {
+          if (!active() || S.tab !== 'scan' || modalOpen()) return;
+          const el = document.activeElement;
+          if (el && el !== document.body && screen.contains(el)) return;
+          code.focus();
+        }, 0));
+
+        // ---- Vào/ra màn, tự làm mới để thấy các máy quét khác ----
+        let timer = 0;
+        const schedule = () => { clearTimeout(timer); if (!active()) return; timer = setTimeout(async () => { if (!document.hidden && !S.busy && !S.pumping) { try { await loadPlans(); await loadPlan() } catch (_) { /* lần sau thử lại */ } } schedule() }, 20000) };
+        const route = async () => {
+          if (!active()) { clearTimeout(timer); hidePop(); return }
+          syncAdmin(); await refresh(); schedule();
+          if (S.tab === 'scan') setTimeout(() => code.focus(), 50);
+        };
+        document.addEventListener('visibilitychange', () => { if (!document.hidden && active() && !S.busy && !S.pumping) refresh() });
+        window.addEventListener('hashchange', route);
+        window.addEventListener('print-sku-cut-tab', route);
+        renderAll(); route();
+      })();
+    </script>
     <style id="print-devices-tab-style">
       /* Lệnh in · tab Thiết bị (11/10/2026): mã kích hoạt chung 30 phút, danh sách máy đã kích hoạt theo khuôn Admin (thẻ số lọc,
          bảng UI.createList, popup as-dialog). Chỉ desktop. */
@@ -13263,29 +13872,29 @@ async function rpc(name,args,retry=true){
     <style id="scan-field">
       /* Ô Group UID liền (14/10/2026; mockup Cấp vải 12/10) cho Cắt Group UID, Theo dõi xả vải, Cấp vải: icon quét | vạch | mã | cụm camera · bàn phím
          nằm trong ô (nền xanh nhạt, vạch giữa; bàn phím đang bật = nền trắng). Nút chính bên phải (máy tính), dưới và rộng hết (≤ 620 px). */
-      :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) :is(#cut-form, #xa-vai-form, #cap-vai-form).cut-scan { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: stretch; gap: 10px; }
-      :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) :is(#cut-form, #xa-vai-form, #cap-vai-form) > .scan-field { position: relative; grid-column: 1; grid-row: 1; min-width: 0; }
-      :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) :is(#cut-form, #xa-vai-form, #cap-vai-form) > [type="submit"] { flex: none; grid-column: 2; grid-row: 1; width: auto; margin: 0; padding: 0 22px; white-space: nowrap; }
-      :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) :is(#cut-form, #xa-vai-form, #cap-vai-form) .scan-field > .cut-input { display: block; box-sizing: border-box; width: 100%; min-width: 0; padding-left: 60px; padding-right: 112px; text-overflow: ellipsis; border-color: rgba(0, 95, 65, .3); box-shadow: 0 0 0 3px rgba(0, 95, 65, .06); background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='%23005f41' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 7V5a2 2 0 0 1 2-2h2'/%3E%3Cpath d='M17 3h2a2 2 0 0 1 2 2v2'/%3E%3Cpath d='M21 17v2a2 2 0 0 1-2 2h-2'/%3E%3Cpath d='M7 21H5a2 2 0 0 1-2-2v-2'/%3E%3Cpath d='M7 12h10'/%3E%3C/svg%3E") no-repeat 16px 50% / 22px 22px, linear-gradient(rgba(0, 95, 65, .2), rgba(0, 95, 65, .2)) no-repeat 50px 50% / 1px 24px, linear-gradient(180deg, #fff, #f6faf8); }
-      :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) :is(#cut-form, #xa-vai-form, #cap-vai-form) .scan-field > .cut-input:focus { border-color: var(--wms-brand, #005f41); box-shadow: 0 0 0 3px rgba(0, 95, 65, .16); }
-      :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) :is(#cut-form, #xa-vai-form, #cap-vai-form) .scan-field:has(.act-icon--camera[hidden]) > .cut-input { padding-right: 64px; }
-      :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) :is(#cut-form, #xa-vai-form, #cap-vai-form) .scan-field__tools { position: absolute; top: 4px; right: 4px; bottom: 4px; display: flex; align-items: stretch; padding: 0 2px; border-radius: 10px; background: rgba(0, 95, 65, .08); }
-      :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) :is(#cut-form, #xa-vai-form, #cap-vai-form) .scan-field__tools > button { position: relative; flex: none; box-sizing: border-box; width: 48px; min-width: 48px; height: auto; min-height: 0; margin: 0; padding: 0; border: 0; border-radius: 8px; background: transparent; box-shadow: none; transform: none; color: var(--wms-brand, #005f41); font-size: 0; cursor: pointer; }
-      :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) :is(#cut-form, #xa-vai-form, #cap-vai-form) .scan-field__tools > button::before { width: 20px; height: 20px; }
-      :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) :is(#cut-form, #xa-vai-form, #cap-vai-form) .scan-field__tools > button[hidden] { display: none; }
-      :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) :is(#cut-form, #xa-vai-form, #cap-vai-form) .scan-field__tools > button:not([hidden]) + button::after { content: ""; position: absolute; left: 0; top: 9px; bottom: 9px; width: 1px; background: rgba(0, 95, 65, .2); }
-      :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) :is(#cut-form, #xa-vai-form, #cap-vai-form) .scan-field__tools > button[aria-pressed="false"] { background: #fff; box-shadow: 0 1px 3px rgba(13, 40, 30, .12); }
+      :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) :is(#cut-form, #xa-vai-form, #cap-vai-form, #cs-form).cut-scan { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: stretch; gap: 10px; }
+      :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) :is(#cut-form, #xa-vai-form, #cap-vai-form, #cs-form) > .scan-field { position: relative; grid-column: 1; grid-row: 1; min-width: 0; }
+      :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) :is(#cut-form, #xa-vai-form, #cap-vai-form, #cs-form) > [type="submit"] { flex: none; grid-column: 2; grid-row: 1; width: auto; margin: 0; padding: 0 22px; white-space: nowrap; }
+      :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) :is(#cut-form, #xa-vai-form, #cap-vai-form, #cs-form) .scan-field > .cut-input { display: block; box-sizing: border-box; width: 100%; min-width: 0; padding-left: 60px; padding-right: 112px; text-overflow: ellipsis; border-color: rgba(0, 95, 65, .3); box-shadow: 0 0 0 3px rgba(0, 95, 65, .06); background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='%23005f41' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 7V5a2 2 0 0 1 2-2h2'/%3E%3Cpath d='M17 3h2a2 2 0 0 1 2 2v2'/%3E%3Cpath d='M21 17v2a2 2 0 0 1-2 2h-2'/%3E%3Cpath d='M7 21H5a2 2 0 0 1-2-2v-2'/%3E%3Cpath d='M7 12h10'/%3E%3C/svg%3E") no-repeat 16px 50% / 22px 22px, linear-gradient(rgba(0, 95, 65, .2), rgba(0, 95, 65, .2)) no-repeat 50px 50% / 1px 24px, linear-gradient(180deg, #fff, #f6faf8); }
+      :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) :is(#cut-form, #xa-vai-form, #cap-vai-form, #cs-form) .scan-field > .cut-input:focus { border-color: var(--wms-brand, #005f41); box-shadow: 0 0 0 3px rgba(0, 95, 65, .16); }
+      :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) :is(#cut-form, #xa-vai-form, #cap-vai-form, #cs-form) .scan-field:has(.act-icon--camera[hidden]) > .cut-input { padding-right: 64px; }
+      :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) :is(#cut-form, #xa-vai-form, #cap-vai-form, #cs-form) .scan-field__tools { position: absolute; top: 4px; right: 4px; bottom: 4px; display: flex; align-items: stretch; padding: 0 2px; border-radius: 10px; background: rgba(0, 95, 65, .08); }
+      :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) :is(#cut-form, #xa-vai-form, #cap-vai-form, #cs-form) .scan-field__tools > button { position: relative; flex: none; box-sizing: border-box; width: 48px; min-width: 48px; height: auto; min-height: 0; margin: 0; padding: 0; border: 0; border-radius: 8px; background: transparent; box-shadow: none; transform: none; color: var(--wms-brand, #005f41); font-size: 0; cursor: pointer; }
+      :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) :is(#cut-form, #xa-vai-form, #cap-vai-form, #cs-form) .scan-field__tools > button::before { width: 20px; height: 20px; }
+      :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) :is(#cut-form, #xa-vai-form, #cap-vai-form, #cs-form) .scan-field__tools > button[hidden] { display: none; }
+      :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) :is(#cut-form, #xa-vai-form, #cap-vai-form, #cs-form) .scan-field__tools > button:not([hidden]) + button::after { content: ""; position: absolute; left: 0; top: 9px; bottom: 9px; width: 1px; background: rgba(0, 95, 65, .2); }
+      :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) :is(#cut-form, #xa-vai-form, #cap-vai-form, #cs-form) .scan-field__tools > button[aria-pressed="false"] { background: #fff; box-shadow: 0 1px 3px rgba(13, 40, 30, .12); }
       @media (hover: hover) {
-        :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) :is(#cut-form, #xa-vai-form, #cap-vai-form) .scan-field__tools > button:hover { background: rgba(0, 95, 65, .1); }
+        :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) :is(#cut-form, #xa-vai-form, #cap-vai-form, #cs-form) .scan-field__tools > button:hover { background: rgba(0, 95, 65, .1); }
       }
       /* Theo dõi xả vải: form thành lưới riêng (trước "display: contents" để nút bàn phím ngoài form đứng cạnh ô) */
       #xa-vai-screen .cut-card[data-panel="scan"] > #xa-vai-goto-open { grid-row: auto; }
       @media (max-width: 620px) {
-        :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) :is(#cut-form, #xa-vai-form, #cap-vai-form).cut-scan { grid-template-columns: minmax(0, 1fr); }
-        :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) :is(#cut-form, #xa-vai-form, #cap-vai-form) > [type="submit"] { grid-column: 1; grid-row: 2; width: 100%; }
+        :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) :is(#cut-form, #xa-vai-form, #cap-vai-form, #cs-form).cut-scan { grid-template-columns: minmax(0, 1fr); }
+        :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) :is(#cut-form, #xa-vai-form, #cap-vai-form, #cs-form) > [type="submit"] { grid-column: 1; grid-row: 2; width: 100%; }
       }
       @media (max-width: 480px) {
-        :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) :is(#cut-form, #xa-vai-form, #cap-vai-form) .scan-field > .cut-input { padding-left: 56px; background-position: 14px 50%, 46px 50%, 0 0; }
+        :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) :is(#cut-form, #xa-vai-form, #cap-vai-form, #cs-form) .scan-field > .cut-input { padding-left: 56px; background-position: 14px 50%, 46px 50%, 0 0; }
       }
     </style>
     <style id="pdm-polish">
@@ -13429,7 +14038,7 @@ async function rpc(name,args,retry=true){
       #uid-screen .uid-search input:focus { box-shadow: 0 0 0 3px rgba(0, 95, 65, .16); }
       /* Nút icon trong ô nhập trên điện thoại 44 (người dùng chọn; trước 40): --ui-icon-in 44; cụm camera · bàn phím của ô Group UID liền cách mép ô 2 px */
       @media (max-width: 800px) {
-        :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) :is(#cut-form, #xa-vai-form, #cap-vai-form) .scan-field__tools { top: 2px; right: 2px; bottom: 2px; }
+        :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) :is(#cut-form, #xa-vai-form, #cap-vai-form, #cs-form) .scan-field__tools { top: 2px; right: 2px; bottom: 2px; }
       }
     </style>
     <style id="sheet-center">

@@ -148,5 +148,59 @@ const ROW = {
   result = await ask(load({ fetchImpl: sequence(reply(204, null)) }), "GET_STOCK_IMPORT_EXPORT_PAGE", { warehouseIds: [1151], from, to });
   assert.deepEqual([result.ok, result.data.rows.length, result.data.total], [true, 0, 0], "khoảng ngày không có dòng nào là 0 dòng, không phải lỗi");
 
-  console.log("wms_bridge_reads: thử lại 429/5xx/lỗi mạng, 204, 401/403 và hết phiên cho Group UID, lịch sử Cắt, lịch sử chuyển vị trí và nhập xuất kho passed");
+  // Lấy mẫu cắt/QC: Group UID và ASN theo PO — đúng tham số lọc, số PO sai không gọi WMS, WMS trả PO khác bị chặn, 403 / hết phiên / 204
+  const PO = "10012600000777";
+  const poRow = (over = {}) => ({ ...ROW, group_uid_code: 1028261016000001, processing_source_code: PO, processing_source_type: "PURCHASE_ORDER", ...over });
+  fetchImpl = sequence(reply(200, { count: 1, records: [poRow()] }));
+  result = await ask(load({ fetchImpl }), "GET_PO_GROUP_UID_PAGE", { purchaseOrder: ` ${PO} `, page: 2, size: 9999 });
+  assert.equal(result.ok, true, JSON.stringify(result));
+  assert.deepEqual([result.data.rows[0].group_uid_code, result.data.rows[0].purchase_order, result.data.total, result.data.page, result.data.size, result.data.purchaseOrder], ["1028261016000001", PO, 1, 2, 500, PO]);
+  let sentUrl = new URL(fetchImpl.calls[0].url);
+  assert.equal(sentUrl.pathname, "/api/v1/wms/group-uid-infos");
+  assert.deepEqual([sentUrl.searchParams.get("processing_source_code"), sentUrl.searchParams.get("active_tab"), sentUrl.searchParams.get("page"), sentUrl.searchParams.get("size")], [PO, "group-list", "2", "500"], "số PO được cắt khoảng trắng, size chặn ở 500");
+  assert.equal(sentUrl.searchParams.get("from_updated_at"), String(Date.UTC(2020, 0, 1)));
+  assert.ok(Number(sentUrl.searchParams.get("to_updated_at")) > Date.now(), "WMS cần đủ cả from và to; to là ngày mai");
+  assert.equal(fetchImpl.calls[0].init.credentials, "omit");
+  assert.equal(sentUrl.searchParams.get("warehouse_ids"), null, "không lọc kho: PO có thể nhận ở nhiều kho");
+  for (const bad of ["", "abc", "12345", "1001260000077x", null]) {
+    fetchImpl = sequence(reply(200, { count: 0, records: [] }));
+    result = await ask(load({ fetchImpl }), "GET_PO_GROUP_UID_PAGE", { purchaseOrder: bad });
+    assert.equal(result.ok, false, String(bad));
+    assert.match(result.error.message, /mã PO hợp lệ/);
+    assert.equal(fetchImpl.calls.length, 0, "PO sai thì không gọi WMS");
+  }
+  result = await ask(load({ fetchImpl: sequence(reply(200, { count: 2, records: [poRow(), poRow({ group_uid_code: 1028261016000002, processing_source_code: "10012699999999" })] })) }), "GET_PO_GROUP_UID_PAGE", { purchaseOrder: PO });
+  assert.equal(result.ok, false);
+  assert.match(result.error.message, /không phải PO/, "WMS bỏ qua bộ lọc thì không trộn UID của PO khác");
+  fetchImpl = sequence(reply(403, {}));
+  result = await ask(load({ fetchImpl }), "GET_PO_GROUP_UID_PAGE", { purchaseOrder: PO });
+  assert.match(result.error.message, /Group UID/);
+  assert.equal(fetchImpl.calls.length, 1);
+  result = await ask(load({ token: "", fetchImpl: sequence(reply(200, {})) }), "GET_PO_GROUP_UID_PAGE", { purchaseOrder: PO });
+  assert.match(result.error.message, /đăng nhập lại/);
+  result = await ask(load({ fetchImpl: sequence(reply(204, null)) }), "GET_PO_GROUP_UID_PAGE", { purchaseOrder: PO });
+  assert.deepEqual([result.ok, result.data.rows.length, result.data.total, result.data.totalPages], [true, 0, 0, 1], "PO chưa có UID là 0 dòng, không phải lỗi");
+
+  const asnRow = (over = {}) => ({ asn_id: 60611, asn_number: "1002261015060611", asn_type: "PURCHASE_ORDER", status_name: "Received", inbound_shmt_number: "1001260618081586", purchase_order_number: PO, warehouse_name: "WH - MATERIAL - MTG", created_at_tz: "2026-10-15T18:51:03+07:00", ...over });
+  fetchImpl = sequence(reply(200, { count: 2, records: [asnRow(), asnRow({ asn_id: 35563, asn_number: "1002261015035563", status_name: "Open" })] }));
+  result = await ask(load({ fetchImpl }), "GET_PO_ASN_PAGE", { purchaseOrder: PO });
+  assert.equal(result.ok, true, JSON.stringify(result));
+  assert.deepEqual([result.data.rows.map(row => row.status), result.data.total, result.data.purchaseOrder], [["Received", "Open"], 2, PO]);
+  sentUrl = new URL(fetchImpl.calls[0].url);
+  assert.equal(sentUrl.pathname, "/api/v2/wms/asns");
+  assert.equal(sentUrl.searchParams.get("purchase_order_numbers"), PO, "tên tham số SỐ NHIỀU mới lọc được");
+  assert.equal(sentUrl.searchParams.get("from_date"), String(Date.UTC(2020, 0, 1)));
+  assert.ok(Number(sentUrl.searchParams.get("to_date")) > Date.now());
+  result = await ask(load({ fetchImpl: sequence(reply(200, { count: 1, records: [asnRow({ purchase_order_number: "10012699999999" })] })) }), "GET_PO_ASN_PAGE", { purchaseOrder: PO });
+  assert.equal(result.ok, false);
+  assert.match(result.error.message, /không phải PO/);
+  fetchImpl = sequence(reply(200, {}));
+  result = await ask(load({ fetchImpl }), "GET_PO_ASN_PAGE", { purchaseOrder: "abc" });
+  assert.equal(result.ok, false);
+  assert.equal(fetchImpl.calls.length, 0);
+  assert.match((await ask(load({ fetchImpl: sequence(reply(403, {})) }), "GET_PO_ASN_PAGE", { purchaseOrder: PO })).error.message, /ASN/);
+  result = await ask(load({ fetchImpl: sequence(reply(204, null)) }), "GET_PO_ASN_PAGE", { purchaseOrder: PO });
+  assert.deepEqual([result.ok, result.data.rows.length, result.data.total], [true, 0, 0], "PO chưa có ASN là 0 dòng, không phải lỗi");
+
+  console.log("wms_bridge_reads: thử lại 429/5xx/lỗi mạng, 204, 401/403 và hết phiên cho Group UID, lịch sử Cắt, lịch sử chuyển vị trí, nhập xuất kho và đọc Group UID/ASN theo PO passed");
 })().catch(error => { console.error(error); process.exit(1); });

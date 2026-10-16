@@ -2,7 +2,7 @@ const APP_URL_PATTERN = /^(?:http:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?\/|http
 const INSIDE_URL_PATTERN = /^https:\/\/inside\.mastige\.vn\//i;
 const WMS_URL_PATTERN = /^https:\/\/wms\.inshasaki\.com\//i;
 const HCM_URL_PATTERN = /^https:\/\/apps-mastige\.inshasaki\.com\/apps\/hasaki-construction-management(?:[/?#]|$)/i;
-const WMS_READ_TYPES = ["GET_GROUP_UID_PAGE", "GET_GROUP_UID_HISTORY_PAGE", "GET_GROUP_UID_MOVES_PAGE", "GET_GROUP_UID_NEW_PAGE", "GET_PACKING_LIST_PAGE", "GET_INTERNAL_TRANSFER", "GET_SKU_COUNT_WAREHOUSES", "GET_SKU_COUNT_APPROVED_PAGE", "GET_SKU_COUNT_INVENTORY_PAGE", "GET_STOCK_IMPORT_EXPORT_PAGE"];
+const WMS_READ_TYPES = ["GET_GROUP_UID_PAGE", "GET_GROUP_UID_HISTORY_PAGE", "GET_GROUP_UID_MOVES_PAGE", "GET_GROUP_UID_NEW_PAGE", "GET_PACKING_LIST_PAGE", "GET_PO_GROUP_UID_PAGE", "GET_PO_ASN_PAGE", "GET_INTERNAL_TRANSFER", "GET_SKU_COUNT_WAREHOUSES", "GET_SKU_COUNT_APPROVED_PAGE", "GET_SKU_COUNT_INVENTORY_PAGE", "GET_STOCK_IMPORT_EXPORT_PAGE"];
 
 function errorResponse(code, message) {
   return { ok: false, error: { code, message } };

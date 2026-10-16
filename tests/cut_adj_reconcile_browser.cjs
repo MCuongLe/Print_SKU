@@ -357,13 +357,13 @@ const STATE_ORDER = ['wrong', 'missing', 'multi', 'forgot', 'done', 'pending', '
       assert.equal(xlsx.includes(Buffer.from('orientation="landscape"')), true);
       assert.equal(xlsx.includes(Buffer.from('<col min="9" max="9" width="18" customWidth="1"/>')), true);
 
-      // Bo cuc: khong tran ngang, du 4 tab trong khung.
+      // Bo cuc: khong tran ngang, du 5 tab trong khung (tab Lấy mẫu theo PO thêm 16/10/2026).
       const layout = await page.evaluate(() => {
         const screen = document.getElementById('cut-group-uid-screen');
         return { docOk: document.documentElement.scrollWidth <= innerWidth, screenOk: screen.scrollWidth <= screen.clientWidth, tabs: [...screen.querySelectorAll('.cut-tab')].map(t => Math.round(t.getBoundingClientRect().right)), innerWidth };
       });
       assert.equal(layout.docOk && layout.screenOk, true);
-      assert.equal(layout.tabs.length, 4);
+      assert.equal(layout.tabs.length, 5);
       assert.equal(layout.tabs.every(right => right <= layout.innerWidth), true);
       assert.deepEqual(errors, []);
       console.log(`PASS ${width}px: file zip/xlsx, loi file, Admin truoc khi nap, 7 trang thai, Cut cu truoc lan quet, tick giup, loc, nap lai, doc WMS nhieu trang (co/khong tong, lap trang), da xu ly/bo xu ly, XLSX, no overflow/errors`);

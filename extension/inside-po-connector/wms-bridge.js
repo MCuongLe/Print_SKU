@@ -179,6 +179,59 @@
     };
   }
 
+  const ASN_API = "https://wms-gw.inshasaki.com/api/v2/wms/asns";
+  const poInput = payload => {
+    const order = String(payload?.purchaseOrder ?? "").trim();
+    if (!/^\d{6,40}$/.test(order)) throw new Error("Chưa có mã PO hợp lệ");
+    return order;
+  };
+
+  // Group UID của một PO (lấy mẫu cắt/QC): `processing_source_code` = số PO. Hai tham số from_updated_at/to_updated_at phải đủ cặp,
+  // lấy khoảng rộng từ 2020; không lọc kho vì PO có thể nhận ở nhiều kho. Core kiểm lại số PO từng dòng.
+  async function readPoGroupUidPage(payload) {
+    if (!core?.normalizePoGroupUidPage) throw new Error("Extension chưa tải bộ đọc Group UID theo PO; hãy Reload extension");
+    const { page, size } = pageInput(payload);
+    const order = poInput(payload);
+    const url = new URL(API);
+    url.searchParams.set("active_tab", "group-list");
+    url.searchParams.set("page", String(page));
+    url.searchParams.set("size", String(size));
+    url.searchParams.set("processing_source_code", order);
+    url.searchParams.set("from_updated_at", String(Date.UTC(2020, 0, 1)));
+    url.searchParams.set("to_updated_at", String(Date.now() + 86400000));
+    const normalized = core.normalizePoGroupUidPage(await getJson(url, "Phiên WMS không còn quyền đọc Group UID; hãy đăng nhập lại"), order);
+    return {
+      page, size, total: normalized.total,
+      totalPages: Math.max(1, Math.ceil(normalized.total / size)),
+      rows: normalized.rows,
+      sourceRows: normalized.sourceRows,
+      purchaseOrder: order,
+      generatedAt: new Date().toISOString(),
+    };
+  }
+
+  // Các ASN (đợt nhận hàng) của một PO: cho biết còn ASN chưa nhận (Open) hay không. `purchase_order_numbers` (số nhiều) mới lọc.
+  async function readPoAsnPage(payload) {
+    if (!core?.normalizePoAsnPage) throw new Error("Extension chưa tải bộ đọc ASN; hãy Reload extension");
+    const { page, size } = pageInput(payload);
+    const order = poInput(payload);
+    const url = new URL(ASN_API);
+    url.searchParams.set("page", String(page));
+    url.searchParams.set("size", String(size));
+    url.searchParams.set("from_date", String(Date.UTC(2020, 0, 1)));
+    url.searchParams.set("to_date", String(Date.now() + 86400000));
+    url.searchParams.set("purchase_order_numbers", order);
+    const normalized = core.normalizePoAsnPage(await getJson(url, "Phiên WMS không còn quyền đọc ASN; hãy đăng nhập lại"), order);
+    return {
+      page, size, total: normalized.total,
+      totalPages: Math.max(1, Math.ceil(normalized.total / size)),
+      rows: normalized.rows,
+      sourceRows: normalized.sourceRows,
+      purchaseOrder: order,
+      generatedAt: new Date().toISOString(),
+    };
+  }
+
   function pageInput(payload) {
     return { page: Math.max(1, Number(payload?.page) || 1), size: Math.min(500, Math.max(1, Number(payload?.size) || 500)) };
   }
@@ -294,13 +347,15 @@
   }
 
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    if (sender.id !== chrome.runtime.id || !["GET_GROUP_UID_PAGE", "GET_GROUP_UID_HISTORY_PAGE", "GET_GROUP_UID_MOVES_PAGE", "GET_GROUP_UID_NEW_PAGE", "GET_PACKING_LIST_PAGE", "GET_INTERNAL_TRANSFER", "GET_SKU_COUNT_WAREHOUSES", "GET_SKU_COUNT_APPROVED_PAGE", "GET_SKU_COUNT_INVENTORY_PAGE", "GET_STOCK_IMPORT_EXPORT_PAGE"].includes(message?.type)) return false;
+    if (sender.id !== chrome.runtime.id || !["GET_GROUP_UID_PAGE", "GET_GROUP_UID_HISTORY_PAGE", "GET_GROUP_UID_MOVES_PAGE", "GET_GROUP_UID_NEW_PAGE", "GET_PACKING_LIST_PAGE", "GET_PO_GROUP_UID_PAGE", "GET_PO_ASN_PAGE", "GET_INTERNAL_TRANSFER", "GET_SKU_COUNT_WAREHOUSES", "GET_SKU_COUNT_APPROVED_PAGE", "GET_SKU_COUNT_INVENTORY_PAGE", "GET_STOCK_IMPORT_EXPORT_PAGE"].includes(message?.type)) return false;
     const readers = {
       GET_GROUP_UID_PAGE: readPage,
       GET_GROUP_UID_HISTORY_PAGE: readHistoryPage,
       GET_GROUP_UID_MOVES_PAGE: readMovesPage,
       GET_GROUP_UID_NEW_PAGE: readNewUidPage,
       GET_PACKING_LIST_PAGE: readPackingListPage,
+      GET_PO_GROUP_UID_PAGE: readPoGroupUidPage,
+      GET_PO_ASN_PAGE: readPoAsnPage,
       GET_INTERNAL_TRANSFER: readInternalTransfer,
       GET_SKU_COUNT_WAREHOUSES: readCountWarehouses,
       GET_SKU_COUNT_APPROVED_PAGE: readApprovedCountPage,

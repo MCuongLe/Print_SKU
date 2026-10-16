@@ -41,7 +41,7 @@ Origin khác bị từ chối ở cả manifest, app bridge và background servi
 
 - Connector chỉ đọc; không có thao tác ghi vào Inside hoặc WMS.
 - App không nhận cookie, token hoặc HTML gốc.
-- Background chỉ chuyển các yêu cầu đọc `PING`, `PING_WMS`, `GET_PO`, `GET_SKU_SYNC_DATA`, `GET_GROUP_UID_PAGE`, `GET_GROUP_UID_HISTORY_PAGE`, `GET_GROUP_UID_MOVES_PAGE`, `GET_GROUP_UID_NEW_PAGE` và `GET_PACKING_LIST_PAGE`, `GET_INTERNAL_TRANSFER` (cùng các lệnh kiểm kê `GET_SKU_COUNT_*`).
+- Background chỉ chuyển các yêu cầu đọc `PING`, `PING_WMS`, `GET_PO`, `GET_SKU_SYNC_DATA`, `GET_GROUP_UID_PAGE`, `GET_GROUP_UID_HISTORY_PAGE`, `GET_GROUP_UID_MOVES_PAGE`, `GET_GROUP_UID_NEW_PAGE` và `GET_PACKING_LIST_PAGE`, `GET_INTERNAL_TRANSFER`, `GET_PO_GROUP_UID_PAGE`, `GET_PO_ASN_PAGE` (cùng các lệnh kiểm kê `GET_SKU_COUNT_*`).
 - Access token WMS chỉ đi giữa tab WMS và extension, không được gửi tới ứng dụng hoặc Supabase.
 - Extension không chứa Supabase secret/service-role key. Dữ liệu được gửi tới Edge Function bằng phiên Supabase Admin đang đăng nhập.
 - Không tự xóa SKU hoặc quan hệ Combo vắng mặt trong nguồn.
