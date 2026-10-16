@@ -169,7 +169,9 @@ const cells = async page => (await page.locator('#ss-change-body tr').evaluateAl
       assert.deepEqual(await cells(page), [['900000001', 'SKU thử', 'Thời Trang (Phụ Liệu)'], ['900000002', 'Chỉ Irisa / F6-8012 / 100% Polyester / Navy', 'Thời Trang (Phụ Liệu)']]);
       assert.equal(await page.locator('#ss-change-body .as-name b').count(), 2, 'phần đầu tên sản phẩm in đậm');
       // Thẻ chia 3 cụm có tiêu đề, mọi thẻ có icon
-      assert.deepEqual(await page.locator('.as-group > h3').evaluateAll(nodes => nodes.map(n => n.textContent.trim())), ['SKU', 'Combo', 'Cảnh báo']);
+      assert.deepEqual(await page.locator('.as-group > h3').evaluateAll(nodes => nodes.map(n => n.textContent.trim())), ['SKU · 3 thay đổi', 'Combo', 'Cảnh báo · 6'], 'tiêu đề cụm ghi tổng (review 16/10)');
+      assert.equal(await page.locator('#sku-sync-status').getAttribute('data-tone'), 'warn', 'dòng kết luận tông vàng khi có cảnh báo');
+      assert.equal((await page.locator('#ss-apply').innerText()).trim(), 'Cập nhật 3 thay đổi', 'nhãn nút ghi số thay đổi');
       assert.equal(await page.locator('.as-group .ss-metric > span svg').count(), 11, 'mỗi thẻ có icon');
       assert.equal((await page.locator('#ss-last-done').innerText()).trim() !== '—', true, 'dải lần đồng bộ gần nhất có dữ liệu');
       // Tìm không phân biệt dấu + xuất Excel
