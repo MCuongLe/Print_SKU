@@ -192,6 +192,18 @@ const closeDialogs = async page => { while (await page.locator("dialog.cs-dlg[op
 const openPlans = async page => { if (!(await page.locator("#cs-plans-dialog[open]").count())) { await closeDialogs(page); await page.locator("#cs-manage").click(); await page.waitForSelector("#cs-plans-dialog[open]"); } };
 const openList = async (page, role = "todo") => { await closeDialogs(page); await page.locator(`#cs-totals [data-list="${role}"]`).click(); await page.waitForSelector("#cs-list-dialog[open]"); };
 const popTitle = page => page.locator("#cs-pop-card h3").innerText();
+const TONE_RGB = { cut: "rgb(22, 132, 91)", qc: "rgb(36, 90, 168)", store: "rgb(95, 102, 107)", warn: "rgb(154, 100, 20)", error: "rgb(194, 65, 59)" };
+// Dải màu đặc theo loại: đục ngay khi hiện, chữ tiêu đề trắng trên dải, thân thẻ nền trắng.
+const assertPopTone = async (page, tone) => {
+  const got = await page.evaluate(() => {
+    const card = document.getElementById("cs-pop-card"), head = card.querySelector(".cs-pop__head"), h3 = head && head.querySelector("h3");
+    return { opacity: getComputedStyle(card).opacity, cardBg: getComputedStyle(card).backgroundColor, headBg: head ? getComputedStyle(head).backgroundColor : null, h3Color: h3 ? getComputedStyle(h3).color : null };
+  });
+  assert.equal(got.headBg, TONE_RGB[tone], `dải màu đúng tone ${tone}`);
+  assert.equal(got.h3Color, "rgb(255, 255, 255)", `tiêu đề chữ trắng trên dải ${tone}`);
+  assert.equal(got.opacity, "1", `thẻ đục ngay khi hiện (${tone})`);
+  assert.equal(got.cardBg, "rgb(255, 255, 255)", `nền thẻ trắng (${tone})`);
+};
 const scan = async (page, code, title) => {
   await page.locator("#cut-code").fill(code);
   await page.locator("#cut-code").press("Enter");
@@ -299,23 +311,29 @@ async function desktop(browser) {
   assert.match(await page.locator("#cs-pop-card").innerText(), /422000001/);
   assert.match(await page.locator("#cs-pop-card").innerText(), /31 kg/, "đơn vị g hiện kg");
   assert.equal(await page.locator("#cs-pop-card").getAttribute("data-tone"), "cut");
+  await assertPopTone(page, "cut");
   assert.equal(await chipsText(page), "Cắt 1/4 QC 0/2 Lưu trữ 0/10");
   await shot(page, "d-pop-cut");
   await scan(page, "1028261016000010", "CHUYỂN QC TEST");
   await shot(page, "d-pop-qc");
   assert.equal(await page.locator("#cs-pop-card").getAttribute("data-tone"), "qc");
+  await assertPopTone(page, "qc");
   await scan(page, "1028261016000005", "CHUYỂN KHO LƯU TRỮ");
   await shot(page, "d-pop-store");
   assert.equal(await page.locator("#cs-pop-card").getAttribute("data-tone"), "store");
+  await assertPopTone(page, "store");
   // Quét lại: báo đã quét, giờ quét không đổi.
   await scan(page, "1028261016000001", "ĐÃ QUÉT UID NÀY");
   assert.equal(await page.locator("#cs-pop-card").getAttribute("data-tone"), "warn");
+  await shot(page, "d-pop-warn");
+  await assertPopTone(page, "warn");
   assert.equal(await chipsText(page), "Cắt 1/4 QC 1/2 Lưu trữ 1/10");
   // UID lạ / thuộc PO khác / mã rỗng sau trim.
   await scan(page, "9999999999999999", "UID KHÔNG THUỘC PHIÊN NÀO");
   await shot(page, "d-pop-error");
   await axeCheck(page, "pop-up lỗi");
   assert.equal(await page.locator("#cs-pop-card").getAttribute("data-tone"), "error");
+  await assertPopTone(page, "error");
   assert.equal(await chipsText(page), "Cắt 1/4 QC 1/2 Lưu trữ 1/10", "mã lạ không đổi số liệu");
   // Quét bằng máy quét: mã kèm khoảng trắng đầu/cuối vẫn khớp.
   await scan(page, " 1028261016000002 ", "CẮT GROUP UID NÀY");

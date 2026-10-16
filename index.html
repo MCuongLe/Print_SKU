@@ -11907,25 +11907,28 @@ async function rpc(name,args,retry=true){
       #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-plan__acts{display:flex;flex-wrap:wrap;gap:8px}
       #cut-group-uid-screen .cs-pop{position:fixed;inset:0;z-index:90;display:grid;place-items:center;padding:16px;background:rgba(15,35,28,.5);-webkit-tap-highlight-color:transparent}
       #cut-group-uid-screen .cs-pop[hidden]{display:none}
-      #cut-group-uid-screen .cs-pop__card{position:relative;overflow:hidden;display:grid;justify-items:center;gap:8px;width:min(420px,100%);max-height:calc(100dvh - 32px);overflow-y:auto;padding:26px 20px 20px;border-radius:22px;background:var(--cs-bg);border:3px solid var(--cs-c);box-shadow:0 24px 60px rgba(13,40,30,.35);text-align:center;animation:cspop-in .16s ease-out}
+      #cut-group-uid-screen .cs-pop__card{position:relative;overflow:hidden;display:grid;justify-items:stretch;gap:0;width:min(420px,100%);max-height:calc(100dvh - 32px);overflow-y:auto;padding:0;border-radius:22px;background:#fff;border:3px solid var(--cs-c);box-shadow:0 24px 60px rgba(13,40,30,.35);text-align:center;animation:cspop-in .16s ease-out}
       #cut-group-uid-screen .cs-pop__card[data-tone="cut"]{--cs-c:#16845b;--cs-t:#0f6e49;--cs-bg:#e8f6ef}
       #cut-group-uid-screen .cs-pop__card[data-tone="qc"]{--cs-c:#245aa8;--cs-t:#1f4e78;--cs-bg:#e5eefb}
-      #cut-group-uid-screen .cs-pop__card[data-tone="store"]{--cs-c:#5d7068;--cs-t:#3e4f48;--cs-bg:#eef1f0}
-      #cut-group-uid-screen .cs-pop__card[data-tone="warn"]{--cs-c:#b7791f;--cs-t:#7a4f00;--cs-bg:#fdf3e3}
+      #cut-group-uid-screen .cs-pop__card[data-tone="store"]{--cs-c:#5f666b;--cs-t:#3e4f48;--cs-bg:#eef1f0}
+      #cut-group-uid-screen .cs-pop__card[data-tone="warn"]{--cs-c:#9a6414;--cs-t:#7a4f00;--cs-bg:#fdf3e3}
       #cut-group-uid-screen .cs-pop__card[data-tone="error"]{--cs-c:#c2413b;--cs-t:#a82f29;--cs-bg:#fdecea}
-      #cut-group-uid-screen .cs-pop__ico{display:grid;place-items:center;width:72px;height:72px;border-radius:50%;background:var(--cs-c);color:#fff}
-      #cut-group-uid-screen .cs-pop__ico svg{width:42px;height:42px}
-      #cut-group-uid-screen .cs-pop h3{margin:6px 0 0;font-size:22px;font-weight:700;line-height:1.25;letter-spacing:0;color:var(--cs-t)}
+      #cut-group-uid-screen .cs-pop__head{display:grid;justify-items:center;gap:10px;padding:20px 16px 18px;background:var(--cs-c);color:#fff}
+      #cut-group-uid-screen .cs-pop__body{display:grid;justify-items:center;gap:8px;padding:16px 20px 20px;background:#fff}
+      #cut-group-uid-screen .cs-pop__ico{display:grid;place-items:center;width:64px;height:64px;border-radius:50%;background:rgba(255,255,255,.18);color:#fff}
+      #cut-group-uid-screen .cs-pop__ico svg{width:32px;height:32px}
+      #cut-group-uid-screen .cs-pop h3{margin:0;font-size:22px;font-weight:700;line-height:1.25;letter-spacing:0;color:#fff}
       #cut-group-uid-screen .cs-pop__uid{font:700 22px/1.2 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.02em;word-break:break-all;color:var(--wms-text,#17251f)}
-      #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-facts{display:flex;flex-wrap:wrap;justify-content:center;gap:6px 14px;margin-top:2px}
-      #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-fact{display:inline-flex;flex-direction:column;align-items:center;min-width:64px;font-size:12px;color:var(--wms-muted,#60736b)}
-      #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-fact i{font-style:normal}#cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-fact b{font-size:16px;color:var(--wms-text,#17251f)}
+      #cut-group-uid-screen :is(#cs-scan, .cs-dlg, #cs-pop-card) .cs-facts{display:flex;flex-wrap:wrap;justify-content:center;gap:6px 14px;margin-top:2px}
+      #cut-group-uid-screen :is(#cs-scan, .cs-dlg, #cs-pop-card) .cs-fact{display:inline-flex;flex-direction:column;align-items:center;min-width:64px;font-size:12px;color:var(--wms-muted,#60736b)}
+      #cut-group-uid-screen :is(#cs-scan, .cs-dlg, #cs-pop-card) .cs-fact i{font-style:normal}#cut-group-uid-screen :is(#cs-scan, .cs-dlg, #cs-pop-card) .cs-fact b{font-size:16px;color:var(--wms-text,#17251f)}
       #cut-group-uid-screen .cs-pop__note{margin:2px 0 0;font-size:14px;color:var(--cs-t)}
       #cut-group-uid-screen .cs-pop__count{margin:2px 0 0;font-size:13px;color:var(--wms-muted,#60736b);font-variant-numeric:tabular-nums}
-      #cut-group-uid-screen .cs-pop__close{margin-top:10px;display:inline-grid;place-items:center;width:100%;min-height:48px;border:1px solid var(--cs-c);border-radius:14px;background:#fff;color:var(--cs-t);font:600 15px var(--wms-font);cursor:pointer}
+      #cut-group-uid-screen .cs-pop__close{margin-top:10px;display:inline-grid;place-items:center;width:100%;min-height:48px;border:1px solid var(--cs-c);border-radius:14px;background:#fff;color:var(--cs-t);font:600 16px var(--wms-font);cursor:pointer}
       #cut-group-uid-screen .cs-pop__bar{position:absolute;left:0;bottom:0;height:5px;width:100%;background:var(--cs-c);transform-origin:left;animation:cspop-bar var(--cs-auto,1.6s) linear forwards}
-      @keyframes cspop-in{from{transform:scale(.92);opacity:0}to{transform:scale(1);opacity:1}}
+      @keyframes cspop-in{from{transform:translateY(8px) scale(.92)}to{transform:none}}
       @keyframes cspop-bar{from{transform:scaleX(1)}to{transform:scaleX(0)}}
+      @media(max-width:480px){#cut-group-uid-screen #cs-pop-card .cs-facts{display:grid;grid-template-columns:repeat(2,1fr);justify-items:center;gap:8px 10px}}
       @media(prefers-reduced-motion:reduce){#cut-group-uid-screen .cs-pop__card,#cut-group-uid-screen .cs-pop__bar{animation:none}#cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-bar>i{transition:none}}
       @media(max-width:520px){#cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-meter{grid-template-columns:64px minmax(0,1fr) auto}}
       #cs-message:empty{display:none}
@@ -12168,7 +12171,7 @@ async function rpc(name,args,retry=true){
           const auto = AUTO[tone] || 0, icon = ICON[tone] || ICON.error;
           popCard.dataset.tone = tone;
           popCard.style.setProperty('--cs-auto', `${auto / 1000}s`);
-          popCard.innerHTML = `<span class="cs-pop__ico">${svg(icon, 42)}</span><h3 id="cs-pop-title">${esc(title)}</h3><div class="cs-pop__uid">${esc(uid)}</div><div class="cs-facts">${facts}</div>${note ? `<p class="cs-pop__note">${esc(note)}</p>` : ''}${count ? `<p class="cs-pop__count">${esc(count)}</p>` : ''}<button class="cs-pop__close" type="button" data-pop-close>Đóng</button>${auto ? '<i class="cs-pop__bar" aria-hidden="true"></i>' : ''}`;
+          popCard.innerHTML = `<div class="cs-pop__head"><span class="cs-pop__ico">${svg(icon, 32)}</span><h3 id="cs-pop-title">${esc(title)}</h3></div><div class="cs-pop__body"><div class="cs-pop__uid">${esc(uid)}</div><div class="cs-facts">${facts}</div>${note ? `<p class="cs-pop__note">${esc(note)}</p>` : ''}${count ? `<p class="cs-pop__count">${esc(count)}</p>` : ''}<button class="cs-pop__close" type="button" data-pop-close>Đóng</button></div>${auto ? '<i class="cs-pop__bar" aria-hidden="true"></i>' : ''}`;
           pop.hidden = false;
           if (auto) popTimer = setTimeout(hidePop, auto);
         };

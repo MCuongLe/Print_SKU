@@ -537,7 +537,7 @@ qua RPC `cut_sample_*`). App không ghi gì lên WMS; việc chuyển kho thật
   không mất. Đọc lại cùng PO = *Thay phiên*, giữ dấu quét của UID còn cùng nhóm; một UID chỉ thuộc một phiên. Admin xóa phiên và
   bỏ dấu quét từng UID (UID đã đẩy sang Cắt UID thì không bỏ được).
 - **Quét**: ai cũng quét được, bằng máy quét cầm tay (khóa bàn phím ảo, nút bàn phím để gõ tay) hoặc camera. Quét trúng thì tự đánh dấu đã quét
-  và hiện pop-up giữa màn hình: *Cắt Group UID này* (xanh lá), *Chuyển QC test* (xanh dương), *Chuyển kho lưu trữ* (xám) — tự đóng sau 1,6–2,4 giây;
+  và hiện pop-up giữa màn hình (dải màu đặc trên đầu thẻ theo loại, 16/10/2026): *Cắt Group UID này* (xanh lá), *Chuyển QC test* (xanh dương), *Chuyển kho lưu trữ* (xám) — tự đóng sau 1,6–2,4 giây;
   *Đã quét UID này* (vàng), *UID không thuộc phiên* / *thuộc phiên PO khác* (đỏ) ở lại tới khi chạm, bấm Esc hoặc quét mã khác. Mã quét liên tiếp
   xếp hàng tuần tự; âm báo bật/tắt bằng nút loa. Mỗi SKU có hai thanh tiến độ (cắt, QC) và dấu *Đủ mẫu* khi cả hai đủ. Các chip *Cắt / QC /
   Lưu trữ / n UID* mở hộp thoại **Danh sách Group UID** (lọc, tìm; Admin bỏ dấu quét từng UID).
