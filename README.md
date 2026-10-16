@@ -410,22 +410,45 @@ web đi qua RPC `fabric_issue_*`).
 
 Mở **CẮT GROUP UID** ở WH-MATERIAL hoặc `#cut-group-uid`. Người dùng quét một
 UID, hệ thống tra `group_uid_details` và `SKU_Name`, rồi lưu snapshot SKU, UID,
-Lot, Roll và tên sản phẩm vào danh sách tem chờ in. Màn này dùng lại đúng lệnh
-`group_uid:v1`, vì vậy agent 0.6.1 hiện tại không cần cập nhật.
+Lot, Roll và tên sản phẩm vào bảng `cut_group_uids` (trạng thái in `pending`). Màn có 4 tab:
+**1 · Quét Group UID**, **2 · Tra cứu UID đã cắt**, **3 · Tem chờ in**, **4 · Đối chiếu**. Lệnh in dùng lại đúng loại
+`group_uid` (mẫu v1) của IN TEM GROUP UID nên không cần agent riêng; agent 0.9.0 trở lên còn tự thu nhỏ hoặc tách
+hàng LOT/ROLL khi quá dài, và web cắt phần Roll lặp lại Lot (`197/9-004` → `004`) trước khi gửi.
 
 Ô quét `#cut-code` mặc định ẩn bàn phím ảo (`inputmode="none"`); nút bàn phím **chỉ còn icon nhỏ** cùng hàng bên phải ô quét
 (`#cut-keyboard`, `aria-label`/`title` "Hiện bàn phím" / "Ẩn bàn phím", nhớ theo từng máy ở khoá `cut-ban-phim`). Sau mỗi lần lưu tem, app chỉ
 focus lại ô quét khi ô chưa giữ focus (Chrome Android coi mỗi lần `focus()` thành công là yêu cầu hiện bàn phím, kể cả với ô đang focus) và
 khi đang ở chế độ ẩn thì gọi `navigator.virtualKeyboard.hide()` nếu trình duyệt có.
 
-Áp dụng backend một lần trước khi sử dụng:
+Áp dụng backend theo thứ tự, mỗi file một lần (database đang chạy đã áp dụng đến v9). Cờ `--allow-destructive` chỉ
+cần ở file có `drop function` (tạo lại hàm tra cứu với chữ ký mới; tham số mới đều có mặc định nên web cũ vẫn gọi được):
+
+| File (`supabase/cut_group_uid_…`) | Nội dung | Cờ |
+| --- | --- | --- |
+| `v1.sql` | Bảng `cut_group_uids`; RPC quét, danh sách, tra cứu, đánh dấu in | |
+| `v2_lock_delete.sql` | Khóa đường xóa `cut_group_uid_remove` khỏi web | |
+| `v3_search_lot_filter.sql` | Lọc theo Lot ở Tra cứu | `--allow-destructive` |
+| `v4_allow_reprint.sql` | Cho in lại UID đã `printed` | |
+| `v4_search_date_filter.sql` | Lọc theo ngày cắt | `--allow-destructive` |
+| `v5_adj_export.sql` | Tick **Đã xuất ADJ** + lọc ADJ | `--allow-destructive` |
+| `v6_wms_reconcile.sql` | Đối chiếu với lịch sử WMS | |
+| `v7_admin_delete.sql` | Admin xóa UID + bảng nhật ký | |
+| `v8_adj_resolved.sql` | **Đã xử lý** cho UID lệch | |
+| `v9_mark_result_missing_job.sql` | UID `queued` mà lệnh in đã bị dọn thì chuyển `failed` được | |
 
 ```powershell
 python scripts/apply_supabase_sql.py supabase/cut_group_uid_v1.sql
 ```
 
-Danh sách chờ in nằm trên Supabase nên vẫn còn khi tải lại trang hoặc đổi thiết
-bị. Phần tra cứu lọc theo SKU, Lot và **ngày cắt** (từ ngày → đến ngày, giờ Việt Nam; để
+**Trạng thái in** (`print_status`: `pending` chờ in, `queued` đã gửi agent, `printed`, `failed`) nằm trên Supabase nên
+không mất khi tải lại trang hoặc đổi thiết bị. Riêng **tab 3 · Tem chờ in chỉ là rổ tạm trong trình duyệt**: nó chứa
+các UID bạn chọn ở tab Tra cứu rồi bấm **Đưa vào hàng chờ in**; tải lại trang thì rổ trống (UID vẫn giữ trạng thái cũ,
+chọn lại ở Tra cứu). UID đang `queued` thì sau khi tải lại app vẫn tự theo dõi lệnh in cho tới khi xong. Mỗi lệnh tối
+đa 100 tem (mỗi UID một tem); chọn được cả UID `printed` để in lại, không chọn được UID `queued`; gửi lại sau lỗi mạng
+dùng đúng nonce cũ nên không in trùng. Lệnh in cũ bị dọn khỏi hàng đợi sau vài ngày: UID còn `queued` mà lệnh đã mất
+thì web đánh dấu `failed` để in lại được (migration v9); không bao giờ tự đánh dấu `printed` khi không còn lệnh để chứng minh.
+
+Phần tra cứu lọc theo SKU, Lot và **ngày cắt** (từ ngày → đến ngày, giờ Việt Nam; để
 trống là không lọc) và xuất `.xlsx` có thiết lập giấy A4 ngang, gồm SKU, UID, Lot, Roll và
 Tên SP. Bộ lọc ngày cần hàm tra cứu bản v4 (đã áp dụng 30/09/2026):
 
@@ -450,7 +473,7 @@ python scripts/apply_supabase_sql.py supabase/cut_group_uid_v5_adj_export.sql --
 trang web cũ vẫn gọi được). Web chỉ gửi `p_adj` khi có chọn lọc ADJ.
 
 **Đối chiếu ADJ với lịch sử WMS.** Tab **4 · Đối chiếu** so UID đã cắt với lịch sử Group UID của WMS trong
-phạm vi `warehouse_id=1177` (**WH - MATERIAL - MTG**). Extension 0.5.0 dùng phiên WMS Admin đang mở để đọc
+phạm vi `warehouse_id=1177` (**WH - MATERIAL - MTG**). Extension (đọc lịch sử từ bản 0.5.0; hiện 0.9.1) dùng phiên WMS Admin đang mở để đọc
 trực tiếp API theo trang 500 dòng; lần sau đọc chồng lại 30 phút và nhận diện lệnh ADJ bằng Note
 `Cut ... out of group ...` (WMS có thể hiển thị Action là `N/A`). Bấm **Đọc từ WMS** để nạp tự động. Nút
 **Nạp ZIP/XLSX** giữ vai trò đối chiếu toàn bộ/dự phòng; cả hai cách đều cần phiên Supabase Admin. Dữ liệu nạp chồng
