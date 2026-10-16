@@ -170,14 +170,16 @@
     let last = "";
     for (let first = 1; first <= 300; first += batchSize) {
       const pages = await Promise.all(Array.from({ length: batchSize }, (_, index) => fetchComboPage(first + index)));
+      // Kiểm định dạng + thứ tự trên cả lô đã tải (kể cả các trang sau điểm dừng) trước khi tin vào điểm dừng.
+      for (const page of pages) {
+        if (!skuCore.comboStampsOrdered(page.modified, last)) return fetchAllComboLinks();
+        if (page.modified.length) last = page.modified[page.modified.length - 1];
+      }
       let done = false;
       for (const page of pages) {
-        const stamps = page.modified.filter(Boolean);
-        if (!skuCore.comboStampsOrdered(stamps, last)) return fetchAllComboLinks();
-        if (stamps.length) last = stamps[stamps.length - 1];
         result.push(...page.rows);
         page.issues.forEach(addIssue);
-        if (page.sourceRowCount < 50 || stamps.some(stamp => stamp < cutoff)) { done = true; break; }
+        if (page.sourceRowCount < 50 || page.modified.some(stamp => stamp < cutoff)) { done = true; break; }
       }
       if (done) break;
     }

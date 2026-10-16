@@ -54,12 +54,12 @@
     return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}:${parts.second}`;
   }
   const COMBO_STAMP = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/;
-  // Gia tăng Combo: Inside phải liệt kê Modified giảm dần và đúng định dạng; sai một trong hai thì đọc toàn bộ để không bỏ sót.
+  // Gia tăng Combo: Inside phải liệt kê Modified giảm dần, đúng định dạng và không có ô trống; sai một trong ba thì đọc toàn bộ để không bỏ sót
+  // (ô trống mà bỏ qua thì dòng đó bị loại lặng lẽ vì "" < mốc — review Codex 16/10/2026).
   function comboStampsOrdered(stamps, previous = "") {
     let last = previous;
     for (const stamp of stamps) {
-      if (!stamp) continue;
-      if (!COMBO_STAMP.test(stamp)) return false;
+      if (!stamp || !COMBO_STAMP.test(stamp)) return false;
       if (last && stamp > last) return false;
       last = stamp;
     }

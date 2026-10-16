@@ -29,7 +29,8 @@ assert.equal(core.statusCode("In-Active"), "0");
 assert.match(core.cutoffKey("2026-10-07T01:02:03+07:00"), /^26-10-07 01:02:03$/);
 assert.equal(core.comboCutoffKey("2026-10-07T01:02:03+07:00"), "2026-10-07 01:02:03");
 // Gia tăng Combo chỉ được phép khi Modified giảm dần và đúng định dạng năm đủ; sai thì Extension đọc toàn bộ.
-assert.equal(core.comboStampsOrdered(["2026-10-09 08:00:00", "2026-10-09 08:00:00", "", "2026-10-08 07:00:00"]), true);
+assert.equal(core.comboStampsOrdered(["2026-10-09 08:00:00", "2026-10-09 08:00:00", "2026-10-08 07:00:00"]), true);
+assert.equal(core.comboStampsOrdered(["2026-10-09 08:00:00", "", "2026-10-08 07:00:00"]), false, "ô Modified trống → không tin, đọc toàn bộ (Codex #1)");
 assert.equal(core.comboStampsOrdered(["2026-10-08 07:00:00", "2026-10-09 08:00:00"]), false, "tăng dần → không tin");
 assert.equal(core.comboStampsOrdered(["2026-10-08 07:00:00"], "2026-10-07 00:00:00"), false, "trang sau mới hơn trang trước → không tin");
 assert.equal(core.comboStampsOrdered(["08/10/2026 07:00"]), false, "định dạng lạ → không tin");
@@ -51,7 +52,7 @@ assert.deepEqual(detail("Mô tả tự do"), { matched: false, relations: [], re
 assert.deepEqual(detail(""), { matched: false, relations: [], rejected: [] });
 
 const manifest = JSON.parse(fs.readFileSync("extension/inside-po-connector/manifest.json", "utf8"));
-assert.equal(manifest.version, "0.9.3");
+assert.equal(manifest.version, "0.9.4");
 assert.deepEqual(manifest.content_scripts[1].js, ["sku-sync-core.js", "inside-bridge.js"]);
 assert.deepEqual(manifest.content_scripts[2].js, ["group-uid-sync-core.js", "inventory-audit-core.js", "wms-bridge.js"]);
 assert.ok(manifest.host_permissions.includes("https://wms-gw.inshasaki.com/*"));
