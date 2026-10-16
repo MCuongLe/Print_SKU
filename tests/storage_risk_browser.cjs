@@ -220,6 +220,7 @@ const open = async (browser, { width = 1280, admin = false, data = null } = {}) 
       assert.notEqual(a0.modified, a0.created);
       assert.match(start.body.p_source_counts.held[0].modified, /^\d{4}-\d{2}-\d{2} /, "dòng giữ chỗ cũng giữ Modified date");
       assert.equal(backend.state.calls.filter(c => c.rpc === "sku_count_overview").at(-1).admin, false, "đọc lại bằng khoá công khai như mọi người");
+      await page.waitForFunction(() => !document.getElementById("sr-run").disabled, null, { timeout: 15000 }); // nút mở lại khi bước đọc UID tạm nối tiếp cũng xong
       assert.equal(await page.locator("#sr-run").isDisabled(), false, "nút dùng lại được sau khi xong");
       const texts = (await page.locator("#sr-body tr code").allInnerTexts()).sort();
       assert.deepEqual(texts, ["SKU-A0", "SKU-HELD"], "màn mới hiện đúng hàng chưa lên kệ vừa đồng bộ, gồm cả hàng giữ chỗ");
