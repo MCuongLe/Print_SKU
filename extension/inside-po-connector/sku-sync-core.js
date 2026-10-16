@@ -43,5 +43,28 @@
     return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}:${parts.second}`;
   }
 
-  globalThis.HasakiSkuSyncCore = Object.freeze({ clean, statusCode, parseComboDetail, parseComboDescription, parseComboDescriptions, cutoffKey });
+  // Trang Combo của Inside ghi Modified dạng "YYYY-MM-DD HH:MM:SS" (năm đủ 4 số), khác trang sản phẩm ("YY-MM-DD ...").
+  function comboCutoffKey(value) {
+    const date = new Date(value || Date.now() - 7 * 86400000);
+    const safe = Number.isFinite(date.getTime()) ? date : new Date(Date.now() - 7 * 86400000);
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Bangkok", year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23"
+    }).formatToParts(safe).reduce((all, part) => ({ ...all, [part.type]: part.value }), {});
+    return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}:${parts.second}`;
+  }
+  const COMBO_STAMP = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/;
+  // Gia tăng Combo: Inside phải liệt kê Modified giảm dần và đúng định dạng; sai một trong hai thì đọc toàn bộ để không bỏ sót.
+  function comboStampsOrdered(stamps, previous = "") {
+    let last = previous;
+    for (const stamp of stamps) {
+      if (!stamp) continue;
+      if (!COMBO_STAMP.test(stamp)) return false;
+      if (last && stamp > last) return false;
+      last = stamp;
+    }
+    return true;
+  }
+
+  globalThis.HasakiSkuSyncCore = Object.freeze({ clean, statusCode, parseComboDetail, parseComboDescription, parseComboDescriptions, cutoffKey, comboCutoffKey, comboStampsOrdered });
 })();

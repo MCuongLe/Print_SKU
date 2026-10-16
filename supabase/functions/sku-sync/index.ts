@@ -150,8 +150,8 @@ function sourceIssueRows(value: unknown): { total: number; items: Json[] } {
   });
   return { total: value.length, items };
 }
-function comboRows(value: unknown): Json[] {
-  if (!Array.isArray(value) || value.length < 1000 || value.length > 12000) throw new Error("Dữ liệu Combo thiếu hoặc vượt giới hạn an toàn 1.000–12.000 dòng");
+function comboRows(value: unknown, min = 1000): Json[] {
+  if (!Array.isArray(value) || value.length < min || value.length > 12000) throw new Error(`Dữ liệu Combo thiếu hoặc vượt giới hạn an toàn ${min.toLocaleString("vi-VN")}–12.000 dòng`);
   const seen = new Set<string>();
   return value.map((raw, index) => {
     const row = raw as Json;
@@ -182,7 +182,10 @@ async function preview(request: Request, user: { id: string; username: string },
   const full = body.mode === "full" || source.mode === "full";
   if (full && source.full !== true) return fail(request, 400, "INCOMPLETE_SOURCE", "Extension chưa đọc toàn bộ Inside (cần Extension 0.8.2 trở lên)");
   const skus = normalRows(source.normalRows, full ? MAX_ROWS_FULL : 5000);
-  const combos = comboRows(source.comboRows);
+  // Extension 0.9.3: lượt gia tăng chỉ gửi Combo có Modified mới hơn mốc (comboScope "changed"); toàn bộ vẫn phải gửi hết.
+  const comboScope = source.comboScope === "changed" ? "changed" : "full";
+  if (full && comboScope === "changed") return fail(request, 400, "INCOMPLETE_SOURCE", "Lượt toàn bộ phải đọc hết Combo");
+  const combos = comboRows(source.comboRows, comboScope === "changed" ? 0 : 1000);
   // Toàn bộ: so với cả bảng (kể cả SKU ngừng hoạt động) để thấy SKU không còn trên Inside; gia tăng chỉ đọc các SKU nguồn gửi lên.
   const remoteSkus = full
     ? await fetchAll("SKU_Name?select=sku,product_name,category_id,category_name,status&order=sku.asc")
@@ -225,13 +228,14 @@ async function preview(request: Request, user: { id: string; username: string },
   combos.forEach(row => componentCounts.set(String(row.combo_sku), (componentCounts.get(String(row.combo_sku)) ?? 0) + 1));
   // Quan hệ có trong database nhưng không còn trong nguồn (Combo đổi thành phần hoặc bị bỏ): không tự xóa, chỉ báo để Admin xử lý.
   const sourcePairs = new Set(combos.map(row => `${row.combo_sku}\u0000${row.normal_sku}`));
-  const orphanedAll = remoteLinks
+  // Chỉ biết "Combo thừa" khi đã đọc hết Combo; gia tăng không kết luận được nên để null.
+  const orphanedAll = comboScope === "full" ? remoteLinks
     .filter(row => !sourcePairs.has(`${row.combo_sku}\u0000${row.normal_sku}`))
     .map(row => ({
       comboSku: row.combo_sku, normalSku: row.normal_sku, quantity: row.quantity, comboName: row.combo_name,
       reason: componentCounts.has(String(row.combo_sku)) ? "component_removed" : "combo_missing",
     }))
-    .sort((left, right) => left.reason === right.reason ? 0 : left.reason === "component_removed" ? -1 : 1);
+    .sort((left, right) => left.reason === right.reason ? 0 : left.reason === "component_removed" ? -1 : 1) : [];
   const candidates: Json[] = [];
   // Bị loại: cả hai SKU thiếu hoặc ngoài category thường là ngoài phạm vi; chỉ thiếu MỘT đầu là dấu hiệu SKU chưa vào database nên liệt kê.
   const excludedCounts = { bothMissing: 0, oneMissing: 0, outOfCategory: 0 };
@@ -280,8 +284,8 @@ async function preview(request: Request, user: { id: string; username: string },
   if (stagedSkus.length > maxWrites || stagedLinks.length > maxWrites) return fail(request, 409, "SAFETY_LIMIT", `Số dòng thay đổi vượt ngưỡng ${maxWrites.toLocaleString("vi-VN")}; cần kiểm tra nguồn trước khi cập nhật`);
   const issues = sourceIssueRows(source.sourceIssues);
   const excluded = excludedCounts.bothMissing + excludedCounts.oneMissing + excludedCounts.outOfCategory;
-  const sourceCounts = { normalRows: skus.length, comboRows: combos.length, selectedComboLinks: candidates.length, excludedComboLinks: excluded, excludedBreakdown: excludedCounts, sourceIssues: issues.total };
-  const changeCounts = { skuAdded: skuAdded.length, skuUpdated: skuUpdated.length, skuUnchanged, skuSkippedInactive: skippedInactive.size, skuMissing: skuMissingAll.length, comboAdded: comboAdded.length, comboUpdated: comboUpdated.length, comboUnchanged, comboOrphaned: orphanedAll.length };
+  const sourceCounts = { normalRows: skus.length, comboRows: combos.length, comboScope, selectedComboLinks: candidates.length, excludedComboLinks: excluded, excludedBreakdown: excludedCounts, sourceIssues: issues.total };
+  const changeCounts = { skuAdded: skuAdded.length, skuUpdated: skuUpdated.length, skuUnchanged, skuSkippedInactive: skippedInactive.size, skuMissing: skuMissingAll.length, comboAdded: comboAdded.length, comboUpdated: comboUpdated.length, comboUnchanged, comboOrphaned: comboScope === "full" ? orphanedAll.length : null };
   // Danh sách chi tiết tối đa 1.000 dòng mỗi nhóm (lượt toàn bộ có thể hàng nghìn); số đếm vẫn đủ.
   const changes = {
     skus: { added: skuAdded.slice(0, DETAIL_LIMIT), updated: skuUpdated.slice(0, DETAIL_LIMIT), missing: skuMissingAll.slice(0, DETAIL_LIMIT) },

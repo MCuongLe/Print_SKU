@@ -37,6 +37,8 @@ Phiên bản 0.6.1 đọc đầy đủ Combo nhiều thành phần, Group UID hi
 
 Phiên bản 0.7.1 thêm lệnh chỉ đọc `GET_GROUP_UID_MOVES_PAGE` cho ô LỊCH SỬ GROUP UID: lịch sử `Transfer location` của mọi kho tài khoản được xem, 500 dòng/trang (WMS không lọc endpoint này theo `company-ids` nên chỉ cần một lượt đọc). Sau khi cập nhật extension phải Reload trong `chrome://extensions` và tải lại trang Print SKU.
 
+Phiên bản 0.9.3: lượt gia tăng của `GET_SKU_SYNC_DATA` đọc Combo theo Modified (dừng ở trang có dòng cũ hơn mốc lùi 24 giờ, trả `comboScope: "changed"` và `comboCutoff` dạng `YYYY-MM-DD HH:MM:SS`); nếu trang Combo không giảm dần theo Modified hoặc định dạng ngày khác thì đọc toàn bộ như cũ (`comboScope: "full"`). Lượt toàn bộ không đổi.
+
 Phiên bản 0.8.2 thêm cờ `full: true` cho `GET_SKU_SYNC_DATA` (nút **Đối chiếu toàn bộ** ở `#admin/sku-sync`): đọc hết trang sản phẩm của từng nhóm hàng (6 trang song song, dừng ở trang không đủ 200 dòng hoặc trang lặp), không lọc theo Modified; kết quả mang `mode: "full"`. Không có cờ thì vẫn đọc theo mốc như cũ.
 
 Phiên bản 0.8.4 thêm lệnh chỉ đọc `GET_PACKING_LIST_PAGE` cho Gán tự động ở IN TEM GROUP UID: Packing List PO của WMS (`inbound-packing-lists`), `purchaseOrders` (1–20 mã PO, lọc `purchase_order_numbers`), 500 dòng/trang. Mỗi dòng là một cuộn: `purchase_order`, `shipment`, `sku` (thường là Combo), `product_name`, `quantity` (kg), `code` (mã cuộn), `batch_code`, `status`, `delivery`. Trang tự đếm số cuộn theo SKU và đổi Combo sang Normal. Không có dữ liệu ghi. Sau khi cập nhật extension phải Reload trong `chrome://extensions` và tải lại trang Print SKU.

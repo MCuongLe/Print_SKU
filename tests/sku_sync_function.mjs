@@ -406,3 +406,22 @@ test("SKU ngừng hoạt động chưa có trong database: không nạp, chỉ �
     assert.equal(result.body.data.sourceCounts.excludedBreakdown.oneMissing, 1, mode + ": combo KEEP → OLDX bị loại vì OLDX không được nạp");
   }
 });
+
+test("combo gia tăng (comboScope changed): nhận ít hơn 1.000 dòng, không kết luận Combo thừa; toàn bộ vẫn bắt buộc đọc hết", async () => {
+  skus.push({ ...remoteSku("C1"), category_name: "Thời Trang (Phụ Liệu)" }, { ...remoteSku("N1"), category_name: "Thời Trang (Phụ Liệu)" });
+  links.push(remoteLink("GONE", "N5"));
+  const combos = [{ combo_sku: "C1", normal_sku: "N1", quantity: 2, combo_status: "Active", source_modified_at: "2026-10-15 10:00:00" }];
+  const result = await call({ action: "preview", snapshot: { ...snapshot(iso(-1 * MIN)), comboScope: "changed", comboCutoff: "2026-10-14 00:00:00", comboRows: combos } });
+  assert.equal(result.status, 200, JSON.stringify(result.body));
+  assert.equal(result.body.data.sourceCounts.comboScope, "changed");
+  assert.equal(result.body.data.sourceCounts.comboRows, 1);
+  assert.equal(result.body.data.changeCounts.comboAdded, 1);
+  assert.equal(result.body.data.changeCounts.comboOrphaned, null, "không đọc hết thì không biết Combo thừa");
+  assert.deepEqual(result.body.data.changes.combos.orphaned, []);
+  assert.equal(links.length, 1, "xem trước không xoá GONE → N5");
+  const blocked = await call({ action: "preview", mode: "full", snapshot: fullSnapshot([sourceSku("C1")], { comboScope: "changed", comboRows: combos }) });
+  assert.equal(blocked.status, 400);
+  assert.equal(blocked.body.error.code, "INCOMPLETE_SOURCE");
+  const old = await call({ action: "preview", snapshot: { ...snapshot(iso(-1 * MIN)), comboRows: combos } });
+  assert.equal(old.status, 500, "Extension cũ gửi ít Combo mà không có comboScope vẫn bị chặn như trước");
+});

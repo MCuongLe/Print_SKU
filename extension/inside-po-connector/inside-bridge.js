@@ -131,7 +131,8 @@
         source_modified_at: info.source_modified_at
       }));
     });
-    return { rows, issues, sourceRowCount: sourceRows.length };
+    const modified = sourceRows.map(row => text([...row.cells][indexes.modified]));
+    return { rows, issues, sourceRowCount: sourceRows.length, modified };
   }
 
   async function fetchComboPage(page) {
@@ -141,10 +142,12 @@
     return parseComboPage(await fetchDocument(url));
   }
 
+  const comboIssueKey = issue => [issue.type, issue.combo_sku, issue.normal_sku, issue.description, issue.reason].join("\u0000");
+
   async function fetchAllComboLinks() {
     const result = [];
     const issueByKey = new Map();
-    const addIssue = issue => issueByKey.set([issue.type, issue.combo_sku, issue.normal_sku, issue.description, issue.reason].join("\u0000"), issue);
+    const addIssue = issue => issueByKey.set(comboIssueKey(issue), issue);
     const batchSize = 8;
     for (let first = 1; first <= 300; first += batchSize) {
       const pages = await Promise.all(Array.from({ length: batchSize }, (_, index) => fetchComboPage(first + index)));
@@ -154,6 +157,34 @@
       }
       if (pages.some(page => page.sourceRowCount < 50)) break;
     }
+    return { ...finalizeCombos(result, issueByKey, addIssue), scope: "full" };
+  }
+
+  // Gia tăng (0.9.3): Inside liệt kê Combo theo Modified giảm dần → đọc tới trang có dòng cũ hơn mốc rồi dừng
+  // (thường 1–2 lô thay vì ~117 trang). Thứ tự hoặc định dạng Modified khác kỳ vọng thì quay về đọc toàn bộ.
+  async function fetchChangedComboLinks(cutoff) {
+    const result = [];
+    const issueByKey = new Map();
+    const addIssue = issue => issueByKey.set(comboIssueKey(issue), issue);
+    const batchSize = 8;
+    let last = "";
+    for (let first = 1; first <= 300; first += batchSize) {
+      const pages = await Promise.all(Array.from({ length: batchSize }, (_, index) => fetchComboPage(first + index)));
+      let done = false;
+      for (const page of pages) {
+        const stamps = page.modified.filter(Boolean);
+        if (!skuCore.comboStampsOrdered(stamps, last)) return fetchAllComboLinks();
+        if (stamps.length) last = stamps[stamps.length - 1];
+        result.push(...page.rows);
+        page.issues.forEach(addIssue);
+        if (page.sourceRowCount < 50 || stamps.some(stamp => stamp < cutoff)) { done = true; break; }
+      }
+      if (done) break;
+    }
+    return { ...finalizeCombos(result.filter(row => row.source_modified_at >= cutoff), issueByKey, addIssue), scope: "changed" };
+  }
+
+  function finalizeCombos(result, issueByKey, addIssue) {
     const unique = new Map();
     result.forEach(row => {
       if (!row.combo_sku || !row.normal_sku || row.combo_sku === row.normal_sku || !Number.isFinite(row.quantity) || row.quantity <= 0) {
@@ -177,19 +208,22 @@
     if (!skuCore) throw new Error("Extension chưa tải bộ đọc SKU; hãy Reload extension rồi thử lại");
     const full = payload?.full === true;
     const cutoff = full ? "" : skuCore.cutoffKey(payload?.cutoff);
+    const comboCutoff = full ? "" : skuCore.comboCutoffKey(payload?.cutoff);
     // Toàn bộ: từng nhóm hàng tuần tự (mỗi nhóm 6 trang song song) để không dồn hơn 40 yêu cầu lên Inside cùng lúc.
     const groups = [];
     if (full) for (const category of SKU_CATEGORIES) groups.push(await fetchAllProducts(category));
     else groups.push(...await Promise.all(SKU_CATEGORIES.map(category => fetchChangedProducts(category, cutoff))));
     const normalBySku = new Map();
     groups.flat().forEach(row => normalBySku.set(row.sku, row));
-    const comboData = await fetchAllComboLinks();
+    const comboData = full ? await fetchAllComboLinks() : await fetchChangedComboLinks(comboCutoff);
     const comboRows = comboData.rows;
     return {
       generatedAt: new Date().toISOString(),
       mode: full ? "full" : "incremental",
       full,
       cutoff,
+      comboScope: comboData.scope,
+      comboCutoff,
       categories: SKU_CATEGORIES,
       normalRows: [...normalBySku.values()],
       comboRows,
