@@ -1635,6 +1635,7 @@ Error generating stack: `+y.message+`
     <section class="cut-screen" id="storage-risk-screen" aria-labelledby="storage-risk-title" hidden>
       <header class="uid-topbar"><div class="uid-topbar__inner"><button class="uid-back" id="storage-risk-back" type="button" aria-label="Quay lại trang chủ WH-MATERIAL">WH-MATERIAL</button><span class="uid-topbar__mark" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3M12 9v4M12 17h.01"/></svg></span><div class="uid-topbar__name"><h1 id="storage-risk-title">RỦI RO LƯU TRỮ</h1><span>Hàng chưa lên kệ</span></div><button class="uid-topbar__admin" id="sr-admin" type="button" aria-pressed="false" aria-label="Đăng nhập Admin" title="Đăng nhập Admin"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path class="uid-topbar__admin-check" d="m9 12 2 2 4-4"/></svg></button></div></header>
       <div class="ss-content ia-content">
+        <div class="cut-tabs" id="srt-tabs" role="tablist" aria-label="Nội dung rủi ro lưu trữ"><button class="cut-tab" id="srt-tab-main" type="button" role="tab" data-srt-view="main" aria-selected="true"><span data-ico="box">Hàng chưa lên kệ</span></button><button class="cut-tab" id="srt-tab-temp" type="button" role="tab" data-srt-view="temp" aria-selected="false" aria-controls="srt-panel" tabindex="-1"><span data-ico="layers">UID tạm</span></button></div>
         <section class="ss-hero"><div><h2>Hàng chưa lên kệ</h2></div><div class="as-hero-actions" id="sr-admin-tools" hidden><button class="ss-primary" id="sr-run" type="button"><svg id="sr-run-ico" class="pj-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg><span>Đọc và đồng bộ WMS</span></button></div></section>
         <div class="as-strip" id="sr-strip"><div><span data-ico="clock">Cập nhật lúc</span><strong id="sr-read-at">—</strong><em id="sr-read-rel"></em></div><div><span data-ico="database">Kho đã đọc</span><strong id="sr-wh-main">—</strong><em id="sr-wh-sub"></em></div><div><span data-ico="check">Đã đối soát</span><strong id="sr-cover-main">—</strong><em id="sr-cover-sub"></em></div><div><span data-ico="calendar">Mốc ngày</span><strong>7 / 30 ngày</strong><em>Theo Modified date</em></div></div>
         <p class="ss-status" id="sr-status" aria-live="polite">Đang tải dữ liệu…</p><div class="as-warns" id="sr-warn" role="status" hidden></div>
@@ -1647,6 +1648,18 @@ Error generating stack: `+y.message+`
           <div class="ss-table-wrap"><table class="ss-table sr-table"><thead><tr id="sr-head"><th>SKU</th><th>Kho</th><th>Sản phẩm</th><th class="n">Số lượng</th><th>Vị trí</th><th>Modified date</th><th>Mức</th></tr></thead><tbody id="sr-body"><tr><td colspan="7" class="ss-empty">Chưa có dữ liệu.</td></tr></tbody></table></div>
           <div class="as-pager" id="sr-pager" hidden></div>
         </section>
+        <div id="srt-panel" role="tabpanel" aria-labelledby="srt-tab-temp">
+          <section class="ss-hero"><div><h2>UID tạm</h2></div><div class="as-hero-actions" id="srt-admin-tools" hidden><button class="ss-primary" id="srt-run" type="button"><svg id="srt-run-ico" class="pj-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg><span>Đọc từ WMS</span></button></div></section>
+          <div class="as-strip" id="srt-strip"><div><span data-ico="clock">Đọc lúc</span><strong id="srt-read-at">—</strong><em id="srt-read-rel"></em></div><div><span data-ico="database">Kho đã đọc</span><strong id="srt-wh-main">—</strong><em id="srt-wh-sub"></em></div><div><span data-ico="calendar">Khoảng đọc</span><strong>90 ngày</strong><em>Tính từ lúc đọc</em></div><div><span data-ico="layers">Số dòng đã quét</span><strong id="srt-scan-main">—</strong><em id="srt-scan-sub"></em></div></div>
+          <p class="ss-status" id="srt-status" aria-live="polite">Chỉ Admin đọc được.</p><div class="as-warns" id="srt-warn" role="status" hidden></div>
+          <section class="ss-metrics ia-metrics" aria-label="Tổng quan UID tạm"><button class="ss-metric" type="button" data-srt-level="all" aria-pressed="true"><span data-ico="layers">Tổng UID tạm</span><strong id="srt-total">—</strong><small>90 ngày gần nhất</small></button><button class="ss-metric" type="button" data-srt-level="mtg" aria-pressed="false"><span data-ico="database">MTG</span><strong id="srt-mtg">—</strong><small>WH - MATERIAL - MTG</small></button><button class="ss-metric" type="button" data-srt-level="garment" aria-pressed="false"><span data-ico="database">GARMENT</span><strong id="srt-garment">—</strong><small>WH - MATERIAL - GARMENT</small></button><button class="ss-metric" type="button" data-tone="never" data-srt-level="recent" aria-pressed="false"><span data-ico="alert">Trong 3 ngày</span><strong id="srt-recent">—</strong><small>Mới tạo</small></button></section>
+          <section class="ss-panel">
+            <div class="ss-panel-head"><div><h2 id="srt-list-title">Tất cả</h2><p id="srt-note"></p></div><div class="as-tools" id="srt-tools" hidden></div></div>
+            <div class="as-tags" id="srt-tags" hidden></div>
+            <div class="ss-table-wrap"><table class="ss-table srt-table"><thead><tr id="srt-head"></tr></thead><tbody id="srt-body"><tr><td colspan="9" class="ss-empty">Chưa có dữ liệu.</td></tr></tbody></table></div>
+            <div class="as-pager" id="srt-pager" hidden></div>
+          </section>
+        </div>
       </div>
     </section>
     <section class="uid-screen" id="uid-screen" aria-labelledby="uid-title" hidden>
@@ -10397,6 +10410,40 @@ async function rpc(name,args,retry=true){
         .sr-table td.n{text-align:left}.sr-table td:nth-child(6):has(.as-empty){display:none!important}
       }
     </style>
+    <style id="storage-risk-temp-style">
+      /* RỦI RO LƯU TRỮ · tab UID tạm (16/10/2026) — ẩn/hiện bằng data-view trên #storage-risk-screen, không bọc lại phần "Hàng chưa lên kệ".
+         Dữ liệu chỉ nằm trong bộ nhớ trang; Admin đọc từ WMS, không lưu Supabase. */
+      #storage-risk-screen:not([data-view="temp"]) #srt-panel{display:none}
+      #storage-risk-screen[data-view="temp"] .ss-content>:not(#srt-tabs):not(#srt-panel){display:none}
+      #srt-tabs{width:100%;max-width:440px;margin:0 0 14px;gap:2px;padding:3px;border:1px solid var(--pro-line,#e1e9e5);border-radius:12px;background:var(--pro-soft,#e9efec)}
+      #srt-tabs .cut-tab{gap:6px;min-width:0;min-height:44px;padding:0 10px;border:0;border-radius:9px;background:transparent;box-shadow:none;color:var(--pro-muted,#5c6f68);font-size:13px;font-weight:600;white-space:nowrap}
+      #srt-tabs .cut-tab[aria-selected="true"]{background:#fff;color:var(--pro-brand,#006747);box-shadow:0 1px 3px rgba(23,37,31,.14)}
+      #srt-tabs .cut-tab span{display:inline-flex;align-items:center;gap:6px}
+      #srt-tabs .cut-tab:focus-visible{outline:2px solid #1aa774;outline-offset:1px}
+      #srt-panel .as-hero-actions[hidden]{display:none}
+      #srt-admin-tools{display:flex;flex-wrap:wrap;align-items:center;gap:12px}#srt-run{display:inline-flex;align-items:center;gap:8px}
+      .srt-table td:nth-child(3){white-space:nowrap}.srt-table code{white-space:nowrap}.srt-table th.n,.srt-table td.n{text-align:right}.srt-table th.n .as-th{flex-direction:row-reverse}.srt-table td.n{font-variant-numeric:tabular-nums}
+      .srt-k{display:none}.srt-table :is(th,td){padding-left:6px;padding-right:6px}.srt-table th:first-child,.srt-table td:first-child{padding-left:12px}.srt-table th:last-child,.srt-table td:last-child{padding-right:12px}.srt-table :is(th,td):nth-child(4){width:150px;max-width:150px}
+      @media(min-width:761px){#storage-risk-screen[data-view="temp"] .ia-content{width:min(1200px,calc(100% - 24px))}#srt-panel .ss-panel{padding:16px}}
+      @media(max-width:760px){
+        #srt-tabs{max-width:none}
+        #srt-panel .ss-hero>div:first-child{display:none}
+        #srt-panel .ss-hero:has(#srt-admin-tools[hidden]){display:none}
+        #srt-admin-tools{flex-direction:column-reverse;align-items:stretch;gap:8px}#srt-admin-tools .ss-primary{width:100%}
+        #storage-risk-screen #srt-strip{grid-template-columns:repeat(2,minmax(0,1fr))}
+        .srt-table thead{display:none}.srt-table,.srt-table tbody{display:block}
+        .srt-table tr{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 10px;padding:12px 14px;border-top:1px solid #edf2f0}
+        .srt-table td{display:block!important;padding:0!important;border:0;white-space:normal}
+        .srt-table td[colspan]{grid-column:1/-1!important;grid-row:auto!important}
+        .srt-table td:nth-child(3){grid-column:1;grid-row:1}.srt-table td:nth-child(9){grid-column:2;grid-row:1;justify-self:end}
+        .srt-table td:nth-child(4){grid-column:1/-1;grid-row:2}
+        .srt-table td:nth-child(5){grid-column:1;grid-row:3}.srt-table td:nth-child(1){grid-column:2;grid-row:3;justify-self:end}
+        .srt-table td:nth-child(2){grid-column:1/-1;grid-row:4}.srt-table td:nth-child(6){grid-column:1;grid-row:5}
+        .srt-table td:nth-child(7){grid-column:2;grid-row:5}.srt-table td:nth-child(8){grid-column:1/-1;grid-row:6}.srt-table td:nth-child(2) :is(.srt-k,.ia-date,.as-run-meta){display:inline;margin-right:6px}
+        .srt-table td:nth-child(4){width:auto;max-width:none}.srt-table td.n{text-align:left}.srt-table td:has(.as-empty){display:none!important}
+        .srt-k{display:block;color:#60736b;font-size:12px;font-weight:600}
+      }
+    </style>
     <script id="storage-risk-script">
       (()=>{
         const $=id=>document.getElementById(id),screen=$("storage-risk-screen");
@@ -10558,6 +10605,148 @@ async function rpc(name,args,retry=true){
         document.addEventListener("visibilitychange",()=>{if(!document.hidden&&active()&&!state.busy&&Date.now()-state.loadedAt>120000)load({quiet:true})});
         window.HasakiStorageRisk=Object.freeze({classifyLocation,levelOf,build,load,refresh:run});
         metrics();renderList(false);syncAdmin();route();
+      })();
+    </script>
+    <script id="storage-risk-temp-script">
+      (()=>{
+        // RỦI RO LƯU TRỮ · tab UID tạm (16/10/2026): Admin đọc báo cáo Import/Export 90 ngày của WH-Material-MTG và WH-Material-Garment qua Extension,
+        // giữ các dòng nhập "Tạo UID Temp" (Create Temporary UID) do phiếu điều chỉnh. Không ghi Supabase, không gọi bộ đồng bộ Kiểm kê.
+        const $=id=>document.getElementById(id),screen=$("storage-risk-screen");
+        if(!screen||!window.AdminSyncUI||!$("srt-panel"))return;
+        const UI=window.AdminSyncUI,{esc,num,dt,rel,ico,chip}=UI;
+        const ROUTE="storage-risk",DAY=86400000,RANGE_DAYS=90,NEW_DAYS=3,WARN_DAYS=14,VIEW_KEY="sr-tab-dang-mo";
+        const WANT=[{key:"mtg",name:"WH - MATERIAL - MTG",test:/MATERIAL\s*-\s*MTG/i},{key:"garment",name:"WH - MATERIAL - GARMENT",test:/MATERIAL\s*-\s*GARMENT/i}];
+        const FILTERS={all:"Tất cả",mtg:"MTG",garment:"GARMENT",recent:"Trong 3 ngày"};
+        const COLS=[{label:"Kho",sort:"srt_wh"},{label:"Ngày tạo",sort:"srt_at",first:"desc"},{label:"SKU",sort:"srt_sku"},{label:"Sản phẩm"},{label:"Số lượng",sort:"srt_qty",first:"desc",cls:"n"},{label:"Mã ADJ"},{label:"Phiếu gốc"},{label:"Người tạo"},{label:"Tuổi",sort:"srt_age"}];
+        const CSVH=["Kho","Ngày tạo","SKU","Sản phẩm","Số lượng","Mã ADJ","Phiếu gốc","Người tạo","Tuổi (ngày)"];
+        const state={rows:[],warehouses:[],warn:[],scanned:0,pages:0,readAt:0,filter:"all",busy:false,admin:false,loaded:false};
+        const list=UI.createList({tools:$("srt-tools"),tagsBox:$("srt-tags"),head:$("srt-head"),body:$("srt-body"),pager:$("srt-pager"),note:$("srt-note")});
+        const shortWh=n=>String(n||"").replace(/^WH\s*-\s*MATERIAL\s*-\s*/i,"")||String(n||"—");
+        const isTempUid=r=>r.kind==="in"&&/^adjustment$/i.test(String(r.sourceType||"").trim())&&/uid\s*temp|temporary\s*uid/i.test(r.reason||"");
+        const timeOf=v=>{const raw=String(v||"").trim();if(!raw)return NaN;return Date.parse(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}/.test(raw)&&!/[zZ]|[+-]\d{2}:?\d{2}$/.test(raw)?`${raw.replace(" ","T")}+07:00`:raw)};
+        function say(text,tone=""){const el=$("srt-status");el.textContent=text;el.dataset.tone=tone;el.setAttribute("aria-live",tone==="error"?"assertive":"polite")}
+        function setBusy(on){state.busy=on;$("srt-run").disabled=on;$("srt-run").querySelector("span").textContent=on?"Đang đọc…":"Đọc từ WMS";$("srt-run-ico").classList.toggle("ia-spin",on)}
+        // ---- Extension: đọc WMS qua tab WMS (cùng mẫu với KIỂM SOÁT CÔNG TRÌNH) ----
+        function ext(type,payload={},timeout=180000){
+          return window.PrintSkuBridgeReady(type).then(()=>new Promise((resolve,reject)=>{
+            const requestId=`storage-risk-temp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+            const timer=setTimeout(()=>{removeEventListener("message",listener);reject(new Error("Extension phản hồi quá lâu; kiểm tra tab WMS rồi thử lại"))},timeout);
+            const listener=event=>{
+              const r=event.data;if(event.source!==window||event.origin!==location.origin||r?.source!=="HASAKI_INSIDE_CONNECTOR"||r.requestId!==requestId)return;
+              clearTimeout(timer);removeEventListener("message",listener);
+              if(r.ok)resolve(r.data);else reject(new Error(r.error?.code==="INVALID_REQUEST"?"Extension chưa hỗ trợ lệnh đọc nhập xuất; hãy Reload extension":(r.error?.message||"Extension không trả dữ liệu")));
+            };
+            addEventListener("message",listener);postMessage({source:"PRINT_SKU_APP",requestId,type,payload},location.origin);
+          }));
+        }
+        async function readPages(type,payload,label){
+          const first=await ext(type,{...payload,page:1,size:500}),pages=Math.max(1,Number(first.totalPages)||1);
+          if(pages>2000)throw new Error(`${label} có ${num(pages)} trang; dừng để tránh tải thiếu dữ liệu`);
+          const rows=[...(first.rows||[])];let done=1;say(`${label}: trang 1/${num(pages)}…`);
+          for(let start=2;start<=pages;start+=4){
+            const nos=Array.from({length:Math.min(4,pages-start+1)},(_,i)=>start+i),batch=await Promise.all(nos.map(page=>ext(type,{...payload,page,size:500})));
+            for(const item of batch){if(Number(item.totalPages)!==pages)throw new Error(`${label} thay đổi trong lúc đọc; hãy chạy lại để tránh thiếu dữ liệu`);rows.push(...(item.rows||[]));done++;say(`${label}: trang ${num(done)}/${num(pages)}…`)}
+          }
+          return{rows,pages,total:Number(first.total)||rows.length};
+        }
+        // ---- Hiển thị ----
+        const daysOf=(r,now)=>Number.isFinite(r.at)?Math.floor(Math.max(0,now-r.at)/DAY):null;
+        const countOf=f=>state.rows.filter(r=>passes(r,f)).length;
+        const passes=(r,f)=>f==="all"||f===r.wh||(f==="recent"&&r.days!==null&&r.days<=NEW_DAYS);
+        function ageChip(days){
+          if(days===null)return'<span class="as-empty">—</span>';
+          return days<=NEW_DAYS?chip(`Mới · ${num(days)} ngày`,"bad","alert"):days<=WARN_DAYS?chip(`${num(days)} ngày`,"warn","clock"):chip(`${num(days)} ngày`);
+        }
+        const copyCode=v=>v?`<code data-copy="${esc(v)}" title="Bấm để sao chép">${esc(v)}</code>`:'<span class="as-empty">—</span>';
+        function rowFor(r){
+          const parts=String(r.productName||"").split("/").map(p=>p.trim()),head=parts.shift()||"Chưa có tên";
+          return{cells:[`<span class="as-chip" title="${esc(r.warehouseName)}">${esc(shortWh(r.warehouseName))}</span>`,
+            Number.isFinite(r.at)?`<span class="srt-k">Ngày tạo</span><b class="ia-date">${esc(dt(r.at).split(" ")[0])}</b><span class="as-run-meta">${esc(dt(r.at).split(" ")[1]||"")}</span>`:'<span class="as-empty">—</span>',
+            copyCode(r.sku),
+            `<div class="as-name ia-pname" title="${esc(r.productName||"")}"><b>${esc(head)}</b>${parts.length?`<span> / ${esc(parts.join(" / "))}</span>`:""}</div>`,
+            `<b>${num(r.qty)}</b>`,
+            `<span class="srt-k">Mã ADJ</span>${copyCode(r.sourceCode)}`,`<span class="srt-k">Phiếu gốc</span>${copyCode(r.mappingId)}`,
+            `<span class="srt-k">Người tạo</span>${r.createdBy?esc(r.createdBy):'<span class="as-empty">—</span>'}`,
+            ageChip(r.days)],
+            text:[r.sku,r.productName,r.warehouseName,r.sourceCode,r.mappingId,r.createdBy].join(" "),facets:{wh:r.warehouseName},
+            sort:{srt_wh:r.warehouseName,srt_at:Number.isFinite(r.at)?r.at:undefined,srt_sku:r.sku,srt_qty:r.qty,srt_age:r.days??undefined},
+            csv:[r.warehouseName,Number.isFinite(r.at)?dt(r.at):"",r.sku,r.productName,r.qty,r.sourceCode,r.mappingId,r.createdBy,r.days??""]};
+        }
+        function renderList(keep=true){
+          $("srt-list-title").textContent=FILTERS[state.filter];
+          list.show({columns:COLS,rows:state.rows.filter(r=>passes(r,state.filter)).map(rowFor),facets:[{id:"wh",label:"Kho",icon:"database"}],filename:"uid-tam",csvHead:CSVH,sheet:"UID tạm",empty:state.loaded?"Không có UID tạm trong 90 ngày.":"Chưa có dữ liệu."},{keep});
+        }
+        function metrics(){
+          const has=state.loaded,show=n=>has?num(n):"—";
+          $("srt-total").textContent=show(countOf("all"));$("srt-mtg").textContent=show(countOf("mtg"));$("srt-garment").textContent=show(countOf("garment"));$("srt-recent").textContent=show(countOf("recent"));
+          screen.querySelectorAll("button.ss-metric[data-srt-level]").forEach(b=>{const k=b.dataset.srtLevel;b.dataset.zero=String(k!=="all"&&(!has||!countOf(k)));b.setAttribute("aria-pressed",String(k===state.filter))});
+          $("srt-read-at").textContent=state.readAt?dt(state.readAt):"—";$("srt-read-rel").textContent=state.readAt?rel(state.readAt):"";
+          $("srt-wh-main").textContent=state.warehouses.map(w=>shortWh(w.warehouseName)).join(" + ")||"—";$("srt-wh-sub").textContent=state.warehouses.map(w=>w.companyName).filter(Boolean).join(" · ");
+          $("srt-scan-main").textContent=has?`${num(state.scanned)} dòng`:"—";$("srt-scan-sub").textContent=has?`${num(state.pages)} trang`:"";
+          const warn=$("srt-warn");warn.hidden=!(has&&state.warn.length);warn.innerHTML=has?state.warn.map(t=>`<span class="as-warn">${ico("alert")}${esc(t)}</span>`).join(""):"";
+        }
+        function render(keep=true){metrics();renderList(keep)}
+        function setFilter(f){if(!FILTERS[f])return;state.filter=f;metrics();renderList(true)}
+        function reset(){Object.assign(state,{rows:[],warehouses:[],warn:[],scanned:0,pages:0,readAt:0,filter:"all",loaded:false});render(false)}
+        // ---- Đọc từ WMS ----
+        async function run(){
+          if(state.busy||!state.admin)return;setBusy(true);
+          try{
+            say("Đang xác định kho WMS…");
+            const meta=await ext("GET_SKU_COUNT_WAREHOUSES",{warehouseNames:WANT.map(w=>w.name)});
+            const found=WANT.map(w=>({w,wh:(meta.warehouses||[]).find(x=>w.test.test(x.warehouseName||""))}));
+            const missing=found.filter(f=>!f.wh).map(f=>f.w.name);
+            if(missing.length===found.length)throw new Error(`Tài khoản WMS không thấy kho: ${missing.join(", ")}`);
+            const to=Date.now(),from=to-RANGE_DAYS*DAY,rows=[],seen=new Set(),warehouses=[];let scanned=0,pages=0;
+            for(const {w,wh} of found){
+              if(!wh)continue;
+              const moves=await readPages("GET_STOCK_IMPORT_EXPORT_PAGE",{warehouseIds:[wh.warehouseId],companyId:wh.companyId,from,to},`${shortWh(wh.warehouseName)} nhập xuất`);
+              scanned+=moves.rows.length;pages+=moves.pages;warehouses.push(wh);
+              for(const m of moves.rows){
+                if(!isTempUid(m))continue;
+                const key=m.id?`${wh.warehouseId}|${m.id}`:"";if(key&&seen.has(key))continue;if(key)seen.add(key);
+                rows.push({wh:w.key,warehouseName:wh.warehouseName,sku:String(m.sku||""),productName:m.productName||"",qty:Number(m.qty)||0,sourceCode:m.sourceCode||"",mappingId:m.mappingId||"",createdBy:m.createdBy||"",at:timeOf(m.createdAt)});
+              }
+            }
+            if(!state.admin)return;
+            const now=Date.now();
+            rows.forEach(r=>{r.days=daysOf(r,now)});
+            rows.sort((a,b)=>(Number.isFinite(b.at)?b.at:-Infinity)-(Number.isFinite(a.at)?a.at:-Infinity)||a.sku.localeCompare(b.sku));
+            Object.assign(state,{rows,warehouses,warn:missing.map(n=>`Chưa đọc được kho: ${n}`),scanned,pages,readAt:now,filter:"all",loaded:true});
+            render(false);
+            say(rows.length?`Đã đọc ${num(rows.length)} UID tạm trong ${RANGE_DAYS} ngày.`:`Không có UID tạm trong ${RANGE_DAYS} ngày (đã quét ${num(scanned)} dòng).`);
+          }catch(error){say(error.message||"Không đọc được dữ liệu.","error")}finally{setBusy(false)}
+        }
+        // ---- Admin: dùng chung phiên của màn (không có nút đăng nhập riêng) ----
+        function syncAdmin(){
+          const was=state.admin;state.admin=Boolean(window.PrintSkuAdminAccess?.peekToken());
+          $("srt-admin-tools").hidden=!state.admin;
+          if(!state.admin&&(was||state.loaded))reset();
+          if(!state.loaded&&!state.busy)say(state.admin?"Chưa đọc từ WMS.":"Chỉ Admin đọc được.");
+        }
+        // ---- Tab cấp màn ----
+        const tabs=[...screen.querySelectorAll("#srt-tabs [data-srt-view]")];
+        function setView(view,persist=true){
+          if(view!=="temp")view="main";
+          screen.dataset.view=view;
+          tabs.forEach(b=>{const on=b.dataset.srtView===view;b.setAttribute("aria-selected",String(on));b.tabIndex=on?0:-1});
+          if(persist){try{localStorage.setItem(VIEW_KEY,view)}catch{}}
+          if(view==="temp")syncAdmin();
+        }
+        const savedView=()=>{try{return localStorage.getItem(VIEW_KEY)==="temp"?"temp":"main"}catch{return"main"}};
+        $("srt-tabs").addEventListener("click",e=>{const b=e.target.closest("[data-srt-view]");if(b)setView(b.dataset.srtView)});
+        $("srt-tabs").addEventListener("keydown",e=>{
+          if(e.key!=="ArrowLeft"&&e.key!=="ArrowRight")return;
+          e.preventDefault();const next=tabs[(tabs.findIndex(b=>b.getAttribute("aria-selected")==="true")+(e.key==="ArrowRight"?1:-1)+tabs.length)%tabs.length];
+          setView(next.dataset.srtView);next.focus();
+        });
+        screen.addEventListener("click",e=>{const b=e.target.closest("button.ss-metric[data-srt-level]");if(b&&b.dataset.zero!=="true")setFilter(b.dataset.srtLevel)});
+        $("srt-run").onclick=run;
+        UI.hydrate(screen);
+        addEventListener("print-sku-admin-ready",syncAdmin);addEventListener("print-sku-admin-logout",syncAdmin);
+        addEventListener("hashchange",()=>{if(location.hash.replace(/^#/,"").split("&")[0]===ROUTE)syncAdmin()});
+        window.HasakiStorageRiskTemp=Object.freeze({isTempUid,run});
+        setView(savedView(),false);metrics();renderList(false);syncAdmin();
       })();
     </script>
     <style id="site-control-style">
