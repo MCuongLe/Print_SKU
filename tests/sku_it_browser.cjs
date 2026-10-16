@@ -62,7 +62,9 @@ async function open(browser, width, { stub = true } = {}) {
   if (stub) await page.evaluate(() => {
     window.__admin = true; window.__getTokenCalls = 0;
     window.PrintSkuAdminAuth = { accessToken: async () => { if (!window.__admin) throw new Error("hết phiên"); return "t"; } };
-    window.PrintSkuAdminAccess = { ...window.PrintSkuAdminAccess, peekToken: () => window.__admin ? "t" : "", getToken: async () => { window.__getTokenCalls++; return window.__admin ? "t" : ""; } };
+    window.PrintSkuAdminAccess = { ...window.PrintSkuAdminAccess, peekToken: () => window.__admin ? "t" : "", logout: () => { window.__admin = false; dispatchEvent(new Event("print-sku-admin-logout")); },
+      getToken: async () => { window.__getTokenCalls++; return window.__admin ? "t" : ""; } };
+    dispatchEvent(new Event("print-sku-admin-ready"));
   });
   return { page, context, errors, enqueued };
 }
@@ -184,24 +186,60 @@ async function desktop(browser) {
   await context.close();
 }
 
-// Đọc phiếu IT chỉ cho Admin
+// Đọc phiếu IT chỉ cho Admin: khiên Admin ở thanh trên (như các màn khác); chưa đăng nhập thì Phiếu IT không mở, hộp đăng nhập hiện lên, đăng nhập xong tự mở
 async function gate(browser) {
   const { page, context, errors } = await open(browser, 1280);
   await page.locator("#root .skit-open").waitFor();
-  await page.evaluate(() => { window.__admin = false; });
+  const shield = page.locator("#root > header #sku-admin");
+  assert.equal(await shield.count(), 1, "khiên Admin ở thanh trên IN TEM SKU");
+  assert.equal(await shield.evaluate(e => e.classList.contains("uid-topbar__admin") && e.parentElement.tagName === "DIV" && e.previousElementSibling.tagName === "SPAN"), true, "đặt sau ô máy in, cùng lớp với các màn khác");
+  assert.equal(await shield.getAttribute("aria-pressed"), "true", "đã là Admin: khiên xanh");
+  assert.equal(await shield.getAttribute("aria-label"), "Đang là Admin · bấm để thoát");
+  const look = await shield.evaluate(e => ({ back: getComputedStyle(e).backgroundColor, check: getComputedStyle(e.querySelector(".uid-topbar__admin-check")).display, w: Math.round(e.getBoundingClientRect().width), h: Math.round(e.getBoundingClientRect().height), svg: Math.round(e.querySelector("svg").getBoundingClientRect().width) }));
+  assert.equal(look.back, "rgb(0, 95, 65)"); assert.notEqual(look.check, "none"); assert.ok(look.w >= 40 && look.h >= 40); assert.equal(look.svg, 20);
+  const box = await shield.boundingBox(), pill = await page.locator("#root > header > div > h1 + span").boundingBox();
+  assert.ok(pill.x + pill.width <= box.x + 1, "máy in và khiên không đè nhau");
+  // Thoát Admin bằng khiên: hỏi lại, khiên về trắng
+  await shield.click();
+  const confirm = page.locator("dialog.whd"); await confirm.waitFor({ state: "visible" });
+  await confirm.locator(".whd-ok").click(); await confirm.waitFor({ state: "hidden" });
+  assert.equal(await shield.getAttribute("aria-pressed"), "false"); assert.equal(await shield.getAttribute("aria-label"), "Đăng nhập Admin");
+  // Chưa Admin: Phiếu IT không mở, hộp đăng nhập dùng chung được gọi, không gọi Extension
   await page.locator("#root .skit-open").click();
-  await read(page, IT);
-  assert.equal(await page.evaluate(() => window.__getTokenCalls), 1, "mở hộp đăng nhập Admin dùng chung");
-  assert.equal(await page.locator("#sku-it").evaluate(d => d.open), false, "đóng tấm để hộp đăng nhập hiện lên trên");
-  assert.match(await status(page), /Chưa đăng nhập Admin/);
+  await page.waitForFunction(() => window.__getTokenCalls === 1);
+  assert.equal(await page.locator("#sku-it").evaluate(d => d.open), false, "chưa Admin: không mở Phiếu IT");
   assert.deepEqual(await itCalls(page), [], "chưa Admin thì không gọi WMS");
+  // Đăng nhập xong (khiên xanh lại) thì Phiếu IT tự mở
+  await page.evaluate(() => { window.__admin = true; dispatchEvent(new Event("print-sku-admin-ready")); });
+  await page.waitForFunction(() => document.getElementById("sku-it").open);
+  assert.equal(await shield.getAttribute("aria-pressed"), "true");
+  await page.keyboard.press("Escape");
+  // Đăng nhập Admin ở nơi khác (không có yêu cầu mở Phiếu IT) không được tự bật Phiếu IT
+  await page.evaluate(() => { window.__admin = false; dispatchEvent(new Event("print-sku-admin-logout")); });
+  await shield.click();
+  await page.waitForFunction(() => window.__getTokenCalls === 2);
+  await page.evaluate(() => { window.__admin = true; dispatchEvent(new Event("print-sku-admin-ready")); });
+  assert.equal(await page.locator("#sku-it").evaluate(d => d.open), false);
+  assert.equal(await shield.getAttribute("aria-pressed"), "true");
+  // Hết phiên giữa chừng: đọc phiếu → đóng tấm, hỏi đăng nhập lại, không gọi WMS
+  await page.locator("#root .skit-open").click();
+  await page.evaluate(() => { window.__admin = false; });
+  await page.locator("#sku-it-input").fill(IT); await page.locator("#sku-it-load").click();
+  await page.waitForFunction(() => window.__getTokenCalls === 3);
+  assert.equal(await page.locator("#sku-it").evaluate(d => d.open), false, "đóng tấm để hộp đăng nhập hiện lên trên");
+  assert.deepEqual(await itCalls(page), []);
+  // React vẽ lại thanh trên thì khiên vẫn còn đúng một cái
+  await page.locator("#f-sku").fill("SKU-TEST");
+  await page.waitForTimeout(400);
+  assert.equal(await page.locator("#root #sku-admin").count(), 1);
   assert.deepEqual(errors, []);
   await context.close();
   const real = await open(browser, 1280, { stub: false });
   await real.page.locator("#root .skit-open").waitFor();
+  assert.equal(await real.page.locator("#sku-admin").getAttribute("aria-pressed"), "false", "chưa đăng nhập: khiên trắng");
   await real.page.locator("#root .skit-open").click();
-  await read(real.page, IT);
   await real.page.waitForFunction(() => !document.getElementById("admin-auth").hidden);
+  assert.equal(await real.page.locator("#sku-it").evaluate(d => d.open), false);
   assert.deepEqual(await itCalls(real.page), []);
   await real.context.close();
 }
@@ -210,6 +248,8 @@ async function narrow(browser, width) {
   const { page, context, errors } = await open(browser, width);
   await page.locator("#root .skit-open").waitFor({ state: "attached" });
   assert.equal(await page.locator("#root .skit-open").isVisible(), width > 800, width > 800 ? "máy tính bảng thấy nút Phiếu IT" : "điện thoại không có Extension nên ẩn nút");
+  const shieldBox = await page.locator("#root > header #sku-admin").boundingBox();
+  assert.ok(shieldBox && shieldBox.width >= 40 && shieldBox.x + shieldBox.width <= width, "khiên Admin hiện ở mọi khổ, nằm trong màn hình");
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `${width}px không tràn ngang`);
   if (width > 800) {
     await page.locator("#root .skit-open").click(); await read(page, IT);

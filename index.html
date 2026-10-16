@@ -12833,6 +12833,12 @@ async function rpc(name,args,retry=true){
       .skit__copies input::-webkit-outer-spin-button, .skit__copies input::-webkit-inner-spin-button { margin: 0; -webkit-appearance: none; }
       .skit__empty { padding: 28px 10px; color: #5c6f68; text-align: center; font-size: 14px; }
       #sku-it .uid-sheet__ok:disabled { opacity: .45; cursor: not-allowed; }
+      /* Khiên Admin ở thanh trên IN TEM SKU (cùng kiểu Cắt Group UID, Lịch sử Group UID, IN TEM GROUP UID…): máy in sát khiên */
+      #root > header > div > .uid-topbar__admin { flex: none; margin-left: 0; }
+      /* Thanh trên React có "#root > header button { border/color/background … !important }": khiên phải thắng bằng !important với đúng hai trạng thái */
+      #root > header > div > #sku-admin { border: 1px solid var(--wms-border, #d9e2de) !important; color: var(--wms-muted, #60736b) !important; background: #fff !important; }
+      #root > header > div > #sku-admin[aria-pressed="true"] { border-color: var(--wms-brand, #005f41) !important; color: #fff !important; background: var(--wms-brand, #005f41) !important; }
+      @media (max-width: 440px) { #root > header:not(.ss-command-react) > div > .uid-topbar__admin { grid-column: 4; grid-row: 1 / 3; align-self: center; } }
     </style>
     <script id="sku-it-script">
       (() => {
@@ -12855,6 +12861,8 @@ async function rpc(name,args,retry=true){
         }));
         // Đọc WMS chỉ dành cho Admin (như các màn khác): chưa có phiên thì mở hộp đăng nhập dùng chung
         const adminOk = async () => { try { return Boolean(await window.PrintSkuAdminAuth.accessToken()); } catch (_) { return false; } };
+        let wantOpen = 0;
+        const askAdmin = () => { wantOpen = Date.now(); if (dialog.open) dialog.close(); Promise.resolve(window.PrintSkuAdminAccess?.getToken()).catch(() => {}); };
         // Đối chiếu danh mục SKU_Name (chỉ trả SKU đang hoạt động): có thì lấy tên danh mục như khi nhập tay, không có thì gắn cờ và bỏ tick
         const catalog = async skus => {
           const q = window.PrintSkuQueue, found = new Map();
@@ -12918,7 +12926,7 @@ async function rpc(name,args,retry=true){
           if (!/^\d{6,40}$/.test(number)) { say("Số phiếu IT không hợp lệ.", "warn"); input.focus(); return; }
           setBusy(true);
           try {
-            if (!await adminOk()) { say("Chưa đăng nhập Admin.", "warn"); dialog.close(); Promise.resolve(window.PrintSkuAdminAccess?.getToken()).catch(() => {}); return; }
+            if (!await adminOk()) { say("Chưa đăng nhập Admin.", "warn"); askAdmin(); return; }
             say("Đang đọc phiếu IT từ WMS…");
             await extensionRequest("PING_WMS", {}, 6000);
             const data = await extensionRequest("GET_INTERNAL_TRANSFER", { number });
@@ -12972,13 +12980,49 @@ async function rpc(name,args,retry=true){
           dialog.close(); render();
         });
 
+        const openPicker = async () => {
+          if (!await adminOk()) { askAdmin(); return; }
+          wantOpen = 0; dialog.showModal(); meter(); input.focus();
+        };
+        addEventListener("print-sku-admin-ready", () => { if (Date.now() - wantOpen < 300000 && document.querySelector(".skit-open")?.offsetParent) openPicker(); });
+
+        // Khiên Admin ở thanh trên IN TEM SKU, cùng kiểu các màn khác: trắng khi chưa đăng nhập, xanh có dấu tick khi là Admin, bấm khi là Admin thì hỏi thoát
+        const SHIELD = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path class="uid-topbar__admin-check" d="m9 12 2 2 4-4"/></svg>';
+        const syncAdmin = () => {
+          const shield = document.getElementById("sku-admin");
+          if (!shield) return;
+          const on = Boolean(window.PrintSkuAdminAccess?.peekToken()), label = on ? "Đang là Admin · bấm để thoát" : "Đăng nhập Admin";
+          shield.setAttribute("aria-pressed", String(on)); shield.setAttribute("aria-label", label); shield.title = label;
+        };
+        document.addEventListener("click", async event => {
+          const shield = event.target.closest("#sku-admin");
+          if (!shield) return;
+          if (shield.getAttribute("aria-pressed") === "true") {
+            if (await window.WhDialog.confirm({ icon: "undo", title: "Thoát quyền Admin?", confirmText: "Thoát", cancelText: "Ở lại" })) { window.PrintSkuAdminAccess.logout(); syncAdmin(); }
+            return;
+          }
+          wantOpen = 0;
+          if (await window.PrintSkuAdminAccess?.getToken()) syncAdmin();
+        });
+        ["print-sku-admin-ready", "print-sku-admin-logout", "hashchange", "load"].forEach(type => addEventListener(type, syncAdmin));
+        const ensureShield = () => {
+          const bar = document.querySelector("#root > header > div");
+          if (!bar || bar.querySelector("#sku-admin")) return;
+          const shield = document.createElement("button");
+          shield.type = "button"; shield.id = "sku-admin"; shield.className = "uid-topbar__admin"; shield.innerHTML = SHIELD;
+          shield.setAttribute("aria-pressed", "false"); shield.setAttribute("aria-label", "Đăng nhập Admin"); shield.title = "Đăng nhập Admin";
+          bar.appendChild(shield);
+          syncAdmin();
+        };
+
         // Nút "Phiếu IT" ở thẻ 1 của IN TEM SKU (React vẽ lại thì gắn lại)
         const ensure = () => {
+          ensureShield();
           const title = document.querySelector("#root main > section p.items-baseline");
           if (!title || title.querySelector(".skit-open")) return;
           const open = document.createElement("button");
           open.type = "button"; open.className = "skit-open"; open.innerHTML = `${ICON.file}Phiếu IT`; open.setAttribute("aria-haspopup", "dialog");
-          open.addEventListener("click", () => { dialog.showModal(); meter(); input.focus(); });
+          open.addEventListener("click", openPicker);
           const tag = title.querySelector(".skq-tag");
           tag ? title.insertBefore(open, tag) : title.appendChild(open);
         };
