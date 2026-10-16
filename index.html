@@ -13403,5 +13403,14 @@ async function rpc(name,args,retry=true){
         :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) :is(#cut-form, #xa-vai-form, #cap-vai-form) .scan-field__tools { top: 2px; right: 2px; bottom: 2px; }
       }
     </style>
+    <style id="sheet-center">
+      /* Tấm .uid-sheet trên máy tính (≥ 801 px, 16/10/2026): giữa màn như popup Admin, bo 4 góc, bỏ thanh kéo (trước dính đáy kiểu tấm kéo lên của
+         điện thoại — màn rộng + ít nội dung thành dải thấp sát đáy). Điện thoại giữ tấm kéo lên từ đáy. */
+      @media (min-width: 801px) {
+        .uid-sheet { inset: 0; height: fit-content; max-height: min(88vh, 900px); margin: auto; border-radius: var(--ui-card-r, 22px); }
+        .uid-sheet > .uid-sheet__grab { display: none; }
+        .uid-sheet > .uid-sheet__head { padding-top: 16px; }
+      }
+    </style>
   </body>
 </html>

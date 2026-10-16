@@ -670,6 +670,10 @@ máy tính bảng 42 → 44; chip bộ lọc đang dùng của Lịch sử Group
 Nút icon trong ô nhập trên điện thoại 40 → 44 (người dùng chọn): biến chuẩn `--ui-icon-in` điện thoại 44; cụm camera · bàn phím của ô Group UID liền
 cách mép ô 2 px (ô 48) → nút 44 ở mọi khổ (test `ui_standard` kiểm 44). Sau đợt này không còn vùng bấm < 44 trên 13 màn điện thoại.
 
+**Tấm `.uid-sheet` trên máy tính (16/10/2026, khối `#sheet-center`).** Phiếu IT, Lấy từ WMS, Danh sách Group UID, danh sách chờ in IN TEM SKU: từ 801 px
+hiện giữa màn như popup Admin (bo 4 góc, cao tối đa 88vh, bỏ thanh kéo); trước dính đáy kiểu tấm kéo lên của điện thoại — màn rộng, chưa đọc phiếu thì
+thành dải thấp sát đáy. Điện thoại giữ tấm kéo lên từ đáy.
+
 **IN TEM GROUP UID theo mẫu (11/10/2026, khối `#uid-mockup` + sửa trong script màn).** Ô Group UID có icon mã vạch, camera cùng hàng, nút
 **Thêm vào danh sách** xuống hàng riêng (mọi bề rộng); Nhập Excel viền liền. Thẻ **Chưa gán SKU**: chip số + › (điện thoại), hàng Chọn tất cả +
 **Xóa đã chọn** (hỏi lại bằng WhDialog), ô tìm Group UID / Lot / Roll (chuẩn ô nhập), mỗi dòng UID + "Lot | Roll" + "Thêm: dd/mm/yyyy hh:mm" (giờ thêm
