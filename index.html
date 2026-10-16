@@ -10734,7 +10734,7 @@ async function rpc(name,args,retry=true){
             Object.assign(state,{rows,warehouses,warn:[...missing.map(n=>`Chưa đọc được kho: ${n}`),...gaps],scanned,pages,readAt:now,filter:"all",loaded:true});
             render(false);
             say(rows.length?`Đã đọc ${num(rows.length)} dòng tạo UID tạm trong ${RANGE_DAYS} ngày.`:`Không có dòng tạo UID tạm trong ${RANGE_DAYS} ngày (đã quét ${num(scanned)} dòng).`);
-          }catch(error){say(error.message||"Không đọc được dữ liệu.","error")}finally{setBusy(false)}
+          }catch(error){const m=String(error?.message||"");say(/Failed to fetch|NetworkError|load failed/i.test(m)?"WMS ngắt kết nối giữa chừng; tải lại tab WMS rồi bấm lại.":m||"Không đọc được dữ liệu.","error")}finally{setBusy(false)}
         }
         // Bấm ở tab này: đồng bộ Kiểm kê (Hàng chưa lên kệ) trước, rồi đọc UID tạm; bộ đồng bộ cũ không tự đọc UID tạm lần nữa.
         async function sync(){

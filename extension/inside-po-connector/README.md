@@ -13,7 +13,7 @@ Có. Chrome không cho một website tự cài extension. Với bản nội bộ
 5. Chọn đúng thư mục `extension/inside-po-connector`.
 6. Tải lại tab Inside, tab WMS và tab Print SKU.
 
-Sau khi repository được cập nhật, mở `chrome://extensions` và bấm **Tải lại / Reload** trên tiện ích để nhận mã mới.
+Sau khi repository được cập nhật, mở `chrome://extensions` và bấm **Tải lại / Reload** trên tiện ích để nhận mã mới. Sau đó **tải lại các tab Inside và WMS đang mở**: script cầu nối đã nạp trong tab cũ không tự đổi, nên tab cũ vẫn chạy bản trước (ví dụ báo lỗi mạng thô "Failed to fetch" thay vì câu có thử lại).
 
 ## Cách sử dụng
 
