@@ -1734,7 +1734,7 @@ Error generating stack: `+y.message+`
               <div class="uid-map" id="uid-map-po" role="tabpanel" aria-label="Gán theo Packing List WMS" hidden>
                 <div class="uid-po" id="uid-po-box">
                   <input id="uid-po-input" autocomplete="off" inputmode="numeric" placeholder="Mã PO" aria-label="Mã PO">
-                  <button class="uid-po__go" id="uid-po-go" type="button" title="Lấy số UID từ Packing List WMS"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 13v8l-4-4"/><path d="m12 21 4-4"/><path d="M4.393 15.269A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.436 8.284"/></svg>Packing List</button>
+                  <button class="uid-po__go" id="uid-po-go" type="button" title="Lấy số UID từ Packing List WMS"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>Packing List</button>
                 </div>
                 <div class="uid-auto" id="uid-po-rows"></div>
                 <div class="uid-auto__meta"><span>Sẽ gán: <strong id="uid-po-total">0/0</strong> UID</span></div>
@@ -9708,7 +9708,7 @@ var FSK_CORE = (function () {
           }
           throw new Error(`WMS đổi dữ liệu trong lúc đọc (${drift}); phiên đã dừng để tránh thiếu UID`)
         }
-        async function readAndStage(mode){let prepared=null,previewed=false;setBusy(true,mode==="full"?"Đang chuẩn bị đối chiếu toàn bộ…":"Đang chuẩn bị lấy thay đổi…");try{await checkExtension();prepared=await edge("prepare",{mode});renderRun({...prepared,sourceCount:0,pageCount:0,changeCounts:{}});const snapshot=await readWmsSnapshot(prepared),stagePages=Math.max(1,Math.ceil(snapshot.rows.length/500));for(let page=1;page<=stagePages;page+=1){await edge("ingest",{runId:prepared.runId,page,totalPages:stagePages,total:snapshot.total,rows:snapshot.rows.slice((page-1)*500,page*500)});pages.textContent=`${num(page)}/${num(stagePages)} trang · ${num(snapshot.total)} UID`;status.textContent=`Đang lưu lên Supabase: trang ${page}/${stagePages}`}status.textContent="Đã nhận đủ dữ liệu. Đang đối chiếu Supabase…";const report=await edge("preview",{runId:prepared.runId});previewed=true;renderRun(report);await loadHistory().catch(()=>{});const c=report.changeCounts||{},warnings=Number(c.missing||0)+Number(c.issues||0);status.textContent=`Đối chiếu xong: ${num(Number(c.added||0)+Number(c.updated||0))} UID cần cập nhật${warnings?` · ${num(warnings)} cảnh báo`:""}.`}catch(error){if(prepared?.runId&&!previewed)await edge("cancel",{runId:prepared.runId,message:error.message}).catch(()=>{});say(error.message||"Không đồng bộ được Group UID.","error");if(!previewed){activeRun=null;applyBtn.disabled=true}await loadHistory().catch(()=>{})}finally{setBusy(false)}}
+        async function readAndStage(mode){let prepared=null,previewed=false;setBusy(true,mode==="full"?"Đang chuẩn bị đối chiếu toàn bộ…":"Đang chuẩn bị lấy thay đổi…");try{await checkExtension();prepared=await edge("prepare",{mode});renderRun({...prepared,sourceCount:0,pageCount:0,changeCounts:{}});const snapshot=await readWmsSnapshot(prepared),stagePages=Math.max(1,Math.ceil(snapshot.rows.length/500));for(let page=1;page<=stagePages;page+=1){await edge("ingest",{runId:prepared.runId,page,totalPages:stagePages,total:snapshot.total,rows:snapshot.rows.slice((page-1)*500,page*500)});pages.textContent=`${num(page)}/${num(stagePages)} trang · ${num(snapshot.total)} UID`;status.textContent=`Đang lưu lên Supabase: trang ${page}/${stagePages}`}status.textContent="Đã nhận đủ dữ liệu. Đang đối chiếu Supabase…";const report=await edge("preview",{runId:prepared.runId});previewed=true;renderRun(report);await loadHistory().catch(()=>{});const c=report.changeCounts||{},warnings=Number(c.missing||0)+Number(c.issues||0),skipped=Number(c.skippedCanceled||0);status.textContent=`Đối chiếu xong: ${num(Number(c.added||0)+Number(c.updated||0))} UID cần cập nhật${warnings?` · ${num(warnings)} cảnh báo`:""}${skipped?` · bỏ qua ${num(skipped)} UID Canceled quá 180 ngày`:""}.`}catch(error){if(prepared?.runId&&!previewed)await edge("cancel",{runId:prepared.runId,message:error.message}).catch(()=>{});say(error.message||"Không đồng bộ được Group UID.","error");if(!previewed){activeRun=null;applyBtn.disabled=true}await loadHistory().catch(()=>{})}finally{setBusy(false)}}
         async function apply(){if(busy||activeRun?.status!=="previewed")return;const c=activeRun.changeCounts||{},total=Number(c.added||0)+Number(c.updated||0),facts=[[c.added,"UID mới"],[c.updated,"UID cập nhật"]].filter(([n])=>Number(n)>0).map(([n,l])=>`${num(n)} ${l}`);if(!await window.WhDialog.confirm({icon:"check",title:`Cập nhật ${num(total)} UID vào Supabase`,facts,confirmText:"Cập nhật Supabase"})||busy||activeRun?.status!=="previewed")return;setBusy(true,"Đang cập nhật và đọc lại Supabase để xác minh…");try{const data=await edge("apply",{runId:activeRun.runId});activeRun.status=data.status;applyBtn.disabled=true;status.textContent=`Hoàn tất: xác minh ${num(data.verification?.verified)} UID; database có ${num(data.verification?.databaseCount)} UID.`;await loadHistory()}catch(error){say(error.message||"Cập nhật Group UID chưa hoàn tất.","error")}finally{setBusy(false)}}
         async function openHistory(runId){if(busy)return;setBusy(true,"Đang tải báo cáo Group UID…");try{const data=await edge("detail",{runId});renderRun(data);status.textContent=data.status==="completed"?`Lượt ${dt(data.completed_at)} đã hoàn tất và được xác minh.`:data.error_message||`Lượt đang ở trạng thái ${statusName(data.status)}.`}catch(error){say(error.message||"Không tải được báo cáo.","error")}finally{setBusy(false)}}
         async function selectKind(kind){
@@ -12873,7 +12873,7 @@ async function rpc(name,args,retry=true){
       (() => {
         const MAX_COPIES = 200, SVG = d => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
         const ICON = { file: SVG('<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/>'),
-          load: SVG('<path d="M12 13v8l-4-4"/><path d="m12 21 4-4"/><path d="M4.393 15.269A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.436 8.284"/>'), minus: SVG('<path d="M5 12h14"/>'), plus: SVG('<path d="M5 12h14"/><path d="M12 5v14"/>') };
+          load: SVG('<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>'), minus: SVG('<path d="M5 12h14"/>'), plus: SVG('<path d="M5 12h14"/><path d="M12 5v14"/>') };
         const esc = value => String(value ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
         const num = value => Number(value || 0).toLocaleString("vi-VN");
         const extensionRequest=(type,payload={},timeout=60000)=>window.PrintSkuBridgeReady(type).then(() => new Promise((resolve, reject) => {
@@ -12908,11 +12908,11 @@ async function rpc(name,args,retry=true){
         dialog.className = "uid-sheet skit"; dialog.id = "sku-it"; dialog.setAttribute("aria-labelledby", "sku-it-title");
         dialog.innerHTML = `
           <div class="uid-sheet__grab" aria-hidden="true"></div>
-          <div class="uid-sheet__head"><h2 id="sku-it-title">Phiếu IT</h2><button class="uid-sheet__close" type="button" data-skit="close" aria-label="Đóng"></button></div>
+          <div class="uid-sheet__head"><span class="skit__mark" aria-hidden="true">${ICON.file}</span><h2 id="sku-it-title">Phiếu IT</h2><button class="uid-sheet__close" type="button" data-skit="close" aria-label="Đóng"></button></div>
           <div class="skit__bar"><input id="sku-it-input" autocomplete="off" inputmode="numeric" placeholder="Số phiếu IT" aria-label="Số phiếu IT"><button class="skit__load" id="sku-it-load" type="button">${ICON.load}Đọc phiếu</button></div>
           <div class="skit__info" id="sku-it-info" hidden></div>
           <p class="skit__status" id="sku-it-status" aria-live="polite"></p>
-          <label class="uid-selectall uid-sheet__all" id="sku-it-allrow" hidden><input type="checkbox" id="sku-it-all"><span>Chọn tất cả</span><em id="sku-it-picked">Đã chọn 0</em></label>
+          <label class="uid-selectall uid-sheet__all" id="sku-it-allrow" hidden><input type="checkbox" id="sku-it-all"><span>Chọn tất cả</span><em id="sku-it-picked">Đã chọn 0</em><span class="skit__cols" aria-hidden="true"><i>SL theo phiếu</i><i>Số bản in</i></span></label>
           <div class="uid-sheet__list" id="sku-it-list"></div>
           <div class="uid-sheet__foot"><div class="uid-sheet__sum"><b id="sku-it-sum">0 SKU</b><span id="sku-it-room"></span></div><button class="uid-sheet__ok" id="sku-it-add" type="button" disabled>Thêm vào danh sách</button></div>`;
         document.body.appendChild(dialog);
@@ -12968,7 +12968,7 @@ async function rpc(name,args,retry=true){
             });
             const info = $("sku-it-info");
             info.hidden = false;
-            info.innerHTML = `<b>IT ${esc(data.number)}</b> · ${esc(data.fromWarehouse || "—")} → ${esc(data.toWarehouse || "—")} · ${esc(data.status || "—")} · ${num(data.items.length)} dòng${data.description ? `<br>${esc(data.description)}` : ""}`;
+            info.innerHTML = `<div class="skit__fact"><span>Số phiếu</span><b>IT ${esc(data.number)}</b></div><div class="skit__fact"><span>Chuyển kho</span><b>${esc(data.fromWarehouse || "—")} → ${esc(data.toWarehouse || "—")}</b></div><div class="skit__fact"><span>Trạng thái</span><b class="skit__state">${esc(data.status || "—")}</b></div><div class="skit__fact"><span>Số dòng</span><b>${num(data.items.length)} dòng</b></div>${data.description ? `<div class="skit__fact skit__fact--wide"><span>Ghi chú</span><b>${esc(data.description)}</b></div>` : ""}`;
             const flagged = rows.filter(row => row.flag).length;
             say([`Đã đọc ${num(rows.length)} dòng`, flagged ? `${num(flagged)} SKU không có trong danh mục (bỏ tick)` : "", note].filter(Boolean).join(" · "), flagged || note ? "warn" : "ok");
             render();
@@ -13462,6 +13462,33 @@ async function rpc(name,args,retry=true){
         html:not(.app-nav-collapsed) .as-strip:has(> div:nth-child(4):last-child) > div:nth-child(odd) { border-left: 0; }
         html:not(.app-nav-collapsed) .as-strip:has(> div:nth-child(4):last-child) > div:nth-child(n + 3) { border-top: 1px solid #edf2f0; }
       }
+    </style>
+    <style id="sku-it-pro">
+      /* Phiếu IT nhìn chuyên nghiệp (16/10/2026), cùng kiểu popup Admin: ô icon cạnh tiêu đề + vạch ngăn; thông tin phiếu thành các ô; trạng thái là thanh
+         cảnh báo có icon; đầu bảng có tên cột (thẳng cột số lượng và bộ tăng giảm). */
+      #sku-it .uid-sheet__head { gap: 12px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #edf2f0; }
+      #sku-it .skit__mark { display: grid; flex: none; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: #e6f3ef; color: #0f6e56; }
+      #sku-it .skit__mark svg { width: 20px; height: 20px; }
+      #sku-it .skit__info:not([hidden]) { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: 10px 24px; padding: 12px 16px; border: 1px solid #e1eae7; border-radius: 12px; background: #f6f9f8; }
+      #sku-it .skit__fact { min-width: 0; }
+      #sku-it .skit__fact > span { display: block; color: #5f726b; font-size: 12px; font-weight: 600; }
+      #sku-it .skit__fact > b { display: block; margin-top: 3px; color: #17382d; font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
+      #sku-it .skit__fact--wide { grid-column: 1 / -1; }
+      #sku-it .skit__fact--wide > b { font-weight: 400; color: #4f625b; }
+      #sku-it .skit__fact > b.skit__state { display: inline-flex; align-items: center; min-height: 24px; padding: 0 10px; border-radius: 999px; background: #e5eefb; color: #245aa8; font-size: 13px; }
+      #sku-it .skit__status:empty { display: none; }
+      #sku-it .skit__status:not(:empty) { display: flex; align-items: center; gap: 8px; min-height: 0; padding: 8px 12px; border-radius: 10px; background: #f4f7f6; }
+      #sku-it .skit__status:not(:empty)::before { content: ""; flex: none; width: 16px; height: 16px; background: currentColor; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='M12 16v-4'/%3E%3Cpath d='M12 8h.01'/%3E%3C/svg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='M12 16v-4'/%3E%3Cpath d='M12 8h.01'/%3E%3C/svg%3E") center / contain no-repeat; }
+      #sku-it .skit__status[data-tone="warn"] { background: #fff6e0; }
+      #sku-it .skit__status[data-tone="warn"]::before { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3'/%3E%3Cpath d='M12 9v4'/%3E%3Cpath d='M12 17h.01'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3'/%3E%3Cpath d='M12 9v4'/%3E%3Cpath d='M12 17h.01'/%3E%3C/svg%3E"); }
+      #sku-it .skit__status[data-tone="error"] { background: #fdecea; }
+      #sku-it .skit__status[data-tone="error"]::before { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='m15 9-6 6'/%3E%3Cpath d='m9 9 6 6'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='m15 9-6 6'/%3E%3Cpath d='m9 9 6 6'/%3E%3C/svg%3E"); }
+      #sku-it .skit__status[data-tone="ok"] { background: #e8f6ef; }
+      #sku-it .skit__status[data-tone="ok"]::before { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21.801 10A10 10 0 1 1 17 3.335'/%3E%3Cpath d='m9 11 3 3L22 4'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21.801 10A10 10 0 1 1 17 3.335'/%3E%3Cpath d='m9 11 3 3L22 4'/%3E%3C/svg%3E"); }
+      #sku-it #sku-it-allrow > em { margin-left: 8px; }
+      #sku-it .skit__cols { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+      #sku-it .skit__cols i { color: #5f726b; font-size: 12px; font-style: normal; font-weight: 600; white-space: nowrap; }
+      #sku-it .skit__cols i:last-child { width: 144px; text-align: center; }
     </style>
   </body>
 </html>
