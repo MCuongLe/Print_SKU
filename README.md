@@ -678,6 +678,11 @@ thành dải thấp sát đáy. Điện thoại giữ tấm kéo lên từ đáy
 Cắt Group UID / Xả vải / Cấp vải (trước "Tra cứu UID đã cắt" xuống 2 dòng); Chuyển đổi đơn vị 1 cột (trước ô "SKU hoặc Group UID" còn ~100 px); dải 4 ô
 thông tin (`.as-strip` có đúng 4 ô: Rủi ro lưu trữ, Kiểm kê SKU, Admin…) xếp 2 × 2 (trước 3 + 1).
 
+**Phiếu IT nhìn chuyên nghiệp + icon đồng bộ (16/10/2026, khối `#sku-it-pro` + sửa nhỏ trong `sku-it-script`).** Đầu tấm có ô icon phiếu và vạch ngăn;
+thông tin phiếu thành các ô Số phiếu / Chuyển kho / Trạng thái (chip) / Số dòng / Ghi chú (trước một dòng chữ dồn cục); dòng trạng thái là thanh cảnh
+báo có icon (vàng / đỏ / xanh); đầu bảng có tên cột "SL theo phiếu" · "Số bản in" thẳng cột. Nút "Đọc phiếu" (Phiếu IT) và "Packing List" (Gán WMS)
+dùng icon đồng bộ của Admin (2 mũi tên vòng) — khi đang đọc icon xoay (trước cả đám mây xoay tròn). Số lượng giữ dạng thô (cũng là chữ in lên tem).
+
 **IN TEM GROUP UID theo mẫu (11/10/2026, khối `#uid-mockup` + sửa trong script màn).** Ô Group UID có icon mã vạch, camera cùng hàng, nút
 **Thêm vào danh sách** xuống hàng riêng (mọi bề rộng); Nhập Excel viền liền. Thẻ **Chưa gán SKU**: chip số + › (điện thoại), hàng Chọn tất cả +
 **Xóa đã chọn** (hỏi lại bằng WhDialog), ô tìm Group UID / Lot / Roll (chuẩn ô nhập), mỗi dòng UID + "Lot | Roll" + "Thêm: dd/mm/yyyy hh:mm" (giờ thêm
