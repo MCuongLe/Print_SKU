@@ -13412,5 +13412,27 @@ async function rpc(name,args,retry=true){
         .uid-sheet > .uid-sheet__head { padding-top: 16px; }
       }
     </style>
+    <style id="mid-width">
+      /* Khổ trung (16/10/2026): máy tính bảng 801–1023 px, hoặc 1024–1199 px khi thanh trái mở — vùng nội dung ~730–790 px. Nhãn tab ngắn (như điện thoại;
+         trước "Tra cứu UID đã cắt" xuống 2 dòng), Chuyển đổi đơn vị 1 cột (trước ô "SKU hoặc Group UID" còn ~100 px), dải 4 ô thông tin 2 × 2 (trước 3 + 1). */
+      @media (min-width: 801px) and (max-width: 1023px) {
+        :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) .cut-tab .tab-l { display: none; }
+        :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) .cut-tab .tab-s { display: inline; }
+        #unit-converter-screen .uc-layout { grid-template-columns: minmax(0, 1fr); }
+        #unit-converter-screen .uc-result { position: static; }
+        .as-strip:has(> div:nth-child(4):last-child) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .as-strip:has(> div:nth-child(4):last-child) > div:nth-child(odd) { border-left: 0; }
+        .as-strip:has(> div:nth-child(4):last-child) > div:nth-child(n + 3) { border-top: 1px solid #edf2f0; }
+      }
+      @media (min-width: 1024px) and (max-width: 1199px) {
+        html:not(.app-nav-collapsed) :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) .cut-tab .tab-l { display: none; }
+        html:not(.app-nav-collapsed) :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) .cut-tab .tab-s { display: inline; }
+        html:not(.app-nav-collapsed) #unit-converter-screen .uc-layout { grid-template-columns: minmax(0, 1fr); }
+        html:not(.app-nav-collapsed) #unit-converter-screen .uc-result { position: static; }
+        html:not(.app-nav-collapsed) .as-strip:has(> div:nth-child(4):last-child) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        html:not(.app-nav-collapsed) .as-strip:has(> div:nth-child(4):last-child) > div:nth-child(odd) { border-left: 0; }
+        html:not(.app-nav-collapsed) .as-strip:has(> div:nth-child(4):last-child) > div:nth-child(n + 3) { border-top: 1px solid #edf2f0; }
+      }
+    </style>
   </body>
 </html>

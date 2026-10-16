@@ -674,6 +674,10 @@ cách mép ô 2 px (ô 48) → nút 44 ở mọi khổ (test `ui_standard` kiể
 hiện giữa màn như popup Admin (bo 4 góc, cao tối đa 88vh, bỏ thanh kéo); trước dính đáy kiểu tấm kéo lên của điện thoại — màn rộng, chưa đọc phiếu thì
 thành dải thấp sát đáy. Điện thoại giữ tấm kéo lên từ đáy.
 
+**Khổ trung (16/10/2026, khối `#mid-width`).** Máy tính bảng 801–1023 px, hoặc 1024–1199 px khi thanh trái mở (vùng nội dung ~730–790 px): nhãn tab ngắn ở
+Cắt Group UID / Xả vải / Cấp vải (trước "Tra cứu UID đã cắt" xuống 2 dòng); Chuyển đổi đơn vị 1 cột (trước ô "SKU hoặc Group UID" còn ~100 px); dải 4 ô
+thông tin (`.as-strip` có đúng 4 ô: Rủi ro lưu trữ, Kiểm kê SKU, Admin…) xếp 2 × 2 (trước 3 + 1).
+
 **IN TEM GROUP UID theo mẫu (11/10/2026, khối `#uid-mockup` + sửa trong script màn).** Ô Group UID có icon mã vạch, camera cùng hàng, nút
 **Thêm vào danh sách** xuống hàng riêng (mọi bề rộng); Nhập Excel viền liền. Thẻ **Chưa gán SKU**: chip số + › (điện thoại), hàng Chọn tất cả +
 **Xóa đã chọn** (hỏi lại bằng WhDialog), ô tìm Group UID / Lot / Roll (chuẩn ô nhập), mỗi dòng UID + "Lot | Roll" + "Thêm: dd/mm/yyyy hh:mm" (giờ thêm
