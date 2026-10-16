@@ -11994,7 +11994,7 @@ async function rpc(name,args,retry=true){
          · điều khiển gọn (tab, ô tìm / lọc trên thanh công cụ, chip lọc, nút nhỏ trong dòng): cao 44, viên thuốc
          Giá trị nằm ở biến --ui-*; CSS mới của module dùng đúng các biến này. Test: tests/ui_standard_browser.cjs. */
       :root { --ui-card-r: 22px; --ui-num: 30px; --ui-num-fs: 14px; --ui-ctl: 52px; --ui-btn-r: 999px; --ui-in-r: 13px; --ui-compact: 44px; --ui-icon-in: 44px; }
-      @media (max-width: 800px) { :root { --ui-card-r: 14px; --ui-num: 22px; --ui-num-fs: 12px; --ui-ctl: 48px; --ui-btn-r: 12px; --ui-in-r: 10px; --ui-icon-in: 40px; } }
+      @media (max-width: 800px) { :root { --ui-card-r: 14px; --ui-num: 22px; --ui-num-fs: 12px; --ui-ctl: 48px; --ui-btn-r: 12px; --ui-in-r: 10px; --ui-icon-in: 44px; } }
       @media screen {
         /* Thẻ */
         :is(#uid-screen, #ins-screen, #location-screen, #cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen, #find-sku-screen, #unit-converter-screen) :is(.uid-card, .uid-panel, .cut-card),
@@ -13323,6 +13323,40 @@ async function rpc(name,args,retry=true){
         #barcode-home .barcode-home__choices > .barcode-choice:last-child:nth-child(3n + 1) .barcode-choice__icon { flex: none; margin: 0; }
         #barcode-home .barcode-home__groups { gap: 12px; }
         #barcode-home .barcode-home__group-head { min-height: 58px; }
+      }
+    </style>
+    <style id="sku-it-std">
+      /* Hộp thoại / tấm luôn dùng điều khiển gốc kiểu sáng (15/10/2026): :root đang color-scheme: dark (giao diện cũ) nên hộp thoại nằm ngoài các màn sáng
+         thừa hưởng tối — ô tick chưa chọn tô đen, ô chọn / ô ngày / thanh cuộn tối trên nền trắng. */
+      :is(dialog, #admin-auth, #cut-barcode-modal) { color-scheme: light; }
+      /* IN TEM SKU · Phiếu IT (> 800 px, nút mở ẩn ở điện thoại): cùng kiểu tấm "Lấy từ WMS" — ô số phiếu + Đọc phiếu cao như ô nhập; danh sách dạng bảng */
+      @media (min-width: 801px) {
+        #sku-it .skit__bar input { height: var(--ui-ctl, 52px); border-radius: var(--ui-in-r, 13px); }
+        #sku-it .skit__load { height: var(--ui-ctl, 52px); border-color: var(--wms-border, #d9e2de); border-radius: var(--ui-in-r, 13px); white-space: nowrap; }
+        #sku-it .uid-sheet__all { flex: none; min-height: 44px; margin-bottom: 0; border-color: #e1eae7; border-radius: 12px 12px 0 0; background: #f6f9f8; color: #5f726b; font-size: 13px; }
+        #sku-it .uid-sheet__list { gap: 0; margin: 0 16px 12px; padding: 0; border: 1px solid #e1eae7; border-top: 0; border-radius: 0 0 12px 12px; }
+        #sku-it .uid-sheet__all[hidden] + .uid-sheet__list { border: 0; }
+        #sku-it .skit__item { min-height: 56px; padding: 6px 12px 6px 4px; border: 0; border-bottom: 1px solid #edf2f0; border-radius: 0; }
+        #sku-it .skit__item:last-child { border-bottom: 0; }
+        #sku-it .skit__item:has([data-field="on"]:checked) { background: #f3faf7; }
+        #sku-it .skit__item[data-flag] { background: #fffaf0; }
+        #sku-it .skit__copies { height: 48px; padding: 1px; }
+        #sku-it .skit__copies :is(button, input) { height: 44px; }
+        @media (hover: hover) { #sku-it .skit__item:not(:has([data-field="on"]:checked)):not([data-flag]):hover { background: #f6f8f7; } }
+      }
+    </style>
+    <style id="p0-1610">
+      /* Soát P0 16/10/2026 (lộ trình UI/UX: vùng bấm ≥ 44, focus thấy được). Nút ☰ điện thoại / máy tính bảng 42 → 44. */
+      @media (max-width: 1023px) {
+        :is(#root, body) .an-toggle { width: 44px !important; height: 44px !important; }
+      }
+      /* Lịch sử Group UID: chip bộ lọc đang dùng cao 44 như mọi chip lọc (trước 32) */
+      #uidhist-screen .uh-chips .as-tag { min-height: 44px; padding: 0 14px; }
+      /* IN TEM GROUP UID: ô tìm danh sách có vòng focus như các ô nhập khác (trước chỉ đổi màu viền) */
+      #uid-screen .uid-search input:focus { box-shadow: 0 0 0 3px rgba(0, 95, 65, .16); }
+      /* Nút icon trong ô nhập trên điện thoại 44 (người dùng chọn; trước 40): --ui-icon-in 44; cụm camera · bàn phím của ô Group UID liền cách mép ô 2 px */
+      @media (max-width: 800px) {
+        :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) :is(#cut-form, #xa-vai-form, #cap-vai-form) .scan-field__tools { top: 2px; right: 2px; bottom: 2px; }
       }
     </style>
   </body>

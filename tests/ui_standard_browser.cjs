@@ -1,7 +1,7 @@
 // Chuẩn giao diện chung (11/10/2026, khối CSS #ui-standard) cho mọi ô trang chủ (390 + 1280 px) và Admin (1280 px):
 // thẻ bo 22 / 14; tiêu đề khối = chấm tròn số 30 / 22 + chữ 18/600 (không ẩn ở khổ nào); ô nhập + nút hành động cao 52 / 48,
 // nút viên thuốc / bo 12, chữ 16/600, ô nhập bo 13 / 10; nút chỉ có icon cạnh ô nhập vuông 52 / 48; ô Group UID liền (Cắt UID, Xả vải, Cấp vải) có camera · bàn phím nằm trong ô
-// cao 44 / 40; điều khiển gọn (tab, ô tìm/lọc,
+// cao 44; điều khiển gọn (tab, ô tìm/lọc,
 // chip lọc, nút trong dòng, nút icon thanh công cụ Admin) cao 44. Dữ liệu giả rỗng. Chạy với python -m http.server 8000 (đổi bằng BASE).
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const assert = require('node:assert/strict');
@@ -56,10 +56,10 @@ const audit = mobile => {
     if (!vis(b)) continue; const r = b.getBoundingClientRect();
     if (!near(r.width, S.ctl) || !near(r.height, S.ctl)) bad.push(`nút icon ${Math.round(r.width)}×${Math.round(r.height)} · ${nm(b)}`);
   }
-  // Ô Group UID liền (#scan-field, 14/10/2026): camera · bàn phím nằm gọn trong ô, cao = ô nhập − 8
+  // Ô Group UID liền (#scan-field, 14/10/2026): camera · bàn phím nằm gọn trong ô, cao 44 ở mọi khổ (16/10/2026: điện thoại trước 40)
   for (const b of root.querySelectorAll('.scan-field__tools > button')) {
     if (!vis(b)) continue; const r = b.getBoundingClientRect(), f = b.closest('.scan-field').querySelector('input').getBoundingClientRect();
-    if (!near(r.height, S.ctl - 8) || r.top < f.top || r.bottom > f.bottom || r.left < f.left || r.right > f.right) bad.push(`nút trong ô ${Math.round(r.width)}×${Math.round(r.height)} · ${nm(b)}`);
+    if (!near(r.height, 44) || r.top < f.top || r.bottom > f.bottom || r.left < f.left || r.right > f.right) bad.push(`nút trong ô ${Math.round(r.width)}×${Math.round(r.height)} · ${nm(b)}`);
   }
   // Điều khiển gọn: 44
   for (const e of root.querySelectorAll('.cut-tab, .as-tab, .pj-type, .pj-day, .pj-search, .as-search, .pj-icon, .ss-top-refresh, #root aside ~ div button.min-h-\\[42px\\], #root aside ~ div button.min-h-\\[38px\\]')) {

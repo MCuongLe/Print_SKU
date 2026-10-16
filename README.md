@@ -659,6 +659,17 @@ Admin, cặp với tải xuống của Nhập; trước là mũi nhọn ^); nhã
 nhóm (Kiểm tra 4 ô) thành thẻ ngang hết hàng, dải tiêu đề nhóm 58 px, nhóm cách 12 px → ô cuối 1042 px (≤ 1,25 màn). Test `mobile_home`: ô vuông ≥ 88 px,
 thẻ ngang ≥ 56 px.
 
+**IN TEM SKU · Phiếu IT — chuẩn hoá (15/10/2026, khối `#sku-it-std`, chỉ CSS).** Cùng kiểu tấm "Lấy từ WMS" (> 800 px): ô số phiếu + "Đọc phiếu" cao
+như ô nhập (52, giống Mã PO / Packing List của Gán WMS); danh sách dạng bảng — đầu bảng "Chọn tất cả" xám nhạt, dòng ngăn bằng vạch, dòng chọn xanh nhạt,
+dòng ngoài danh mục vàng nhạt; bộ tăng giảm số bản 44. Chung mọi popup: `:root` đang `color-scheme: dark` (giao diện cũ) nên hộp thoại nằm ngoài các màn
+sáng (Phiếu IT, danh sách chờ in IN TEM SKU, Kích hoạt máy, đăng nhập Admin, popup Admin…) thừa hưởng tối — ô tick chưa chọn tô đen; nay
+`dialog, #admin-auth, #cut-barcode-modal` luôn `color-scheme: light`.
+
+**Soát P0 vùng bấm + focus (16/10/2026, khối `#p0-1610`, theo lộ trình `docs/DOI_CHIEU_HIEN_TRANG_VA_HUONG_CAI_THIEN_UI_UX.md`).** Nút ☰ điện thoại /
+máy tính bảng 42 → 44; chip bộ lọc đang dùng của Lịch sử Group UID 32 → 44 (chuẩn chip lọc); ô tìm danh sách IN TEM GROUP UID có vòng focus 3 px.
+Nút icon trong ô nhập trên điện thoại 40 → 44 (người dùng chọn): biến chuẩn `--ui-icon-in` điện thoại 44; cụm camera · bàn phím của ô Group UID liền
+cách mép ô 2 px (ô 48) → nút 44 ở mọi khổ (test `ui_standard` kiểm 44). Sau đợt này không còn vùng bấm < 44 trên 13 màn điện thoại.
+
 **IN TEM GROUP UID theo mẫu (11/10/2026, khối `#uid-mockup` + sửa trong script màn).** Ô Group UID có icon mã vạch, camera cùng hàng, nút
 **Thêm vào danh sách** xuống hàng riêng (mọi bề rộng); Nhập Excel viền liền. Thẻ **Chưa gán SKU**: chip số + › (điện thoại), hàng Chọn tất cả +
 **Xóa đã chọn** (hỏi lại bằng WhDialog), ô tìm Group UID / Lot / Roll (chuẩn ô nhập), mỗi dòng UID + "Lot | Roll" + "Thêm: dd/mm/yyyy hh:mm" (giờ thêm
