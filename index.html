@@ -4073,11 +4073,10 @@ Error generating stack: `+y.message+`
           <button class="cut-tab" id="cut-tab-data" type="button" role="tab" data-tab="data" aria-selected="false"><i class="fsk-tab-n" aria-hidden="true">2</i><span class="tab-l">Tra cứu UID đã cắt</span><span class="tab-s">Tra cứu</span> <b class="cut-badge" id="cut-found">0</b></button>
           <button class="cut-tab" id="cut-tab-print" type="button" role="tab" data-tab="print" aria-selected="false"><i class="fsk-tab-n" aria-hidden="true">3</i><span class="tab-l">Tem chờ in</span><span class="tab-s">Chờ in</span> <b class="cut-badge" id="cut-count">0</b></button>
           <button class="cut-tab" id="cut-tab-adj" type="button" role="tab" data-tab="adj" aria-selected="false"><i class="fsk-tab-n" aria-hidden="true">4</i>Đối chiếu <b class="cut-badge" id="cut-adj-issues">0</b></button>
-          <button class="cut-tab" id="cut-tab-sample" type="button" role="tab" data-tab="sample" aria-selected="false"><i class="fsk-tab-n" aria-hidden="true">5</i><span class="tab-l">Lấy mẫu theo PO</span><span class="tab-s">Lấy mẫu</span></button>
         </div>
         <p class="cut-message" id="cut-message" aria-live="polite" style="margin-bottom:14px"></p>
         <div class="cut-grid">
-        <section class="cut-card" data-panel="scan"><h2><span>1</span>Quét Group UID</h2><form class="cut-scan" id="cut-form"><div class="scan-field"><input class="cut-input" id="cut-code" autocomplete="off" inputmode="none" placeholder="Group UID" maxlength="40" required><span class="scan-field__tools"><button class="act-icon act-icon--camera" id="cut-camera" type="button" aria-label="Quét bằng camera" title="Quét bằng camera" hidden></button><button class="act-icon act-icon--keyboard" id="cut-keyboard" type="button" aria-controls="cut-code" aria-label="Hiện bàn phím" title="Hiện bàn phím" aria-pressed="true"></button></span></div><button class="cut-primary act-icon act-icon--add" id="cut-add" type="submit">Lưu tem</button></form><div class="cut-last" id="cut-last" hidden></div><button class="cut-link" id="cut-goto-data" type="button">Tra cứu<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></button></section>
+        <section class="cut-card" data-panel="scan" id="cs-scan" data-mode="free"><h2><span>1</span>Quét Group UID</h2><div class="cs-mode" role="group" aria-label="Chế độ quét"><button class="cs-modebtn" id="cs-mode-free" type="button" aria-pressed="true">Cắt tự do</button><button class="cs-modebtn" id="cs-mode-po" type="button" aria-pressed="false">Theo PO</button></div><div class="cs-po" id="cs-po-top"><div class="cs-planrow"><select class="cut-input" id="cs-plan" aria-label="Phiên theo PO" title="Phiên theo PO"></select><button class="cut-icon-btn" id="cs-manage" type="button" aria-label="Quản lý phiên PO" title="Quản lý phiên PO" hidden><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></svg></button><button class="cut-icon-btn cs-sound" id="cs-sound" type="button" aria-pressed="true" aria-label="Tắt âm báo" title="Tắt âm báo"></button></div><div class="cs-totals" id="cs-totals"></div><p class="cut-message" id="cs-message" aria-live="polite"></p></div><form class="cut-scan" id="cut-form"><div class="scan-field"><input class="cut-input" id="cut-code" autocomplete="off" inputmode="none" placeholder="Group UID" maxlength="40" required><span class="scan-field__tools"><button class="act-icon act-icon--camera" id="cut-camera" type="button" aria-label="Quét bằng camera" title="Quét bằng camera" hidden></button><button class="act-icon act-icon--keyboard" id="cut-keyboard" type="button" aria-controls="cut-code" aria-label="Hiện bàn phím" title="Hiện bàn phím" aria-pressed="true"></button></span></div><button class="cut-primary act-icon act-icon--add" id="cut-add" type="submit">Lưu tem</button></form><div class="cs-po" id="cs-po-bottom"><div class="cs-confirm"><button class="cut-primary act-icon act-icon--check" id="cs-confirm" type="button" disabled>Chuyển sang Cắt UID</button><button class="cut-secondary" id="cs-goto-cut" type="button" hidden>Xem ở Tra cứu</button></div><div class="cs-recent" id="cs-recent" hidden></div><div class="cs-skus" id="cs-skus"></div></div><div class="cut-last" id="cut-last" hidden></div><button class="cut-link" id="cut-goto-data" type="button">Tra cứu<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></button></section>
         <section class="cut-card" data-panel="data"><h2><span>2</span>Tra cứu UID đã cắt</h2><form class="cut-searchbar" id="cut-search"><input class="cut-input" id="cut-sku" placeholder="Lọc theo SKU…" autocomplete="off"><input class="cut-input" id="cut-lot" style="max-width:150px" placeholder="Lọc theo Lot…" autocomplete="off"><div class="cut-daterange"><input class="cut-input" id="cut-date-from" type="date" aria-label="Cắt từ ngày" title="Cắt từ ngày"><span aria-hidden="true">→</span><input class="cut-input" id="cut-date-to" type="date" aria-label="Cắt đến ngày" title="Cắt đến ngày"></div><div class="cut-searchbar__end"><select class="cut-input cut-adj-filter" id="cut-adj" aria-label="Lọc theo trạng thái xuất ADJ" title="Lọc theo trạng thái xuất ADJ"><option value="">ADJ: Tất cả</option><option value="pending">Chưa xuất ADJ</option><option value="done">Đã xuất ADJ</option></select><button class="cut-secondary act-icon act-icon--search" type="submit">Tìm kiếm</button></div></form><div class="cut-actions"><button class="cut-icon-btn" id="cut-export" type="button" disabled title="Xuất Excel A4 ngang" aria-label="Xuất Excel A4 ngang"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button><button class="cut-primary act-icon act-icon--add" id="cut-push" type="button" disabled>Đưa vào hàng chờ in</button><button class="cut-danger act-icon act-icon--trash" id="cut-delete" type="button" disabled hidden>Xóa</button></div><p class="cut-note" id="cut-search-total" style="margin-top:10px"></p><div class="cut-table-wrap" style="margin-top:10px"><table class="cut-table"><thead><tr><th class="cut-th-check"><input id="cut-search-all" type="checkbox" aria-label="Chọn tất cả tem có thể in trong bảng"></th><th>SKU</th><th>UID</th><th>Lot</th><th>Roll</th><th>Số lượng cắt</th><th>Tên SP</th><th>Trạng thái</th><th>ADJ</th><th>Thời gian cắt</th></tr></thead><tbody id="cut-results"></tbody></table></div></section>
         <section class="cut-card" data-panel="print"><h2><span>3</span>Tem chờ in</h2><button class="cut-link cut-link--back" id="cut-goto-data-2" type="button">Chọn thêm ở Tra cứu</button><div class="cut-actions"><label class="cut-selectall"><input id="cut-all" type="checkbox"><span>Chọn tất cả tem có thể in</span><em id="cut-selected-count">Đã chọn 0</em></label><button class="cut-secondary act-icon act-icon--load" id="cut-reload" type="button">Tải lại</button><button class="cut-primary act-icon act-icon--print" id="cut-print" type="button" disabled>In tem đã chọn</button></div><div class="cut-list" id="cut-list"></div></section>
         <section class="cut-card" data-panel="adj" id="cut-adj-panel"><h2><span>4</span>Đối chiếu ADJ</h2>
@@ -4085,31 +4084,16 @@ Error generating stack: `+y.message+`
           <div class="cut-adj-kpis" id="cut-adj-kpis" role="group" aria-label="Lọc theo trạng thái đối chiếu"></div>
           <form class="cut-searchbar" id="cut-adj-form"><input class="cut-input" id="cut-adj-sku" placeholder="Lọc theo SKU…" autocomplete="off"><input class="cut-input" id="cut-adj-lot" style="max-width:150px" placeholder="Lọc theo Lot…" autocomplete="off"><div class="cut-daterange"><input class="cut-input" id="cut-adj-date-from" type="date" aria-label="Cắt từ ngày" title="Cắt từ ngày"><span aria-hidden="true">→</span><input class="cut-input" id="cut-adj-date-to" type="date" aria-label="Cắt đến ngày" title="Cắt đến ngày"></div><div class="cut-searchbar__end"><button class="cut-secondary act-icon act-icon--search" type="submit">Tìm kiếm</button></div></form>
           </section>
-        <section class="cut-card" data-panel="sample" id="cs-panel"><div class="cs-head"><h2><span>5</span>Lấy mẫu theo PO</h2><span class="cs-tools"><button class="cut-icon-btn cs-sound" id="cs-sound" type="button" aria-pressed="true" aria-label="Tắt âm báo" title="Tắt âm báo"></button></span></div>
-          <div class="cs-seg" role="tablist" aria-label="Lấy mẫu theo PO"><button class="cs-segbtn" id="cs-seg-scan" type="button" role="tab" data-sec="scan" aria-selected="true">Quét</button><button class="cs-segbtn" id="cs-seg-list" type="button" role="tab" data-sec="list" aria-selected="false">Danh sách <b class="cut-badge" id="cs-list-count">0</b></button><button class="cs-segbtn" id="cs-seg-plans" type="button" role="tab" data-sec="plans" aria-selected="false">Phiên PO <b class="cut-badge" id="cs-plan-count">0</b></button></div>
-          <p class="cut-message" id="cs-message" aria-live="polite"></p>
-          <div class="cs-sec" data-sec="scan"><select class="cut-input" id="cs-plan" aria-label="Phiên theo PO" title="Phiên theo PO"></select>
-          <div class="cs-totals" id="cs-totals"></div>
-          <form class="cut-scan" id="cs-form"><div class="scan-field"><input class="cut-input cut-input--scan" id="cs-code" autocomplete="off" inputmode="none" placeholder="Group UID" maxlength="40" required><span class="scan-field__tools"><button class="act-icon act-icon--camera" id="cs-camera" type="button" aria-label="Quét bằng camera" title="Quét bằng camera" hidden></button><button class="act-icon act-icon--keyboard" id="cs-keyboard" type="button" aria-controls="cs-code" aria-label="Hiện bàn phím" title="Hiện bàn phím" aria-pressed="true"></button></span></div><button class="cut-primary act-icon act-icon--check" id="cs-submit" type="submit"><span>Quét</span></button></form>
-          <div class="cs-confirm"><button class="cut-primary act-icon act-icon--check" id="cs-confirm" type="button" disabled>Chuyển sang Cắt UID</button><button class="cut-secondary" id="cs-goto-cut" type="button" hidden>Xem ở Tra cứu</button></div>
-          <div class="cs-recent" id="cs-recent" hidden></div>
-          <div class="cs-skus" id="cs-skus"></div>
-        </div>
-          <div class="cs-sec" data-sec="list" hidden>
-          <div class="cs-filters" id="cs-filters" role="group" aria-label="Lọc Group UID"></div>
-          <form class="cut-searchbar" id="cs-search" role="search"><input class="cut-input" id="cs-q" type="search" placeholder="Lọc UID, lot, roll, SKU…" autocomplete="off"></form>
-          <div class="cut-table-wrap"><table class="cut-table cs-table cs-list"><thead><tr><th>SKU</th><th>Lot</th><th>Roll</th><th>Group UID</th><th class="n">Số lượng</th><th>Nhóm</th><th>Quét lúc</th><th><span class="cs-vh">Thao tác</span></th></tr></thead><tbody id="cs-rows"><tr><td colspan="8" class="cut-empty">Chưa có dữ liệu.</td></tr></tbody></table></div>
-          <p class="cut-note" id="cs-more" hidden></p>
-        </div>
-          <div class="cs-sec" data-sec="plans" hidden>
-          <div class="cs-admin" id="cs-admin-box" hidden>
-            <form class="cut-searchbar" id="cs-po-form"><input class="cut-input" id="cs-po" inputmode="numeric" placeholder="Số PO" autocomplete="off" maxlength="40"><button class="cut-primary act-icon act-icon--load" id="cs-po-go" type="submit">Đọc từ WMS</button></form>
-            <div class="cs-preview" id="cs-preview" hidden></div>
-          </div>
-          <div class="cs-plans" id="cs-plans"></div>
-        </div>
-        </section>
       </div></div>
+      <dialog class="as-dialog cs-dlg" id="cs-plans-dialog" aria-labelledby="cs-plans-title">
+        <div class="as-d-head"><span class="as-d-mark" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 2v7.527a2 2 0 0 1-.211.896L4.72 20.55a1 1 0 0 0 .9 1.45h12.76a1 1 0 0 0 .9-1.45l-5.069-10.127A2 2 0 0 1 14 9.527V2"/><path d="M8.5 2h7"/><path d="M7 16h10"/></svg></span><div class="as-d-title"><h2 id="cs-plans-title">Phiên theo PO</h2><p>Chỉ Admin</p></div><button class="cut-icon-btn" type="button" data-cs-close title="Đóng" aria-label="Đóng"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>
+        <div class="as-d-body cs-dbody" tabindex="0" role="region" aria-label="Phiên theo PO"><p class="cut-message" id="cs-dmsg" aria-live="polite"></p><form class="cut-searchbar" id="cs-po-form"><input class="cut-input" id="cs-po" inputmode="numeric" placeholder="Số PO" autocomplete="off" maxlength="40" aria-label="Số PO"><button class="cut-primary act-icon act-icon--load" id="cs-po-go" type="submit">Đọc từ WMS</button></form><div class="cs-preview" id="cs-preview" hidden></div><div class="cs-plans" id="cs-plans"></div></div>
+      </dialog>
+      <dialog class="as-dialog cs-dlg" id="cs-list-dialog" data-size="lg" aria-labelledby="cs-list-title">
+        <div class="as-d-head"><span class="as-d-mark" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h.01"/><path d="M3 18h.01"/><path d="M3 6h.01"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M8 6h13"/></svg></span><div class="as-d-title"><h2 id="cs-list-title">Danh sách Group UID</h2><p id="cs-list-sub"></p></div><button class="cut-icon-btn" type="button" data-cs-close title="Đóng" aria-label="Đóng"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>
+        <div class="cs-dtools"><div class="cs-filters" id="cs-filters" role="group" aria-label="Lọc Group UID"></div><form class="cut-searchbar" id="cs-search" role="search"><input class="cut-input" id="cs-q" type="search" placeholder="Lọc UID, lot, roll, SKU…" autocomplete="off" aria-label="Lọc Group UID"></form><p class="cut-message" id="cs-lmsg" aria-live="polite"></p></div>
+        <div class="as-d-body" tabindex="0" role="region" aria-label="Danh sách Group UID"><div class="cut-table-wrap"><table class="cut-table cs-table cs-list"><thead><tr><th>SKU</th><th>Lot</th><th>Roll</th><th>Group UID</th><th class="n">Số lượng</th><th>Nhóm</th><th>Quét lúc</th><th><span class="cs-vh">Thao tác</span></th></tr></thead><tbody id="cs-rows"><tr><td colspan="8" class="cut-empty">Chưa có dữ liệu.</td></tr></tbody></table></div><p class="cut-note" id="cs-more" hidden></p></div>
+      </dialog>
       <div class="cs-pop" id="cs-pop" role="alertdialog" aria-live="assertive" aria-labelledby="cs-pop-title" hidden><div class="cs-pop__card" id="cs-pop-card"></div></div>
       <dialog class="as-dialog cut-adj-dialog" id="cut-adj-dialog" aria-labelledby="cut-adj-d-title">
         <div class="as-d-head"><span class="as-d-mark" id="cut-adj-d-mark" aria-hidden="true"></span><div class="as-d-title"><h2 id="cut-adj-d-title">Đối chiếu ADJ</h2><p id="cut-adj-total"></p></div><button class="cut-icon-btn" id="cut-adj-export" type="button" disabled title="Xuất Excel các dòng đang hiện" aria-label="Xuất Excel các dòng đang hiện"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button><button class="cut-icon-btn" type="button" data-adj-close title="Đóng" aria-label="Đóng"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>
@@ -7906,7 +7890,7 @@ var FSK_CORE = (function () {
 
         // 3 cụm Scan/Data/Print, mỗi lần chỉ hiện đúng 1 cụm (giống tab) — bấm vào tiêu đề cụm
         // hoặc bấm nút "→" cuối mỗi cụm để nhảy sang cụm khác. Nhớ cụm đang mở theo localStorage.
-        const cutTabs={scan:{btn:tabScan,panel:screen.querySelector('.cut-card[data-panel="scan"]')},data:{btn:tabData,panel:screen.querySelector('.cut-card[data-panel="data"]')},print:{btn:tabPrint,panel:screen.querySelector('.cut-card[data-panel="print"]')},adj:{btn:document.getElementById('cut-tab-adj'),panel:screen.querySelector('.cut-card[data-panel="adj"]')},sample:{btn:document.getElementById('cut-tab-sample'),panel:screen.querySelector('.cut-card[data-panel="sample"]')}};
+        const cutTabs={scan:{btn:tabScan,panel:screen.querySelector('.cut-card[data-panel="scan"]')},data:{btn:tabData,panel:screen.querySelector('.cut-card[data-panel="data"]')},print:{btn:tabPrint,panel:screen.querySelector('.cut-card[data-panel="print"]')},adj:{btn:document.getElementById('cut-tab-adj'),panel:screen.querySelector('.cut-card[data-panel="adj"]')}};
         const TAB_STORE='cut-cum-dang-mo';
         let activeTab='scan';
         try{const saved=localStorage.getItem(TAB_STORE);if(saved&&cutTabs[saved])activeTab=saved}catch(_){}
@@ -7922,7 +7906,6 @@ var FSK_CORE = (function () {
         tabData.addEventListener('click',()=>setActiveTab('data'));
         tabPrint.addEventListener('click',()=>setActiveTab('print'));
         cutTabs.adj.btn.addEventListener('click',()=>setActiveTab('adj'));
-        cutTabs.sample.btn.addEventListener('click',()=>setActiveTab('sample'));
         gotoData.addEventListener('click',()=>setActiveTab('data'));
         gotoData2.addEventListener('click',()=>setActiveTab('data'));
         setActiveTab(activeTab);
@@ -11849,64 +11832,62 @@ async function rpc(name,args,retry=true){
       })();
     </script>
     <style id="cut-sample-style">
-      #cs-panel .cs-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}
-      #cs-panel .cs-head h2{margin:0}
-      #cs-panel .cs-sound{flex:none;display:inline-grid;place-items:center;width:var(--ui-ctl,44px);min-width:var(--ui-ctl,44px);height:var(--ui-ctl,44px);padding:0;color:var(--wms-brand,#005f41)}
-      #cs-panel .cs-sound[aria-pressed="false"]{color:var(--wms-muted,#60736b);background:var(--wms-bg,#f4f7f6)}
-      #cs-panel .cs-sound svg{width:20px;height:20px}
-      #cs-panel #cs-plan{margin-bottom:12px;text-overflow:ellipsis}
-      #cs-panel .cs-totals{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px}
-      #cs-panel .cs-chip{display:inline-flex;align-items:center;gap:6px;min-height:30px;padding:0 11px;border-radius:999px;font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
-      #cs-panel .cs-chip svg{width:15px;height:15px;flex:none}
-      #cs-panel .cs-chip[data-role="cut"]{background:#e8f6ef;color:#0f6e49}
-      #cs-panel .cs-chip[data-role="qc"]{background:#e5eefb;color:#1f4e78}
-      #cs-panel .cs-chip[data-role="store"]{background:#eef1f0;color:#4f625b}
-      #cs-panel .cs-chip[data-role="warn"]{background:#fdf3e3;color:#7a4f00}
-      #cs-panel .cs-chip[data-role="bad"]{background:#fdecea;color:#a82f29}
-      #cs-panel .cs-chip[data-role="ok"]{background:#e8f6ef;color:#0f6e49}
-      #cs-panel .cs-confirm{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
-      #cs-panel .cs-confirm .cut-primary{flex:1 1 220px}
-      #cs-panel .cs-confirm[hidden],#cs-panel .cs-recent[hidden],#cs-panel .cs-preview[hidden],#cs-panel .cs-admin[hidden]{display:none}
-      #cs-panel .cs-recent{display:grid;gap:6px;margin-top:12px}
-      #cs-panel .cs-recent div{display:flex;align-items:center;gap:8px;min-height:32px;padding:0 10px;border-radius:10px;background:var(--wms-bg,#f4f7f6);font-size:13px;color:var(--wms-muted,#60736b)}
-      #cs-panel .cs-recent svg{width:15px;height:15px;flex:none}
-      #cs-panel .cs-recent code{font:600 13px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--wms-text,#17251f)}
-      #cs-panel .cs-recent div[data-tone="cut"] svg{color:#16845b}#cs-panel .cs-recent div[data-tone="qc"] svg{color:#245aa8}#cs-panel .cs-recent div[data-tone="store"] svg{color:#4f625b}
-      #cs-panel .cs-recent div[data-tone="warn"] svg{color:#b7791f}#cs-panel .cs-recent div[data-tone="error"] svg{color:#c2413b}
-      #cs-panel .cs-skus{display:grid;gap:10px;margin-top:16px}
-      #cs-panel .cs-sku{display:grid;gap:10px;padding:14px;border:1px solid var(--wms-border,#d9e2de);border-radius:14px;background:var(--wms-surface,#fff)}
-      #cs-panel .cs-sku[data-done="true"]{border-color:#16845b;background:#f4fbf7}
-      #cs-panel .cs-sku__top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
-      #cs-panel .cs-sku__code{display:block;font:700 16px/1.25 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--wms-text,#17251f)}
-      #cs-panel .cs-sku__name{display:block;margin-top:2px;font-size:12px;line-height:1.35;color:var(--wms-muted,#60736b);overflow-wrap:anywhere}
-      #cs-panel .cs-sku__ok{flex:none;display:inline-flex;align-items:center;gap:5px;font-size:13px;font-weight:700;color:#0f6e49}
-      #cs-panel .cs-meter{display:grid;grid-template-columns:76px minmax(0,1fr) auto;align-items:center;gap:10px;font-size:13px;font-variant-numeric:tabular-nums}
-      #cs-panel .cs-meter b{min-width:54px;text-align:right}
-      #cs-panel .cs-bar{height:9px;border-radius:99px;background:#e3ebe7;overflow:hidden}
-      #cs-panel .cs-bar>i{display:block;width:0;height:100%;border-radius:inherit;transition:width .25s ease}
-      #cs-panel .cs-meter[data-role="cut"] .cs-bar>i{background:#16845b}#cs-panel .cs-meter[data-role="qc"] .cs-bar>i{background:#245aa8}
-      #cs-panel .cs-filters{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
-      #cs-panel .cs-filter{display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:0 12px;border:1px solid var(--wms-border,#d9e2de);border-radius:999px;background:#fff;color:var(--wms-muted,#60736b);font-size:13px;font-weight:700;cursor:pointer}
-      #cs-panel .cs-filter[aria-pressed="true"]{border-color:var(--wms-brand,#005f41);background:rgba(0,95,65,.08);color:var(--wms-brand,#005f41)}
-      #cs-panel .cs-filter b{font-variant-numeric:tabular-nums}
-      #cs-panel .cs-table .n{text-align:right;font-variant-numeric:tabular-nums}
-      #cs-panel .cs-table td small{display:block;color:var(--wms-muted,#60736b);font-size:11px}
-      #cs-panel .cs-table tr[data-scanned="true"] td{background:rgba(0,95,65,.04)}
-      #cs-panel .cs-act{display:inline-grid;place-items:center;width:34px;height:34px;padding:0;border:1px solid var(--wms-border,#d9e2de);border-radius:10px;background:#fff;color:var(--wms-muted,#60736b);cursor:pointer}
-      #cs-panel .cs-act svg{width:16px;height:16px}
-      #cs-panel .cs-preview{display:grid;gap:12px;margin-top:14px;padding:14px;border:1px solid var(--wms-border,#d9e2de);border-radius:14px;background:var(--wms-bg,#f4f7f6)}
-      #cs-panel .cs-preview__chips{display:flex;flex-wrap:wrap;gap:8px}
-      #cs-panel .cs-preview .cut-table-wrap{background:#fff}
-      #cs-panel .cs-preview__go{display:flex;flex-wrap:wrap;gap:8px}
-      #cs-panel .cs-preview__go .cut-primary{flex:1 1 220px}
-      #cs-panel .cs-plans{display:grid;gap:10px;margin-top:14px}
-      #cs-panel .cs-plan{display:grid;gap:10px;padding:14px;border:1px solid var(--wms-border,#d9e2de);border-radius:14px;background:var(--wms-surface,#fff)}
-      #cs-panel .cs-plan[aria-current="true"]{border-color:var(--wms-brand,#005f41);box-shadow:0 0 0 2px rgba(0,95,65,.14)}
-      #cs-panel .cs-plan__top{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 10px}
-      #cs-panel .cs-plan__po{font:700 17px/1.2 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
-      #cs-panel .cs-plan__meta{font-size:12px;color:var(--wms-muted,#60736b)}
-      #cs-panel .cs-plan__chips{display:flex;flex-wrap:wrap;gap:6px}
-      #cs-panel .cs-plan__acts{display:flex;flex-wrap:wrap;gap:8px}
+      #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-sound{flex:none;display:inline-grid;place-items:center;width:var(--ui-ctl,44px);min-width:var(--ui-ctl,44px);height:var(--ui-ctl,44px);padding:0;color:var(--wms-brand,#005f41)}
+      #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-sound[aria-pressed="false"]{color:var(--wms-muted,#60736b);background:var(--wms-bg,#f4f7f6)}
+      #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-sound svg{width:20px;height:20px}
+      #cut-group-uid-screen :is(#cs-scan, .cs-dlg) #cs-plan{margin-bottom:12px;text-overflow:ellipsis}
+      #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-totals{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px}
+      #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-chip{display:inline-flex;align-items:center;gap:6px;min-height:30px;padding:0 11px;border-radius:999px;font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+      #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-chip svg{width:15px;height:15px;flex:none}
+      #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-chip[data-role="cut"]{background:#e8f6ef;color:#0f6e49}
+      #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-chip[data-role="qc"]{background:#e5eefb;color:#1f4e78}
+      #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-chip[data-role="store"]{background:#eef1f0;color:#4f625b}
+      #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-chip[data-role="warn"]{background:#fdf3e3;color:#7a4f00}
+      #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-chip[data-role="bad"]{background:#fdecea;color:#a82f29}
+      #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-chip[data-role="ok"]{background:#e8f6ef;color:#0f6e49}
+      #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-confirm{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+      #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-confirm .cut-primary{flex:1 1 220px}
+      #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-confirm[hidden],#cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-recent[hidden],#cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-preview[hidden],#cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-admin[hidden]{display:none}
+      #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-recent{display:grid;gap:6px;margin-top:12px}
+      #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-recent div{display:flex;align-items:center;gap:8px;min-height:32px;padding:0 10px;border-radius:10px;background:var(--wms-bg,#f4f7f6);font-size:13px;color:var(--wms-muted,#60736b)}
+      #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-recent svg{width:15px;height:15px;flex:none}
+      #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-recent code{font:600 13px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--wms-text,#17251f)}
+      #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-recent div[data-tone="cut"] svg{color:#16845b}#cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-recent div[data-tone="qc"] svg{color:#245aa8}#cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-recent div[data-tone="store"] svg{color:#4f625b}
+      #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-recent div[data-tone="warn"] svg{color:#b7791f}#cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-recent div[data-tone="error"] svg{color:#c2413b}
+      #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-skus{display:grid;gap:10px;margin-top:16px}
+      #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-sku{display:grid;gap:10px;padding:14px;border:1px solid var(--wms-border,#d9e2de);border-radius:14px;background:var(--wms-surface,#fff)}
+      #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-sku[data-done="true"]{border-color:#16845b;background:#f4fbf7}
+      #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-sku__top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+      #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-sku__code{display:block;font:700 16px/1.25 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--wms-text,#17251f)}
+      #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-sku__name{display:block;margin-top:2px;font-size:12px;line-height:1.35;color:var(--wms-muted,#60736b);overflow-wrap:anywhere}
+      #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-sku__ok{flex:none;display:inline-flex;align-items:center;gap:5px;font-size:13px;font-weight:700;color:#0f6e49}
+      #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-meter{display:grid;grid-template-columns:76px minmax(0,1fr) auto;align-items:center;gap:10px;font-size:13px;font-variant-numeric:tabular-nums}
+      #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-meter b{min-width:54px;text-align:right}
+      #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-bar{height:9px;border-radius:99px;background:#e3ebe7;overflow:hidden}
+      #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-bar>i{display:block;width:0;height:100%;border-radius:inherit;transition:width .25s ease}
+      #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-meter[data-role="cut"] .cs-bar>i{background:#16845b}#cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-meter[data-role="qc"] .cs-bar>i{background:#245aa8}
+      #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-filters{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+      #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-filter{display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:0 12px;border:1px solid var(--wms-border,#d9e2de);border-radius:999px;background:#fff;color:var(--wms-muted,#60736b);font-size:13px;font-weight:700;cursor:pointer}
+      #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-filter[aria-pressed="true"]{border-color:var(--wms-brand,#005f41);background:rgba(0,95,65,.08);color:var(--wms-brand,#005f41)}
+      #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-filter b{font-variant-numeric:tabular-nums}
+      #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-table .n{text-align:right;font-variant-numeric:tabular-nums}
+      #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-table td small{display:block;color:var(--wms-muted,#60736b);font-size:11px}
+      #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-table tr[data-scanned="true"] td{background:rgba(0,95,65,.04)}
+      #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-act{display:inline-grid;place-items:center;width:34px;height:34px;padding:0;border:1px solid var(--wms-border,#d9e2de);border-radius:10px;background:#fff;color:var(--wms-muted,#60736b);cursor:pointer}
+      #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-act svg{width:16px;height:16px}
+      #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-preview{display:grid;gap:12px;margin-top:14px;padding:14px;border:1px solid var(--wms-border,#d9e2de);border-radius:14px;background:var(--wms-bg,#f4f7f6)}
+      #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-preview__chips{display:flex;flex-wrap:wrap;gap:8px}
+      #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-preview .cut-table-wrap{background:#fff}
+      #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-preview__go{display:flex;flex-wrap:wrap;gap:8px}
+      #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-preview__go .cut-primary{flex:1 1 220px}
+      #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-plans{display:grid;gap:10px;margin-top:14px}
+      #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-plan{display:grid;gap:10px;padding:14px;border:1px solid var(--wms-border,#d9e2de);border-radius:14px;background:var(--wms-surface,#fff)}
+      #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-plan[aria-current="true"]{border-color:var(--wms-brand,#005f41);box-shadow:0 0 0 2px rgba(0,95,65,.14)}
+      #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-plan__top{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 10px}
+      #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-plan__po{font:700 17px/1.2 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+      #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-plan__meta{font-size:12px;color:var(--wms-muted,#60736b)}
+      #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-plan__chips{display:flex;flex-wrap:wrap;gap:6px}
+      #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-plan__acts{display:flex;flex-wrap:wrap;gap:8px}
       #cut-group-uid-screen .cs-pop{position:fixed;inset:0;z-index:90;display:grid;place-items:center;padding:16px;background:rgba(15,35,28,.5);-webkit-tap-highlight-color:transparent}
       #cut-group-uid-screen .cs-pop[hidden]{display:none}
       #cut-group-uid-screen .cs-pop__card{position:relative;overflow:hidden;display:grid;justify-items:center;gap:8px;width:min(420px,100%);max-height:calc(100dvh - 32px);overflow-y:auto;padding:26px 20px 20px;border-radius:22px;background:var(--cs-bg);border:3px solid var(--cs-c);box-shadow:0 24px 60px rgba(13,40,30,.35);text-align:center;animation:cspop-in .16s ease-out}
@@ -11919,66 +11900,84 @@ async function rpc(name,args,retry=true){
       #cut-group-uid-screen .cs-pop__ico svg{width:42px;height:42px}
       #cut-group-uid-screen .cs-pop h3{margin:6px 0 0;font-size:22px;font-weight:700;line-height:1.25;letter-spacing:0;color:var(--cs-t)}
       #cut-group-uid-screen .cs-pop__uid{font:700 22px/1.2 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.02em;word-break:break-all;color:var(--wms-text,#17251f)}
-      #cs-panel .cs-facts{display:flex;flex-wrap:wrap;justify-content:center;gap:6px 14px;margin-top:2px}
-      #cs-panel .cs-fact{display:inline-flex;flex-direction:column;align-items:center;min-width:64px;font-size:12px;color:var(--wms-muted,#60736b)}
-      #cs-panel .cs-fact i{font-style:normal}#cs-panel .cs-fact b{font-size:16px;color:var(--wms-text,#17251f)}
+      #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-facts{display:flex;flex-wrap:wrap;justify-content:center;gap:6px 14px;margin-top:2px}
+      #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-fact{display:inline-flex;flex-direction:column;align-items:center;min-width:64px;font-size:12px;color:var(--wms-muted,#60736b)}
+      #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-fact i{font-style:normal}#cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-fact b{font-size:16px;color:var(--wms-text,#17251f)}
       #cut-group-uid-screen .cs-pop__note{margin:2px 0 0;font-size:14px;color:var(--cs-t)}
       #cut-group-uid-screen .cs-pop__count{margin:2px 0 0;font-size:13px;color:var(--wms-muted,#60736b);font-variant-numeric:tabular-nums}
       #cut-group-uid-screen .cs-pop__close{margin-top:10px;display:inline-grid;place-items:center;width:100%;min-height:48px;border:1px solid var(--cs-c);border-radius:14px;background:#fff;color:var(--cs-t);font:600 15px var(--wms-font);cursor:pointer}
       #cut-group-uid-screen .cs-pop__bar{position:absolute;left:0;bottom:0;height:5px;width:100%;background:var(--cs-c);transform-origin:left;animation:cspop-bar var(--cs-auto,1.6s) linear forwards}
       @keyframes cspop-in{from{transform:scale(.92);opacity:0}to{transform:scale(1);opacity:1}}
       @keyframes cspop-bar{from{transform:scaleX(1)}to{transform:scaleX(0)}}
-      @media(prefers-reduced-motion:reduce){#cut-group-uid-screen .cs-pop__card,#cut-group-uid-screen .cs-pop__bar{animation:none}#cs-panel .cs-bar>i{transition:none}}
-      @media(max-width:520px){#cs-panel .cs-meter{grid-template-columns:64px minmax(0,1fr) auto}}
+      @media(prefers-reduced-motion:reduce){#cut-group-uid-screen .cs-pop__card,#cut-group-uid-screen .cs-pop__bar{animation:none}#cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-bar>i{transition:none}}
+      @media(max-width:520px){#cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-meter{grid-template-columns:64px minmax(0,1fr) auto}}
       #cs-message:empty{display:none}
-      #cs-panel .cs-vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
-      #cs-panel .cut-message{color:#0f6e49}
-      #cs-panel .cut-message[data-tone="warn"]{color:#7a4f00}
-      #cs-panel .cut-message[data-tone="error"]{color:#a82f29}
-      #cs-panel .cs-short{display:inline-grid;vertical-align:-2px;margin-left:4px;color:#b7791f}
+      #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+      #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cut-message{color:#0f6e49}
+      #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cut-message[data-tone="warn"]{color:#7a4f00}
+      #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cut-message[data-tone="error"]{color:#a82f29}
+      #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-short{display:inline-grid;vertical-align:-2px;margin-left:4px;color:#b7791f}
       @media(max-width:620px){
-        #cs-panel .cs-list tbody tr[data-code]{display:grid;grid-template-columns:max-content max-content minmax(0,1fr) auto;grid-template-areas:"uid uid uid act" "sku lot roll role" "qty scan scan scan";align-items:baseline;gap:4px 12px;padding:10px 12px}
-        #cs-panel .cs-list tr[data-code] td{display:block;min-width:0;font-size:13px;line-height:1.35}
-        #cs-panel .cs-list tr[data-code] td::before{content:none}
-        #cs-panel .cs-list tr[data-code] td[data-label="Group UID"]{grid-area:uid;font-weight:700}
-        #cs-panel .cs-list tr[data-code] td[data-label="SKU"]{grid-area:sku}
-        #cs-panel .cs-list tr[data-code] td[data-label="Lot"]{grid-area:lot}
-        #cs-panel .cs-list tr[data-code] td[data-label="Roll"]{grid-area:roll}
-        #cs-panel .cs-list tr[data-code] td.n{grid-area:qty;white-space:nowrap}
-        #cs-panel .cs-list tr[data-code] td[data-label="Nhóm"]{grid-area:role;justify-self:end}
-        #cs-panel .cs-list tr[data-code] td[data-label="Quét lúc"]{grid-area:scan;color:var(--wms-muted,#60736b)}
-        #cs-panel .cs-list tr[data-code] td.cs-actcell{position:static;grid-area:act;align-self:start;justify-self:end}
-        #cs-panel .cs-list tr[data-code] td:is([data-label="Lot"],[data-label="Roll"])::before{content:attr(data-label);display:inline;margin-right:4px;color:var(--wms-muted,#60736b);font-weight:400}
-        #cs-panel .cs-list tr[data-code] td[data-label="Quét lúc"] small{display:inline;margin-left:6px}
-        #cs-panel .cs-prev{min-width:0}
-        #cs-panel .cs-prev tbody tr{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px 8px}
-        #cs-panel .cs-prev tbody td{display:block;text-align:left}
-        #cs-panel .cs-prev tbody td::before{display:block;content:attr(data-label);font-size:11px;font-weight:400;color:var(--wms-muted,#60736b)}
-        #cs-panel .cs-prev tbody td[data-label="SKU"]{grid-column:span 3}#cs-panel .cs-prev tbody td[data-label="Lot"]{grid-column:span 2}
+        #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-list tbody tr[data-code]{display:grid;grid-template-columns:max-content max-content minmax(0,1fr) auto;grid-template-areas:"uid uid uid act" "sku lot roll role" "qty scan scan scan";align-items:baseline;gap:4px 12px;padding:10px 12px}
+        #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-list tr[data-code] td{display:block;min-width:0;font-size:13px;line-height:1.35}
+        #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-list tr[data-code] td::before{content:none}
+        #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-list tr[data-code] td[data-label="Group UID"]{grid-area:uid;font-weight:700}
+        #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-list tr[data-code] td[data-label="SKU"]{grid-area:sku}
+        #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-list tr[data-code] td[data-label="Lot"]{grid-area:lot}
+        #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-list tr[data-code] td[data-label="Roll"]{grid-area:roll}
+        #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-list tr[data-code] td.n{grid-area:qty;white-space:nowrap}
+        #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-list tr[data-code] td[data-label="Nhóm"]{grid-area:role;justify-self:end}
+        #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-list tr[data-code] td[data-label="Quét lúc"]{grid-area:scan;color:var(--wms-muted,#60736b)}
+        #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-list tr[data-code] td.cs-actcell{position:static;grid-area:act;align-self:start;justify-self:end}
+        #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-list tr[data-code] td:is([data-label="Lot"],[data-label="Roll"])::before{content:attr(data-label);display:inline;margin-right:4px;color:var(--wms-muted,#60736b);font-weight:400}
+        #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-list tr[data-code] td[data-label="Quét lúc"] small{display:inline;margin-left:6px}
+        #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-prev{min-width:0}
+        #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-prev tbody tr{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px 8px}
+        #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-prev tbody td{display:block;text-align:left}
+        #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-prev tbody td::before{display:block;content:attr(data-label);font-size:11px;font-weight:400;color:var(--wms-muted,#60736b)}
+        #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-prev tbody td[data-label="SKU"]{grid-column:span 3}#cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-prev tbody td[data-label="Lot"]{grid-column:span 2}
       }
-      #cut-group-uid-screen:has(#cut-tab-sample[aria-selected="true"]) #cut-message{display:none}
-      /* 5 tab ở màn hẹp: chữ + số đếm gọn lại để tab Đối chiếu / Lấy mẫu không bị cắt */
-      @media(max-width:480px){#cut-group-uid-screen .cut-tabs{gap:1px}#cut-group-uid-screen .cut-tab{flex:1 1 auto;gap:3px;padding:0 2px;font-size:12px}#cut-group-uid-screen .cut-tab .cut-badge{min-width:18px;height:18px;padding:0 4px;font-size:12px}}
-      #cs-panel .cs-sec[hidden]{display:none}
-      #cs-panel .cs-head{margin:0 0 12px}
-      #cs-panel .cs-seg{display:flex;gap:2px;margin:0 0 12px;padding:3px;border:1px solid var(--wms-border,#d9e2de);border-radius:12px;background:var(--wms-bg,#f4f7f6)}
-      #cs-panel .cs-segbtn{flex:1 1 0;display:inline-flex;align-items:center;justify-content:center;gap:6px;min-width:0;min-height:40px;padding:0 8px;border:0;border-radius:9px;background:transparent;color:var(--wms-muted,#60736b);font:600 14px var(--wms-font);white-space:nowrap;cursor:pointer}
-      #cs-panel .cs-segbtn[aria-selected="true"]{background:#fff;color:var(--wms-brand,#005f41);box-shadow:0 1px 3px rgba(23,37,31,.14)}
-      #cs-panel .cs-segbtn .cut-badge{min-width:20px;height:20px;padding:0 5px;font-size:12px}
-      @media(max-width:800px){#cs-panel .cut-table thead,#cs-panel .cs-list thead{display:none}}
+      @media(max-width:800px){#cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cut-table thead,#cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-list thead{display:none}}
+      /* Khối quét chung: công tắc Cắt tự do | Theo PO; phần Theo PO chỉ hiện khi data-mode="po", phần luồng cũ (thẻ vừa lưu, link Tra cứu) ẩn đi */
+      #cs-scan .cs-mode{display:flex;gap:2px;margin:0 0 14px;padding:3px;border:1px solid var(--wms-border,#d9e2de);border-radius:12px;background:var(--wms-bg,#f4f7f6)}
+      #cs-scan .cs-modebtn{flex:1 1 0;min-height:40px;padding:0 8px;border:0;border-radius:9px;background:transparent;color:var(--wms-muted,#60736b);font:600 14px var(--wms-font);cursor:pointer}
+      #cs-scan .cs-modebtn[aria-pressed="true"]{background:#fff;color:var(--wms-brand,#005f41);box-shadow:0 1px 3px rgba(23,37,31,.14)}
+      #cs-scan .cs-po{display:none}
+      #cs-scan[data-mode="po"] .cs-po{display:block}
+      #cs-scan[data-mode="po"] :is(#cut-last,#cut-goto-data){display:none}
+      #cut-group-uid-screen[data-cs-mode="po"]:has(#cut-tab-scan[aria-selected="true"]) #cut-message{display:none}
+      #cs-scan .cs-planrow{display:flex;align-items:center;gap:8px;margin:0 0 12px}
+      #cs-scan .cs-planrow select{flex:1 1 auto;min-width:0;width:auto;text-overflow:ellipsis}
+      #cs-scan .cs-planrow .cut-icon-btn{flex:none;width:var(--ui-ctl,46px);min-width:var(--ui-ctl,46px);height:var(--ui-ctl,46px);padding:0}
+      #cs-scan .cs-planrow .cut-icon-btn[hidden]{display:none}
+      #cut-group-uid-screen :is(#cs-scan, .cs-dlg) button.cs-chip{border:0;font-family:inherit;cursor:pointer}
+      #cut-group-uid-screen :is(#cs-scan, .cs-dlg) button.cs-chip:hover{filter:brightness(.97)}
+      #cut-group-uid-screen :is(#cs-scan, .cs-dlg) .cs-chip[data-role="list"]{background:var(--wms-bg,#f4f7f6);color:var(--wms-text,#17251f);border:1px solid var(--wms-border,#d9e2de)}
+      #cs-scan .cs-po .cs-totals{margin:0 0 12px}
+      #cs-scan #cs-po-top .cut-message{margin:0 0 12px}
+      #cs-scan .cs-po .cs-confirm{margin-top:12px}
+      .cs-dlg .cs-dbody{padding:16px 20px 20px}
+      .cs-dlg .cs-dbody .cut-message,.cs-dlg .cs-dtools .cut-message{margin:0 0 12px}
+      .cs-dlg .cs-dbody>.cut-searchbar{margin-bottom:0}
+      .cs-dlg .cs-dtools{padding:12px 20px 0}
+      .cs-dlg .cs-dtools .cut-searchbar{margin-bottom:12px}
+      .cs-dlg .cs-dtools .cs-filters{margin-bottom:10px}
+      .cs-dlg .as-d-body .cut-table-wrap{border-radius:0;border-left:0;border-right:0;border-bottom:0}
+      .cs-dlg .as-d-body .cut-note{margin:8px 20px 14px}
     </style>
     <script id="cut-sample-script">
-      // Tab LẤY MẪU THEO PO của màn CẮT GROUP UID (16/10/2026, supabase/cut_sample_v1.sql): Admin nhập số PO → Extension đọc Group UID + các ASN
-      // của PO từ WMS → CutSampleCore.plan chia mẫu (cắt 20% cây nhỏ nhất, QC 10% cây lớn nhất, mỗi lot cắt + QC ≥ 30%, còn lại lưu trữ)
-      // → lưu thành phiên trên Supabase. Nhân viên quét UID: báo CẮT / QC / LƯU TRỮ và tick đã quét. Quét xong UID cắt thì "Chuyển sang Cắt UID"
-      // đẩy chúng vào luồng Cắt cũ (cut_group_uids, trạng thái pending) rồi dùng Tra cứu / in tem / ADJ như thường. Mô hình quyền như CẤP VẢI:
-      // xem/quét = công khai qua hàm, tạo/xóa/bỏ quét = Admin (đăng nhập bằng nút khiên của màn Cắt). Tab do script Cắt UID điều khiển
-      // (sự kiện print-sku-cut-tab); màn này chỉ chạy khi đang ở #cut-group-uid và tab Lấy mẫu đang mở.
+      // KHỐI QUÉT CHUNG của tab 1 · Quét Group UID (CẮT GROUP UID, 16/10/2026): công tắc Cắt tự do | Theo PO dùng chung MỘT ô quét, camera, bàn phím ảo
+      // và bộ giữ con trỏ của script Cắt UID. Cắt tự do = luồng cũ nguyên vẹn. Theo PO (supabase/cut_sample_v1.sql): Admin đọc PO từ WMS qua Extension →
+      // CutSampleCore.plan chia mẫu (cắt 20% cây nhỏ nhất, QC 10% cây lớn nhất, mỗi lot cắt + QC ≥ 30%, còn lại lưu trữ) → lưu thành phiên; nhân viên quét
+      // UID để báo CẮT / QC / LƯU TRỮ; "Chuyển sang Cắt UID" đẩy UID cắt đã quét vào cut_group_uids (pending). Quyền: xem/quét = công khai qua hàm,
+      // tạo/xóa/bỏ quét = Admin (nút khiên của màn Cắt). Lượt submit của ô quét bị chặn ở pha capture khi đang Theo PO nên luồng cũ không chạy nhầm.
       (() => {
-        const $ = id => document.getElementById(id), screen = $('cut-group-uid-screen'), panel = $('cs-panel');
+        const $ = id => document.getElementById(id), screen = $('cut-group-uid-screen'), panel = $('cs-scan');
         if (!screen || !panel) return;
-        const ROUTE = 'cut-group-uid', active = () => location.hash.replace(/^#/, '').split('&')[0] === ROUTE && panel.dataset.active === 'true';
-        const K = { plan: 'cs-phien', tab: 'cs-cum', keyboard: 'cs-ban-phim', sound: 'cs-am-thanh', me: 'cs-may' };
+        // Chỉ chạy khi đang ở #cut-group-uid, tab 1 · Quét đang mở và công tắc ở Theo PO.
+        const ROUTE = 'cut-group-uid', scanTabOn = () => $('cut-tab-scan')?.getAttribute('aria-selected') === 'true', modeOn = () => panel.dataset.mode === 'po';
+        const active = () => location.hash.replace(/^#/, '').split('&')[0] === ROUTE && scanTabOn() && modeOn();
+        const K = { plan: 'cs-phien', mode: 'cs-che-do', sound: 'cs-am-thanh', me: 'cs-may' };
         const store = { get: k => { try { return localStorage.getItem(k) } catch (_) { return null } }, set: (k, v) => { try { localStorage.setItem(k, v) } catch (_) {} } };
         const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
         const nf = new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 2 }), num = v => nf.format(Number(v) || 0);
@@ -11994,14 +11993,18 @@ async function rpc(name,args,retry=true){
           undo: '<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11"/>',
           trash: '<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>',
           soundOn: '<path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z"/><path d="M16 9a5 5 0 0 1 0 6"/><path d="M19.364 18.364a9 9 0 0 0 0-12.728"/>',
+          list: '<path d="M3 12h.01"/><path d="M3 18h.01"/><path d="M3 6h.01"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M8 6h13"/>',
           soundOff: '<path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z"/><line x1="22" x2="16" y1="9" y2="15"/><line x1="16" x2="22" y1="9" y2="15"/>'
         };
         const ROLE = { cut: { label: 'Cắt', title: 'CẮT GROUP UID NÀY' }, qc: { label: 'QC', title: 'CHUYỂN QC TEST' }, store: { label: 'Lưu trữ', title: 'CHUYỂN KHO LƯU TRỮ' } };
         const ROLES = ['cut', 'qc', 'store'];
-        const S = { sessions: [], sid: '', session: null, items: [], tab: 'scan', filter: 'todo', q: '', admin: false, busy: false, sound: store.get(K.sound) !== 'tat', queue: [], pumping: false, recent: [], touch: new Map(), loadedAt: 0, preview: null, pushed: 0 };
+        const S = { sessions: [], sid: '', session: null, items: [], mode: 'free', filter: 'todo', q: '', admin: false, busy: false, sound: store.get(K.sound) !== 'tat', queue: [], pumping: false, recent: [], touch: new Map(), loadedAt: 0, preview: null, pushed: 0 };
         const names = {};
-        const code = $('cs-code'), form = $('cs-form'), message = $('cs-message'), planSel = $('cs-plan'), soundBtn = $('cs-sound'), confirmBtn = $('cs-confirm'), gotoCut = $('cs-goto-cut');
-        const tell = (text, tone = '') => { message.textContent = text || ''; message.dataset.tone = tone };
+        const code = $('cut-code'), form = $('cut-form'), addBtn = $('cut-add'), planSel = $('cs-plan'), soundBtn = $('cs-sound'), confirmBtn = $('cs-confirm'), gotoCut = $('cs-goto-cut');
+        const listDlg = $('cs-list-dialog'), plansDlg = $('cs-plans-dialog'), manageBtn = $('cs-manage');
+        // Thông báo hiện ở dòng của khối quét; hộp thoại đang mở có dòng riêng (phía sau hộp thoại không nhìn thấy dòng của khối).
+        const messages = [$('cs-message'), $('cs-dmsg'), $('cs-lmsg')];
+        const tell = (text, tone = '') => { for (const m of messages) { m.textContent = text || ''; m.dataset.tone = tone } };
 
         // ---- Supabase RPC: xem/quét công khai, tạo/xóa/bỏ quét cần token Admin ----
         const post = async (name, args, token) => { const q = window.PrintSkuQueue, res = await fetch(`${q.supabaseUrl}/rest/v1/rpc/${name}`, { method: 'POST', headers: { apikey: q.publishableKey, Authorization: `Bearer ${token || q.publishableKey}`, 'Content-Type': 'application/json' }, body: JSON.stringify(args || {}), signal: AbortSignal.timeout(25000) }); return { res, body: await res.json().catch(() => null) } };
@@ -12076,12 +12079,11 @@ async function rpc(name,args,retry=true){
         const renderPlanSelect = () => {
           planSel.innerHTML = S.sessions.length ? S.sessions.map(p => { const c = p.counts || {}; return `<option value="${esc(p.id)}"${p.id === S.sid ? ' selected' : ''}>PO ${esc(p.po)} · cắt ${c.cutScanned || 0}/${c.cut || 0} · QC ${c.qcScanned || 0}/${c.qc || 0}</option>` }).join('') : '<option value="">Chưa có phiên</option>';
           planSel.disabled = !S.sessions.length;
-          $('cs-plan-count').textContent = S.sessions.length;
         };
         const meter = (role, [done, total]) => total ? `<div class="cs-meter" data-role="${role}">${chip(role, ICON[role], ROLE[role].label)}<div class="cs-bar" role="progressbar" aria-label="${esc(ROLE[role].label)}" aria-valuemin="0" aria-valuemax="${total}" aria-valuenow="${done}"><i style="width:${Math.min(100, Math.round(done / total * 100))}%"></i></div><b>${done}/${total}</b></div>` : '';
         const renderProgress = () => {
           const t = tally(), box = $('cs-totals');
-          box.innerHTML = S.session ? ROLES.map(r => chip(r, ICON[r], `${ROLE[r].label} ${t[r][0]}/${t[r][1]}`)).join('') : '';
+          box.innerHTML = S.session ? ROLES.map(r => `<button class="cs-chip" type="button" data-role="${r}" data-list="${r}" title="Xem danh sách ${esc(ROLE[r].label)}">${svg(ICON[r])}${ROLE[r].label} ${t[r][0]}/${t[r][1]}</button>`).join('') + `<button class="cs-chip" type="button" data-role="list" data-list="todo" title="Danh sách Group UID">${svg(ICON.list)}${S.items.length} UID</button>` : '';
           $('cs-skus').innerHTML = skuStats().map(s => {
             const done = s.cut[0] >= s.cut[1] && s.qc[0] >= s.qc[1], name = names[s.sku];
             return `<div class="cs-sku" data-done="${done}"><div class="cs-sku__top"><div><span class="cs-sku__code">${esc(s.sku)}</span><span class="cs-sku__name">${esc(name || '')}${name ? ' · ' : ''}${s.lots.size} lot</span></div>${done ? `<span class="cs-sku__ok">${svg(ICON.ok, 18)}Đủ mẫu</span>` : ''}</div>${meter('cut', s.cut)}${meter('qc', s.qc)}</div>`;
@@ -12101,19 +12103,18 @@ async function rpc(name,args,retry=true){
           const counts = Object.fromEntries(FILTERS.map(([f]) => [f, S.items.filter(i => pass(i, f)).length]));
           $('cs-filters').innerHTML = FILTERS.map(([f, label]) => `<button class="cs-filter" type="button" data-filter="${f}" aria-pressed="${S.filter === f}">${label} <b>${counts[f]}</b></button>`).join('');
           const shown = S.items.filter(i => pass(i, S.filter) && (!needle || [i.groupUid, i.lot, i.roll, i.sku].some(x => String(x || '').toLowerCase().includes(needle))));
-          $('cs-list-count').textContent = S.items.length;
+          $('cs-list-sub').textContent = S.session ? `PO ${S.session.po} · ${num(S.items.length)} UID` : '';
           const rows = shown.slice(0, MAX_ROWS).map(i => `<tr data-code="${esc(i.groupUid)}" data-scanned="${Boolean(i.scannedAt)}"><td data-label="SKU">${esc(i.sku)}</td><td data-label="Lot">${esc(i.lot || '—')}</td><td data-label="Roll">${esc(i.roll || '—')}</td><td data-label="Group UID"><b>${esc(i.groupUid)}</b></td><td class="n" data-label="Số lượng">${esc(fmtQty(i.sku, i.qty))}</td><td data-label="Nhóm">${chip(i.role, ICON[i.role], ROLE[i.role].label)}</td><td data-label="Quét lúc">${i.scannedAt ? `${esc(fmtAt(i.scannedAt))}${i.scannedBy ? `<small>${esc(i.scannedBy)}</small>` : ''}` : '—'}${i.pushedAt ? '<small>Đã chuyển luồng Cắt</small>' : ''}</td><td class="cs-actcell">${S.admin && i.scannedAt && !i.pushedAt ? `<button class="cs-act" type="button" data-unscan="${esc(i.groupUid)}" aria-label="Bỏ dấu quét ${esc(i.groupUid)}" title="Bỏ dấu quét">${svg(ICON.undo)}</button>` : ''}</td></tr>`).join('');
           $('cs-rows').innerHTML = rows || `<tr><td colspan="8" class="cut-empty">${S.session ? 'Không có Group UID.' : 'Chưa có dữ liệu.'}</td></tr>`;
           const more = $('cs-more'); more.hidden = shown.length <= MAX_ROWS; more.textContent = `Hiển thị ${MAX_ROWS}/${shown.length} dòng — lọc thêm để xem hết.`;
         };
         const renderPlans = () => {
-          $('cs-admin-box').hidden = !S.admin;
           $('cs-plans').innerHTML = S.sessions.length ? S.sessions.map(p => {
             const c = p.counts || {}, asns = Array.isArray(p.asns) ? p.asns : [], open = asns.filter(a => a.status && !/^received$/i.test(a.status)).length;
             return `<div class="cs-plan" data-plan="${esc(p.id)}"${p.id === S.sid ? ' aria-current="true"' : ''}><div class="cs-plan__top"><span class="cs-plan__po">PO ${esc(p.po)}</span><span class="cs-plan__meta">${esc(fmtAt(p.updatedAt))} · ${num(c.total)} UID · ${asns.length} ASN</span></div><div class="cs-plan__chips">${chip('cut', ICON.cut, `Cắt ${c.cutScanned || 0}/${c.cut || 0}`)}${chip('qc', ICON.qc, `QC ${c.qcScanned || 0}/${c.qc || 0}`)}${chip('store', ICON.store, `Lưu trữ ${c.storeScanned || 0}/${c.store || 0}`)}${open ? chip('warn', ICON.warn, `${open} ASN chưa nhận`) : ''}</div><div class="cs-plan__acts"><button class="cut-primary" type="button" data-open="${esc(p.id)}">Mở để quét</button>${S.admin ? `<button class="cut-secondary act-icon act-icon--trash" type="button" data-delete="${esc(p.id)}">Xóa phiên</button>` : ''}</div></div>`;
           }).join('') : '<p class="cut-empty">Chưa có phiên nào.</p>';
         };
-        const renderAll = () => { renderPlanSelect(); renderProgress(); renderConfirm(); renderList(); renderPlans() };
+        const renderAll = () => { renderPlanSelect(); renderProgress(); renderConfirm(); if (listDlg.open) renderList(); if (plansDlg.open) renderPlans() };
 
         // ---- Tải dữ liệu ----
         const loadPlans = async () => {
@@ -12142,7 +12143,7 @@ async function rpc(name,args,retry=true){
         // ---- Pop-up kết quả quét: không phải <dialog> modal để ô quét vẫn giữ con trỏ (máy quét cầm tay bắn tiếp được) ----
         const pop = $('cs-pop'), popCard = $('cs-pop-card');
         let popTimer = 0;
-        const hidePop = () => { clearTimeout(popTimer); if (pop.hidden) return; pop.hidden = true; popCard.innerHTML = ''; if (S.tab === 'scan' && active()) setTimeout(() => code.focus(), 0) };
+        const hidePop = () => { clearTimeout(popTimer); if (pop.hidden) return; pop.hidden = true; popCard.innerHTML = ''; if (active()) setTimeout(() => code.focus(), 0) };
         const fact = (label, value) => value ? `<span class="cs-fact"><i>${label}</i><b>${esc(value)}</b></span>` : '';
         const AUTO = { cut: 2400, qc: 2400, store: 1600 };
         const showPop = ({ tone, title, uid, facts = '', note = '', count = '' }) => {
@@ -12192,14 +12193,12 @@ async function rpc(name,args,retry=true){
           } catch (e) { showPop({ tone: 'error', title: 'CHƯA RÕ ĐÃ GHI HAY CHƯA', uid, note: e.message }); cue('error'); tell(`Chưa rõ đã ghi hay chưa: ${e.message}`, 'error') }
         };
         const pump = async () => { if (S.pumping) return; S.pumping = true; try { while (S.queue.length) await scanOne(S.queue.shift()) } finally { S.pumping = false } };
-        form.addEventListener('submit', event => { event.preventDefault(); const uid = code.value.trim(); if (!uid) return; code.value = ''; S.queue.push(uid); pump(); code.focus() });
-        const cameraBtn = $('cs-camera'), keyboardBtn = $('cs-keyboard');
-        if (window.PrintSkuScanUI?.canOpen()) cameraBtn.hidden = false;
-        cameraBtn.addEventListener('click', () => window.PrintSkuScanUI.openGroupUid({ typeFocus: '#cs-code', onCode: c => { code.value = c; form.requestSubmit() } }));
-        let keyboardHidden = store.get(K.keyboard) !== 'hien';
-        const applyKeyboard = () => { code.inputMode = keyboardHidden ? 'none' : 'text'; const label = keyboardHidden ? 'Hiện bàn phím' : 'Ẩn bàn phím'; keyboardBtn.setAttribute('aria-label', label); keyboardBtn.title = label; keyboardBtn.setAttribute('aria-pressed', String(keyboardHidden)) };
-        keyboardBtn.addEventListener('click', () => { keyboardHidden = !keyboardHidden; store.set(K.keyboard, keyboardHidden ? 'an' : 'hien'); applyKeyboard(); code.blur(); setTimeout(() => code.focus(), 60) });
-        applyKeyboard();
+        // Một ô quét chung: đang Theo PO thì chặn lượt submit ngay ở pha capture (trước script Cắt UID) rồi xử lý theo phiên PO; Cắt tự do thì không đụng gì.
+        screen.addEventListener('submit', event => {
+          if (event.target !== form || !modeOn()) return;
+          event.preventDefault(); event.stopImmediatePropagation();
+          const uid = code.value.trim(); if (!uid) return; code.value = ''; S.queue.push(uid); pump(); code.focus();
+        }, true);
 
         // ---- Xác nhận: đẩy các UID CẮT đã quét sang luồng CẮT GROUP UID cũ ----
         confirmBtn.addEventListener('click', async () => {
@@ -12220,6 +12219,15 @@ async function rpc(name,args,retry=true){
         });
         gotoCut.addEventListener('click', async () => { const ui = window.PrintSkuCutUi; try { await ui?.reload?.() } catch (_) { /* Tra cứu tự tải lại khi vào */ } ui?.setActiveTab('data') });
 
+        // ---- Hộp thoại: Danh sách Group UID (mở từ các chip) và Phiên theo PO (Admin, nút bánh răng) ----
+        for (const dlg of [listDlg, plansDlg]) {
+          dlg.addEventListener('click', event => { if (event.target === dlg || event.target.closest('[data-cs-close]')) dlg.close() });
+          dlg.addEventListener('close', () => { if (active()) setTimeout(() => code.focus(), 0) });
+        }
+        const openList = filter => { S.filter = filter; S.q = ''; $('cs-q').value = ''; $('cs-lmsg').textContent = ''; renderList(); listDlg.showModal() };
+        panel.addEventListener('click', event => { const b = event.target.closest('[data-list]'); if (b && S.session) openList(b.dataset.list) });
+        manageBtn.addEventListener('click', () => { if (!S.admin) return; $('cs-dmsg').textContent = ''; renderPlans(); renderPreview(); plansDlg.showModal() });
+
         // ---- Danh sách: lọc, tìm, bỏ dấu quét (Admin) ----
         $('cs-filters').addEventListener('click', event => { const b = event.target.closest('[data-filter]'); if (!b) return; S.filter = b.dataset.filter; renderList() });
         $('cs-q').addEventListener('input', () => { S.q = $('cs-q').value; renderList() });
@@ -12234,7 +12242,7 @@ async function rpc(name,args,retry=true){
 
         // ---- Admin: đọc PO từ WMS, xem trước phiên, tạo / xóa phiên ----
         // Quyền Admin do nút khiên ở thanh trên của màn Cắt quản lý (đăng nhập / thoát); tab này chỉ đọc trạng thái và nghe sự kiện.
-        const syncAdmin = () => { S.admin = Boolean(window.PrintSkuAdminAccess?.peekToken?.()); renderPlans(); renderList() };
+        const syncAdmin = () => { S.admin = Boolean(window.PrintSkuAdminAccess?.peekToken?.()); manageBtn.hidden = !S.admin; if (!S.admin && plansDlg.open) plansDlg.close(); if (plansDlg.open) renderPlans(); if (listDlg.open) renderList() };
         addEventListener('print-sku-admin-ready', syncAdmin); addEventListener('print-sku-admin-logout', syncAdmin);
 
         // Quy tắc loại UID khỏi phiên (đếm riêng để Admin thấy): đã hủy/đóng, nhiều SKU, chưa nhận (không SKU hoặc số lượng ≤ 0).
@@ -12307,13 +12315,13 @@ async function rpc(name,args,retry=true){
             const d = await adminRpc('cut_sample_create', { p_po: p.po, p_asns: p.asns, p_items: p.plan.items.map(i => ({ groupUid: i.groupUid, sku: i.sku, lot: i.lot, roll: i.roll, qty: i.qty, role: i.role })) });
             S.preview = null; renderPreview();
             S.sid = d.session.id; store.set(K.plan, S.sid); S.touch.clear();
-            await refresh(); setTab('scan');
+            await refresh(); plansDlg.close();
             tell(`${d.replaced ? 'Đã thay phiên' : 'Đã tạo phiên'} PO ${d.session.po}: ${d.session.counts.cut} cắt · ${d.session.counts.qc} QC · ${d.session.counts.store} lưu trữ${d.replaced && (d.carried || d.dropped) ? ` (giữ ${d.carried} dấu quét, mất ${d.dropped})` : ''}.`, 'ok');
           } catch (e) { tell(`Chưa tạo được phiên: ${e.message}`, 'error') } finally { S.busy = false }
         });
         $('cs-plans').addEventListener('click', async event => {
           const open = event.target.closest('[data-open]'), del = event.target.closest('[data-delete]');
-          if (open) { await selectPlan(open.dataset.open); setTab('scan'); return }
+          if (open) { await selectPlan(open.dataset.open); plansDlg.close(); return }
           if (!del || S.busy) return;
           const p = S.sessions.find(s => s.id === del.dataset.delete); if (!p) return;
           if (!await window.WhDialog.confirm({ tone: 'danger', title: `Xóa phiên PO ${p.po}?`, facts: [`${p.counts?.total || 0} UID`, `${(p.counts?.cutScanned || 0) + (p.counts?.qcScanned || 0) + (p.counts?.storeScanned || 0)} UID đã quét`, 'UID đã chuyển sang Cắt UID vẫn giữ'], confirmText: 'Xóa phiên', cancelText: 'Giữ' })) return;
@@ -12321,35 +12329,22 @@ async function rpc(name,args,retry=true){
           try { await adminRpc('cut_sample_delete', { p_session: p.id }); if (S.sid === p.id) { S.sid = ''; S.items = []; S.session = null } await refresh(); tell(`Đã xóa phiên PO ${p.po}.`, 'ok') } catch (e) { tell(e.message, 'error') } finally { S.busy = false }
         });
 
-        // ---- Tab ----
-        const tabs = { scan: { btn: $('cs-seg-scan'), panel: panel.querySelector('.cs-sec[data-sec="scan"]') }, list: { btn: $('cs-seg-list'), panel: panel.querySelector('.cs-sec[data-sec="list"]') }, plans: { btn: $('cs-seg-plans'), panel: panel.querySelector('.cs-sec[data-sec="plans"]') } };
-        const setTab = name => {
-          if (!tabs[name]) return;
-          S.tab = name; store.set(K.tab, name);
-          for (const [key, t] of Object.entries(tabs)) { const on = key === name; t.btn.setAttribute('aria-selected', String(on)); t.panel.hidden = !on }
-          if (name === 'list') renderList();
-          if (name === 'plans') renderPlans();
-          if (name === 'scan' && active()) setTimeout(() => code.focus(), 50);
+        // Công tắc chế độ (nhớ theo máy): đổi nhãn nút lưu, bật/tắt phần Theo PO; ô quét, camera, bàn phím và giữ con trỏ do script Cắt UID lo chung.
+        const modeBtns = { free: $('cs-mode-free'), po: $('cs-mode-po') };
+        const paintSubmit = () => {
+          const po = S.mode === 'po';
+          addBtn.textContent = po ? 'Quét' : 'Lưu tem';
+          addBtn.classList.toggle('act-icon--check', po); addBtn.classList.toggle('act-icon--add', !po);
         };
-        for (const [key, t] of Object.entries(tabs)) t.btn.addEventListener('click', () => setTab(key));
-        { const saved = store.get(K.tab); setTab(saved && tabs[saved] ? saved : 'scan') }
-
-        // Máy quét cầm tay gõ như bàn phím: ký tự đầu tiên ở tab Quét tự đưa vào ô quét; mất focus thì kéo về (trừ khi đang mở hộp thoại).
-        const modalOpen = () => { try { return Boolean(document.querySelector('dialog:modal,.pss')) } catch (_) { return Boolean(document.querySelector('dialog[open],.pss')) } };
-        const typingElsewhere = () => { const el = document.activeElement; return el === code || (el && /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName)) };
-        document.addEventListener('keydown', event => {
-          if (!active() || S.tab !== 'scan' || typingElsewhere() || modalOpen()) return;
-          if (event.ctrlKey || event.altKey || event.metaKey) return;
-          const key = event.key || '';
-          if (key.length !== 1 && key !== 'Unidentified' && key !== 'Process') return;
-          code.focus();
-        });
-        code.addEventListener('blur', () => setTimeout(() => {
-          if (!active() || S.tab !== 'scan' || modalOpen()) return;
-          const el = document.activeElement;
-          if (el && el !== document.body && screen.contains(el)) return;
-          code.focus();
-        }, 0));
+        const setMode = name => {
+          S.mode = modeBtns[name] ? name : 'free'; store.set(K.mode, S.mode);
+          panel.dataset.mode = S.mode; screen.dataset.csMode = S.mode;
+          for (const [key, b] of Object.entries(modeBtns)) b.setAttribute('aria-pressed', String(key === S.mode));
+          paintSubmit(); hidePop(); tell('');
+          if (S.mode === 'po') route(); else clearTimeout(timer);
+          if (scanTabOn()) setTimeout(() => code.focus(), 50);
+        };
+        for (const [key, b] of Object.entries(modeBtns)) b.addEventListener('click', () => setMode(key));
 
         // ---- Vào/ra màn, tự làm mới để thấy các máy quét khác ----
         let timer = 0;
@@ -12357,12 +12352,11 @@ async function rpc(name,args,retry=true){
         const route = async () => {
           if (!active()) { clearTimeout(timer); hidePop(); return }
           syncAdmin(); await refresh(); schedule();
-          if (S.tab === 'scan') setTimeout(() => code.focus(), 50);
         };
         document.addEventListener('visibilitychange', () => { if (!document.hidden && active() && !S.busy && !S.pumping) refresh() });
         window.addEventListener('hashchange', route);
         window.addEventListener('print-sku-cut-tab', route);
-        renderAll(); route();
+        syncAdmin(); renderAll(); setMode(store.get(K.mode) === 'po' ? 'po' : 'free');
       })();
     </script>
     <style id="print-devices-tab-style">
@@ -13872,29 +13866,29 @@ async function rpc(name,args,retry=true){
     <style id="scan-field">
       /* Ô Group UID liền (14/10/2026; mockup Cấp vải 12/10) cho Cắt Group UID, Theo dõi xả vải, Cấp vải: icon quét | vạch | mã | cụm camera · bàn phím
          nằm trong ô (nền xanh nhạt, vạch giữa; bàn phím đang bật = nền trắng). Nút chính bên phải (máy tính), dưới và rộng hết (≤ 620 px). */
-      :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) :is(#cut-form, #xa-vai-form, #cap-vai-form, #cs-form).cut-scan { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: stretch; gap: 10px; }
-      :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) :is(#cut-form, #xa-vai-form, #cap-vai-form, #cs-form) > .scan-field { position: relative; grid-column: 1; grid-row: 1; min-width: 0; }
-      :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) :is(#cut-form, #xa-vai-form, #cap-vai-form, #cs-form) > [type="submit"] { flex: none; grid-column: 2; grid-row: 1; width: auto; margin: 0; padding: 0 22px; white-space: nowrap; }
-      :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) :is(#cut-form, #xa-vai-form, #cap-vai-form, #cs-form) .scan-field > .cut-input { display: block; box-sizing: border-box; width: 100%; min-width: 0; padding-left: 60px; padding-right: 112px; text-overflow: ellipsis; border-color: rgba(0, 95, 65, .3); box-shadow: 0 0 0 3px rgba(0, 95, 65, .06); background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='%23005f41' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 7V5a2 2 0 0 1 2-2h2'/%3E%3Cpath d='M17 3h2a2 2 0 0 1 2 2v2'/%3E%3Cpath d='M21 17v2a2 2 0 0 1-2 2h-2'/%3E%3Cpath d='M7 21H5a2 2 0 0 1-2-2v-2'/%3E%3Cpath d='M7 12h10'/%3E%3C/svg%3E") no-repeat 16px 50% / 22px 22px, linear-gradient(rgba(0, 95, 65, .2), rgba(0, 95, 65, .2)) no-repeat 50px 50% / 1px 24px, linear-gradient(180deg, #fff, #f6faf8); }
-      :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) :is(#cut-form, #xa-vai-form, #cap-vai-form, #cs-form) .scan-field > .cut-input:focus { border-color: var(--wms-brand, #005f41); box-shadow: 0 0 0 3px rgba(0, 95, 65, .16); }
-      :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) :is(#cut-form, #xa-vai-form, #cap-vai-form, #cs-form) .scan-field:has(.act-icon--camera[hidden]) > .cut-input { padding-right: 64px; }
-      :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) :is(#cut-form, #xa-vai-form, #cap-vai-form, #cs-form) .scan-field__tools { position: absolute; top: 4px; right: 4px; bottom: 4px; display: flex; align-items: stretch; padding: 0 2px; border-radius: 10px; background: rgba(0, 95, 65, .08); }
-      :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) :is(#cut-form, #xa-vai-form, #cap-vai-form, #cs-form) .scan-field__tools > button { position: relative; flex: none; box-sizing: border-box; width: 48px; min-width: 48px; height: auto; min-height: 0; margin: 0; padding: 0; border: 0; border-radius: 8px; background: transparent; box-shadow: none; transform: none; color: var(--wms-brand, #005f41); font-size: 0; cursor: pointer; }
-      :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) :is(#cut-form, #xa-vai-form, #cap-vai-form, #cs-form) .scan-field__tools > button::before { width: 20px; height: 20px; }
-      :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) :is(#cut-form, #xa-vai-form, #cap-vai-form, #cs-form) .scan-field__tools > button[hidden] { display: none; }
-      :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) :is(#cut-form, #xa-vai-form, #cap-vai-form, #cs-form) .scan-field__tools > button:not([hidden]) + button::after { content: ""; position: absolute; left: 0; top: 9px; bottom: 9px; width: 1px; background: rgba(0, 95, 65, .2); }
-      :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) :is(#cut-form, #xa-vai-form, #cap-vai-form, #cs-form) .scan-field__tools > button[aria-pressed="false"] { background: #fff; box-shadow: 0 1px 3px rgba(13, 40, 30, .12); }
+      :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) :is(#cut-form, #xa-vai-form, #cap-vai-form).cut-scan { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: stretch; gap: 10px; }
+      :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) :is(#cut-form, #xa-vai-form, #cap-vai-form) > .scan-field { position: relative; grid-column: 1; grid-row: 1; min-width: 0; }
+      :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) :is(#cut-form, #xa-vai-form, #cap-vai-form) > [type="submit"] { flex: none; grid-column: 2; grid-row: 1; width: auto; margin: 0; padding: 0 22px; white-space: nowrap; }
+      :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) :is(#cut-form, #xa-vai-form, #cap-vai-form) .scan-field > .cut-input { display: block; box-sizing: border-box; width: 100%; min-width: 0; padding-left: 60px; padding-right: 112px; text-overflow: ellipsis; border-color: rgba(0, 95, 65, .3); box-shadow: 0 0 0 3px rgba(0, 95, 65, .06); background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='%23005f41' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 7V5a2 2 0 0 1 2-2h2'/%3E%3Cpath d='M17 3h2a2 2 0 0 1 2 2v2'/%3E%3Cpath d='M21 17v2a2 2 0 0 1-2 2h-2'/%3E%3Cpath d='M7 21H5a2 2 0 0 1-2-2v-2'/%3E%3Cpath d='M7 12h10'/%3E%3C/svg%3E") no-repeat 16px 50% / 22px 22px, linear-gradient(rgba(0, 95, 65, .2), rgba(0, 95, 65, .2)) no-repeat 50px 50% / 1px 24px, linear-gradient(180deg, #fff, #f6faf8); }
+      :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) :is(#cut-form, #xa-vai-form, #cap-vai-form) .scan-field > .cut-input:focus { border-color: var(--wms-brand, #005f41); box-shadow: 0 0 0 3px rgba(0, 95, 65, .16); }
+      :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) :is(#cut-form, #xa-vai-form, #cap-vai-form) .scan-field:has(.act-icon--camera[hidden]) > .cut-input { padding-right: 64px; }
+      :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) :is(#cut-form, #xa-vai-form, #cap-vai-form) .scan-field__tools { position: absolute; top: 4px; right: 4px; bottom: 4px; display: flex; align-items: stretch; padding: 0 2px; border-radius: 10px; background: rgba(0, 95, 65, .08); }
+      :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) :is(#cut-form, #xa-vai-form, #cap-vai-form) .scan-field__tools > button { position: relative; flex: none; box-sizing: border-box; width: 48px; min-width: 48px; height: auto; min-height: 0; margin: 0; padding: 0; border: 0; border-radius: 8px; background: transparent; box-shadow: none; transform: none; color: var(--wms-brand, #005f41); font-size: 0; cursor: pointer; }
+      :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) :is(#cut-form, #xa-vai-form, #cap-vai-form) .scan-field__tools > button::before { width: 20px; height: 20px; }
+      :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) :is(#cut-form, #xa-vai-form, #cap-vai-form) .scan-field__tools > button[hidden] { display: none; }
+      :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) :is(#cut-form, #xa-vai-form, #cap-vai-form) .scan-field__tools > button:not([hidden]) + button::after { content: ""; position: absolute; left: 0; top: 9px; bottom: 9px; width: 1px; background: rgba(0, 95, 65, .2); }
+      :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) :is(#cut-form, #xa-vai-form, #cap-vai-form) .scan-field__tools > button[aria-pressed="false"] { background: #fff; box-shadow: 0 1px 3px rgba(13, 40, 30, .12); }
       @media (hover: hover) {
-        :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) :is(#cut-form, #xa-vai-form, #cap-vai-form, #cs-form) .scan-field__tools > button:hover { background: rgba(0, 95, 65, .1); }
+        :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) :is(#cut-form, #xa-vai-form, #cap-vai-form) .scan-field__tools > button:hover { background: rgba(0, 95, 65, .1); }
       }
       /* Theo dõi xả vải: form thành lưới riêng (trước "display: contents" để nút bàn phím ngoài form đứng cạnh ô) */
       #xa-vai-screen .cut-card[data-panel="scan"] > #xa-vai-goto-open { grid-row: auto; }
       @media (max-width: 620px) {
-        :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) :is(#cut-form, #xa-vai-form, #cap-vai-form, #cs-form).cut-scan { grid-template-columns: minmax(0, 1fr); }
-        :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) :is(#cut-form, #xa-vai-form, #cap-vai-form, #cs-form) > [type="submit"] { grid-column: 1; grid-row: 2; width: 100%; }
+        :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) :is(#cut-form, #xa-vai-form, #cap-vai-form).cut-scan { grid-template-columns: minmax(0, 1fr); }
+        :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) :is(#cut-form, #xa-vai-form, #cap-vai-form) > [type="submit"] { grid-column: 1; grid-row: 2; width: 100%; }
       }
       @media (max-width: 480px) {
-        :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) :is(#cut-form, #xa-vai-form, #cap-vai-form, #cs-form) .scan-field > .cut-input { padding-left: 56px; background-position: 14px 50%, 46px 50%, 0 0; }
+        :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) :is(#cut-form, #xa-vai-form, #cap-vai-form) .scan-field > .cut-input { padding-left: 56px; background-position: 14px 50%, 46px 50%, 0 0; }
       }
     </style>
     <style id="pdm-polish">
@@ -14038,7 +14032,7 @@ async function rpc(name,args,retry=true){
       #uid-screen .uid-search input:focus { box-shadow: 0 0 0 3px rgba(0, 95, 65, .16); }
       /* Nút icon trong ô nhập trên điện thoại 44 (người dùng chọn; trước 40): --ui-icon-in 44; cụm camera · bàn phím của ô Group UID liền cách mép ô 2 px */
       @media (max-width: 800px) {
-        :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) :is(#cut-form, #xa-vai-form, #cap-vai-form, #cs-form) .scan-field__tools { top: 2px; right: 2px; bottom: 2px; }
+        :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen) :is(#cut-form, #xa-vai-form, #cap-vai-form) .scan-field__tools { top: 2px; right: 2px; bottom: 2px; }
       }
     </style>
     <style id="sheet-center">

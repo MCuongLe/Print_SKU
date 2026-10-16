@@ -1,6 +1,7 @@
-// Tab LẤY MẪU THEO PO của màn CẮT GROUP UID (#cut-group-uid): Admin nhập PO → đọc Group UID + ASN qua Extension → chia mẫu (cắt 20% nhỏ nhất,
-// QC 10% lớn nhất, mỗi lot cắt + QC ≥ 30%, còn lại lưu trữ) → tạo phiên → nhân viên quét UID (pop-up cắt / QC / lưu trữ, thanh tiến độ theo SKU)
-// → "Chuyển sang Cắt UID" đẩy UID cắt đã quét vào luồng Cắt cũ (Chờ in / Tra cứu).
+// KHỐI QUÉT CHUNG của tab 1 · Quét Group UID (#cut-group-uid): công tắc Cắt tự do | Theo PO dùng chung một ô quét. Cắt tự do = luồng cũ.
+// Theo PO: Admin (bánh răng) nhập PO → đọc Group UID + ASN qua Extension → chia mẫu (cắt 20% nhỏ nhất, QC 10% lớn nhất, mỗi lot cắt + QC ≥ 30%, còn lại
+// lưu trữ) → tạo phiên → nhân viên quét UID (pop-up cắt / QC / lưu trữ, thanh tiến độ theo SKU) → "Chuyển sang Cắt UID" đẩy UID cắt đã quét vào luồng
+// Cắt cũ (Tra cứu). Danh sách UID mở từ các chip. Extension + Supabase giả.
 // Chạy với python -m http.server 8000; Extension và các hàm Supabase giả lập (mô phỏng đúng hợp đồng của supabase/cut_sample_v1.sql).
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
 const assert = require("node:assert/strict");
@@ -146,6 +147,12 @@ async function open(browser, server, width, { admin = true, openSample = true } 
       server.calls.push({ name: rpc[1], body, auth: headers.authorization });
       return json(server.handlers[rpc[1]](body, headers));
     }
+    if (/\/rest\/v1\/rpc\/cut_group_uid_scan/.test(url)) {
+      const uid = route.request().postDataJSON().p_group_uid;
+      server.calls.push({ name: "cut_group_uid_scan", body: { uid } });
+      server.cutRows.set(uid, { sku: "422000009", lot: "FREE", roll: "9", name: "Vải quét tự do", status: "pending" });
+      return json({ ok: true, data: { groupUid: uid, sku: "422000009", productName: "Vải quét tự do", lot: "FREE", roll: "9" } });
+    }
     const cut = /\/rest\/v1\/rpc\/(cut_group_uid_list|cut_group_uid_search)/.exec(url);
     if (cut) {
       const items = [...server.cutRows].map(([groupUid, r]) => ({ groupUid, sku: r.sku, productName: r.name, lot: r.lot, roll: r.roll, printStatus: r.status, createdAt: new Date().toISOString(), adjExportedAt: null }));
@@ -167,7 +174,7 @@ async function open(browser, server, width, { admin = true, openSample = true } 
     dispatchEvent(new Event("print-sku-admin-ready"));
   }, { admin, token: ADMIN_TOKEN });
   await page.waitForSelector("#cut-group-uid-screen:not([hidden])");
-  if (openSample) { await page.locator("#cut-tab-sample").click(); await page.waitForSelector('#cs-panel[data-active="true"]'); }
+  if (openSample) { await page.locator("#cs-mode-po").click(); await page.waitForSelector('#cs-scan[data-mode="po"]'); }
   return { page, errors };
 }
 // CUT_SAMPLE_SHOTS=<thư mục> → lưu ảnh chụp các màn chính để xem bằng mắt (không bật thì bỏ qua).
@@ -177,39 +184,45 @@ const axeCheck = async (page, label) => {
   if (!AXE) return;
   if (!(await page.evaluate(() => Boolean(window.axe)))) await page.addScriptTag({ path: AXE });
   const violations = await page.evaluate(async () => (await axe.run({ include: ["#cut-group-uid-screen"] }, { runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa", "best-practice"] }, resultTypes: ["violations"] })).violations
-    .map(v => `${v.id} (${v.impact}): ${v.nodes.map(n => n.target.join(" ")).join(" | ")}`));
+    .map(v => `${v.id} (${v.impact}): ${v.nodes.map(n => n.target.join(" ") + " " + String(n.html).slice(0, 220) + " " + JSON.stringify((n.any[0] || n.all[0] || {}).data || {})).join(" | ")}`));
   assert.deepEqual(violations, [], `axe · ${label}`);
 };
-// Tab con của "Lấy mẫu": Quét / Danh sách / Phiên PO.
-const openTab = async (page, name) => { await page.locator(`#cs-seg-${name}`).click(); await page.waitForSelector(`#cs-panel .cs-sec[data-sec="${name}"]:not([hidden])`); };
+// Hộp thoại của khối: Phiên theo PO (Admin, bánh răng) và Danh sách Group UID (chip). Mở cái này thì đóng cái kia trước.
+const closeDialogs = async page => { while (await page.locator("dialog.cs-dlg[open]").count()) { await page.keyboard.press("Escape"); await page.waitForTimeout(60); } };
+const openPlans = async page => { if (!(await page.locator("#cs-plans-dialog[open]").count())) { await closeDialogs(page); await page.locator("#cs-manage").click(); await page.waitForSelector("#cs-plans-dialog[open]"); } };
+const openList = async (page, role = "todo") => { await closeDialogs(page); await page.locator(`#cs-totals [data-list="${role}"]`).click(); await page.waitForSelector("#cs-list-dialog[open]"); };
 const popTitle = page => page.locator("#cs-pop-card h3").innerText();
 const scan = async (page, code, title) => {
-  await page.locator("#cs-code").fill(code);
-  await page.locator("#cs-code").press("Enter");
+  await page.locator("#cut-code").fill(code);
+  await page.locator("#cut-code").press("Enter");
   await page.waitForFunction(t => !document.getElementById("cs-pop").hidden && document.querySelector("#cs-pop-card h3")?.textContent === t, title, { timeout: 5000 });
 };
-const chipsText = page => page.locator("#cs-totals").innerText().then(t => t.replace(/\s+/g, " ").trim());
+const chipsText = page => page.locator('#cs-totals [data-role="cut"], #cs-totals [data-role="qc"], #cs-totals [data-role="store"]').allInnerTexts().then(parts => parts.join(" ").replace(/\s+/g, " ").trim());
 const overflowX = page => page.evaluate(() => { const s = document.getElementById("cut-group-uid-screen"); return s.scrollWidth - s.clientWidth; });
 
 async function desktop(browser) {
   const server = makeServer(), { page, errors } = await open(browser, server, 1280);
 
-  // Gộp vào CẮT GROUP UID: tab thứ 5 "Lấy mẫu", không còn ô trang chủ / route riêng; luồng cũ (Quét, Tra cứu, Chờ in, Đối chiếu) vẫn đủ.
+  // Gộp vào thẻ Quét: vẫn 4 tab như cũ, một công tắc Cắt tự do | Theo PO; không còn tab / ô trang chủ / route riêng.
   assert.equal(await page.locator("#cut-group-uid-screen").isVisible(), true);
-  assert.match(await page.locator("#cs-panel h2").innerText(), /Lấy mẫu theo PO/);
-  assert.match(await page.locator("#cut-tab-sample").innerText(), /Lấy mẫu/);
-  assert.deepEqual(await page.locator("#cut-group-uid-screen .cut-tab").evaluateAll(tabs => tabs.map(t => t.id)), ["cut-tab-scan", "cut-tab-data", "cut-tab-print", "cut-tab-adj", "cut-tab-sample"]);
+  assert.deepEqual(await page.locator("#cut-group-uid-screen .cut-tab").evaluateAll(tabs => tabs.map(t => t.id)), ["cut-tab-scan", "cut-tab-data", "cut-tab-print", "cut-tab-adj"]);
+  assert.equal(await page.locator("#cut-tab-sample, #cs-panel, #barcode-cut-sample").count(), 0);
+  assert.deepEqual(await page.locator(".cs-modebtn").allInnerTexts(), ["Cắt tự do", "Theo PO"]);
+  assert.equal(await page.locator("#cs-mode-po").getAttribute("aria-pressed"), "true");
+  assert.equal(await page.locator("#cut-add").innerText(), "Quét", "nút quét đổi nhãn khi Theo PO");
+  assert.equal(await page.locator("#cs-po-top").isVisible(), true);
+  assert.equal(await page.locator("#cut-goto-data").isHidden(), true, "Theo PO ẩn link Tra cứu của luồng cũ");
+  // Nhớ chế độ theo máy: ra trang chủ rồi vào lại Cắt Group UID vẫn Theo PO.
   await page.goto(`${BASE}#home`);
-  assert.equal(await page.locator("#barcode-cut-sample").count(), 0, "không còn ô trang chủ riêng");
-  assert.equal(await page.locator("#cut-group-uid-screen").isVisible(), false);
   await page.locator("#barcode-cut-uid").click();
   await page.waitForSelector("#cut-group-uid-screen:not([hidden])");
-  await page.waitForSelector('#cs-panel[data-active="true"]');
+  await page.waitForSelector('#cs-scan[data-mode="po"]');
   assert.equal(await page.locator('#app-nav .an-item[aria-current="page"]').innerText(), "Cắt Group UID", "thanh bên đánh dấu Cắt Group UID");
+  // Đổi sang tab khác thì khối quét ẩn, về tab Quét thì khối quét vẫn ở Theo PO.
   await page.locator("#cut-tab-adj").click();
-  assert.equal(await page.locator('#cs-panel[data-active="true"]').count(), 0, "đổi sang tab khác thì ẩn Lấy mẫu");
-  await page.locator("#cut-tab-sample").click();
-  await page.waitForSelector('#cs-panel[data-active="true"]');
+  assert.equal(await page.locator("#cs-scan").isVisible(), false);
+  await page.locator("#cut-tab-scan").click();
+  assert.equal(await page.locator('#cs-scan[data-mode="po"]').count(), 1);
 
   // Chưa có phiên: chọn phiên trống, quét báo chưa chọn phiên.
   assert.match(await page.locator("#cs-plan").innerText(), /Chưa có phiên/);
@@ -218,15 +231,15 @@ async function desktop(browser) {
   assert.equal(await page.locator("#cs-pop").isHidden(), true);
 
   // Bàn phím ảo khóa như luồng Cắt UID: inputmode none, bật/tắt.
-  assert.equal(await page.locator("#cs-code").getAttribute("inputmode"), "none");
-  await page.locator("#cs-keyboard").click();
-  assert.equal(await page.locator("#cs-code").getAttribute("inputmode"), "text");
-  await page.locator("#cs-keyboard").click();
-  assert.equal(await page.locator("#cs-code").getAttribute("inputmode"), "none");
+  assert.equal(await page.locator("#cut-code").getAttribute("inputmode"), "none");
+  await page.locator("#cut-keyboard").click();
+  assert.equal(await page.locator("#cut-code").getAttribute("inputmode"), "text");
+  await page.locator("#cut-keyboard").click();
+  assert.equal(await page.locator("#cut-code").getAttribute("inputmode"), "none");
 
   // ---- Admin: đọc PO ----
-  await openTab(page, "plans");
-  assert.equal(await page.locator("#cs-admin-box").isVisible(), true, "Admin thấy ô nhập PO");
+  assert.equal(await page.locator("#cs-manage").isVisible(), true, "Admin thấy bánh răng quản lý phiên");
+  await openPlans(page);
   await page.locator("#cs-po").fill("abc");
   await page.locator("#cs-po-go").click();
   assert.match(await msg(page), /Nhập đúng số PO/);
@@ -277,7 +290,6 @@ async function desktop(browser) {
   assert.equal(created.body.p_items.some(i => ["1028261016000031", "1028261016000032", "1028261016000033"].includes(i.groupUid)), false, "UID loại không đưa vào phiên");
 
   // ---- Tab Quét: tổng, thanh tiến độ theo SKU ----
-  assert.equal(await page.locator("#cs-seg-scan").getAttribute("aria-selected"), "true");
   assert.equal(await chipsText(page), "Cắt 0/4 QC 0/2 Lưu trữ 0/10");
   assert.equal(await page.locator(".cs-sku").count(), 2);
   assert.match(await page.locator(".cs-sku").first().innerText(), /422000001/);
@@ -307,11 +319,12 @@ async function desktop(browser) {
   assert.equal(await chipsText(page), "Cắt 1/4 QC 1/2 Lưu trữ 1/10", "mã lạ không đổi số liệu");
   // Quét bằng máy quét: mã kèm khoảng trắng đầu/cuối vẫn khớp.
   await scan(page, " 1028261016000002 ", "CẮT GROUP UID NÀY");
-  assert.equal(await page.locator("#cs-code").inputValue(), "", "ô quét được xóa sau mỗi lần quét");
+  assert.equal(await page.locator("#cut-code").inputValue(), "", "ô quét được xóa sau mỗi lần quét");
+  assert.equal(server.calls.filter(c => c.name === "cut_group_uid_scan").length, 0, "Theo PO không chạy luồng quét cũ");
 
   // Hàng đợi: bắn liên tiếp nhiều mã, không mất mã nào.
-  await page.evaluate(() => { const c = document.getElementById("cs-code"); for (const v of ["1028261016000011", "1028261016000021", "1028261016000025"]) { c.value = v; document.getElementById("cs-form").requestSubmit(); } });
-  await page.waitForFunction(() => document.querySelector("#cs-totals")?.innerText.replace(/\s+/g, " ").trim() === "Cắt 4/4 QC 2/2 Lưu trữ 1/10", null, { timeout: 8000 })
+  await page.evaluate(() => { const c = document.getElementById("cut-code"); for (const v of ["1028261016000011", "1028261016000021", "1028261016000025"]) { c.value = v; document.getElementById("cut-form").requestSubmit(); } });
+  await page.waitForFunction(() => [...document.querySelectorAll('#cs-totals [data-role="cut"], #cs-totals [data-role="qc"], #cs-totals [data-role="store"]')].map(e => e.innerText).join(" ").replace(/\s+/g, " ").trim() === "Cắt 4/4 QC 2/2 Lưu trữ 1/10", null, { timeout: 8000 })
     .catch(async error => { throw new Error(`${error.message}
 Tổng hiện tại: ${await chipsText(page)} · tin nhắn: ${await msg(page)} · lỗi trang: ${JSON.stringify(errors)}`); });
   // SKU 422000002 đủ cắt + QC → "Đủ mẫu"; SKU 422000001 còn thiếu.
@@ -354,16 +367,17 @@ Tổng hiện tại: ${await chipsText(page)} · tin nhắn: ${await msg(page)} 
   assert.equal(await page.locator("#cs-goto-cut").isVisible(), true);
   await page.locator("#cs-goto-cut").click();
   await page.waitForSelector('#cut-tab-data[aria-selected="true"]');
-  assert.equal(await page.locator('#cs-panel[data-active="true"]').count(), 0);
+  assert.equal(await page.locator("#cs-scan").isVisible(), false);
   await page.waitForFunction(() => document.getElementById("cut-found").textContent === "4");
   assert.deepEqual((await page.locator("#cut-results tr[data-code]").evaluateAll(rows => rows.map(r => r.dataset.code))).sort(), ["1028261016000001", "1028261016000002", "1028261016000011", "1028261016000021"]);
   assert.match(await page.locator("#cut-results").innerText(), /422000001/);
-  await page.locator("#cut-tab-sample").click();
-  await page.waitForSelector('#cs-panel[data-active="true"]');
+  await page.locator("#cut-tab-scan").click();
+  await page.waitForSelector('#cs-scan[data-mode="po"]');
 
-  // ---- Tab Danh sách: lọc, tìm, bỏ dấu quét (Admin) ----
-  await openTab(page, "list");
-  assert.equal(await page.locator("#cs-list-count").innerText(), "16");
+  // ---- Danh sách Group UID (hộp thoại mở từ chip): lọc, tìm, bỏ dấu quét (Admin) ----
+  await openList(page);
+  assert.equal(await page.locator("#cs-list-sub").innerText(), `PO ${PO} · 16 UID`);
+  assert.equal(await page.locator('#cs-totals [data-list="todo"]').innerText(), "16 UID", "chip danh sách ghi tổng số UID");
   const filterCounts = await page.locator("#cs-filters .cs-filter").evaluateAll(b => b.map(x => x.textContent.replace(/\s+/g, " ").trim()));
   await shot(page, "d-list");
   await axeCheck(page, "tab Danh sách");
@@ -384,7 +398,7 @@ Tổng hiện tại: ${await chipsText(page)} · tin nhắn: ${await msg(page)} 
   assert.equal(await page.locator("#cs-rows [data-unscan]").count(), 0);
 
   // ---- Tab Phiên: đọc lại cùng PO → thay phiên, giữ dấu quét cùng vai trò ----
-  await openTab(page, "plans");
+  await openPlans(page);
   await shot(page, "d-plans");
   await axeCheck(page, "tab Phiên theo PO");
   assert.equal(await page.locator(".cs-plan").count(), 2);
@@ -400,7 +414,7 @@ Tổng hiện tại: ${await chipsText(page)} · tin nhắn: ${await msg(page)} 
   assert.equal(server.sessions.size, 2, "thay phiên không tạo thêm phiên");
 
   // PO không có UID: không cho tạo; PO lớn nhiều trang đọc đủ (620 UID, 2 trang).
-  await openTab(page, "plans");
+  await openPlans(page);
   await page.locator("#cs-po").fill(PO_EMPTY);
   await page.locator("#cs-po-go").click();
   await page.waitForFunction(() => /chưa có Group UID dùng được/.test(document.getElementById("cs-message").textContent));
@@ -441,7 +455,7 @@ Tổng hiện tại: ${await chipsText(page)} · tin nhắn: ${await msg(page)} 
     assert.ok(Math.max(...cutQty) < Math.min(...qcQty, ...storeQty), `lot ${lotCode}: cắt là các cây nhỏ nhất`);
     assert.ok(Math.min(...qcQty) > Math.max(...storeQty), `lot ${lotCode}: QC là cây lớn nhất`);
   }
-  await openTab(page, "plans");
+  await openPlans(page);
   await page.locator(`.cs-plan:has-text("PO ${PO_RULE}") [data-delete]`).click();
   await page.locator("dialog.whd .whd-ok").click();
   await page.waitForFunction(() => /Đã xóa phiên PO 10012600000444/.test(document.getElementById("cs-message").textContent));
@@ -452,8 +466,8 @@ Tổng hiện tại: ${await chipsText(page)} · tin nhắn: ${await msg(page)} 
   await page.waitForFunction(() => /Đã xóa phiên PO/.test(document.getElementById("cs-message").textContent));
   assert.equal(server.sessions.size, 1);
 
-  // Chọn phiên khác bằng danh sách ở tab Quét.
-  await openTab(page, "scan");
+  // Chọn phiên khác bằng danh sách ở khối quét.
+  await closeDialogs(page);
   assert.match(await page.locator("#cs-plan option:checked").innerText(), new RegExp(`PO ${PO}`));
   assert.deepEqual(errors, [], "không có lỗi console");
   await page.close();
@@ -461,27 +475,55 @@ Tổng hiện tại: ${await chipsText(page)} · tin nhắn: ${await msg(page)} 
 
 async function nonAdmin(browser) {
   const server = makeServer(), { page, errors } = await open(browser, server, 1280, { admin: false });
-  await openTab(page, "plans");
-  assert.equal(await page.locator("#cs-admin-box").isHidden(), true, "người không phải Admin không thấy ô nhập PO");
-  assert.equal(await page.locator("[data-delete]").count(), 0);
-  // Đăng nhập Admin (nút khiên của màn Cắt phát print-sku-admin-ready) → thấy ô nhập PO; thoát (print-sku-admin-logout) thì ẩn lại.
+  assert.equal(await page.locator("#cs-manage").isHidden(), true, "người không phải Admin không thấy bánh răng quản lý phiên");
+  // Đăng nhập Admin (nút khiên của màn Cắt phát print-sku-admin-ready) → thấy bánh răng, mở được hộp thoại; thoát (print-sku-admin-logout) thì ẩn và đóng hộp thoại.
   await page.evaluate(() => { window.__admin = true; dispatchEvent(new Event("print-sku-admin-ready")); });
-  await page.waitForFunction(() => !document.getElementById("cs-admin-box").hidden);
+  await page.waitForFunction(() => !document.getElementById("cs-manage").hidden);
+  await openPlans(page);
   await page.evaluate(() => window.PrintSkuAdminAccess.logout());
-  await page.waitForFunction(() => document.getElementById("cs-admin-box").hidden);
+  await page.waitForFunction(() => document.getElementById("cs-manage").hidden && !document.getElementById("cs-plans-dialog").open);
+  assert.deepEqual(errors, []);
+  await page.close();
+}
+
+// Luồng cũ: mặc định Cắt tự do, quét đi thẳng cut_group_uid_scan, phần Theo PO ẩn; đổi chế độ không làm hỏng luồng cũ.
+async function freeMode(browser) {
+  const server = makeServer(), { page, errors } = await open(browser, server, 1280, { openSample: false });
+  assert.equal(await page.locator("#cs-scan").getAttribute("data-mode"), "free");
+  assert.equal(await page.locator("#cs-mode-free").getAttribute("aria-pressed"), "true");
+  assert.equal(await page.locator("#cut-add").innerText(), "Lưu tem");
+  assert.equal(await page.locator("#cs-po-top, #cs-po-bottom").evaluateAll(els => els.every(el => getComputedStyle(el).display === "none")), true, "phần Theo PO ẩn khi Cắt tự do");
+  await page.locator("#cut-code").fill("1028261099000001");
+  await page.locator("#cut-code").press("Enter");
+  await page.waitForFunction(() => !document.getElementById("cut-last").hidden);
+  assert.match(await page.locator("#cut-last").innerText(), /1028261099000001 · 422000009/);
+  await shot(page, "d-free");
+  assert.equal(server.calls.filter(c => c.name === "cut_group_uid_scan").length, 1, "Cắt tự do lưu qua luồng cũ");
+  assert.equal(server.calls.filter(c => c.name === "cut_sample_scan").length, 0);
+  // Sang Theo PO rồi về: thẻ vừa lưu và link Tra cứu của luồng cũ hiện lại, nút về "Lưu tem".
+  await page.locator("#cs-mode-po").click();
+  assert.equal(await page.locator("#cut-last").isHidden(), true);
+  await page.locator("#cs-mode-free").click();
+  assert.equal(await page.locator("#cut-last").isVisible(), true);
+  assert.equal(await page.locator("#cut-goto-data").isVisible(), true);
+  assert.equal(await page.locator("#cut-add").innerText(), "Lưu tem");
+  await page.locator("#cut-code").fill("1028261099000002");
+  await page.locator("#cut-code").press("Enter");
+  await page.waitForFunction(() => /1028261099000002/.test(document.getElementById("cut-last").innerText));
+  assert.equal(server.calls.filter(c => c.name === "cut_group_uid_scan").length, 2);
   assert.deepEqual(errors, []);
   await page.close();
 }
 
 async function mobile(browser) {
   const server = makeServer(), { page, errors } = await open(browser, server, 375);
-  // 5 tab của Cắt Group UID nằm trọn trong bề rộng màn hình, không tràn ngang.
+  // 4 tab của Cắt Group UID như cũ, nằm trọn trong bề rộng màn hình; công tắc chế độ cũng vừa màn hẹp.
   const tabBoxes = await page.locator("#cut-group-uid-screen .cut-tab").evaluateAll(tabs => tabs.map(t => { const r = t.getBoundingClientRect(); return [Math.round(r.left), Math.round(r.right), t.scrollWidth - t.clientWidth]; }));
-  assert.equal(tabBoxes.length, 5);
-  await shot(page, "m-tabs");
+  assert.equal(tabBoxes.length, 4);
   assert.ok(tabBoxes.every(([l, r, over]) => l >= 0 && r <= 375 && over <= 0), `tab nằm trong màn hình: ${JSON.stringify(tabBoxes)}`);
+  await shot(page, "m-scan-po");
   // Tạo phiên rồi quét trên màn hẹp.
-  await openTab(page, "plans");
+  await openPlans(page);
   await page.locator("#cs-po").fill(PO);
   await page.locator("#cs-po-go").click();
   await page.waitForSelector("#cs-create:not([disabled])");
@@ -493,15 +535,15 @@ async function mobile(browser) {
   await page.locator("#cs-create").click();
   await page.waitForFunction(() => /Đã tạo phiên PO/.test(document.getElementById("cs-message").textContent));
   assert.equal(await overflowX(page), 0);
-  assert.equal(await page.locator("#cs-code").isVisible(), true);
-  assert.equal(await page.locator("#cs-submit").isVisible(), true);
+  assert.equal(await page.locator("#cut-code").isVisible(), true);
+  assert.equal(await page.locator("#cut-add").isVisible(), true);
   await scan(page, "1028261016000001", "CẮT GROUP UID NÀY");
   await shot(page, "m-pop");
   const card = await page.locator("#cs-pop-card").boundingBox();
   assert.ok(card.x >= 0 && card.x + card.width <= 375 && card.y >= 0 && card.y + card.height <= 900, "pop-up nằm trọn trong màn hình");
   await page.locator("[data-pop-close]").click();
   assert.equal(await overflowX(page), 0);
-  await openTab(page, "list");
+  await openList(page);
   await shot(page, "m-list");
   await axeCheck(page, "điện thoại · danh sách");
   assert.equal(await page.locator("#cs-rows tr[data-code]").first().evaluate(row => getComputedStyle(row).display), "grid", "danh sách dạng thẻ gọn");
@@ -516,7 +558,8 @@ async function mobile(browser) {
   const browser = await chromium.launch({ channel: "chrome", headless: true });
   try {
     await desktop(browser); console.log("PASS cut sample · máy tính: đọc PO, chia mẫu, tạo phiên, quét, tiến độ, xác nhận sang Cắt UID, danh sách, thay/xóa phiên");
-    await nonAdmin(browser); console.log("PASS cut sample · quyền Admin");
+    await nonAdmin(browser); console.log("PASS cut sample · quyền Admin (bánh răng, hộp thoại)");
+    await freeMode(browser); console.log("PASS cut sample · Cắt tự do giữ nguyên luồng cũ, đổi chế độ không ảnh hưởng");
     await mobile(browser); console.log("PASS cut sample · điện thoại 375px");
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exit(1); });

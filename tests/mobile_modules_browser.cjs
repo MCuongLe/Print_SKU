@@ -33,7 +33,7 @@ const SCREENS = { 'group-uid': 'uid-screen', inspection: 'ins-screen', 'cut-grou
       }
 
       // Tab Cắt UID / Xả vải: mỗi tab một dòng (điện thoại nhãn ngắn, máy tính nhãn đầy đủ)
-      for (const [hash, labels] of [['cut-group-uid', mobile ? ['Quét', 'Tra cứu', 'Chờ in', 'Đối chiếu', 'Lấy mẫu'] : ['Quét Group UID', 'Tra cứu UID đã cắt', 'Tem chờ in', 'Đối chiếu', 'Lấy mẫu theo PO']], ['xa-vai', mobile ? ['Quét', 'Đang xả', 'Đã xả'] : ['Quét Group UID', 'Đang xả', 'Đã xả xong']]]) {
+      for (const [hash, labels] of [['cut-group-uid', mobile ? ['Quét', 'Tra cứu', 'Chờ in', 'Đối chiếu'] : ['Quét Group UID', 'Tra cứu UID đã cắt', 'Tem chờ in', 'Đối chiếu']], ['xa-vai', mobile ? ['Quét', 'Đang xả', 'Đã xả'] : ['Quét Group UID', 'Đang xả', 'Đã xả xong']]]) {
         await open(hash);
         const tabs = await page.locator(`#${SCREENS[hash]} .cut-tab`).evaluateAll(nodes => nodes.map(node => ({ text: node.innerText.replace(/\s+/g, ' ').replace(/\b\d+\b/g, '').trim(), h: Math.round(node.getBoundingClientRect().height), right: Math.round(node.getBoundingClientRect().right) })));
         assert.deepEqual(tabs.map(tab => tab.text), labels, `${hash}: nhãn tab`);
