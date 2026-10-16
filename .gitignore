@@ -15,7 +15,10 @@ __pycache__/
 .env.*
 
 # Cấu hình chạy cục bộ (launch.json chứa đường dẫn tuyệt đối của từng máy)
-.claude/
+# Thu muc .claude: bo qua cau hinh may (launch.json, worktrees, lock) nhung giu ho so agent + skill cua doi (16/10/2026)
+.claude/*
+!.claude/agents/
+!.claude/skills/
 
 # Đoạn JS sinh ra bởi refresh_skus.py snippet — chạy lại lúc nào cũng có
 sku-refresh-snippet.js

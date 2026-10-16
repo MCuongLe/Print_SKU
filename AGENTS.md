@@ -39,3 +39,9 @@ For every change, perform the checks that apply:
 - Summarize the user-visible behavior changed.
 - List the validation performed and any untested browser, camera, printer, or label-size scenarios.
 - Call out unusually large changes to `index.html` and explain why they were necessary.
+
+## Agent team (from 16/10/2026)
+
+- Roles, workflow and the hand-off brief template live in `docs/DOI_AGENT.md`. Agent profiles are in `.claude/agents/` (`trinh-sat`, `thuc-thi-logic`, `thuc-thi-khuon`, `kiem-thu`); the independent review skill is `.claude/skills/review-codex`.
+- Executors work only inside the files and anchor strings named in their brief, never commit, never run migrations or deploys, and report real test output. The lead merges, runs `python scripts/run_tests.py`, and owns migrations, deploys and commits.
+- Decisions already recorded as "do not do" in `RULES.md` are binding for every agent.
