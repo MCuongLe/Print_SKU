@@ -8,20 +8,34 @@ const changes = [
 ];
 const counts = { added: 1, updated: 1, unchanged: 0, missing: 0, issues: 0, totalChanges: 2 };
 const warnCounts = { ...counts, missing: 3, issues: 1 };
-let scenario = "normal", cancelCalls = 0;
+let scenario = "normal", cancelCalls = 0, ingestBodies = [];
 const WHS = ["WH - MATERIAL - MTG", "WH - MATERIAL - GARMENT", "WH - SEMI PRODUCT - MTG"];
 const MANY = Array.from({ length: 120 }, (_, i) => ({ groupUidCode: `1028261006${String(i).padStart(6, "0")}`, changeType: "updated", before: { qty: 1000 + i, status: "Available", location: `A-${i}`, warehouse: WHS[i % 3] }, after: { qty: 1180 + i, status: "Allocated", location: `B-${i}`, warehouse: WHS[i % 3] }, changedFields: i % 2 ? ["qty", "status"] : ["qty", "location"], sourceUpdatedAt: new Date(Date.UTC(2026, 9, 8, 1, 0, i)).toISOString() }));
 const manyCounts = { added: 0, updated: 120, unchanged: 1880, missing: 0, issues: 0, totalChanges: 120 };
 
+// WMS thật (đo 16/10/2026): danh sách xếp theo id giảm dần; to_updated_at chỉ có hiệu lực khi có cả from_updated_at; api-clinic tạo 1 UID/phút.
+// Kịch bản (window.__guScenario): "insert" (toàn bộ) = UID mới chen lên đầu giữa lúc đọc: trang 2 tổng 4 và lặp UID cuối trang 1, đọc lại đầu danh sách thấy UID mới;
+// "full-drift" = tổng WMS không bao giờ khớp số UID duy nhất; "inc-once"/"inc-always" (lấy thay đổi) = UID vừa sửa rơi khỏi khung nên trang 2 báo tổng 2 thay vì 3,
+// lần đọc đầu (once) hoặc mọi lần (always).
 const fakeExtension = () => addEventListener("message", event => {
   const request = event.data;
   if (!request || request.source !== "PRINT_SKU_APP") return;
-  const data = request.type === "PING" || request.type === "PING_WMS" ? { version: "0.4.2" } : request.type === "GET_GROUP_UID_PAGE" ? {
-    page: 1, size: 500, total: 2, totalPages: 1, rows: [
+  const row = (code, qty) => ({ group_uid_code: code, sku: "422268923", qty, status: "Available", updated_date: "2026-10-08T01:00:00Z" }), r = n => row("102826100600000" + n, n);
+  const pageData = payload => {
+    const mode = window.__guScenario || "normal";
+    (window.__guReads = window.__guReads || []).push({ page: payload.page, ...(payload.from ? { from: payload.from } : {}), ...(payload.to ? { to: payload.to } : {}) });
+    if (mode === "normal") return { page: 1, size: 500, total: 2, totalPages: 1, rows: [
       { group_uid_code: "1028261006000050", sku: "422268923", qty: 7429, status: "Available", updated_date: "2026-10-08T01:00:00Z" },
       { group_uid_code: "1028261006000049", sku: "422273475", qty: 3180, status: "Allocated", updated_date: "2026-10-08T01:01:00Z" },
-    ],
-  } : null;
+    ] };
+    if (payload.page === 1) window.__guP1 = (window.__guP1 || 0) + 1;
+    if (mode === "insert") return payload.page === 2 ? { page: 2, size: 500, total: 4, totalPages: 2, rows: [r(2), r(1)] }
+      : window.__guP1 === 1 ? { page: 1, size: 500, total: 3, totalPages: 2, rows: [r(3), r(2)] } : { page: 1, size: 500, total: 4, totalPages: 1, rows: [r(4), r(3)] };
+    if (mode === "full-drift") return payload.page === 2 ? { page: 2, size: 500, total: 4, totalPages: 2, rows: [r(2), r(1)] } : { page: 1, size: 500, total: 5, totalPages: 2, rows: [r(3), r(2)] };
+    const leaving = mode === "inc-always" || window.__guP1 === 1;
+    return payload.page === 1 ? { page: 1, size: 500, total: 3, totalPages: 2, rows: [r(3), r(2)] } : { page: 2, size: 500, total: leaving ? 2 : 3, totalPages: 2, rows: [r(1)] };
+  };
+  const data = request.type === "PING" || request.type === "PING_WMS" ? { version: "0.4.2" } : request.type === "GET_GROUP_UID_PAGE" ? pageData(request.payload || {}) : null;
   postMessage({ source: "HASAKI_INSIDE_CONNECTOR", requestId: request.requestId, ok: Boolean(data), data, error: data ? null : { message: "Loại yêu cầu chưa giả lập" } }, location.origin);
 });
 
@@ -35,7 +49,7 @@ async function mock(page) {
       const body = JSON.parse(route.request().postData() || "{}"), ok = data => json({ ok: true, data });
       if (body.action === "history") return ok({ state: { last_successful_incremental_at: "2026-10-08T00:00:00Z", last_successful_full_at: "2026-10-07T00:00:00Z" }, runs: [{ id: "44444444-4444-4444-8444-444444444444", mode: "full", status: "failed", error_message: "Admin hủy bản xem trước", created_at: "2026-10-08T01:00:00Z", source_count: 2, change_counts: {}, range_to: "2026-10-08T01:00:00Z" }] });
       if (body.action === "prepare") return ok({ runId: RUN, mode: body.mode, status: "running", rangeFrom: body.mode === "incremental" ? "2026-10-07T23:30:00Z" : null, rangeTo: "2026-10-08T02:00:00Z" });
-      if (body.action === "ingest") return ok({ runId: RUN, page: 1, pageCount: 1, totalPages: 1 });
+      if (body.action === "ingest") { ingestBodies.push(body); return ok({ runId: RUN, page: body.page, pageCount: 1, totalPages: body.totalPages }); }
       if (body.action === "preview") return ok(scenario === "many" ? { runId: RUN, mode: "full", status: "previewed", rangeTo: "2026-10-08T02:00:00Z", pageCount: 1, sourceCount: 2000, changeCounts: manyCounts, verification: { previousFullCount: 0, fullDropPercent: 0 }, changes: MANY } : scenario === "warn"
         ? { runId: RUN, mode: "full", status: "previewed", rangeTo: "2026-10-08T02:00:00Z", pageCount: 1, sourceCount: 2, changeCounts: warnCounts, verification: { previousFullCount: 30000, fullDropPercent: 5 }, changes }
         : { runId: RUN, mode: "full", status: "previewed", rangeTo: "2026-10-08T02:00:00Z", pageCount: 1, sourceCount: 2, changeCounts: counts, verification: { previousFullCount: 2, fullDropPercent: 0 }, changes });
@@ -59,6 +73,7 @@ async function mock(page) {
       await page.goto(BASE+"#admin/group-uid-sync");await page.locator("#group-uid-sync-screen").waitFor({state:"visible"});
       await page.waitForFunction(()=>document.getElementById("gu-strip-full").dataset.stale==="true");assert.match(await page.locator("#gu-last-full-rel").innerText(),/quá 24 giờ, nên chạy toàn bộ$/,"toàn bộ cũ hơn 24 giờ phải cảnh báo");assert.equal(await page.locator("#gu-strip-full").evaluate(e=>getComputedStyle(e).backgroundColor),"rgb(255, 250, 235)","thẻ toàn bộ cũ có nền vàng nhạt");
       await page.locator("#gu-run-full").click();await page.waitForFunction(()=>/Đối chiếu xong/.test(document.getElementById("gu-status").textContent));
+      assert.deepEqual(await page.evaluate(()=>window.__guReads),[{page:1},{page:1}],"toàn bộ: không gửi from/to (WMS bỏ qua to khi thiếu from); đọc 1 trang rồi đọc lại đầu danh sách để xác nhận tổng");assert.equal(ingestBodies.length,1);assert.equal(ingestBodies[0].total,2);
       assert.equal((await page.locator("#gu-source").innerText()).trim(),"2");assert.equal((await page.locator("#gu-added").innerText()).trim(),"1");assert.equal((await page.locator("#gu-updated").innerText()).trim(),"1");assert.equal(await page.locator("#gu-apply").isEnabled(),true);
       assert.equal(await page.locator("#gu-dialog").evaluate(d=>d.open),false,"xem trước xong không tự mở popup");assert.equal(await page.locator("#gu-apply").getAttribute("data-count"),"2","nút Cập nhật ghi số thay đổi");assert.equal(await page.locator('[data-gu-kind="missing"]').getAttribute("data-zero"),"true");await page.locator('[data-gu-kind="missing"]').click();await page.waitForTimeout(150);assert.equal(await page.locator("#gu-dialog").evaluate(d=>d.open),false,"ô 0 dòng không mở popup");
       await page.locator('[data-gu-kind="added"]').click();await page.locator("#gu-dialog").waitFor({state:"visible"});assert.equal((await page.locator("#gu-change-title").innerText()).trim(),"UID mới");assert.equal(await page.locator("#gu-dialog .as-d-mark svg").count(),1);
@@ -111,6 +126,24 @@ async function mock(page) {
       const [download]=await Promise.all([page.waitForEvent("download"),page.locator("#gu-tools [data-as-export]").click()]);assert.match(download.suggestedFilename(),/^group-uid-updated-.*\.xlsx$/);const book=require("./xlsx_read.cjs").readXlsx(require("node:fs").readFileSync(await download.path()));assert.equal(book.table.length,121,"tiêu đề + 120 dòng");assert.equal(book.table[0].includes("Kho"),true,"Excel có cột Kho");assert.equal(book.table[0].includes("Người cập nhật"),true);assert.equal(JSON.stringify(book.table).includes("WH - SEMI PRODUCT - MTG"),true);assert.match(book.table[1][0],/^\d{16}$/,"Group UID là chữ 16 số, không thành số khoa học");
       await page.keyboard.press("Escape");await page.locator("#gu-dialog").waitFor({state:"hidden"});
       await page.locator("#gu-cancel").click();await confirm.waitFor({state:"visible"});await confirm.locator(".whd-ok").click();await page.waitForFunction(()=>/Đã hủy bản xem trước/.test(document.getElementById("gu-status").textContent));scenario="normal";
+      // WMS đổi dữ liệu giữa lúc đọc. Toàn bộ: UID mới chen lên đầu chỉ làm lặp, đọc lại đầu danh sách cho đủ, KHÔNG đọc lại cả lượt; tổng không bao giờ khớp thì dừng sau 3 lượt
+      const cancelPreview=async()=>{await page.locator("#gu-cancel").click();await confirm.waitFor({state:"visible"});await confirm.locator(".whd-ok").click();await page.waitForFunction(()=>/Đã hủy bản xem trước/.test(document.getElementById("gu-status").textContent))};
+      const scenarioRun=async(name,button)=>{cancelCalls=0;ingestBodies=[];await page.evaluate(n=>{window.__guScenario=n;window.__guReads=[];window.__guP1=0},name);await page.locator(button).click()};
+      const reads=()=>page.evaluate(()=>window.__guReads),done=()=>page.waitForFunction(()=>/Đối chiếu xong/.test(document.getElementById("gu-status").textContent)),stopped=()=>page.waitForFunction(()=>/phiên đã dừng để tránh thiếu UID/.test(document.getElementById("gu-status").textContent));
+      scenario="normal";
+      await scenarioRun("insert","#gu-run-full");await done();
+      assert.deepEqual(ingestBodies.map(b=>[b.page,b.totalPages,b.total,b.rows.length]),[[1,1,4,4]],"4 UID duy nhất (lặp bị gộp, UID mới ở đầu danh sách được thêm), tổng 4");assert.deepEqual((await reads()).map(x=>x.page),[1,2,1],"đọc trang 1, 2 rồi đọc lại đầu danh sách");assert.equal(cancelCalls,0);await cancelPreview();
+      await scenarioRun("full-drift","#gu-run-full");await stopped();
+      assert.match(await page.locator("#gu-status").innerText(),/WMS đổi dữ liệu trong lúc đọc [(]tổng 5 → 4 · 3 UID duy nhất[)]; phiên đã dừng để tránh thiếu UID/);assert.equal(ingestBodies.length,0,"không khớp thì không gửi gì lên Supabase");assert.equal(cancelCalls,1,"phiên bị hủy");assert.equal((await reads()).length,21,"3 lượt x (2 trang + 5 lần đọc lại đầu danh sách)");assert.equal(await page.locator("#gu-apply").isDisabled(),true);
+      // Lấy thay đổi: khung from–to (đóng băng UID mới), kiểm tổng mọi trang, lệch thì đọc lại với mốc to mới
+      await scenarioRun("normal","#gu-run-incremental");await done();
+      assert.deepEqual(await reads(),[{page:1,from:"2026-10-07T23:30:00Z",to:"2026-10-08T02:00:00Z"}]);assert.deepEqual(ingestBodies.map(b=>[b.page,b.total,b.rows.length]),[[1,2,2]]);await cancelPreview();
+      await scenarioRun("inc-once","#gu-run-incremental");await done();
+      const incReads=await reads();assert.equal(incReads.length,4,"2 trang x 2 lượt đọc");assert.equal(incReads[0].to,"2026-10-08T02:00:00Z");assert.notEqual(incReads[2].to,"2026-10-08T02:00:00Z","đọc lại dùng mốc to mới");assert.equal(incReads[2].from,"2026-10-07T23:30:00Z");
+      assert.deepEqual(ingestBodies.map(b=>[b.page,b.total,b.rows.length]),[[1,3,3]],"chỉ đưa lên bản nhất quán: 3 UID, tổng 3");assert.equal(cancelCalls,0);await cancelPreview();
+      await scenarioRun("inc-always","#gu-run-incremental");await stopped();
+      assert.match(await page.locator("#gu-status").innerText(),/WMS đổi dữ liệu trong lúc đọc [(]tổng 3 → 2 · 3 UID duy nhất[)]/);assert.equal(ingestBodies.length,0);assert.equal(cancelCalls,1);assert.equal((await reads()).length,6,"3 lượt x 2 trang");
+      await page.evaluate(()=>{window.__guScenario="normal"});
       assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);assert.deepEqual(errors,[]);await context.close();console.log(`PASS ${width}px: Group UID full/preview/detail/apply, cảnh báo, hủy xem trước, responsive`);
     }
   }finally{await browser.close()}
