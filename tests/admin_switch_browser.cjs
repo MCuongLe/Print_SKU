@@ -8,6 +8,7 @@ const assert = require('node:assert/strict');
 
 const BASE = process.env.BASE || 'http://127.0.0.1:8000/';
 const b64 = o => Buffer.from(JSON.stringify(o)).toString('base64url');
+const authCalls = { refresh: 0, expired403: 0 };
 const jwt = expSec => `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64({ sub: '00000000-0000-0000-0000-000000000001', exp: expSec })}.sig`;
 const ago = m => new Date(Date.now() - m * 60000).toISOString();
 const fakeExtension = () => addEventListener('message', event => {
@@ -25,7 +26,14 @@ async function open(browser, token) {
     const url = route.request().url(), json = body => route.fulfill({ contentType: 'application/json', body: JSON.stringify(body) });
     if (url.startsWith(BASE)) return route.continue();
     await new Promise(resolve => setTimeout(resolve, 300));
-    if (url.endsWith('/auth/v1/user')) return json({ id: '00000000-0000-0000-0000-000000000001' });
+    if (url.endsWith('/auth/v1/user')) {
+      // Supabase Auth hiện trả 403 bad_jwt cho token hết hạn (không phải 401); app phải gia hạn rồi gọi lại.
+      const bearer = String(route.request().headers()['authorization'] || '').replace(/^Bearer\s+/i, '');
+      let exp = 0; try { exp = JSON.parse(Buffer.from(bearer.split('.')[1], 'base64').toString()).exp || 0; } catch (_) {}
+      if (exp && exp * 1000 < Date.now()) { authCalls.expired403 += 1; return route.fulfill({ status: 403, contentType: 'application/json', body: JSON.stringify({ error_code: 'bad_jwt', msg: 'invalid JWT: token is expired' }) }); }
+      return json({ id: '00000000-0000-0000-0000-000000000001' });
+    }
+    if (url.includes('/auth/v1/token?grant_type=refresh_token')) { authCalls.refresh += 1; return json({ access_token: jwt(Math.floor(Date.now() / 1000) + 3600), refresh_token: 'r2', token_type: 'bearer', expires_in: 3600, user: { id: '00000000-0000-0000-0000-000000000001' } }); }
     if (url.includes('/rest/v1/user_roles')) return json([{ username: 'Admin', role: 'admin' }]);
     if (/\/functions\/v1\//.test(url)) return json({ ok: true, data: { runs: [], lastSuccessAt: ago(100), lastSnapshotAt: ago(100), state: { last_successful_incremental_at: ago(90), last_successful_full_at: ago(900) } } });
     if (url.includes('print_admin_jobs')) return json({ ok: true, data: { day: '2026-10-11', today: '2026-10-11', oldestDay: '2026-10-08', summary: { jobs: 0, copies: 0, failed: 0, active: 0 }, counts: { all: 0, sku: 0, group_uid: 0, other: 0 }, jobs: [] } });
@@ -81,7 +89,9 @@ const clickAndMeasure = (page, label) => page.evaluate(async text => {
     await page.locator('#print-jobs-screen').waitFor({ state: 'visible' });
     await page.waitForTimeout(800);
     const slow = await page.evaluate(async () => { const t = performance.now(); const token = await window.PrintSkuAdminAccess.getToken(); return { ms: performance.now() - t, ok: Boolean(token) }; });
-    assert.ok(slow.ms >= 250 && slow.ok, `token hết hạn: getToken kiểm quyền lại qua mạng (${Math.round(slow.ms)} ms)`);
+    assert.ok(slow.ok, `token hết hạn: getToken vẫn có token sau khi gia hạn (${Math.round(slow.ms)} ms)`);
+    assert.ok(authCalls.refresh >= 1, 'token hết hạn phải được gia hạn bằng refresh_token (Supabase trả 403 bad_jwt, 16/10/2026)');
+    assert.equal(await page.evaluate(() => { try { return JSON.parse(sessionStorage.getItem('print-sku-admin-session-v1')).refresh_token; } catch (_) { return null; } }), 'r2', 'phiên mới sau gia hạn được lưu lại');
     await page.locator('#app-nav .an-item[aria-label="Đồng bộ SKU"]').click();
     await page.locator('#sku-sync-screen').waitFor({ state: 'visible' });
     assert.deepEqual(errors, []);

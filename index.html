@@ -3864,26 +3864,34 @@ Error generating stack: `+y.message+`
           errorBox.textContent = "";
           passwordInput.value = "";
         };
+        // JWT còn dưới 1 phút (hoặc đã hết hạn) thì gia hạn trước khi gọi; chuỗi không phải JWT thì không đoán.
+        const tokenExpiring = token => { try { const p = JSON.parse(atob(String(token).split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))); return Number(p.exp) * 1000 <= Date.now() + 60000; } catch (_) { return false; } };
+        const authFetch = async (url, init) => {
+          try { return await fetch(url, init); }
+          catch (_) { const error = new Error("Không kết nối được máy chủ xác thực; kiểm tra mạng rồi thử lại."); error.keepSession = true; throw error; }
+        };
         const refreshSession = async current => {
           if (!current?.refresh_token) return null;
-          const response = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
+          const response = await authFetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
             method: "POST",
             headers: { apikey: SUPABASE_KEY, "Content-Type": "application/json" },
             body: JSON.stringify({ refresh_token: current.refresh_token })
           });
           if (!response.ok) return null;
-          const refreshed = await response.json();
+          const refreshed = await response.json().catch(() => null);
+          if (!refreshed?.access_token) return null;
           saveSession(refreshed);
           return refreshed;
         };
         const validateAdmin = async current => {
           if (!current?.access_token) return null;
           let active = current;
-          let userResponse = await fetch(`${SUPABASE_URL}/auth/v1/user`, { headers: authHeaders(active.access_token) });
-          if (userResponse.status === 401) {
+          if (tokenExpiring(active.access_token)) active = (await refreshSession(active)) || active;
+          let userResponse = await authFetch(`${SUPABASE_URL}/auth/v1/user`, { headers: authHeaders(active.access_token) });
+          if (userResponse.status === 401 || userResponse.status === 403) {
             active = await refreshSession(active);
             if (!active) return null;
-            userResponse = await fetch(`${SUPABASE_URL}/auth/v1/user`, { headers: authHeaders(active.access_token) });
+            userResponse = await authFetch(`${SUPABASE_URL}/auth/v1/user`, { headers: authHeaders(active.access_token) });
           }
           if (!userResponse.ok) return null;
           const user = await userResponse.json();
@@ -3909,7 +3917,7 @@ Error generating stack: `+y.message+`
               return true;
             }
           } catch (error) {
-            clearSession();
+            if (!error?.keepSession) clearSession();
             setPending(false);
             openLogin(error.message);
             return false;
@@ -10320,7 +10328,7 @@ async function rpc(name,args,retry=true){
             const started=await adminRpc("sku_count_save_start",{p_warehouses:warehouses.map(w=>({warehouseId:w.warehouseId,warehouseName:w.warehouseName,companyName:w.companyName||""})),p_missing:missing,p_source_counts:{stockRows:inventory.rows.length,approvedRows:approved.rows.length,heldTotal:result.held.length,held:result.held.slice(0,500)}});
             for(let i=0;i<payload.length;i+=500){await adminRpc("sku_count_save_chunk",{p_run_id:started.runId,p_rows:payload.slice(i,i+500)});progress(Math.min(payload.length,i+500),payload.length)}
             await adminRpc("sku_count_save_finish",{p_run_id:started.runId});
-            }catch(error){throw new Error(`Chưa lưu được bản đồng bộ: ${error.message}`)}
+            }catch(error){throw new Error(`Chưa lưu được bản đồng bộ: ${/Failed to fetch|NetworkError|Timeout|aborted/i.test(String(error?.message))?"mất kết nối tới Supabase, kiểm tra mạng rồi bấm lại":error.message}`)}
             await load({quiet:true});
             const names=warehouses.map(w=>w.warehouseName).join(", ");
             if(missing.length)say(`Đã đồng bộ ${num(result.summary.total)} SKU tại ${names}.`);
