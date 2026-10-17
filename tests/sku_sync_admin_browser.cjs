@@ -3,7 +3,7 @@
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const assert = require('node:assert/strict');
 
-const BASE = 'http://127.0.0.1:8000/';
+const BASE = process.env.BASE || 'http://127.0.0.1:8000/';
 const SESSION_KEY = 'print-sku-admin-session-v1';
 const MIN = 60000;
 const ago = minutes => new Date(Date.now() - minutes * MIN).toISOString();
@@ -35,9 +35,10 @@ const RUNS = [
   { id: 'run-fresh', status: 'previewed', created_at: ago(5), change_counts: CHANGE_COUNTS },
   { id: 'run-old', status: 'previewed', created_at: ago(45), change_counts: CHANGE_COUNTS },
   { id: 'run-done', status: 'completed', created_at: ago(120), completed_at: ago(119), change_counts: {} },
+  { id: 'run-auto', status: 'previewed', created_at: ago(200), source: 'auto', device: 'may-test', autoHold: 'Giữ lại: 3.512 thay đổi vượt ngưỡng 3.000', change_counts: CHANGE_COUNTS },
 ];
 
-const mockRoutes = async page => page.route('**/*', async route => {
+const mockRoutes = async page => { let autoEnabled = true; return page.route('**/*', async route => {
   const url = route.request().url();
   const json = (body, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
   if (url.startsWith(BASE)) return route.continue();
@@ -46,6 +47,11 @@ const mockRoutes = async page => page.route('**/*', async route => {
   if (url.includes('/functions/v1/sku-sync')) {
     const { action, runId, mode } = JSON.parse(route.request().postData() || '{}');
     const ok = data => json({ ok: true, data });
+    if (action === 'auto-config') {
+      const set = JSON.parse(route.request().postData() || '{}').set;
+      if (set && typeof set.enabled === 'boolean') autoEnabled = set.enabled;
+      return ok({ enabled: autoEnabled, intervalMinutes: 30, fullWindow: { start: '00:00', end: '05:00' }, thresholds: {}, updatedAt: ago(1) });
+    }
     if (action === 'history') return ok({ runs: RUNS, lastSuccessAt: ago(119), lastSnapshotAt: ago(120), lastFullAt: null });
     if (action === 'preview' && mode === 'full') return ok({ runId: 'run-full', status: 'previewed', mode: 'full', sourceCounts: { ...SOURCE_COUNTS, normalRows: 97 }, changeCounts: { ...CHANGE_COUNTS, skuMissing: 1, skuSkippedInactive: 2629 }, changes: { ...CHANGES, skus: { ...CHANGES.skus, missing: [{ sku: '900000009', product_name: 'SKU cũ', category_name: 'Thời Trang', status: '0' }] } }, verification: { previousFullCount: 100, baselineCount: 100, fullDropPercent: 3, skuMissing: 1 } });
     if (action === 'preview') return ok({ runId: 'run-fresh', status: 'previewed', sourceCounts: SOURCE_COUNTS, changeCounts: CHANGE_COUNTS, changes: CHANGES });
@@ -58,7 +64,7 @@ const mockRoutes = async page => page.route('**/*', async route => {
   }
   if (url.includes('/rest/v1/') && !url.includes('/rpc/')) return json([]);
   return json({ ok: true, data: { agents: [], jobs: [], items: [] } });
-});
+}); };
 
 // Extension giả: trả lời PING và GET_SKU_SYNC_DATA qua postMessage như app-bridge.js.
 const fakeExtension = () => addEventListener('message', event => {
@@ -109,18 +115,40 @@ const cells = async page => (await page.locator('#ss-change-body tr').evaluateAl
       assert.equal(await page.locator('.ss-hero p, .ss-note').count(), 0);
       assert.equal((await page.locator('#ss-change-note').innerText()).trim(), '');
 
+      // Đồng bộ tự động (17/10/2026): dải trạng thái đọc auto-config, nút Tạm dừng gửi set.enabled=false rồi đổi chữ; lịch sử có chip Tự động · máy và Chờ Admin
+      const autoBodies = []; page.on('request', request => { if (request.url().includes('/functions/v1/sku-sync')) { const body = JSON.parse(request.postData() || '{}'); if (body.action === 'auto-config') autoBodies.push(body); } });
+      const strip = page.locator('#ss-auto-strip');
+      await strip.waitFor({ state: 'visible' });
+      assert.match(await page.locator('#ss-auto-text').innerText(), /^Lượt gần nhất: \d{2}\/\d{2}\/\d{4} \d{2}:\d{2} · may-test$/);
+      assert.equal(await strip.getAttribute('data-stale'), 'false');
+      assert.equal((await page.locator('#ss-auto-toggle').innerText()).trim(), 'Tạm dừng');
+      assert.equal(await page.locator('#ss-auto-toggle svg').count(), 1, 'nút tự động có icon');
+      assert.equal(await strip.locator('svg').count(), 2, 'dải tự động có icon đầu dải và icon nút');
+      await page.locator('#ss-auto-toggle').click();
+      await page.waitForFunction(() => document.getElementById('ss-auto-strip').dataset.stale === 'true');
+      assert.deepEqual(autoBodies.at(-1), { action: 'auto-config', set: { enabled: false } });
+      assert.equal((await page.locator('#ss-auto-note').innerText()).trim(), 'Admin đã tạm dừng');
+      assert.equal((await page.locator('#ss-auto-toggle').innerText()).trim(), 'Tiếp tục');
+      await page.locator('#ss-auto-toggle').click();
+      await page.waitForFunction(() => document.getElementById('ss-auto-strip').dataset.stale === 'false');
+      assert.deepEqual(autoBodies.at(-1), { action: 'auto-config', set: { enabled: true } });
+      assert.equal((await page.locator('#ss-auto-toggle').innerText()).trim(), 'Tạm dừng');
+
       // Lịch sử gọn: một ô trong dải (kết quả lượt gần nhất + số lượt), bảng chỉ mở khi bấm; không có bảng chi tiết nằm sẵn trong trang
       assert.equal(await page.locator('#ss-hist-dialog').evaluate(node => node.open), false);
       assert.equal(await page.locator('#ss-history').isVisible(), false);
       assert.equal(await dlg(page).isVisible(), false);
       assert.equal((await page.locator('#ss-hist-last').innerText()).trim(), 'Chờ cập nhật');
-      assert.match(await page.locator('#ss-hist-count').innerText(), /3 lượt$/);
+      assert.match(await page.locator('#ss-hist-count').innerText(), /4 lượt$/);
       await page.locator('#ss-history-btn').click();
       await page.locator('#ss-hist-dialog').waitFor({ state: 'visible' });
-      assert.equal((await page.locator('#ss-hist-note').innerText()).trim(), '3 lượt gần nhất');
+      assert.equal((await page.locator('#ss-hist-note').innerText()).trim(), '4 lượt gần nhất');
       // Lịch sử: preview quá 30 phút hiện "Hết hạn" và khóa nút Cập nhật; bảng có cột thời lượng và chip kết quả
       const badges = await page.locator('#ss-history .ss-badge').allInnerTexts();
-      assert.deepEqual(badges, ['Chờ cập nhật', 'Hết hạn', 'Hoàn tất']);
+      assert.deepEqual(badges, ['Chờ cập nhật', 'Hết hạn', 'Hoàn tất', 'Hết hạn']);
+      assert.deepEqual((await page.locator('#ss-history tr[data-run="run-auto"] .as-auto-chips .as-chip').allInnerTexts()).map(t => t.trim()), ['Tự động · may-test', 'Chờ Admin']);
+      assert.equal(await page.locator('#ss-history tr[data-run="run-auto"] .as-chip[data-tone="warn"]').getAttribute('title'), 'Giữ lại: 3.512 thay đổi vượt ngưỡng 3.000');
+      assert.equal(await page.locator('#ss-history tr[data-run="run-done"] .as-auto-chips').count(), 0, 'lượt bấm tay không có chip tự động');
       assert.deepEqual(await page.locator('#ss-hist-dialog thead th').allInnerTexts(), ['Thời gian', 'Trạng thái', 'SKU', 'Normal–Combo', 'Thời lượng']);
       assert.match(await page.locator('#ss-history tr[data-run="run-done"]').innerText(), /1 phút/);
       await page.locator('#ss-history tr[data-run="run-old"]').click();

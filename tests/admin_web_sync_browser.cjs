@@ -5,7 +5,7 @@
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const assert = require('node:assert/strict');
 
-const BASE = 'http://127.0.0.1:8000/';
+const BASE = process.env.BASE || 'http://127.0.0.1:8000/';
 const SESSION_KEY = 'print-sku-admin-session-v1';
 const ago = minutes => new Date(Date.now() - minutes * 60000).toISOString();
 const NAV = ['Lệnh in', 'Đồng bộ SKU', 'Đồng bộ Group UID', 'Cấu hình'];

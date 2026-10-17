@@ -20,7 +20,7 @@ const CATEGORIES = [
   ["961", "Thực phẩm"], ["962", "Mẫu Thời Trang"], ["963", "Nhận hàng gia công"], ["964", "Nguyên liệu nhận Gia công"],
 ].map(([id, name]) => ({ id, name }));
 
-let runs, skus, links, handler;
+let runs, skus, links, settings, leases, handler;
 
 function iso(offsetMs) { return new Date(Date.now() + offsetMs).toISOString(); }
 function makeRun(over = {}) {
@@ -42,7 +42,7 @@ function same(left, op, right) {
 function select(rows, params) {
   let result = rows.filter(row => [...params].every(([key, value]) => {
     if (["select", "order", "limit", "on_conflict"].includes(key)) return true;
-    if (key === "sku" && value.startsWith("in.(")) return value.slice(4, -1).split(",").map(code => code.replace(/"/g, "")).includes(row.sku);
+    if (value.startsWith("in.(")) return value.slice(4, -1).split(",").map(code => code.replace(/"/g, "")).includes(String(row[key]));
     const [op, ...rest] = value.split(".");
     return same(row[key], op, rest.join("."));
   }));
@@ -68,13 +68,15 @@ function install() {
     const table = target.pathname.replace("/rest/v1/", "");
     if (target.pathname === "/auth/v1/user") return json({ id: "user-1" });
     if (table === "user_roles") return json([{ username: "admin-test", role: "admin" }]);
-    const store = { sku_sync_runs: runs, SKU_Name: skus, sku_combo_links: links }[table];
+    if (table.startsWith("rpc/")) return json(rpcCall(table.slice(4), JSON.parse(init.body)));
+    const leaseRows = [...leases].map(([kind, row]) => ({ kind, ...row }));
+    const store = { sku_sync_runs: runs, SKU_Name: skus, sku_combo_links: links, sync_auto_settings: settings, sync_auto_leases: leaseRows }[table];
     if (!store) throw new Error(`fetch không được giả lập: ${url}`);
     if (method === "HEAD") return new Response(null, { status: 200, headers: { "content-range": `0-0/${store.length}` } });
     if (method === "GET") return json(select(store, params));
     const body = JSON.parse(init.body);
     if (method === "POST") {
-      const key = table === "SKU_Name" ? ["sku"] : table === "sku_combo_links" ? ["combo_sku", "normal_sku"] : null;
+      const key = table === "SKU_Name" ? ["sku"] : table === "sku_combo_links" ? ["combo_sku", "normal_sku"] : table === "sync_auto_settings" ? ["singleton"] : null;
       const rows = (Array.isArray(body) ? body : [body]).map(row => ({ ...row }));
       for (const row of rows) {
         const existing = key && store.find(item => key.every(field => item[field] === row[field]));
@@ -97,7 +99,33 @@ fs.writeFileSync(file, SOURCE);
 install();
 await import(pathToFileURL(file).href);
 
-beforeEach(() => { runs = []; skus = []; links = []; install(); });
+beforeEach(() => { runs = []; skus = []; links = []; settings = []; leases = new Map(); install(); });
+
+// Giả lập RPC sync_auto_lease / sync_auto_release (sync_auto_v1.sql): hết hạn hoặc cùng máy thì giành được;
+// p_cooldown_seconds > 0 và lượt cùng loại vừa kết thúc (last_finished_at, ghi khi nhả khoá với p_finished) → COOLDOWN.
+function rpcCall(name, body) {
+  if (name === "sync_auto_lease") {
+    const current = leases.get(body.p_kind);
+    if (current && current.holder && current.holder !== body.p_holder && Date.parse(current.leased_until) >= Date.now()) {
+      return { ok: false, holder: current.holder, leasedUntil: current.leased_until };
+    }
+    const cooldown = Number(body.p_cooldown_seconds || 0), finishedAt = Date.parse(current?.last_finished_at || "");
+    const renewing = current && current.holder === body.p_holder && Date.parse(current.leased_until) >= Date.now();
+    if (cooldown > 0 && Number.isFinite(finishedAt) && finishedAt > Date.now() - cooldown * 1000 && !renewing) {
+      return { ok: false, reason: "COOLDOWN", lastFinishedAt: current.last_finished_at, retryAfter: new Date(finishedAt + cooldown * 1000).toISOString() };
+    }
+    const row = { ...(current || {}), holder: body.p_holder, leased_until: iso(body.p_ttl_seconds * 1000) };
+    leases.set(body.p_kind, row);
+    return { ok: true, holder: row.holder, leasedUntil: row.leased_until };
+  }
+  if (name === "sync_auto_release") {
+    const current = leases.get(body.p_kind);
+    const released = Boolean(current && current.holder === body.p_holder);
+    if (released) leases.set(body.p_kind, { holder: null, leased_until: null, last_finished_at: body.p_finished === true ? iso(0) : current.last_finished_at ?? null });
+    return { ok: true, released };
+  }
+  throw new Error(`rpc chưa giả lập: ${name}`);
+}
 
 async function call(body) {
   const response = await handler(new Request("https://example.invalid/functions/v1/sku-sync", {
@@ -424,4 +452,192 @@ test("combo gia tăng (comboScope changed): nhận ít hơn 1.000 dòng, không 
   assert.equal(blocked.body.error.code, "INCOMPLETE_SOURCE");
   const old = await call({ action: "preview", snapshot: { ...snapshot(iso(-1 * MIN)), comboRows: combos } });
   assert.equal(old.status, 500, "Extension cũ gửi ít Combo mà không có comboScope vẫn bị chặn như trước");
+});
+
+// ---- Đồng bộ tự động qua Extension (sync_auto_v1, 17/10/2026) ----
+// holder = tên máy + "#" + mã máy (auto-sync.js holderOf); lượt tự động phải đang giữ khoá thuê còn hạn mới được ghi.
+const HOLDER = "may-test-01#abc123";
+function holdLease(holder = HOLDER, untilMs = 10 * MIN) { leases.set("sku", { holder, leased_until: iso(untilMs) }); }
+function updatedStaged(total) {
+  return Array.from({ length: total }, (_, index) => ({ sku: `90000${String(index).padStart(4, "0")}`, product_name: `SKU thu nghiem ${index}`, category_id: "954", category_name: "Thời Trang (Phụ Liệu)", status: "1" }));
+}
+
+test("auto: preview ghi nguồn auto + tên máy; thiếu trường thì manual như cũ; history/detail trả source, device, autoHold", async () => {
+  holdLease();
+  const auto = await call({ action: "preview", snapshot: snapshot(iso(-1 * MIN)), source: "auto", device: "  may-test-01  ", holder: HOLDER });
+  assert.equal(auto.status, 200, JSON.stringify(auto.body));
+  assert.equal(runs[0].run_source, "auto");
+  assert.equal(runs[0].device, "may-test-01");
+  assert.equal(runs[0].source, "inside-extension", "cột source cũ giữ nguyên giá trị check cứng");
+  runs.length = 0;
+  const manual = await call({ action: "preview", snapshot: snapshot(iso(-1 * MIN)) });
+  assert.equal(manual.status, 200);
+  assert.equal(runs[0].run_source, "manual");
+  assert.equal(runs[0].device, null);
+  runs[0].run_source = "auto"; runs[0].device = "may-test-01"; runs[0].auto_hold = "Giữ lại: thử";
+  const history = await call({ action: "history" });
+  assert.deepEqual([history.body.data.runs[0].source, history.body.data.runs[0].device, history.body.data.runs[0].autoHold], ["auto", "may-test-01", "Giữ lại: thử"]);
+  assert.equal("run_source" in history.body.data.runs[0], false);
+  const detail = await call({ action: "detail", runId: runs[0].id });
+  assert.deepEqual([detail.body.data.source, detail.body.data.device, detail.body.data.autoHold], ["auto", "may-test-01", "Giữ lại: thử"]);
+});
+
+test("auto: apply dưới ngưỡng thì ghi như thường", async () => {
+  holdLease();
+  runs.push(makeRun({ change_counts: { skuAdded: 1, skuUpdated: 0, skuMissing: 0, comboOrphaned: null } }));
+  const result = await call({ action: "apply", runId: RUN_A, auto: true, holder: HOLDER });
+  assert.equal(result.status, 200, JSON.stringify(result.body));
+  assert.equal(result.body.data.status, "completed");
+  assert.equal(result.body.data.held, undefined);
+  assert.equal(skus.length, 1);
+});
+
+test("auto: vượt ngưỡng (501 SKU cập nhật) thì chuyển held, ghi auto_hold, không ghi SKU; lượt held không áp dụng được nữa", async () => {
+  holdLease();
+  runs.push(makeRun({ staged_skus: updatedStaged(501), change_counts: { skuAdded: 0, skuUpdated: 501, skuMissing: 0, comboOrphaned: 0 } }));
+  const result = await call({ action: "apply", runId: RUN_A, auto: true, holder: HOLDER });
+  assert.equal(result.status, 200, JSON.stringify(result.body));
+  assert.equal(result.body.data.status, "held");
+  assert.match(result.body.data.held.reason, /^Giữ lại: 501 SKU cập nhật vượt ngưỡng 500/);
+  assert.equal(result.body.data.held.counts.skuUpdated, 501);
+  assert.equal(runs[0].status, "held");
+  assert.ok(runs[0].completed_at, "held là trạng thái kết thúc, có giờ kết thúc");
+  assert.deepEqual([runs[0].staged_skus, runs[0].staged_combo_links], [[], []], "bỏ dữ liệu chờ ghi của lượt held");
+  assert.equal(runs[0].auto_hold, result.body.data.held.reason);
+  assert.equal(skus.length, 0);
+  for (const body of [{ action: "apply", runId: RUN_A }, { action: "apply", runId: RUN_A, auto: true, holder: HOLDER }]) {
+    const again = await call(body);
+    assert.deepEqual([again.status, again.body.error.code, again.body.error.message], [409, "RUN_HELD", "Lượt đã giữ lại, chạy lại tay để xem bản mới"]);
+  }
+  assert.equal(skus.length, 0);
+  const history = await call({ action: "history" });
+  assert.equal(history.body.data.runs[0].status, "held");
+  assert.equal(history.body.data.lastSuccessAt, null, "held không tính là lượt hoàn tất");
+});
+
+test("auto: SKU thiếu trên Inside hoặc Combo thừa > 0 đều giữ lại", async () => {
+  holdLease();
+  runs.push(makeRun({ change_counts: { skuAdded: 1, skuMissing: 2, comboOrphaned: 3 } }));
+  const result = await call({ action: "apply", runId: RUN_A, auto: true, holder: HOLDER });
+  assert.equal(result.body.data.status, "held");
+  assert.match(result.body.data.held.reason, /2 SKU không còn trên Inside/);
+  assert.match(result.body.data.held.reason, /3 quan hệ Combo thừa/);
+});
+
+test("auto: ngưỡng đọc từ sync_auto_settings; Admin tạm dừng thì giữ lại", async () => {
+  holdLease();
+  settings.push({ singleton: true, enabled: true, thresholds: { sku: { maxUpdated: 1000 } } });
+  runs.push(makeRun({ staged_skus: updatedStaged(600), change_counts: { skuUpdated: 600 } }));
+  const result = await call({ action: "apply", runId: RUN_A, auto: true, holder: HOLDER });
+  assert.equal(result.body.data.status, "completed", JSON.stringify(result.body));
+  settings[0].enabled = false;
+  runs.length = 0; skus.length = 0;
+  runs.push(makeRun({ change_counts: { skuAdded: 1 } }));
+  const paused = await call({ action: "apply", runId: RUN_A, auto: true, holder: HOLDER });
+  assert.equal(paused.body.data.status, "held");
+  assert.match(paused.body.data.held.reason, /tạm dừng/);
+  assert.equal(skus.length, 0);
+});
+
+test("auto: hàng rào khoá thuê — thiếu holder, máy khác đã giành khoá hoặc khoá hết hạn thì LEASE_LOST, không tạo/ghi gì", async () => {
+  runs.push(makeRun({ change_counts: { skuAdded: 1 } }));
+  const cases = [
+    ["không gửi holder", () => holdLease(), {}],
+    ["máy khác giữ khoá", () => holdLease("may-test-02#zzz999"), { holder: HOLDER }],
+    ["khoá hết hạn", () => holdLease(HOLDER, -1 * MIN), { holder: HOLDER }],
+    ["chưa từng thuê khoá", () => leases.clear(), { holder: HOLDER }],
+  ];
+  for (const [label, setup, extra] of cases) {
+    setup();
+    const result = await call({ action: "apply", runId: RUN_A, auto: true, ...extra });
+    assert.deepEqual([result.status, result.body.error?.code], [409, "LEASE_LOST"], label);
+    assert.equal(runs[0].status, "previewed", label);
+    assert.equal(skus.length, 0, label);
+  }
+  holdLease("may-test-02#zzz999");
+  const preview = await call({ action: "preview", snapshot: snapshot(iso(-1 * MIN)), source: "auto", device: "may-test-01", holder: HOLDER });
+  assert.deepEqual([preview.status, preview.body.error?.code], [409, "LEASE_LOST"]);
+  assert.equal(runs.length, 1, "không tạo bản xem trước khi mất khoá");
+  const manual = await call({ action: "preview", snapshot: snapshot(iso(-1 * MIN)) });
+  assert.equal(manual.status, 200, "lượt tay trên web không cần khoá thuê");
+  const longHolder = "x".repeat(60) + "#abc123";
+  leases.clear();
+  assert.equal((await call({ action: "lease", kind: "sku", holder: longHolder })).body.data.holder, longHolder, "holder 67 ký tự không bị cắt");
+});
+
+test("history: lastAutoFullAt = lượt toàn bộ tự động gần nhất đã hoàn tất hoặc giữ lại", async () => {
+  runs.push(makeRun({ id: RUN_A, mode: "full", status: "completed", run_source: "manual", created_at: iso(-2 * MIN) }));
+  assert.equal((await call({ action: "history" })).body.data.lastAutoFullAt, null, "lượt tay không tính");
+  runs.push(makeRun({ id: RUN_B, mode: "full", status: "held", run_source: "auto", created_at: iso(-5 * MIN) }));
+  runs.push(makeRun({ id: "33333333-3333-4333-8333-333333333333", mode: "full", status: "failed", run_source: "auto", created_at: iso(-1 * MIN) }));
+  runs.push(makeRun({ id: "44444444-4444-4444-8444-444444444444", mode: "incremental", status: "completed", run_source: "auto", created_at: iso(0) }));
+  assert.equal((await call({ action: "history" })).body.data.lastAutoFullAt, runs[1].created_at);
+});
+
+test("lease: máy khác đang giữ thì ok:false; cùng máy gia hạn được; nhả sai máy không có tác dụng", async () => {
+  const first = await call({ action: "lease", kind: "sku", holder: "may-test-01" });
+  assert.equal(first.status, 200);
+  assert.equal(first.body.data.ok, true);
+  assert.ok(Date.parse(first.body.data.leasedUntil) > Date.now() + 14 * MIN);
+  const other = await call({ action: "lease", kind: "sku", holder: "may-test-02" });
+  assert.deepEqual([other.body.data.ok, other.body.data.holder], [false, "may-test-01"]);
+  const again = await call({ action: "lease", kind: "sku", holder: "may-test-01" });
+  assert.equal(again.body.data.ok, true);
+  const groupUid = await call({ action: "lease", kind: "group_uid", holder: "may-test-02" });
+  assert.equal(groupUid.body.data.ok, true, "khoá theo từng loại");
+  const wrong = await call({ action: "release", kind: "sku", holder: "may-test-02" });
+  assert.equal(wrong.body.data.released, false);
+  assert.equal((await call({ action: "lease", kind: "sku", holder: "may-test-02" })).body.data.ok, false);
+  await call({ action: "release", kind: "sku", holder: "may-test-01" });
+  assert.equal((await call({ action: "lease", kind: "sku", holder: "may-test-02" })).body.data.ok, true);
+  leases.set("sku", { holder: "may-test-02", leased_until: iso(-1 * MIN) });
+  assert.equal((await call({ action: "lease", kind: "sku", holder: "may-test-03" })).body.data.ok, true, "khoá hết hạn thì máy khác giành được");
+  const invalid = await call({ action: "lease", kind: "khac", holder: "may-test-01" });
+  assert.deepEqual([invalid.status, invalid.body.error.code], [400, "INVALID_KIND"]);
+  const noHolder = await call({ action: "lease", kind: "sku", holder: "   " });
+  assert.deepEqual([noHolder.status, noHolder.body.error.code], [400, "INVALID_HOLDER"]);
+});
+
+test("lease: giãn cách giữa các máy — lượt theo lịch bị từ chối (COOLDOWN) khi lượt cùng loại vừa kết thúc; chạy ngay / lỗi thì không", async () => {
+  const LOOP = 30 * 60 - 120;
+  assert.equal((await call({ action: "lease", kind: "sku", holder: "may-test-01", cooldownSeconds: LOOP })).body.data.ok, true, "chưa có mốc kết thúc");
+  assert.equal((await call({ action: "lease", kind: "sku", holder: "may-test-01", cooldownSeconds: LOOP })).body.data.ok, true, "gia hạn của máy đang giữ");
+  await call({ action: "release", kind: "sku", holder: "may-test-01" });
+  assert.equal((await call({ action: "lease", kind: "sku", holder: "may-test-02", cooldownSeconds: LOOP })).body.data.ok, true, "nhả khoá do lỗi / bỏ qua không ghi mốc");
+  await call({ action: "release", kind: "sku", holder: "may-test-02", finished: true });
+  const cooled = await call({ action: "lease", kind: "sku", holder: "may-test-03", cooldownSeconds: LOOP });
+  assert.equal(cooled.status, 200);
+  assert.deepEqual([cooled.body.data.ok, cooled.body.data.reason], [false, "COOLDOWN"]);
+  assert.ok(Date.parse(cooled.body.data.lastFinishedAt) <= Date.now());
+  assert.ok(Date.parse(cooled.body.data.retryAfter) > Date.now() + 27 * MIN);
+  assert.equal(leases.get("sku").holder, null, "COOLDOWN không đổi người giữ");
+  assert.equal((await call({ action: "lease", kind: "group_uid", holder: "may-test-03", cooldownSeconds: LOOP })).body.data.ok, true, "giãn cách theo từng loại");
+  assert.equal((await call({ action: "lease", kind: "sku", holder: "may-test-03", cooldownSeconds: "abc" })).body.data.ok, true, "chạy ngay / Extension cũ không gửi giãn cách");
+  leases.set("sku", { holder: null, leased_until: null, last_finished_at: iso(-29 * MIN) });
+  assert.equal((await call({ action: "lease", kind: "sku", holder: "may-test-04", cooldownSeconds: LOOP })).body.data.ok, true, "quá nhịp − 2 phút thì chạy");
+});
+
+test("auto-config: đọc mặc định khi chưa có dòng; Admin tắt được; nhịp ngoài 15–180 hoặc khoá lạ bị từ chối", async () => {
+  const empty = await call({ action: "auto-config" });
+  assert.equal(empty.status, 200);
+  assert.deepEqual(empty.body.data.fullWindow, { start: "00:00", end: "05:00" });
+  assert.equal(empty.body.data.enabled, true);
+  assert.equal(empty.body.data.intervalMinutes, 30);
+  assert.deepEqual(empty.body.data.thresholds.sku, { maxUpdated: 500, maxAdded: 500, maxMissing: 0, maxOrphaned: 0 });
+  assert.deepEqual(empty.body.data.thresholds.group_uid, { maxChanges: 3000, maxMissing: 0, maxIssues: 0 });
+  settings.push({ singleton: true, enabled: true, interval_minutes: 30, full_window_start: "00:00:00", full_window_end: "05:00:00", thresholds: { group_uid: { maxChanges: 3000, maxMissing: 0, maxIssues: 0 }, sku: { maxUpdated: 500, maxAdded: 500, maxMissing: 0, maxOrphaned: 0 } } });
+  const off = await call({ action: "auto-config", set: { enabled: false } });
+  assert.equal(off.status, 200, JSON.stringify(off.body));
+  assert.equal(off.body.data.enabled, false);
+  assert.equal(settings[0].enabled, false);
+  assert.equal(settings[0].updated_by, "user-1");
+  const interval = await call({ action: "auto-config", set: { intervalMinutes: 60 } });
+  assert.equal(interval.body.data.intervalMinutes, 60);
+  for (const set of [{ intervalMinutes: 10 }, { intervalMinutes: 181 }, { enabled: "false" }, { thresholds: { sku: { maxUpdated: 99999 } } }, {}, []]) {
+    const rejected = await call({ action: "auto-config", set });
+    assert.equal(rejected.status, 400, JSON.stringify(set));
+    assert.equal(rejected.body.error.code, "INVALID_CONFIG");
+  }
+  assert.equal(settings[0].interval_minutes, 60);
+  assert.equal(settings[0].thresholds.sku.maxUpdated, 500, "ngưỡng không đổi được qua Edge");
 });

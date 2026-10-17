@@ -25,6 +25,15 @@ const FULL_DROP_BLOCK_PERCENT = 20;
 const PREVIEW_TTL_MS = 30 * 60 * 1000;
 const DETAIL_LIMIT = 1000;
 const SOURCE_ISSUE_TYPES = new Set(["invalid_combo_relation", "unparsed_combo_description", "partial_combo_description"]);
+// Đồng bộ tự động (sync_auto_v1.sql): ngưỡng mặc định khi bảng cấu hình thiếu hoặc thiếu khoá; bản chép giống group-uid-sync/index.ts (deploy gửi 1 tệp).
+const DEFAULT_THRESHOLDS: Record<string, Record<string, number>> = {
+  group_uid: { maxChanges: 3000, maxMissing: 0, maxIssues: 0 },
+  sku: { maxUpdated: 500, maxAdded: 500, maxMissing: 0, maxOrphaned: 0 },
+};
+const AUTO_KINDS = new Set(["sku", "group_uid"]);
+const LEASE_TTL_SECONDS = 900;
+// holder = tên máy (≤ 60) + "#" + mã máy (Extension 0.10.0) → tối đa 80 ký tự, khớp sync_auto_lease.
+const HOLDER_MAX = 80;
 
 type Json = Record<string, unknown>;
 
@@ -40,6 +49,26 @@ function keyList(raw: string | undefined): string[] {
 }
 function firstKey(raw: string | undefined): string { return keyList(raw)[0] ?? ""; }
 function clean(value: unknown, max = 500): string { return String(value ?? "").replace(/\s+/g, " ").trim().slice(0, max); }
+function count(value: number): string { return value.toLocaleString("vi-VN"); }
+function limitOf(raw: unknown, fallback: number): number { const value = Number(raw); return Number.isFinite(value) && value >= 0 ? value : fallback; }
+function thresholdsFor(kind: string, all: unknown): Record<string, number> {
+  const base = DEFAULT_THRESHOLDS[kind], given = ((all ?? {}) as Json)[kind] as Json | undefined;
+  return Object.fromEntries(Object.entries(base).map(([key, fallback]) => [key, limitOf(given?.[key], fallback)]));
+}
+// Ngưỡng "Vừa" SKU: SKU thiếu trên Inside = 0, Combo thừa = 0, SKU cập nhật ≤ 500, SKU mới ≤ 500. Vượt → giữ bản xem trước cho Admin.
+export function evaluateSkuHold(counts: unknown, thresholds: unknown): { reason: string; counts: Json } | null {
+  const c = (counts ?? {}) as Json, t = thresholdsFor("sku", { sku: thresholds });
+  const skuAdded = Number(c.skuAdded) || 0, skuUpdated = Number(c.skuUpdated) || 0, skuMissing = Number(c.skuMissing) || 0, comboOrphaned = Number(c.comboOrphaned) || 0;
+  const reasons: string[] = [];
+  if (skuUpdated > t.maxUpdated) reasons.push(`${count(skuUpdated)} SKU cập nhật vượt ngưỡng ${count(t.maxUpdated)}`);
+  if (skuAdded > t.maxAdded) reasons.push(`${count(skuAdded)} SKU mới vượt ngưỡng ${count(t.maxAdded)}`);
+  if (skuMissing > t.maxMissing) reasons.push(`${count(skuMissing)} SKU không còn trên Inside`);
+  if (comboOrphaned > t.maxOrphaned) reasons.push(`${count(comboOrphaned)} quan hệ Combo thừa`);
+  return reasons.length ? { reason: `Giữ lại: ${reasons.join("; ")}`, counts: { skuAdded, skuUpdated, skuMissing, comboOrphaned } } : null;
+}
+// Lượt tự động từ Extension gửi source "auto" + tên máy; thiếu trường (web, Extension cũ) → "manual" như trước.
+function runSource(value: unknown): "auto" | "manual" { return value === "auto" ? "auto" : "manual"; }
+function deviceName(value: unknown): string | null { return clean(value, 60) || null; }
 function cors(request: Request): Record<string, string> {
   const origin = request.headers.get("origin") ?? "";
   return {
@@ -77,6 +106,10 @@ async function fetchAll(path: string, pageSize = 1000): Promise<Json[]> {
     if (page.length < pageSize) break;
   }
   return rows;
+}
+async function rpc(name: string, body: Json): Promise<Json> {
+  const response = await db(`rpc/${name}`, { method: "POST", body: JSON.stringify(body) });
+  return await jsonResponse(response, name) as Json;
 }
 async function fetchBySkus(skus: string[]): Promise<Json[]> {
   const result: Json[] = [];
@@ -292,10 +325,14 @@ async function preview(request: Request, user: { id: string; username: string },
     combos: { added: comboAdded, updated: comboUpdated, orphaned: orphanedAll.slice(0, DETAIL_LIMIT), excluded: excludedMissing },
     sourceIssues: issues.items,
   };
+  // Lượt tự động chỉ tạo bản xem trước khi máy gửi vẫn giữ khoá thuê còn hạn (đọc Inside có thể lâu hơn hạn khoá).
+  if (runSource(body.source) === "auto" && !(await holdsLease("sku", body.holder))) return fail(request, 409, "LEASE_LOST", "Mất khoá thuê; lượt tự động đã dừng");
   const run = await insertRun({
     status: "previewed", source: "inside-extension", mode: full ? "full" : "incremental", cutoff: clean(source.cutoff, 40), source_generated_at: sourceTime(source.generatedAt),
     source_counts: sourceCounts, change_counts: changeCounts, changes, staged_skus: stagedSkus,
     staged_combo_links: stagedLinks, verification, created_by: user.id,
+    // Cột source cũ luôn "inside-extension" (check cứng); nguồn kích hoạt nằm ở run_source (sync_auto_v1.sql).
+    run_source: runSource(body.source), device: deviceName(body.device),
   });
   return reply(request, 200, { ok: true, data: { runId: run.id, status: run.status, mode: full ? "full" : "incremental", sourceCounts, changeCounts, changes, verification }, meta: { updatedAt: run.created_at, schemaVersion: 1 } });
 }
@@ -327,8 +364,24 @@ async function apply(request: Request, body: Json): Promise<Response> {
   const rows = await fetchAll(`sku_sync_runs?select=*&id=eq.${encodeURIComponent(runId)}&limit=1`);
   const run = rows[0];
   if (!run) return fail(request, 404, "NOT_FOUND", "Không thấy lượt đồng bộ");
+  // held = lượt tự động đã giữ lại (sync_auto_v1.sql): dữ liệu Inside đã cũ, không áp dụng nữa.
+  if (run.status === "held") return fail(request, 409, "RUN_HELD", "Lượt đã giữ lại, chạy lại tay để xem bản mới");
   if (run.status === "completed") return reply(request, 200, { ok: true, data: { runId, status: "completed", changeCounts: run.change_counts, verification: run.verification, alreadyCompleted: true } });
   if (run.status !== "previewed") return fail(request, 409, "NOT_READY", "Lượt đồng bộ không còn ở trạng thái chờ cập nhật");
+  // auto:true (Extension tự chạy): phải còn giữ khoá thuê; vượt ngưỡng hoặc Admin tạm dừng → không ghi, chuyển "held" cho Admin xem
+  // (bỏ dữ liệu chờ ghi vì lượt held không áp dụng được nữa; chi tiết thay đổi giữ nguyên để xem). Không có auto → như cũ.
+  if (body.auto === true) {
+    if (!(await holdsLease("sku", body.holder))) return fail(request, 409, "LEASE_LOST", "Mất khoá thuê; lượt tự động đã dừng");
+    const settings = await autoSettings();
+    const held = settings?.enabled === false
+      ? { reason: "Giữ lại: Admin tạm dừng đồng bộ tự động", counts: (run.change_counts ?? {}) as Json }
+      : evaluateSkuHold(run.change_counts, (settings?.thresholds as Json | undefined)?.sku);
+    if (held) {
+      const marked = await updateRun(runId, { status: "held", auto_hold: clean(held.reason, 300), completed_at: new Date().toISOString(), staged_skus: [], staged_combo_links: [] }, "previewed");
+      if (!marked) return fail(request, 409, "NOT_READY", "Lượt đồng bộ không còn ở trạng thái chờ cập nhật");
+      return reply(request, 200, { ok: true, data: { runId, status: "held", changeCounts: run.change_counts, held }, meta: { updatedAt: new Date().toISOString(), schemaVersion: 1 } });
+    }
+  }
   const stale = await staleReason(run);
   if (stale) return fail(request, 409, "STALE_PREVIEW", stale);
   const claimed = await updateRun(runId, { status: "applying", applied_at: new Date().toISOString(), error_message: null }, "previewed");
@@ -366,18 +419,92 @@ async function apply(request: Request, body: Json): Promise<Response> {
     return fail(request, 500, "APPLY_FAILED", `Cập nhật chưa hoàn tất: ${clean((error as Error).message, 300)}`);
   }
 }
+// API trả "source" = manual|auto (cột run_source); cột source cũ của bảng (inside-extension) không đưa ra.
+function runView(run: Json): Json {
+  const { run_source, ...rest } = run;
+  return { ...rest, source: run_source ?? "manual", device: run.device ?? null, autoHold: run.auto_hold ?? null };
+}
 async function history(request: Request, body: Json): Promise<Response> {
   const limit = Math.min(Math.max(Number(body.limit) || 20, 1), 50);
-  const runs = await fetchAll(`sku_sync_runs?select=id,status,mode,cutoff,source_counts,change_counts,verification,error_message,created_at,completed_at,created_by&order=created_at.desc&limit=${limit}`);
+  const runs = (await fetchAll(`sku_sync_runs?select=id,status,mode,cutoff,source_counts,change_counts,verification,error_message,created_at,completed_at,created_by,run_source,device,auto_hold&order=created_at.desc&limit=${limit}`)).map(runView);
   // Mốc đọc tiếp theo tính từ lúc đọc nguồn của lượt hoàn tất gần nhất, không phải lúc bấm cập nhật; truy vấn riêng để không phụ thuộc 20 lượt gần nhất.
   const latest = (await fetchAll("sku_sync_runs?select=source_generated_at,completed_at&status=eq.completed&order=source_generated_at.desc&limit=1"))[0];
   const latestFull = (await fetchAll("sku_sync_runs?select=source_generated_at,completed_at&mode=eq.full&status=eq.completed&order=completed_at.desc&limit=1"))[0];
-  return reply(request, 200, { ok: true, data: { runs, lastSuccessAt: latest?.completed_at ?? null, lastSnapshotAt: latest?.source_generated_at ?? null, lastFullAt: latestFull?.completed_at ?? null, lastFullSnapshotAt: latestFull?.source_generated_at ?? null }, meta: { updatedAt: new Date().toISOString(), schemaVersion: 1 } });
+  // Mốc lượt toàn bộ tự động gần nhất (hoàn tất hoặc giữ lại) trên server: mọi máy cùng thấy, không đọc lại toàn bộ trong 20 giờ.
+  const lastAutoFull = (await fetchAll("sku_sync_runs?select=created_at&run_source=eq.auto&mode=eq.full&status=in.(completed,held)&order=created_at.desc&limit=1"))[0];
+  return reply(request, 200, { ok: true, data: { runs, lastSuccessAt: latest?.completed_at ?? null, lastSnapshotAt: latest?.source_generated_at ?? null, lastFullAt: latestFull?.completed_at ?? null, lastFullSnapshotAt: latestFull?.source_generated_at ?? null, lastAutoFullAt: lastAutoFull?.created_at ?? null }, meta: { updatedAt: new Date().toISOString(), schemaVersion: 1 } });
 }
 async function detail(request: Request, body: Json): Promise<Response> {
   const runId = clean(body.runId, 80);
-  const runs = await fetchAll(`sku_sync_runs?select=id,status,mode,cutoff,source_counts,change_counts,changes,verification,error_message,created_at,completed_at&id=eq.${encodeURIComponent(runId)}&limit=1`);
-  return runs[0] ? reply(request, 200, { ok: true, data: runs[0], meta: { updatedAt: new Date().toISOString(), schemaVersion: 1 } }) : fail(request, 404, "NOT_FOUND", "Không thấy lượt đồng bộ");
+  const runs = await fetchAll(`sku_sync_runs?select=id,status,mode,cutoff,source_counts,change_counts,changes,verification,error_message,created_at,completed_at,run_source,device,auto_hold&id=eq.${encodeURIComponent(runId)}&limit=1`);
+  return runs[0] ? reply(request, 200, { ok: true, data: runView(runs[0]), meta: { updatedAt: new Date().toISOString(), schemaVersion: 1 } }) : fail(request, 404, "NOT_FOUND", "Không thấy lượt đồng bộ");
+}
+async function autoSettings(): Promise<Json | null> {
+  return (await fetchAll("sync_auto_settings?select=*&singleton=eq.true&limit=1"))[0] ?? null;
+}
+// Hàng rào khoá thuê: lượt tự động chỉ được ghi khi máy gửi vẫn đang giữ khoá còn hạn (máy khác đã giành khoá thì dừng).
+async function holdsLease(kind: string, holder: unknown): Promise<boolean> {
+  const name = clean(holder, HOLDER_MAX);
+  if (!name) return false;
+  const row = (await fetchAll(`sync_auto_leases?select=holder,leased_until&kind=eq.${encodeURIComponent(kind)}&limit=1`))[0];
+  return Boolean(row && row.holder === name && Date.parse(String(row.leased_until)) >= Date.now());
+}
+function configView(row: Json | null): Json {
+  const time = (value: unknown, fallback: string) => clean(value, 8).slice(0, 5) || fallback;
+  const thresholds = Object.fromEntries(Object.keys(DEFAULT_THRESHOLDS).map(kind => [kind, thresholdsFor(kind, row?.thresholds)]));
+  return {
+    enabled: row ? row.enabled !== false : true, intervalMinutes: Number(row?.interval_minutes) || 30,
+    fullWindow: { start: time(row?.full_window_start, "00:00"), end: time(row?.full_window_end, "05:00") },
+    thresholds, updatedAt: row?.updated_at ?? null, updatedBy: row?.updated_by ?? null,
+  };
+}
+// Cấu hình chung đồng bộ tự động. set chỉ nhận enabled (boolean) và intervalMinutes (15–180).
+async function autoConfig(request: Request, user: { id: string }, body: Json): Promise<Response> {
+  if (body.set !== undefined) {
+    const set = (body.set && typeof body.set === "object" && !Array.isArray(body.set) ? body.set : null) as Json | null;
+    if (!set) return fail(request, 400, "INVALID_CONFIG", "Thiết lập không hợp lệ");
+    const unknown = Object.keys(set).filter(key => !["enabled", "intervalMinutes"].includes(key));
+    if (unknown.length) return fail(request, 400, "INVALID_CONFIG", "Chỉ đổi được bật/tắt và nhịp gia tăng");
+    const patch: Json = {};
+    if ("enabled" in set) {
+      if (typeof set.enabled !== "boolean") return fail(request, 400, "INVALID_CONFIG", "Giá trị bật/tắt không hợp lệ");
+      patch.enabled = set.enabled;
+    }
+    if ("intervalMinutes" in set) {
+      const minutes = Number(set.intervalMinutes);
+      if (!Number.isInteger(minutes) || minutes < 15 || minutes > 180) return fail(request, 400, "INVALID_CONFIG", "Nhịp gia tăng phải từ 15 đến 180 phút");
+      patch.interval_minutes = minutes;
+    }
+    if (!Object.keys(patch).length) return fail(request, 400, "INVALID_CONFIG", "Không có thiết lập nào để lưu");
+    Object.assign(patch, { updated_by: user.id, updated_at: new Date().toISOString() });
+    const response = await db("sync_auto_settings?on_conflict=singleton", { method: "POST", headers: { Prefer: "resolution=merge-duplicates,return=minimal" }, body: JSON.stringify({ singleton: true, ...patch }) });
+    await jsonResponse(response, "Lưu cấu hình tự động");
+  }
+  return reply(request, 200, { ok: true, data: configView(await autoSettings()), meta: { updatedAt: new Date().toISOString(), schemaVersion: 1 } });
+}
+// Giãn cách giữa các máy: lượt theo lịch gửi cooldownSeconds (nhịp − 2 phút); thiếu / sai → 0 (như cũ). Tối đa 180 phút.
+function cooldownOf(value: unknown): number { const seconds = Math.floor(Number(value)); return Number.isFinite(seconds) ? Math.min(Math.max(seconds, 0), 10800) : 0; }
+function leaseInput(request: Request, body: Json): { kind: string; holder: string } | Response {
+  const kind = clean(body.kind, 20), holder = clean(body.holder, HOLDER_MAX);
+  if (!AUTO_KINDS.has(kind)) return fail(request, 400, "INVALID_KIND", "Loại đồng bộ không hợp lệ");
+  if (!holder) return fail(request, 400, "INVALID_HOLDER", "Thiếu tên máy");
+  return { kind, holder };
+}
+// Khoá thuê theo loại: data = {ok:true, holder, leasedUntil} khi giành được, {ok:false, holder, leasedUntil} khi máy khác đang giữ.
+async function lease(request: Request, body: Json): Promise<Response> {
+  const input = leaseInput(request, body);
+  if (input instanceof Response) return input;
+  const cooldown = cooldownOf(body.cooldownSeconds);
+  // data = {ok:false, reason:"COOLDOWN", lastFinishedAt, retryAfter} khi lượt cùng loại vừa kết thúc chưa quá cooldown.
+  const data = await rpc("sync_auto_lease", { p_kind: input.kind, p_holder: input.holder, p_ttl_seconds: LEASE_TTL_SECONDS, ...(cooldown > 0 ? { p_cooldown_seconds: cooldown } : {}) });
+  return reply(request, 200, { ok: true, data, meta: { updatedAt: new Date().toISOString(), schemaVersion: 1 } });
+}
+async function release(request: Request, body: Json): Promise<Response> {
+  const input = leaseInput(request, body);
+  if (input instanceof Response) return input;
+  // finished:true = lượt tự động kết thúc (hoàn tất hoặc giữ lại) → ghi mốc giãn cách; lỗi / bỏ qua không gửi.
+  const data = await rpc("sync_auto_release", { p_kind: input.kind, p_holder: input.holder, ...(body.finished === true ? { p_finished: true } : {}) });
+  return reply(request, 200, { ok: true, data, meta: { updatedAt: new Date().toISOString(), schemaVersion: 1 } });
 }
 
 Deno.serve(async request => {
@@ -392,6 +519,9 @@ Deno.serve(async request => {
     if (action === "apply") return await apply(request, body);
     if (action === "history") return await history(request, body);
     if (action === "detail") return await detail(request, body);
+    if (action === "auto-config") return await autoConfig(request, user, body);
+    if (action === "lease") return await lease(request, body);
+    if (action === "release") return await release(request, body);
     return fail(request, 400, "UNKNOWN_ACTION", "Thao tác không được hỗ trợ");
   } catch (error) {
     const message = clean((error as Error).message, 500);

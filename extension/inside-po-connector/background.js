@@ -1,3 +1,9 @@
+// Đồng bộ tự động (0.10.0): phiên Admin Supabase riêng, đọc ảnh chụp Group UID, bộ điều phối theo alarm.
+// Token Admin nằm ở chrome.storage.local: chỉ trang của Extension (service worker, Tùy chọn) được đọc, content script trên
+// Print SKU / Inside / WMS / app xây dựng thì không (mặc định Chrome mở cho cả content script). Không content script nào dùng chrome.storage.
+try { chrome.storage.local.setAccessLevel?.({ accessLevel: "TRUSTED_CONTEXTS" })?.catch?.(() => {}); } catch { /* Chrome cũ: giữ mặc định */ }
+importScripts("supabase-config.js", "supabase-session.js", "group-uid-snapshot-core.js", "auto-sync.js");
+
 const APP_URL_PATTERN = /^(?:http:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?\/|https:\/\/mcuongle\.github\.io\/Print_SKU(?:\/|$))/i;
 const INSIDE_URL_PATTERN = /^https:\/\/inside\.mastige\.vn\//i;
 const WMS_URL_PATTERN = /^https:\/\/wms\.inshasaki\.com\//i;
@@ -54,7 +60,42 @@ async function sendToHcm(tab, message) {
   }
 }
 
+// Bộ điều phối dùng lại đúng các hàm tìm tab / gửi lệnh ở trên (token WMS/Inside vẫn không rời tab).
+const AutoSync = self.AutoSyncModule.createAutoSync({ findWmsTab, findInsideTab, sendToWms, sendToInside });
+const AUTO_ALARM = "auto-sync";
+const AUTO_MESSAGE_TYPES = ["AUTO_STATUS", "AUTO_SIGN_IN", "AUTO_SIGN_OUT", "AUTO_SET_DEVICE", "AUTO_SET_ENABLED", "AUTO_RUN_NOW"];
+// Nhịp đã xác minh từ auto-config gần nhất (auto-sync.js lưu auto.interval); chưa có thì 30 phút, kẹp 15–180.
+async function autoPeriod() {
+  try {
+    const value = Number((await chrome.storage.local.get("auto.interval"))["auto.interval"]);
+    return Number.isFinite(value) && value > 0 ? Math.min(Math.max(Math.round(value), 15), 180) : 30;
+  } catch { return 30; }
+}
+function ensureAutoAlarm() {
+  chrome.alarms.get(AUTO_ALARM).then(async alarm => {
+    if (!alarm) chrome.alarms.create(AUTO_ALARM, { periodInMinutes: await autoPeriod() });
+  }).catch(() => {});
+}
+chrome.runtime.onInstalled.addListener(() => { autoPeriod().then(period => chrome.alarms.create(AUTO_ALARM, { periodInMinutes: period })).catch(() => {}); });
+chrome.runtime.onStartup.addListener(ensureAutoAlarm);
+ensureAutoAlarm();
+chrome.alarms.onAlarm.addListener(alarm => {
+  if (alarm.name === AUTO_ALARM) AutoSync.tick().catch(() => {});
+  // "auto-keepalive": đánh thức service worker trong lúc đang chạy và gia hạn khoá thuê của lượt đó (cách nhau ≥ 2 phút).
+  if (alarm.name === "auto-keepalive") AutoSync.onKeepAlive().catch(() => {});
+});
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  // Trang của chính Extension (Tùy chọn): chỉ nhận các lệnh AUTO_*. Xét theo URL người gửi, không theo sender.tab:
+  // options_page mở trong một tab nên sender.tab vẫn có; content script trên trang web có sender.url là địa chỉ web.
+  if (sender.id === chrome.runtime.id && String(sender.url || "").startsWith(chrome.runtime.getURL(""))) {
+    if (!message || !AUTO_MESSAGE_TYPES.includes(message.type)) {
+      sendResponse({ ok: false, error: "Yêu cầu không hợp lệ" });
+      return false;
+    }
+    AutoSync.handleMessage(message).then(sendResponse).catch(() => sendResponse({ ok: false, error: "Tiện ích gặp lỗi" }));
+    return true;
+  }
   const senderUrl = sender.tab?.url || "";
   if (!APP_URL_PATTERN.test(senderUrl)) {
     sendResponse(errorResponse("FORBIDDEN_ORIGIN", "Ứng dụng không nằm trên địa chỉ Print SKU được cho phép"));

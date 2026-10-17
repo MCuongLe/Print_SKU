@@ -3,6 +3,15 @@ const SERVICE_KEY = firstKey(Deno.env.get("SUPABASE_SECRET_KEYS")) || Deno.env.g
 const ALLOWED_ORIGINS = new Set(["https://mcuongle.github.io", "http://localhost:8000", "http://127.0.0.1:8000"]);
 const MAX_PAGE_SIZE = 500;
 type Json = Record<string, unknown>;
+// Đồng bộ tự động (sync_auto_v1.sql): ngưỡng mặc định khi bảng cấu hình thiếu hoặc thiếu khoá; bản chép giống sku-sync/index.ts (deploy gửi 1 tệp).
+const DEFAULT_THRESHOLDS: Record<string, Record<string, number>> = {
+  group_uid: { maxChanges: 3000, maxMissing: 0, maxIssues: 0 },
+  sku: { maxUpdated: 500, maxAdded: 500, maxMissing: 0, maxOrphaned: 0 },
+};
+const AUTO_KINDS = new Set(["sku", "group_uid"]);
+const LEASE_TTL_SECONDS = 900;
+// holder = tên máy (≤ 60) + "#" + mã máy (Extension 0.10.0) → tối đa 80 ký tự, khớp sync_auto_lease.
+const HOLDER_MAX = 80;
 
 function keyList(raw: string | undefined): string[] {
   if (!raw) return [];
@@ -14,6 +23,22 @@ function keyList(raw: string | undefined): string[] {
 }
 function firstKey(raw: string | undefined): string { return keyList(raw)[0] ?? ""; }
 function clean(value: unknown, max = 500): string { return String(value ?? "").replace(/\s+/g, " ").trim().slice(0, max); }
+function count(value: number): string { return value.toLocaleString("vi-VN"); }
+function limitOf(raw: unknown, fallback: number): number { const value = Number(raw); return Number.isFinite(value) && value >= 0 ? value : fallback; }
+function thresholdsFor(kind: string, all: unknown): Record<string, number> {
+  const base = DEFAULT_THRESHOLDS[kind], given = ((all ?? {}) as Json)[kind] as Json | undefined;
+  return Object.fromEntries(Object.entries(base).map(([key, fallback]) => [key, limitOf(given?.[key], fallback)]));
+}
+// Ngưỡng "Vừa" Group UID: thiếu = 0, cảnh báo (WMS cũ hơn) = 0, mới + cập nhật ≤ 3.000. Vượt → giữ bản xem trước cho Admin.
+export function evaluateGroupUidHold(counts: unknown, thresholds: unknown): { reason: string; counts: Json } | null {
+  const c = (counts ?? {}) as Json, t = thresholdsFor("group_uid", { group_uid: thresholds });
+  const added = Number(c.added) || 0, updated = Number(c.updated) || 0, missing = Number(c.missing) || 0, issues = Number(c.issues) || 0;
+  const reasons: string[] = [];
+  if (added + updated > t.maxChanges) reasons.push(`${count(added + updated)} thay đổi vượt ngưỡng ${count(t.maxChanges)}`);
+  if (missing > t.maxMissing) reasons.push(`${count(missing)} UID không còn trên WMS`);
+  if (issues > t.maxIssues) reasons.push(`${count(issues)} UID WMS cũ hơn Supabase`);
+  return reasons.length ? { reason: `Giữ lại: ${reasons.join("; ")}`, counts: { added, updated, missing, issues, totalChanges: added + updated } } : null;
+}
 function cors(request: Request): Record<string, string> {
   const origin = request.headers.get("origin") ?? "";
   return { "Access-Control-Allow-Origin": ALLOWED_ORIGINS.has(origin) ? origin : "https://mcuongle.github.io", "Access-Control-Allow-Methods": "POST, OPTIONS", "Access-Control-Allow-Headers": "authorization, apikey, content-type, x-client-info", "Access-Control-Max-Age": "86400", Vary: "Origin" };
@@ -88,10 +113,13 @@ function normalizedRows(value: unknown): Json[] {
     };
   });
 }
+// Lượt tự động từ Extension gửi source "auto" + tên máy; thiếu trường (web, Extension cũ) → "manual" như trước.
+function runSource(value: unknown): "auto" | "manual" { return value === "auto" ? "auto" : "manual"; }
+function deviceName(value: unknown): string | null { return clean(value, 60) || null; }
 async function prepare(request: Request, user: { id: string }, body: Json): Promise<Response> {
   const mode = clean(body.mode, 20);
   if (!['incremental','full'].includes(mode)) return fail(request, 400, "INVALID_MODE", "Chế độ đồng bộ không hợp lệ");
-  const data = await rpc("group_uid_sync_prepare", { p_mode: mode, p_range_to: new Date().toISOString(), p_created_by: user.id });
+  const data = await rpc("group_uid_sync_prepare", { p_mode: mode, p_range_to: new Date().toISOString(), p_created_by: user.id, p_source: runSource(body.source), p_device: deviceName(body.device) });
   return reply(request, 200, { ok: true, data, meta: { updatedAt: new Date().toISOString(), schemaVersion: 1 } });
 }
 async function ingest(request: Request, body: Json): Promise<Response> {
@@ -124,32 +152,133 @@ async function changes(runId: string, type = "", limit = 1000): Promise<Json[]> 
   return rows.map(changeView);
 }
 async function preview(request: Request, body: Json): Promise<Response> {
-  const runId = uuid(body.runId), data = await rpc("group_uid_sync_preview", { p_run_id: runId });
+  const runId = uuid(body.runId);
+  // Lượt tự động (source lưu trên lượt, không tin cờ caller): máy gửi phải còn giữ khoá thuê. Mất khoá → đóng lượt (failed) để
+  // không chặn máy đang giữ khoá bằng ACTIVE_RUN, không ghi bản xem trước. Lượt tay (web) không kiểm như cũ.
+  const run = (await fetchAll(`group_uid_sync_runs?select=id,status,source&id=eq.${encodeURIComponent(runId)}&limit=1`))[0];
+  if (run?.source === "auto" && !(await holdsLease("group_uid", body.holder))) {
+    await closeRun(runId, "Mất khoá thuê");
+    return fail(request, 409, "LEASE_LOST", "Mất khoá thuê; lượt tự động đã dừng");
+  }
+  const data = await rpc("group_uid_sync_preview", { p_run_id: runId });
   data.changes = await changes(runId);
   return reply(request, 200, { ok: true, data, meta: { updatedAt: new Date().toISOString(), schemaVersion: 1 } });
 }
+async function autoSettings(): Promise<Json | null> {
+  return (await fetchAll("sync_auto_settings?select=*&singleton=eq.true&limit=1"))[0] ?? null;
+}
+// Hàng rào khoá thuê: lượt tự động chỉ được ghi khi máy gửi vẫn đang giữ khoá còn hạn (máy khác đã giành khoá thì dừng).
+async function holdsLease(kind: string, holder: unknown): Promise<boolean> {
+  const name = clean(holder, HOLDER_MAX);
+  if (!name) return false;
+  const row = (await fetchAll(`sync_auto_leases?select=holder,leased_until&kind=eq.${encodeURIComponent(kind)}&limit=1`))[0];
+  return Boolean(row && row.holder === name && Date.parse(String(row.leased_until)) >= Date.now());
+}
 async function apply(request: Request, body: Json): Promise<Response> {
-  const data = await rpc("group_uid_sync_apply", { p_run_id: uuid(body.runId) });
+  const runId = uuid(body.runId);
+  const run = (await fetchAll(`group_uid_sync_runs?select=id,status,change_counts&id=eq.${encodeURIComponent(runId)}&limit=1`))[0];
+  // held = lượt tự động đã giữ lại (sync_auto_v1.sql): dữ liệu WMS đã cũ, không áp dụng nữa.
+  if (run?.status === "held") return fail(request, 409, "RUN_HELD", "Lượt đã giữ lại, chạy lại tay để xem bản mới");
+  // auto:true (Extension tự chạy): phải còn giữ khoá thuê; vượt ngưỡng hoặc Admin tạm dừng → không ghi, chuyển "held" cho Admin xem.
+  // Không có auto → như cũ.
+  if (body.auto === true) {
+    if (!(await holdsLease("group_uid", body.holder))) return fail(request, 409, "LEASE_LOST", "Mất khoá thuê; lượt tự động đã dừng");
+    if (run?.status === "previewed") {
+      const settings = await autoSettings();
+      const held = settings?.enabled === false
+        ? { reason: "Giữ lại: Admin tạm dừng đồng bộ tự động", counts: (run.change_counts ?? {}) as Json }
+        : evaluateGroupUidHold(run.change_counts, (settings?.thresholds as Json | undefined)?.group_uid);
+      if (held) {
+        const patch = await db(`group_uid_sync_runs?id=eq.${encodeURIComponent(runId)}&status=eq.previewed`, { method: "PATCH", headers: { Prefer: "return=representation" }, body: JSON.stringify({ status: "held", auto_hold: clean(held.reason, 300), completed_at: new Date().toISOString() }) });
+        const rows = await jsonResponse(patch, "Ghi lý do giữ lại") as Json[];
+        if (!rows?.length) return fail(request, 409, "NOT_READY", "Lượt đồng bộ không còn ở trạng thái chờ cập nhật");
+        return reply(request, 200, { ok: true, data: { runId, status: "held", held }, meta: { updatedAt: new Date().toISOString(), schemaVersion: 1 } });
+      }
+    }
+  }
+  const data = await rpc("group_uid_sync_apply", { p_run_id: runId });
   return reply(request, 200, { ok: true, data, meta: { updatedAt: new Date().toISOString(), schemaVersion: 1 } });
 }
+function runView(run: Json): Json { return { ...run, source: run.source ?? "manual", device: run.device ?? null, autoHold: run.auto_hold ?? null }; }
 async function history(request: Request, body: Json): Promise<Response> {
   const limit = Math.min(Math.max(Number(body.limit) || 20, 1), 50);
-  const runs = await fetchAll(`group_uid_sync_runs?select=id,mode,status,range_from,range_to,page_count,source_count,change_counts,verification,error_message,created_at,completed_at,created_by&order=created_at.desc&limit=${limit}`);
+  const runs = await fetchAll(`group_uid_sync_runs?select=id,mode,status,range_from,range_to,page_count,source_count,change_counts,verification,error_message,created_at,completed_at,created_by,source,device,auto_hold&order=created_at.desc&limit=${limit}`);
   const state = (await fetchAll("group_uid_sync_state?select=*&singleton=eq.true&limit=1"))[0] || {};
-  return reply(request, 200, { ok: true, data: { runs, state }, meta: { updatedAt: new Date().toISOString(), schemaVersion: 1 } });
+  // Mốc lượt toàn bộ tự động gần nhất (hoàn tất hoặc giữ lại) trên server: mọi máy cùng thấy, không đọc lại toàn bộ trong 20 giờ.
+  const lastAutoFull = (await fetchAll("group_uid_sync_runs?select=created_at&source=eq.auto&mode=eq.full&status=in.(completed,held)&order=created_at.desc&limit=1"))[0];
+  return reply(request, 200, { ok: true, data: { runs: runs.map(runView), state, lastAutoFullAt: lastAutoFull?.created_at ?? null }, meta: { updatedAt: new Date().toISOString(), schemaVersion: 1 } });
 }
 async function detail(request: Request, body: Json): Promise<Response> {
   const runId = uuid(body.runId), type = clean(body.changeType, 30);
   const runs = await fetchAll(`group_uid_sync_runs?select=*&id=eq.${encodeURIComponent(runId)}&limit=1`);
   if (!runs[0]) return fail(request, 404, "NOT_FOUND", "Không thấy lượt đồng bộ Group UID");
-  return reply(request, 200, { ok: true, data: { ...runs[0], changes: await changes(runId, type) }, meta: { updatedAt: new Date().toISOString(), schemaVersion: 1 } });
+  return reply(request, 200, { ok: true, data: { ...runView(runs[0]), changes: await changes(runId, type) }, meta: { updatedAt: new Date().toISOString(), schemaVersion: 1 } });
 }
-async function cancel(request: Request, body: Json): Promise<Response> {
-  const runId = uuid(body.runId), message = clean(body.message || "Phiên bị dừng trước khi hoàn tất", 500);
+function configView(row: Json | null): Json {
+  const time = (value: unknown, fallback: string) => clean(value, 8).slice(0, 5) || fallback;
+  const thresholds = Object.fromEntries(Object.keys(DEFAULT_THRESHOLDS).map(kind => [kind, thresholdsFor(kind, row?.thresholds)]));
+  return {
+    enabled: row ? row.enabled !== false : true, intervalMinutes: Number(row?.interval_minutes) || 30,
+    fullWindow: { start: time(row?.full_window_start, "00:00"), end: time(row?.full_window_end, "05:00") },
+    thresholds, updatedAt: row?.updated_at ?? null, updatedBy: row?.updated_by ?? null,
+  };
+}
+// Cấu hình chung đồng bộ tự động. set chỉ nhận enabled (boolean) và intervalMinutes (15–180).
+async function autoConfig(request: Request, user: { id: string }, body: Json): Promise<Response> {
+  if (body.set !== undefined) {
+    const set = (body.set && typeof body.set === "object" && !Array.isArray(body.set) ? body.set : null) as Json | null;
+    if (!set) return fail(request, 400, "INVALID_CONFIG", "Thiết lập không hợp lệ");
+    const unknown = Object.keys(set).filter(key => !["enabled", "intervalMinutes"].includes(key));
+    if (unknown.length) return fail(request, 400, "INVALID_CONFIG", "Chỉ đổi được bật/tắt và nhịp gia tăng");
+    const patch: Json = {};
+    if ("enabled" in set) {
+      if (typeof set.enabled !== "boolean") return fail(request, 400, "INVALID_CONFIG", "Giá trị bật/tắt không hợp lệ");
+      patch.enabled = set.enabled;
+    }
+    if ("intervalMinutes" in set) {
+      const minutes = Number(set.intervalMinutes);
+      if (!Number.isInteger(minutes) || minutes < 15 || minutes > 180) return fail(request, 400, "INVALID_CONFIG", "Nhịp gia tăng phải từ 15 đến 180 phút");
+      patch.interval_minutes = minutes;
+    }
+    if (!Object.keys(patch).length) return fail(request, 400, "INVALID_CONFIG", "Không có thiết lập nào để lưu");
+    Object.assign(patch, { updated_by: user.id, updated_at: new Date().toISOString() });
+    const response = await db("sync_auto_settings?on_conflict=singleton", { method: "POST", headers: { Prefer: "resolution=merge-duplicates,return=minimal" }, body: JSON.stringify({ singleton: true, ...patch }) });
+    await jsonResponse(response, "Lưu cấu hình tự động");
+  }
+  return reply(request, 200, { ok: true, data: configView(await autoSettings()), meta: { updatedAt: new Date().toISOString(), schemaVersion: 1 } });
+}
+// Giãn cách giữa các máy: lượt theo lịch gửi cooldownSeconds (nhịp − 2 phút); thiếu / sai → 0 (như cũ). Tối đa 180 phút.
+function cooldownOf(value: unknown): number { const seconds = Math.floor(Number(value)); return Number.isFinite(seconds) ? Math.min(Math.max(seconds, 0), 10800) : 0; }
+function leaseInput(body: Json): { kind: string; holder: string } {
+  const kind = clean(body.kind, 20), holder = clean(body.holder, HOLDER_MAX);
+  if (!AUTO_KINDS.has(kind)) throw new Error("INVALID_KIND:Loại đồng bộ không hợp lệ");
+  if (!holder) throw new Error("INVALID_HOLDER:Thiếu tên máy");
+  return { kind, holder };
+}
+// Khoá thuê theo loại: data = {ok:true, holder, leasedUntil} khi giành được, {ok:false, holder, leasedUntil} khi máy khác đang giữ.
+async function lease(request: Request, body: Json): Promise<Response> {
+  const { kind, holder } = leaseInput(body), cooldown = cooldownOf(body.cooldownSeconds);
+  // data = {ok:false, reason:"COOLDOWN", lastFinishedAt, retryAfter} khi lượt cùng loại vừa kết thúc chưa quá cooldown.
+  const data = await rpc("sync_auto_lease", { p_kind: kind, p_holder: holder, p_ttl_seconds: LEASE_TTL_SECONDS, ...(cooldown > 0 ? { p_cooldown_seconds: cooldown } : {}) });
+  return reply(request, 200, { ok: true, data, meta: { updatedAt: new Date().toISOString(), schemaVersion: 1 } });
+}
+async function release(request: Request, body: Json): Promise<Response> {
+  const { kind, holder } = leaseInput(body);
+  // finished:true = lượt tự động kết thúc (hoàn tất hoặc giữ lại) → ghi mốc giãn cách; lỗi / bỏ qua không gửi.
+  const data = await rpc("sync_auto_release", { p_kind: kind, p_holder: holder, ...(body.finished === true ? { p_finished: true } : {}) });
+  return reply(request, 200, { ok: true, data, meta: { updatedAt: new Date().toISOString(), schemaVersion: 1 } });
+}
+// Đóng lượt chưa áp dụng (failed + lý do) và dọn pages/staging; dùng cho cancel và lượt tự động mất khoá lúc xem trước.
+async function closeRun(runId: string, message: string): Promise<Json[]> {
   const response = await db(`group_uid_sync_runs?id=eq.${encodeURIComponent(runId)}&status=in.(running,previewed)`, { method: "PATCH", headers: { Prefer: "return=representation" }, body: JSON.stringify({ status: "failed", error_message: message, completed_at: new Date().toISOString() }) });
   const rows = await jsonResponse(response, "Dừng phiên Group UID") as Json[];
   await jsonResponse(await db(`group_uid_sync_pages?run_id=eq.${encodeURIComponent(runId)}`, { method: "DELETE" }), "Dọn tiến độ Group UID");
   await jsonResponse(await db(`group_uid_sync_staging?run_id=eq.${encodeURIComponent(runId)}`, { method: "DELETE" }), "Dọn staging Group UID");
+  return rows;
+}
+async function cancel(request: Request, body: Json): Promise<Response> {
+  const runId = uuid(body.runId), message = clean(body.message || "Phiên bị dừng trước khi hoàn tất", 500);
+  const rows = await closeRun(runId, message);
   return reply(request, 200, { ok: true, data: rows[0] || { id: runId, status: "failed" }, meta: { updatedAt: new Date().toISOString(), schemaVersion: 1 } });
 }
 
@@ -166,6 +295,9 @@ Deno.serve(async request => {
     if (action === "history") return await history(request, body);
     if (action === "detail") return await detail(request, body);
     if (action === "cancel") return await cancel(request, body);
+    if (action === "auto-config") return await autoConfig(request, user, body);
+    if (action === "lease") return await lease(request, body);
+    if (action === "release") return await release(request, body);
     return fail(request, 400, "UNKNOWN_ACTION", "Thao tác không được hỗ trợ");
   } catch (error) {
     const message = clean((error as Error).message, 500);
@@ -177,6 +309,7 @@ Deno.serve(async request => {
     if (message.includes("SOURCE_COUNT_MISMATCH")) return fail(request, 409, "SOURCE_COUNT_MISMATCH", "Số UID duy nhất không khớp tổng WMS; phiên đã dừng để tránh thiếu dữ liệu");
     if (message.includes("FULL_SOURCE_TOO_SMALL")) return fail(request, 409, "FULL_SOURCE_TOO_SMALL", "Dữ liệu đối chiếu toàn bộ dưới 1.000 UID; đã dừng để tránh cập nhật từ nguồn thiếu");
     if (message.includes("PREVIEW_EXPIRED")) return fail(request, 409, "STALE_PREVIEW", "Bản xem trước đã quá 30 phút; hãy kiểm tra lại dữ liệu WMS");
+    if (message.includes("RUN_HELD")) return fail(request, 409, "RUN_HELD", "Lượt đã giữ lại, chạy lại tay để xem bản mới");
     const tagged = message.match(/^(INVALID_[A-Z_]+):(.*)$/);
     if (tagged) return fail(request, 400, tagged[1], tagged[2]);
     return fail(request, 500, "SYNC_ERROR", message || "Không xử lý được yêu cầu đồng bộ Group UID");

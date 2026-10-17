@@ -8,7 +8,16 @@ const manifest = JSON.parse(fs.readFileSync(path.join(extensionDir, "manifest.js
 const background = fs.readFileSync(path.join(extensionDir, "background.js"), "utf8");
 
 assert.equal(manifest.manifest_version, 3);
-assert.equal(manifest.version, "0.9.5");
+assert.equal(manifest.version, "0.10.0");
+// Đồng bộ tự động (0.10.0): alarm + storage cho phiên Admin riêng, gọi Edge Supabase, trang Tùy chọn.
+assert.ok(manifest.permissions.includes("alarms"));
+assert.ok(manifest.permissions.includes("storage"));
+assert.ok(manifest.host_permissions.includes("https://ikzhitdqkoatlmkrxuuh.supabase.co/*"));
+assert.equal(manifest.options_page, "options.html");
+assert.equal(manifest.minimum_chrome_version, "120", "alarm keepalive 30 giây cần Chrome 120+");
+assert.match(background, /AUTO_STATUS/);
+assert.match(background, /importScripts\("supabase-config.js", "supabase-session.js", "group-uid-snapshot-core.js", "auto-sync.js"\)/);
+for (const file of ["supabase-config.js", "supabase-session.js", "group-uid-snapshot-core.js", "auto-sync.js"]) assert.ok(fs.existsSync(path.join(extensionDir, file)), file);
 const wmsBridge = fs.readFileSync(path.join(extensionDir, "wms-bridge.js"), "utf8");
 assert.match(wmsBridge, /stock-locations\/bins\/count\/v3/);
 assert.match(wmsBridge, /ignore_zero_total/);
@@ -81,6 +90,59 @@ const settle = () => new Promise(resolve => setImmediate(resolve));
   unknown.send({ ...request, type: "SOMETHING_ELSE" });
   await settle();
   assert.equal(unknown.posted.length, 0, "yêu cầu lạ không được chuyển tiếp");
+
+  // background.js thật trong vm: lệnh AUTO_* chỉ nhận từ trang của Extension; trang web / content script không gọi được.
+  const runBackground = ({ withAccessLevel = true, initial = {} } = {}) => {
+    let onMessage, onAlarm, onInstalled, alarmsCreated = [];
+    const stored = { ...initial }, order = [];
+    const chromeStub = {
+      runtime: {
+        id: "ext-id", getURL: p => `chrome-extension://ext-id/${p}`, getManifest: () => manifest,
+        onMessage: { addListener: fn => { onMessage = fn; } }, onInstalled: { addListener: fn => { onInstalled = fn; } }, onStartup: { addListener: () => {} },
+      },
+      alarms: { get: async () => null, create: (name, info) => { alarmsCreated.push([name, info]); }, clear: async () => true, onAlarm: { addListener: fn => { onAlarm = fn; } } },
+      tabs: { query: async () => [] },
+      storage: { local: { get: async key => { order.push("get"); return { [key]: stored[key] }; }, set: async value => Object.assign(stored, value), remove: async key => { delete stored[key]; } } },
+    };
+    if (withAccessLevel) chromeStub.storage.local.setAccessLevel = async info => { order.push(`access:${info.accessLevel}`); };
+    const context = vm.createContext({ chrome: chromeStub, console, setTimeout, clearTimeout, URL, fetch: async () => { throw new Error("không gọi mạng trong test"); } });
+    context.self = context;
+    context.importScripts = (...files) => { order.push("importScripts"); files.forEach(file => vm.runInContext(fs.readFileSync(path.join(extensionDir, file), "utf8"), context, { filename: file })); };
+    vm.runInContext(background, context, { filename: "background.js" });
+    // Đối tượng tạo trong vm khác realm: chuyển qua JSON để deepEqual so được.
+    const send = (message, sender) => new Promise(resolve => onMessage(message, sender, value => resolve(JSON.parse(JSON.stringify(value)))));
+    return { send, stored, alarmsCreated, order, alarm: name => onAlarm({ name }), installed: () => onInstalled() };
+  };
+  const bg = runBackground();
+  await settle();
+  // Token Admin ở chrome.storage.local: khoá cho riêng trang Extension trước mọi thao tác storage.
+  assert.deepEqual(bg.order.slice(0, 2), ["access:TRUSTED_CONTEXTS", "importScripts"]);
+  assert.doesNotThrow(() => bg.alarm("auto-keepalive"), "keepalive khi không có lượt chạy không lỗi");
+  const oldChrome = runBackground({ withAccessLevel: false });
+  await settle();
+  assert.equal(oldChrome.order[0], "importScripts", "Chrome không có setAccessLevel vẫn nạp được");
+  assert.equal(JSON.stringify(bg.alarmsCreated), JSON.stringify([["auto-sync", { periodInMinutes: 30 }]]), "SW thức dậy mà chưa có alarm thì tạo lại");
+  // Nhịp Admin đã xác minh (auto.interval) dùng lại khi Chrome làm mất alarm / cài lại; giá trị ngoài 15–180 bị kẹp.
+  const slow = runBackground({ initial: { "auto.interval": 180 } });
+  await settle();
+  slow.installed();
+  await settle();
+  assert.equal(JSON.stringify(slow.alarmsCreated), JSON.stringify([["auto-sync", { periodInMinutes: 180 }], ["auto-sync", { periodInMinutes: 180 }]]), "tạo lại alarm theo nhịp đã lưu, không về 30 phút");
+  const odd = runBackground({ initial: { "auto.interval": 5 } });
+  await settle();
+  assert.equal(JSON.stringify(odd.alarmsCreated), JSON.stringify([["auto-sync", { periodInMinutes: 15 }]]));
+  const optionsSender = { id: "ext-id", url: "chrome-extension://ext-id/options.html", tab: { id: 9, url: "chrome-extension://ext-id/options.html" } };
+  assert.deepEqual(await bg.send({ type: "AUTO_SET_DEVICE", device: "  may-test-01 " }, optionsSender), { ok: true });
+  assert.equal(bg.stored["auto.device"], "may-test-01");
+  const status = await bg.send({ type: "AUTO_STATUS" }, { id: "ext-id", url: "chrome-extension://ext-id/options.html" });
+  assert.equal(status.ok, true);
+  assert.deepEqual([status.signedIn, status.device, status.enabled, status.tabs], [false, "may-test-01", true, { wms: false, inside: false }]);
+  assert.deepEqual(await bg.send({ type: "GET_PO" }, optionsSender), { ok: false, error: "Yêu cầu không hợp lệ" }, "trang Tùy chọn chỉ dùng lệnh AUTO_*");
+  const webTab = { id: "ext-id", url: "http://localhost:8000/", tab: { id: 3, url: "http://localhost:8000/" } };
+  assert.equal((await bg.send({ type: "AUTO_SET_DEVICE", device: "x" }, webTab)).error.code, "INVALID_REQUEST", "tab web không gọi được lệnh AUTO_*");
+  const evilTab = { id: "ext-id", url: "https://evil.example/", tab: { id: 4, url: "https://evil.example/" } };
+  assert.equal((await bg.send({ type: "AUTO_SIGN_OUT" }, evilTab)).error.code, "FORBIDDEN_ORIGIN");
+  assert.equal(bg.stored["auto.device"], "may-test-01");
 
   console.log("inside_po_connector: manifest, allowed origins and app bridge replies passed");
 })().catch(error => { console.error(error); process.exit(1); });
