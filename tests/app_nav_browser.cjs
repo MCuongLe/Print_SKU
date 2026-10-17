@@ -10,7 +10,7 @@ const assert = require('node:assert/strict');
 const BASE = process.env.BASE || 'http://127.0.0.1:8000/';
 const b64 = value => Buffer.from(JSON.stringify(value)).toString('base64url');
 const JWT = `${b64({ alg: 'HS256' })}.${b64({ sub: '1', exp: Math.floor(Date.now() / 1000) + 3600 })}.s`;
-const ROUTES = { worker: 'In tem SKU', 'group-uid': 'In tem Group UID', location: 'Mã vị trí', 'cut-group-uid': 'Cắt Group UID', 'group-uid-history': 'Lịch sử Group UID', 'find-sku': 'Tìm SKU', 'unit-converter': 'Chuyển đổi đơn vị', 'xa-vai': 'Theo dõi xả vải', inspection: 'Kiểm tra đầu vào', 'storage-risk': 'Rủi ro lưu trữ', 'inventory-audit': 'Kiểm kê SKU', 'site-control': 'Kiểm soát công trình' };
+const ROUTES = { worker: 'In tem SKU', 'group-uid': 'In tem Group UID', location: 'Mã vị trí', 'cut-group-uid': 'Cắt Group UID', 'group-uid-history': 'Lịch sử Group UID', 'find-sku': 'Tìm SKU', 'unit-converter': 'Chuyển đổi đơn vị', 'xa-vai': 'Theo dõi xả vải', inspection: 'Kiểm tra đầu vào', 'storage-risk': 'Rủi ro lưu trữ', 'inventory-audit': 'Kiểm kê SKU', 'site-control': 'Kiểm soát công trình', assistant: 'Trợ lý in' };
 
 const open = async (browser, width, height, { admin = false } = {}) => {
   const mobile = width < 800;

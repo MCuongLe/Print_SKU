@@ -1587,6 +1587,7 @@ Error generating stack: `+y.message+`
               <button class="barcode-choice" id="barcode-print-sku" type="button"><span class="barcode-choice__icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6"/><rect x="6" y="14" width="12" height="8" rx="1"/></svg></span><strong>IN TEM SKU</strong></button>
               <button class="barcode-choice" id="barcode-print-uid" type="button"><span class="barcode-choice__icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13.172 2a2 2 0 0 1 1.414.586l6.71 6.71a2.4 2.4 0 0 1 0 3.408l-4.592 4.592a2.4 2.4 0 0 1-3.408 0l-6.71-6.71A2 2 0 0 1 6 9.172V3a1 1 0 0 1 1-1zM2 7v6.172a2 2 0 0 0 .586 1.414l6.71 6.71a2.4 2.4 0 0 0 3.191.193"/><circle cx="10.5" cy="6.5" r=".5" fill="currentColor"/></svg></span><strong>IN TEM GROUP UID</strong></button>
               <button class="barcode-choice" id="barcode-location" type="button"><span class="barcode-choice__icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg></span><strong>MÃ VỊ TRÍ</strong></button>
+              <button class="barcode-choice" id="home-assistant" type="button"><span class="barcode-choice__icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg></span><strong>TRỢ LÝ IN</strong></button>
             </div>
           </section>
           <section class="barcode-home__group" data-tone="ops">
@@ -2241,6 +2242,7 @@ Error generating stack: `+y.message+`
           const xaVaiOpen = current === "xa-vai";
           const capVaiOpen = current === "cap-vai";
           const locationOpen = current === "location";
+          const assistantOpen = current === "assistant";
           const homeOpen = !current || current === "home";
           const adminOpen = /^admin(?:\/|$)/.test(current);
           clearInterval(printerTimer);
@@ -2254,12 +2256,16 @@ Error generating stack: `+y.message+`
           const storageRiskScreen = document.getElementById("storage-risk-screen");
           if (storageRiskScreen) storageRiskScreen.hidden = !storageRiskOpen;
           home.hidden = !homeOpen;
+          const assistantScreen = document.getElementById("assistant-screen");
+          if (assistantScreen) assistantScreen.hidden = !assistantOpen;
           const root = document.getElementById("root");
-          if (root) root.inert = uidOpen || cutUidOpen || findSkuOpen || unitConverterOpen || homeOpen || insOpen || storageRiskOpen || xaVaiOpen || capVaiOpen || locationOpen;
+          if (root) root.inert = uidOpen || cutUidOpen || findSkuOpen || unitConverterOpen || homeOpen || insOpen || storageRiskOpen || xaVaiOpen || capVaiOpen || locationOpen || assistantOpen;
           if (uidOpen) setTimeout(() => groupUid.focus(), 50);
         };
         printSku.addEventListener("click", () => { location.hash = "#worker"; });
         printUid.addEventListener("click", () => { location.hash = "#group-uid"; });
+        const assistantChoice = document.getElementById("home-assistant");
+        if (assistantChoice) assistantChoice.addEventListener("click", () => { location.hash = "#assistant"; });
         cutUid.addEventListener("click", () => { location.hash = "#cut-group-uid"; });
         const findSkuChoice = document.getElementById("barcode-find-sku");
         if (findSkuChoice) findSkuChoice.addEventListener("click", () => { location.hash = "#find-sku"; });
@@ -11437,6 +11443,351 @@ async function rpc(name,args,retry=true){
       })();
     </script>
     
+    <style id="print-assistant-style">
+      /* Trợ lý in đọc phiếu IT (chỉ Admin, như nút Phiếu IT): ẩn ô trên điện thoại để trang chủ giữ ≤ 1,25 màn. */
+      @media (max-width: 800px) { #home-assistant { display: none; } }
+      /* Trợ lý in (ô trang chủ nhóm In tem): hội thoại ngắn → thẻ xác nhận phiếu IT → người bấm In. Khung như Lịch sử Group UID (thanh trên, hero, panel). */
+      #assistant-screen .uid-topbar { --gb-img: var(--grp-img-print); --gb-fill: #1d7651; --gb-shade: rgba(0, 46, 28, .58); }
+      @media screen and (min-width: 1024px) { #assistant-screen .uid-topbar .uid-topbar__inner { min-height: 80px; padding-block: 0; } }
+      #assistant-screen .pa-content { width: min(960px, calc(100% - 40px)); padding-top: 22px; }
+      #assistant-screen :is(.ss-panel, .ss-hero) { border-radius: var(--ui-card-r, 22px); }
+      #assistant-screen .ss-hero h2 { font-weight: 600; }
+      .pa-chips { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
+      .pa-chips .as-chip { min-height: 28px; padding: 0 12px; }
+      .pa-chips .as-chip svg, .pa-c-foot .as-chip svg { width: 16px; height: 16px; flex: none; }
+      .pa-login { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+      .pa-login[hidden] { display: none; }
+      .pa-login svg, .pa-send svg, .pa-print svg, .pa-cancel svg { width: 20px; height: 20px; flex: none; }
+      .pa-chat { display: flex; flex-direction: column; gap: 14px; padding: 18px; }
+      .pa-thread { display: flex; flex-direction: column; gap: 10px; min-height: 280px; max-height: calc(100vh - 340px); overflow-y: auto; padding: 2px; }
+      .pa-empty { display: grid; flex: 1; place-items: center; color: #b9cbc4; }
+      .pa-empty svg { width: 32px; height: 32px; }
+      .pa-msg { max-width: min(640px, 88%); padding: 10px 14px; border: 1px solid transparent; border-radius: 16px; font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; white-space: pre-wrap; }
+      .pa-msg[data-from=user] { align-self: flex-end; border-bottom-right-radius: 6px; background: #005f41; color: #fff; }
+      .pa-msg[data-from=bot] { align-self: flex-start; border-color: #dce7e3; border-bottom-left-radius: 6px; background: #f1f6f4; color: #17251f; }
+      .pa-msg[data-tone=bad] { border-color: #f3c9c4; background: #fde8e5; color: #a53730; }
+      .pa-confirm { align-self: stretch; display: grid; gap: 12px; padding: 14px 16px; border: 1px solid #cbdcd6; border-radius: 16px; background: #fff; box-shadow: 0 6px 22px rgba(13, 71, 52, .08); }
+      .pa-c-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; font-size: 14px; }
+      .pa-c-head b { font-size: 16px; font-weight: 700; color: #17382d; }
+      .pa-route { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; color: #4f625b; font-size: 13px; }
+      .pa-route svg { width: 16px; height: 16px; flex: none; }
+      .pa-rows { display: grid; border: 1px solid #edf2f0; border-radius: 12px; overflow: hidden; }
+      .pa-row { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto 76px; grid-template-areas: "c m q n"; align-items: center; gap: 4px 12px; padding: 8px 12px; border-top: 1px solid #edf2f0; font-size: 14px; }
+      .pa-row:first-child { border-top: 0; }
+      .pa-row[data-off=true] .pa-main { color: #4f625b; }
+      .pa-row input[type=checkbox] { grid-area: c; width: 20px; height: 20px; margin: 0; accent-color: #005f41; }
+      .pa-main { grid-area: m; display: grid; gap: 2px; min-width: 0; }
+      .pa-main b { font-weight: 600; color: #14382d; }
+      .pa-name { color: #4f625b; font-size: 12px; overflow-wrap: anywhere; }
+      .pa-flag { color: #8a5b00; font-size: 12px; font-weight: 600; }
+      .pa-qty { grid-area: q; font-size: 13px; white-space: nowrap; color: #17382d; }
+      .pa-n, #pa-copies { box-sizing: border-box; height: var(--ui-compact, 44px); padding: 0 8px; border: 1px solid #cbdcd6; border-radius: 12px; background: #fff; color: #17251f; font: inherit; font-size: 16px; text-align: center; }
+      .pa-n { grid-area: n; width: 76px; }
+      #pa-copies { width: 76px; }
+      .pa-n:disabled { background: #f1f6f4; color: #60736b; }
+      .pa-c-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+      .pa-stepper { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; }
+      .pa-stepper > span { margin-right: 4px; color: #17382d; font-weight: 600; }
+      .pa-step { display: inline-grid; place-items: center; box-sizing: border-box; width: var(--ui-compact, 44px); height: var(--ui-compact, 44px); padding: 0; border: 1px solid #cbdcd6; border-radius: 12px; background: #fff; color: #176248; cursor: pointer; }
+      .pa-step svg { width: 20px; height: 20px; }
+      .pa-total { font-size: 16px; font-weight: 700; color: #17382d; }
+      .pa-c-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+      .pa-c-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+      #assistant-screen .pa-print { display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: #005f41; }
+      .pa-cancel { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+      .pa-bar { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px; margin: 0; }
+      .pa-field { display: flex; align-items: center; gap: 6px; min-width: 0; min-height: var(--ui-ctl, 52px); padding: 0 6px 0 14px; border: 1px solid #cbdcd6; border-radius: var(--ui-in-r, 13px); background: #fff; box-sizing: border-box; }
+      .pa-field:focus-within { border-color: #42a282; box-shadow: 0 0 0 3px rgba(66, 162, 130, .18); }
+      .pa-field input { flex: 1; min-width: 0; height: 44px; padding: 0; border: 0; outline: 0; background: transparent; color: #17251f; font: inherit; font-size: 16px; }
+      .pa-field input:disabled { color: #60736b; cursor: not-allowed; }
+      .pa-mic { display: inline-grid; place-items: center; flex: none; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 999px; background: #eef6f2; color: #005f41; cursor: pointer; }
+      .pa-mic[hidden] { display: none; }
+      .pa-mic[aria-pressed=true] { background: #005f41; color: #fff; }
+      .pa-mic:disabled { opacity: .4; cursor: not-allowed; }
+      .pa-mic svg { width: 20px; height: 20px; }
+      .pa-send { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+      @media (max-width: 760px) {
+        #assistant-screen .pa-content { width: calc(100% - 28px); padding-top: 14px; }
+        #assistant-screen .ss-hero { flex-direction: column; align-items: flex-start; gap: 10px; padding: 14px; }
+        .pa-chips { justify-content: flex-start; }
+        .pa-chat { padding: 12px; }
+        .pa-thread { max-height: calc(100vh - 380px); min-height: 220px; }
+        .pa-msg { max-width: 94%; }
+        .pa-confirm { padding: 12px; }
+        .pa-row { grid-template-columns: 24px minmax(0, 1fr) 76px; grid-template-areas: "c m n" ". q n"; }
+        .pa-c-actions, .pa-c-actions > button { width: 100%; }
+        .pa-c-actions > button { flex: 1; }
+        .pa-send span { display: none; }
+        .pa-send { width: var(--ui-ctl, 48px); padding: 0; }
+      }
+    </style>
+    <section class="cut-screen" id="assistant-screen" aria-labelledby="pa-title" hidden>
+      <header class="uid-topbar"><div class="uid-topbar__inner"><button class="uid-back" id="pa-back" type="button" aria-label="Quay lại trang chủ WH-MATERIAL">WH-MATERIAL</button><span class="uid-topbar__mark" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg></span><div class="uid-topbar__name"><h1 id="pa-title">TRỢ LÝ IN</h1></div></div></header>
+      <div class="ss-content pa-content">
+        <section class="ss-hero"><div><h2>Trợ lý in</h2></div><div class="pa-chips"><span class="as-chip" id="pa-chip-admin"></span><span class="as-chip" id="pa-chip-wms"></span><span class="as-chip" id="pa-chip-device"></span><button class="ss-secondary pa-login" id="pa-login" type="button" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="m10 17 5-5-5-5"/><path d="M15 12H3"/></svg><span>Đăng nhập Admin</span></button></div></section>
+        <section class="ss-panel pa-chat" aria-label="Hội thoại">
+          <div class="pa-thread" id="pa-thread" role="log" aria-live="polite"></div>
+          <form class="pa-bar" id="pa-form" autocomplete="off">
+            <div class="pa-field"><input id="pa-input" type="text" maxlength="300" enterkeyhint="send" autocomplete="off" spellcheck="false" placeholder="IT 123456, 2 bản" aria-label="Câu lệnh in tem"><button class="pa-mic" id="pa-mic" type="button" aria-pressed="false" aria-label="Nói bằng giọng" title="Nói bằng giọng" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19v3"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><rect x="9" y="2" width="6" height="13" rx="3"/></svg></button></div>
+            <button class="ss-primary pa-send" id="pa-send" type="submit" aria-label="Gửi" title="Gửi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/></svg><span>Gửi</span></button>
+          </form>
+        </section>
+      </div>
+    </section>
+    <script id="print-assistant-script">
+      (() => {
+        const $ = id => document.getElementById(id), screen = $("assistant-screen");
+        if (!screen) return;
+        // Trợ lý in v1: một ý định (in tem SKU theo phiếu IT). Câu nói chỉ cho ra số phiếu + số bản; dữ liệu tem lấy từ WMS qua HasakiSkuIt,
+        // luôn qua thẻ xác nhận và người bấm In. Bộ phân tích tất định chạy trước; Edge print-assistant chỉ dùng cho câu tự do.
+        const ROUTE = "assistant", MAX_TURNS = 20, EDGE_TIMEOUT = 25000, DOWN_TEXT = "Trợ lý AI tạm nghỉ; gõ: IT <số phiếu> [N bản]";
+        const thread = $("pa-thread"), input = $("pa-input"), sendBtn = $("pa-send"), micBtn = $("pa-mic"), loginBtn = $("pa-login"), form = $("pa-form");
+        const state = { admin: false, wms: "unknown", pending: null, busy: false, awaiting: null, history: [], adminSeq: 0 };
+        const svg = body => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
+        const ICON = {
+          admin: svg('<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/>'),
+          wms: svg('<rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/>'),
+          printer: svg('<path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6"/><rect x="6" y="14" width="12" height="8" rx="1"/>'),
+          minus: svg('<path d="M5 12h14"/>'),
+          plus: svg('<path d="M5 12h14"/><path d="M12 5v14"/>'),
+          close: svg('<path d="M18 6 6 18"/><path d="m6 6 12 12"/>'),
+          arrow: svg('<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>'),
+          bot: svg('<path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/>')
+        };
+        const esc = value => String(value ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+        const clamp = (value, lo, hi) => Math.min(hi, Math.max(lo, Math.round(Number(value)) || lo));
+        const deviceReady = () => { try { const key = String(window.PrintSkuQueue?.deviceKey?.() || "").trim(); return Boolean(key) && key !== "public"; } catch (_) { return false; } };
+
+        // ---- Chip trạng thái ----
+        function setChip(id, tone, icon, text) { const chip = $(id); if (tone) chip.dataset.tone = tone; else delete chip.dataset.tone; chip.innerHTML = `${icon}<span>${esc(text)}</span>`; }
+        function paintChips() {
+          setChip("pa-chip-admin", state.admin ? "new" : "bad", ICON.admin, state.admin ? "Admin" : "Chưa đăng nhập");
+          const wms = { unknown: [null, "WMS · Chưa kiểm"], open: ["new", "WMS · Đang mở"], down: ["bad", "WMS · Không có tab"] }[state.wms];
+          setChip("pa-chip-wms", wms[0], ICON.wms, wms[1]);
+          const ready = deviceReady();
+          setChip("pa-chip-device", ready ? "new" : "bad", ICON.printer, ready ? "Máy in sẵn sàng" : "Máy chưa kích hoạt");
+          loginBtn.hidden = state.admin;
+          for (const control of [input, micBtn]) control.disabled = !state.admin;
+          sendBtn.disabled = !state.admin || state.busy;
+          paintConfirm();
+        }
+        async function refreshAdmin() {
+          const seq = ++state.adminSeq;
+          let ok = false;
+          try { ok = Boolean(await window.PrintSkuAdminAuth?.accessToken?.()); } catch (_) { ok = false; }
+          if (seq !== state.adminSeq) return;
+          state.admin = ok; paintChips();
+        }
+        function adminEmail() {
+          try { const user = window.PrintSkuAdminAuth?.user?.(); if (user?.email) return String(user.email); } catch (_) {}
+          try { return String(JSON.parse(sessionStorage.getItem("print-sku-admin-session-v1") || "null")?.user?.email || ""); } catch (_) { return ""; }
+        }
+        const requestedBy = () => { const email = adminEmail().trim(); return email ? `tro-ly:${email.slice(0, 100)}` : "tro-ly"; };
+
+        // ---- Hội thoại ----
+        function addMsg(from, text, tone) {
+          thread.querySelector(".pa-empty")?.remove();
+          const el = document.createElement("div");
+          el.className = "pa-msg"; el.dataset.from = from; if (tone) el.dataset.tone = tone; el.textContent = text;
+          thread.append(el);
+          state.history.push({ role: from === "user" ? "user" : "assistant", text: String(text).slice(0, 300) });
+          if (state.history.length > MAX_TURNS) state.history.shift();
+          const all = thread.querySelectorAll(".pa-msg");
+          for (let i = 0; i < all.length - MAX_TURNS; i++) all[i].remove();
+          thread.scrollTop = thread.scrollHeight;
+          return el;
+        }
+        function showEmpty() { if (!thread.children.length) thread.innerHTML = `<div class="pa-empty" aria-hidden="true">${ICON.bot}</div>`; }
+        function setBusy(value) { state.busy = value; sendBtn.disabled = !state.admin || value; paintConfirm(); }
+
+        // ---- Bộ phân tích tất định: số phiếu chỉ nhận khi đúng MỘT dãy 6–40 chữ số đứng sát (≤ 3 từ, hai chiều) từ khoá IT/phiếu; số sau "SKU/mã" không tính ----
+        function parse(text) {
+          const t = String(text || "");
+          const cands = [...t.matchAll(/(?<!\d)(\d{6,40})(?!\d)/g)].map(m => ({ value: m[1], start: m.index, end: m.index + m[1].length }));
+          const keys = [...t.matchAll(/(?:^|[^\p{L}\d])(it|phiếu|phieu)(?![\p{L}])/giu)].map(m => ({ start: m.index + m[0].length - m[1].length, end: m.index + m[0].length }));
+          const words = gap => gap.split(/\s+/).filter(w => /[\p{L}\d]/u.test(w)).length;
+          const isSku = c => /(?<![\p{L}\d])(?:sku|code|(?:mã|ma)(?:\s*(?:hàng|hang))?)\s*[:#-]?\s*$/iu.test(t.slice(Math.max(0, c.start - 16), c.start));
+          const near = c => keys.some(k => words(c.start >= k.end ? t.slice(k.end, c.start) : t.slice(c.end, k.start)) <= 3);
+          const pool = cands.filter(c => !isSku(c)), close = pool.filter(near);
+          const number = close.length === 1 ? close[0].value : "";
+          const rest = number ? t.replace(number, " ") : t;
+          const hit = rest.match(/(?<!\d)(\d{1,3})\s*(?:bản|ban|tem)(?![\p{L}])/iu) || rest.match(/(?:^|[^\p{L}\d])x\s*(\d{1,3})(?!\d)/iu) || rest.match(/(?<!\d)(\d{1,3})\s*x(?![\p{L}\d])/iu);
+          return { number, copies: hit ? clamp(hit[1], 1, 200) : null, ambiguous: !number && (close.length > 1 || (!close.length && pool.length > 1)) };
+        }
+
+        // ---- Gọi Edge print-assistant (câu tự do) ----
+        async function askEdge(message) {
+          const queue = window.PrintSkuQueue, token = await window.PrintSkuAdminAuth.accessToken();
+          const history = state.history.slice(-7, -1).map(turn => ({ role: turn.role, text: turn.text.slice(0, 300) }));
+          const response = await fetch(`${queue.supabaseUrl}/functions/v1/print-assistant`, {
+            method: "POST",
+            headers: { apikey: queue.publishableKey, Authorization: `Bearer ${token}`, "content-type": "application/json" },
+            body: JSON.stringify({ message: message.slice(0, 300), history, context: { hasWms: state.wms === "open", deviceActive: deviceReady() } }),
+            signal: AbortSignal.timeout(EDGE_TIMEOUT)
+          });
+          const body = await response.json().catch(() => null);
+          if (!response.ok || !body?.ok || !body.data || typeof body.data.reply !== "string") throw new Error(body?.error?.message || `HTTP ${response.status}`);
+          return body.data;
+        }
+
+        // ---- Đọc phiếu → thẻ xác nhận ----
+        async function startRead(number, copies) {
+          if (!window.HasakiSkuIt) { addMsg("bot", "Cổng in phiếu IT chưa sẵn sàng; tải lại trang.", "bad"); return; }
+          state.awaiting = null; dropConfirm();
+          addMsg("bot", `Đang đọc phiếu IT ${number}…`);
+          setBusy(true);
+          try {
+            const result = await window.HasakiSkuIt.readSlip(number);
+            state.wms = "open";
+            state.pending = { slip: result.slip || {}, rows: (result.rows || []).map(row => ({ ...row, on: Boolean(row.known), copies: clamp(copies || 1, 1, 200) })), common: clamp(copies || 1, 1, 200), batchNonce: crypto.randomUUID(), nonceSig: "" };
+            renderConfirm();
+          } catch (error) {
+            const message = String(error?.message || "Không đọc được phiếu IT.");
+            if (/Extension|tab WMS|tiện ích/i.test(message)) state.wms = "down";
+            if (/đăng nhập Admin|Phiên Admin/i.test(message)) state.admin = false;
+            addMsg("bot", message, "bad");
+          } finally { setBusy(false); paintChips(); }
+        }
+        function dropConfirm() { $("pa-confirm")?.remove(); state.pending = null; }
+        const ticked = () => (state.pending?.rows || []).filter(row => row.on && row.known);
+        const totalLabels = () => ticked().reduce((sum, row) => sum + row.copies, 0);
+        function renderConfirm() {
+          $("pa-confirm")?.remove();
+          const { slip, rows, common } = state.pending;
+          const card = document.createElement("div");
+          card.className = "pa-confirm"; card.id = "pa-confirm";
+          card.innerHTML = `<div class="pa-c-head"><b>IT ${esc(slip.number)}</b><span class="pa-route">${esc(slip.fromWarehouse || "—")}${ICON.arrow}${esc(slip.toWarehouse || "—")}</span></div>`
+            + `<div class="pa-rows">${rows.map((row, i) => `<div class="pa-row" data-i="${i}" data-off="${!row.on}"><input type="checkbox" data-pa-on aria-label="Chọn SKU ${esc(row.sku)}"${row.on ? " checked" : ""}${row.known ? "" : " disabled"}>`
+              + `<div class="pa-main"><b>${esc(row.sku)}</b><span class="pa-name">${esc(row.name)}</span>${row.known ? "" : '<span class="pa-flag">Không có trong danh mục</span>'}</div>`
+              + `<span class="pa-qty">${esc([row.quantity, row.unit].filter(v => v !== null && v !== undefined && v !== "").join(" "))}</span>`
+              + `<input class="pa-n" type="number" inputmode="numeric" min="1" max="200" step="1" value="${row.copies}" data-pa-n aria-label="Số bản SKU ${esc(row.sku)}"${row.known ? "" : " disabled"}></div>`).join("")}</div>`
+            + `<div class="pa-c-bar"><div class="pa-stepper"><span>Số bản</span><button class="pa-step" type="button" id="pa-copies-dec" aria-label="Giảm số bản" title="Giảm số bản">${ICON.minus}</button><input id="pa-copies" type="number" inputmode="numeric" min="1" max="200" step="1" value="${common}" aria-label="Số bản chung"><button class="pa-step" type="button" id="pa-copies-inc" aria-label="Tăng số bản" title="Tăng số bản">${ICON.plus}</button></div><span class="pa-total" id="pa-total"></span></div>`
+            + `<div class="pa-c-foot"><span class="as-chip" id="pa-device"></span><div class="pa-c-actions"><button class="ss-secondary pa-cancel" id="pa-cancel" type="button">${ICON.close}<span>Huỷ</span></button><button class="ss-primary pa-print" id="pa-print" type="button">${ICON.printer}<span>In</span></button></div></div>`;
+          thread.append(card);
+          paintConfirm();
+          thread.scrollTop = thread.scrollHeight;
+        }
+        function paintConfirm() {
+          const card = $("pa-confirm"); if (!card || !state.pending) return;
+          const rows = state.pending.rows, labels = totalLabels(), count = ticked().length, ready = deviceReady();
+          card.querySelectorAll(".pa-row").forEach(el => { el.dataset.off = String(!rows[Number(el.dataset.i)].on); });
+          $("pa-total").textContent = `${labels} tem · ${count} SKU`;
+          const device = $("pa-device"); device.dataset.tone = ready ? "new" : "bad"; device.innerHTML = `${ICON.printer}<span>${ready ? "Máy in sẵn sàng" : "Máy chưa kích hoạt"}</span>`;
+          $("pa-print").disabled = !ready || !count || labels < 1 || state.busy || !state.admin;
+        }
+        function setCommon(value, rewrite = true) {
+          const p = state.pending; if (!p) return;
+          p.common = clamp(value, 1, 200); if (rewrite) $("pa-copies").value = String(p.common);
+          const card = $("pa-confirm");
+          p.rows.forEach((row, i) => { if (row.on && row.known) { row.copies = p.common; card.querySelector(`.pa-row[data-i="${i}"] [data-pa-n]`).value = String(p.common); } });
+          paintConfirm();
+        }
+        async function doPrint() {
+          const p = state.pending; if (!p || state.busy) return;
+          if (!window.HasakiSkuIt) { addMsg("bot", "Cổng in phiếu IT chưa sẵn sàng; tải lại trang.", "bad"); return; }
+          setBusy(true);
+          try {
+            let adminOk = false;
+            try { adminOk = Boolean(await window.PrintSkuAdminAuth?.accessToken?.()); } catch (_) { adminOk = false; }
+            if (!adminOk) { state.admin = false; paintChips(); addMsg("bot", "Phiên Admin đã hết hạn; đăng nhập lại.", "bad"); return; }
+            const items = window.HasakiSkuIt.buildItems(ticked().map(row => ({ ...row })));
+            if (!items.length) throw new Error("Chưa chọn SKU nào.");
+            // Nonce theo thẻ: bấm In lại cùng thẻ (cùng nội dung) gửi lại cùng nonce nên không tạo lệnh trùng; đổi SKU/số bản thì lô mới.
+            const signature = JSON.stringify(items);
+            if (p.nonceSig !== signature) { p.nonceSig = signature; p.batchNonce = crypto.randomUUID(); }
+            const result = await window.HasakiSkuIt.enqueue(items, { requestedBy: requestedBy(), nonceBase: p.batchNonce });
+            const ids = (result.jobIds || []).map(id => String(id).slice(0, 8));
+            dropConfirm();
+            addMsg("bot", `Đã gửi ${result.labels} tem, ${ids.length} lệnh · ${ids.join(", ")}`);
+          } catch (error) {
+            const message = String(error?.message || "Không gửi được lệnh in."), sent = Array.isArray(error?.jobIds) ? error.jobIds : [];
+            if (sent.length) {
+              const number = state.pending?.slip?.number;
+              dropConfirm();
+              addMsg("bot", `Đã gửi ${error.labels} tem, ${sent.length} lệnh; lệnh còn lại lỗi: ${message}${number ? ` Đọc lại phiếu IT ${number} để in phần còn lại.` : ""}`, "bad");
+            } else addMsg("bot", message, "bad");
+          }
+          finally { setBusy(false); }
+        }
+        thread.addEventListener("click", event => {
+          const step = event.target.closest("#pa-copies-dec, #pa-copies-inc"), p = state.pending;
+          if (step && p) setCommon(p.common + (step.id === "pa-copies-inc" ? 1 : -1));
+          else if (event.target.closest("#pa-cancel")) { dropConfirm(); addMsg("bot", "Đã huỷ."); }
+          else if (event.target.closest("#pa-print")) doPrint();
+        });
+        thread.addEventListener("input", event => {
+          const p = state.pending, target = event.target; if (!p) return;
+          const n = Number(target.value), valid = Number.isInteger(n) && n >= 1 && n <= 200;
+          if (!valid) return;
+          if (target.id === "pa-copies") setCommon(n, false);
+          else if (target.matches("[data-pa-n]")) { p.rows[Number(target.closest(".pa-row").dataset.i)].copies = n; paintConfirm(); }
+        });
+        thread.addEventListener("change", event => {
+          const p = state.pending, target = event.target; if (!p) return;
+          const rowEl = target.closest(".pa-row"), row = rowEl ? p.rows[Number(rowEl.dataset.i)] : null;
+          if (target.id === "pa-copies") setCommon(target.value);
+          else if (row && target.matches("[data-pa-on]")) { row.on = target.checked; paintConfirm(); }
+          else if (row && target.matches("[data-pa-n]")) { row.copies = clamp(target.value, 1, 200); target.value = String(row.copies); paintConfirm(); }
+        });
+
+        // ---- Gửi câu ----
+        async function submit(raw) {
+          const text = String(raw || "").trim().slice(0, 300);
+          if (!text || state.busy || !state.admin) return;
+          addMsg("user", text);
+          const parsed = parse(text);
+          if (parsed.number) return startRead(parsed.number, parsed.copies);
+          if (state.awaiting && /^\d{6,40}$/.test(text.replace(/\s+/g, ""))) return startRead(text.replace(/\s+/g, ""), parsed.copies ?? state.awaiting.copies);
+          setBusy(true);
+          try {
+            const data = await askEdge(text);
+            const number = String(data.itNumber || "").replace(/\D/g, "");
+            addMsg("bot", data.reply);
+            if (data.intent === "print_it" && /^\d{6,40}$/.test(number)) { await startRead(number, data.copies ?? parsed.copies); return; }
+            state.awaiting = Array.isArray(data.needs) && data.needs.includes("it_number") ? { copies: data.copies ?? parsed.copies } : null;
+          } catch (_) {
+            if (parsed.ambiguous) { addMsg("bot", "Số phiếu IT là số nào?"); state.awaiting = { copies: parsed.copies }; }
+            else addMsg("bot", DOWN_TEXT, "bad");
+          }
+          finally { setBusy(false); }
+        }
+        form.addEventListener("submit", event => { event.preventDefault(); const value = input.value; input.value = ""; submit(value); });
+
+        // ---- Mic: một lần nghe, điền ô nhập, không tự gửi ----
+        const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (Recognition) {
+          micBtn.hidden = false;
+          let listening = null;
+          const stop = () => { listening = null; micBtn.setAttribute("aria-pressed", "false"); };
+          micBtn.addEventListener("click", () => {
+            if (listening) { try { listening.stop(); } catch (_) {} return; }
+            try {
+              const rec = new Recognition();
+              rec.lang = "vi-VN"; rec.continuous = false; rec.interimResults = false;
+              rec.onresult = event => { const said = event.results?.[0]?.[0]?.transcript; if (said) { input.value = String(said).slice(0, 300); input.focus(); } };
+              rec.onend = stop; rec.onerror = stop;
+              listening = rec; micBtn.setAttribute("aria-pressed", "true"); rec.start();
+            } catch (_) { stop(); }
+          });
+        }
+
+        // ---- Điều hướng ----
+        const active = () => location.hash.replace(/^#/, "").split("&")[0] === ROUTE;
+        function route() {
+          const on = active(); screen.hidden = !on;
+          if (!on) return;
+          const root = $("root"); if (root) root.inert = true;
+          showEmpty(); paintChips(); refreshAdmin();
+          setTimeout(() => { if (!input.disabled) input.focus(); }, 50);
+        }
+        $("pa-back").addEventListener("click", () => { location.hash = "#home"; });
+        loginBtn.addEventListener("click", async () => { try { await window.PrintSkuAdminAccess?.getToken?.(); } catch (_) {} refreshAdmin(); });
+        addEventListener("hashchange", route);
+        addEventListener("print-sku-admin-ready", refreshAdmin); addEventListener("print-sku-admin-logout", refreshAdmin);
+        addEventListener("storage", paintChips); addEventListener("focus", paintChips);
+        route();
+      })();
+    </script>
     <style id="cap-vai-style">
       /* CẤP VẢI (12/10/2026): khung .cut-screen như Xả vải / Cắt UID, thêm khối tiến độ, thẻ kết quả quét và bảng cuộn. */
       #cap-vai-screen .cv-plan-row{display:flex;gap:8px;align-items:center;margin-bottom:12px}
@@ -13020,9 +13371,9 @@ async function rpc(name,args,retry=true){
           expand: SV('<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="m14 9 3 3-3 3"/>'),
           logout: SV('<path d="m16 17 5-5-5-5"/><path d="M21 12H9"/><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>')
         };
-        const LABEL = { "barcode-print-sku": "In tem SKU", "barcode-print-uid": "In tem Group UID", "barcode-location": "Mã vị trí", "barcode-cut-uid": "Cắt Group UID", "barcode-uid-history": "Lịch sử Group UID", "barcode-find-sku": "Tìm SKU", "barcode-unit-converter": "Chuyển đổi đơn vị", "barcode-xa-vai": "Theo dõi xả vải", "barcode-cap-vai": "Cấp vải", "barcode-inspection": "Kiểm tra đầu vào", "barcode-storage-risk": "Rủi ro lưu trữ", "barcode-inventory-audit": "Kiểm kê SKU", "barcode-site-control": "Kiểm soát công trình", "barcode-activate": "Kích hoạt máy", "barcode-admin": "Quản trị" };
-        const ROUTE = { worker: "barcode-print-sku", "group-uid": "barcode-print-uid", location: "barcode-location", "cut-group-uid": "barcode-cut-uid", "group-uid-history": "barcode-uid-history", "find-sku": "barcode-find-sku", "unit-converter": "barcode-unit-converter", "xa-vai": "barcode-xa-vai", "cap-vai": "barcode-cap-vai", inspection: "barcode-inspection", "storage-risk": "barcode-storage-risk", "inventory-audit": "barcode-inventory-audit", "site-control": "barcode-site-control" };
-        const TITLE = { "uid-title": "barcode-print-uid", "loc-title": "barcode-location", "cut-title": "barcode-cut-uid", "uh-title": "barcode-uid-history", "fsk-title": "barcode-find-sku", "uc-title": "barcode-unit-converter", "xa-vai-title": "barcode-xa-vai", "cap-vai-title": "barcode-cap-vai", "ins-title": "barcode-inspection", "storage-risk-title": "barcode-storage-risk", "ia-title": "barcode-inventory-audit", "sc-title": "barcode-site-control" };
+        const LABEL = { "barcode-print-sku": "In tem SKU", "barcode-print-uid": "In tem Group UID", "barcode-location": "Mã vị trí", "home-assistant": "Trợ lý in", "barcode-cut-uid": "Cắt Group UID", "barcode-uid-history": "Lịch sử Group UID", "barcode-find-sku": "Tìm SKU", "barcode-unit-converter": "Chuyển đổi đơn vị", "barcode-xa-vai": "Theo dõi xả vải", "barcode-cap-vai": "Cấp vải", "barcode-inspection": "Kiểm tra đầu vào", "barcode-storage-risk": "Rủi ro lưu trữ", "barcode-inventory-audit": "Kiểm kê SKU", "barcode-site-control": "Kiểm soát công trình", "barcode-activate": "Kích hoạt máy", "barcode-admin": "Quản trị" };
+        const ROUTE = { worker: "barcode-print-sku", "group-uid": "barcode-print-uid", location: "barcode-location", assistant: "home-assistant", "cut-group-uid": "barcode-cut-uid", "group-uid-history": "barcode-uid-history", "find-sku": "barcode-find-sku", "unit-converter": "barcode-unit-converter", "xa-vai": "barcode-xa-vai", "cap-vai": "barcode-cap-vai", inspection: "barcode-inspection", "storage-risk": "barcode-storage-risk", "inventory-audit": "barcode-inventory-audit", "site-control": "barcode-site-control" };
+        const TITLE = { "uid-title": "barcode-print-uid", "loc-title": "barcode-location", "pa-title": "home-assistant", "cut-title": "barcode-cut-uid", "uh-title": "barcode-uid-history", "fsk-title": "barcode-find-sku", "uc-title": "barcode-unit-converter", "xa-vai-title": "barcode-xa-vai", "cap-vai-title": "barcode-cap-vai", "ins-title": "barcode-inspection", "storage-risk-title": "barcode-storage-risk", "ia-title": "barcode-inventory-audit", "sc-title": "barcode-site-control" };
         // Icon mục Admin = icon trên thanh trên của từng màn (12/10/2026: trước đây khác ở Đồng bộ UID, Kiểm kê)
         const ADMIN = [
           ["#admin/lenh-in", "Lệnh in", SV('<path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/>')],
@@ -13772,6 +14123,59 @@ async function rpc(name,args,retry=true){
           }
           return found;
         };
+        const qtyText = value => String(value);
+        // Ngày in trên tem như shim pr_them / TÌM SKU (dd/mm/yy giờ máy)
+        const viDate = () => new Intl.DateTimeFormat("vi-VN", { day: "2-digit", month: "2-digit", year: "2-digit" }).format(new Date());
+
+        // Cổng dùng chung cho nút Phiếu IT và TRỢ LÝ IN (17/10/2026): đọc phiếu + danh mục, dựng item lệnh in SKU, gửi hàng đợi.
+        // Một lệnh in tối đa 30 SKU và 500 tem (như hàng chờ React); nhiều hơn thì chia nhiều lệnh, mỗi lệnh một nonce riêng.
+        const MAX_SKU_PER_JOB = 30, MAX_LABELS_PER_JOB = 500;
+        const readSlip = async (value, { onReading } = {}) => {
+          const number = String(value ?? "").replace(/\s+/g, "");
+          if (!/^\d{6,40}$/.test(number)) throw new Error("Số phiếu IT không hợp lệ.");
+          if (!await adminOk()) throw Object.assign(new Error("Chưa đăng nhập Admin."), { code: "ADMIN_REQUIRED" });
+          if (typeof onReading === "function") onReading();
+          await extensionRequest("PING_WMS", {}, 6000);
+          const data = await extensionRequest("GET_INTERNAL_TRANSFER", { number });
+          if (!data || typeof data !== "object" || !Array.isArray(data.items) || data.items.some(item => !item || typeof item.sku !== "string" || !item.sku)) throw new Error("Extension không trả phiếu IT");
+          let names = null, note = "";
+          try { names = await catalog([...new Set(data.items.map(item => item.sku))]); } catch (_) { note = "Chưa đối chiếu được danh mục SKU"; }
+          const rows = data.items.map(item => {
+            const known = names ? names.has(item.sku) : true, name = (names && names.get(item.sku)) || item.name || "";
+            return { sku: item.sku, name, quantity: item.quantity, unit: item.unit ?? null, known, flag: known ? null : "Không có trong danh mục", copies: 1 };
+          });
+          const slip = { number: String(data.number ?? number), id: data.id ?? null, status: data.status ?? null, type: data.type ?? null, fromWarehouse: data.fromWarehouse ?? null, toWarehouse: data.toWarehouse ?? null,
+            createdBy: data.createdBy ?? null, createdAt: data.createdAt ?? null, totalItems: Number(data.totalItems) || rows.length, description: data.description ?? null };
+          return { slip, rows, note };
+        };
+        // Item lệnh in SKU y như hàng chờ React gửi qua pr_them: chỉ dòng có trong danh mục, đang chọn (on khác false), số bản 1–200
+        const buildItems = list => (Array.isArray(list) ? list : []).filter(row => row && row.known && row.on !== false && Number(row.copies) >= 1).map(row => {
+          const copies = Number(row.copies);
+          if (!Number.isInteger(copies) || copies > MAX_COPIES) throw new Error(`Số bản in mỗi SKU từ 1 đến ${MAX_COPIES}.`);
+          return { sku: String(row.sku).trim(), productName: String(row.name || "").trim(), quantity: qtyText(row.quantity), printedDate: viDate(), copies };
+        });
+        const enqueue = async (items, { requestedBy, nonceBase } = {}) => {
+          const queue = window.PrintSkuQueue;
+          if (!queue?.enqueue) throw new Error("Hàng đợi in chưa sẵn sàng; tải lại trang rồi thử lại.");
+          if (!Array.isArray(items) || !items.length) throw new Error("Chưa có SKU nào để in.");
+          if (items.some(item => !item?.sku || !Number.isInteger(item.copies) || item.copies < 1 || item.copies > MAX_COPIES)) throw new Error(`Số bản in mỗi SKU từ 1 đến ${MAX_COPIES}.`);
+          if (queue.accessToken() === "public") throw new Error("Máy này chưa kích hoạt in; vào ô KÍCH HOẠT MÁY trước.");
+          const jobs = [];
+          items.forEach(item => {
+            const last = jobs[jobs.length - 1];
+            if (last && last.items.length < MAX_SKU_PER_JOB && last.copies + item.copies <= MAX_LABELS_PER_JOB) { last.items.push(item); last.copies += item.copies; }
+            else jobs.push({ items: [item], copies: item.copies });
+          });
+          const by = String(requestedBy ?? "").trim().slice(0, 100), jobIds = [];
+          let labels = 0;
+          for (const job of jobs) {
+            const result = await queue.enqueue({ type: "sku", payload: { items: job.items }, copies: job.copies, requestedBy: by, requestNonce: nonceBase ? `${nonceBase}-${jobs.indexOf(job)}` : crypto.randomUUID() });
+            if (!result?.ok || !result.data?.id) throw Object.assign(new Error(result?.error?.message || "Hàng đợi chưa nhận lệnh in."), { code: result?.error?.code || "ENQUEUE_FAILED", jobIds: [...jobIds], labels });
+            jobIds.push(result.data.id); labels += job.copies;
+          }
+          return { jobIds, labels };
+        };
+        window.HasakiSkuIt = Object.freeze({ MAX_COPIES, MAX_SKU_PER_JOB, readSlip, buildItems, enqueue });
 
         const dialog = document.createElement("dialog");
         dialog.className = "uid-sheet skit"; dialog.id = "sku-it"; dialog.setAttribute("aria-labelledby", "sku-it-title");
@@ -13791,7 +14195,6 @@ async function rpc(name,args,retry=true){
         const worker = () => window.PrintSkuWorker;
         const room = () => { const s = worker()?.state?.(); return s ? Math.max(0, s.max - s.count) : 0; };
         const picked = () => rows.filter(row => row.on);
-        const qtyText = value => String(value);
 
         const render = () => {
           const chosen = picked();
@@ -13824,24 +14227,19 @@ async function rpc(name,args,retry=true){
           if (!/^\d{6,40}$/.test(number)) { say("Số phiếu IT không hợp lệ.", "warn"); input.focus(); return; }
           setBusy(true);
           try {
-            if (!await adminOk()) { say("Chưa đăng nhập Admin.", "warn"); askAdmin(); return; }
-            say("Đang đọc phiếu IT từ WMS…");
-            await extensionRequest("PING_WMS", {}, 6000);
-            const data = await extensionRequest("GET_INTERNAL_TRANSFER", { number });
-            let names = null, note = "";
-            try { names = await catalog([...new Set(data.items.map(item => item.sku))]); } catch (_) { note = "Chưa đối chiếu được danh mục SKU"; }
-            it = data;
-            rows = data.items.map(item => {
-              const known = names ? names.has(item.sku) : true, name = (names && names.get(item.sku)) || item.name || "";
-              return { sku: item.sku, name, quantity: item.quantity, unit: item.unit, copies: 1, on: known, flag: known ? "" : "Không có trong danh mục" };
-            });
+            const { slip, rows: slipRows, note } = await readSlip(number, { onReading: () => say("Đang đọc phiếu IT từ WMS…") });
+            it = slip;
+            rows = slipRows.map(row => ({ sku: row.sku, name: row.name, quantity: row.quantity, unit: row.unit, copies: row.copies, on: row.known, flag: row.flag || "" }));
             const info = $("sku-it-info");
             info.hidden = false;
-            info.innerHTML = `<div class="skit__fact"><span>Số phiếu</span><b>IT ${esc(data.number)}</b></div><div class="skit__fact"><span>Chuyển kho</span><b>${esc(data.fromWarehouse || "—")} → ${esc(data.toWarehouse || "—")}</b></div><div class="skit__fact"><span>Trạng thái</span><b class="skit__state">${esc(data.status || "—")}</b></div><div class="skit__fact"><span>Số dòng</span><b>${num(data.items.length)} dòng</b></div>${data.description ? `<div class="skit__fact skit__fact--wide"><span>Ghi chú</span><b>${esc(data.description)}</b></div>` : ""}`;
+            info.innerHTML = `<div class="skit__fact"><span>Số phiếu</span><b>IT ${esc(slip.number)}</b></div><div class="skit__fact"><span>Chuyển kho</span><b>${esc(slip.fromWarehouse || "—")} → ${esc(slip.toWarehouse || "—")}</b></div><div class="skit__fact"><span>Trạng thái</span><b class="skit__state">${esc(slip.status || "—")}</b></div><div class="skit__fact"><span>Số dòng</span><b>${num(rows.length)} dòng</b></div>${slip.description ? `<div class="skit__fact skit__fact--wide"><span>Ghi chú</span><b>${esc(slip.description)}</b></div>` : ""}`;
             const flagged = rows.filter(row => row.flag).length;
             say([`Đã đọc ${num(rows.length)} dòng`, flagged ? `${num(flagged)} SKU không có trong danh mục (bỏ tick)` : "", note].filter(Boolean).join(" · "), flagged || note ? "warn" : "ok");
             render();
-          } catch (error) { say(error.message || "Không đọc được phiếu IT.", "error"); }
+          } catch (error) {
+            if (error?.code === "ADMIN_REQUIRED") { say("Chưa đăng nhập Admin.", "warn"); askAdmin(); return; }
+            say(error.message || "Không đọc được phiếu IT.", "error");
+          }
           finally { setBusy(false); }
         };
 

@@ -10,7 +10,7 @@ try { AXE = require.resolve('axe-core/axe.min.js', { paths: [path.join(__dirname
   console.error('Chưa có axe-core: chạy `npm install` ở thư mục gốc repo rồi chạy lại test này.'); process.exit(1);
 }
 const BASE = process.env.BASE || 'http://127.0.0.1:8000/';
-const SCREENS = { home: '#barcode-home', worker: '#root', 'group-uid': '#uid-screen', location: '#location-screen', 'cut-group-uid': '#cut-group-uid-screen', 'find-sku': '#find-sku-screen', 'unit-converter': '#unit-converter-screen', 'xa-vai': '#xa-vai-screen', inspection: '#ins-screen', 'storage-risk': '#storage-risk-screen', 'group-uid-history': '#uidhist-screen', 'inventory-audit': '#inventory-audit-screen', 'site-control': '#site-control-screen' };
+const SCREENS = { home: '#barcode-home', worker: '#root', 'group-uid': '#uid-screen', location: '#location-screen', 'cut-group-uid': '#cut-group-uid-screen', 'find-sku': '#find-sku-screen', 'unit-converter': '#unit-converter-screen', 'xa-vai': '#xa-vai-screen', inspection: '#ins-screen', 'storage-risk': '#storage-risk-screen', 'group-uid-history': '#uidhist-screen', 'inventory-audit': '#inventory-audit-screen', 'site-control': '#site-control-screen', assistant: '#assistant-screen' };
 const ADMIN = { 'admin/lenh-in': '#print-jobs-screen', 'admin/sku-sync': '#sku-sync-screen', 'admin/group-uid-sync': '#group-uid-sync-screen', 'admin/cauhinh': '#root' };
 const TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-practice'];
 const b64 = o => Buffer.from(JSON.stringify(o)).toString('base64url');

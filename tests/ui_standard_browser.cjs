@@ -7,7 +7,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const assert = require('node:assert/strict');
 
 const BASE = process.env.BASE || 'http://127.0.0.1:8000/';
-const MODULES = ['worker', 'group-uid', 'location', 'cut-group-uid', 'find-sku', 'unit-converter', 'xa-vai', 'inspection', 'storage-risk', 'group-uid-history', 'inventory-audit', 'site-control'];
+const MODULES = ['worker', 'group-uid', 'location', 'cut-group-uid', 'find-sku', 'unit-converter', 'xa-vai', 'inspection', 'storage-risk', 'group-uid-history', 'inventory-audit', 'site-control', 'assistant'];
 const ADMIN = ['admin/lenh-in', 'admin/sku-sync', 'admin/group-uid-sync', 'admin/cauhinh'];
 const b64 = o => Buffer.from(JSON.stringify(o)).toString('base64url');
 const JWT = `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64({ sub: '00000000-0000-0000-0000-000000000001', exp: Math.floor(Date.now() / 1000) + 3600 })}.sig`;
@@ -47,7 +47,7 @@ const audit = mobile => {
   // Ô nhập thường (bỏ ô tìm/lọc trên thanh công cụ = điều khiển gọn, ô số trong bộ tăng giảm)
   for (const i of root.querySelectorAll('input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=range]), select')) {
     if (!vis(i) || i.closest('.pss, dialog, table, .uid-row, .as-tags, .uid-auto__qty, .fsk-stepper, .as-search, .pj-day, .pj-search, .as-tools') || i.getBoundingClientRect().width < 80) continue;
-    const wrap = i.closest('.uh-field, .fsk-inrow'), box = wrap && cs(wrap).borderTopWidth !== '0px' ? wrap : i, s = cs(i);
+    const wrap = i.closest('.uh-field, .fsk-inrow, .pa-field'), box = wrap && cs(wrap).borderTopWidth !== '0px' ? wrap : i, s = cs(i);
     const h = Math.round(box.getBoundingClientRect().height), r = Math.round(parseFloat(cs(box).borderTopLeftRadius));
     if (!near(h, S.ctl) || !near(r, S.inR) || s.fontSize !== '16px') bad.push(`ô nhập ${h}px r${r} ${s.fontSize} · ${nm(box)}`);
   }
