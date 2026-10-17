@@ -10,7 +10,8 @@ const NAME_SONG = 'Vải mẫu/Double face 5MT_Song Thủy/100% Cotton/none/Tr�
 const item = (sku, name, orderedQty) => ({ sku, barcode: '', name, orderedQty });
 const POS = {
   // Danh sách PO của Inside trả "<tên công ty> - <người liên hệ>".
-  '99900000000011': { poId: '1', poCode: '99900000000011', vendor: 'CÔNG TY TNHH SPICA ELASTIC VIỆT NAM - Ms Hà', warehouse: 'WH - MATERIAL - MTG', deliveryDate: '2026-10-20', status: 'approved',
+  // Extension 0.10.1+ trả lastModified (cột LastModified danh sách PO) → Rcvd date; các PO còn lại giả lập Extension cũ (chỉ deliveryDate).
+  '99900000000011': { poId: '1', poCode: '99900000000011', vendor: 'CÔNG TY TNHH SPICA ELASTIC VIỆT NAM - Ms Hà', warehouse: 'WH - MATERIAL - MTG', deliveryDate: '2027-02-08', lastModified: '2026-10-15', status: 'approved',
     items: [item('422000001', NAME_SPICA, 30000), item('422100001', '(Combo) ' + NAME_SPICA, 500)] },
   // Tên pháp nhân chứa " - " thật: chỉ cắt hậu tố người liên hệ cuối cùng.
   '99900000000012': { poId: '2', poCode: '99900000000012', vendor: 'CÔNG TY TNHH SẢN XUẤT - THƯƠNG MẠI - XUẤT NHẬP KHẨU SONG THỦY H.K - Ms Lan', warehouse: 'WH - MATERIAL - MTG', deliveryDate: '2026-10-20', status: 'approved', items: [item('422000002', NAME_SONG, 100)] },
@@ -62,9 +63,11 @@ const NORMAL_NAME = 'Thun dệt mẫu/JV9999_NCC Normal Khác/61% Nylon/none/Đe
     assert.deepEqual(await suppliers(), ['CÔNG TY TNHH SPICA ELASTIC VIỆT NAM', 'CÔNG TY TNHH SPICA ELASTIC VIỆT NAM'], 'Trim Supplier là tên công ty, không phải "Spica"');
     const comboName = await page.$eval('.ins-row[data-index="1"] input[data-field="name"]', input => input.value);
     assert.equal(comboName, NORMAL_NAME, 'tên Combo vẫn theo SKU Normal');
+    assert.equal(await page.inputValue('#ins-date'), '15/10/2026', 'Rcvd date = LastModified của PO, không phải Delivery Date');
     // 2) Tên pháp nhân có " - ": chỉ bỏ phần người liên hệ cuối.
     await fetchPo('99900000000012');
     assert.deepEqual(await suppliers(), ['CÔNG TY TNHH SẢN XUẤT - THƯƠNG MẠI - XUẤT NHẬP KHẨU SONG THỦY H.K']);
+    assert.equal(await page.inputValue('#ins-date'), '20/10/2026', 'Extension cũ chưa có lastModified → rơi về Delivery Date');
     // 3) "nhỏ lẻ" và không có nhà cung cấp: dùng NCC trong tên SKU.
     await fetchPo('99900000000013');
     assert.deepEqual(await suppliers(), ['Song Thủy']);
@@ -98,6 +101,7 @@ const NORMAL_NAME = 'Thun dệt mẫu/JV9999_NCC Normal Khác/61% Nylon/none/Đe
     await page.setInputFiles('#ins-file', { name: 'po.xlsx', mimeType: 'application/octet-stream', buffer: Buffer.from(await buildXlsx(VENDOR_XLS)) });
     await page.waitForFunction(() => document.querySelectorAll('.ins-row[data-index]').length === 1 && document.querySelector('#ins-status').innerText.includes('99900000000021'));
     assert.deepEqual(await suppliers(), [VENDOR_XLS], 'Excel: tên công ty giữ nguyên, kể cả dấu " - " của tên pháp nhân');
+    assert.equal(await page.inputValue('#ins-date'), '22/10/2026', 'Excel: Rcvd date = "Ngày giao" trên phiếu');
     assert.equal(await page.$eval('.ins-row[data-index="0"] input[data-field="supplier"]', input => input.title), VENDOR_XLS, 'tooltip hiện tên đầy đủ');
 
     const [download] = await Promise.all([page.waitForEvent('download'), page.click('#ins-export')]);

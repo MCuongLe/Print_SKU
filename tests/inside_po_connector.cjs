@@ -8,7 +8,7 @@ const manifest = JSON.parse(fs.readFileSync(path.join(extensionDir, "manifest.js
 const background = fs.readFileSync(path.join(extensionDir, "background.js"), "utf8");
 
 assert.equal(manifest.manifest_version, 3);
-assert.equal(manifest.version, "0.10.0");
+assert.equal(manifest.version, "0.10.1");
 // Đồng bộ tự động (0.10.0): alarm + storage cho phiên Admin riêng, gọi Edge Supabase, trang Tùy chọn.
 assert.ok(manifest.permissions.includes("alarms"));
 assert.ok(manifest.permissions.includes("storage"));
@@ -143,6 +143,47 @@ const settle = () => new Promise(resolve => setImmediate(resolve));
   const evilTab = { id: "ext-id", url: "https://evil.example/", tab: { id: 4, url: "https://evil.example/" } };
   assert.equal((await bg.send({ type: "AUTO_SIGN_OUT" }, evilTab)).error.code, "FORBIDDEN_ORIGIN");
   assert.equal(bg.stored["auto.device"], "may-test-01");
+
+  // GET_PO (0.10.1): inside-bridge.js thật trong vm với DOM giả theo cột danh sách PO đã đo trên Inside 17/10/2026:
+  // # | Code | Vendor | Stock | LastModified | Delivery | Due Date | Status. Rcvd date của biên bản = LastModified (cells[4]).
+  const insideBridge = fs.readFileSync(path.join(extensionDir, "inside-bridge.js"), "utf8");
+  const runGetPo = ({ listDelivery = "27-02-08|13:46", detailDelivery = "2027-02-08", lastModified = "26-10-15|14:35" } = {}) => {
+    let listener;
+    const node = (textContent, extra = {}) => ({ textContent, querySelector: () => null, querySelectorAll: () => [], ...extra });
+    const editLink = { textContent: "PO-TEST-001", href: "https://inside.example/purchase/order/77/edit" };
+    const listRow = {
+      cells: ["1", "PO-TEST-001", "CÔNG TY MẪU - Ms Test", "WH - TEST", lastModified, listDelivery, "2026-11-05", "approved"].map(value => node(value)),
+      querySelectorAll: () => [editLink],
+    };
+    const skuLink = { href: "https://inside.example/product/detail-sku?sku=SKU-TEST-1" };
+    const itemRow = { cells: [node("1"), node("", { querySelector: sel => sel.includes("detail-sku") ? skuLink : null }), node(""), node("Vải mẫu tổng hợp"), node(""), node(""), node(""), node(""), node("", { querySelector: () => ({ getAttribute: () => "12" }) })] };
+    const docs = {
+      list: { title: "PO", querySelector: () => null, querySelectorAll: sel => sel === "table tbody tr" ? [listRow] : [] },
+      detail: {
+        title: "PO",
+        querySelector: sel => sel === 'input[name="delivery_date"]' ? (detailDelivery ? { value: detailDelivery } : null) : sel === "#selected_stock_id option:checked" ? node("WH - TEST") : null,
+        querySelectorAll: sel => sel === "#po_detail_table_tbody tr" ? [itemRow] : [],
+      },
+    };
+    const win = {};
+    const context = {
+      window: win, URL, location: { origin: "https://inside.example" },
+      chrome: { runtime: { id: "ext-id", onMessage: { addListener: fn => { listener = fn; } } } },
+      fetch: async url => ({ ok: true, text: async () => String(url).includes("/edit") ? "detail" : "list" }),
+      DOMParser: class { parseFromString(html) { return docs[html]; } },
+    };
+    context.globalThis = context;
+    vm.runInNewContext(insideBridge, context);
+    return new Promise(resolve => listener({ type: "GET_PO", payload: { poCode: "PO-TEST-001" } }, { id: "ext-id" }, value => resolve(JSON.parse(JSON.stringify(value)))));
+  };
+  const po = await runGetPo();
+  assert.equal(po.ok, true, JSON.stringify(po));
+  assert.equal(po.data.lastModified, "2026-10-15", "LastModified \"26-10-15|14:35\" → ngày ISO, bỏ phần giờ");
+  assert.equal(po.data.deliveryDate, "2027-02-08", "deliveryDate giữ nguyên cho bên dùng cũ");
+  assert.deepEqual([po.data.poId, po.data.vendor, po.data.status, po.data.items.length], ["77", "CÔNG TY MẪU - Ms Test", "approved", 1]);
+  assert.equal((await runGetPo({ lastModified: "2026-10-15 14:35:00" })).data.lastModified, "2026-10-15", "dạng ISO có giờ cũng cắt về ngày");
+  assert.equal((await runGetPo({ lastModified: "" })).data.lastModified, "", "ô trống → chuỗi rỗng để web rơi về deliveryDate");
+  assert.equal((await runGetPo({ detailDelivery: "" })).data.deliveryDate, "2027-02-08", "thiếu ô delivery_date ở chi tiết → dùng cột Delivery của danh sách");
 
   console.log("inside_po_connector: manifest, allowed origins and app bridge replies passed");
 })().catch(error => { console.error(error); process.exit(1); });

@@ -3502,7 +3502,8 @@ Error generating stack: `+y.message+`
           lookupGeneration += 1;
           items = normalized;
           fields.po.value = String(po.poCode || po.invoice || "").trim();
-          fields.date.value = formatInsideDate(po.deliveryDate || po.rcvdDate);
+          // Rcvd date = LastModified của PO (Extension 0.10.1+); Excel dùng ngày trên phiếu; Extension cũ chưa có lastModified → Delivery Date.
+          fields.date.value = formatInsideDate(po.lastModified || po.rcvdDate || po.deliveryDate);
           infoCard.hidden = false;
           listCard.hidden = false;
           renderItems();

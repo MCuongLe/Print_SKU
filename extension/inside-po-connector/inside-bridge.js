@@ -279,6 +279,8 @@
       vendor: text(cells[2]),
       warehouse,
       deliveryDate: normalizeDate(detailDoc.querySelector('input[name="delivery_date"]')?.value || text(cells[5])),
+      // Cột LastModified của danh sách PO ("26-10-15|14:35"); trang chi tiết không có ô này. Rcvd date của biên bản lấy từ đây.
+      lastModified: normalizeDate(text(cells[4])),
       status: text(cells[7]),
       items
     };

@@ -36,10 +36,10 @@ Trang chủ: nhóm `section.barcode-home__group[data-tone]` (print / ops / check
 
 Dùng chung: `PrintSkuQueue` (đầu tệp: `enqueue`, `jobStatus`, `queueStatus`, `deviceKey` = `localStorage["tb-khoa"]`, `publishableKey`), `PrintSkuBridgeReady` + `extensionRequest` (8 helper, test `bridge_ready` đếm), `PrintSkuAdminAccess` (peekToken/getToken/logout) và `PrintSkuAdminAuth` (accessToken, gia hạn khi 401/403, phiên ở `sessionStorage["print-sku-admin-session-v1"]`), `print-device-script` (ô KÍCH HOẠT MÁY), chuẩn giao diện `type-standard` / `icon-standard` / `ui-standard` / `app-nav-theme`.
 
-## 3. Extension `extension/inside-po-connector` (manifest 0.10.0)
+## 3. Extension `extension/inside-po-connector` (manifest 0.10.1)
 - `app-bridge.js`: content script trên trang Print SKU; allow-list lệnh; `window.postMessage` ↔ `chrome.runtime.sendMessage`.
 - `background.js`: service worker; kiểm `APP_URL_PATTERN`; `WMS_READ_TYPES`; tìm tab Inside/WMS; nhánh `AUTO_*` cho trang Options; alarms `auto-sync` / `auto-keepalive`; `chrome.storage.local.setAccessLevel(TRUSTED_CONTEXTS)`.
-- `inside-bridge.js`: `GET_SKU_SYNC_DATA` ({full}|{cutoff}), đọc 7 nhóm hàng `SKU_CATEGORIES`, Combo theo Modified; `sku-sync-core.js` (cutoffKey, comboStampsOrdered).
+- `inside-bridge.js`: `GET_PO` (danh sách + trang chi tiết PO; trả `lastModified` = cột LastModified, `deliveryDate`, `items[{sku, orderedQty}]`), `GET_SKU_SYNC_DATA` ({full}|{cutoff}), đọc 7 nhóm hàng `SKU_CATEGORIES`, Combo theo Modified; `sku-sync-core.js` (cutoffKey, comboStampsOrdered).
 - `wms-bridge.js`: `GET_GROUP_UID_PAGE` (group-uid-infos, size ≤ 500, from/to epoch ms), `GET_INTERNAL_TRANSFER` (phiếu IT), đọc Import/Export, history, QC; token từ `localStorage["auth_store"]`; `group-uid-sync-core.js` (`normalizeRow` có `qc_status`), `inventory-audit-core.js`.
 - `hcm-bridge.js`: app xây dựng (Cloudflare Access + Bearer) cho Kiểm soát công trình.
 - Nền tự động: `auto-sync.js` (`decide`, `tick`, `runNow`, lease/cooldown, held), `group-uid-snapshot-core.js` (đọc WMS chống lệch, chép từ `readWmsSnapshot` của web), `supabase-session.js` (đăng nhập/gia hạn phiên Admin), `supabase-config.js`, `options.html/js` (Phiên Admin, Tên máy, Trạng thái, Lượt gần nhất, Nhật ký).
