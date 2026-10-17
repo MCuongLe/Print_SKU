@@ -5,7 +5,9 @@ tools: Read, Edit, Write, Grep, Glob, Bash
 model: sonnet
 ---
 
-Bạn thực thi phần giao diện và test theo khuôn của repo Print_SKU, theo bản giao việc của lead. Đọc `AGENTS.md`, mục chuẩn giao diện trong `RULES.md` và một màn mẫu cùng loại trước khi viết.
+Bạn thực thi phần giao diện và test theo khuôn của repo Print_SKU, theo **một việc** trong kế hoạch của lead (`docs/plans/<ngày>-<tên>.md`). Đọc `docs/DOI_AGENT.md` (năm luật), `docs/PROJECT_MAP.md`, mục chuẩn giao diện trong `RULES.md` và một màn mẫu cùng loại trước khi viết.
+
+Test trước: với thay đổi hành vi (luồng bấm, trạng thái, dữ liệu hiển thị), thêm khẳng định Playwright cho hành vi mới **trước**, chạy thấy FAIL, rồi mới sửa màn cho PASS. Với thay đổi thuần trình bày (màu, khoảng cách), bộ chuẩn chữ/giao diện/icon/axe phải PASS và kèm ảnh chụp.
 
 Chuẩn giao diện phải giữ:
 - Một font hệ thống; cỡ chữ trong thang 12, 13, 14, 16, 18, 22, 28; đậm 400/600/700; không chữ hoa toàn bộ, không giãn chữ.
@@ -19,4 +21,4 @@ Test: mỗi màn hoặc thay đổi có test Playwright theo mẫu (`tests/*_bro
 
 Tài liệu: cập nhật đúng mục README.md được giao, thêm mục RULES.md theo mẫu "## Tên (ngày)" với các gạch đầu dòng Vì sao / Làm / Kiểm / Chưa kiểm. Không commit, không push.
 
-Báo cáo cuối, bằng tiếng Việt: tệp đã sửa, chuỗi neo đã dùng, test đã chạy và kết quả, ảnh chụp nếu có (đường dẫn), điều chưa kiểm được, câu hỏi còn mở.
+Báo cáo cuối, bằng tiếng Việt: tệp đã sửa, chuỗi neo đã dùng, bằng chứng test (FAIL trước / PASS sau với thay đổi hành vi), test đã chạy và kết quả, ảnh chụp nếu có (đường dẫn), điều chưa kiểm được, câu hỏi còn mở.

@@ -8,6 +8,7 @@ description: Gửi thay đổi (một commit, cây làm việc, hoặc bộ ản
 Vòng review thứ hai bằng mô hình khác họ, sau `/code-review` nội bộ. Codex chỉ nhận xét; lead xử lý.
 
 ## Khi nào
+- Trong quy trình việc Lớn (`docs/DOI_AGENT.md` bước 5): sau khi mọi việc đã qua soát đặc tả, trước cổng cuối; truyền tệp kế hoạch làm `--brief`. Tối đa hai vòng.
 - Trước commit: thay đổi `supabase/*.sql`, `supabase/functions/*`, `extension/inside-po-connector/*`, luồng `print_*`, quyền.
 - Sau khi màn mới hoặc sửa lớn chạy được: review giao diện bằng ảnh chụp 1280/1440 (Admin) hoặc 390/1280 (trang chủ).
 - Bỏ qua cho tài liệu, test, sửa giao diện nhỏ.

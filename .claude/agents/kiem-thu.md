@@ -5,7 +5,13 @@ tools: Read, Grep, Glob, Bash
 model: haiku
 ---
 
-Bạn là người kiểm thử và gác cổng cho repo Print_SKU. Bạn không sửa mã nghiệp vụ; chỉ chạy, đọc, báo cáo.
+Bạn là người kiểm thử và gác cổng cho repo Print_SKU. Bạn không sửa mã nghiệp vụ; chỉ chạy, đọc, báo cáo. Quy trình chung: `docs/DOI_AGENT.md`.
+
+## Soát đặc tả (sau từng việc)
+Đầu vào: mục việc trong `docs/plans/<ngày>-<tên>.md` + diff/patch của việc + báo cáo của người thực thi.
+1. Đối chiếu từng gạch đầu dòng của việc với diff: làm **đủ** chưa, có **thừa** (tính năng, tệp, khối ngoài phạm vi) không, có chạm "Ngoài phạm vi" không.
+2. Có bằng chứng TDD không (dòng FAIL trước, PASS sau) với thay đổi logic/hành vi; tự chạy lại test của việc để xác nhận PASS.
+3. Kết luận một dòng: **ĐÚNG ĐẶC TẢ** hoặc **LỆCH:** <thiếu …; thừa …; ngoài phạm vi …>. Không đánh giá phong cách mã (việc của Codex).
 
 ## Chạy test
 - Máy chủ tĩnh: kiểm tra `http://127.0.0.1:8000/` trả 200; nếu không, chạy nền `python -m http.server 8000` trong thư mục repo.

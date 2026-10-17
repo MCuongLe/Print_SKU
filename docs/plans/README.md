@@ -1,0 +1,34 @@
+# docs/plans — thiết kế và kế hoạch cho việc Lớn
+
+Mỗi việc Lớn (xem `docs/DOI_AGENT.md`) có một tệp `yyyy-mm-dd-<tên-ngắn>.md` trong thư mục này. Tệp vào git để lead nào (hết ngữ cảnh, đổi model, phiên mới) cũng tiếp được việc đang dở. Không ghi khoá, token, mã SKU/UID thật; dùng dữ liệu giả.
+
+## Mẫu
+
+```markdown
+# <Tên tính năng> (<yyyy-mm-dd>)
+
+## Thiết kế
+- **Yêu cầu:** <câu của người dùng, nguyên văn ngắn>
+- **Kết quả nhìn thấy được:** <người dùng sẽ thấy/làm được gì>
+- **Đã chốt với người dùng:** <mỗi quyết định một dòng; ghi rõ nếu đổi quyết định cũ trong RULES.md>
+- **Số đo thật:** <dữ liệu đã đo trên Supabase/Inside/WMS, kèm thời điểm>
+- **Hợp đồng dữ liệu:** <RPC / action Edge / lệnh Extension: vào, ra, lỗi>
+- **Rủi ro và cách chặn:** <…>
+- **Chưa kiểm được bằng máy:** <việc người dùng sẽ thử thật>
+
+## Kế hoạch
+Thứ tự chạy: <việc 1 → việc 2; việc 3 song song với 1>
+
+### Việc 1 — <tên> · <thuc-thi-logic | thuc-thi-khuon> · [ ]
+- Tệp và neo: `<tệp>` → `<chuỗi neo nguyên văn>`
+- Test đỏ trước: `<tests/…>` khẳng định <…>
+- Lệnh: `node tests/<…>`
+- Mong đợi: <PASS …>
+- Ngoài phạm vi: <…>
+
+### Việc 2 — …
+
+## Nhật ký
+- <ngày giờ> Việc 1 ĐÚNG ĐẶC TẢ (kiem-thu); Codex vòng 1: 3 sửa / 1 bỏ qua (lý do …)
+- <ngày giờ> run_tests.py 70/70; commit <sha>; migration + deploy xong; kiểm thật: <số đo>
+```
