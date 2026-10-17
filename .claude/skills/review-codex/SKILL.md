@@ -5,7 +5,7 @@ description: Gửi thay đổi (một commit, cây làm việc, hoặc bộ ản
 
 # Review độc lập bằng Codex
 
-Vòng review thứ hai bằng mô hình khác họ, sau `/code-review` nội bộ. Codex chỉ nhận xét; lead xử lý.
+Review chất lượng độc lập bằng mô hình khác họ (bước 5 của `docs/DOI_AGENT.md`), sau khi các việc đã qua soát đặc tả của `kiem-thu`. Có thể chạy thêm `/code-review` trước nếu muốn, nhưng không bắt buộc. Codex chỉ nhận xét; lead xử lý.
 
 ## Khi nào
 - Trong quy trình việc Lớn (`docs/DOI_AGENT.md` bước 5): sau khi mọi việc đã qua soát đặc tả, trước cổng cuối; truyền tệp kế hoạch làm `--brief`. Tối đa hai vòng.
@@ -20,9 +20,9 @@ Vòng review thứ hai bằng mô hình khác họ, sau `/code-review` nội b�
    - `python scripts/codex_review.py --commit <sha> --brief <tệp.md> --keywords "<từ khoá RULES>"`
    - `python scripts/codex_review.py --working-tree --brief <tệp.md>`
    - `python scripts/codex_review.py --images <thư mục ảnh> --brief <tệp.md>` (ảnh chụp bằng Playwright với dữ liệu giả, đặt tên theo thứ tự muốn Codex đọc).
-   Kết quả ghi ở `outputs/codex-review/review-<ngày giờ>.md` (thư mục outputs không vào git) và in ra màn hình. Mỗi lượt khoảng 2–5 phút.
+   Kết quả ghi ở `outputs/codex-review/review-<ngày giờ>.md` (thư mục outputs không vào git) hoặc tệp chỉ định bằng `--out`, và in ra màn hình. Mỗi lượt khoảng 2–15 phút.
 4. Lọc: với từng phát hiện, đối chiếu mã thật và RULES.md; xếp vào ba nhóm: sửa ngay, ghi nhận làm sau, trái quyết định đã chốt (bỏ qua, ghi lý do). Ghi kết quả lọc vào RULES.md theo mẫu "Review … bằng Codex (ngày)".
-5. Báo người dùng bảng ba nhóm; chỉ sửa khi người dùng đồng ý hoặc khi bản giao việc đã cho phép.
+5. Lead tự quyết và giao sửa nhóm "sửa ngay" (theo bước 3–4 của DOI_AGENT); chỉ hỏi người dùng khi bản sửa đổi một quyết định đã chốt hoặc đổi hành vi người dùng thấy. Báo người dùng bảng ba nhóm trong phần bàn giao.
 
 ## Giới hạn đã biết
 - Codex không chạy được Inside/WMS/máy in/Supabase thật; không chạy được test cần tạo thư mục tạm trong sandbox (EPERM) — không phải lỗi của thay đổi.

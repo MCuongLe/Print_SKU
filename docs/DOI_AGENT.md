@@ -49,7 +49,8 @@ Sửa lỗi ở bất kỳ hạng nào đều đi qua **Quy trình sửa lỗi**
 ### 3. Thực thi theo việc
 - **Mỗi việc một subagent mới** (`thuc-thi-logic` hoặc `thuc-thi-khuon`), bản giao việc = đúng mục việc trong kế hoạch + phần thiết kế liên quan. Không giao "cả tính năng" cho một agent.
 - Người thực thi làm TDD: viết/sửa test → chạy thấy **FAIL đúng lý do** → sửa mã → **PASS** → chạy bộ chuẩn liên quan. Báo cáo phải trích cả dòng đỏ lẫn dòng xanh.
-- Worktree: agent dùng cổng máy chủ riêng (không phải 8000) và `BASE=`; bàn giao `git diff > scratchpad/<việc>.patch`; lead gộp (`git apply --ignore-whitespace` nếu lệch CRLF), xoá worktree.
+- Worktree: agent dùng cổng máy chủ riêng (không phải 8000, mỗi agent một cổng: 8001, 8002, …) và `BASE=`; bàn giao `git diff > scratchpad/<việc>.patch`; lead gộp (`git apply --ignore-whitespace` nếu lệch CRLF), xoá worktree. Việc sửa nhỏ sau review có thể giao làm thẳng trên cây chính (ghi rõ trong bản giao việc).
+- `RULES.md` không vào git nên **không có trong worktree**: người thực thi đọc bằng đường dẫn tuyệt đối `C:\Users\HASAKI\Documents\GitHub\Print_SKU\RULES.md` và KHÔNG ghi vào đó; mọi ghi chép `RULES.md` do lead làm. Tệp kế hoạch chưa commit cũng đọc bằng đường dẫn tuyệt đối của cây chính.
 
 ### 4. Soát đặc tả sau từng việc
 - `kiem-thu` so diff của việc với mục kế hoạch: **ĐÚNG ĐẶC TẢ** hoặc **LỆCH** (thiếu gì, thừa gì, chạm ngoài phạm vi). Kiểm luôn có bằng chứng đỏ → xanh.
@@ -57,13 +58,14 @@ Sửa lỗi ở bất kỳ hạng nào đều đi qua **Quy trình sửa lỗi**
 
 ### 5. Review chất lượng cuối đợt
 - Bắt buộc khi đụng SQL, Edge, Extension, luồng in/quyền hoặc có màn mới: `python scripts/codex_review.py --working-tree --brief docs/plans/<tệp>.md` (màn mới thêm `--images`).
-- Lead lọc từng phát hiện thành ba nhóm: **sửa** (giao lại theo bước 3–4), **làm sau**, **bỏ qua có lý do** (trái quyết định đã chốt). Ghi kết quả lọc vào `RULES.md`. Tối đa hai vòng Codex; vòng hai chỉ hỏi về các sửa của vòng một.
+- Lead lọc từng phát hiện thành ba nhóm: **sửa** (giao lại theo bước 3–4, hoặc lead tự sửa nếu nhỏ, vẫn TDD), **làm sau**, **bỏ qua có lý do** (trái quyết định đã chốt). Lead tự quyết; **chỉ hỏi người dùng khi bản sửa đổi một quyết định đã chốt hoặc đổi hành vi người dùng thấy**. Ghi kết quả lọc vào `RULES.md`. Tối đa hai vòng Codex; vòng hai chỉ hỏi về các sửa của vòng một và phần chưa review.
 
 ### 6. Xác minh, bàn giao, lên
-- `kiem-thu`: `python scripts/run_tests.py` cả bộ + cổng 7 mục. Test chập chờn do tải máy thì chạy lẻ lại và ghi rõ.
+- Cả bộ `python scripts/run_tests.py` + cổng trước commit: lead tự chạy hoặc giao `kiem-thu` (lead chịu trách nhiệm kết quả). Test chập chờn do tải máy thì chạy lẻ lại và ghi rõ.
 - Lead cập nhật `docs/PROJECT_MAP.md` nếu đổi module/lệnh/Edge/migration, `README.md`, `RULES.md`.
 - Báo người dùng: hành vi đổi, kết quả test (trích số liệu), review đã xử lý, điều chưa kiểm, danh sách tệp chờ, **nhắc commit**.
-- Sau commit: migration → deploy Edge → Reload Extension + tải lại tab → lead kiểm thật (SQL/DevTools) và ghi số đo vào `RULES.md`.
+- **Push `main` = deploy web ngay (GitHub Pages).** Web gọi hàm/cột/Edge mới thì thứ tự là: commit (chưa push) → migration → deploy Edge → **push** → Reload Extension + tải lại tab. Chỉ push trước migration khi web mới vẫn chạy được với database cũ (đã kiểm). Thay đổi chỉ có SQL/Edge thì commit + push trước, migration sau.
+- Sau khi lên: lead kiểm thật (Supabase MCP chỉ đọc hoặc SQL/DevTools) và ghi số đo vào `RULES.md`.
 
 ## Quy trình sửa lỗi (mọi hạng)
 
@@ -82,7 +84,9 @@ Sửa lỗi ở bất kỳ hạng nào đều đi qua **Quy trình sửa lỗi**
 
 - Sửa nhỏ nhất trong `index.html`, không reformat; giữ CRLF/LF hiện trạng; đọc lại tệp ngay trước khi ghi; không ghi lại cả tệp từ bản đọc cũ.
 - Tiếng Việt có dấu; icon Lucide trước nhãn ngắn; không câu hướng dẫn kiểu AI trong màn; Admin chỉ xét máy tính.
-- Không phụ thuộc ngoài, không gọi mạng mới khi chưa được duyệt, không bí mật hay dữ liệu thật trong repo (dữ liệu giả: `9000000xx`, `1028260000000xxx`, `100000001`).
+- Màn mới hoặc làm lại giao diện: người thực thi khuôn nạp kỹ năng `frontend-design` (plugin đã cài 17/10/2026) để lấy hướng bố cục, thứ bậc thị giác, khoảng trắng, trạng thái rỗng/đang chờ/kết quả. **Chuẩn dự án thắng khi khác nhau:** giữ màu chính #005F41 và bảng màu hiện có, một font hệ thống, thang chữ và cỡ icon mà `typography_browser`/`icon_standard_browser`/`ui_standard_browser`/`a11y_axe_browser` kiểm; không thêm font, CDN hay thư viện.
+- Không phụ thuộc ngoài, không gọi mạng mới khi chưa được duyệt, không bí mật hay dữ liệu thật trong repo. Dữ liệu giả chuẩn: SKU `9000000xx`, Group UID `1028260000000xxx` (cũ còn dùng `9999991000000001`), số phiếu/PO `100000001`; fixture cũ đã có trong HEAD giữ nguyên.
+- **Supabase MCP (plugin, 17/10/2026) chỉ dùng để ĐỌC** (schema, RLS, log Edge, advisors, SELECT) trên project `ikzhitdqkoatlmkrxuuh`. Migration, deploy, ghi dữ liệu, đổi cấu hình/khoá vẫn qua `scripts/apply_supabase_sql.py` / `deploy_*.py` do người dùng chạy, trừ khi người dùng cho phép rõ từng lần. Thiết lập Auth/bảo mật trong Dashboard do người dùng tự bấm.
 - Việc đã chốt là không làm trong `RULES.md` thì người thực thi không được "sửa lại cho đúng".
 - Nhiều phiên cùng sửa `index.html`: `git status` trước khi gộp; commit chỉ phần của đội.
 
