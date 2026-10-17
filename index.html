@@ -1661,6 +1661,57 @@ Error generating stack: `+y.message+`
         addEventListener("hashchange", () => setTimeout(update, 0));
       })();
     </script>
+    <style id="home-fold">
+      /* Trang chủ điện thoại (≤ 620 px, 17/10/2026): nhóm Kiểm tra và Quản trị (dùng chủ yếu trên máy tính) thành danh sách thả, mặc định đóng;
+         bấm dải tiêu đề nhóm để mở/đóng; mở ra mỗi ô là một dòng (icon trái, tên phải). Màn > 620 px giữ lưới ô như cũ. */
+      .home-fold__toggle { display: none; }
+      @media (max-width: 620px) {
+        #barcode-home .barcode-home__group[data-fold] .barcode-home__group-head { position: relative; }
+        #barcode-home .barcode-home__group[data-fold] .home-fold__toggle { position: absolute; inset: 0; display: flex; align-items: center; justify-content: flex-end; width: 100%; margin: 0; padding: 0 14px; border: 0; border-radius: inherit; background: transparent; color: var(--home-ink); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+        #barcode-home .barcode-home__group[data-fold] .home-fold__toggle:active { background: rgba(255, 255, 255, .12); }
+        #barcode-home .barcode-home__group[data-fold] .home-fold__toggle:focus-visible { outline: 3px solid var(--home-tone); outline-offset: 2px; }
+        #barcode-home .home-fold__toggle svg { width: 24px; height: 24px; color: #fff; transition: transform .18s ease; }
+        #barcode-home .barcode-home__group[data-fold="open"] .home-fold__toggle svg { transform: rotate(180deg); }
+        #barcode-home .barcode-home__group[data-fold="closed"] .barcode-home__group-head { margin-bottom: 0; }
+        #barcode-home .barcode-home__group[data-fold="closed"] .barcode-home__choices { display: none; }
+        #barcode-home .barcode-home__groups .barcode-home__group[data-fold] .barcode-home__choices { grid-template-columns: minmax(0, 1fr); gap: 0; }
+        #barcode-home .barcode-home__groups .barcode-home__group[data-fold] .barcode-home__choices > .barcode-choice { grid-column: auto; flex-direction: row; justify-content: flex-start; align-items: center; gap: 12px; min-height: 52px; padding: 6px 8px; border: 0; border-bottom: 1px solid #edf1ef; border-radius: 0; background: transparent; box-shadow: none; text-align: left; transform: none; }
+        #barcode-home .barcode-home__groups .barcode-home__group[data-fold] .barcode-home__choices > .barcode-choice:last-child { border-bottom: 0; }
+        #barcode-home .barcode-home__groups .barcode-home__group[data-fold] .barcode-home__choices > .barcode-choice .barcode-choice__icon { flex: none; width: 36px; height: 36px; margin: 0; border-radius: 10px; }
+        #barcode-home .barcode-home__groups .barcode-home__group[data-fold] .barcode-home__choices > .barcode-choice .barcode-choice__icon svg { width: 20px; height: 20px; }
+        #barcode-home .barcode-home__groups .barcode-home__group[data-fold] .barcode-home__choices > .barcode-choice strong { font-size: 14px; line-height: 1.3; }
+      }
+      @media (prefers-reduced-motion: reduce) { #barcode-home .home-fold__toggle svg { transition: none; } }
+    </style>
+    <script id="home-fold-script">
+      // Danh sách thả cho nhóm Kiểm tra + Quản trị trên trang chủ điện thoại; nhớ nhóm đã mở trên máy (localStorage, lỗi thì mặc định đóng).
+      (() => {
+        const KEY = "wh-home-fold";
+        let saved = {};
+        try { saved = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (error) { saved = {}; }
+        const CHEVRON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
+        document.querySelectorAll('#barcode-home .barcode-home__group[data-tone="check"], #barcode-home .barcode-home__group[data-tone="admin"]').forEach(group => {
+          const tone = group.dataset.tone, head = group.querySelector(".barcode-home__group-head"), list = group.querySelector(".barcode-home__choices");
+          if (!head || !list || head.querySelector(".home-fold__toggle")) return;
+          list.id = list.id || `home-fold-${tone}`;
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "home-fold__toggle";
+          button.setAttribute("aria-controls", list.id);
+          button.setAttribute("aria-label", group.querySelector("h2")?.textContent.trim() || tone);
+          button.innerHTML = CHEVRON;
+          const paint = open => { group.dataset.fold = open ? "open" : "closed"; button.setAttribute("aria-expanded", String(open)); };
+          paint(saved[tone] === true);
+          button.addEventListener("click", () => {
+            const open = group.dataset.fold !== "open";
+            paint(open);
+            saved[tone] = open;
+            try { localStorage.setItem(KEY, JSON.stringify(saved)); } catch (error) { /* chế độ riêng tư: chỉ nhớ trong lượt xem */ }
+          });
+          head.append(button);
+        });
+      })();
+    </script>
     <section class="cut-screen" id="storage-risk-screen" aria-labelledby="storage-risk-title" hidden>
       <header class="uid-topbar"><div class="uid-topbar__inner"><button class="uid-back" id="storage-risk-back" type="button" aria-label="Quay lại trang chủ WH-MATERIAL">WH-MATERIAL</button><span class="uid-topbar__mark" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3M12 9v4M12 17h.01"/></svg></span><div class="uid-topbar__name"><h1 id="storage-risk-title">RỦI RO LƯU TRỮ</h1><span id="srt-subtitle">Hàng chưa lên kệ</span></div><button class="uid-topbar__admin" id="sr-admin" type="button" aria-pressed="false" aria-label="Đăng nhập Admin" title="Đăng nhập Admin"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path class="uid-topbar__admin-check" d="m9 12 2 2 4-4"/></svg></button></div></header>
       <div class="ss-content ia-content">

@@ -14,7 +14,7 @@ Extension nền (0.10.0): chrome.alarms 30 phút → auto-sync.js → Edge (phi�
 ```
 
 ## 2. index.html — khối theo id (`<style id>` / `<script id>` / `<section id>`)
-Trang chủ: nhóm `section.barcode-home__group[data-tone]` (print / ops / check / admin), ô `button.barcode-choice#…`, router `renderRoute` (neo `const homeOpen = !current || current === "home";`), bản đồ thanh bên `app-nav-script` (LABEL / ROUTE / TITLE, neo `"barcode-location": "Mã vị trí",`). Khuôn panel mở từ ô: `#uidhist-screen` + `uidhist-script`.
+Trang chủ: nhóm `section.barcode-home__group[data-tone]` (print / ops / check / admin), ô `button.barcode-choice#…`, router `renderRoute` (neo `const homeOpen = !current || current === "home";`), bản đồ thanh bên `app-nav-script` (LABEL / ROUTE / TITLE, neo `"barcode-location": "Mã vị trí",`). Khuôn panel mở từ ô: `#uidhist-screen` + `uidhist-script`. Điện thoại ≤ 620 px: nhóm Kiểm tra + Quản trị là danh sách thả (`home-fold` / `home-fold-script`, nhớ ở `localStorage["wh-home-fold"]`).
 
 | Module (ô trang chủ) | Hash | Khối chính | Ghi chú |
 |---|---|---|---|

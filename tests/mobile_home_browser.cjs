@@ -34,9 +34,10 @@ const BASE = process.env.BASE || 'http://127.0.0.1:8000/';
         return { count: tiles.length, cols: firstRow.length, w: Math.round(boxes[0].width), h: Math.round(Math.min(...boxes.filter(b => b.width < boxes[0].width * 1.5).map(b => b.height))), wideH: (w => w.length ? Math.round(Math.min(...w.map(b => b.height))) : null)(boxes.filter(b => b.width >= boxes[0].width * 1.5)), bottom: Math.round(Math.max(...boxes.map(b => b.bottom))), maxLines: Math.max(...lines), overflow: document.documentElement.scrollWidth > innerWidth,
           groupCols: new Set(groups.map(g => Math.round(g.getBoundingClientRect().left))).size,
           heads: groups.map(g => { const icon = g.querySelector('.barcode-home__group-icon'), r = icon.getBoundingClientRect(); return `${g.querySelector('h2').textContent.trim()}|${g.querySelector('[data-home-count]').textContent}|${Math.round(r.width)}|${getComputedStyle(icon).borderRadius}`; }),
-          counts: groups.map(g => [...g.querySelectorAll('.barcode-choice')].filter(t => !t.hidden && t.getBoundingClientRect().width > 0).length) };
+          total: [...document.querySelectorAll('#barcode-home .barcode-choice')].filter(t => !t.hidden && getComputedStyle(t).display !== 'none').length,
+          counts: groups.map(g => [...g.querySelectorAll('.barcode-choice')].filter(t => !t.hidden && getComputedStyle(t).display !== 'none').length) };
       });
-      assert.ok(home.count >= 10, `trang chủ có đủ ô (${home.count})`);
+      assert.ok(home.total >= 10, `trang chủ có đủ ô (${home.total})`);
       // Thẻ nhóm theo mẫu 11/10/2026: thanh tiêu đề có icon tròn, tên nhóm, số chức năng đúng số ô đang hiện
       home.heads.forEach((head, i) => { const [name, count, w, r] = head.split('|'); assert.equal(count, `${String(home.counts[i]).padStart(2, '0')} chức năng`, `${name}: số chức năng`); assert.equal(r, '50%', `${name}: icon nhóm tròn`); assert.ok(Number(w) >= 40, `${name}: icon nhóm ≥ 40 px`); });
       assert.deepEqual(home.heads.map(h => h.split('|')[0]), ['In tem', 'Vận hành kho', 'Kiểm tra', 'Quản trị']);
@@ -69,6 +70,29 @@ const BASE = process.env.BASE || 'http://127.0.0.1:8000/';
         assert.equal(home.groupCols, 2, 'máy tính: thẻ nhóm xếp 2 cột');
         // Ô cao 152; thanh trái chung (264 px) làm vùng nội dung hẹp hơn nên tên 2 dòng đẩy ô lên 160
         assert.ok(home.h >= 152 && home.h <= 160, `máy tính: ô cao 152–160 (${home.h})`);
+      }
+
+      // Trang chủ điện thoại (17/10/2026): Kiểm tra + Quản trị (dùng chủ yếu trên máy tính) là danh sách thả, mặc định đóng, nhớ trạng thái mở;
+      // In tem + Vận hành kho giữ lưới ô; máy tính không có nút thả
+      const fold = () => page.evaluate(() => [...document.querySelectorAll('#barcode-home .barcode-home__group')].map(g => {
+        const t = g.querySelector('.home-fold__toggle'), tiles = [...g.querySelectorAll('.barcode-choice')].filter(x => !x.hidden && getComputedStyle(x).display !== 'none');
+        return { tone: g.dataset.tone, toggle: !!t && t.getBoundingClientRect().width > 0, expanded: t ? t.getAttribute('aria-expanded') : null, shown: tiles.filter(x => x.getBoundingClientRect().width > 0).length, total: tiles.length,
+          rows: tiles.map(x => { const r = x.getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height)]; }), listW: Math.round(g.querySelector('.barcode-home__choices').getBoundingClientRect().width) };
+      }));
+      const folded = await fold();
+      if (width <= 620) {
+        assert.deepEqual(folded.map(g => [g.tone, g.toggle, g.expanded]), [['print', false, null], ['ops', false, null], ['check', true, 'false'], ['admin', true, 'false']], 'điện thoại: chỉ Kiểm tra + Quản trị có nút thả, mặc định đóng');
+        assert.deepEqual(folded.slice(2).map(g => g.shown), [0, 0], 'nhóm đóng không hiện ô');
+        await page.locator('#barcode-home [data-tone="check"] .home-fold__toggle').click();
+        const opened = (await fold())[2];
+        assert.equal(opened.expanded, 'true');
+        assert.ok(opened.shown >= 4 && opened.shown === opened.total, `mở ra thấy đủ ô Kiểm tra (${opened.shown})`);
+        opened.rows.forEach(([w, h]) => { assert.equal(w, opened.listW, 'mỗi ô là một dòng hết bề rộng'); assert.ok(h >= 48 && h <= 60, `dòng đủ chạm và gọn (${h}px)`); });
+        await page.reload();
+        await page.locator('#barcode-print-sku').waitFor({ state: 'visible' });
+        assert.deepEqual((await fold()).slice(2).map(g => g.expanded), ['true', 'false'], 'nhớ nhóm đã mở trên máy');
+      } else {
+        assert.ok(folded.every(g => !g.toggle && g.shown === g.total), 'màn rộng: không có nút thả, hiện đủ ô');
       }
 
       // --- IN TEM SKU ---

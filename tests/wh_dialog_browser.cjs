@@ -7,6 +7,8 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const assert = require('node:assert/strict');
 
 const BASE = 'http://127.0.0.1:8000/';
+// Trang chủ điện thoại (17/10/2026): nhóm Quản trị là danh sách thả, mặc định đóng; mở trước khi bấm ô (đã mở thì để nguyên)
+const openAdminFold = async page => { const t = page.locator('#barcode-home [data-tone="admin"] .home-fold__toggle'); if (await t.isVisible() && await t.getAttribute('aria-expanded') !== 'true') await t.click(); };
 
 const mock = (page, enqueued) => page.route('**/*', async route => {
   const url = route.request().url();
@@ -42,6 +44,7 @@ const focused = (page, cls) => box(page).locator(cls).evaluate(button => button 
       page.on('dialog', dialog => { native.push(dialog.message()); dialog.dismiss(); });
       await mock(page, enqueued);
       await page.goto(BASE + '#home');
+      await openAdminFold(page);
       await page.locator('#barcode-admin').waitFor({ state: 'visible' });
 
       // Hộp thường: nội dung, danh sách 5 + "+2", con trỏ ở nút đồng ý, Enter = đồng ý

@@ -6,6 +6,8 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const assert = require('node:assert/strict');
 
 const BASE = 'http://127.0.0.1:8000/';
+// Trang chủ điện thoại (17/10/2026): nhóm Quản trị là danh sách thả, mặc định đóng; mở trước khi bấm ô (đã mở thì để nguyên)
+const openAdminFold = async page => { const t = page.locator('#barcode-home [data-tone="admin"] .home-fold__toggle'); if (await t.isVisible() && await t.getAttribute('aria-expanded') !== 'true') await t.click(); };
 const SESSION_KEY = 'print-sku-admin-session-v1';
 
 const mockRoutes = async page => page.route('**/*', async route => {
@@ -29,6 +31,7 @@ const mockRoutes = async page => page.route('**/*', async route => {
         page.on('pageerror', error => errors.push(error.message));
         await mockRoutes(page);
         await page.goto(BASE + '#home');
+        await openAdminFold(page);
         const tile = page.locator('#barcode-admin');
         await tile.waitFor({ state: 'visible' });
         assert.equal((await tile.innerText()).trim(), 'QUẢN TRỊ');
@@ -42,6 +45,7 @@ const mockRoutes = async page => page.route('**/*', async route => {
 
         // Ô QUẢN TRỊ → hộp thoại đăng nhập; Hủy → về trang chủ
         await page.goto(BASE + '#home');
+        await openAdminFold(page);
         await page.locator('#barcode-admin').click();
         await page.locator('#admin-auth').waitFor({ state: 'visible' });
         assert.equal(await page.evaluate(() => location.hash), '#admin/lenh-in');
@@ -66,6 +70,7 @@ const mockRoutes = async page => page.route('**/*', async route => {
         // 08/10/2026: ô QUẢN TRỊ mở thẳng màn "Lệnh in" (gộp Tổng quan + Đợt đã gửi), không còn vào React Tổng quan.
         const openAdmin = async () => {
           await page.goto(BASE + '#home');
+          await openAdminFold(page);
           await page.locator('#barcode-admin').click();
           await page.locator('#print-jobs-screen').waitFor({ state: 'visible' });
           assert.equal(await page.locator('#admin-auth').isVisible(), false);

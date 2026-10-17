@@ -7,6 +7,8 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const assert = require('node:assert/strict');
 
 const BASE = process.env.BASE || 'http://127.0.0.1:8000/';
+// Trang chủ điện thoại (17/10/2026): nhóm Quản trị là danh sách thả, mặc định đóng; mở trước khi bấm ô (đã mở thì để nguyên)
+const openAdminFold = async page => { const t = page.locator('#barcode-home [data-tone="admin"] .home-fold__toggle'); if (await t.isVisible() && await t.getAttribute('aria-expanded') !== 'true') await t.click(); };
 const SESSION_KEY = 'print-sku-admin-session-v1';
 const TOKEN = 'pd_' + 'ab'.repeat(24);
 const ago = m => new Date(Date.now() - m * 60000).toISOString();
@@ -57,6 +59,7 @@ const mock = (page, state) => page.route('**/*', async route => {
       const errors = []; page.on('pageerror', e => errors.push(e.message));
       await mock(page, state);
       await page.goto(BASE + '#home');
+      await openAdminFold(page);
       const card = page.locator('#barcode-activate');
       await card.waitFor({ state: 'visible' });
       assert.equal((await card.textContent()).replace(/\s+/g, ' ').trim(), 'KÍCH HOẠT MÁY');
