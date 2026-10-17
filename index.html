@@ -1080,6 +1080,11 @@ Error generating stack: `+y.message+`
       .pdv__btn{flex:1;min-height:48px;border:1.5px solid #d9e2de;border-radius:14px;background:#fff;color:#17251f;font-family:inherit;font-size:16px;font-weight:600;cursor:pointer}
       .pdv__btn--ok{border-color:#005f41;background:#005f41;color:#fff}.pdv__btn:disabled{opacity:.55;cursor:not-allowed}
       .barcode-choice[hidden]{display:none}
+      /* Khoá máy cho nhóm ghi ở xưởng (17/10/2026): thanh vàng "Máy chưa kích hoạt" khi phản hồi có accessWarning (không chặn). */
+      .fab{position:fixed;left:50%;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:1000;display:flex;align-items:center;gap:10px;width:max-content;max-width:calc(100% - 24px);padding:6px 6px 6px 14px;transform:translateX(-50%);border:1px solid #e3b64d;border-radius:14px;background:#fff3d6;color:#8a5b00;font-family:var(--wms-font,Arial,Helvetica,sans-serif);font-size:14px;font-weight:600;box-shadow:0 10px 28px rgba(13,40,30,.18)}.fab[hidden]{display:none}
+      .fab svg{flex:none;width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+      .fab__btn{min-height:44px;padding:0 14px;border:1px solid #8a5b00;border-radius:10px;background:#8a5b00;color:#fff;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer}
+      .fab__x{display:grid;flex:none;place-items:center;width:44px;height:44px;border:0;border-radius:10px;background:transparent;color:#8a5b00;cursor:pointer}
       @media(max-width:767px){dialog.pdv{width:100%;max-width:none;margin:auto 0 0;border-radius:20px 20px 0 0}}
     </style>
     <script id="print-device-script">
@@ -1168,6 +1173,29 @@ Error generating stack: `+y.message+`
           lastPrompt = Date.now();
           open("Máy này chưa được kích hoạt in");
         });
+        // Khoá máy cho nhóm ghi ở xưởng (17/10/2026): token() gửi kèm lệnh GHI; check() đọc phản hồi — ACCESS_DENIED mở hộp Kích hoạt máy như in tem,
+        // accessWarning (pha ghi nhận) hiện thanh vàng không chặn, tối đa 1 lần mỗi 10 phút.
+        let warnAt = 0, warnBar = null;
+        const warn = () => {
+          if (Date.now() - warnAt < 600000) return;
+          warnAt = Date.now();
+          if (!warnBar) {
+            warnBar = document.createElement("div"); warnBar.id = "floor-access-bar"; warnBar.className = "fab"; warnBar.setAttribute("role", "status");
+            warnBar.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg><span>Máy chưa kích hoạt</span><button type="button" class="fab__btn" id="floor-access-open">Kích hoạt</button><button type="button" class="fab__x" id="floor-access-close" aria-label="Đóng"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>`;
+            document.body.append(warnBar);
+            warnBar.querySelector("#floor-access-open").onclick = () => { warnBar.hidden = true; window.PrintSkuDevice.open("Máy này chưa được kích hoạt"); };
+            warnBar.querySelector("#floor-access-close").onclick = () => { warnBar.hidden = true; };
+          }
+          warnBar.hidden = false;
+        };
+        window.PrintSkuFloorAccess = {
+          token: () => window.PrintSkuQueue.accessToken(),
+          check(result) {
+            if (result?.error?.code === "ACCESS_DENIED") { window.dispatchEvent(new CustomEvent("print-sku-access-denied", { detail: result.error })); return false; }
+            if (result?.accessWarning) warn();
+            return true;
+          }
+        };
         window.PrintSkuDevice = { key, activated, open, activate, name: () => read(NAME_KEY) };
         if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", card); else card();
       })();
@@ -7751,7 +7779,7 @@ var FSK_CORE = (function () {
         const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
         const active=()=>location.hash.replace(/^#/,'').split('&')[0]==='cut-group-uid';
         const tell=(text,tone='')=>{message.textContent=text;message.dataset.tone=tone;delete message.dataset.kind};
-        const rpc=async(name,args={})=>{const q=window.PrintSkuQueue,r=await fetch(`${q.supabaseUrl}/rest/v1/rpc/${name}`,{method:'POST',headers:{apikey:q.publishableKey,Authorization:`Bearer ${q.publishableKey}`,'Content-Type':'application/json'},body:JSON.stringify({p_access_token:q.accessToken(),...args}),signal:AbortSignal.timeout(15000)});const data=await r.json().catch(()=>null);if(!r.ok||!data)throw new Error(data?.message||`Supabase HTTP ${r.status}`);return data};
+        const rpc=async(name,args={})=>{const q=window.PrintSkuQueue,r=await fetch(`${q.supabaseUrl}/rest/v1/rpc/${name}`,{method:'POST',headers:{apikey:q.publishableKey,Authorization:`Bearer ${q.publishableKey}`,'Content-Type':'application/json'},body:JSON.stringify({p_access_token:q.accessToken(),...args}),signal:AbortSignal.timeout(15000)});const data=await r.json().catch(()=>null);if(!r.ok||!data)throw new Error(data?.message||`Supabase HTTP ${r.status}`);window.PrintSkuFloorAccess?.check(data);return data};
         const statusName={pending:'Chờ in',queued:'Đang in',printed:'Đã in',failed:'In lỗi'};
         const fmt=value=>{const d=new Date(value);return Number.isNaN(d.getTime())?'':new Intl.DateTimeFormat('vi-VN',{dateStyle:'short',timeStyle:'short'}).format(d)};
         const printable=item=>item.printStatus==='pending'||item.printStatus==='failed'||item.printStatus==='printed';
@@ -8443,7 +8471,7 @@ var FSK_CORE = (function () {
         if(!dateToFilter.value)dateToFilter.value=todayVN();
         const active=()=>location.hash.replace(/^#/,'').split('&')[0]==='xa-vai';
         const tell=(text,tone='')=>{message.textContent=text;message.dataset.tone=tone;delete message.dataset.kind};
-        const rpc=async(name,args={})=>{const q=window.PrintSkuQueue,r=await fetch(`${q.supabaseUrl}/rest/v1/rpc/${name}`,{method:'POST',headers:{apikey:q.publishableKey,Authorization:`Bearer ${q.publishableKey}`,'Content-Type':'application/json'},body:JSON.stringify(args),signal:AbortSignal.timeout(15000)});const data=await r.json().catch(()=>null);if(!r.ok||!data)throw new Error(data?.message||`Supabase HTTP ${r.status}`);return data};
+        const rpc=async(name,args={})=>{const q=window.PrintSkuQueue,r=await fetch(`${q.supabaseUrl}/rest/v1/rpc/${name}`,{method:'POST',headers:{apikey:q.publishableKey,Authorization:`Bearer ${q.publishableKey}`,'Content-Type':'application/json'},body:JSON.stringify(/^xa_vai_(start|end)$/.test(name)?{p_access_token:window.PrintSkuFloorAccess?.token(),...args}:args),signal:AbortSignal.timeout(15000)});const data=await r.json().catch(()=>null);if(!r.ok||!data)throw new Error(data?.message||`Supabase HTTP ${r.status}`);window.PrintSkuFloorAccess?.check(data);return data};
         const fmtDate=value=>{if(!value)return '';const d=new Date(value);return Number.isNaN(d.getTime())?'':new Intl.DateTimeFormat('vi-VN',{timeZone:'Asia/Ho_Chi_Minh',day:'2-digit',month:'2-digit',year:'numeric'}).format(d)};
         const fmtTime=value=>{if(!value)return '';const d=new Date(value);return Number.isNaN(d.getTime())?'':new Intl.DateTimeFormat('vi-VN',{timeZone:'Asia/Ho_Chi_Minh',hour:'2-digit',minute:'2-digit',hour12:false}).format(d)};
         const fmt=value=>value?`${fmtDate(value)} ${fmtTime(value)}`:'—';
@@ -8475,7 +8503,7 @@ var FSK_CORE = (function () {
           tell(`Đang ghi giờ kết thúc xả vải cho ${uid}…`);
           try{
             const r=await rpc('xa_vai_end',{p_group_uid:uid});
-            if(!r.ok)throw new Error(r.error?.message||'Không kết thúc được');
+            if(r.error?.code==='ACCESS_DENIED'){button.disabled=false;tell(r.error.message,'error');return}if(!r.ok)throw new Error(r.error?.message||'Không kết thúc được');
             tell(`Đã ghi giờ kết thúc xả vải cho ${uid}.`,'ok');
             openItems=openItems.filter(item=>item.groupUid!==uid);
             renderOpen();
@@ -9962,6 +9990,7 @@ var FSK_CORE = (function () {
             </div>
             <div class="ss-progress" id="pdm-progress" aria-hidden="true"><i></i></div><p class="ss-status" id="pdm-status" aria-live="polite"></p>
             <section class="ss-metrics pdm-metrics" aria-label="Tổng quan thiết bị"><button class="ss-metric" type="button" data-pdm-filter="on" aria-pressed="false"><span data-ico="check">Máy đang bật</span><strong id="pdm-m-on">—</strong></button><button class="ss-metric" type="button" data-pdm-filter="off" aria-pressed="false"><span data-ico="ban">Máy đã tắt</span><strong id="pdm-m-off">—</strong></button><button class="ss-metric" type="button" data-pdm-filter="all" aria-pressed="true"><span data-ico="box">Lệnh in hôm nay</span><strong id="pdm-m-jobs">—</strong></button><div class="ss-metric"><span data-ico="clock">Mã đang hiệu lực</span><strong id="pdm-m-codes">—</strong></div></section>
+            <section class="ss-panel" id="pdm-floor" hidden aria-labelledby="pdm-floor-title"><div class="ss-panel-head"><div><h2 class="pdm-floor-h" id="pdm-floor-title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>Khoá máy xưởng</h2><p id="pdm-floor-note">7 ngày gần nhất</p></div><div class="pdm-floor-tools"><span id="pdm-floor-mode"></span><button type="button" class="pdm-d-btn" id="pdm-floor-set">Chuyển sang Bắt buộc</button></div></div><div class="ss-table-wrap"><table class="ss-table pdm-table"><thead><tr><th>Hàm</th><th class="n">Số phút</th><th class="n">Khoá sai</th><th>Lần cuối</th></tr></thead><tbody id="pdm-floor-body"></tbody></table></div></section>
             <section class="ss-panel">
               <div class="ss-panel-head"><div><h2 id="pdm-list-title">Máy đã kích hoạt</h2><p id="pdm-note"></p></div><div class="as-tools" id="pdm-tools" hidden></div></div>
               <div class="as-tags" id="pdm-tags" hidden></div>
@@ -12228,7 +12257,7 @@ async function rpc(name,args,retry=true){
         // ---- Supabase RPC: quét/xem công khai (khoá công khai như Xả vải), nhập/xoá/đóng đợt cần token Admin ----
         const post=async(name,args,token)=>{const q=window.PrintSkuQueue,res=await fetch(`${q.supabaseUrl}/rest/v1/rpc/${name}`,{method:'POST',headers:{apikey:q.publishableKey,Authorization:`Bearer ${token||q.publishableKey}`,'Content-Type':'application/json'},body:JSON.stringify(args||{}),signal:AbortSignal.timeout(20000)});return{res,body:await res.json().catch(()=>null)}};
         const missing=body=>body?.code==='PGRST202'||body?.code==='42883';
-        const rpc=async(name,args)=>{const{res,body}=await post(name,args);if(missing(body))throw new Error('Chưa có dữ liệu Cấp vải trên Supabase');if(!res.ok||!body)throw new Error(body?.message||`Supabase HTTP ${res.status}`);return body};
+        const rpc=async(name,args)=>{const{res,body}=await post(name,name==='fabric_issue_scan'?{p_access_token:window.PrintSkuFloorAccess?.token(),...args}:args);if(missing(body))throw new Error('Chưa có dữ liệu Cấp vải trên Supabase');if(!res.ok||!body)throw new Error(body?.message||`Supabase HTTP ${res.status}`);window.PrintSkuFloorAccess?.check(body);return body};
         const adminRpc=async(name,args,retry=true)=>{
           const token=window.PrintSkuAdminAccess?.peekToken?.()||await window.PrintSkuAdminAuth.accessToken();
           const{res,body}=await post(name,args,token);
@@ -12841,7 +12870,7 @@ async function rpc(name,args,retry=true){
         // ---- Supabase RPC: xem/quét công khai, tạo/xóa/bỏ quét cần token Admin ----
         const post = async (name, args, token) => { const q = window.PrintSkuQueue, res = await fetch(`${q.supabaseUrl}/rest/v1/rpc/${name}`, { method: 'POST', headers: { apikey: q.publishableKey, Authorization: `Bearer ${token || q.publishableKey}`, 'Content-Type': 'application/json' }, body: JSON.stringify(args || {}), signal: AbortSignal.timeout(25000) }); return { res, body: await res.json().catch(() => null) } };
         const missing = body => body?.code === 'PGRST202' || body?.code === '42883';
-        const rpc = async (name, args) => { const { res, body } = await post(name, args); if (missing(body)) throw new Error('Chưa có dữ liệu Lấy mẫu trên Supabase'); if (!res.ok || !body) throw new Error(body?.message || `Supabase HTTP ${res.status}`); return body };
+        const rpc = async (name, args) => { const { res, body } = await post(name, /^cut_sample_(scan|confirm)$/.test(name) ? { p_access_token: window.PrintSkuFloorAccess?.token(), ...args } : args); if (missing(body)) throw new Error('Chưa có dữ liệu Lấy mẫu trên Supabase'); if (!res.ok || !body) throw new Error(body?.message || `Supabase HTTP ${res.status}`); window.PrintSkuFloorAccess?.check(body); return body };
         const adminRpc = async (name, args, retry = true) => {
           const token = window.PrintSkuAdminAccess?.peekToken?.() || await window.PrintSkuAdminAuth.accessToken();
           const { res, body } = await post(name, args, token);
@@ -13217,6 +13246,8 @@ async function rpc(name,args,retry=true){
       .pdm-jobs{display:grid;gap:6px}.pdm-job{display:grid;grid-template-columns:52px 54px minmax(0,1fr) 60px 80px;gap:10px;align-items:center;padding:9px 12px;border:1px solid #edf2f0;border-radius:12px;background:#fff;text-align:left;font:inherit;cursor:pointer}
       .pdm-job:hover{background:#f6f8f7}.pdm-job .t{color:#60736b;font-size:12px}.pdm-job .k{font-size:12px;font-weight:600;color:#005f41}.pdm-job .m{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}.pdm-job .n{text-align:right;color:#60736b;font-size:12px}
       .pdm-empty{padding:18px 0;color:#60736b;font-size:13px}
+      #pdm-floor{margin-bottom:16px}.pdm-floor-h{display:flex;align-items:center;gap:8px}.pdm-floor-h svg{flex:none;width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+      .pdm-floor-tools{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
     </style>
     <script id="print-devices-tab-script">
       (() => {
@@ -13241,7 +13272,7 @@ async function rpc(name,args,retry=true){
         }
         const COLS=[{label:"Máy",sort:"name"},{label:"Kích hoạt",sort:"act",first:"desc"},{label:"Dùng gần nhất",sort:"seen",first:"desc"},{label:"In gần nhất",sort:"print",first:"desc"},{label:"Lệnh in",sort:"count",first:"desc",cls:"n"},{label:"Trạng thái",sort:"on"}];
         const CSVH=["Tên máy","Trạng thái","Kích hoạt lúc","Dùng gần nhất","In gần nhất","Tổng lệnh in","Lệnh in hôm nay","Trình duyệt"];
-        const state={data:null,code:null,filter:"all",busy:false,loaded:false,device:null,jobs:[]};
+        const state={data:null,code:null,filter:"all",busy:false,loaded:false,device:null,jobs:[],floor:null};
         const list=UI.createList?UI.createList({tools:$("pdm-tools"),tagsBox:$("pdm-tags"),head:$("pdm-head"),body:$("pdm-body"),pager:$("pdm-pager"),note:$("pdm-note")}):null;
         const devices=()=>state.data?.devices||[],legacy=()=>(state.data?.legacyKeys||[]).find(k=>k.isPublic);
         const atTab=()=>location.hash===TAB_ROUTE;
@@ -13283,7 +13314,7 @@ async function rpc(name,args,retry=true){
         function render(keep=true){renderMetrics();renderCode();renderList(keep)}
         async function load(quiet=false){
           if(!quiet)busy(true);
-          try{state.data=await rpc("print_devices_admin");state.loaded=true;render();say("")}
+          try{state.data=await rpc("print_devices_admin");state.loaded=true;render();say("");loadFloor()}
           catch(error){say(error.message||"Không tải được danh sách máy","error")}
           finally{busy(false)}
         }
@@ -13305,6 +13336,27 @@ async function rpc(name,args,retry=true){
           try{await rpc("print_access_key_set_enabled",{p_name:lk.name,p_enabled:!lk.enabled});await load(true)}
           catch(error){say(error.message||"Không đổi được khoá chung","error")}
           finally{sw.disabled=false}
+        }
+        // Khoá máy xưởng (17/10/2026): chế độ Ghi nhận | Bắt buộc của nhóm lệnh ghi ở xưởng + số lần máy chưa kích hoạt 7 ngày theo hàm. RPC lỗi hoặc chưa có → thẻ ẩn.
+        const FLOOR_FN={cut_group_uid_scan:"Quét cắt",cut_group_uid_mark_adj:"Đánh dấu ADJ",cut_group_uid_mark_queued:"Đưa vào hàng in",cut_group_uid_mark_result:"Kết quả in",cut_group_uid_adj_from_wms:"Đọc ADJ từ WMS",cut_group_uid_adj_resolve:"Xử lý ADJ",cut_sample_scan:"Quét lấy mẫu",cut_sample_confirm:"Xác nhận lấy mẫu",fabric_issue_scan:"Quét cấp vải",xa_vai_start:"Bắt đầu xả vải",xa_vai_end:"Kết thúc xả vải"};
+        function renderFloor(){
+          const box=$("pdm-floor"),f=state.floor;
+          if(!f||!f.mode){box.hidden=true;return}
+          const enforce=f.mode==="enforce",days=[...(Array.isArray(f.items)?f.items:[])].sort((a,b)=>Number(b.count||0)-Number(a.count||0));
+          box.hidden=false;
+          $("pdm-floor-mode").innerHTML=`<span class="ss-badge" data-status="${enforce?"completed":"expired"}">${enforce?"Bắt buộc":"Ghi nhận"}</span>`;
+          $("pdm-floor-set").textContent=enforce?"Chuyển sang Ghi nhận":"Chuyển sang Bắt buộc";
+          $("pdm-floor-body").innerHTML=days.length?days.map(d=>`<tr><td>${esc(FLOOR_FN[d.fn]||d.fn)}</td><td class="n">${num(d.count)}</td><td class="n">${num(d.withToken)}</td><td>${esc(dt(d.lastAt))}</td></tr>`).join(""):`<tr><td colspan="4" class="ss-empty">Không có lần nào</td></tr>`;
+        }
+        async function loadFloor(){try{state.floor=await rpc("floor_access_summary");renderFloor()}catch(_){state.floor=null;$("pdm-floor").hidden=true}}
+        async function floorSetMode(){
+          const f=state.floor;if(!f)return;
+          const next=f.mode==="enforce"?"log":"enforce";
+          if(window.WhDialog&&!await window.WhDialog.confirm({tone:"warning",title:next==="enforce"?"Chuyển sang Bắt buộc":"Lùi về Ghi nhận",facts:[`${num(devices().filter(d=>d.enabled).length)} máy đã kích hoạt`],list:next==="enforce"?["Máy chưa kích hoạt sẽ bị từ chối ghi","Quay lại Ghi nhận được bất cứ lúc nào"]:["Máy chưa kích hoạt ghi được trở lại, chỉ bị ghi nhận"],confirmText:next==="enforce"?"Bắt buộc":"Ghi nhận",cancelText:"Huỷ"}))return;
+          const b=$("pdm-floor-set");b.disabled=true;
+          try{await rpc("floor_access_set_mode",{p_mode:next});await loadFloor();say(next==="enforce"?"Đã chuyển sang Bắt buộc":"Đã chuyển sang Ghi nhận","ok")}
+          catch(error){say(error.message||"Không đổi được chế độ","error")}
+          finally{b.disabled=false}
         }
         // Popup máy: thông tin + lệnh in hôm nay của máy (bấm mở popup lệnh in sẵn có) + tắt/bật + đổi tên
         const dialog=$("pdm-dialog");
@@ -13359,7 +13411,7 @@ async function rpc(name,args,retry=true){
         }
         $("pj-tabs").addEventListener("click",e=>{const b=e.target.closest("[data-pj-tab]");if(!b)return;location.hash=b.dataset.pjTab==="devices"?TAB_ROUTE:ROUTE});
         $("pj-tabs").addEventListener("keydown",e=>{if(e.key!=="ArrowLeft"&&e.key!=="ArrowRight")return;const tabs=[...screen.querySelectorAll("[data-pj-tab]")],i=tabs.findIndex(b=>b.getAttribute("aria-selected")==="true"),next=tabs[(i+(e.key==="ArrowRight"?1:tabs.length-1))%tabs.length];next.focus();next.click();e.preventDefault()});
-        $("pdm-create").onclick=create;$("pdm-code-revoke").onclick=revoke;$("pdm-legacy").onclick=legacyToggle;
+        $("pdm-create").onclick=create;$("pdm-code-revoke").onclick=revoke;$("pdm-legacy").onclick=legacyToggle;$("pdm-floor-set").onclick=floorSetMode;
         $("pdm-code-copy").onclick=async()=>{try{await navigator.clipboard.writeText($("pdm-code-text").textContent);say("Đã chép mã","ok")}catch(_){say("Không chép được, hãy đọc mã cho nhân viên","error")}};
         screen.querySelectorAll("button.ss-metric[data-pdm-filter]").forEach(b=>b.onclick=()=>{state.filter=b.dataset.pdmFilter;render(false)});
         $("pdm-body").addEventListener("click",e=>{const tr=e.target.closest("tr[data-pdm-id]");if(tr)openDevice(tr.dataset.pdmId)});

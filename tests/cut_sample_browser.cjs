@@ -9,7 +9,7 @@ const path = require("node:path");
 // axe-core chỉ dùng khi test (npm install ở thư mục gốc); không có thì bỏ qua phần kiểm tiếp cận.
 let AXE = null;
 try { AXE = require.resolve("axe-core/axe.min.js", { paths: [path.join(__dirname, "..")] }); } catch (_) { /* không có axe-core */ }
-const BASE = "http://127.0.0.1:8000/";
+const BASE = process.env.BASE || "http://127.0.0.1:8000/";
 const PO = "10012600000777", PO_BIG = "10012600000888", PO_HUGE = "10012600000666", PO_RULE = "10012600000444", PO_EMPTY = "10012600000999", PO_OTHER = "10012600000555";
 const ADMIN_TOKEN = "test-admin-token";
 
@@ -145,7 +145,10 @@ async function open(browser, server, width, { admin = true, openSample = true } 
     if (rpc) {
       const body = route.request().postDataJSON() || {}, headers = route.request().headers();
       server.calls.push({ name: rpc[1], body, auth: headers.authorization });
-      return json(server.handlers[rpc[1]](body, headers));
+      const reply = server.handlers[rpc[1]](body, headers);
+      if (rpc[1] === "cut_sample_scan" && server.floor === "deny") return json({ ok: false, error: { code: "ACCESS_DENIED", message: "Máy chưa kích hoạt; vào ô KÍCH HOẠT MÁY." } });
+      if (rpc[1] === "cut_sample_scan" && server.floor === "warn") return json({ ...reply, accessWarning: true });
+      return json(reply);
     }
     if (/\/rest\/v1\/rpc\/cut_group_uid_scan/.test(url)) {
       const uid = route.request().postDataJSON().p_group_uid;
@@ -484,6 +487,17 @@ Tổng hiện tại: ${await chipsText(page)} · tin nhắn: ${await msg(page)} 
   await page.waitForFunction(() => /Đã xóa phiên PO/.test(document.getElementById("cs-message").textContent));
   assert.equal(server.sessions.size, 1);
 
+  // Khoá máy (17/10/2026): lệnh GHI gửi p_access_token, lệnh ĐỌC (get/list) không gửi (bản đọc không có tham số này).
+  for (const name of ["cut_sample_scan", "cut_sample_confirm"]) {
+    const writes = server.calls.filter(c => c.name === name);
+    assert.ok(writes.length, `đã gọi ${name}`);
+    assert.ok(writes.every(c => c.body.p_access_token === "public"), `${name} gửi p_access_token`);
+  }
+  for (const name of ["cut_sample_get", "cut_sample_list"]) {
+    const reads = server.calls.filter(c => c.name === name);
+    assert.ok(reads.length, `đã gọi ${name}`);
+    assert.ok(reads.every(c => !("p_access_token" in c.body)), `${name} không gửi p_access_token`);
+  }
   // Chọn phiên khác bằng danh sách ở khối quét.
   await closeDialogs(page);
   assert.match(await page.locator("#cs-plan option:checked").innerText(), new RegExp(`PO ${PO}`));
@@ -572,6 +586,35 @@ async function mobile(browser) {
   await page.close();
 }
 
+// Khoá máy cho nhóm ghi (17/10/2026): accessWarning → thanh vàng "Máy chưa kích hoạt" (quét vẫn chạy); ACCESS_DENIED → hộp Kích hoạt mở, số liệu không đổi.
+async function floorAccess(browser) {
+  const server = makeServer(), { page, errors } = await open(browser, server, 1280);
+  await openPlans(page);
+  await page.locator("#cs-po").fill(PO);
+  await page.locator("#cs-po-go").click();
+  await page.waitForSelector("#cs-create:not([disabled])");
+  await page.locator("#cs-create").click();
+  await page.waitForFunction(() => /Đã tạo phiên PO/.test(document.getElementById("cs-message").textContent));
+  await closeDialogs(page);
+  server.floor = "warn";
+  await scan(page, "1028261016000001", "CẮT GROUP UID NÀY");
+  await page.locator("#floor-access-bar").waitFor({ state: "visible" });
+  assert.match((await page.locator("#floor-access-bar").innerText()).replace(/\s+/g, " "), /Máy chưa kích hoạt/);
+  assert.equal(await chipsText(page), "Cắt 1/4 QC 0/2 Lưu trữ 0/10", "accessWarning không chặn: vẫn ghi nhận quét");
+  await shot(page, "floor-bar-sample");
+  await page.locator("[data-pop-close]").click();
+  await page.locator("#floor-access-open").click();
+  await page.waitForSelector("#pdv-dialog[open]");
+  await page.locator("#pdv-cancel").click();
+  server.floor = "deny";
+  await page.locator("#cut-code").fill("1028261016000002");
+  await page.locator("#cut-code").press("Enter");
+  await page.waitForSelector("#pdv-dialog[open]");
+  assert.equal(await chipsText(page), "Cắt 1/4 QC 0/2 Lưu trữ 0/10", "ACCESS_DENIED không đổi số liệu");
+  assert.deepEqual(errors, []);
+  await page.close();
+}
+
 (async () => {
   const browser = await chromium.launch({ channel: "chrome", headless: true });
   try {
@@ -579,5 +622,6 @@ async function mobile(browser) {
     await nonAdmin(browser); console.log("PASS cut sample · quyền Admin (bánh răng, hộp thoại)");
     await freeMode(browser); console.log("PASS cut sample · Cắt tự do giữ nguyên luồng cũ, đổi chế độ không ảnh hưởng");
     await mobile(browser); console.log("PASS cut sample · điện thoại 375px");
+    await floorAccess(browser); console.log("PASS cut sample · khoá máy: p_access_token cho lệnh ghi, thanh vàng, ACCESS_DENIED mở hộp kích hoạt");
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exit(1); });

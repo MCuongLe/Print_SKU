@@ -6,7 +6,7 @@
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const assert = require('node:assert/strict');
 
-const BASE = 'http://127.0.0.1:8000/';
+const BASE = process.env.BASE || 'http://127.0.0.1:8000/';
 const SESSION_KEY = 'print-sku-admin-session-v1';
 const TOKEN = 'pd_' + 'ab'.repeat(24);
 const ago = m => new Date(Date.now() - m * 60000).toISOString();

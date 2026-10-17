@@ -2,6 +2,8 @@
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const BASE = process.env.BASE || 'http://127.0.0.1:8000/';
+const FLOOR_TOKEN = 'pd_' + 'ab'.repeat(24);
 
 (async () => {
   const browser = await chromium.launch({ channel: 'chrome', headless: true });
@@ -15,7 +17,7 @@ const fs = require('node:fs');
       page.on('pageerror', error => errors.push(error.message));
       await page.route('**/*', async route => {
         const request = route.request(), url = request.url();
-        if (url.startsWith('http://127.0.0.1:8000/')) return route.continue();
+        if (url.startsWith(BASE)) return route.continue();
         const rpc = url.split('/rpc/')[1] || '';
         const body = request.postDataJSON?.() || {};
         let result = { ok: true, data: {} };
@@ -49,7 +51,7 @@ const fs = require('node:fs');
         }
         return route.fulfill({ contentType: 'application/json', body: JSON.stringify(result) });
       });
-      await page.goto('http://127.0.0.1:8000/#home');
+      await page.goto(BASE + '#home');
       await page.locator('#barcode-cut-uid').click();
       assert.equal(page.url().endsWith('#cut-group-uid'), true);
       await page.locator('#cut-group-uid-screen').waitFor({ state: 'visible' });
@@ -184,6 +186,50 @@ const fs = require('node:fs');
       assert.equal(page.url().endsWith('#cut-group-uid'), true);
       assert.deepEqual(errors, []);
       console.log(`PASS ${width}px: route, missing/duplicate UID, persistence, current label payload, status polling, SKU filter, combo→normal SKU filter, A4 landscape XLSX, camera UID scan, admin login/delete/logout, no overflow/errors`);
+      await page.close();
+    }
+
+    // Khoá máy cho nhóm ghi (17/10/2026): lệnh quét gửi khoá máy; accessWarning → thanh vàng không chặn (tem vẫn lưu); ACCESS_DENIED → hộp Kích hoạt mở, ô quét giữ mã.
+    {
+      const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+      await page.addInitScript(token => localStorage.setItem('tb-khoa', token), FLOOR_TOKEN);
+      const scans = [], errors = [];
+      let mode = 'warn';
+      page.on('pageerror', error => errors.push(error.message));
+      await page.route('**/*', async route => {
+        const url = route.request().url();
+        if (url.startsWith(BASE)) return route.continue();
+        const rpc = url.split('/rpc/')[1] || '', body = route.request().postDataJSON?.() || {};
+        let result = { ok: true, data: { items: [] } };
+        if (rpc === 'cut_group_uid_scan') {
+          scans.push(body);
+          result = mode === 'deny'
+            ? { ok: false, error: { code: 'ACCESS_DENIED', message: 'Máy chưa kích hoạt; vào ô KÍCH HOẠT MÁY.' } }
+            : { ok: true, data: { groupUid: body.p_group_uid, sku: 'SKU-001', productName: 'Vải thử nghiệm', lot: 'LOT-7', roll: 'ROLL-2', printStatus: 'pending' }, ...(mode === 'warn' ? { accessWarning: true } : {}) };
+        } else if (rpc === 'print_queue_status') result = { ok: true, data: { agents: [] } };
+        else if (!rpc) result = [];
+        return route.fulfill({ contentType: 'application/json', body: JSON.stringify(result) });
+      });
+      await page.goto(BASE + '#cut-group-uid');
+      await page.locator('#cut-group-uid-screen').waitFor({ state: 'visible' });
+      await page.locator('#cut-code').fill('UID-W1');
+      await page.locator('#cut-code').press('Enter');
+      await page.locator('#floor-access-bar').waitFor({ state: 'visible' });
+      assert.match((await page.locator('#floor-access-bar').textContent()).replace(/\s+/g, ' ').trim(), /Máy chưa kích hoạt/);
+      assert.equal(scans[0].p_access_token, FLOOR_TOKEN, 'cut_group_uid_scan gửi khoá máy');
+      await page.waitForFunction(() => document.querySelector('#cut-last').textContent.includes('UID-W1'));
+      await page.locator('#floor-access-open').click();
+      await page.locator('#pdv-dialog').waitFor({ state: 'visible' });
+      await page.locator('#pdv-cancel').click();
+      await page.locator('#pdv-dialog').waitFor({ state: 'hidden' });
+      mode = 'deny';
+      await page.locator('#cut-code').fill('UID-D1');
+      await page.locator('#cut-code').press('Enter');
+      await page.locator('#pdv-dialog').waitFor({ state: 'visible' });
+      await page.waitForFunction(() => /Máy chưa kích hoạt/.test(document.querySelector('#cut-message').textContent));
+      assert.equal(await page.locator('#cut-code').inputValue(), 'UID-D1', 'bị từ chối thì ô quét giữ mã');
+      assert.deepEqual(errors, []);
+      console.log('PASS floor access: cut_group_uid_scan gửi khoá máy, accessWarning → thanh vàng, ACCESS_DENIED → hộp kích hoạt + giữ ô quét');
       await page.close();
     }
   } finally { await browser.close(); }
