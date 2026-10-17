@@ -23,6 +23,7 @@ const fakeGate = ({ slip, rows, it404, itExt }) => {
     MAX_COPIES: 200, MAX_SKU_PER_JOB: 30,
     readSlip: async number => {
       window.__calls.read.push(number);
+      if (window.__readGate) await window.__readGate;
       if (number === it404) throw new Error(`Không tìm thấy phiếu IT ${number}`);
       if (number === itExt) throw new Error("Extension phản hồi quá lâu; kiểm tra tab WMS rồi thử lại");
       return { slip: { ...slip, number }, rows: rows.map(row => ({ ...row })) };
@@ -42,12 +43,13 @@ async function open(browser, width, { admin = true, speech = true, edge = { mode
   const errors = [], edgeCalls = [];
   page.on("pageerror", error => errors.push(error.message));
   page.on("console", message => { if (message.type() === "error" && !/Failed to load resource/.test(message.text())) errors.push(message.text()); });
-  await page.route("**/*", route => {
+  await page.route("**/*", async route => {
     const url = route.request().url(), json = (body, status = 200) => route.fulfill({ status, contentType: "application/json", body: JSON.stringify(body) });
     if (url.startsWith(BASE)) return route.continue();
     if (url.includes("/functions/v1/print-assistant")) {
       const body = JSON.parse(route.request().postData() || "{}");
       edgeCalls.push({ body, headers: route.request().headers() });
+      if (edge.delay) await new Promise(resolve => setTimeout(resolve, edge.delay));
       if (edge.mode === "503") return json({ ok: false, error: { code: "NO_AI_KEY", message: "Thiếu khoá AI" } }, 503);
       if (/phiếu nhập kho/.test(body.message)) return json({ ok: true, data: { intent: "print_it", itNumber: null, copies: null, reply: "Cho tôi số phiếu IT.", needs: ["it_number"] }, meta: { model: "claude-opus-5-5", inputTokens: 1, outputTokens: 1 } });
       return json({ ok: true, data: { intent: "other", itNumber: null, copies: null, reply: "Hiện tôi chỉ in tem theo phiếu IT", needs: [] }, meta: {} });
@@ -65,7 +67,7 @@ async function open(browser, width, { admin = true, speech = true, edge = { mode
     localStorage.removeItem("tb-khoa");
   }, { admin, email: EMAIL });
   await page.evaluate(fakeGate, { slip: SLIP, rows: ROWS, it404: IT_404, itExt: IT_EXT });
-  return { page, context, errors, edgeCalls };
+  return { page, context, errors, edgeCalls, edge };
 }
 // Ô TRỢ LÝ IN ẩn ở ≤ 800px (chỉ Admin, như nút Phiếu IT): khi ô ẩn thì mở màn bằng hash như người dùng gõ URL.
 const enter = async page => { const tile = page.locator("#home-assistant"); if (await tile.isVisible()) await tile.click(); else await page.evaluate(() => { location.hash = "#assistant"; }); await page.locator("#assistant-screen").waitFor({ state: "visible" }); };
@@ -80,9 +82,13 @@ const noOverflow = page => page.evaluate(() => {
   return { page: document.documentElement.scrollWidth <= innerWidth, screen: document.getElementById("assistant-screen").scrollWidth <= innerWidth, over: over.slice(0, 5) };
 });
 const shot = async (page, name) => { if (!SHOTS) return; fs.mkdirSync(SHOTS, { recursive: true }); await page.screenshot({ path: path.join(SHOTS, name) }); };
+// Chip trạng thái của lệnh đầu tiên trong thẻ kết quả cuối cùng
+const jobChip = page => page.locator("#pa-thread .pa-result").last().locator(".pa-job .pa-st").first();
+const SIZES = [12, 13, 14, 16, 18, 22, 28];
+const offScale = page => page.evaluate(sizes => [...document.querySelectorAll("#assistant-screen *")].filter(el => { const b = el.getBoundingClientRect(); return b.width && [...el.childNodes].some(n => n.nodeType === 3 && n.textContent.trim()); }).map(el => parseFloat(getComputedStyle(el).fontSize)).filter(s => s > 0 && !sizes.includes(s)), SIZES);
 
 async function desktop(browser) {
-  const { page, context, errors, edgeCalls } = await open(browser, 1280);
+  const { page, context, errors, edgeCalls, edge } = await open(browser, 1280);
   // Ô trang chủ nhóm In tem → màn
   const tile = page.locator("#home-assistant");
   assert.equal((await tile.innerText()).trim(), "TRỢ LÝ IN");
@@ -102,14 +108,56 @@ async function desktop(browser) {
   assert.equal(await page.locator("#pa-input").isDisabled(), false);
   assert.equal(await page.locator("#pa-mic").isVisible(), true, "có SpeechRecognition: hiện nút mic");
 
+  // Trạng thái rỗng: icon bot 32px (cỡ chuẩn icon lớn nhất) trong vòng tròn 72px, nhãn, 3 chip (2 mẫu + Nói), chưa có hàng Gần đây, chưa có nút xoá
+  assert.equal(await page.locator("#pa-thread .pa-empty-ico svg").evaluate(el => `${el.getBoundingClientRect().width}x${el.getBoundingClientRect().height}`), "32x32");
+  assert.equal(await page.locator("#pa-thread .pa-empty-ico").evaluate(el => getComputedStyle(el).borderRadius), "999px");
+  assert.equal((await page.locator("#pa-thread .pa-empty-title").innerText()).trim(), "Phiếu IT → tem SKU");
+  assert.deepEqual(await page.locator("#pa-thread .pa-sugs .pa-sug").allInnerTexts().then(a => a.map(t => t.trim())), ["IT 123456 · 1 bản", "IT 123456 · 2 bản", "Nói"]);
+  assert.equal(await page.locator("#pa-thread .pa-recent").count(), 0, "chưa in lần nào: không có hàng Gần đây");
+  assert.equal(await page.locator("#pa-clear").isHidden(), true, "chưa có lượt: ẩn nút xoá hội thoại");
+  assert.equal(await page.locator("#pa-thread").evaluate(el => getComputedStyle(el).minHeight), "250px", "rỗng (máy tính): vùng hội thoại gọn ≈ 250px");
+  assert.ok(await page.locator("#pa-thread").evaluate(el => el.getBoundingClientRect().height) <= 290, "rỗng: không còn khoảng trống lớn");
+  // 7: nút xoá hội thoại máy tính = icon trash-2 16 + nhãn "Xoá", cao 40
+  const clearLook = await page.locator("#pa-clear").evaluate(el => { const b = el.getBoundingClientRect(), i = el.querySelector("svg").getBoundingClientRect(); return { h: Math.round(b.height), text: el.innerText.trim(), icon: Math.round(i.width), label: el.getAttribute("aria-label"), title: el.title }; });
+  await page.evaluate(() => { document.getElementById("pa-clear").hidden = false; });
+  const clearVisible = await page.locator("#pa-clear").evaluate(el => { const b = el.getBoundingClientRect(), i = el.querySelector("svg").getBoundingClientRect(); return { h: Math.round(b.height), text: el.innerText.trim(), icon: Math.round(i.width) }; });
+  await page.evaluate(() => { document.getElementById("pa-clear").hidden = true; });
+  assert.deepEqual(clearVisible, { h: 40, text: "Xoá", icon: 16 }, "nút Xoá: cao 40, nhãn, icon 16");
+  assert.equal(clearLook.label, "Xoá hội thoại");
+  assert.equal(clearLook.title, "Xoá hội thoại");
+  assert.equal(await page.locator("#pa-thread").evaluate(el => [getComputedStyle(el).backgroundColor, getComputedStyle(el).overflowY].join("|")), "rgb(255, 255, 255)|auto");
+  assert.equal(await page.locator(".pa-chat").evaluate(el => getComputedStyle(el).borderTopColor + "|" + getComputedStyle(el).borderTopWidth), "rgb(227, 235, 231)|1px");
+  await shot(page, "pa2-1280-empty.png");
+  await page.locator('#pa-thread [data-fill="IT 123456 · 2 bản"]').click();
+  assert.equal(await page.locator("#pa-input").inputValue(), "IT 123456 · 2 bản", "chip mẫu điền ô nhập, không gửi");
+  assert.equal(await page.evaluate(() => document.activeElement.id), "pa-input");
+  assert.equal((await calls(page)).read.length, 0);
+  await page.locator('#pa-thread [data-fill="IT 123456 · 1 bản"]').click();
+  assert.equal(await page.locator("#pa-input").inputValue(), "IT 123456 · 1 bản");
+  await page.locator("#pa-input").fill("");
+  await page.locator("#pa-thread [data-say]").click();
+  await page.waitForFunction(() => document.getElementById("pa-input").value === "IT 100000001 3 bản");
+  await page.locator("#pa-input").fill("");
+
   // "IT 100000001 2 bản": bộ phân tích tất định, KHÔNG gọi Edge
+  await page.evaluate(() => { window.__readGate = new Promise(resolve => { window.__readRelease = resolve; }); });
   await send(page, `IT ${IT} 2 bản`);
+  await page.locator("#pa-thread .pa-typing").waitFor({ state: "visible" });
+  assert.equal(await page.locator("#pa-thread .pa-typing span").count(), 3, "chỉ báo đang nhập: 3 chấm");
+  assert.equal(await page.locator("#pa-thread .pa-typing span").first().evaluate(el => getComputedStyle(el).animationName), "pa-blink");
+  assert.equal(await page.locator("#pa-thread .pa-line--typing .pa-avatar").count(), 1, "chỉ báo có avatar bot");
+  assert.deepEqual((await bubbles(page)).map(b => b.from), ["user"], "trong lúc chờ không có bong bóng 'Đang đọc'");
+  assert.equal(await page.locator("#pa-clear").isVisible(), true, "đã có lượt: hiện nút xoá");
+  assert.equal(await page.locator("#pa-clear").isDisabled(), true, "đang chờ: khoá nút xoá");
+  await page.evaluate(() => window.__readRelease());
   await waitCard(page);
+  assert.equal(await page.locator("#pa-thread .pa-typing").count(), 0, "có kết quả: chỉ báo biến mất");
   assert.equal(edgeCalls.length, 0, "đủ số phiếu: không gọi Edge");
   assert.deepEqual((await calls(page)).read, [IT]);
   assert.equal((await bubbles(page))[0].text, `IT ${IT} 2 bản`);
-  assert.deepEqual((await bubbles(page)).map(b => b.from), ["user", "bot"], "bong bóng người dùng rồi 'Đang đọc'");
-  assert.match((await bubbles(page))[1].text, new RegExp(`Đang đọc phiếu IT ${IT}`));
+  assert.deepEqual((await bubbles(page)).map(b => b.from), ["user"], "chỉ còn bong bóng người dùng");
+  assert.match(await page.locator("#pa-thread .pa-line[data-from=user] .pa-time").innerText(), /^\d\d:\d\d$/, "giờ HH:MM");
+  assert.equal(await page.locator("#pa-thread .pa-time").first().evaluate(el => getComputedStyle(el).fontSize), "12px");
   const head = await page.locator("#pa-confirm .pa-c-head").innerText();
   assert.ok(head.includes(`IT ${IT}`) && head.includes("WH - MATERIAL - MTG") && head.includes("SF - TEST Q12"), head);
   assert.equal(await page.locator("#pa-confirm .pa-route svg").count(), 1, "mũi tên kho đi → kho đến là icon");
@@ -120,6 +168,20 @@ async function desktop(browser) {
   ]);
   assert.equal(await page.locator("#pa-copies").inputValue(), "2");
   assert.equal(await page.locator("#pa-total").innerText(), "4 tem · 2 SKU");
+  assert.equal(await page.locator("#pa-thread").evaluate(el => getComputedStyle(el).minHeight), "320px", "có lượt: vùng hội thoại cao tối thiểu 320px");
+  // 3: nhãn cột 12/600 trên máy tính; 6: ô số bản không còn nút tăng giảm native, đủ rộng, căn giữa, bàn phím số
+  assert.deepEqual(await page.locator("#pa-confirm .pa-cols span").allInnerTexts(), ["SL phiếu", "Số bản"]);
+  assert.equal(await page.locator("#pa-confirm .pa-cols").evaluate(el => getComputedStyle(el).display), "grid");
+  assert.equal(await page.locator("#pa-confirm .pa-cols span").first().evaluate(el => `${getComputedStyle(el).fontSize}/${getComputedStyle(el).fontWeight}`), "12px/600");
+  const colX = await page.evaluate(() => { const c = [...document.querySelectorAll("#pa-confirm .pa-cols span")].map(el => el.getBoundingClientRect()), n = document.querySelector("#pa-confirm .pa-n").getBoundingClientRect(); return { numCenter: Math.abs((c[1].left + c[1].right) / 2 - (n.left + n.right) / 2) }; });
+  assert.ok(colX.numCenter <= 4, `nhãn "Số bản" thẳng cột với ô số (${colX.numCenter}px)`);
+  const nBox = await page.locator("#pa-confirm .pa-n").first().evaluate(el => { const cs = getComputedStyle(el), spin = getComputedStyle(el, "::-webkit-inner-spin-button"); return { w: Math.round(el.getBoundingClientRect().width), align: cs.textAlign, mode: el.getAttribute("inputmode"), spin: spin.webkitAppearance || spin.appearance, appearance: cs.appearance }; });
+  assert.ok(nBox.w >= 72 && nBox.align === "center" && nBox.mode === "numeric", JSON.stringify(nBox));
+  assert.equal(nBox.appearance, "textfield", `ẩn spin button (Firefox/chuẩn): ${JSON.stringify(nBox)}`);
+  assert.equal(await page.evaluate(() => [...document.querySelectorAll("#print-assistant-style")].some(el => /\.pa-n::-webkit-inner-spin-button[^}]*-webkit-appearance: none/.test(el.textContent))), true, "ẩn spin button (WebKit/Chromium)");
+  await page.locator("#pa-confirm .pa-n").first().focus();
+  assert.equal(await page.locator("#pa-confirm .pa-n").first().evaluate(el => { const cs = getComputedStyle(el); return `${cs.outlineWidth} ${cs.outlineStyle} ${cs.outlineColor}`; }), "2px solid rgb(0, 95, 65)", "focus ring 2px màu chính");
+  assert.equal(await page.locator("#pa-confirm .pa-nw").first().evaluate(el => getComputedStyle(el, "::after").content), "none", "máy tính: không có hậu tố bản");
   assert.equal((await page.locator("#pa-chip-wms").innerText()).trim(), "WMS · Đang mở");
   assert.equal(await page.locator("#pa-print").evaluate(el => getComputedStyle(el).backgroundColor), "rgb(0, 95, 65)", "nút In đặc #005F41");
 
@@ -149,7 +211,7 @@ async function desktop(browser) {
   await page.locator("#pa-copies").fill("3");
   await page.locator('#pa-confirm .pa-row[data-i="0"] [data-pa-n]').fill("5");
   assert.equal(await page.locator("#pa-total").innerText(), "8 tem · 2 SKU");
-  await shot(page, "assistant-1280-confirm.png");
+  await shot(page, "pa2-1280-confirm.png");
 
   // Có khoá máy: In → enqueue đúng items + requestedBy, bong bóng "Đã gửi"
   await page.evaluate(key => { localStorage.setItem("tb-khoa", key); dispatchEvent(new Event("focus")); }, DEVICE);
@@ -163,14 +225,82 @@ async function desktop(browser) {
   assert.deepEqual(sent[0].items.map(i => `${i.sku}|${i.copies}|${i.quantity}|${i.productName}`), ["900000001|5|2|Nhãn giả một", "900000002|3|1500|Chỉ giả hai"]);
   assert.equal(sent[0].options.requestedBy, `tro-ly:${EMAIL}`);
   assert.deepEqual((await calls(page)).build[0], [{ sku: "900000001", copies: 5 }, { sku: "900000002", copies: 3 }], "chỉ dòng đang tick vào buildItems");
-  const done = await lastBot(page);
-  assert.match(done.text, /^Đã gửi 8 tem, 1 lệnh · job0001a$/);
-  assert.equal(done.tone, "");
   assert.equal(edgeCalls.length, 0);
+  // Thẻ tóm tắt ở lại chỗ thẻ xác nhận; thẻ kết quả thay bong bóng "Đã gửi…"
+  const sum = await page.locator("#pa-thread .pa-sum").innerText();
+  assert.ok(sum.includes(`IT ${IT}`) && sum.includes("WH - MATERIAL - MTG") && sum.includes("SF - TEST Q12") && sum.includes("2 SKU · 8 tem"), sum);
+  assert.equal(await page.locator("#pa-thread .pa-sum svg").count(), 2, "icon clipboard + mũi tên");
+  assert.deepEqual((await bubbles(page)).map(b => b.text).filter(text => /^Đã gửi/.test(text)), [], "không còn bong bóng 'Đã gửi'");
+  const result = page.locator("#pa-thread .pa-result");
+  assert.equal(await result.count(), 1);
+  assert.equal((await result.locator(".pa-r-head").innerText()).trim(), "Đang xử lý 1 lệnh · 8 tem");
+  assert.equal(await result.getAttribute("data-state"), "pending");
+  assert.equal(await result.evaluate(el => getComputedStyle(el).backgroundColor), "rgb(255, 250, 235)", "còn lệnh chưa xong: nền vàng nhạt");
+  assert.equal(await result.locator(".pa-r-head svg.pa-spin").evaluate(el => `${parseFloat(getComputedStyle(el).width)}|${getComputedStyle(el).animationName}`), "16|pa-rot", "loader-circle 16 quay");
+  assert.equal(await result.locator(".pa-st").evaluate(el => `${getComputedStyle(el).fontSize}/${getComputedStyle(el).fontWeight}|${getComputedStyle(el, "::before").width}`), "12px/600|6px", "chip 12/600 có chấm màu");
+  assert.equal(await result.locator(".pa-again").getAttribute("aria-disabled"), "true", "còn lệnh đang chờ: In lại bị khoá");
+  assert.equal(await result.locator(".pa-other").getAttribute("aria-disabled"), null, "Phiếu khác luôn bật");
+  const readsLocked = (await calls(page)).read.length;
+  await result.locator(".pa-again").click({ force: true });
+  assert.equal((await calls(page)).read.length, readsLocked, "In lại bị khoá: chặn click, không đọc lại WMS");
+  assert.equal(await page.locator("#pa-confirm").count(), 0);
+  await shot(page, "pa3-1280-result-pending.png");
+  assert.equal((await result.locator(".pa-job .pa-job-id").innerText()).trim(), "job0001a");
+  assert.deepEqual(await result.locator(".pa-r-actions button").allInnerTexts().then(a => a.map(t => t.trim())), ["In lại phiếu này", "Phiếu khác"]);
+  assert.equal((await jobChip(page).innerText()).trim(), "Đang chờ");
+  assert.deepEqual(JSON.parse(await page.evaluate(() => localStorage.getItem("pa-recent"))), [IT], "ghi số phiếu đã in vào pa-recent");
+  // Chip trạng thái sống theo jobStatus: queued → printing → completed (mỗi 3 giây)
+  await page.evaluate(() => { window.__jobCalls = []; window.PrintSkuQueue.jobStatus = async id => { window.__jobCalls.push(id); const n = window.__jobCalls.length; return { ok: true, data: { status: n === 1 ? "queued" : n === 2 ? "printing" : "completed" } }; }; });
+  await page.waitForFunction(() => document.querySelector("#pa-thread .pa-result .pa-st").textContent === "Đang in", null, { timeout: 15000 });
+  assert.equal(await jobChip(page).getAttribute("data-tone"), "upd", "Đang in: xanh dương");
+  await page.waitForFunction(() => document.querySelector("#pa-thread .pa-result .pa-st").textContent === "Đã in", null, { timeout: 15000 });
+  assert.equal(await jobChip(page).getAttribute("data-tone"), "new", "Đã in: xanh lá");
+  assert.equal(await result.getAttribute("data-state"), "done");
+  assert.equal((await result.locator(".pa-r-head").innerText()).trim(), "Đã in 8 tem · 1 lệnh");
+  assert.equal(await result.evaluate(el => getComputedStyle(el).backgroundColor), "rgb(234, 245, 239)", "xong hết: nền xanh nhạt");
+  assert.equal(await result.locator(".pa-r-head svg.pa-spin").count(), 0, "xong: hết vòng quay");
+  assert.equal(await result.locator(".pa-again").getAttribute("aria-disabled"), "false", "xong: In lại mở");
+  assert.equal((await result.locator(".pa-again").innerText()).trim(), "In lại phiếu này");
+  assert.equal((await page.evaluate(() => window.__jobCalls)).every(id => id === "job0001a-aaaa-4000-8000-000000000001"), true, "hỏi trạng thái bằng mã lệnh đầy đủ");
+  await shot(page, "pa3-1280-result-done.png");
+  // Phiếu khác: focus ô nhập; In lại phiếu này: mở lại thẻ xác nhận, đọc lại WMS
+  await page.locator("#pa-thread .pa-other").click();
+  assert.equal(await page.evaluate(() => document.activeElement.id), "pa-input");
+  const readsAgain = (await calls(page)).read.length;
+  await page.locator("#pa-thread .pa-again").click();
+  await waitCard(page);
+  assert.equal((await calls(page)).read.length, readsAgain + 1, "đọc lại WMS");
+  assert.deepEqual((await calls(page)).read.slice(-1), [IT]);
+  assert.equal(await page.locator("#pa-total").innerText(), "6 tem · 2 SKU", "mở lại với số bản chung lần trước");
+  await page.locator("#pa-cancel").click();
+  assert.equal(await page.locator("#pa-thread .pa-sum").count(), 2, "Huỷ cũng để lại thẻ tóm tắt");
+  assert.match(await page.locator("#pa-thread .pa-sum").last().innerText(), /2 SKU · 6 tem/);
+  // Xoá hội thoại → trạng thái rỗng có hàng Gần đây; bấm chip Gần đây gửi luôn "IT <số> 1 bản"
+  await page.locator("#pa-clear").click();
+  assert.equal(await page.locator("#pa-thread .pa-line, #pa-thread .pa-sum, #pa-thread .pa-result").count(), 0);
+  assert.equal(await page.locator("#pa-thread .pa-empty").count(), 1);
+  assert.equal(await page.locator("#pa-clear").isHidden(), true);
+  assert.deepEqual(await page.locator("#pa-thread .pa-recent .pa-sug").allInnerTexts().then(a => a.map(t => t.trim())), [`IT ${IT}`]);
+  assert.equal((await page.locator("#pa-thread .pa-recent-label").innerText()).trim(), "Gần đây");
+  const gap = await page.evaluate(() => document.querySelector("#pa-thread .pa-recent").getBoundingClientRect().top - document.querySelector("#pa-thread .pa-sugs").getBoundingClientRect().bottom);
+  assert.ok(gap >= 0 && gap <= 24, `hàng Gần đây nằm ngay dưới chip gợi ý (${gap}px)`);
+  await page.locator(`#pa-thread [data-recent="${IT}"]`).click();
+  await waitCard(page);
+  assert.equal((await bubbles(page))[0].text, `IT ${IT} 1 bản`);
+  assert.equal(await page.locator("#pa-total").innerText(), "2 tem · 2 SKU");
+  await page.locator("#pa-cancel").click();
+  // pa-recent tối đa 8 phần tử; hàng Gần đây hiện tối đa 4
+  await page.evaluate(() => localStorage.setItem("pa-recent", JSON.stringify(["100000010", "100000009", "100000008", "100000007", "100000006", "100000005", "100000004", "100000003"])));
+  await page.locator("#pa-clear").click();
+  assert.equal(await page.locator("#pa-thread .pa-recent .pa-sug").count(), 4);
 
   // Câu tự do → Edge (có nhớ lịch sử, ngữ cảnh), reply hiện thành bong bóng; trả lời số phiếu trần → đọc, không gọi Edge lần nữa
+  edge.delay = 600;
   await send(page, "in giúp tem phiếu nhập kho");
+  await page.locator("#pa-thread .pa-typing").waitFor({ state: "visible" });
   await page.waitForFunction(() => [...document.querySelectorAll("#pa-thread .pa-msg")].some(el => el.textContent === "Cho tôi số phiếu IT."));
+  assert.equal(await page.locator("#pa-thread .pa-typing").count(), 0, "có reply: chỉ báo biến mất");
+  edge.delay = 0;
   assert.equal(edgeCalls.length, 1);
   assert.equal(edgeCalls[0].body.message, "in giúp tem phiếu nhập kho");
   assert.deepEqual(edgeCalls[0].body.context, { hasWms: true, deviceActive: true });
@@ -182,7 +312,7 @@ async function desktop(browser) {
   await send(page, IT);
   await waitCard(page);
   assert.equal(edgeCalls.length, 1, "số phiếu trần sau khi trợ lý hỏi: không gọi Edge");
-  assert.deepEqual((await calls(page)).read, [IT, IT]);
+  assert.deepEqual((await calls(page)).read.slice(-1), [IT]);
   assert.equal(await page.locator("#pa-total").innerText(), "2 tem · 2 SKU", "không nói số bản: mặc định 1");
   await page.locator("#pa-cancel").click();
   assert.equal(await page.locator("#pa-confirm").count(), 0);
@@ -271,7 +401,7 @@ async function edgeDown(browser) {
   assert.equal(await page.locator("#pa-total").innerText(), "4 tem · 2 SKU", "số bản 2 giữ từ câu trước");
   await page.locator("#pa-cancel").click();
   // Tối đa 20 lượt trong bộ nhớ
-  for (let i = 0; i < 12; i++) { await send(page, `xin chào ${i}`); await page.waitForFunction(() => !document.getElementById("pa-send").disabled && document.querySelector("#pa-thread .pa-msg:last-child")?.dataset.from === "bot"); }
+  for (let i = 0; i < 12; i++) { await send(page, `xin chào ${i}`); await page.waitForFunction(() => !document.getElementById("pa-send").disabled && [...document.querySelectorAll("#pa-thread .pa-msg")].pop()?.dataset.from === "bot"); }
   assert.equal((await bubbles(page)).length, 20, "giữ tối đa 20 bong bóng");
   // Quay lại trang chủ
   await page.locator("#pa-back").dispatchEvent("click"); // máy tính: nút WH-MATERIAL ẩn (thanh trái thay), handler vẫn về #home
@@ -351,7 +481,29 @@ async function printFlows(browser) {
   const partial = await lastBot(page);
   assert.equal(partial.text, `Đã gửi 30 tem, 1 lệnh; lệnh còn lại lỗi: Khoá máy không hợp lệ Đọc lại phiếu IT ${IT} để in phần còn lại.`);
   assert.equal(partial.tone, "bad");
+  assert.equal(await page.locator("#pa-thread .pa-sum").count(), 1, "gửi một phần rồi lỗi: vẫn để lại thẻ tóm tắt");
   await page.evaluate(() => { window.__enqueueFail = null; });
+
+  // Lệnh in lỗi: chip "Lỗi" đỏ kèm thông điệp từ máy in
+  await page.evaluate(() => { window.PrintSkuQueue.jobStatus = async () => ({ ok: true, data: { status: "failed", errorMessage: "Hết giấy giả lập" } }); });
+  await send(page, `IT ${IT}`); await waitCard(page);
+  await pressPrint();
+  await page.locator("#pa-thread .pa-result").waitFor({ state: "visible" });
+  await page.waitForFunction(() => document.querySelector("#pa-thread .pa-result .pa-st").textContent === "Lỗi", null, { timeout: 15000 });
+  assert.equal(await jobChip(page).getAttribute("data-tone"), "bad");
+  assert.equal((await page.locator("#pa-thread .pa-result .pa-job-err").innerText()).trim(), "Hết giấy giả lập");
+  const failedCard = page.locator("#pa-thread .pa-result").last();
+  assert.equal(await failedCard.getAttribute("data-state"), "error");
+  assert.equal((await failedCard.locator(".pa-r-head").innerText()).trim(), "Lỗi 1 lệnh");
+  assert.equal(await failedCard.evaluate(el => getComputedStyle(el).backgroundColor), "rgb(253, 240, 238)", "có lệnh lỗi: nền đỏ nhạt");
+  assert.equal((await failedCard.locator(".pa-again").innerText()).trim(), "Gửi lại");
+  assert.equal(await failedCard.locator(".pa-again").getAttribute("aria-disabled"), "false");
+  const readsRetry = (await calls(page)).read.length;
+  await failedCard.locator(".pa-again").click();
+  await waitCard(page);
+  assert.equal((await calls(page)).read.length, readsRetry + 1, "Gửi lại: đọc lại WMS rồi mở thẻ xác nhận, không gửi mù");
+  assert.equal(await page.locator("#pa-confirm").count(), 1, "mở lại thẻ xác nhận chờ người bấm In");
+  await page.locator("#pa-cancel").click();
 
   // Phiên Admin hết hạn giữa lúc thẻ mở: không gọi enqueue, chip đỏ, khoá ô nhập + nút In, hiện nút đăng nhập
   await send(page, `IT ${IT}`); await waitCard(page);
@@ -380,6 +532,11 @@ async function narrow(browser, width) {
   await page.waitForFunction(() => document.getElementById("pa-chip-admin").dataset.tone === "new");
   let fit = await noOverflow(page);
   assert.deepEqual(fit, { page: true, screen: true, over: [] }, `${width}px: màn trợ lý tràn ngang (rỗng)`);
+  assert.equal(await page.locator("#pa-thread").evaluate(el => getComputedStyle(el).minHeight), width > 760 ? "250px" : "240px", `${width}px: chiều cao tối thiểu vùng hội thoại (rỗng)`);
+  assert.equal(await page.locator("#pa-clear").isHidden(), true);
+  assert.equal(await page.locator("#pa-thread .pa-sugs .pa-sug").count(), 3);
+  assert.deepEqual(await offScale(page), [], `${width}px: cỡ chữ ngoài thang (rỗng)`);
+  await shot(page, `pa2-${width}-empty.png`);
   await page.evaluate(key => localStorage.setItem("tb-khoa", key), DEVICE);
   await send(page, `IT ${IT} 2 bản`);
   await waitCard(page);
@@ -389,9 +546,26 @@ async function narrow(browser, width) {
   const box = await page.locator("#pa-confirm").boundingBox();
   assert.ok(box.x >= 0 && box.x + box.width <= width + 1, `${width}px: thẻ nằm trong màn`);
   for (const id of ["pa-print", "pa-cancel", "pa-copies-inc", "pa-copies-dec"]) { const b = await page.locator(`#${id}`).boundingBox(); assert.ok(b.height >= 44 && b.width >= 44, `${width}px: ${id} đủ lớn để chạm (${b.width}×${b.height})`); }
-  const sizes = await page.evaluate(() => [...document.querySelectorAll("#assistant-screen *")].filter(el => { const b = el.getBoundingClientRect(); return b.width && [...el.childNodes].some(n => n.nodeType === 3 && n.textContent.trim()); }).map(el => parseFloat(getComputedStyle(el).fontSize)).filter(s => s > 0 && ![12, 13, 14, 16, 18, 22, 28].includes(s)));
-  assert.deepEqual(sizes, [], `${width}px: cỡ chữ ngoài thang`);
-  await shot(page, `assistant-${width}-confirm.png`);
+  assert.deepEqual(await offScale(page), [], `${width}px: cỡ chữ ngoài thang`);
+  const desk = width > 760;
+  assert.equal(await page.locator("#pa-confirm .pa-cols").evaluate(el => getComputedStyle(el).display), desk ? "grid" : "none", `${width}px: nhãn cột chỉ ở máy tính`);
+  assert.equal(await page.locator("#pa-confirm .pa-nw").first().evaluate(el => getComputedStyle(el, "::after").content), desk ? "none" : '"bản"', `${width}px: hậu tố "bản" sát ô số ở điện thoại`);
+  const nPos = await page.evaluate(() => { const n = document.querySelector("#pa-confirm .pa-n").getBoundingClientRect(), w = document.querySelector("#pa-confirm .pa-nw").getBoundingClientRect(); return { fit: n.left >= w.left - 1 && n.right <= w.right + 1, w: Math.round(n.width) }; });
+  assert.ok(nPos.fit && nPos.w >= 72, `${width}px: ô số bản ≥ 72px (${nPos.w})`);
+  await shot(page, `pa3-${width}-confirm.png`);
+  // In xong: thẻ tóm tắt + thẻ kết quả nằm trong màn, nút phụ đủ lớn để chạm
+  await page.locator("#pa-print").click();
+  await page.locator("#pa-thread .pa-result").waitFor({ state: "visible" });
+  await page.locator("#pa-thread .pa-result").scrollIntoViewIfNeeded();
+  fit = await noOverflow(page);
+  assert.deepEqual(fit, { page: true, screen: true, over: [] }, `${width}px: thẻ kết quả tràn ngang`);
+  for (const sel of [".pa-again", ".pa-other", ".pa-sum"]) { const b = await page.locator(`#pa-thread ${sel}`).first().boundingBox(); assert.ok(b.x >= 0 && b.x + b.width <= width + 1, `${width}px: ${sel} nằm trong màn`); if (sel !== ".pa-sum") assert.ok(b.height >= 44, `${width}px: ${sel} đủ lớn để chạm (${b.height})`); }
+  assert.deepEqual(await offScale(page), [], `${width}px: cỡ chữ ngoài thang (kết quả)`);
+  assert.equal(await page.locator("#pa-thread").evaluate(el => el.scrollHeight - el.scrollTop - el.clientHeight <= 2), true, `${width}px: hội thoại tự cuộn xuống cuối`);
+  assert.equal(await page.locator("#pa-form").evaluate(el => { const f = el.getBoundingClientRect(), t = document.getElementById("pa-thread").getBoundingClientRect(); return f.top >= t.bottom - 1 && f.bottom <= innerHeight + 1; }), true, `${width}px: thanh nhập nằm đáy khung và trong màn hình`);
+  const clr = await page.locator("#pa-clear").evaluate(el => { const b = el.getBoundingClientRect(); return { w: Math.round(b.width), h: Math.round(b.height), text: el.innerText.trim(), label: el.getAttribute("aria-label"), title: el.title }; });
+  assert.deepEqual(clr, desk ? { w: clr.w, h: 40, text: "Xoá", label: "Xoá hội thoại", title: "Xoá hội thoại" } : { w: 44, h: 44, text: "", label: "Xoá hội thoại", title: "Xoá hội thoại" }, `${width}px: nút xoá hội thoại`);
+  await shot(page, `pa3-${width}-result.png`);
   assert.deepEqual(errors, []);
   await context.close();
 }

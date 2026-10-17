@@ -11458,14 +11458,68 @@ async function rpc(name,args,retry=true){
       .pa-login { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
       .pa-login[hidden] { display: none; }
       .pa-login svg, .pa-send svg, .pa-print svg, .pa-cancel svg { width: 20px; height: 20px; flex: none; }
-      .pa-chat { display: flex; flex-direction: column; gap: 14px; padding: 18px; }
-      .pa-thread { display: flex; flex-direction: column; gap: 10px; min-height: 280px; max-height: calc(100vh - 340px); overflow-y: auto; padding: 2px; }
-      .pa-empty { display: grid; flex: 1; place-items: center; color: #b9cbc4; }
-      .pa-empty svg { width: 32px; height: 32px; }
-      .pa-msg { max-width: min(640px, 88%); padding: 10px 14px; border: 1px solid transparent; border-radius: 16px; font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; white-space: pre-wrap; }
-      .pa-msg[data-from=user] { align-self: flex-end; border-bottom-right-radius: 6px; background: #005f41; color: #fff; }
-      .pa-msg[data-from=bot] { align-self: flex-start; border-color: #dce7e3; border-bottom-left-radius: 6px; background: #f1f6f4; color: #17251f; }
+      #assistant-screen .pa-chat { display: flex; flex-direction: column; gap: 0; padding: 0; overflow: hidden; border: 1px solid #e3ebe7; background: #fff; }
+      .pa-thread { display: flex; flex-direction: column; gap: 12px; min-height: 320px; max-height: calc(100vh - 340px); overflow-y: auto; padding: 18px; background: #fff; }
+      .pa-empty { display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 12px 0; text-align: center; }
+      .pa-empty-ico { display: grid; place-items: center; width: 72px; height: 72px; border-radius: 999px; background: #e9f4ef; color: #005f41; }
+      .pa-empty-ico svg { width: 32px; height: 32px; }
+      .pa-empty-title { display: inline-flex; align-items: center; gap: 8px; font-size: 18px; font-weight: 600; color: #17382d; }
+      .pa-empty-title svg { width: 20px; height: 20px; color: #176248; }
+      .pa-sugs, .pa-recent { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; }
+      .pa-recent-label { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: #60736b; }
+      .pa-recent-label svg, .pa-sug svg { width: 16px; height: 16px; flex: none; }
+      .pa-sug { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 14px; border: 1px solid #cbdcd6; border-radius: 999px; background: #f4faf7; color: #176248; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+      .pa-sug:hover:not(:disabled) { background: #e6f3ed; }
+      .pa-sug:disabled { opacity: .45; cursor: not-allowed; }
+      .pa-clear { display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; min-width: 40px; height: 40px; padding: 0 14px; border: 1px solid #cbdcd6; border-radius: 999px; background: #fff; color: #4f625b; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+      .pa-clear[hidden] { display: none; }
+      .pa-clear:hover:not(:disabled) { border-color: #a53730; background: #fde8e5; color: #a53730; }
+      .pa-clear:focus-visible { outline: 2px solid #005f41; outline-offset: 2px; }
+      .pa-clear:disabled { opacity: .45; cursor: not-allowed; }
+      .pa-clear svg { width: 16px; height: 16px; flex: none; }
+      .pa-line { display: flex; align-items: flex-end; gap: 8px; max-width: min(672px, 90%); }
+      .pa-line[data-from=user] { align-self: flex-end; justify-content: flex-end; }
+      .pa-line[data-from=bot] { align-self: flex-start; }
+      .pa-avatar { display: grid; place-items: center; flex: none; width: 24px; height: 24px; margin-bottom: 18px; border-radius: 999px; background: #e9f4ef; color: #005f41; }
+      .pa-avatar svg { width: 16px; height: 16px; }
+      .pa-line--typing .pa-avatar { margin-bottom: 8px; }
+      .pa-body { display: grid; gap: 3px; min-width: 0; }
+      .pa-line[data-from=user] .pa-body { justify-items: end; }
+      .pa-time { font-size: 12px; color: #60736b; }
+      .pa-msg { padding: 10px 14px; border: 1px solid transparent; border-radius: 16px; font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; white-space: pre-wrap; }
+      .pa-msg[data-from=user] { border-bottom-right-radius: 6px; background: #005f41; color: #fff; }
+      .pa-msg[data-from=bot] { border-color: #dce7e3; border-bottom-left-radius: 6px; background: #f1f6f4; color: #17251f; }
       .pa-msg[data-tone=bad] { border-color: #f3c9c4; background: #fde8e5; color: #a53730; }
+      .pa-typing { display: inline-flex; align-items: center; gap: 5px; padding: 14px 16px; border: 1px solid #dce7e3; border-radius: 16px; border-bottom-left-radius: 6px; background: #f1f6f4; }
+      .pa-typing span { width: 7px; height: 7px; border-radius: 999px; background: #5f9a85; animation: pa-blink 1.2s infinite ease-in-out; }
+      .pa-typing span:nth-child(2) { animation-delay: .2s; }
+      .pa-typing span:nth-child(3) { animation-delay: .4s; }
+      @keyframes pa-blink { 0%, 60%, 100% { opacity: .3; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-3px); } }
+      @media (prefers-reduced-motion: reduce) { .pa-typing span { animation: none; opacity: .7; } }
+      .pa-sum { align-self: stretch; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; padding: 8px 12px; border: 1px solid #e3ebe7; border-radius: 12px; background: #f7faf9; font-size: 13px; color: #4f625b; }
+      .pa-sum > svg { width: 16px; height: 16px; flex: none; color: #176248; }
+      .pa-sum b { font-size: 14px; font-weight: 600; color: #17382d; }
+      .pa-sum-n { margin-left: auto; font-weight: 600; color: #17382d; }
+      .pa-result { align-self: stretch; display: grid; gap: 10px; padding: 14px 16px; border: 1px solid #f0e2b6; border-radius: 16px; background: #fffaeb; }
+      .pa-result[data-state=done] { border-color: #cfe5db; background: #eaf5ef; }
+      .pa-result[data-state=error] { border-color: #f3c9c4; background: #fdf0ee; }
+      .pa-r-head { display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 700; color: #8a5b00; }
+      .pa-result[data-state=done] .pa-r-head { color: #0f5a3f; }
+      .pa-result[data-state=error] .pa-r-head { color: #a53730; }
+      .pa-r-head svg { width: 20px; height: 20px; flex: none; }
+      .pa-r-head svg.pa-spin { width: 16px; height: 16px; animation: pa-rot 1s linear infinite; }
+      @keyframes pa-rot { to { transform: rotate(360deg); } }
+      @media (prefers-reduced-motion: reduce) { .pa-r-head svg.pa-spin { animation: none; } }
+      .pa-st { font-size: 12px; font-weight: 600; }
+      .pa-st::before { content: ""; width: 6px; height: 6px; flex: none; border-radius: 999px; background: currentColor; }
+      .pa-r-actions button[aria-disabled=true] { opacity: .5; cursor: not-allowed; }
+      .pa-jobs { display: grid; gap: 6px; }
+      .pa-job { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding: 8px 12px; border-radius: 12px; background: #fff; font-size: 14px; }
+      .pa-job-id { font-weight: 600; color: #14382d; font-variant-numeric: tabular-nums; }
+      .pa-job-err { font-size: 12px; color: #a53730; overflow-wrap: anywhere; }
+      .pa-r-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+      .pa-r-actions button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+      .pa-r-actions svg { width: 20px; height: 20px; flex: none; }
       .pa-confirm { align-self: stretch; display: grid; gap: 12px; padding: 14px 16px; border: 1px solid #cbdcd6; border-radius: 16px; background: #fff; box-shadow: 0 6px 22px rgba(13, 71, 52, .08); }
       .pa-c-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; font-size: 14px; }
       .pa-c-head b { font-size: 16px; font-weight: 700; color: #17382d; }
@@ -11482,7 +11536,15 @@ async function rpc(name,args,retry=true){
       .pa-flag { color: #8a5b00; font-size: 12px; font-weight: 600; }
       .pa-qty { grid-area: q; font-size: 13px; white-space: nowrap; color: #17382d; }
       .pa-n, #pa-copies { box-sizing: border-box; height: var(--ui-compact, 44px); padding: 0 8px; border: 1px solid #cbdcd6; border-radius: 12px; background: #fff; color: #17251f; font: inherit; font-size: 16px; text-align: center; }
-      .pa-n { grid-area: n; width: 76px; }
+      .pa-n { width: 76px; min-width: 72px; }
+      .pa-nw { grid-area: n; display: inline-flex; align-items: center; gap: 6px; }
+      .pa-n::-webkit-inner-spin-button, .pa-n::-webkit-outer-spin-button, #pa-copies::-webkit-inner-spin-button, #pa-copies::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+      .pa-n, #pa-copies { -moz-appearance: textfield; appearance: textfield; }
+      .pa-n:focus-visible, #pa-copies:focus-visible { outline: 2px solid #005f41 !important; outline-offset: 0 !important; border-color: #005f41; }
+      .pa-cols { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto 76px; gap: 4px 12px; margin: 0 0 -6px; padding: 0 13px; font-size: 12px; font-weight: 600; color: #60736b; }
+      .pa-cols span:nth-child(1) { grid-column: 3; text-align: right; }
+      .pa-cols span:nth-child(2) { grid-column: 4; text-align: center; }
+      @media (min-width: 761px) { .pa-thread:has(> .pa-empty) { min-height: 250px; } }
       #pa-copies { width: 76px; }
       .pa-n:disabled { background: #f1f6f4; color: #60736b; }
       .pa-c-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
@@ -11495,10 +11557,11 @@ async function rpc(name,args,retry=true){
       .pa-c-actions { display: flex; flex-wrap: wrap; gap: 10px; }
       #assistant-screen .pa-print { display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: #005f41; }
       .pa-cancel { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
-      .pa-bar { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px; margin: 0; }
+      .pa-bar { position: sticky; bottom: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px; margin: 0; padding: 12px 18px; border-top: 1px solid #e3ebe7; background: #fff; }
       .pa-field { display: flex; align-items: center; gap: 6px; min-width: 0; min-height: var(--ui-ctl, 52px); padding: 0 6px 0 14px; border: 1px solid #cbdcd6; border-radius: var(--ui-in-r, 13px); background: #fff; box-sizing: border-box; }
       .pa-field:focus-within { border-color: #42a282; box-shadow: 0 0 0 3px rgba(66, 162, 130, .18); }
       .pa-field input { flex: 1; min-width: 0; height: 44px; padding: 0; border: 0; outline: 0; background: transparent; color: #17251f; font: inherit; font-size: 16px; }
+      .pa-field input:focus-visible { outline: 0 !important; box-shadow: none !important; }
       .pa-field input:disabled { color: #60736b; cursor: not-allowed; }
       .pa-mic { display: inline-grid; place-items: center; flex: none; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 999px; background: #eef6f2; color: #005f41; cursor: pointer; }
       .pa-mic[hidden] { display: none; }
@@ -11510,11 +11573,20 @@ async function rpc(name,args,retry=true){
         #assistant-screen .pa-content { width: calc(100% - 28px); padding-top: 14px; }
         #assistant-screen .ss-hero { flex-direction: column; align-items: flex-start; gap: 10px; padding: 14px; }
         .pa-chips { justify-content: flex-start; }
-        .pa-chat { padding: 12px; }
-        .pa-thread { max-height: calc(100vh - 380px); min-height: 220px; }
-        .pa-msg { max-width: 94%; }
+        .pa-thread { max-height: calc(100vh - 380px); min-height: 240px; padding: 12px; }
+        .pa-bar { padding: 10px 12px; }
+        .pa-line { max-width: 96%; }
+        .pa-clear { width: 44px; height: 44px; padding: 0; }
+        .pa-clear span { display: none; }
+        .pa-clear svg { width: 20px; height: 20px; }
+        .pa-cols { display: none; }
+        .pa-nw::after { content: attr(data-label); font-size: 13px; color: #60736b; }
+        .pa-sug { min-height: 44px; }
+        .pa-r-actions, .pa-r-actions > button { width: 100%; }
+        .pa-r-actions > button { flex: 1; }
+        .pa-sum-n { margin-left: 0; }
         .pa-confirm { padding: 12px; }
-        .pa-row { grid-template-columns: 24px minmax(0, 1fr) 76px; grid-template-areas: "c m n" ". q n"; }
+        .pa-row { grid-template-columns: 24px minmax(0, 1fr) auto; grid-template-areas: "c m n" ". q n"; }
         .pa-c-actions, .pa-c-actions > button { width: 100%; }
         .pa-c-actions > button { flex: 1; }
         .pa-send span { display: none; }
@@ -11524,7 +11596,7 @@ async function rpc(name,args,retry=true){
     <section class="cut-screen" id="assistant-screen" aria-labelledby="pa-title" hidden>
       <header class="uid-topbar"><div class="uid-topbar__inner"><button class="uid-back" id="pa-back" type="button" aria-label="Quay lại trang chủ WH-MATERIAL">WH-MATERIAL</button><span class="uid-topbar__mark" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg></span><div class="uid-topbar__name"><h1 id="pa-title">TRỢ LÝ IN</h1></div></div></header>
       <div class="ss-content pa-content">
-        <section class="ss-hero"><div><h2>Trợ lý in</h2></div><div class="pa-chips"><span class="as-chip" id="pa-chip-admin"></span><span class="as-chip" id="pa-chip-wms"></span><span class="as-chip" id="pa-chip-device"></span><button class="ss-secondary pa-login" id="pa-login" type="button" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="m10 17 5-5-5-5"/><path d="M15 12H3"/></svg><span>Đăng nhập Admin</span></button></div></section>
+        <section class="ss-hero"><div><h2>Trợ lý in</h2></div><div class="pa-chips"><span class="as-chip" id="pa-chip-admin"></span><span class="as-chip" id="pa-chip-wms"></span><span class="as-chip" id="pa-chip-device"></span><button class="pa-clear" id="pa-clear" type="button" aria-label="Xoá hội thoại" title="Xoá hội thoại" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg><span>Xoá</span></button><button class="ss-secondary pa-login" id="pa-login" type="button" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="m10 17 5-5-5-5"/><path d="M15 12H3"/></svg><span>Đăng nhập Admin</span></button></div></section>
         <section class="ss-panel pa-chat" aria-label="Hội thoại">
           <div class="pa-thread" id="pa-thread" role="log" aria-live="polite"></div>
           <form class="pa-bar" id="pa-form" autocomplete="off">
@@ -11541,7 +11613,9 @@ async function rpc(name,args,retry=true){
         // Trợ lý in v1: một ý định (in tem SKU theo phiếu IT). Câu nói chỉ cho ra số phiếu + số bản; dữ liệu tem lấy từ WMS qua HasakiSkuIt,
         // luôn qua thẻ xác nhận và người bấm In. Bộ phân tích tất định chạy trước; Edge print-assistant chỉ dùng cho câu tự do.
         const ROUTE = "assistant", MAX_TURNS = 20, EDGE_TIMEOUT = 25000, DOWN_TEXT = "Trợ lý AI tạm nghỉ; gõ: IT <số phiếu> [N bản]";
-        const thread = $("pa-thread"), input = $("pa-input"), sendBtn = $("pa-send"), micBtn = $("pa-mic"), loginBtn = $("pa-login"), form = $("pa-form");
+        const thread = $("pa-thread"), input = $("pa-input"), sendBtn = $("pa-send"), micBtn = $("pa-mic"), loginBtn = $("pa-login"), form = $("pa-form"), clearBtn = $("pa-clear");
+        const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const RECENT_KEY = "pa-recent", RECENT_MAX = 8, RECENT_SHOWN = 4, POLL_MS = 3000, POLL_MAX_MS = 120000;
         const state = { admin: false, wms: "unknown", pending: null, busy: false, awaiting: null, history: [], adminSeq: 0 };
         const svg = body => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
         const ICON = {
@@ -11552,7 +11626,14 @@ async function rpc(name,args,retry=true){
           plus: svg('<path d="M5 12h14"/><path d="M12 5v14"/>'),
           close: svg('<path d="M18 6 6 18"/><path d="m6 6 12 12"/>'),
           arrow: svg('<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>'),
-          bot: svg('<path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/>')
+          bot: svg('<path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/>'),
+          clipboard: svg('<rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/>'),
+          clock: svg('<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>'),
+          mic: svg('<path d="M12 19v3"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><rect x="9" y="2" width="6" height="13" rx="3"/>'),
+          retry: svg('<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>'),
+          search: svg('<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>'),
+          loader: '<svg class="pa-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>',
+          alert: svg('<circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/>')
         };
         const esc = value => String(value ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
         const clamp = (value, lo, hi) => Math.min(hi, Math.max(lo, Math.round(Number(value)) || lo));
@@ -11569,6 +11650,8 @@ async function rpc(name,args,retry=true){
           loginBtn.hidden = state.admin;
           for (const control of [input, micBtn]) control.disabled = !state.admin;
           sendBtn.disabled = !state.admin || state.busy;
+          clearBtn.disabled = state.busy;
+          thread.querySelectorAll(".pa-sug").forEach(btn => { btn.disabled = !state.admin; });
           paintConfirm();
         }
         async function refreshAdmin() {
@@ -11585,20 +11668,65 @@ async function rpc(name,args,retry=true){
         const requestedBy = () => { const email = adminEmail().trim(); return email ? `tro-ly:${email.slice(0, 100)}` : "tro-ly"; };
 
         // ---- Hội thoại ----
-        function addMsg(from, text, tone) {
+        const pad2 = n => String(n).padStart(2, "0");
+        const hhmm = () => { const d = new Date(); return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`; };
+        const hasTurns = () => Boolean(thread.querySelector(".pa-line, .pa-confirm, .pa-sum, .pa-result"));
+        function paintClear() { clearBtn.hidden = !hasTurns(); }
+        // Mọi phần tử vào khung hội thoại đi qua đây: bỏ trạng thái rỗng, hiện nút xoá, cuộn xuống cuối.
+        function mount(el) {
           thread.querySelector(".pa-empty")?.remove();
-          const el = document.createElement("div");
-          el.className = "pa-msg"; el.dataset.from = from; if (tone) el.dataset.tone = tone; el.textContent = text;
-          thread.append(el);
-          state.history.push({ role: from === "user" ? "user" : "assistant", text: String(text).slice(0, 300) });
-          if (state.history.length > MAX_TURNS) state.history.shift();
-          const all = thread.querySelectorAll(".pa-msg");
-          for (let i = 0; i < all.length - MAX_TURNS; i++) all[i].remove();
+          thread.append(el); paintClear();
           thread.scrollTop = thread.scrollHeight;
           return el;
         }
-        function showEmpty() { if (!thread.children.length) thread.innerHTML = `<div class="pa-empty" aria-hidden="true">${ICON.bot}</div>`; }
-        function setBusy(value) { state.busy = value; sendBtn.disabled = !state.admin || value; paintConfirm(); }
+        function addMsg(from, text, tone) {
+          const line = document.createElement("div");
+          line.className = "pa-line"; line.dataset.from = from;
+          const msg = document.createElement("div");
+          msg.className = "pa-msg"; msg.dataset.from = from; if (tone) msg.dataset.tone = tone; msg.textContent = text;
+          const time = document.createElement("time");
+          time.className = "pa-time"; time.dateTime = new Date().toISOString(); time.textContent = hhmm();
+          const body = document.createElement("div"); body.className = "pa-body"; body.append(msg, time);
+          if (from !== "user") line.insertAdjacentHTML("afterbegin", `<span class="pa-avatar" aria-hidden="true">${ICON.bot}</span>`);
+          line.append(body);
+          mount(line);
+          state.history.push({ role: from === "user" ? "user" : "assistant", text: String(text).slice(0, 300) });
+          if (state.history.length > MAX_TURNS) state.history.shift();
+          const all = thread.querySelectorAll(".pa-msg");
+          for (let i = 0; i < all.length - MAX_TURNS; i++) all[i].closest(".pa-line").remove();
+          thread.scrollTop = thread.scrollHeight;
+          return msg;
+        }
+        // Chỉ báo đang nhập: thay bong bóng "Đang đọc…" trong lúc chờ Edge/WMS; không vào lịch sử.
+        function showTyping() {
+          const line = document.createElement("div");
+          line.className = "pa-line pa-line--typing"; line.dataset.from = "bot";
+          line.innerHTML = `<span class="pa-avatar" aria-hidden="true">${ICON.bot}</span><div class="pa-typing" role="img" aria-label="Đang xử lý"><span></span><span></span><span></span></div>`;
+          return mount(line);
+        }
+        const hideTyping = () => { thread.querySelectorAll(".pa-line--typing").forEach(el => el.remove()); paintClear(); };
+        function recentList() {
+          try { const list = JSON.parse(localStorage.getItem(RECENT_KEY) || "[]"); return Array.isArray(list) ? list.map(String).filter(n => /^\d{6,40}$/.test(n)).slice(0, RECENT_MAX) : []; } catch (_) { return []; }
+        }
+        function rememberSlip(number) {
+          const list = [String(number), ...recentList().filter(n => n !== String(number))].slice(0, RECENT_MAX);
+          try { localStorage.setItem(RECENT_KEY, JSON.stringify(list)); } catch (_) {}
+        }
+        // Trạng thái rỗng: biểu tượng lớn, nhãn, chip mẫu điền vào ô nhập, hàng Gần đây (bấm là gửi luôn).
+        function showEmpty() {
+          thread.querySelector(".pa-empty")?.remove();
+          if (hasTurns()) { paintClear(); return; }
+          const recent = recentList().slice(0, RECENT_SHOWN);
+          const empty = document.createElement("div");
+          empty.className = "pa-empty";
+          empty.innerHTML = `<span class="pa-empty-ico" aria-hidden="true">${ICON.bot}</span><span class="pa-empty-title">${ICON.clipboard}<span>Phiếu IT → tem SKU</span></span>`
+            + `<div class="pa-sugs"><button class="pa-sug" type="button" data-fill="IT 123456 · 1 bản">${ICON.clipboard}<span>IT 123456 · 1 bản</span></button><button class="pa-sug" type="button" data-fill="IT 123456 · 2 bản">${ICON.clipboard}<span>IT 123456 · 2 bản</span></button>${Recognition ? `<button class="pa-sug" type="button" data-say>${ICON.mic}<span>Nói</span></button>` : ""}</div>`
+            + (recent.length ? `<div class="pa-recent"><span class="pa-recent-label">${ICON.clock}<span>Gần đây</span></span>${recent.map(n => `<button class="pa-sug" type="button" data-recent="${esc(n)}">${ICON.clipboard}<span>IT ${esc(n)}</span></button>`).join("")}</div>` : "");
+          thread.prepend(empty);
+          empty.querySelectorAll(".pa-sug").forEach(btn => { btn.disabled = !state.admin; });
+          paintClear();
+        }
+        function setBusy(value) { state.busy = value; sendBtn.disabled = !state.admin || value; clearBtn.disabled = value; paintConfirm(); }
 
         // ---- Bộ phân tích tất định: số phiếu chỉ nhận khi đúng MỘT dãy 6–40 chữ số đứng sát (≤ 3 từ, hai chiều) từ khoá IT/phiếu; số sau "SKU/mã" không tính ----
         function parse(text) {
@@ -11634,10 +11762,11 @@ async function rpc(name,args,retry=true){
         async function startRead(number, copies) {
           if (!window.HasakiSkuIt) { addMsg("bot", "Cổng in phiếu IT chưa sẵn sàng; tải lại trang.", "bad"); return; }
           state.awaiting = null; dropConfirm();
-          addMsg("bot", `Đang đọc phiếu IT ${number}…`);
+          showTyping();
           setBusy(true);
           try {
             const result = await window.HasakiSkuIt.readSlip(number);
+            hideTyping();
             state.wms = "open";
             state.pending = { slip: result.slip || {}, rows: (result.rows || []).map(row => ({ ...row, on: Boolean(row.known), copies: clamp(copies || 1, 1, 200) })), common: clamp(copies || 1, 1, 200), batchNonce: crypto.randomUUID(), nonceSig: "" };
             renderConfirm();
@@ -11645,10 +11774,74 @@ async function rpc(name,args,retry=true){
             const message = String(error?.message || "Không đọc được phiếu IT.");
             if (/Extension|tab WMS|tiện ích/i.test(message)) state.wms = "down";
             if (/đăng nhập Admin|Phiên Admin/i.test(message)) state.admin = false;
+            hideTyping();
             addMsg("bot", message, "bad");
-          } finally { setBusy(false); paintChips(); }
+          } finally { hideTyping(); setBusy(false); paintChips(); }
         }
-        function dropConfirm() { $("pa-confirm")?.remove(); state.pending = null; }
+        function dropConfirm() { $("pa-confirm")?.remove(); state.pending = null; paintClear(); }
+        // Thẻ xác nhận đóng (In hoặc Huỷ) thì để lại một dòng tóm tắt phiếu ngay chỗ đó.
+        function summarize() {
+          const card = $("pa-confirm"), p = state.pending;
+          if (!card || !p) { dropConfirm(); return; }
+          const sum = document.createElement("div");
+          sum.className = "pa-sum";
+          sum.innerHTML = `${ICON.clipboard}<b>IT ${esc(p.slip.number)}</b><span class="pa-route">${esc(p.slip.fromWarehouse || "—")}${ICON.arrow}${esc(p.slip.toWarehouse || "—")}</span><span class="pa-sum-n">${ticked().length} SKU · ${totalLabels()} tem</span>`;
+          card.replaceWith(sum); state.pending = null; paintClear();
+        }
+        const JOB_VIEW = { wait: [null, "Đang chờ"], printing: ["upd", "Đang in"], done: ["new", "Đã in"], error: ["bad", "Lỗi"] };
+        const jobKind = status => ({ queued: "wait", pending: "wait", claimed: "printing", rendering: "printing", sending: "printing", spooling: "printing", printing: "printing", processing: "printing", completed: "done", failed: "error", error: "error", cancelled: "error" })[String(status || "").toLowerCase()] || "wait";
+        function paintJob(row, data) {
+          const kind = jobKind(data?.status), [tone, label] = JOB_VIEW[kind], chip = row.querySelector(".pa-st");
+          chip.dataset.st = kind; if (tone) chip.dataset.tone = tone; else delete chip.dataset.tone; chip.textContent = label;
+          row.querySelector(".pa-job-err").textContent = kind === "error" ? String(data?.errorMessage || data?.status || "").slice(0, 160) : "";
+          if (kind === "done" || kind === "error") row.dataset.done = "1";
+          paintResult(row.closest(".pa-result"));
+        }
+        // Trạng thái toàn khối của thẻ kết quả: còn lệnh chưa xong → vàng nhạt + vòng quay; xong hết → xanh; có lệnh lỗi → đỏ.
+        function paintResult(card) {
+          if (!card) return;
+          const kinds = [...card.querySelectorAll(".pa-st")].map(chip => chip.dataset.st), total = kinds.length, labels = card.dataset.labels;
+          const failed = kinds.filter(k => k === "error").length, open = kinds.filter(k => k === "wait" || k === "printing").length, stale = card.dataset.stale === "1";
+          const stateName = failed ? "error" : open ? "pending" : "done";
+          card.dataset.state = stateName;
+          const head = stateName === "error" ? `${ICON.alert}<span>Lỗi ${failed} lệnh</span>` : stateName === "pending" ? `${stale ? ICON.clock : ICON.loader}<span>Đang xử lý ${total} lệnh · ${labels} tem</span>` : `${ICON.printer}<span>Đã in ${labels} tem · ${total} lệnh</span>`;
+          card.querySelector(".pa-r-head").innerHTML = head;
+          const again = card.querySelector(".pa-again"), wait = open > 0 && !stale;
+          again.setAttribute("aria-disabled", String(wait));
+          again.querySelector("span").textContent = failed ? "Gửi lại" : "In lại phiếu này";
+        }
+        // Chip trạng thái sống: hỏi print_job_status mỗi 3 giây, tối đa 2 phút, dừng khi mọi lệnh xong hoặc thẻ bị xoá.
+        function trackJobs(card) {
+          const started = Date.now(); let running = false, errors = 0;
+          const timer = setInterval(async () => {
+            if (!card.isConnected) { clearInterval(timer); return; }
+            if (Date.now() - started > POLL_MAX_MS) { clearInterval(timer); card.dataset.stale = "1"; paintResult(card); return; }
+            if (running) return;
+            running = true;
+            try {
+              for (const row of card.querySelectorAll(".pa-job:not([data-done])")) {
+                try {
+                  const result = await window.PrintSkuQueue.jobStatus(row.dataset.id);
+                  if (!card.isConnected) return;
+                  if (result && result.ok === false) { if (result.error?.code === "NOT_FOUND") { paintJob(row, { status: "failed", errorMessage: "Lệnh không còn trong hàng đợi" }); } else errors += 1; continue; }
+                  errors = 0; paintJob(row, result?.data);
+                } catch (_) { errors += 1; }
+              }
+              if (!card.querySelector(".pa-job:not([data-done])") || errors >= 5) clearInterval(timer);
+            } finally { running = false; }
+          }, POLL_MS);
+        }
+        function showResult(ids, labels, number, copies) {
+          const card = document.createElement("div");
+          card.className = "pa-result"; card.dataset.it = number; card.dataset.copies = String(copies); card.dataset.labels = String(labels);
+          card.innerHTML = `<div class="pa-r-head"></div>`
+            + `<div class="pa-jobs">${ids.map(id => `<div class="pa-job" data-id="${esc(id)}"><span class="pa-job-id">${esc(String(id).slice(0, 8))}</span><span class="as-chip pa-st" data-st="wait">Đang chờ</span><span class="pa-job-err"></span></div>`).join("")}</div>`
+            + `<div class="pa-r-actions"><button class="ss-secondary pa-again" type="button">${ICON.retry}<span>In lại phiếu này</span></button><button class="ss-secondary pa-other" type="button">${ICON.search}<span>Phiếu khác</span></button></div>`;
+          paintResult(card);
+          mount(card);
+          for (const old of [...thread.querySelectorAll(".pa-result")].slice(0, -6)) old.remove();
+          trackJobs(card);
+        }
         const ticked = () => (state.pending?.rows || []).filter(row => row.on && row.known);
         const totalLabels = () => ticked().reduce((sum, row) => sum + row.copies, 0);
         function renderConfirm() {
@@ -11657,15 +11850,15 @@ async function rpc(name,args,retry=true){
           const card = document.createElement("div");
           card.className = "pa-confirm"; card.id = "pa-confirm";
           card.innerHTML = `<div class="pa-c-head"><b>IT ${esc(slip.number)}</b><span class="pa-route">${esc(slip.fromWarehouse || "—")}${ICON.arrow}${esc(slip.toWarehouse || "—")}</span></div>`
+            + `<div class="pa-cols" aria-hidden="true"><span>SL phiếu</span><span>Số bản</span></div>`
             + `<div class="pa-rows">${rows.map((row, i) => `<div class="pa-row" data-i="${i}" data-off="${!row.on}"><input type="checkbox" data-pa-on aria-label="Chọn SKU ${esc(row.sku)}"${row.on ? " checked" : ""}${row.known ? "" : " disabled"}>`
               + `<div class="pa-main"><b>${esc(row.sku)}</b><span class="pa-name">${esc(row.name)}</span>${row.known ? "" : '<span class="pa-flag">Không có trong danh mục</span>'}</div>`
               + `<span class="pa-qty">${esc([row.quantity, row.unit].filter(v => v !== null && v !== undefined && v !== "").join(" "))}</span>`
-              + `<input class="pa-n" type="number" inputmode="numeric" min="1" max="200" step="1" value="${row.copies}" data-pa-n aria-label="Số bản SKU ${esc(row.sku)}"${row.known ? "" : " disabled"}></div>`).join("")}</div>`
+              + `<span class="pa-nw" data-label="bản"><input class="pa-n" type="number" inputmode="numeric" min="1" max="200" step="1" value="${row.copies}" data-pa-n aria-label="Số bản SKU ${esc(row.sku)}"${row.known ? "" : " disabled"}></span></div>`).join("")}</div>`
             + `<div class="pa-c-bar"><div class="pa-stepper"><span>Số bản</span><button class="pa-step" type="button" id="pa-copies-dec" aria-label="Giảm số bản" title="Giảm số bản">${ICON.minus}</button><input id="pa-copies" type="number" inputmode="numeric" min="1" max="200" step="1" value="${common}" aria-label="Số bản chung"><button class="pa-step" type="button" id="pa-copies-inc" aria-label="Tăng số bản" title="Tăng số bản">${ICON.plus}</button></div><span class="pa-total" id="pa-total"></span></div>`
             + `<div class="pa-c-foot"><span class="as-chip" id="pa-device"></span><div class="pa-c-actions"><button class="ss-secondary pa-cancel" id="pa-cancel" type="button">${ICON.close}<span>Huỷ</span></button><button class="ss-primary pa-print" id="pa-print" type="button">${ICON.printer}<span>In</span></button></div></div>`;
-          thread.append(card);
+          mount(card);
           paintConfirm();
-          thread.scrollTop = thread.scrollHeight;
         }
         function paintConfirm() {
           const card = $("pa-confirm"); if (!card || !state.pending) return;
@@ -11696,14 +11889,15 @@ async function rpc(name,args,retry=true){
             const signature = JSON.stringify(items);
             if (p.nonceSig !== signature) { p.nonceSig = signature; p.batchNonce = crypto.randomUUID(); }
             const result = await window.HasakiSkuIt.enqueue(items, { requestedBy: requestedBy(), nonceBase: p.batchNonce });
-            const ids = (result.jobIds || []).map(id => String(id).slice(0, 8));
-            dropConfirm();
-            addMsg("bot", `Đã gửi ${result.labels} tem, ${ids.length} lệnh · ${ids.join(", ")}`);
+            const ids = (result.jobIds || []).map(String), number = String(p.slip.number || ""), common = p.common;
+            summarize();
+            if (/^\d{6,40}$/.test(number)) rememberSlip(number);
+            showResult(ids, result.labels, number, common);
           } catch (error) {
             const message = String(error?.message || "Không gửi được lệnh in."), sent = Array.isArray(error?.jobIds) ? error.jobIds : [];
             if (sent.length) {
               const number = state.pending?.slip?.number;
-              dropConfirm();
+              summarize();
               addMsg("bot", `Đã gửi ${error.labels} tem, ${sent.length} lệnh; lệnh còn lại lỗi: ${message}${number ? ` Đọc lại phiếu IT ${number} để in phần còn lại.` : ""}`, "bad");
             } else addMsg("bot", message, "bad");
           }
@@ -11712,8 +11906,20 @@ async function rpc(name,args,retry=true){
         thread.addEventListener("click", event => {
           const step = event.target.closest("#pa-copies-dec, #pa-copies-inc"), p = state.pending;
           if (step && p) setCommon(p.common + (step.id === "pa-copies-inc" ? 1 : -1));
-          else if (event.target.closest("#pa-cancel")) { dropConfirm(); addMsg("bot", "Đã huỷ."); }
+          else if (event.target.closest("#pa-cancel")) { summarize(); addMsg("bot", "Đã huỷ."); }
           else if (event.target.closest("#pa-print")) doPrint();
+          else if (event.target.closest(".pa-again")) {
+            const card = event.target.closest(".pa-result");
+            if (event.target.closest(".pa-again").getAttribute("aria-disabled") === "true") return;
+            if (state.admin && !state.busy) startRead(card.dataset.it, Number(card.dataset.copies) || 1);
+          }
+          else if (event.target.closest(".pa-other")) input.focus();
+          else if (event.target.closest("[data-say]")) micBtn.click();
+          else if (event.target.closest("[data-fill]")) {
+            const text = event.target.closest("[data-fill]").dataset.fill;
+            input.value = text; input.focus(); input.setSelectionRange(3, 9);
+          }
+          else if (event.target.closest("[data-recent]")) { if (state.admin && !state.busy) submit(`IT ${event.target.closest("[data-recent]").dataset.recent} 1 bản`); }
         });
         thread.addEventListener("input", event => {
           const p = state.pending, target = event.target; if (!p) return;
@@ -11739,22 +11945,30 @@ async function rpc(name,args,retry=true){
           if (parsed.number) return startRead(parsed.number, parsed.copies);
           if (state.awaiting && /^\d{6,40}$/.test(text.replace(/\s+/g, ""))) return startRead(text.replace(/\s+/g, ""), parsed.copies ?? state.awaiting.copies);
           setBusy(true);
+          showTyping();
           try {
             const data = await askEdge(text);
+            hideTyping();
             const number = String(data.itNumber || "").replace(/\D/g, "");
             addMsg("bot", data.reply);
             if (data.intent === "print_it" && /^\d{6,40}$/.test(number)) { await startRead(number, data.copies ?? parsed.copies); return; }
             state.awaiting = Array.isArray(data.needs) && data.needs.includes("it_number") ? { copies: data.copies ?? parsed.copies } : null;
           } catch (_) {
+            hideTyping();
             if (parsed.ambiguous) { addMsg("bot", "Số phiếu IT là số nào?"); state.awaiting = { copies: parsed.copies }; }
             else addMsg("bot", DOWN_TEXT, "bad");
           }
-          finally { setBusy(false); }
+          finally { hideTyping(); setBusy(false); }
         }
         form.addEventListener("submit", event => { event.preventDefault(); const value = input.value; input.value = ""; submit(value); });
 
+        clearBtn.addEventListener("click", () => {
+          if (state.busy) return;
+          thread.replaceChildren(); state.history = []; state.pending = null; state.awaiting = null;
+          showEmpty(); input.focus();
+        });
+
         // ---- Mic: một lần nghe, điền ô nhập, không tự gửi ----
-        const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (Recognition) {
           micBtn.hidden = false;
           let listening = null;
