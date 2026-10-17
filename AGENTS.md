@@ -45,3 +45,11 @@ For every change, perform the checks that apply:
 - Roles, workflow and the hand-off brief template live in `docs/DOI_AGENT.md`. Agent profiles are in `.claude/agents/` (`trinh-sat`, `thuc-thi-logic`, `thuc-thi-khuon`, `kiem-thu`); the independent review skill is `.claude/skills/review-codex`.
 - Executors work only inside the files and anchor strings named in their brief, never commit, never run migrations or deploys, and report real test output. The lead merges, runs `python scripts/run_tests.py`, and owns migrations, deploys and commits.
 - Decisions already recorded as "do not do" in `RULES.md` are binding for every agent.
+
+## Project map (read first, from 17/10/2026)
+
+- `docs/PROJECT_MAP.md` is the quick map of the whole project: home tiles → hash routes → `index.html` block ids, Extension files and commands, Edge actions, Supabase tables, which migration file holds the latest version of each function, test and deploy commands. Read it before exploring; grep only to confirm the part you touch.
+- One-line architecture: static `index.html` (GitHub Pages) + Chrome Extension `extension/inside-po-connector` (reads Inside/WMS inside logged-in tabs; tokens never leave the tab; 0.10.0 also runs auto-sync in the background) + Supabase (RPC/RLS/pg_cron, Edge `sku-sync`, `group-uid-sync`, `print-assistant`, `sku-vision`) + print agent on `may-kho-01` reading `print_jobs`.
+- Every module lives in `index.html` as a `<style id=…>` + `<section id=…-screen>` + `<script id=…>` IIFE; locate by id or anchor string, never by line number. Shared gates: `window.PrintSkuQueue`, `PrintSkuAdminAuth`/`PrintSkuAdminAccess`, `extensionRequest` helpers (count asserted by `tests/bridge_ready.cjs`), `window.HasakiSkuIt`.
+- Release order is always migration → deploy Edge → Reload Extension (then reload Inside/WMS tabs). `python scripts/run_tests.py` runs the whole suite against the static server on port 8000; agent worktrees must use another port and `BASE=`.
+- Decisions already made live in `RULES.md` (local, not in git) and in the lead's memory; the lead updates `docs/PROJECT_MAP.md` in the same commit whenever a module, command, Edge action or migration chain changes.

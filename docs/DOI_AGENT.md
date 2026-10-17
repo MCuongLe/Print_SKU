@@ -47,3 +47,9 @@ Chưa kiểm được bằng máy: <việc người dùng sẽ thử thật>
 - Cả bộ test: `python scripts/run_tests.py` (hoặc `--only sku_sync`).
 - Review Codex: kỹ năng `/review-codex` trong phiên, hoặc `python scripts/codex_review.py --commit <sha>` / `--working-tree` / `--images <thư mục ảnh>`.
 - Chụp màn để review giao diện: viết script Playwright theo mẫu test của màn đó, lưu ảnh vào thư mục tạm rồi đưa vào `--images`.
+
+## Bản đồ dự án (từ 17/10/2026)
+
+- `docs/PROJECT_MAP.md` là bản đồ nhanh: ô trang chủ → hash → id khối trong `index.html`, tệp và lệnh Extension, action Edge, bảng Supabase, tệp migration giữ bản mới nhất của từng hàm, lệnh test/deploy.
+- **Trinh sát** đọc bản đồ trước, rồi chỉ grep xác minh chuỗi neo của phần được hỏi; báo cáo nêu rõ chỗ bản đồ đã lỗi thời (nếu có).
+- **Lead** cập nhật bản đồ trong cùng commit mỗi khi thêm/đổi module, lệnh Extension, action Edge hoặc chuỗi migration. Cổng kiểm thử coi "bản đồ chưa cập nhật" là một mục cảnh báo (không chặn).
