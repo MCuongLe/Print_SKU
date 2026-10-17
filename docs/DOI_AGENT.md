@@ -53,3 +53,9 @@ Chưa kiểm được bằng máy: <việc người dùng sẽ thử thật>
 - `docs/PROJECT_MAP.md` là bản đồ nhanh: ô trang chủ → hash → id khối trong `index.html`, tệp và lệnh Extension, action Edge, bảng Supabase, tệp migration giữ bản mới nhất của từng hàm, lệnh test/deploy.
 - **Trinh sát** đọc bản đồ trước, rồi chỉ grep xác minh chuỗi neo của phần được hỏi; báo cáo nêu rõ chỗ bản đồ đã lỗi thời (nếu có).
 - **Lead** cập nhật bản đồ trong cùng commit mỗi khi thêm/đổi module, lệnh Extension, action Edge hoặc chuỗi migration. Cổng kiểm thử coi "bản đồ chưa cập nhật" là một mục cảnh báo (không chặn).
+
+## Lead dự phòng (từ 17/10/2026)
+
+- Lead mặc định là Fable 5.1 (phiên chính). Khi Fable hết hạn mức hoặc không khả dụng, **Opus 5.5 là lead dự phòng** trong chính phiên đó (đổi model ở bộ chọn của app), giữ nguyên quyền và trách nhiệm: đọc `docs/PROJECT_MAP.md`, `RULES.md` và bộ nhớ trước khi làm; vẫn giao việc cho `trinh-sat`/`kiem-thu` (Haiku) và `thuc-thi-*`; vẫn gọi Codex review; vẫn chỉ commit khi người dùng nói.
+- Sonnet và Haiku không làm lead. Khi Opus làm lead, phần logic có thể tự làm hoặc vẫn giao `thuc-thi-logic` để giữ tách vai trò review.
+- Hết ngữ cảnh (context) không phải hết hạn mức: phiên tự tóm tắt và tiếp tục với cùng model; nếu phải mở phiên mới, lead mới bắt đầu từ `docs/PROJECT_MAP.md` + mục mới nhất của `RULES.md`.
