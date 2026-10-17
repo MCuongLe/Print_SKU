@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "HASAKI Inside PO Connector",
-  "version": "0.9.4",
+  "version": "0.9.5",
   "description": "Cầu nối chỉ đọc để lấy PO, SKU, Combo, Group UID, lịch sử chuyển vị trí, dữ liệu kiểm kê, nhập xuất kho và tồn app xây dựng từ các phiên đang đăng nhập.",
   "permissions": [
     "tabs",

@@ -7981,6 +7981,8 @@ var FSK_CORE = (function () {
       .cut-adj-st[data-st="pending"],.cut-adj-st[data-st="wait"]{background:rgba(96,115,107,.14);color:var(--wms-muted,#60736b)}
       /* Đã xử lý (v8): xanh dương như chip "Đã xuất ADJ", không lẫn với Khớp (xanh lá). Nút chân popup ẩn theo nhóm đang mở. */
       .cut-adj-st[data-st="done"]{background:rgba(31,78,120,.1);color:#1f4e78}
+      .cut-adj-st[data-st="qc"]{background:#e3f5ec;color:#0f6a49}
+      .cut-adj-kpi[data-tone="new"]{color:#0f6a49}
       .cut-adj-kpi[data-tone="done"]{color:#1f4e78}
       .as-d-mark[data-tone="done"]{background:#e5eefb;color:#1f4e78}
       #cut-adj-foot .cut-secondary{flex:1 1 auto;min-height:52px}
@@ -8074,6 +8076,7 @@ var FSK_CORE = (function () {
           multi:{label:'Cut nhiều lần',tone:'bad',icon:'<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>'},
           forgot:{label:'Quên tick',tone:'warn',icon:'<path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"/>'},
           done:{label:'Đã xử lý',tone:'done',icon:'<path d="M18 6 7 17l-5-5"/><path d="m22 10-7.5 7.5L13 16"/>'},
+          qc:{label:'Cắt mẫu QC',tone:'new',icon:'<path d="M14 2v6a2 2 0 0 0 .245.96l5.51 10.08A2 2 0 0 1 18 22H6a2 2 0 0 1-1.755-2.96l5.51-10.08A2 2 0 0 0 10 8V2"/><path d="M6.453 15h11.094"/><path d="M8.5 2h7"/>'},
           pending:{label:'Chưa ADJ',tone:'mute',icon:'<circle cx="12" cy="12" r="10"/><path d="M8 12h8"/>'},
           wait:{label:'Chờ dữ liệu WMS',tone:'mute',icon:'<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>'},
           ok:{label:'Khớp',tone:'good',icon:'<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>'}
@@ -8095,6 +8098,7 @@ var FSK_CORE = (function () {
           const cuts=item.wmsCuts||[],std=computeCutQty(item.productName),tick=item.adjExportedAt?Date.parse(item.adjExportedAt):NaN;
           let state;
           if(!cuts.length)state=!item.adjExportedAt?'pending':(Number.isFinite(until)&&tick>until?'wait':'missing');
+          else if(cuts.length>1&&/^(passed|failed)$/i.test(String(item.qcStatus||'')))state='qc';
           else if(cuts.length>1)state='multi';
           else if(std&&Math.abs(Number(cuts[0].qty)-std.value)>QTY_TOLERANCE)state='wrong';
           else state=item.adjExportedAt?'ok':'forgot';
@@ -9695,8 +9699,8 @@ var FSK_CORE = (function () {
         const API="https://ikzhitdqkoatlmkrxuuh.supabase.co",KEY="sb_publishable_mBl--Ep5nNxuC4Xvyi1gfg_SLGEcRhI";
         const KINDS=["added","updated","missing","stale_source"],LABELS={added:"UID mới",updated:"UID cập nhật",missing:"Thiếu trên WMS",stale_source:"WMS cũ hơn database"},KIND_ICON={added:["plus","new"],updated:["refresh","upd"],missing:["xcircle","warn"],stale_source:["history","warn"]};
         // [trường, nhãn, nhóm lọc] — updated_date không hiện trong phần so sánh vì đã có cột "Cập nhật WMS".
-        const UF=[["qty","Số lượng","qty"],["status","Trạng thái","status"],["location","Vị trí","loc"],["warehouse","Kho","wh"],["sku","SKU","sku"],["batch_code","Lot","lot"],["roll_code","Roll","lot"],["updated_by","Người cập nhật","other"]];
-        const TAGS=[{id:"qty",label:"Số lượng"},{id:"status",label:"Trạng thái"},{id:"loc",label:"Vị trí"},{id:"wh",label:"Đổi kho"},{id:"sku",label:"SKU"},{id:"lot",label:"Lot/Roll"},{id:"other",label:"Khác"}];
+        const UF=[["qty","Số lượng","qty"],["status","Trạng thái","status"],["qc_status","QC","qc"],["location","Vị trí","loc"],["warehouse","Kho","wh"],["sku","SKU","sku"],["batch_code","Lot","lot"],["roll_code","Roll","lot"],["updated_by","Người cập nhật","other"]];
+        const TAGS=[{id:"qty",label:"Số lượng"},{id:"status",label:"Trạng thái"},{id:"qc",label:"QC"},{id:"loc",label:"Vị trí"},{id:"wh",label:"Đổi kho"},{id:"sku",label:"SKU"},{id:"lot",label:"Lot/Roll"},{id:"other",label:"Khác"}];
         const COLS={
           added:[{label:"Group UID",sort:"code"},{label:"Kho",sort:"wh"},{label:"Thông tin"},{label:"Cập nhật WMS",sort:"wms"}],
           updated:[{label:"Group UID",sort:"code"},{label:"Kho",sort:"wh"},{label:"Thay đổi"},{label:"Cập nhật WMS",sort:"wms"}],
@@ -9726,11 +9730,13 @@ var FSK_CORE = (function () {
         const skuList=data=>{const p=Array.isArray(data?.products)?data.products:[];if(p.length)return p.slice(0,4).map(i=>`${i.sku} × ${num(i.quantity)}`).join(", ")+(p.length>4?` +${p.length-4}`:"");return data?.sku?String(data.sku):""};
         const plainInfo=data=>({status:data?.status||"",wh:data?.warehouse||"",loc:data?.location||"",qty:data?.qty===undefined||data?.qty===null?"":num(data.qty),sku:skuList(data),lot:[data?.batch_code&&`Lot ${data.batch_code}`,data?.roll_code&&`Roll ${data.roll_code}`].filter(Boolean).join(" · ")});
         function infoCell(data){const i=plainInfo(data),parts=[i.status&&statusChip(i.status),i.loc&&`<span><b>Vị trí</b>${esc(i.loc)}</span>`,i.qty&&`<span><b>Số lượng</b>${esc(i.qty)}</span>`,i.lot&&`<span>${esc(i.lot)}</span>`].filter(Boolean),p=Array.isArray(data?.products)?data.products:[];return`<div class="as-info">${parts.join("")||'<span class="as-empty">—</span>'}</div>${i.sku?`<div class="as-sub"><b>${p.length>1?`${p.length} SKU thành phần`:"SKU"}</b> ${esc(i.sku)}</div>`:""}`}
+        const qcChip=v=>v===null||v===undefined||v===""?'<span class="as-empty">—</span>':/^passed$/i.test(String(v))?chip(v,"new","check"):/^failed$/i.test(String(v))?chip(v,"bad","alert"):chip(v);
         function updatedCell(row){
           const b=row.before||row.before_data||{},a=row.after||row.after_data||{},changed=new Set(row.changedFields||row.changed_fields||[]),lines=[],csv=[],tags=new Set();
           UF.forEach(([key,label,tag])=>{if(!changed.has(key))return;const ov=b[key],nv=a[key],empty='<span class="as-empty">—</span>';let oldH,newH,delta="";
             if(key==="qty"){oldH=ov===null||ov===undefined?empty:esc(num(ov));newH=nv===null||nv===undefined?empty:esc(num(nv));const d=Number(nv)-Number(ov);if(Number.isFinite(d)&&d!==0)delta=`<span class="as-delta" data-s="${d>0?"pos":"neg"}">${d>0?"+":"−"}${esc(num(Math.abs(d)))}</span>`}
             else if(key==="status"){oldH=statusChip(ov);newH=statusChip(nv)}
+            else if(key==="qc_status"){oldH=qcChip(ov);newH=qcChip(nv)}
             else{oldH=ov===null||ov===undefined||ov===""?empty:esc(ov);newH=nv===null||nv===undefined||nv===""?empty:esc(nv)}
             lines.push(diffLine(label,oldH,newH,delta));tags.add(tag);csv.push(`${label}: ${ov??"—"} → ${nv??"—"}`)});
           if(!lines.length){lines.push('<div class="as-diff"><span class="as-k">Khác</span><span class="as-new">Chỉ đổi ngày cập nhật</span></div>');tags.add("other");csv.push("Chỉ đổi ngày cập nhật")}
@@ -9739,7 +9745,7 @@ var FSK_CORE = (function () {
         }
         function staleCell(row){
           const b=row.before||row.before_data||{},a=row.after||row.after_data||{},lines=[],csv=[];
-          UF.forEach(([key,label])=>{const ov=b[key],nv=a[key];if(String(ov??"")===String(nv??""))return;const f=v=>v===null||v===undefined||v===""?"—":key==="qty"?num(v):String(v);lines.push(`<div class="as-diff"><span class="as-k">${esc(label)}</span><span class="as-new">${esc(f(ov))}</span><span class="as-arrow">database ≠ WMS</span><span class="as-old" style="text-decoration:none">${esc(f(nv))}</span></div>`);csv.push(`${label}: database ${f(ov)} ≠ WMS ${f(nv)}`)});
+          UF.forEach(([key,label])=>{const ov=b[key],nv=a[key];if(String(ov??"")===String(nv??""))return;const f=v=>v===null||v===undefined||v===""?"—":key==="qty"?num(v):String(v),h=v=>key==="qc_status"?qcChip(v):esc(f(v));lines.push(`<div class="as-diff"><span class="as-k">${esc(label)}</span><span class="as-new">${h(ov)}</span><span class="as-arrow">database ≠ WMS</span><span class="as-old" style="text-decoration:none">${h(nv)}</span></div>`);csv.push(`${label}: database ${f(ov)} ≠ WMS ${f(nv)}`)});
           return{html:lines.join("")||'<span class="as-empty">—</span>',csv:csv.join("; "),text:csv.join(" ")};
         }
         function rowFor(kind,row){

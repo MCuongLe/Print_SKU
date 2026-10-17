@@ -68,6 +68,7 @@
       updated_by: clean(raw?.updated_by_name ?? raw?.updated_by, 240) || null,
       updated_date: isoDate(updated),
       status,
+      qc_status: clean(raw?.quality_control_status_name, 60) || null,
       products,
     };
   }

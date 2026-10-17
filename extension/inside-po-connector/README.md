@@ -37,6 +37,8 @@ Phiên bản 0.6.1 đọc đầy đủ Combo nhiều thành phần, Group UID hi
 
 Phiên bản 0.7.1 thêm lệnh chỉ đọc `GET_GROUP_UID_MOVES_PAGE` cho ô LỊCH SỬ GROUP UID: lịch sử `Transfer location` của mọi kho tài khoản được xem, 500 dòng/trang (WMS không lọc endpoint này theo `company-ids` nên chỉ cần một lượt đọc). Sau khi cập nhật extension phải Reload trong `chrome://extensions` và tải lại trang Print SKU.
 
+Phiên bản 0.9.5: mỗi dòng Group UID của `GET_GROUP_UID_PAGE` (đồng bộ Group UID) có thêm `qc_status` = chuỗi `quality_control_status_name` của WMS (`Passed`, `Failed` hoặc giá trị khác WMS trả), `null` khi WMS không có trạng thái QC. Edge `group-uid-sync` lưu trường này vào `group_uid_details.qc_status` (migration `supabase/group_uid_qc_status_v1.sql` phải chạy trước khi deploy Edge); Extension cũ không gửi trường này thì giá trị đã lưu được giữ nguyên. Không có dữ liệu ghi lên WMS. Sau khi cập nhật phải Reload trong `chrome://extensions` và tải lại tab Inside/WMS cùng trang Print SKU.
+
 Phiên bản 0.9.4 (review Codex): ô Modified trống cũng làm Extension quay về đọc toàn bộ Combo, và thứ tự được kiểm trên cả lô 8 trang đã tải trước khi dừng.
 
 Phiên bản 0.9.3: lượt gia tăng của `GET_SKU_SYNC_DATA` đọc Combo theo Modified (dừng ở trang có dòng cũ hơn mốc lùi 24 giờ, trả `comboScope: "changed"` và `comboCutoff` dạng `YYYY-MM-DD HH:MM:SS`); nếu trang Combo không giảm dần theo Modified hoặc định dạng ngày khác thì đọc toàn bộ như cũ (`comboScope: "full"`). Lượt toàn bộ không đổi.

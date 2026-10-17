@@ -3,14 +3,16 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
 const assert = require("node:assert/strict");
 const BASE = "http://127.0.0.1:8000/", SESSION_KEY = "print-sku-admin-session-v1", RUN = "33333333-3333-4333-8333-333333333333";
 const changes = [
-  { groupUidCode: "1028261006000050", changeType: "added", before: null, after: { sku: null, qty: 44, products: [{ sku: "422439472", quantity: 7, product_name: "Chỉ mẫu A" }, { sku: "422439483", quantity: 17 }], status: "Available", batch_code: "LOT-A1", roll_code: "R-07", warehouse: "WH - MATERIAL - MTG", location: "F0-KHO-501-01-01", updated_by: "creator@hasaki.vn", updated_date: "2026-10-08T01:00:00Z" }, changedFields: ["group_uid_code"], sourceUpdatedAt: "2026-10-08T01:00:00Z" },
-  { groupUidCode: "1028261006000049", changeType: "updated", before: { qty: 3000, status: "Available", batch_code: "LOT-OLD", roll_code: "R-01", sku: "422273475", updated_by: "old@hasaki.vn" }, after: { qty: 3180, status: "Allocated", batch_code: "LOT-NEW", roll_code: "R-01", sku: "422273475", updated_by: "old@hasaki.vn" }, changedFields: ["qty", "status"], sourceUpdatedAt: "2026-10-08T01:01:00Z" },
+  { groupUidCode: "1028260000000050", changeType: "added", before: null, after: { sku: null, qty: 44, products: [{ sku: "900000004", quantity: 7, product_name: "Chỉ mẫu A" }, { sku: "900000007", quantity: 17 }], status: "Available", batch_code: "LOT-A1", roll_code: "R-07", warehouse: "WH - MATERIAL - MTG", location: "F0-KHO-501-01-01", updated_by: "creator@hasaki.vn", updated_date: "2026-10-08T01:00:00Z" }, changedFields: ["group_uid_code"], sourceUpdatedAt: "2026-10-08T01:00:00Z" },
+  { groupUidCode: "1028260000000049", changeType: "updated", before: { qty: 3000, status: "Available", batch_code: "LOT-OLD", roll_code: "R-01", sku: "900000003", updated_by: "old@hasaki.vn" }, after: { qty: 3180, status: "Allocated", batch_code: "LOT-NEW", roll_code: "R-01", sku: "900000003", updated_by: "old@hasaki.vn" }, changedFields: ["qty", "status"], sourceUpdatedAt: "2026-10-08T01:01:00Z" },
 ];
 const counts = { added: 1, updated: 1, unchanged: 0, missing: 0, issues: 0, totalChanges: 2 };
 const warnCounts = { ...counts, missing: 3, issues: 1, skippedCanceled: 7 };
 let scenario = "normal", cancelCalls = 0, ingestBodies = [];
 const WHS = ["WH - MATERIAL - MTG", "WH - MATERIAL - GARMENT", "WH - SEMI PRODUCT - MTG"];
-const MANY = Array.from({ length: 120 }, (_, i) => ({ groupUidCode: `1028261006${String(i).padStart(6, "0")}`, changeType: "updated", before: { qty: 1000 + i, status: "Available", location: `A-${i}`, warehouse: WHS[i % 3] }, after: { qty: 1180 + i, status: "Allocated", location: `B-${i}`, warehouse: WHS[i % 3] }, changedFields: i % 2 ? ["qty", "status"] : ["qty", "location"], sourceUpdatedAt: new Date(Date.UTC(2026, 9, 8, 1, 0, i)).toISOString() }));
+const MANY = Array.from({ length: 120 }, (_, i) => ({ groupUidCode: `1028260000${String(i).padStart(6, "0")}`, changeType: "updated", before: { qty: 1000 + i, status: "Available", location: `A-${i}`, warehouse: WHS[i % 3] }, after: { qty: 1180 + i, status: "Allocated", location: `B-${i}`, warehouse: WHS[i % 3] }, changedFields: i % 2 ? ["qty", "status"] : ["qty", "location"], sourceUpdatedAt: new Date(Date.UTC(2026, 9, 8, 1, 0, i)).toISOString() }));
+// Một dòng (i = 7) đổi cả QC: before null -> after "Passed" (trường qc_status của Group UID).
+MANY[7].before.qc_status = null; MANY[7].after.qc_status = "Passed"; MANY[7].changedFields = ["qty", "status", "qc_status"];
 const manyCounts = { added: 0, updated: 120, unchanged: 1880, missing: 0, issues: 0, totalChanges: 120 };
 
 // WMS thật (đo 16/10/2026): danh sách xếp theo id giảm dần; to_updated_at chỉ có hiệu lực khi có cả from_updated_at; api-clinic tạo 1 UID/phút.
@@ -20,13 +22,13 @@ const manyCounts = { added: 0, updated: 120, unchanged: 1880, missing: 0, issues
 const fakeExtension = () => addEventListener("message", event => {
   const request = event.data;
   if (!request || request.source !== "PRINT_SKU_APP") return;
-  const row = (code, qty) => ({ group_uid_code: code, sku: "422268923", qty, status: "Available", updated_date: "2026-10-08T01:00:00Z" }), r = n => row("102826100600000" + n, n);
+  const row = (code, qty) => ({ group_uid_code: code, sku: "900000002", qty, status: "Available", updated_date: "2026-10-08T01:00:00Z" }), r = n => row("102826000000000" + n, n);
   const pageData = payload => {
     const mode = window.__guScenario || "normal";
     (window.__guReads = window.__guReads || []).push({ page: payload.page, ...(payload.from ? { from: payload.from } : {}), ...(payload.to ? { to: payload.to } : {}) });
     if (mode === "normal") return { page: 1, size: 500, total: 2, totalPages: 1, rows: [
-      { group_uid_code: "1028261006000050", sku: "422268923", qty: 7429, status: "Available", updated_date: "2026-10-08T01:00:00Z" },
-      { group_uid_code: "1028261006000049", sku: "422273475", qty: 3180, status: "Allocated", updated_date: "2026-10-08T01:01:00Z" },
+      { group_uid_code: "1028260000000050", sku: "900000002", qty: 7429, status: "Available", updated_date: "2026-10-08T01:00:00Z" },
+      { group_uid_code: "1028260000000049", sku: "900000003", qty: 3180, status: "Allocated", updated_date: "2026-10-08T01:01:00Z" },
     ] };
     if (payload.page === 1) window.__guP1 = (window.__guP1 || 0) + 1;
     if (mode === "insert") return payload.page === 2 ? { page: 2, size: 500, total: 4, totalPages: 2, rows: [r(2), r(1)] }
@@ -77,13 +79,13 @@ async function mock(page) {
       assert.equal((await page.locator("#gu-source").innerText()).trim(),"2");assert.equal((await page.locator("#gu-added").innerText()).trim(),"1");assert.equal((await page.locator("#gu-updated").innerText()).trim(),"1");assert.equal(await page.locator("#gu-apply").isEnabled(),true);
       assert.equal(await page.locator("#gu-dialog").evaluate(d=>d.open),false,"xem trước xong không tự mở popup");assert.equal(await page.locator("#gu-apply").getAttribute("data-count"),"2","nút Cập nhật ghi số thay đổi");assert.equal(await page.locator('[data-gu-kind="missing"]').getAttribute("data-zero"),"true");await page.locator('[data-gu-kind="missing"]').click();await page.waitForTimeout(150);assert.equal(await page.locator("#gu-dialog").evaluate(d=>d.open),false,"ô 0 dòng không mở popup");
       await page.locator('[data-gu-kind="added"]').click();await page.locator("#gu-dialog").waitFor({state:"visible"});assert.equal((await page.locator("#gu-change-title").innerText()).trim(),"UID mới");assert.equal(await page.locator("#gu-dialog .as-d-mark svg").count(),1);
-      assert.match(await page.locator("#gu-change-body").innerText(),/422439472 × 7/);assert.match(await page.locator("#gu-change-body").innerText(),/creator@hasaki\.vn/,"UID mới ghi người cập nhật");
+      assert.match(await page.locator("#gu-change-body").innerText(),/900000004 × 7/);assert.match(await page.locator("#gu-change-body").innerText(),/creator@hasaki\.vn/,"UID mới ghi người cập nhật");
       // Bấm mã Group UID: hộp chi tiết SKU / Batch (Lot) / Roll (không còn sao chép khi bấm mã)
       await page.locator("#gu-change-body .gu-uid-open").first().click();const uidBox=page.locator("#gu-uid-dialog");await uidBox.waitFor({state:"visible"});
-      assert.equal((await page.locator("#gu-uid-title").innerText()).trim(),"1028261006000050");assert.equal((await page.locator("#gu-uid-sub").innerText()).trim(),"UID mới");
-      const uidText=await page.locator("#gu-uid-body").innerText();assert.match(uidText,/422439472\s*×\s*7/);assert.match(uidText,/Chỉ mẫu A/,"tên sản phẩm");assert.match(uidText,/422439483\s*×\s*17/,"UID nhiều SKU hiện đủ từng SKU");
+      assert.equal((await page.locator("#gu-uid-title").innerText()).trim(),"1028260000000050");assert.equal((await page.locator("#gu-uid-sub").innerText()).trim(),"UID mới");
+      const uidText=await page.locator("#gu-uid-body").innerText();assert.match(uidText,/900000004\s*×\s*7/);assert.match(uidText,/Chỉ mẫu A/,"tên sản phẩm");assert.match(uidText,/900000007\s*×\s*17/,"UID nhiều SKU hiện đủ từng SKU");
       assert.match(uidText,/BATCH \(LOT\)\s*LOT-A1/i);assert.match(uidText,/ROLL\s*R-07/i);assert.match(uidText,/WH - MATERIAL - MTG/);assert.match(uidText,/F0-KHO-501-01-01/);assert.match(uidText,/44/);assert.match(uidText,/Available/);assert.doesNotMatch(uidText,/Trước:/,"UID mới không có bản trước");
-      await page.locator("#gu-uid-copy").click();await page.waitForFunction(()=>document.getElementById("gu-uid-copy").title==="Đã sao chép");assert.equal(await page.evaluate(()=>navigator.clipboard.readText()),"1028261006000050","nút sao chép trong hộp chi tiết");
+      await page.locator("#gu-uid-copy").click();await page.waitForFunction(()=>document.getElementById("gu-uid-copy").title==="Đã sao chép");assert.equal(await page.evaluate(()=>navigator.clipboard.readText()),"1028260000000050","nút sao chép trong hộp chi tiết");
       await page.keyboard.press("Escape");await uidBox.waitFor({state:"hidden"});assert.equal(await page.locator("#gu-dialog").evaluate(d=>d.open),true,"Esc chỉ đóng hộp chi tiết UID, danh sách thay đổi vẫn mở");
       await page.locator('.as-tab[data-gu-tab="updated"]').click();await page.waitForFunction(()=>document.getElementById("gu-change-title").textContent==="UID cập nhật");assert.match(await page.locator("#gu-change-body").innerText(),/3\.000|3000/);assert.match(await page.locator("#gu-change-body").innerText(),/3\.180|3180/);assert.match(await page.locator("#gu-change-body").innerText(),/old@hasaki\.vn/,"cột Cập nhật WMS ghi người cập nhật kể cả khi người cập nhật không đổi");assert.equal(await page.locator("#gu-change-body .as-diff .as-k",{hasText:"Người cập nhật"}).count(),0,"người cập nhật không đổi thì không hiện thành dòng so sánh");assert.equal(await page.locator("#gu-change-body .as-by").count(),1);
       await page.locator("#gu-change-body .gu-uid-open").first().focus();await page.keyboard.press("Enter");await uidBox.waitFor({state:"visible"});
@@ -107,6 +109,10 @@ async function mock(page) {
       const rowText=await page.locator("#gu-change-body tr").first().innerText();for(const part of ["Số lượng","+180"])assert.equal(rowText.includes(part),true,part);assert.equal(rowText.includes("updated_date"),false);
       await page.locator("#gu-tools input").fill("000050");assert.equal(await page.locator("#gu-change-body tr").count(),1);assert.equal((await page.locator("#gu-change-note").innerText()).trim(),"1 / 120 dòng");await page.locator("#gu-tools input").fill("");
       await page.locator('[data-as-tag="loc"]').click();assert.equal((await page.locator("#gu-pager").innerText()).includes("/ 60"),true);await page.locator('[data-as-tag="loc"]').click();
+      // Tag QC: chỉ dòng đổi qc_status xuất hiện; dòng đó hiện nhãn "QC" và chip "Passed"
+      assert.equal(await page.locator('[data-as-tag="qc"]').count(),1,"có tag QC");await page.locator('[data-as-tag="qc"]').click();assert.equal((await page.locator("#gu-pager").innerText()).includes("/ 1"),true,"lọc QC còn 1 dòng");
+      {const qcRow=await page.locator("#gu-change-body tr").first().innerText();assert.equal(qcRow.includes("QC"),true,"dòng hiện nhãn QC");assert.equal(qcRow.includes("Passed"),true,"dòng hiện chip Passed");assert.equal(await page.locator('#gu-change-body tr .as-chip[data-tone="new"]').count()>=1,true,"Passed là chip tone new")}
+      await page.locator('[data-as-tag="qc"]').click();assert.equal((await page.locator("#gu-pager").innerText()).includes("/ 120"),true,"bỏ tag QC trả về đủ 120");
       // Cột Kho + bộ lọc Kho (chọn nhiều, có số đếm), chip cũ đổi tên "Đổi kho"
       assert.deepEqual(await page.locator("#gu-change-head th").allInnerTexts(),["Group UID","Kho","Thay đổi","Cập nhật WMS"]);
       assert.equal((await page.locator("#gu-change-body tr").first().locator("td").nth(1).innerText()).includes("WH - "),true,"mỗi dòng hiện kho");

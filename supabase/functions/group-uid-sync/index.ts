@@ -82,6 +82,9 @@ function normalizedRows(value: unknown): Json[] {
       group_uid_code: code, batch_code: clean(row.batch_code, 120) || null, roll_code: clean(row.roll_code, 120) || null,
       warehouse: clean(row.warehouse, 240) || null, location: clean(row.location, 240) || null, sku: clean(row.sku, 80) || null,
       qty, updated_by: clean(row.updated_by, 240) || null, updated_date: dateValue(row.updated_date, `Ngày cập nhật UID ${code}`), status, products,
+      // Trạng thái QC WMS (quality_control_status_name). Extension cũ không gửi → null → apply không ghi đè giá trị đã lưu.
+      // Cột staging.qc_status có từ migration group_uid_qc_status_v1.sql: phải chạy migration trước khi deploy bản này.
+      qc_status: clean(row.qc_status, 60) || null,
     };
   });
 }

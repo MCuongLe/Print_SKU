@@ -58,16 +58,18 @@ const HISTORY = [
   cutRow('UID-I', 'SKU-G', 100, 4900, '2026-09-30 08:00:00'), // truoc lan quet cat tren app -> la lan cat khac
   cutRow('UID-J', 'SKU-N', 77, 923, '2026-10-03 09:05:00'),
   cutRow('UID-K', 'SKU-G', 307, 4693, '2026-10-03 09:06:00'),
+  cutRow('UID-L', 'SKU-G', 306, 4694, '2026-10-03 09:08:00'), // UID da QC Passed: lenh Cut thu hai la cat mau, khong phai cat trung
+  cutRow('UID-L', 'SKU-G', 20, 4674, '2026-10-04 09:00:00'),
   cutRow('UID-X', 'SKU-G', 50, 100, '2026-10-03 09:07:00'), // UID khong quet cat tren app
   historyRow('Create', 'UID-H', 'SKU-G', 5000, '', '2026-08-01 07:58:09'),
   historyRow('Transfer location', 'UID-A', 'SKU-G', 0, '', '2026-10-05 14:03:46')
 ];
-const CUT_ROWS = 10;
+const CUT_ROWS = 12;
 const G = 'Vải thử nghiệm/AB_Test/60% Cotton/180cm-170gsm/Đỏ/g'; // chuan 1 m = 180cm x 170gsm = 306 g
 const M = 'Vải thử nghiệm/Beige/mm'; // chuan 1000 mm
 const N = 'Phụ liệu thử nghiệm/Size M'; // khong tinh duoc chuan
 const APP_CUT_AT = '2026-10-01T03:00:00.000Z';
-const appItem = (groupUid, sku, productName, adjExportedAt = null) => ({ groupUid, sku, productName, lot: 'LOT-1', roll: '1', printStatus: 'printed', cutAt: APP_CUT_AT, adjExportedAt });
+const appItem = (groupUid, sku, productName, adjExportedAt = null, qcStatus = null) => ({ groupUid, sku, productName, lot: 'LOT-1', roll: '1', printStatus: 'printed', cutAt: APP_CUT_AT, adjExportedAt, qcStatus });
 const syntheticItems = () => [
   appItem('UID-A', 'SKU-G', G, '2026-10-03T02:00:30.000Z'), // khop
   appItem('UID-B', 'SKU-G', G), // quen tick
@@ -79,10 +81,11 @@ const syntheticItems = () => [
   appItem('UID-H', 'SKU-G', G), // chua ADJ
   appItem('UID-I', 'SKU-G', G), // Cut cu truoc lan quet bi bo qua -> chua ADJ
   appItem('UID-J', 'SKU-N', N, '2026-10-03T02:05:00.000Z'), // khong co chuan -> khop
-  appItem('UID-K', 'SKU-G', G, '2026-10-03T02:06:00.000Z') // lech 1 trong dung sai -> khop
+  appItem('UID-K', 'SKU-G', G, '2026-10-03T02:06:00.000Z'), // lech 1 trong dung sai -> khop
+  appItem('UID-L', 'SKU-G', G, '2026-10-03T02:08:00.000Z', 'Passed') // 2 lenh Cut, QC Passed -> Cat mau QC (khong phai loi)
 ];
-const EXPECTED_STATES = { 'UID-A': 'ok', 'UID-B': 'forgot', 'UID-C': 'wrong', 'UID-D': 'ok', 'UID-E': 'multi', 'UID-F': 'missing', 'UID-G': 'wait', 'UID-H': 'pending', 'UID-I': 'pending', 'UID-J': 'ok', 'UID-K': 'ok' };
-const STATE_ORDER = ['wrong', 'missing', 'multi', 'forgot', 'done', 'pending', 'wait', 'ok'];
+const EXPECTED_STATES = { 'UID-A': 'ok', 'UID-B': 'forgot', 'UID-C': 'wrong', 'UID-D': 'ok', 'UID-E': 'multi', 'UID-F': 'missing', 'UID-G': 'wait', 'UID-H': 'pending', 'UID-I': 'pending', 'UID-J': 'ok', 'UID-K': 'ok', 'UID-L': 'qc' };
+const STATE_ORDER = ['wrong', 'missing', 'multi', 'forgot', 'done', 'qc', 'pending', 'wait', 'ok'];
 
 (async () => {
   const browser = await chromium.launch({ channel: 'chrome', headless: true });
@@ -230,7 +233,7 @@ const STATE_ORDER = ['wrong', 'missing', 'multi', 'forgot', 'done', 'pending', '
       assert.equal(store.importCalls[1].body.p_rows.length, CUT_ROWS);
 
       // Phan loai trang thai.
-      assert.deepEqual(await counts(), { all: 11, wrong: 1, missing: 1, multi: 1, forgot: 1, done: 0, pending: 2, wait: 1, ok: 4 });
+      assert.deepEqual(await counts(), { all: 12, wrong: 1, missing: 1, multi: 1, forgot: 1, done: 0, qc: 1, pending: 2, wait: 1, ok: 4 });
       assert.equal(await page.locator('#cut-adj-issues').textContent(), '4');
       const rows = await states();
       assert.deepEqual(Object.fromEntries(rows), EXPECTED_STATES);
@@ -242,6 +245,14 @@ const STATE_ORDER = ['wrong', 'missing', 'multi', 'forgot', 'done', 'pending', '
       assert.match(wrongRow, /100 g/);
       assert.match(await page.locator('#cut-adj-rows tr[data-code="UID-D"]').innerText(), /1\.000 mm/);
 
+      // Cat mau QC (UID-L: 2 lenh Cut, qcStatus Passed) la thong tin: khong tinh vao #cut-adj-issues, khong co o chon; UID-E (qcStatus null) van la Cut nhieu lan.
+      await tile('qc');
+      assert.deepEqual((await states()).map(([code]) => code), ['UID-L']);
+      assert.equal((await page.locator('#cut-adj-d-title').textContent()).trim(), 'Cắt mẫu QC');
+      assert.equal(await page.locator('#cut-adj-rows input[type=checkbox]').count(), 0);
+      assert.equal(await page.locator('#cut-adj-foot').isHidden(), true, 'nhóm Cắt mẫu QC không có nút xử lý');
+      await tile('');
+      await closeAdj();
       // Dong lech (sai so luong, tick WMS khong co, Cut nhieu lan, quen tick) co o chon; Tick giup ghi gio Cut cua WMS.
       assert.equal(await page.locator('#cut-adj-rows input[type=checkbox]').count(), 4);
       assert.equal(await page.locator('#cut-adj-dialog').evaluate(d => d.open), false, 'tải xong không tự mở popup');
@@ -261,7 +272,7 @@ const STATE_ORDER = ['wrong', 'missing', 'multi', 'forgot', 'done', 'pending', '
       assert.deepEqual(store.tickCalls, [['UID-B']]);
       assert.equal(items.find(x => x.groupUid === 'UID-B').adjExportedAt, '2026-10-03T09:01:00+07:00');
       await page.waitForFunction(() => document.querySelector('.cut-adj-kpi[data-st="ok"] b').textContent === '5');
-      assert.deepEqual(await counts(), { all: 11, wrong: 1, missing: 1, multi: 1, forgot: 0, done: 0, pending: 2, wait: 1, ok: 5 });
+      assert.deepEqual(await counts(), { all: 12, wrong: 1, missing: 1, multi: 1, forgot: 0, done: 0, qc: 1, pending: 2, wait: 1, ok: 5 });
       assert.equal(await page.locator('#cut-adj-issues').textContent(), '3');
 
       // Da xu ly: chon UID lech -> luu kem kieu lech; sang nhom Da xu ly, bot 1 lech. Bo xu ly tra lai nhom cu.
@@ -277,7 +288,7 @@ const STATE_ORDER = ['wrong', 'missing', 'multi', 'forgot', 'done', 'pending', '
       await page.waitForFunction(() => document.querySelector('#cut-message').textContent.includes('Đã đánh dấu 1 UID đã xử lý'));
       assert.deepEqual(store.resolveCalls, [{ p_codes: ['UID-F'], p_state: 'missing', p_done: true }]);
       await page.waitForFunction(() => document.querySelector('.cut-adj-kpi[data-st="done"] b').textContent === '1');
-      assert.deepEqual(await counts(), { all: 11, wrong: 1, missing: 0, multi: 1, forgot: 0, done: 1, pending: 2, wait: 1, ok: 5 });
+      assert.deepEqual(await counts(), { all: 12, wrong: 1, missing: 0, multi: 1, forgot: 0, done: 1, qc: 1, pending: 2, wait: 1, ok: 5 });
       assert.equal(await page.locator('#cut-adj-issues').textContent(), '2');
       await tile('done');
       assert.match(await page.locator('#cut-adj-rows tr[data-code="UID-F"]').innerText(), /Đã xử lý[\s\S]*Tick, WMS không có/);
@@ -306,7 +317,7 @@ const STATE_ORDER = ['wrong', 'missing', 'multi', 'forgot', 'done', 'pending', '
       assert.equal(await page.locator('#cut-adj-tick').isVisible(), false, 'chỉ Quên tick và Tất cả có nút Tick giúp');
       assert.deepEqual((await states()).map(([code]) => code).sort(), ['UID-H', 'UID-I']);
       await tile('');
-      assert.equal((await states()).length, 11);
+      assert.equal((await states()).length, 12);
       await closeAdj();
       await page.locator('#cut-adj-sku').fill('SKU-G');
       await page.locator('#cut-adj-date-from').fill('2026-10-01');
@@ -366,7 +377,7 @@ const STATE_ORDER = ['wrong', 'missing', 'multi', 'forgot', 'done', 'pending', '
       assert.equal(layout.tabs.length, 4);
       assert.equal(layout.tabs.every(right => right <= layout.innerWidth), true);
       assert.deepEqual(errors, []);
-      console.log(`PASS ${width}px: file zip/xlsx, loi file, Admin truoc khi nap, 7 trang thai, Cut cu truoc lan quet, tick giup, loc, nap lai, doc WMS nhieu trang (co/khong tong, lap trang), da xu ly/bo xu ly, XLSX, no overflow/errors`);
+      console.log(`PASS ${width}px: file zip/xlsx, loi file, Admin truoc khi nap, 8 trang thai, Cat mau QC, Cut cu truoc lan quet, tick giup, loc, nap lai, doc WMS nhieu trang (co/khong tong, lap trang), da xu ly/bo xu ly, XLSX, no overflow/errors`);
       await page.close();
     }
   } finally { await browser.close(); }

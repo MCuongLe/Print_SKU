@@ -191,7 +191,7 @@ Màn **RỦI RO LƯU TRỮ** có hai tab cấp màn (nhớ theo máy, khoá `sr-
 
 Giao diện hai màn đồng bộ (`#admin/sku-sync`, `#admin/group-uid-sync`, 08/10/2026) dùng chung một bộ công cụ `AdminSyncUI` (khối `admin-sync-shared` trong `index.html`):
 - Danh sách thay đổi có ô tìm (không phân biệt dấu), lọc theo nhóm trường, sắp xếp theo mã/ngày cập nhật WMS, phân trang 50 dòng và xuất Excel `.xlsx` (đúng các dòng đang lọc; Group UID giữ đủ 16 chữ số dạng chữ, ngày giờ là ngày giờ thật, dòng tiêu đề dính và có bộ lọc; ghi bằng bộ zip có sẵn của app, không thêm thư viện). Bấm vào mã để sao chép; riêng bảng thay đổi Group UID, bấm mã UID mở hộp chi tiết SKU (kèm số lượng và tên sản phẩm), Batch (Lot), Roll, kho, vị trí, số lượng, trạng thái (giá trị khác bản kia có thêm dòng "Trước") và nút sao chép.
-- Mỗi thay đổi hiện từng trường dạng `giá trị cũ → mới` (số lượng kèm chênh lệch), tên trường tiếng Việt, không in `updated_date` trong phần so sánh. UID mới hiện kho, vị trí, số lượng, trạng thái, Lot/Roll và SKU; SKU mới hiện tên sản phẩm (phần đầu in đậm) và nhóm hàng.
+- Mỗi thay đổi hiện từng trường dạng `giá trị cũ → mới` (số lượng kèm chênh lệch; trường **QC** là kết quả Evaluation Passed/Failed hiện bằng chip, có tag lọc *QC*), tên trường tiếng Việt, không in `updated_date` trong phần so sánh. UID mới hiện kho, vị trí, số lượng, trạng thái, Lot/Roll và SKU; SKU mới hiện tên sản phẩm (phần đầu in đậm) và nhóm hàng.
 - Group UID có thanh cơ cấu kết quả (không đổi / cập nhật / mới / WMS cũ hơn), chênh lệch so với lần toàn bộ trước, tab theo nhóm, cảnh báo bấm được và dải thời gian lần đồng bộ gần nhất; SKU chia thẻ thành 3 cụm (SKU, Combo, Cảnh báo). Lịch sử có lý do lỗi, thời lượng và nút ẩn lượt lỗi.
 - Edge Function chỉ trả tối đa 1.000 dòng mỗi nhóm, nên danh sách hiện `đã tải N / tổng` khi nhóm lớn hơn; tìm và CSV chỉ trên phần đã tải.
 - Group UID có cột **Kho** (sắp xếp được) và bộ lọc **Kho** chọn nhiều có ô tìm và số đếm theo các bộ lọc đang bật; kết hợp với bộ lọc trường theo kiểu "và" (chip "Đổi kho" là UID bị chuyển kho). Ô tìm và file Excel có cả kho; UID bị chuyển kho hiện kho mới kèm "từ kho cũ". Danh sách chọn dùng chung trong `AdminSyncUI.createList` (tùy chọn `facets`).
@@ -475,14 +475,15 @@ python scripts/apply_supabase_sql.py supabase/cut_group_uid_v5_adj_export.sql --
 trang web cũ vẫn gọi được). Web chỉ gửi `p_adj` khi có chọn lọc ADJ.
 
 **Đối chiếu ADJ với lịch sử WMS.** Tab **4 · Đối chiếu** so UID đã cắt với lịch sử Group UID của WMS trong
-phạm vi `warehouse_id=1177` (**WH - MATERIAL - MTG**). Extension (đọc lịch sử từ bản 0.5.0; hiện 0.9.1) dùng phiên WMS Admin đang mở để đọc
+phạm vi `warehouse_id=1177` (**WH - MATERIAL - MTG**). Extension (đọc lịch sử từ bản 0.5.0; hiện 0.9.5) dùng phiên WMS Admin đang mở để đọc
 trực tiếp API theo trang 500 dòng; lần sau đọc chồng lại 30 phút và nhận diện lệnh ADJ bằng Note
 `Cut ... out of group ...` (WMS có thể hiển thị Action là `N/A`). Bấm **Đọc từ WMS** để nạp tự động. Nút
 **Nạp ZIP/XLSX** giữ vai trò đối chiếu toàn bộ/dự phòng; cả hai cách đều cần phiên Supabase Admin. Dữ liệu nạp chồng
 không nhân đôi. Dashboard chia UID thành: *Khớp*, *Quên tick* (đã ADJ nhưng chưa tick), *Sai số lượng*
 (so với chuẩn 1 m như cột số lượng ở Tra cứu), *Tick, WMS không có*, *Cut nhiều lần*, *Chưa ADJ*, *Chờ dữ liệu WMS*
 — bấm thẻ để lọc, lọc thêm theo SKU / Lot / ngày cắt, xuất Excel các dòng đang hiện. Nút **Tick giúp** tick hàng
-loạt các dòng *Quên tick* theo giờ Cut trên WMS. Cần migration v6 (chỉ thêm bảng và hàm, không `drop`; chạy
+loạt các dòng *Quên tick* theo giờ Cut trên WMS. Nhóm *Cắt mẫu QC* là lệnh Cut thứ hai trở đi trên UID đã có kết quả QC Passed/Failed
+(`qcStatus` từ Group UID Detail): chỉ để xem, không phải lệch nên không tính vào số cảnh báo và không có ô chọn. Cần migration v6 (chỉ thêm bảng và hàm, không `drop`; chạy
 **trước** khi cập nhật `index.html`):
 
 ```powershell
