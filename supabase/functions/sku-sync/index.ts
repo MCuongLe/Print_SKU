@@ -28,7 +28,7 @@ const SOURCE_ISSUE_TYPES = new Set(["invalid_combo_relation", "unparsed_combo_de
 // Đồng bộ tự động (sync_auto_v1.sql): ngưỡng mặc định khi bảng cấu hình thiếu hoặc thiếu khoá; bản chép giống group-uid-sync/index.ts (deploy gửi 1 tệp).
 const DEFAULT_THRESHOLDS: Record<string, Record<string, number>> = {
   group_uid: { maxChanges: 3000, maxMissing: 0, maxIssues: 0 },
-  sku: { maxUpdated: 500, maxAdded: 500, maxMissing: 0, maxOrphaned: 0 },
+  sku: { maxUpdated: 500, maxAdded: 500, maxMissing: 20, maxOrphaned: 0 },
 };
 const AUTO_KINDS = new Set(["sku", "group_uid"]);
 const LEASE_TTL_SECONDS = 900;
@@ -55,16 +55,18 @@ function thresholdsFor(kind: string, all: unknown): Record<string, number> {
   const base = DEFAULT_THRESHOLDS[kind], given = ((all ?? {}) as Json)[kind] as Json | undefined;
   return Object.fromEntries(Object.entries(base).map(([key, fallback]) => [key, limitOf(given?.[key], fallback)]));
 }
-// Ngưỡng "Vừa" SKU: SKU thiếu trên Inside = 0, Combo thừa = 0, SKU cập nhật ≤ 500, SKU mới ≤ 500. Vượt → giữ bản xem trước cho Admin.
+// Ngưỡng "Vừa" SKU: SKU mới rời nhóm đồng bộ ≤ 20 (sku_missing_archive_v1.sql, lượt toàn bộ tự lưu trữ; skuMissingNew, lượt cũ chưa
+// có trường thì dùng skuMissing), Combo thừa = 0, SKU cập nhật ≤ 500, SKU mới ≤ 500. Vượt → giữ bản xem trước cho Admin.
 export function evaluateSkuHold(counts: unknown, thresholds: unknown): { reason: string; counts: Json } | null {
   const c = (counts ?? {}) as Json, t = thresholdsFor("sku", { sku: thresholds });
   const skuAdded = Number(c.skuAdded) || 0, skuUpdated = Number(c.skuUpdated) || 0, skuMissing = Number(c.skuMissing) || 0, comboOrphaned = Number(c.comboOrphaned) || 0;
   const reasons: string[] = [];
   if (skuUpdated > t.maxUpdated) reasons.push(`${count(skuUpdated)} SKU cập nhật vượt ngưỡng ${count(t.maxUpdated)}`);
   if (skuAdded > t.maxAdded) reasons.push(`${count(skuAdded)} SKU mới vượt ngưỡng ${count(t.maxAdded)}`);
-  if (skuMissing > t.maxMissing) reasons.push(`${count(skuMissing)} SKU không còn trên Inside`);
+  const hasNew = c.skuMissingNew !== undefined && c.skuMissingNew !== null, skuMissingNew = hasNew ? Number(c.skuMissingNew) || 0 : skuMissing;
+  if (skuMissingNew > t.maxMissing) reasons.push(`${count(skuMissingNew)} SKU ${hasNew ? "mới " : ""}rời nhóm đồng bộ (ngưỡng ${count(t.maxMissing)})`);
   if (comboOrphaned > t.maxOrphaned) reasons.push(`${count(comboOrphaned)} quan hệ Combo thừa`);
-  return reasons.length ? { reason: `Giữ lại: ${reasons.join("; ")}`, counts: { skuAdded, skuUpdated, skuMissing, comboOrphaned } } : null;
+  return reasons.length ? { reason: `Giữ lại: ${reasons.join("; ")}`, counts: { skuAdded, skuUpdated, skuMissing, ...(hasNew ? { skuMissingNew } : {}), comboOrphaned } } : null;
 }
 // Lượt tự động từ Extension gửi source "auto" + tên máy; thiếu trường (web, Extension cũ) → "manual" như trước.
 function runSource(value: unknown): "auto" | "manual" { return value === "auto" ? "auto" : "manual"; }
@@ -238,12 +240,22 @@ async function preview(request: Request, user: { id: string; username: string },
     if (Object.keys(fields).length) { stagedSkus.push(row); skuUpdated.push({ sku: row.sku, fields }); }
     else skuUnchanged += 1;
   }
-  // SKU có trong database nhưng Inside không còn trả về: chỉ báo để Admin xử lý (Inside xoá, đổi nhóm hàng, hoặc nạp tay), không tự xoá/ngừng.
+  // SKU có trong database nhưng Inside không còn trả về trong 7 nhóm (chuyển nhóm khác hoặc bị xoá): lượt toàn bộ lưu danh sách đầy đủ
+  // (staged_missing_skus) để khi áp dụng thì lưu trữ sang sku_archive (quyết định 17/10/2026, sku_missing_archive_v1.sql).
   const sourceSkus = new Set(skus.map(row => String(row.sku)));
   const skuMissingAll = full ? remoteSkus.filter(row => !sourceSkus.has(String(row.sku))).map(row => ({ sku: row.sku, product_name: row.product_name, category_name: row.category_name, status: row.status })) : [];
   let verification: Json = {};
+  let skuMissingNew: number | null = null;
   if (full) {
-    const previousFull = (await fetchAll("sku_sync_runs?select=source_counts&mode=eq.full&status=eq.completed&order=completed_at.desc&limit=1"))[0];
+    const previousFull = (await fetchAll("sku_sync_runs?select=source_counts,changes,missing_sku_codes,archive_kept_codes&mode=eq.full&status=eq.completed&order=completed_at.desc&limit=1"))[0];
+    // Ngưỡng tự động tính trên SKU thiếu MỚI: bỏ các SKU lượt toàn bộ hoàn tất trước đã báo thiếu hoặc đã giữ lại (còn Group UID / combo…),
+    // để SKU bị giữ lại không dồn lên làm mọi lượt sau bị held. Nguồn: missing_sku_codes ∪ archive_kept_codes (đầy đủ); lượt trước khi có
+    // hai cột này thì dùng changes.skus.missing / archiveKept (cắt 1.000).
+    const previousSkus = ((previousFull?.changes as Json | undefined)?.skus ?? {}) as Json;
+    const known = new Set(Array.isArray(previousFull?.missing_sku_codes)
+      ? [...(previousFull.missing_sku_codes as unknown[]), ...(Array.isArray(previousFull.archive_kept_codes) ? previousFull.archive_kept_codes as unknown[] : [])].map(String)
+      : [...(Array.isArray(previousSkus.missing) ? previousSkus.missing : []), ...(Array.isArray(previousSkus.archiveKept) ? previousSkus.archiveKept : [])].map(row => String((row as Json)?.sku ?? "")));
+    skuMissingNew = skuMissingAll.filter(row => !known.has(String(row.sku))).length;
     const previousFullCount = Number((previousFull?.source_counts as Json | undefined)?.normalRows) || null;
     const baseline = previousFullCount ?? remoteSkus.length;
     const drop = baseline > 0 && skus.length < baseline ? Math.round((baseline - skus.length) * 10000 / baseline) / 100 : 0;
@@ -318,7 +330,7 @@ async function preview(request: Request, user: { id: string; username: string },
   const issues = sourceIssueRows(source.sourceIssues);
   const excluded = excludedCounts.bothMissing + excludedCounts.oneMissing + excludedCounts.outOfCategory;
   const sourceCounts = { normalRows: skus.length, comboRows: combos.length, comboScope, selectedComboLinks: candidates.length, excludedComboLinks: excluded, excludedBreakdown: excludedCounts, sourceIssues: issues.total };
-  const changeCounts = { skuAdded: skuAdded.length, skuUpdated: skuUpdated.length, skuUnchanged, skuSkippedInactive: skippedInactive.size, skuMissing: skuMissingAll.length, comboAdded: comboAdded.length, comboUpdated: comboUpdated.length, comboUnchanged, comboOrphaned: comboScope === "full" ? orphanedAll.length : null };
+  const changeCounts = { skuAdded: skuAdded.length, skuUpdated: skuUpdated.length, skuUnchanged, skuSkippedInactive: skippedInactive.size, skuMissing: skuMissingAll.length, ...(skuMissingNew === null ? {} : { skuMissingNew }), comboAdded: comboAdded.length, comboUpdated: comboUpdated.length, comboUnchanged, comboOrphaned: comboScope === "full" ? orphanedAll.length : null };
   // Danh sách chi tiết tối đa 1.000 dòng mỗi nhóm (lượt toàn bộ có thể hàng nghìn); số đếm vẫn đủ.
   const changes = {
     skus: { added: skuAdded.slice(0, DETAIL_LIMIT), updated: skuUpdated.slice(0, DETAIL_LIMIT), missing: skuMissingAll.slice(0, DETAIL_LIMIT) },
@@ -330,7 +342,8 @@ async function preview(request: Request, user: { id: string; username: string },
   const run = await insertRun({
     status: "previewed", source: "inside-extension", mode: full ? "full" : "incremental", cutoff: clean(source.cutoff, 40), source_generated_at: sourceTime(source.generatedAt),
     source_counts: sourceCounts, change_counts: changeCounts, changes, staged_skus: stagedSkus,
-    staged_combo_links: stagedLinks, verification, created_by: user.id,
+    staged_combo_links: stagedLinks, verification, created_by: user.id, staged_missing_skus: full ? skuMissingAll : null,
+    missing_sku_codes: full ? skuMissingAll.map(row => String(row.sku)) : null,
     // Cột source cũ luôn "inside-extension" (check cứng); nguồn kích hoạt nằm ở run_source (sync_auto_v1.sql).
     run_source: runSource(body.source), device: deviceName(body.device),
   });
@@ -358,6 +371,32 @@ async function staleReason(run: Json): Promise<string | null> {
   const newer = await fetchAll(`sku_sync_runs?select=id&status=eq.completed&completed_at=gt.${encodeURIComponent(new Date(createdAt).toISOString())}&limit=1`);
   return newer.length ? "Đã có lượt đồng bộ hoàn tất sau bản xem trước này; hãy kiểm tra lại dữ liệu Inside" : null;
 }
+// Lượt toàn bộ: SKU rời 7 nhóm đồng bộ → lưu trữ qua RPC sku_archive_missing (sku_missing_archive_v1.sql; cùng 4 điều kiện bảo vệ như
+// lưu trữ SKU ngừng: còn Group UID sống / Combo Active / xả vải đang mở / cắt trong 90 ngày thì giữ). Lượt cũ / gia tăng không có danh
+// sách → null (hành vi cũ). Lỗi RPC không làm hỏng lượt đã ghi: trả error, SKU thiếu vẫn còn trong bảng và lượt toàn bộ sau thử lại.
+async function archiveMissing(run: Json): Promise<{ archived: Json[]; kept: Json[]; error: string | null } | null> {
+  if (run.mode !== "full" || !Array.isArray(run.staged_missing_skus)) return null;
+  const byCode = new Map<string, Json>();
+  (run.staged_missing_skus as Json[]).forEach(row => { const sku = String(row?.sku ?? "").trim(); if (sku && sku.length <= 80) byCode.set(sku, row); });
+  if (!byCode.size) return null;
+  const codes = [...byCode.keys()], archived: Json[] = [], kept: Json[] = [];
+  try {
+    for (let start = 0; start < codes.length; start += 2000) {
+      const data = await rpc("sku_archive_missing", { p_skus: codes.slice(start, start + 2000), p_reason: "left_sync_scope" });
+      (Array.isArray(data?.archivedSkus) ? data.archivedSkus as unknown[] : []).forEach(sku => {
+        const row = byCode.get(String(sku));
+        archived.push({ sku: String(sku), product_name: row?.product_name ?? null, category_name: row?.category_name ?? null });
+      });
+      (Array.isArray(data?.keptSkus) ? data.keptSkus as Json[] : []).forEach((item: Json) => {
+        const row = byCode.get(String(item?.sku));
+        kept.push({ sku: String(item?.sku ?? ""), reason: clean(item?.reason, 60), product_name: row?.product_name ?? null });
+      });
+    }
+    return { archived, kept, error: null };
+  } catch (error) {
+    return { archived, kept, error: clean((error as Error).message, 300) };
+  }
+}
 async function apply(request: Request, body: Json): Promise<Response> {
   const runId = clean(body.runId, 80);
   if (!/^[0-9a-f-]{36}$/i.test(runId)) return fail(request, 400, "INVALID_RUN", "Mã lượt đồng bộ không hợp lệ");
@@ -377,7 +416,7 @@ async function apply(request: Request, body: Json): Promise<Response> {
       ? { reason: "Giữ lại: Admin tạm dừng đồng bộ tự động", counts: (run.change_counts ?? {}) as Json }
       : evaluateSkuHold(run.change_counts, (settings?.thresholds as Json | undefined)?.sku);
     if (held) {
-      const marked = await updateRun(runId, { status: "held", auto_hold: clean(held.reason, 300), completed_at: new Date().toISOString(), staged_skus: [], staged_combo_links: [] }, "previewed");
+      const marked = await updateRun(runId, { status: "held", auto_hold: clean(held.reason, 300), completed_at: new Date().toISOString(), staged_skus: [], staged_combo_links: [], staged_missing_skus: null }, "previewed");
       if (!marked) return fail(request, 409, "NOT_READY", "Lượt đồng bộ không còn ở trạng thái chờ cập nhật");
       return reply(request, 200, { ok: true, data: { runId, status: "held", changeCounts: run.change_counts, held }, meta: { updatedAt: new Date().toISOString(), schemaVersion: 1 } });
     }
@@ -387,6 +426,7 @@ async function apply(request: Request, body: Json): Promise<Response> {
   const claimed = await updateRun(runId, { status: "applying", applied_at: new Date().toISOString(), error_message: null }, "previewed");
   if (!claimed) return fail(request, 409, "ALREADY_RUNNING", "Lượt đồng bộ đang được xử lý ở nơi khác");
   const stagedSkus = run.staged_skus as Json[], stagedLinks = run.staged_combo_links as Json[];
+  let verification: Json = {};
   try {
     const now = new Date().toISOString();
     await upsert("SKU_Name", "sku", stagedSkus.map(row => ({ ...row, updated_at: now })));
@@ -407,17 +447,31 @@ async function apply(request: Request, body: Json): Promise<Response> {
       if (!actual || Object.keys(fieldChanges(actual, expected, COMBO_FIELDS)).length) errors.push(`Combo ${expected.combo_sku} → ${expected.normal_sku} chưa khớp`);
     });
     if (errors.length) throw new Error(errors.slice(0, 20).join("; "));
-    const verification = {
+    verification = {
       ...((run.verification as Json | null) ?? {}),
       skuVerified: stagedSkus.length, comboVerified: stagedLinks.length,
       skuCount: await countTable("SKU_Name"), comboLinkCount: await countTable("sku_combo_links"), errors: [],
     };
     await updateRun(runId, { status: "completed", verification, completed_at: new Date().toISOString(), error_message: null });
-    return reply(request, 200, { ok: true, data: { runId, status: "completed", changeCounts: run.change_counts, verification }, meta: { updatedAt: new Date().toISOString(), schemaVersion: 1 } });
   } catch (error) {
     await updateRun(runId, { status: "failed", error_message: clean((error as Error).message, 500), completed_at: new Date().toISOString() });
     return fail(request, 500, "APPLY_FAILED", `Cập nhật chưa hoàn tất: ${clean((error as Error).message, 300)}`);
   }
+  // Lưu trữ SKU rời nhóm chỉ chạy SAU khi lượt đã ghi completed (ghi, xác minh, đếm xong): lỗi ở bước trên không thể xảy ra sau khi đã xoá SKU.
+  // Kết quả PATCH bổ sung vào dòng lượt đã completed; verification.skuCount là số đếm trước khi lưu trữ.
+  const archive = await archiveMissing(run);
+  if (!archive) return reply(request, 200, { ok: true, data: { runId, status: "completed", changeCounts: run.change_counts, verification }, meta: { updatedAt: new Date().toISOString(), schemaVersion: 1 } });
+  const changeCounts = { ...((run.change_counts as Json | null) ?? {}), skuArchived: archive.archived.length, skuArchiveKept: archive.kept.length };
+  const runChanges = (run.changes as Json | null) ?? {};
+  const changes = { ...runChanges, skus: { ...((runChanges.skus as Json | undefined) ?? {}), archived: archive.archived.slice(0, DETAIL_LIMIT), archiveKept: archive.kept.slice(0, DETAIL_LIMIT) } };
+  if (archive.error) verification = { ...verification, archiveError: archive.error };
+  try {
+    await updateRun(runId, { change_counts: changeCounts, changes, archive_kept_codes: archive.kept.map(item => String(item.sku)), ...(archive.error ? { verification } : {}) }, "completed");
+  } catch (error) {
+    // SKU đã chuyển sang sku_archive; chỉ phần ghi kết quả vào lượt lỗi → báo kèm, không đổi trạng thái lượt.
+    verification = { ...verification, archiveRecordError: clean((error as Error).message, 300) };
+  }
+  return reply(request, 200, { ok: true, data: { runId, status: "completed", changeCounts, verification }, meta: { updatedAt: new Date().toISOString(), schemaVersion: 1 } });
 }
 // API trả "source" = manual|auto (cột run_source); cột source cũ của bảng (inside-extension) không đưa ra.
 function runView(run: Json): Json {

@@ -6,7 +6,7 @@ type Json = Record<string, unknown>;
 // Đồng bộ tự động (sync_auto_v1.sql): ngưỡng mặc định khi bảng cấu hình thiếu hoặc thiếu khoá; bản chép giống sku-sync/index.ts (deploy gửi 1 tệp).
 const DEFAULT_THRESHOLDS: Record<string, Record<string, number>> = {
   group_uid: { maxChanges: 3000, maxMissing: 0, maxIssues: 0 },
-  sku: { maxUpdated: 500, maxAdded: 500, maxMissing: 0, maxOrphaned: 0 },
+  sku: { maxUpdated: 500, maxAdded: 500, maxMissing: 20, maxOrphaned: 0 },
 };
 const AUTO_KINDS = new Set(["sku", "group_uid"]);
 const LEASE_TTL_SECONDS = 900;
