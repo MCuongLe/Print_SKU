@@ -10,7 +10,7 @@ SUPABASE_ACCESS_TOKEN=... của .env. Script không bao giờ in token.
 
 Hàm triển khai với verify_jwt = false: index.ts tự kiểm tra header apikey (publishable key
 dạng sb_publishable_ không phải JWT) và tự xác minh JWT Admin qua /auth/v1/user + user_roles.
-Khoá Anthropic KHÔNG đi qua script này: người quản trị tự nhập ANTHROPIC_API_KEY
+Khoá Anthropic KHÔNG đi qua script này: người quản trị tự nhập GEMINI_API_KEY hoặc ANTHROPIC_API_KEY
 (tuỳ chọn ANTHROPIC_MODEL) ở Dashboard → Edge Functions → Secrets.
 Chạy migration supabase/print_assistant_v1.sql trước khi deploy (bảng nhật ký).
 

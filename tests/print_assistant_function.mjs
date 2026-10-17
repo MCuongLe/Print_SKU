@@ -1,5 +1,5 @@
 // Kiểm tra Edge Function supabase/functions/print-assistant/index.ts (TRỢ LÝ IN) mà không cần Deno, Supabase hay
-// Anthropic thật: Node 24 tự bỏ khai báo kiểu khi import .ts; Deno.serve / Deno.env / fetch được giả lập.
+// Anthropic/Gemini thật: Node 24 tự bỏ khai báo kiểu khi import .ts; Deno.serve / Deno.env / fetch được giả lập.
 //   node tests/print_assistant_function.mjs
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -56,6 +56,15 @@ const ai = (output, extra = {}) => ({
 });
 const PRINT_OK = { intent: "print_it", itNumber: "100000001", copies: 2, reply: "Đọc phiếu IT 100000001, 2 bản mỗi SKU.", needs: [] };
 const anthropicCall = calls => calls.find(c => c.url === "https://api.anthropic.com/v1/messages");
+const geminiCalls = calls => calls.filter(c => c.url.startsWith("https://generativelanguage.googleapis.com/"));
+const GEMINI_ONLY = { ANTHROPIC_API_KEY: "", GEMINI_API_KEY: "test-gemini-key" };
+const GEMINI_URL = model => `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+const gem = (output, extra = {}) => ({
+  body: {
+    candidates: [{ content: { role: "model", parts: [{ text: typeof output === "string" ? output : JSON.stringify(output) }] }, finishReason: "STOP" }],
+    usageMetadata: { promptTokenCount: 700, candidatesTokenCount: 30 }, modelVersion: "gemini-test-version", ...extra
+  }
+});
 const logCall = calls => calls.find(c => c.url.includes("/rest/v1/print_assistant_log"));
 
 test("preflight CORS trả 204 kèm header cho phép apikey và authorization", async () => {
@@ -108,14 +117,15 @@ test("người dùng không phải Admin → 403 FORBIDDEN, không gọi Anthrop
   assert.equal(roles.init.headers.apikey, "test-service-key");
 });
 
-test("thiếu ANTHROPIC_API_KEY → 503 NO_AI_KEY bằng tiếng Việt", async () => {
-  const { call, calls } = await load({ ANTHROPIC_API_KEY: "" }, { ...ADMIN });
+test("không có cả ANTHROPIC_API_KEY lẫn GEMINI_API_KEY → 503 NO_AI_KEY bằng tiếng Việt", async () => {
+  const { call, calls } = await load({ ANTHROPIC_API_KEY: "", GEMINI_API_KEY: "" }, { ...ADMIN });
   const response = await call({ message: "in tem phiếu IT 100000001" });
   const body = await response.json();
   assert.equal(response.status, 503);
   assert.equal(body.code, "NO_AI_KEY");
-  assert.match(body.message, /chưa được cấu hình khoá trợ lý AI/);
+  assert.equal(body.message, "Máy chủ chưa có khoá trợ lý AI (GEMINI_API_KEY hoặc ANTHROPIC_API_KEY).");
   assert.ok(!anthropicCall(calls));
+  assert.equal(geminiCalls(calls).length, 0);
 });
 
 test("body không phải JSON → 400 BAD_JSON; câu nói rỗng/quá 300 ký tự/lịch sử quá 6 lượt → 400 INVALID_INPUT", async () => {
@@ -144,7 +154,7 @@ test("câu 'in tem phiếu IT 100000001 2 bản' → 200 data đúng, gửi đú
   });
   const body = await response.json();
   assert.equal(response.status, 200);
-  assert.deepEqual(body, { ok: true, data: PRINT_OK, meta: { model: "claude-opus-5-5", inputTokens: 812, outputTokens: 41 } });
+  assert.deepEqual(body, { ok: true, data: PRINT_OK, meta: { provider: "anthropic", model: "claude-opus-5-5", inputTokens: 812, outputTokens: 41 } });
 
   const request = anthropicCall(calls);
   assert.equal(request.init.method, "POST");
@@ -302,4 +312,165 @@ test("ghi nhật ký lỗi không làm hỏng phản hồi", async () => {
   const response = await call({ message: "in tem phiếu IT 100000001 2 bản" });
   assert.equal(response.status, 200);
   assert.equal((await response.json()).data.itNumber, "100000001");
+});
+
+// ---- Gemini (quyết định 17/10/2026: không có khoá Anthropic, dùng GEMINI_API_KEY sẵn có của Tìm SKU) ----
+
+test("có cả hai khoá → dùng Anthropic, không gọi Gemini", async () => {
+  const { call, calls } = await load({ GEMINI_API_KEY: "test-gemini-key" }, { ...ADMIN, ...LOG_OK, "api.anthropic.com": ai(PRINT_OK), "generativelanguage.googleapis.com": gem(PRINT_OK) });
+  const body = await (await call({ message: "IT 100000001 2 bản" })).json();
+  assert.equal(body.meta.provider, "anthropic");
+  assert.ok(anthropicCall(calls));
+  assert.equal(geminiCalls(calls).length, 0);
+});
+
+test("chỉ GEMINI_API_KEY → 200 đúng data, đúng URL/header x-goog-api-key, body có responseSchema, ghi nhật ký model Gemini", async () => {
+  const { call, calls } = await load(GEMINI_ONLY, { ...ADMIN, ...LOG_OK, "generativelanguage.googleapis.com": gem(PRINT_OK) });
+  const response = await call({
+    message: "in tem phiếu IT 100000001 2 bản",
+    history: [{ role: "assistant", text: "Chào bạn" }, { role: "user", text: "tôi cần in tem" }, { role: "assistant", text: "Số phiếu IT là gì?" }],
+    context: { hasWms: true, deviceActive: true }
+  });
+  const body = await response.json();
+  assert.equal(response.status, 200);
+  assert.deepEqual(body, { ok: true, data: PRINT_OK, meta: { provider: "gemini", model: "gemini-3.1-flash-lite", inputTokens: 700, outputTokens: 30 } });
+  assert.ok(!anthropicCall(calls));
+
+  const requests = geminiCalls(calls);
+  assert.equal(requests.length, 1);
+  const request = requests[0];
+  assert.equal(request.url, GEMINI_URL("gemini-3.1-flash-lite"));
+  assert.ok(!request.url.includes("test-gemini-key"), "khoá không nằm trong URL");
+  assert.equal(request.init.method, "POST");
+  assert.equal(request.init.headers["x-goog-api-key"], "test-gemini-key");
+  assert.match(request.body.systemInstruction.parts[0].text, /phiếu IT/);
+  assert.deepEqual(request.body.contents.map(c => c.role), ["user", "model", "user"]);
+  assert.match(request.body.contents.at(-1).parts[0].text, /WMS đã kết nối; máy in đã kích hoạt/);
+  assert.match(request.body.contents.at(-1).parts[0].text, /in tem phiếu IT 100000001 2 bản$/);
+  const config = request.body.generationConfig;
+  assert.equal(config.temperature, 0);
+  assert.equal(config.responseMimeType, "application/json");
+  assert.equal(config.maxOutputTokens, 512);
+  assert.deepEqual(config.thinkingConfig, { thinkingBudget: 0 });
+  const schema = config.responseSchema;
+  assert.equal(schema.type, "OBJECT");
+  assert.deepEqual(schema.required, ["intent", "itNumber", "copies", "reply", "needs"]);
+  assert.deepEqual(schema.properties.intent.enum, ["print_it", "other"]);
+  assert.deepEqual(schema.properties.itNumber, { ...schema.properties.itNumber, type: "STRING", nullable: true });
+  assert.deepEqual(schema.properties.copies, { ...schema.properties.copies, type: "INTEGER", nullable: true });
+  assert.deepEqual(schema.properties.needs.items, { type: "STRING", enum: ["it_number", "copies"] });
+  assert.ok(!JSON.stringify(schema).includes("additionalProperties"), "Gemini không nhận additionalProperties");
+  assert.ok(!JSON.stringify(schema).includes("anyOf"));
+
+  const log = logCall(calls);
+  assert.equal(log.body.model, "gemini-3.1-flash-lite");
+  assert.equal(log.body.input_tokens, 700);
+  assert.equal(log.body.output_tokens, 30);
+  assert.equal(log.body.it_number, "100000001");
+});
+
+test("Gemini: GEMINI_ASSISTANT_MODEL đổi model; khoá nullable bị bỏ hẳn → coi là null", async () => {
+  const { call, calls } = await load({ ...GEMINI_ONLY, GEMINI_ASSISTANT_MODEL: "gemini-test-model" },
+    { ...ADMIN, ...LOG_OK, "generativelanguage.googleapis.com": gem({ intent: "print_it", itNumber: "100000001", reply: "Đọc phiếu IT 100000001." }) });
+  const body = await (await call({ message: "đọc phiếu 100000001" })).json();
+  assert.equal(geminiCalls(calls)[0].url, GEMINI_URL("gemini-test-model"));
+  assert.equal(body.meta.model, "gemini-test-model");
+  assert.deepEqual(body.data, { intent: "print_it", itNumber: "100000001", copies: null, reply: "Đọc phiếu IT 100000001.", needs: [] });
+});
+
+test("Gemini: model đầu 404 hoặc 503 → thử gemini-3.8-flash đúng một lần → 200; cả hai lỗi → 502", async () => {
+  for (const status of [404, 503]) {
+    const route = ({ url }) => url.includes("gemini-3.1-flash-lite") ? { status, body: { error: { code: status } } } : gem(PRINT_OK);
+    const { call, calls } = await load(GEMINI_ONLY, { ...ADMIN, ...LOG_OK, "generativelanguage.googleapis.com": route });
+    const response = await call({ message: "IT 100000001 2 bản" });
+    const body = await response.json();
+    assert.equal(response.status, 200, `model đầu ${status}`);
+    assert.deepEqual(geminiCalls(calls).map(c => c.url), [GEMINI_URL("gemini-3.1-flash-lite"), GEMINI_URL("gemini-3.8-flash")]);
+    assert.equal(body.meta.model, "gemini-3.8-flash");
+    assert.equal(logCall(calls).body.model, "gemini-3.8-flash");
+  }
+  const { call, calls } = await load(GEMINI_ONLY, { ...ADMIN, ...LOG_OK, "generativelanguage.googleapis.com": { status: 503, body: { error: { status: "UNAVAILABLE" } } } });
+  const response = await call({ message: "IT 100000001" });
+  assert.equal(response.status, 502);
+  assert.equal((await response.json()).code, "AI_UPSTREAM");
+  assert.equal(geminiCalls(calls).length, 2, "không thử model thứ ba");
+  assert.ok(!logCall(calls));
+  // Model đặt trong GEMINI_ASSISTANT_MODEL trùng model dự phòng → chỉ gọi một lần
+  const same = await load({ ...GEMINI_ONLY, GEMINI_ASSISTANT_MODEL: "gemini-3.8-flash" }, { ...ADMIN, ...LOG_OK, "generativelanguage.googleapis.com": { status: 404, body: {} } });
+  assert.equal((await same.call({ message: "IT 100000001" })).status, 502);
+  assert.equal(geminiCalls(same.calls).length, 1);
+});
+
+test("Gemini: model từ chối thinkingConfig (400) → gửi lại không kèm, cùng model", async () => {
+  const route = ({ body }) => body.generationConfig.thinkingConfig ? { status: 400, body: { error: { status: "INVALID_ARGUMENT" } } } : gem(PRINT_OK);
+  const { call, calls } = await load(GEMINI_ONLY, { ...ADMIN, ...LOG_OK, "generativelanguage.googleapis.com": route });
+  const response = await call({ message: "IT 100000001 2 bản" });
+  assert.equal(response.status, 200);
+  const requests = geminiCalls(calls);
+  assert.equal(requests.length, 2);
+  assert.ok(requests.every(c => c.url === GEMINI_URL("gemini-3.1-flash-lite")));
+  assert.equal("thinkingConfig" in requests[1].body.generationConfig, false);
+});
+
+test("Gemini 429 / RESOURCE_EXHAUSTED → 429 AI_BUSY, không thử model khác, không ghi nhật ký", async () => {
+  for (const answer of [{ status: 429, body: { error: { code: 429, status: "RESOURCE_EXHAUSTED" } } }, { status: 403, body: { error: { status: "RESOURCE_EXHAUSTED" } } }]) {
+    const { call, calls } = await load(GEMINI_ONLY, { ...ADMIN, ...LOG_OK, "generativelanguage.googleapis.com": answer });
+    const response = await call({ message: "IT 100000001" });
+    const body = await response.json();
+    assert.equal(response.status, 429);
+    assert.equal(body.code, "AI_BUSY");
+    assert.match(body.message, /đang bận/);
+    assert.equal(geminiCalls(calls).length, 1);
+    assert.ok(!logCall(calls));
+  }
+  const loaded = await load(GEMINI_ONLY, { ...ADMIN, ...LOG_OK, "generativelanguage.googleapis.com": { status: 500, body: { error: {} } } });
+  const response = await loaded.call({ message: "IT 100000001" });
+  assert.equal(response.status, 502);
+  assert.equal((await response.json()).code, "AI_UPSTREAM");
+  assert.equal(geminiCalls(loaded.calls).length, 1, "500 không thử model thứ hai");
+});
+
+test("Gemini chặn (promptFeedback.blockReason hoặc finishReason SAFETY) → intent other câu cố định", async () => {
+  const refusal = { intent: "other", itNumber: null, copies: null, reply: "Tôi không xử lý được câu này.", needs: [] };
+  for (const answer of [
+    { body: { promptFeedback: { blockReason: "SAFETY" }, usageMetadata: { promptTokenCount: 50 } } },
+    { body: { candidates: [{ finishReason: "SAFETY", content: { parts: [] } }], usageMetadata: { promptTokenCount: 50 } } }
+  ]) {
+    const { call, calls } = await load(GEMINI_ONLY, { ...ADMIN, ...LOG_OK, "generativelanguage.googleapis.com": answer });
+    const response = await call({ message: "câu bị chặn" });
+    const body = await response.json();
+    assert.equal(response.status, 200);
+    assert.deepEqual(body.data, refusal);
+    assert.equal(body.meta.provider, "gemini");
+    assert.equal(logCall(calls).body.intent, "other");
+  }
+});
+
+test("Gemini trả sai khuôn → 502 'Mô hình trả dữ liệu sai khuôn'; chữ không phải JSON/không có nội dung → 502 không hợp lệ", async () => {
+  let loaded = await load(GEMINI_ONLY, { ...ADMIN, ...LOG_OK, "generativelanguage.googleapis.com": gem({ ...PRINT_OK, copies: "2" }) });
+  let response = await loaded.call({ message: "IT 100000001 2 bản" });
+  let body = await response.json();
+  assert.equal(response.status, 502);
+  assert.equal(body.code, "AI_UPSTREAM");
+  assert.equal(body.message, "Mô hình trả dữ liệu sai khuôn");
+  assert.ok(!logCall(loaded.calls));
+
+  for (const answer of [gem("{\"intent\":\"print_it\","), { body: { candidates: [{ finishReason: "MAX_TOKENS", content: { parts: [] } }] } }]) {
+    loaded = await load(GEMINI_ONLY, { ...ADMIN, ...LOG_OK, "generativelanguage.googleapis.com": answer });
+    response = await loaded.call({ message: "IT 100000001" });
+    body = await response.json();
+    assert.equal(response.status, 502);
+    assert.equal(body.code, "AI_UPSTREAM");
+    assert.match(body.message, /không hợp lệ/);
+  }
+});
+
+test("Gemini treo quá hạn chờ → 502 AI_UPSTREAM 'phản hồi quá lâu'", async () => {
+  const hang = ({ init }) => new Promise((_, reject) => init.signal.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError"))));
+  const { call, calls } = await load({ ...GEMINI_ONLY, PRINT_ASSISTANT_TIMEOUT_MS: "40" }, { ...ADMIN, ...LOG_OK, "generativelanguage.googleapis.com": hang });
+  const response = await call({ message: "IT 100000001" });
+  const body = await response.json();
+  assert.equal(response.status, 502);
+  assert.match(body.message, /quá lâu/);
+  assert.equal(geminiCalls(calls).length, 1);
 });
