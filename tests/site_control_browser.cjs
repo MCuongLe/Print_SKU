@@ -49,6 +49,7 @@ const mockExtension = ({ fixture, options }) => {
     if (!r || r.source !== "PRINT_SKU_APP") return;
     window.__extCalls.push({ type: r.type, payload: r.payload });
     if (window.__hold && r.type === "GET_SKU_COUNT_WAREHOUSES") await window.__hold; // giữ phản hồi để chặn được pha "đang đọc"
+    if (window.__hold2 && r.type === "GET_SKU_COUNT_INVENTORY_PAGE" && (r.payload || {}).page === 2) await window.__hold2; // giữ trang 2 để đo tiến độ sau trang 1 (window.__two = tồn kho đọc 2 trang)
     const reply = (ok, data, error) => postMessage({ source: "HASAKI_INSIDE_CONNECTOR", requestId: r.requestId, ok, data, error }, location.origin);
     const p = r.payload || {};
     if (options.fail?.[r.type]) return reply(false, undefined, { code: "MOCK", message: options.fail[r.type] });
@@ -57,7 +58,7 @@ const mockExtension = ({ fixture, options }) => {
         ? { resource: "stock", rows: fixture.stock, total: fixture.stock.length, generatedAt: new Date(Date.now() - 120000).toISOString() }
         : { resource: "wmsImports", rows: fixture.imports, total: fixture.imports.length, generatedAt: new Date().toISOString() });
       case "GET_SKU_COUNT_WAREHOUSES": return reply(true, { warehouses: options.noWarehouse ? [] : [fixture.warehouse], missingNames: options.noWarehouse ? ["OFFICE - 130 AP CHANH - MTG"] : [] });
-      case "GET_SKU_COUNT_INVENTORY_PAGE": return reply(true, { page: 1, size: 500, total: fixture.inventory.length, totalPages: 1, rows: fixture.inventory });
+      case "GET_SKU_COUNT_INVENTORY_PAGE": return reply(true, { page: p.page || 1, size: 500, total: fixture.inventory.length, totalPages: window.__two ? 2 : 1, rows: p.page > 1 ? [] : fixture.inventory });
       case "GET_STOCK_IMPORT_EXPORT_PAGE": return reply(true, { page: p.page, size: 500, total: fixture.moves.length, totalPages: 1, rows: p.page === 1 ? fixture.moves : [] });
       default: return reply(true, { version: "0.9.0" });
     }
@@ -115,6 +116,26 @@ const srcReadAudit = (page, specs, width) => page.evaluate(async ({ specs, width
   return bad;
 }, { specs, width });
 
+// Dòng load dưới nút đang chạy (18/10/2026, khối #hero-standard): vạch 3 px bo tròn ở ::after của nút, nằm dưới mép nút, không bị cắt hay chồng (điểm giữa vạch trỏ về chính nút);
+// không có tiến độ thật (--p) → đoạn 38 % trượt qua lại; có --p (0–1) → tô theo % bề rộng nút. Trả về thông số đo được.
+const barInfo = (page, id) => page.evaluate(id => {
+  const b = document.getElementById(id), s = getComputedStyle(b, "::after"), r = b.getBoundingClientRect();
+  const h = parseFloat(s.height) || 0, w = parseFloat(s.width) || 0, top = r.top + b.clientTop + (parseFloat(s.top) || 0), left = r.left + b.clientLeft + (parseFloat(s.left) || 0);
+  const token = s.backgroundSize.split(",")[0].trim().split(" ")[0], fillOfTrack = token.endsWith("%") ? parseFloat(token) / 100 : w ? parseFloat(token) / w : NaN;
+  const hit = h ? document.elementFromPoint(left + w / 2, top + h / 2) : null;
+  return { content: s.content, position: s.position, height: h, track: w, btn: r.width, below: top >= r.bottom - 0.5, hit: hit === b, fillOfTrack, fill: fillOfTrack * w, animated: s.animationName !== "none", p: b.style.getPropertyValue("--p") };
+}, id);
+const expectBar = (info, tag, ratio) => {
+  assert.equal(info.content, '""', `${tag}: không có vạch load dưới nút (::after content ${info.content})`);
+  assert.equal(info.position, "absolute", `${tag}: vạch phải nằm tuyệt đối dưới nút`);
+  assert.equal(info.height, 3, `${tag}: vạch cao ${info.height}px, cần 3px`);
+  assert.ok(info.below, `${tag}: vạch phải nằm dưới mép nút`);
+  assert.ok(info.hit, `${tag}: vạch bị cắt hoặc bị phần tử khác chồng lên`);
+  assert.ok(Math.abs(info.track / info.btn - 1) <= 0.03, `${tag}: nền vạch rộng ${info.track.toFixed(1)}px, cần bằng bề rộng nút ${info.btn.toFixed(1)}px`);
+  if (ratio === undefined) { assert.ok(info.animated, `${tag}: chưa có tiến độ thật thì đoạn vạch phải trượt qua lại`); assert.ok(Math.abs(info.fillOfTrack - 0.38) < 0.01, `${tag}: đoạn trượt chiếm ${(info.fillOfTrack * 100).toFixed(1)}%, cần 38%`); }
+  else assert.ok(Math.abs(info.fill / info.btn - ratio) <= 0.05, `${tag}: vạch ${(info.fill / info.btn * 100).toFixed(1)}% bề rộng nút, cần ≈ ${ratio * 100}% ± 5%`);
+};
+
 (async () => {
   const browser = await chromium.launch({ channel: "chrome", headless: true });
   try {
@@ -150,6 +171,8 @@ const srcReadAudit = (page, specs, width) => page.evaluate(async ({ specs, width
       else { assert.ok(Math.abs(layout.runW - layout.inner) <= 2, `điện thoại: nút rộng hết hero (${layout.runW} / ${layout.inner})`); assert.ok(layout.runBottom <= layout.connTop, "điện thoại: nút trên, trạng thái Extension dưới (cột đảo)"); }
       // Đang đọc: giữ phản hồi Extension — data-busy, nhãn "Đang đọc…", icon đổi sang vòng xoay (động); đọc xong trả "Đọc WMS"
       const idleMask = await page.locator("#sc-run").evaluate(b => getComputedStyle(b, "::before").maskImage);
+      assert.equal((await barInfo(page, "sc-run")).content, "none", "rảnh: không có vạch load dưới nút");
+      assert.equal(await page.locator("#sc-progress").evaluate(n => n.getClientRects().length), 0, "rảnh: thanh tiến độ rời không hiện");
       await page.evaluate(() => { window.__hold = new Promise(resolve => { window.__release = resolve; }); });
       await page.locator("#sc-run").click();
       await page.waitForFunction(() => document.getElementById("sc-run").dataset.busy === "true");
@@ -157,10 +180,13 @@ const srcReadAudit = (page, specs, width) => page.evaluate(async ({ specs, width
       assert.equal(await page.locator("#sc-run").isDisabled(), true, "đang đọc: nút khoá");
       assert.equal(await page.locator("#sc-run").evaluate(b => getComputedStyle(b, "::before").animationName !== "none"), true, "icon vòng xoay khi đang đọc");
       assert.notEqual(await page.locator("#sc-run").evaluate(b => getComputedStyle(b, "::before").maskImage), idleMask, "icon đổi khác lúc rảnh");
+      expectBar(await barInfo(page, "sc-run"), `${width}px #sc-run đang đọc (chưa có trang nào: đoạn 38 % trượt qua lại)`);
+      assert.equal(await page.locator("#sc-progress").evaluate(n => n.getClientRects().length), 0, "đang đọc: thanh tiến độ rời chạy ngang màn không còn hiện");
       await page.evaluate(() => { window.__release(); window.__hold = null; });
       await page.waitForFunction(() => document.getElementById("sc-total").textContent === "4");
       await page.waitForFunction(() => document.getElementById("sc-run").dataset.busy !== "true");
       assert.equal((await page.locator("#sc-run").innerText()).trim(), "Đọc WMS", "đọc xong trả nhãn cũ");
+      assert.equal((await barInfo(page, "sc-run")).content, "none", "đọc xong: vạch load mất");
       assert.match(await page.locator("#sc-status").innerText(), /Đã đối chiếu 4 SKU tại OFFICE - 130 AP CHANH - MTG/);
       assert.equal(await page.locator("#sc-list-dialog").evaluate(d => d.open), false, "đối chiếu xong không tự mở popup");
       assert.equal(await page.locator("#site-control-screen .ia-content > .ss-panel").count(), 0, "không còn bảng nằm sẵn trên màn");
@@ -232,6 +258,18 @@ const srcReadAudit = (page, specs, width) => page.evaluate(async ({ specs, width
       await page.keyboard.press("Escape");
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `${width}px không được tràn ngang`);
       assert.equal(await page.locator("#sc-run").isDisabled(), false, "nút dùng lại được sau khi xong");
+      // Tiến độ thật theo trang (18/10/2026): tồn kho WMS đọc 2 trang, trang 2 bị giữ → sau trang 1/2 vạch dưới nút tô ≈ 50 % bề rộng nút (biến --p); đọc xong thì vạch mất
+      await page.evaluate(() => { window.__two = true; window.__hold2 = new Promise(resolve => { window.__release2 = resolve; }); });
+      await page.locator("#sc-run").click();
+      await page.waitForFunction(() => document.getElementById("sc-run").style.getPropertyValue("--p") === "0.5");
+      await page.waitForTimeout(400);
+      expectBar(await barInfo(page, "sc-run"), `${width}px #sc-run sau trang 1/2`, 0.5);
+      assert.equal(await page.locator("#sc-progress").evaluate(n => n.getClientRects().length), 0, "tiến độ thật: thanh rời vẫn không hiện");
+      await page.evaluate(() => { window.__release2(); window.__hold2 = null; });
+      await page.waitForFunction(() => document.getElementById("sc-run").dataset.busy !== "true");
+      await page.evaluate(() => { window.__two = false; });
+      assert.equal((await barInfo(page, "sc-run")).content, "none", "đọc xong: vạch load mất");
+      assert.equal(await page.locator("#sc-run").evaluate(b => b.style.getPropertyValue("--p")), "", "đọc xong: bỏ biến --p");
       assert.deepEqual(errors, []);
       await context.close();
     }

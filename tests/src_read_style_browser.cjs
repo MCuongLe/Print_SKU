@@ -49,6 +49,18 @@ const mockBackend = page => page.route("**/*", route => {
 // bề rộng lúc rảnh và lúc đang đọc (đổi nhãn sang "Đang đọc…" như setBusy: nhãn trong .src-read__t + data-busy + khoá) — nút không được nhảy rộng (giữ chỗ nhãn bận, 18/10/2026).
 const readStyle = (page, id, mate) => page.evaluate(async ({ id, mate }) => {
   const b = document.getElementById(id);
+  // Dòng load dưới nút đang chạy (18/10/2026): ép data-busy="true" tạm thời rồi đo ::after — vạch 3 px bo tròn nằm dưới mép nút, rộng bằng nút, không bị cắt hay chồng
+  // (điểm giữa vạch trỏ về chính nút: không có cha overflow:hidden cắt, không có phần tử nào đè), chưa có tiến độ thật (--p) → đoạn 38 % trượt qua lại; trả lại trạng thái cũ sau khi đo.
+  const barProbe = b => {
+    const was = { busy: b.dataset.busy, disabled: b.disabled };
+    b.dataset.busy = "true"; b.disabled = true;
+    const s = getComputedStyle(b, "::after"), r = b.getBoundingClientRect(), h = parseFloat(s.height) || 0, w = parseFloat(s.width) || 0;
+    const top = r.top + b.clientTop + (parseFloat(s.top) || 0), left = r.left + b.clientLeft + (parseFloat(s.left) || 0), token = s.backgroundSize.split(",")[0].trim().split(" ")[0];
+    const hit = h ? document.elementFromPoint(left + w / 2, top + h / 2) : null;
+    const out = { content: s.content, position: s.position, height: h, track: w, btn: r.width, below: top >= r.bottom - 0.5, hit: hit === b, hitTag: hit ? `${hit.tagName.toLowerCase()}${hit.id ? "#" + hit.id : ""}` : null, fillOfTrack: token.endsWith("%") ? parseFloat(token) / 100 : NaN, animated: s.animationName !== "none", p: b.style.getPropertyValue("--p") };
+    if (was.busy === undefined) delete b.dataset.busy; else b.dataset.busy = was.busy; b.disabled = was.disabled;
+    return out;
+  };
   const busyWidths = b => {
     const t = b && b.querySelector(".src-read__t");
     if (!t) return { idleWidth: null, busyWidth: null };
@@ -69,12 +81,13 @@ const readStyle = (page, id, mate) => page.evaluate(async ({ id, mate }) => {
     mask: before.maskImage || before.webkitMaskImage, content: before.content, height: h, ctl: parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--ui-ctl")),
     mateHeight: m ? m.getBoundingClientRect().height : null,
     ...busyWidths(b),
+    bar: barProbe(b),
   };
 }, { id, mate });
 
 (async () => {
   const browser = await chromium.launch({ channel: "chrome", headless: true });
-  const bad = [], styles = [];
+  const bad = [], styles = []; let reduced = null;
   try {
     for (const spec of SCREENS) {
       const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
@@ -102,6 +115,25 @@ const readStyle = (page, id, mate) => page.evaluate(async ({ id, mate }) => {
       styles.push({ ...style, screen: spec.name });
       await context.close();
     }
+    // prefers-reduced-motion (18/10/2026): vạch load đứng yên — không animation (quy tắc chung `*, :before, :after { animation: none !important }` của gói Tailwind), vẫn 3 px dưới nút,
+    // và khi chưa có tiến độ thật thì là một vạch đặc một màu (không phải đoạn 38 % đứng lệch trái như đang kẹt ở giữa chừng)
+    {
+      const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: "reduce" });
+      await context.addInitScript(key => sessionStorage.setItem(key, JSON.stringify({ access_token: "test-admin-token", refresh_token: "test-refresh-token" })), SESSION_KEY);
+      await context.addInitScript(fakeExtension);
+      const page = await context.newPage();
+      await mockBackend(page);
+      await page.goto(BASE + "#inventory-audit");
+      await page.locator("#ia-run").waitFor({ state: "visible" });
+      reduced = await page.evaluate(() => {
+        const b = document.getElementById("ia-run"), was = { busy: b.dataset.busy, disabled: b.disabled };
+        b.dataset.busy = "true"; b.disabled = true;
+        const a = getComputedStyle(b, "::after"), icon = getComputedStyle(b, "::before"), out = { content: a.content, height: a.height, animation: a.animationName, backgroundColor: a.backgroundColor, backgroundImage: a.backgroundImage, iconAnimation: icon.animationName };
+        if (was.busy === undefined) delete b.dataset.busy; else b.dataset.busy = was.busy; b.disabled = was.disabled;
+        return out;
+      });
+      await context.close();
+    }
   } finally { await browser.close(); }
 
   // 1) Từng nút: hiện, đúng lớp, không còn svg, có icon mask, chữ 16/600, cao đúng --ui-ctl (52 ở 1280) và bằng ô cùng hàng
@@ -121,6 +153,25 @@ const readStyle = (page, id, mate) => page.evaluate(async ({ id, mate }) => {
     if (s.idleWidth === null) { if (["sku-it-load", "gu-run-incremental"].includes(s.id)) bad.push(`${tag} không có span .src-read__t để đổi nhãn bận`); }
     else if (Math.abs(s.busyWidth - s.idleWidth) > 1) bad.push(`${tag} rộng ${s.idleWidth.toFixed(1)}px lúc rảnh nhưng ${s.busyWidth.toFixed(1)}px khi "Đang đọc…" (nhảy ${(s.busyWidth - s.idleWidth).toFixed(1)}px)`);
   }
+  // 1b) Vạch load dưới nút đang chạy: ở cả 12 nút, không bị cắt / đè, rộng bằng nút, đoạn trượt 38 % khi chưa có tiến độ
+  for (const s of styles) {
+    if (s.missing) continue;
+    const tag = `#${s.id} (${s.screen})`, b = s.bar;
+    if (b.content !== '""') { bad.push(`${tag} đang đọc: không có vạch load dưới nút (::after content ${b.content})`); continue; }
+    if (b.position !== "absolute") bad.push(`${tag} vạch ${b.position}, cần absolute`);
+    if (b.height !== 3) bad.push(`${tag} vạch cao ${b.height}px, cần 3px`);
+    if (!b.below) bad.push(`${tag} vạch không nằm dưới mép nút`);
+    if (!b.hit) bad.push(`${tag} vạch bị cắt hoặc bị ${b.hitTag} chồng lên`);
+    if (Math.abs(b.track / b.btn - 1) > 0.03) bad.push(`${tag} nền vạch ${b.track.toFixed(1)}px ≠ bề rộng nút ${b.btn.toFixed(1)}px`);
+    if (!b.animated) bad.push(`${tag} đoạn vạch không trượt khi chưa có tiến độ thật`);
+    if (!(Math.abs(b.fillOfTrack - 0.38) < 0.01)) bad.push(`${tag} đoạn trượt ${(b.fillOfTrack * 100).toFixed(1)}%, cần 38%`);
+    if (b.p !== "") bad.push(`${tag} có biến --p ${b.p} khi chưa có tiến độ`);
+  }
+  // 1c) prefers-reduced-motion: vạch tĩnh, icon không xoay
+  if (reduced.content !== '""' || reduced.height !== "3px") bad.push(`reduced-motion: vạch ${reduced.content} cao ${reduced.height}, cần 3px`);
+  if (reduced.animation !== "none") bad.push(`reduced-motion: vạch còn animation ${reduced.animation}, cần đứng yên`);
+  if (reduced.iconAnimation !== "none") bad.push(`reduced-motion: icon còn xoay (${reduced.iconAnimation})`);
+  if (reduced.backgroundImage !== "none" || reduced.backgroundColor !== "rgb(127, 203, 177)") bad.push(`reduced-motion: chưa có tiến độ thật thì vạch phải đặc một màu #7fcbb1 (nền ${reduced.backgroundColor}, ảnh nền ${String(reduced.backgroundImage).slice(0, 40)})`);
   const short = value => String(value).length > 90 ? `…${String(value).slice(-70)}` : String(value);
   // 2) Cả 12 nút khớp nhau từng thuộc tính (so với nút đầu tiên) — một kiểu
   const ref = styles.find(s => !s.missing);

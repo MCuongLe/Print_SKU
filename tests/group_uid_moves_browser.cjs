@@ -32,6 +32,7 @@ const fakeExtension = (data, version) => {
     if (!request || request.source !== "PRINT_SKU_APP") return;
     window.__extCalls.push({ type: request.type, payload: request.payload });
     if (window.__hold && request.type === "GET_GROUP_UID_MOVES_PAGE") await window.__hold; // giữ phản hồi để chặn được pha "đang đọc"
+    if (window.__hold2 && request.type === "GET_GROUP_UID_MOVES_PAGE" && request.payload.page === 2) await window.__hold2; // giữ trang 2 để đo tiến độ sau trang 1
     const reply = (ok, body, error) => postMessage({ source: "HASAKI_INSIDE_CONNECTOR", requestId: request.requestId, ok, data: body, error }, location.origin);
     if (request.type === "PING" || request.type === "PING_WMS") return reply(true, { version });
     if (request.type === "GET_GROUP_UID_MOVES_PAGE") {
@@ -144,6 +145,26 @@ const srcReadAudit = (page, specs, width) => page.evaluate(async ({ specs, width
   }
   return bad;
 }, { specs, width });
+
+// Dòng load dưới nút đang chạy (18/10/2026, khối #hero-standard): vạch 3 px bo tròn ở ::after của nút, nằm dưới mép nút, không bị cắt hay chồng (điểm giữa vạch trỏ về chính nút);
+// không có tiến độ thật (--p) → đoạn 38 % trượt qua lại; có --p (0–1) → tô theo % bề rộng nút. Trả về thông số đo được.
+const barInfo = (page, id) => page.evaluate(id => {
+  const b = document.getElementById(id), s = getComputedStyle(b, "::after"), r = b.getBoundingClientRect();
+  const h = parseFloat(s.height) || 0, w = parseFloat(s.width) || 0, top = r.top + b.clientTop + (parseFloat(s.top) || 0), left = r.left + b.clientLeft + (parseFloat(s.left) || 0);
+  const token = s.backgroundSize.split(",")[0].trim().split(" ")[0], fillOfTrack = token.endsWith("%") ? parseFloat(token) / 100 : w ? parseFloat(token) / w : NaN;
+  const hit = h ? document.elementFromPoint(left + w / 2, top + h / 2) : null;
+  return { content: s.content, position: s.position, height: h, track: w, btn: r.width, below: top >= r.bottom - 0.5, hit: hit === b, fillOfTrack, fill: fillOfTrack * w, animated: s.animationName !== "none", p: b.style.getPropertyValue("--p") };
+}, id);
+const expectBar = (info, tag, ratio) => {
+  assert.equal(info.content, '""', `${tag}: không có vạch load dưới nút (::after content ${info.content})`);
+  assert.equal(info.position, "absolute", `${tag}: vạch phải nằm tuyệt đối dưới nút`);
+  assert.equal(info.height, 3, `${tag}: vạch cao ${info.height}px, cần 3px`);
+  assert.ok(info.below, `${tag}: vạch phải nằm dưới mép nút`);
+  assert.ok(info.hit, `${tag}: vạch bị cắt hoặc bị phần tử khác chồng lên`);
+  assert.ok(Math.abs(info.track / info.btn - 1) <= 0.03, `${tag}: nền vạch rộng ${info.track.toFixed(1)}px, cần bằng bề rộng nút ${info.btn.toFixed(1)}px`);
+  if (ratio === undefined) { assert.ok(info.animated, `${tag}: chưa có tiến độ thật thì đoạn vạch phải trượt qua lại`); assert.ok(Math.abs(info.fillOfTrack - 0.38) < 0.01, `${tag}: đoạn trượt chiếm ${(info.fillOfTrack * 100).toFixed(1)}%, cần 38%`); }
+  else assert.ok(Math.abs(info.fill / info.btn - ratio) <= 0.05, `${tag}: vạch ${(info.fill / info.btn * 100).toFixed(1)}% bề rộng nút, cần ≈ ${ratio * 100}% ± 5%`);
+};
 
 (async () => {
   const browser = await chromium.launch({ channel: "chrome", headless: true });
@@ -353,10 +374,15 @@ const srcReadAudit = (page, specs, width) => page.evaluate(async ({ specs, width
       if (width === 375) { assert.ok(Math.abs(layout.fullRight - layout.innerRight) <= 2, "điện thoại: cụm nút chạm mép phải hero"); assert.ok(layout.runW > 200, `điện thoại: nút Đọc WMS giãn (${layout.runW}px)`); }
       // Đang đọc: giữ phản hồi Extension — nút vừa bấm data-busy + "Đang đọc…" (nút icon: chỉ đổi icon vòng xoay); nút kia chỉ khoá, không data-busy; đọc xong trả "Đọc WMS"
       const idleMask = await page.locator("#uh-run").evaluate(b => getComputedStyle(b, "::before").maskImage), idleFullMask = await page.locator("#uh-full").evaluate(b => getComputedStyle(b, "::before").maskImage);
-      await page.evaluate(() => { window.__hold = new Promise(resolve => { window.__release = resolve; }); });
+      assert.equal((await barInfo(page, "uh-run")).content, "none", "rảnh: không có vạch load dưới nút");
+      assert.equal(await page.locator("#uh-progress").evaluate(n => n.getClientRects().length), 0, "rảnh: thanh tiến độ rời không hiện");
+      await page.evaluate(() => { window.__hold = new Promise(resolve => { window.__release = resolve; }); window.__hold2 = new Promise(resolve => { window.__release2 = resolve; }); });
       await page.locator("#uh-run").click();
       await page.waitForFunction(() => document.getElementById("uh-run").dataset.busy === "true");
       assert.equal((await page.locator("#uh-run").innerText()).trim(), "Đang đọc…");
+      expectBar(await barInfo(page, "uh-run"), `${width}px #uh-run đang đọc (chưa có trang nào: đoạn 38 % trượt qua lại)`);
+      assert.equal(await page.locator("#uh-progress").evaluate(n => n.getClientRects().length), 0, "đang đọc: thanh tiến độ rời chạy ngang màn không còn hiện");
+      assert.equal((await barInfo(page, "uh-full")).content, "none", "nút icon chỉ khoá, không có vạch");
       assert.equal(await page.locator("#uh-run").isDisabled(), true, "đang đọc: nút khoá");
       assert.equal(await page.locator("#uh-run").evaluate(b => getComputedStyle(b, "::before").animationName !== "none"), true, "icon vòng xoay khi đang đọc");
       assert.notEqual(await page.locator("#uh-run").evaluate(b => getComputedStyle(b, "::before").maskImage), idleMask, "icon đổi khác lúc rảnh");
@@ -364,9 +390,17 @@ const srcReadAudit = (page, specs, width) => page.evaluate(async ({ specs, width
       assert.notEqual(await page.locator("#uh-full").getAttribute("data-busy"), "true", "nút icon chỉ khoá khi nút kia đang đọc");
       assert.equal(await page.locator("#uh-full").evaluate(b => getComputedStyle(b, "::before").maskImage), idleFullMask, "nút icon giữ icon history");
       await page.evaluate(() => { window.__release(); window.__hold = null; });
+      // Tiến độ thật theo trang (18/10/2026): 622 lượt = 2 trang, trang 2 còn bị giữ → sau trang 1/2 vạch dưới nút tô ≈ 50 % bề rộng nút (biến --p)
+      await page.waitForFunction(() => document.getElementById("uh-run").style.getPropertyValue("--p") === "0.5");
+      await page.waitForTimeout(400);
+      expectBar(await barInfo(page, "uh-run"), `${width}px #uh-run sau trang 1/2`, 0.5);
+      assert.equal(await page.locator("#uh-progress").evaluate(n => n.getClientRects().length), 0, "tiến độ thật: thanh rời vẫn không hiện");
+      await page.evaluate(() => { window.__release2(); window.__hold2 = null; });
       await page.waitForFunction(() => /^Đã đọc/.test(document.getElementById("uh-message").textContent));
       await page.waitForFunction(() => document.getElementById("uh-run").dataset.busy !== "true");
       assert.equal((await page.locator("#uh-run").innerText()).trim(), "Đọc WMS", "đọc xong trả nhãn cũ");
+      assert.equal((await barInfo(page, "uh-run")).content, "none", "đọc xong: vạch load mất");
+      assert.equal(await page.locator("#uh-run").evaluate(b => b.style.getPropertyValue("--p")), "", "đọc xong: bỏ biến --p");
       assert.equal(db.size, wms.length, "nạp đủ mọi lượt của WMS");
       assert.match(await page.locator("#uh-message").innerText(), new RegExp(`Đã đọc ${fmt(wms.length)} lượt chuyển: ${fmt(wms.length)} mới, 0 cập nhật`));
       let calls = await page.evaluate(() => window.__extCalls.filter(c => c.type === "GET_GROUP_UID_MOVES_PAGE").map(c => c.payload));
@@ -400,6 +434,8 @@ const srcReadAudit = (page, specs, width) => page.evaluate(async ({ specs, width
       await page.locator("#uh-full").click();
       await page.waitForFunction(() => document.getElementById("uh-full").dataset.busy === "true");
       assert.equal(await page.locator("#uh-full").evaluate(b => getComputedStyle(b, "::before").animationName !== "none"), true, "nút icon: vòng xoay khi đang đọc");
+      expectBar(await barInfo(page, "uh-full"), `${width}px #uh-full đang đọc (nút chỉ icon)`);
+      assert.equal((await barInfo(page, "uh-run")).content, "none", "nút Đọc WMS chỉ khoá, không có vạch");
       assert.notEqual(await page.locator("#uh-full").evaluate(b => getComputedStyle(b, "::before").maskImage), idleFullMask, "nút icon: icon đổi khác lúc rảnh");
       assert.equal(await page.locator("#uh-run").isDisabled(), true);
       assert.notEqual(await page.locator("#uh-run").getAttribute("data-busy"), "true", "nút Đọc WMS chỉ khoá khi nút icon đang đọc");

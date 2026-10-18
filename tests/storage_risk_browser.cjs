@@ -120,6 +120,26 @@ const srcReadAudit = (page, specs, width) => page.evaluate(async ({ specs, width
   return bad;
 }, { specs, width });
 
+// Dòng load dưới nút đang chạy (18/10/2026, khối #hero-standard): vạch 3 px bo tròn ở ::after của nút, nằm dưới mép nút, không bị cắt hay chồng (điểm giữa vạch trỏ về chính nút);
+// màn này không có tiến độ theo trang → đoạn 38 % trượt qua lại. Trả về thông số đo được.
+const barInfo = (page, id) => page.evaluate(id => {
+  const b = document.getElementById(id), s = getComputedStyle(b, "::after"), r = b.getBoundingClientRect();
+  const h = parseFloat(s.height) || 0, w = parseFloat(s.width) || 0, top = r.top + b.clientTop + (parseFloat(s.top) || 0), left = r.left + b.clientLeft + (parseFloat(s.left) || 0);
+  const token = s.backgroundSize.split(",")[0].trim().split(" ")[0], fillOfTrack = token.endsWith("%") ? parseFloat(token) / 100 : w ? parseFloat(token) / w : NaN;
+  const hit = h ? document.elementFromPoint(left + w / 2, top + h / 2) : null;
+  return { content: s.content, position: s.position, height: h, track: w, btn: r.width, below: top >= r.bottom - 0.5, hit: hit === b, fillOfTrack, animated: s.animationName !== "none" };
+}, id);
+const expectBar = (info, tag) => {
+  assert.equal(info.content, '""', `${tag}: không có vạch load dưới nút (::after content ${info.content})`);
+  assert.equal(info.position, "absolute", `${tag}: vạch phải nằm tuyệt đối dưới nút`);
+  assert.equal(info.height, 3, `${tag}: vạch cao ${info.height}px, cần 3px`);
+  assert.ok(info.below, `${tag}: vạch phải nằm dưới mép nút`);
+  assert.ok(info.hit, `${tag}: vạch bị cắt hoặc bị phần tử khác chồng lên`);
+  assert.ok(Math.abs(info.track / info.btn - 1) <= 0.03, `${tag}: nền vạch rộng ${info.track.toFixed(1)}px, cần bằng bề rộng nút ${info.btn.toFixed(1)}px`);
+  assert.ok(info.animated, `${tag}: chưa có tiến độ thật thì đoạn vạch phải trượt qua lại`);
+  assert.ok(Math.abs(info.fillOfTrack - 0.38) < 0.01, `${tag}: đoạn trượt chiếm ${(info.fillOfTrack * 100).toFixed(1)}%, cần 38%`);
+};
+
 (async () => {
   const browser = await chromium.launch({ channel: "chrome", headless: true });
   try {
@@ -237,6 +257,7 @@ const srcReadAudit = (page, specs, width) => page.evaluate(async ({ specs, width
       if (width === 375) assert.ok(Math.abs(layout.runW - layout.inner) <= 2, `điện thoại: nút rộng hết hero (${layout.runW} / ${layout.inner})`);
       // Đang đọc: giữ phản hồi Extension — nút vừa bấm data-busy + "Đang đọc…" + icon vòng xoay; nút UID tạm chỉ khoá (không data-busy); đọc xong trả "Đọc WMS"
       const idleMask = await page.locator("#sr-run").evaluate(b => getComputedStyle(b, "::before").maskImage);
+      assert.equal((await barInfo(page, "sr-run")).content, "none", "rảnh: không có vạch load dưới nút");
       await page.evaluate(() => { window.__hold = new Promise(resolve => { window.__release = resolve; }); });
       await page.locator("#sr-run").click();
       await page.waitForFunction(() => document.getElementById("sr-run").dataset.busy === "true");
@@ -244,6 +265,8 @@ const srcReadAudit = (page, specs, width) => page.evaluate(async ({ specs, width
       assert.equal(await page.locator("#sr-run").isDisabled(), true, "đang đọc: nút khoá");
       assert.equal(await page.locator("#sr-run").evaluate(b => getComputedStyle(b, "::before").animationName !== "none"), true, "icon vòng xoay khi đang đọc");
       assert.notEqual(await page.locator("#sr-run").evaluate(b => getComputedStyle(b, "::before").maskImage), idleMask, "icon đổi khác lúc rảnh");
+      expectBar(await barInfo(page, "sr-run"), `${width}px #sr-run đang đọc`);
+      assert.equal((await barInfo(page, "srt-run")).content, "none", "nút UID tạm chỉ khoá, không có vạch");
       assert.equal(await page.locator("#srt-run").isDisabled(), true, "nút UID tạm khoá khi nút này đang đọc");
       assert.notEqual(await page.locator("#srt-run").getAttribute("data-busy"), "true", "nút UID tạm chỉ khoá, không mang data-busy");
       assert.equal((await page.locator("#srt-run").evaluate(b => b.textContent)).trim(), "Đọc WMS", "nút UID tạm giữ nhãn");
@@ -269,6 +292,7 @@ const srcReadAudit = (page, specs, width) => page.evaluate(async ({ specs, width
       assert.equal(await page.locator("#sr-run").isDisabled(), false, "nút dùng lại được sau khi xong");
       assert.notEqual(await page.locator("#sr-run").getAttribute("data-busy"), "true");
       assert.equal((await page.locator("#sr-run").innerText()).trim(), "Đọc WMS", "đọc xong trả nhãn cũ");
+      assert.equal((await barInfo(page, "sr-run")).content, "none", "đọc xong: vạch load mất");
       const texts = (await page.locator("#sr-body tr code").allInnerTexts()).sort();
       assert.deepEqual(texts, ["SKU-A0", "SKU-HELD"], "màn mới hiện đúng hàng chưa lên kệ vừa đồng bộ, gồm cả hàng giữ chỗ");
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `${width}px không được tràn ngang`);

@@ -40,6 +40,8 @@ const RUNS = [
 
 // Giữ phản hồi preview của Edge để chặn được pha "đang đọc" (nút đổi nhãn, icon vòng xoay); đặt lại null để thả.
 let hold = null;
+// Giữ phản hồi apply (ghi Supabase) để chặn được pha "đang cập nhật": nút Cập nhật mang data-busy + vạch load dưới nút; đặt lại null để thả.
+let holdApply = null;
 
 const mockRoutes = async page => { let autoEnabled = true; return page.route('**/*', async route => {
   const url = route.request().url();
@@ -60,6 +62,7 @@ const mockRoutes = async page => { let autoEnabled = true; return page.route('**
     if (action === 'preview' && mode === 'full') return ok({ runId: 'run-full', status: 'previewed', mode: 'full', sourceCounts: { ...SOURCE_COUNTS, normalRows: 97 }, changeCounts: { ...CHANGE_COUNTS, skuMissing: 1, skuSkippedInactive: 2629 }, changes: { ...CHANGES, skus: { ...CHANGES.skus, missing: [{ sku: '900000009', product_name: 'SKU cũ', category_name: 'Thời Trang', status: '0' }] } }, verification: { previousFullCount: 100, baselineCount: 100, fullDropPercent: 3, skuMissing: 1 } });
     if (action === 'preview') return ok({ runId: 'run-fresh', status: 'previewed', sourceCounts: SOURCE_COUNTS, changeCounts: CHANGE_COUNTS, changes: CHANGES });
     // sku_missing_archive_v1 (17/10/2026): lượt toàn bộ áp dụng trả số SKU rời nhóm đã lưu trữ / giữ lại.
+    if (action === 'apply' && holdApply) await holdApply;
     if (action === 'apply') return ok({ status: 'completed', changeCounts: { ...CHANGE_COUNTS, skuArchived: 1, skuArchiveKept: 2 }, verification: { skuVerified: 3, comboVerified: 0, skuCount: 100 } });
     if (action === 'detail') {
       const run = RUNS.find(item => item.id === runId);
@@ -187,6 +190,43 @@ const layoutAudit = (page, screenSel, stripIds, oneRow) => page.evaluate(({ scre
   return bad;
 }, { screenSel, stripIds, oneRow });
 
+// Ô Tự động nằm trong dải mốc giờ (18/10/2026): ô con của dải, nút icon 36×36 nằm trong ô, chữ nhãn/giờ/ghi chú không bị nút che hay cắt, ô không tràn.
+const autoCellAudit = (page, stripId, cellId) => page.evaluate(({ stripId, cellId }) => {
+  const bad = [], strip = document.getElementById(stripId), cell = document.getElementById(cellId), btn = cell && cell.querySelector('button');
+  if (!cell || cell.parentElement !== strip) return [`#${cellId} không phải ô con của #${stripId}`];
+  const c = cell.getBoundingClientRect(), b = btn.getBoundingClientRect();
+  if (Math.abs(b.width - 36) > 0.5 || Math.abs(b.height - 36) > 0.5) bad.push(`nút ${Math.round(b.width)}×${Math.round(b.height)}, cần 36×36`);
+  if (b.left < c.left || b.right > c.right + 0.5 || b.top < c.top || b.bottom > c.bottom + 0.5) bad.push('nút nằm ngoài ô Tự động');
+  for (const el of cell.querySelectorAll('span, strong, em')) {
+    if (!el.textContent.trim()) continue;
+    const range = document.createRange(); range.selectNodeContents(el); const t = range.getBoundingClientRect();
+    if (t.right > c.right + 0.5) bad.push(`chữ "${el.textContent.trim()}" tràn khỏi ô`);
+    if (!btn.hidden && t.right > b.left - 2 && t.left < b.right && t.bottom > b.top && t.top < b.bottom) bad.push(`nút che chữ "${el.textContent.trim()}" (chữ tới ${Math.round(t.right)}, nút từ ${Math.round(b.left)})`);
+    if (el.tagName !== 'SPAN' && el.scrollWidth > el.clientWidth + 1) bad.push(`"${el.textContent.trim()}" bị cắt (${el.scrollWidth} > ${el.clientWidth})`);
+  }
+  return bad;
+}, { stripId, cellId });
+
+// Dòng load dưới nút đang chạy (18/10/2026, khối #hero-standard): vạch 3 px bo tròn ở ::after của nút, nằm dưới mép nút, không bị cắt hay chồng (điểm giữa vạch trỏ về chính nút);
+// không có tiến độ thật (--p) → đoạn 38 % trượt qua lại; có --p (0–1) → tô theo % bề rộng nút. Trả về thông số đo được.
+const barInfo = (page, id) => page.evaluate(id => {
+  const b = document.getElementById(id), s = getComputedStyle(b, '::after'), r = b.getBoundingClientRect();
+  const h = parseFloat(s.height) || 0, w = parseFloat(s.width) || 0, top = r.top + b.clientTop + (parseFloat(s.top) || 0), left = r.left + b.clientLeft + (parseFloat(s.left) || 0);
+  const token = s.backgroundSize.split(',')[0].trim().split(' ')[0], fillOfTrack = token.endsWith('%') ? parseFloat(token) / 100 : w ? parseFloat(token) / w : NaN;
+  const hit = h ? document.elementFromPoint(left + w / 2, top + h / 2) : null;
+  return { content: s.content, position: s.position, height: h, track: w, btn: r.width, below: top >= r.bottom - 0.5, hit: hit === b, fillOfTrack, fill: fillOfTrack * w, animated: s.animationName !== 'none', p: b.style.getPropertyValue('--p') };
+}, id);
+const expectBar = (info, tag, ratio) => {
+  assert.equal(info.content, '""', `${tag}: không có vạch load dưới nút (::after content ${info.content})`);
+  assert.equal(info.position, 'absolute', `${tag}: vạch phải nằm tuyệt đối dưới nút`);
+  assert.equal(info.height, 3, `${tag}: vạch cao ${info.height}px, cần 3px`);
+  assert.ok(info.below, `${tag}: vạch phải nằm dưới mép nút`);
+  assert.ok(info.hit, `${tag}: vạch bị cắt hoặc bị phần tử khác chồng lên`);
+  assert.ok(Math.abs(info.track / info.btn - 1) <= 0.03, `${tag}: nền vạch rộng ${info.track.toFixed(1)}px, cần bằng bề rộng nút ${info.btn.toFixed(1)}px`);
+  if (ratio === undefined) { assert.ok(info.animated, `${tag}: chưa có tiến độ thật thì đoạn vạch phải trượt qua lại`); assert.ok(Math.abs(info.fillOfTrack - 0.38) < 0.01, `${tag}: đoạn trượt chiếm ${(info.fillOfTrack * 100).toFixed(1)}%, cần 38%`); }
+  else assert.ok(Math.abs(info.fill / info.btn - ratio) <= 0.05, `${tag}: vạch ${(info.fill / info.btn * 100).toFixed(1)}% bề rộng nút, cần ≈ ${ratio * 100}% ± 5%`);
+};
+
 (async () => {
   const browser = await chromium.launch({ channel: 'chrome', headless: true });
   try {
@@ -220,22 +260,36 @@ const layoutAudit = (page, screenSel, stripIds, oneRow) => page.evaluate(({ scre
 
       // Đồng bộ tự động (17/10/2026): dải trạng thái đọc auto-config, nút Tạm dừng gửi set.enabled=false rồi đổi chữ; lịch sử có chip Tự động · máy và Chờ Admin
       const autoBodies = []; page.on('request', request => { if (request.url().includes('/functions/v1/sku-sync')) { const body = JSON.parse(request.postData() || '{}'); if (body.action === 'auto-config') autoBodies.push(body); } });
-      const strip = page.locator('#ss-auto-strip');
-      await strip.waitFor({ state: 'visible' });
-      assert.match(await page.locator('#ss-auto-text').innerText(), /^Lượt gần nhất: \d{2}\/\d{2}\/\d{4} \d{2}:\d{2} · may-test$/);
-      assert.equal(await strip.getAttribute('data-stale'), 'false');
-      assert.equal((await page.locator('#ss-auto-toggle').innerText()).trim(), 'Tạm dừng');
-      assert.equal(await page.locator('#ss-auto-toggle svg').count(), 1, 'nút tự động có icon');
-      assert.equal(await strip.locator('svg').count(), 2, 'dải tự động có icon đầu dải và icon nút');
-      await page.locator('#ss-auto-toggle').click();
-      await page.waitForFunction(() => document.getElementById('ss-auto-strip').dataset.stale === 'true');
+      // 18/10/2026: ô Tự động gộp vào dải mốc giờ (không còn khối #ss-auto-strip riêng): strong = giờ lượt tự động gần nhất, em = máy · x giờ trước,
+      // nút Tạm dừng / Tiếp tục là nút chỉ icon 36×36 có aria-label + title; tạm dừng → ô vàng.
+      assert.equal(await page.locator('#ss-auto-strip').count(), 0, 'không còn khối Tự động riêng dưới dải mốc giờ');
+      const cell = page.locator('#ss-strip > #ss-strip-auto');
+      await cell.waitFor({ state: 'visible' });
+      assert.deepEqual(await page.locator('#ss-strip').evaluate(strip => [...strip.children].map(c => c.id || c.className)), ['ss-strip-done', '', 'ss-strip-full', 'ss-strip-auto', 'as-histcell'], 'dải 5 ô, ô Tự động đứng ngay trước ô Lịch sử');
+      assert.equal((await cell.locator(':scope > span').innerText()).trim(), 'Tự động');
+      assert.match(await page.locator('#ss-auto-text').innerText(), /^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}$/);
+      assert.match(await page.locator('#ss-auto-note').innerText(), /^may-test · \d+ (phút|giờ|ngày) trước$/);
+      assert.equal(await cell.getAttribute('data-stale'), 'false');
+      const toggle = page.locator('#ss-auto-toggle');
+      assert.equal((await toggle.innerText()).trim(), '', 'nút chỉ icon, không chữ');
+      assert.equal(await toggle.getAttribute('aria-label'), 'Tạm dừng tự động');
+      assert.equal(await toggle.getAttribute('title'), 'Tạm dừng tự động');
+      assert.equal(await toggle.locator('svg').count(), 1, 'nút tự động có icon');
+      assert.equal(await cell.locator('svg').count(), 2, 'ô tự động có icon đầu ô và icon nút');
+      assert.deepEqual(await autoCellAudit(page, 'ss-strip', 'ss-strip-auto'), [], 'ô Tự động: nút 36×36 trong ô, không che chữ');
+      await toggle.click();
+      await page.waitForFunction(() => document.getElementById('ss-strip-auto').dataset.stale === 'true');
       assert.deepEqual(autoBodies.at(-1), { action: 'auto-config', set: { enabled: false } });
       assert.equal((await page.locator('#ss-auto-note').innerText()).trim(), 'Admin đã tạm dừng');
-      assert.equal((await page.locator('#ss-auto-toggle').innerText()).trim(), 'Tiếp tục');
-      await page.locator('#ss-auto-toggle').click();
-      await page.waitForFunction(() => document.getElementById('ss-auto-strip').dataset.stale === 'false');
+      assert.equal(await toggle.getAttribute('aria-label'), 'Tiếp tục tự động');
+      assert.equal(await toggle.getAttribute('title'), 'Tiếp tục tự động');
+      assert.equal(await cell.evaluate(c => getComputedStyle(c).backgroundColor), 'rgb(255, 250, 235)', 'tạm dừng: ô tự động vàng');
+      assert.equal(await page.locator('#ss-strip').getAttribute('data-stale'), null, 'chỉ ô Tự động vàng, không phải cả dải');
+      assert.deepEqual(await autoCellAudit(page, 'ss-strip', 'ss-strip-auto'), [], 'ô Tự động (đã tạm dừng): nút trong ô, không che chữ');
+      await toggle.click();
+      await page.waitForFunction(() => document.getElementById('ss-strip-auto').dataset.stale === 'false');
       assert.deepEqual(autoBodies.at(-1), { action: 'auto-config', set: { enabled: true } });
-      assert.equal((await page.locator('#ss-auto-toggle').innerText()).trim(), 'Tạm dừng');
+      assert.equal(await toggle.getAttribute('aria-label'), 'Tạm dừng tự động');
 
       // Lịch sử gọn: một ô trong dải (kết quả lượt gần nhất + số lượt), bảng chỉ mở khi bấm; không có bảng chi tiết nằm sẵn trong trang
       assert.equal(await page.locator('#ss-hist-dialog').evaluate(node => node.open), false);
@@ -265,12 +319,17 @@ const layoutAudit = (page, screenSel, stripIds, oneRow) => page.evaluate(({ scre
       assert.match(await page.locator('#ss-last-full-rel').innerText(), /^Chưa chạy, nên đối chiếu toàn bộ$/);
       // Đang đọc: nút vừa bấm có data-busy="true", nhãn "Đang đọc…", icon đổi sang mũi tên vòng xoay; nút kia chỉ khoá, giữ nhãn
       const idleMask = await page.locator('#sku-sync-full').evaluate(b => getComputedStyle(b, '::before').maskImage);
+      assert.equal((await barInfo(page, 'sku-sync-full')).content, 'none', 'rảnh: không có vạch load dưới nút');
+      assert.equal(await page.locator('#sku-sync-progress').evaluate(n => n.getClientRects().length), 0, 'rảnh: thanh tiến độ rời không hiện');
       let release; hold = new Promise(resolve => { release = resolve; });
       await page.locator('#sku-sync-full').click();
       await page.waitForFunction(() => document.getElementById('sku-sync-full').dataset.busy === 'true');
       assert.equal((await page.locator('#sku-sync-full').innerText()).trim(), 'Đang đọc…');
       assert.equal(await page.locator('#sku-sync-full').evaluate(b => getComputedStyle(b, '::before').maskImage !== 'none' && getComputedStyle(b, '::before').animationName !== 'none'), true, 'icon vòng xoay khi đang đọc');
       assert.notEqual(await page.locator('#sku-sync-full').evaluate(b => getComputedStyle(b, '::before').maskImage), idleMask, 'icon khác lúc rảnh');
+      expectBar(await barInfo(page, 'sku-sync-full'), '#sku-sync-full đang đọc'); // Đồng bộ SKU không có tiến độ trang: đoạn 38 % trượt qua lại
+      assert.equal(await page.locator('#sku-sync-progress').evaluate(n => n.getClientRects().length), 0, 'đang đọc: thanh tiến độ rời chạy ngang màn không còn hiện');
+      assert.equal((await barInfo(page, 'sku-sync-preview')).content, 'none', 'nút kia chỉ khoá, không có vạch');
       assert.equal(await page.locator('#sku-sync-preview').isDisabled(), true);
       assert.notEqual(await page.locator('#sku-sync-preview').getAttribute('data-busy'), 'true');
       assert.equal((await page.locator('#sku-sync-preview').innerText()).trim(), 'Đọc Inside');
@@ -278,6 +337,7 @@ const layoutAudit = (page, screenSel, stripIds, oneRow) => page.evaluate(({ scre
       await page.waitForFunction(() => /Đối chiếu xong/.test(document.getElementById('sku-sync-status').textContent));
       assert.notEqual(await page.locator('#sku-sync-full').getAttribute('data-busy'), 'true');
       assert.equal((await page.locator('#sku-sync-full').innerText()).trim(), 'Toàn bộ', 'đọc xong trả nhãn cũ');
+      assert.equal((await barInfo(page, 'sku-sync-full')).content, 'none', 'đọc xong: vạch load mất');
       assert.equal(calls.includes('preview:full'), true, 'Edge nhận mode full');
       assert.match(await page.locator('#sku-sync-status').innerText(), /Có 7 cảnh báo\. Tổng SKU nguồn giảm 3% so với mốc 100\./);
       assert.equal((await page.locator('#ss-sku-missing').innerText()).trim(), '1');
@@ -302,8 +362,8 @@ const layoutAudit = (page, screenSel, stripIds, oneRow) => page.evaluate(({ scre
       }
 
       assert.equal(await dlg(page).evaluate(node => node.open), false, 'xem trước xong không tự mở popup');
-      if (width === 1280) assert.deepEqual(await belowHeroAudit(page, '#sku-sync-screen', ['ss-strip', 'ss-auto-strip'], true), [], 'dưới hero: dải phẳng, ô số liệu phân tầng (0 xám phẳng, thay đổi xanh, cảnh báo vàng, nguồn trung tính)');
-      if (width === 1280) assert.deepEqual(await layoutAudit(page, '#sku-sync-screen', ['ss-strip', 'ss-auto-strip'], false), [], '1280 px: dải không rơi ô lẻ');
+      if (width === 1280) assert.deepEqual(await belowHeroAudit(page, '#sku-sync-screen', ['ss-strip'], true), [], 'dưới hero: dải phẳng, ô số liệu phân tầng (0 xám phẳng, thay đổi xanh, cảnh báo vàng, nguồn trung tính)');
+      if (width === 1280) assert.deepEqual(await layoutAudit(page, '#sku-sync-screen', ['ss-strip'], false), [], '1280 px: dải không rơi ô lẻ');
       assert.equal(await page.locator('#ss-apply').getAttribute('data-count'), '3', 'nút Cập nhật ghi số thay đổi');
       assert.equal(await page.locator('[data-change-kind="combo-added"]').getAttribute('data-zero'), 'true');
       await page.locator('[data-change-kind="combo-added"]').click(); await page.waitForTimeout(150);
@@ -372,8 +432,20 @@ const layoutAudit = (page, screenSel, stripIds, oneRow) => page.evaluate(({ scre
       assert.equal(calls.includes('apply'), false, 'Huỷ thì không ghi vào Supabase');
       assert.equal(await page.locator('#ss-apply').isDisabled(), false);
       await page.locator('#ss-apply').click(); await confirm.waitFor({ state: 'visible' });
+      // Đang cập nhật (ghi Supabase): nút Cập nhật giữ chữ + mang data-busy, vạch load dưới nút (đoạn trượt), thanh tiến độ rời không hiện
+      assert.equal((await barInfo(page, 'ss-apply')).content, '"3"', 'rảnh: ::after của nút Cập nhật là huy hiệu số, chưa phải vạch');
+      let releaseApply; holdApply = new Promise(resolve => { releaseApply = resolve; });
       await confirm.locator('.whd-ok').click();
+      await page.waitForFunction(() => document.getElementById('ss-apply').dataset.busy === 'true');
+      assert.equal((await page.locator('#ss-apply').innerText()).trim(), 'Cập nhật', 'đang ghi giữ chữ Cập nhật');
+      assert.equal(await page.locator('#ss-apply').isDisabled(), true);
+      expectBar(await barInfo(page, 'ss-apply'), '#ss-apply đang ghi');
+      assert.equal(await page.locator('#ss-apply').evaluate(b => getComputedStyle(b).opacity), '1', 'đang ghi: nút không mờ để vạch đủ nét');
+      assert.equal(await page.locator('#sku-sync-progress').evaluate(n => n.getClientRects().length), 0, 'đang ghi: thanh tiến độ rời không hiện');
+      releaseApply(); holdApply = null;
       await page.waitForFunction(() => /^Hoàn tất: xác minh 3 SKU/.test(document.getElementById('sku-sync-status').textContent));
+      await page.waitForFunction(() => document.getElementById('ss-apply').dataset.busy !== 'true');
+      assert.notEqual((await barInfo(page, 'ss-apply')).content, '""', 'ghi xong: vạch load dưới nút mất');
       assert.equal(calls.filter(action => action === 'apply').length, 1);
       assert.equal(await page.locator('#ss-apply').isDisabled(), true);
       assert.equal((await page.locator('#sku-sync-status').innerText()).trim(), 'Hoàn tất: xác minh 3 SKU và 0 quan hệ; database có 100 SKU. · Đã lưu trữ 1 SKU rời nhóm, giữ lại 2', 'câu hoàn tất ghi số SKU rời nhóm đã lưu trữ');
@@ -406,10 +478,12 @@ const layoutAudit = (page, screenSel, stripIds, oneRow) => page.evaluate(({ scre
       await page.locator('#sku-sync-screen').waitFor({ state: 'visible' });
       await page.locator('#ss-history tr[data-run]').first().waitFor({ state: 'attached' });
       assert.deepEqual(await heroAudit(page, '#sku-sync-screen', HERO_SPECS), [], `hero ${width} px một hàng`);
+      await page.locator('#ss-auto-toggle').waitFor({ state: 'visible' });
+      assert.deepEqual(await autoCellAudit(page, 'ss-strip', 'ss-strip-auto'), [], `${width} px: ô Tự động — nút 36×36 trong ô, không che chữ`);
       await page.locator('#sku-sync-preview').click();
       await page.waitForFunction(() => /cảnh báo/.test(document.getElementById('sku-sync-status').textContent));
-      assert.deepEqual(await belowHeroAudit(page, '#sku-sync-screen', ['ss-strip', 'ss-auto-strip'], true), [], `${width} px dưới hero: dải phẳng, ô số liệu phân tầng`);
-      assert.deepEqual(await layoutAudit(page, '#sku-sync-screen', ['ss-strip', 'ss-auto-strip'], width <= 1199), [], `${width} px: nhóm SKU một hàng (≤ 1199), dải không ô lẻ`);
+      assert.deepEqual(await belowHeroAudit(page, '#sku-sync-screen', ['ss-strip'], true), [], `${width} px dưới hero: dải phẳng, ô số liệu phân tầng`);
+      assert.deepEqual(await layoutAudit(page, '#sku-sync-screen', ['ss-strip'], width <= 1199), [], `${width} px: nhóm SKU một hàng (≤ 1199), dải không ô lẻ`);
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, 'không tràn ngang');
       await context.close();
       console.log(`PASS ${width}px: hero một hàng, dải phẳng, ô số liệu phân tầng, ${width <= 1199 ? 'nhóm SKU 4 ô một hàng, ' : ''}dải không ô lẻ, không tràn ngang`);

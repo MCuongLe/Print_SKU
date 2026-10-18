@@ -11,6 +11,8 @@ const warnCounts = { ...counts, missing: 3, issues: 1, skippedCanceled: 7 };
 let scenario = "normal", cancelCalls = 0, ingestBodies = [], autoEnabled = true, autoBodies = [];
 // Giữ phản hồi prepare của Edge để chặn được pha "đang đọc" (nút đổi nhãn, icon vòng xoay); đặt lại null để thả.
 let hold = null;
+// Giữ phản hồi apply (ghi Supabase) để chặn được pha "đang cập nhật": nút Cập nhật mang data-busy + vạch load dưới nút; đặt lại null để thả.
+let holdApply = null;
 // Khuôn hero (17/10/2026, khối #hero-standard): thanh lệnh gọn một hàng, h2 vẫn trong DOM nhưng ẩn kiểu sr-only (rộng ≤ 1 px),
 // nút đọc nguồn một kiểu .src-read (icon mask ở ::before), nhóm ghi đẩy sang phải. Trả về danh sách điểm lệch (rỗng = đạt).
 const heroAudit = (page, screenSel, specs) => page.evaluate(({ screenSel, specs }) => {
@@ -88,7 +90,7 @@ const belowHeroAudit = (page, screenSel, stripIds, needAlert) => page.evaluate(a
   }
   return bad;
 }, { screenSel, stripIds, needAlert });
-// Lưới dải không rơi ô lẻ: dải nào có từ 2 ô thì không có hàng chỉ một ô, không ô tràn khỏi dải; `oneRowId` (nếu có) phải nằm đúng một hàng (5 ô Group UID từ 1280 px).
+// Lưới dải không rơi ô lẻ: dải nào có từ 2 ô thì không có hàng chỉ một ô, không ô tràn khỏi dải; `oneRowId` (nếu có) phải nằm đúng một hàng (6 ô Group UID từ 1280 px).
 const layoutAudit = (page, stripIds, oneRowId) => page.evaluate(({ stripIds, oneRowId }) => {
   const bad = [], rows = nodes => { const map = new Map(); for (const n of nodes) { const k = Math.round(n.getBoundingClientRect().top); map.set(k, (map.get(k) || 0) + 1); } return map; };
   for (const id of stripIds) {
@@ -101,6 +103,41 @@ const layoutAudit = (page, stripIds, oneRowId) => page.evaluate(({ stripIds, one
   }
   return bad;
 }, { stripIds, oneRowId });
+// Ô Tự động nằm trong dải mốc giờ (18/10/2026): ô con của dải, nút icon 36×36 nằm trong ô, chữ nhãn/giờ/ghi chú không bị nút che hay cắt, ô không tràn.
+const autoCellAudit = (page, stripId, cellId) => page.evaluate(({ stripId, cellId }) => {
+  const bad = [], strip = document.getElementById(stripId), cell = document.getElementById(cellId), btn = cell && cell.querySelector("button");
+  if (!cell || cell.parentElement !== strip) return [`#${cellId} không phải ô con của #${stripId}`];
+  const c = cell.getBoundingClientRect(), b = btn.getBoundingClientRect();
+  if (Math.abs(b.width - 36) > 0.5 || Math.abs(b.height - 36) > 0.5) bad.push(`nút ${Math.round(b.width)}×${Math.round(b.height)}, cần 36×36`);
+  if (b.left < c.left || b.right > c.right + 0.5 || b.top < c.top || b.bottom > c.bottom + 0.5) bad.push("nút nằm ngoài ô Tự động");
+  for (const el of cell.querySelectorAll("span, strong, em")) {
+    if (!el.textContent.trim()) continue;
+    const range = document.createRange(); range.selectNodeContents(el); const t = range.getBoundingClientRect();
+    if (t.right > c.right + 0.5) bad.push(`chữ "${el.textContent.trim()}" tràn khỏi ô`);
+    if (!btn.hidden && t.right > b.left - 2 && t.left < b.right && t.bottom > b.top && t.top < b.bottom) bad.push(`nút che chữ "${el.textContent.trim()}" (chữ tới ${Math.round(t.right)}, nút từ ${Math.round(b.left)})`);
+    if (el.tagName !== "SPAN" && el.scrollWidth > el.clientWidth + 1) bad.push(`"${el.textContent.trim()}" bị cắt (${el.scrollWidth} > ${el.clientWidth})`);
+  }
+  return bad;
+}, { stripId, cellId });
+// Dòng load dưới nút đang chạy (18/10/2026, khối #hero-standard): vạch 3 px bo tròn ở ::after của nút, nằm dưới mép nút, không bị cắt hay chồng (điểm giữa vạch trỏ về chính nút);
+// không có tiến độ thật (--p) → đoạn 38 % trượt qua lại; có --p (0–1) → tô theo % bề rộng nút. Trả về thông số đo được.
+const barInfo = (page, id) => page.evaluate(id => {
+  const b = document.getElementById(id), s = getComputedStyle(b, "::after"), r = b.getBoundingClientRect();
+  const h = parseFloat(s.height) || 0, w = parseFloat(s.width) || 0, top = r.top + b.clientTop + (parseFloat(s.top) || 0), left = r.left + b.clientLeft + (parseFloat(s.left) || 0);
+  const token = s.backgroundSize.split(",")[0].trim().split(" ")[0], fillOfTrack = token.endsWith("%") ? parseFloat(token) / 100 : w ? parseFloat(token) / w : NaN;
+  const hit = h ? document.elementFromPoint(left + w / 2, top + h / 2) : null;
+  return { content: s.content, position: s.position, height: h, track: w, btn: r.width, below: top >= r.bottom - 0.5, hit: hit === b, fillOfTrack, fill: fillOfTrack * w, animated: s.animationName !== "none", p: b.style.getPropertyValue("--p") };
+}, id);
+const expectBar = (info, tag, ratio) => {
+  assert.equal(info.content, '""', `${tag}: không có vạch load dưới nút (::after content ${info.content})`);
+  assert.equal(info.position, "absolute", `${tag}: vạch phải nằm tuyệt đối dưới nút`);
+  assert.equal(info.height, 3, `${tag}: vạch cao ${info.height}px, cần 3px`);
+  assert.ok(info.below, `${tag}: vạch phải nằm dưới mép nút`);
+  assert.ok(info.hit, `${tag}: vạch bị cắt hoặc bị phần tử khác chồng lên`);
+  assert.ok(Math.abs(info.track / info.btn - 1) <= 0.03, `${tag}: nền vạch rộng ${info.track.toFixed(1)}px, cần bằng bề rộng nút ${info.btn.toFixed(1)}px`);
+  if (ratio === undefined) { assert.ok(info.animated, `${tag}: chưa có tiến độ thật thì đoạn vạch phải trượt qua lại`); assert.ok(Math.abs(info.fillOfTrack - 0.38) < 0.01, `${tag}: đoạn trượt chiếm ${(info.fillOfTrack * 100).toFixed(1)}%, cần 38%`); }
+  else assert.ok(Math.abs(info.fill / info.btn - ratio) <= 0.05, `${tag}: vạch ${(info.fill / info.btn * 100).toFixed(1)}% bề rộng nút, cần ≈ ${ratio * 100}% ± 5%`);
+};
 const WHS = ["WH - MATERIAL - MTG", "WH - MATERIAL - GARMENT", "WH - SEMI PRODUCT - MTG"];
 const MANY = Array.from({ length: 120 }, (_, i) => ({ groupUidCode: `1028260000${String(i).padStart(6, "0")}`, changeType: "updated", before: { qty: 1000 + i, status: "Available", location: `A-${i}`, warehouse: WHS[i % 3] }, after: { qty: 1180 + i, status: "Allocated", location: `B-${i}`, warehouse: WHS[i % 3] }, changedFields: i % 2 ? ["qty", "status"] : ["qty", "location"], sourceUpdatedAt: new Date(Date.UTC(2026, 9, 8, 1, 0, i)).toISOString() }));
 // Một dòng (i = 7) đổi cả QC: before null -> after "Passed" (trường qc_status của Group UID).
@@ -111,7 +148,7 @@ const manyCounts = { added: 0, updated: 120, unchanged: 1880, missing: 0, issues
 // Kịch bản (window.__guScenario): "insert" (toàn bộ) = UID mới chen lên đầu giữa lúc đọc: trang 2 tổng 4 và lặp UID cuối trang 1, đọc lại đầu danh sách thấy UID mới;
 // "full-drift" = tổng WMS không bao giờ khớp số UID duy nhất; "inc-once"/"inc-always" (lấy thay đổi) = UID vừa sửa rơi khỏi khung nên trang 2 báo tổng 2 thay vì 3,
 // lần đọc đầu (once) hoặc mọi lần (always).
-const fakeExtension = () => addEventListener("message", event => {
+const fakeExtension = () => addEventListener("message", async event => {
   const request = event.data;
   if (!request || request.source !== "PRINT_SKU_APP") return;
   const row = (code, qty) => ({ group_uid_code: code, sku: "900000002", qty, status: "Available", updated_date: "2026-10-08T01:00:00Z" }), r = n => row("102826000000000" + n, n);
@@ -122,6 +159,7 @@ const fakeExtension = () => addEventListener("message", event => {
       { group_uid_code: "1028260000000050", sku: "900000002", qty: 7429, status: "Available", updated_date: "2026-10-08T01:00:00Z" },
       { group_uid_code: "1028260000000049", sku: "900000003", qty: 3180, status: "Allocated", updated_date: "2026-10-08T01:01:00Z" },
     ] };
+    if (mode === "two-pages") return payload.page === 2 ? { page: 2, size: 500, total: 3, totalPages: 2, rows: [r(1)] } : { page: 1, size: 500, total: 3, totalPages: 2, rows: [r(3), r(2)] }; // 18/10/2026: 2 trang để đo vạch load theo trang
     if (payload.page === 1) window.__guP1 = (window.__guP1 || 0) + 1;
     if (mode === "insert") return payload.page === 2 ? { page: 2, size: 500, total: 4, totalPages: 2, rows: [r(2), r(1)] }
       : window.__guP1 === 1 ? { page: 1, size: 500, total: 3, totalPages: 2, rows: [r(3), r(2)] } : { page: 1, size: 500, total: 4, totalPages: 1, rows: [r(4), r(3)] };
@@ -129,6 +167,7 @@ const fakeExtension = () => addEventListener("message", event => {
     const leaving = mode === "inc-always" || window.__guP1 === 1;
     return payload.page === 1 ? { page: 1, size: 500, total: 3, totalPages: 2, rows: [r(3), r(2)] } : { page: 2, size: 500, total: leaving ? 2 : 3, totalPages: 2, rows: [r(1)] };
   };
+  if (window.__guHold2 && request.type === "GET_GROUP_UID_PAGE" && (request.payload || {}).page === 2) await window.__guHold2; // giữ trang 2 để đo tiến độ sau trang 1
   const data = request.type === "PING" || request.type === "PING_WMS" ? { version: "0.4.2" } : request.type === "GET_GROUP_UID_PAGE" ? pageData(request.payload || {}) : null;
   postMessage({ source: "HASAKI_INSIDE_CONNECTOR", requestId: request.requestId, ok: Boolean(data), data, error: data ? null : { message: "Loại yêu cầu chưa giả lập" } }, location.origin);
 });
@@ -152,6 +191,7 @@ async function mock(page) {
       // Lượt tự động bị giữ lại (held, sync_auto_v1): detail trả status held + autoHold.
       if (body.action === "detail" && body.runId === "55555555-5555-4555-8555-555555555555") return ok({ id: body.runId, runId: body.runId, mode: "full", status: "held", autoHold: "Giữ lại: 3.512 thay đổi vượt ngưỡng 3.000", source: "auto", device: "may-test", range_to: "2026-10-08T02:00:00Z", page_count: 1, source_count: 2, change_counts: counts, changes: [], error_message: null });
       if (body.action === "detail") return ok({ id: RUN, runId: RUN, mode: "full", status: "previewed", range_to: "2026-10-08T02:00:00Z", page_count: 1, source_count: 2, change_counts: counts, changes: (scenario === "many" ? MANY : changes).filter(row => !body.changeType || row.changeType === body.changeType) });
+      if (body.action === "apply" && holdApply) await holdApply;
       if (body.action === "apply") return ok({ runId: RUN, status: "completed", verification: { verified: 2, databaseCount: 28468 } });
       if (body.action === "cancel") { cancelCalls += 1; return ok({ id: RUN, status: "failed" }); }
     }
@@ -171,22 +211,29 @@ async function mock(page) {
       await page.goto(BASE+"#admin/group-uid-sync");await page.locator("#group-uid-sync-screen").waitFor({state:"visible"});
       await page.waitForFunction(()=>document.getElementById("gu-strip-full").dataset.stale==="true");assert.match(await page.locator("#gu-last-full-rel").innerText(),/quá 24 giờ, nên chạy toàn bộ$/,"toàn bộ cũ hơn 24 giờ phải cảnh báo");assert.equal(await page.locator("#gu-strip-full").evaluate(e=>getComputedStyle(e).backgroundColor),"rgb(255, 250, 235)","thẻ toàn bộ cũ có nền vàng nhạt");
       if(width===1280)assert.deepEqual(await heroAudit(page,"#group-uid-sync-screen",HERO_SPECS),[],"khuôn hero (thanh lệnh gọn một hàng, nút .src-read)");
-      // Đồng bộ tự động (17/10/2026): dải đọc auto-config; Tạm dừng gửi set.enabled=false rồi đổi chữ, Tiếp tục gửi true
-      await page.locator("#gu-auto-strip").waitFor({state:"visible"});assert.match(await page.locator("#gu-auto-text").innerText(),/^Lượt gần nhất: \d{2}\/\d{2}\/\d{4} \d{2}:\d{2} · may-test$/);assert.equal(await page.locator("#gu-auto-strip").getAttribute("data-stale"),"false");
-      assert.equal((await page.locator("#gu-auto-toggle").innerText()).trim(),"Tạm dừng");assert.equal(await page.locator("#gu-auto-strip svg").count(),2,"dải tự động có icon đầu dải và icon nút");
-      await page.locator("#gu-auto-toggle").click();await page.waitForFunction(()=>document.getElementById("gu-auto-strip").dataset.stale==="true");assert.deepEqual(autoBodies.at(-1),{action:"auto-config",set:{enabled:false}});assert.equal((await page.locator("#gu-auto-note").innerText()).trim(),"Admin đã tạm dừng");assert.equal((await page.locator("#gu-auto-toggle").innerText()).trim(),"Tiếp tục");
-      await page.locator("#gu-auto-toggle").click();await page.waitForFunction(()=>document.getElementById("gu-auto-strip").dataset.stale==="false");assert.deepEqual(autoBodies.at(-1),{action:"auto-config",set:{enabled:true}});assert.equal((await page.locator("#gu-auto-toggle").innerText()).trim(),"Tạm dừng");
+      // Đồng bộ tự động (17/10/2026), gộp vào dải mốc giờ (18/10/2026): ô Tự động là ô thứ 5 của #gu-strip (ngay trước ô Lịch sử), không còn khối #gu-auto-strip riêng;
+      // strong = giờ lượt tự động gần nhất, em = máy · x ngày trước, nút Tạm dừng / Tiếp tục là nút chỉ icon 36×36 có aria-label + title (gửi set.enabled); tạm dừng → ô vàng
+      assert.equal(await page.locator("#gu-auto-strip").count(),0,"không còn khối Tự động riêng dưới dải mốc giờ");
+      const cell=page.locator("#gu-strip > #gu-strip-auto"),toggle=page.locator("#gu-auto-toggle");await cell.waitFor({state:"visible"});
+      assert.deepEqual(await page.locator("#gu-strip").evaluate(strip=>[...strip.children].map(c=>c.id||c.className)),["gu-strip-inc","gu-strip-full","","","gu-strip-auto","as-histcell"],"dải 6 ô, ô Tự động đứng ngay trước ô Lịch sử");
+      assert.equal((await cell.locator(":scope > span").innerText()).trim(),"Tự động");assert.match(await page.locator("#gu-auto-text").innerText(),/^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}$/);assert.match(await page.locator("#gu-auto-note").innerText(),/^may-test · \d+ (phút|giờ|ngày) trước$/);assert.equal(await cell.getAttribute("data-stale"),"false");
+      assert.equal((await toggle.innerText()).trim(),"","nút chỉ icon, không chữ");assert.equal(await toggle.getAttribute("aria-label"),"Tạm dừng tự động");assert.equal(await toggle.getAttribute("title"),"Tạm dừng tự động");assert.equal(await toggle.locator("svg").count(),1,"nút tự động có icon");assert.equal(await cell.locator("svg").count(),2,"ô tự động có icon đầu ô và icon nút");
+      assert.deepEqual(await autoCellAudit(page,"gu-strip","gu-strip-auto"),[],"ô Tự động: nút 36×36 trong ô, không che chữ");
+      await toggle.click();await page.waitForFunction(()=>document.getElementById("gu-strip-auto").dataset.stale==="true");assert.deepEqual(autoBodies.at(-1),{action:"auto-config",set:{enabled:false}});assert.equal((await page.locator("#gu-auto-note").innerText()).trim(),"Admin đã tạm dừng");assert.equal(await toggle.getAttribute("aria-label"),"Tiếp tục tự động");assert.equal(await toggle.getAttribute("title"),"Tiếp tục tự động");
+      assert.equal(await cell.evaluate(c=>getComputedStyle(c).backgroundColor),"rgb(255, 250, 235)","tạm dừng: ô tự động vàng");assert.equal(await page.locator("#gu-strip").getAttribute("data-stale"),null,"chỉ ô Tự động vàng, không phải cả dải");assert.deepEqual(await autoCellAudit(page,"gu-strip","gu-strip-auto"),[],"ô Tự động (đã tạm dừng): nút trong ô, không che chữ");
+      await toggle.click();await page.waitForFunction(()=>document.getElementById("gu-strip-auto").dataset.stale==="false");assert.deepEqual(autoBodies.at(-1),{action:"auto-config",set:{enabled:true}});assert.equal(await toggle.getAttribute("aria-label"),"Tạm dừng tự động");
       // Đang đọc: nút vừa bấm có data-busy="true", nhãn "Đang đọc…", icon đổi sang mũi tên vòng xoay; nút kia chỉ khoá, giữ nhãn
-      const idleMask=await page.locator("#gu-run-full").evaluate(b=>getComputedStyle(b,"::before").maskImage);let release;hold=new Promise(resolve=>{release=resolve});
+      const idleMask=await page.locator("#gu-run-full").evaluate(b=>getComputedStyle(b,"::before").maskImage);assert.equal((await barInfo(page,"gu-run-full")).content,"none","rảnh: không có vạch load dưới nút");assert.equal(await page.locator("#gu-progress").evaluate(n=>n.getClientRects().length),0,"rảnh: thanh tiến độ rời không hiện");let release;hold=new Promise(resolve=>{release=resolve});
       await page.locator("#gu-run-full").click();await page.waitForFunction(()=>document.getElementById("gu-run-full").dataset.busy==="true");
       assert.equal((await page.locator("#gu-run-full").innerText()).trim(),"Đang đọc…");assert.equal(await page.locator("#gu-run-full").evaluate(b=>getComputedStyle(b,"::before").maskImage!=="none"&&getComputedStyle(b,"::before").animationName!=="none"),true,"icon vòng xoay khi đang đọc");assert.notEqual(await page.locator("#gu-run-full").evaluate(b=>getComputedStyle(b,"::before").maskImage),idleMask,"icon khác lúc rảnh");
+      expectBar(await barInfo(page,"gu-run-full"),"#gu-run-full đang chuẩn bị (chưa có trang nào: đoạn 38 % trượt qua lại)");assert.equal(await page.locator("#gu-progress").evaluate(n=>n.getClientRects().length),0,"đang đọc: thanh tiến độ rời chạy ngang màn không còn hiện");assert.equal((await barInfo(page,"gu-run-incremental")).content,"none","nút kia chỉ khoá, không có vạch");
       assert.equal(await page.locator("#gu-run-incremental").isDisabled(),true);assert.notEqual(await page.locator("#gu-run-incremental").getAttribute("data-busy"),"true");assert.equal((await page.locator("#gu-run-incremental").innerText()).trim(),"Đọc WMS");
       release();hold=null;await page.waitForFunction(()=>/Đối chiếu xong/.test(document.getElementById("gu-status").textContent));
-      assert.notEqual(await page.locator("#gu-run-full").getAttribute("data-busy"),"true");assert.equal((await page.locator("#gu-run-full").innerText()).trim(),"Toàn bộ","đọc xong trả nhãn cũ");
+      assert.notEqual(await page.locator("#gu-run-full").getAttribute("data-busy"),"true");assert.equal((await page.locator("#gu-run-full").innerText()).trim(),"Toàn bộ","đọc xong trả nhãn cũ");assert.equal((await barInfo(page,"gu-run-full")).content,"none","đọc xong: vạch load mất");
       assert.deepEqual(await page.evaluate(()=>window.__guReads),[{page:1},{page:1}],"toàn bộ: không gửi from/to (WMS bỏ qua to khi thiếu from); đọc 1 trang rồi đọc lại đầu danh sách để xác nhận tổng");assert.equal(ingestBodies.length,1);assert.equal(ingestBodies[0].total,2);
       assert.equal((await page.locator("#gu-source").innerText()).trim(),"2");assert.equal((await page.locator("#gu-added").innerText()).trim(),"1");assert.equal((await page.locator("#gu-updated").innerText()).trim(),"1");assert.equal(await page.locator("#gu-apply").isEnabled(),true);
       assert.equal(await page.locator("#gu-dialog").evaluate(d=>d.open),false,"xem trước xong không tự mở popup");
-      if(width===1280){assert.deepEqual(await belowHeroAudit(page,"#group-uid-sync-screen",["gu-strip","gu-auto-strip"],false),[],"dưới hero: dải phẳng, ô số liệu phân tầng (0 xám phẳng, thay đổi xanh, nguồn trung tính)");assert.deepEqual(await layoutAudit(page,["gu-strip","gu-auto-strip"],"gu-strip"),[],"1280 px: dải 5 ô nằm một hàng")}
+      if(width===1280){assert.deepEqual(await belowHeroAudit(page,"#group-uid-sync-screen",["gu-strip"],false),[],"dưới hero: dải phẳng, ô số liệu phân tầng (0 xám phẳng, thay đổi xanh, nguồn trung tính)");assert.deepEqual(await layoutAudit(page,["gu-strip"],null),[],"1280 px: dải 6 ô (có ô Tự động) là lưới 3 cột × 2 hàng, không ô lẻ")}
       assert.equal(await page.locator("#gu-apply").getAttribute("data-count"),"2","nút Cập nhật ghi số thay đổi");assert.equal((await page.locator("#gu-apply").innerText()).trim(),"Cập nhật","nhãn nút cố định; số thay đổi nằm ở huy hiệu (17/10/2026)");assert.equal(await page.locator("#gu-apply").evaluate(b=>getComputedStyle(b,"::after").content),'"2"',"huy hiệu ::after ghi số thay đổi");assert.equal(await page.locator('[data-gu-kind="missing"]').getAttribute("data-zero"),"true");await page.locator('[data-gu-kind="missing"]').click();await page.waitForTimeout(150);assert.equal(await page.locator("#gu-dialog").evaluate(d=>d.open),false,"ô 0 dòng không mở popup");
       await page.locator('[data-gu-kind="added"]').click();await page.locator("#gu-dialog").waitFor({state:"visible"});assert.equal((await page.locator("#gu-change-title").innerText()).trim(),"UID mới");assert.equal(await page.locator("#gu-dialog .as-d-mark svg").count(),1);
       assert.match(await page.locator("#gu-change-body").innerText(),/900000004 × 7/);assert.match(await page.locator("#gu-change-body").innerText(),/creator@hasaki\.vn/,"UID mới ghi người cập nhật");
@@ -202,7 +249,13 @@ async function mock(page) {
       const updText=await page.locator("#gu-uid-body").innerText();assert.match(updText,/BATCH \(LOT\)\s*LOT-NEW\s*Trước: LOT-OLD/i,"Lot đổi thì ghi giá trị trước");assert.match(updText,/ROLL\s*R-01/i);assert.doesNotMatch(updText,/ROLL\s*R-01\s*Trước/i,"Roll không đổi thì không ghi dòng trước");assert.match(updText,/3\.180|3180/);assert.match(updText,/Trước: 3\.000|Trước: 3000/);assert.match(updText,/Allocated/);assert.match(updText,/Trước: Available/);
       await page.keyboard.press("Escape");await uidBox.waitFor({state:"hidden"});
       await page.keyboard.press("Escape");await page.locator("#gu-dialog").waitFor({state:"hidden"});assert.equal(await page.locator("#gu-warn").isHidden(),true,"không có cảnh báo khi dữ liệu bình thường");assert.equal(await page.locator("#gu-cancel").isEnabled(),true);
-      await page.locator("#gu-apply").click();const confirm=page.locator("dialog.whd");await confirm.waitFor({state:"visible"});assert.match(await confirm.locator(".whd-title").innerText(),/^Cập nhật 2 UID vào Supabase$/);assert.deepEqual(await confirm.locator(".whd-facts li").allInnerTexts(),["1 UID mới","1 UID cập nhật"]);await confirm.locator(".whd-ok").click();await page.waitForFunction(()=>/Hoàn tất/.test(document.getElementById("gu-status").textContent));
+      await page.locator("#gu-apply").click();const confirm=page.locator("dialog.whd");await confirm.waitFor({state:"visible"});assert.match(await confirm.locator(".whd-title").innerText(),/^Cập nhật 2 UID vào Supabase$/);assert.deepEqual(await confirm.locator(".whd-facts li").allInnerTexts(),["1 UID mới","1 UID cập nhật"]);
+      // Đang cập nhật (ghi Supabase): nút Cập nhật giữ chữ + mang data-busy, vạch load dưới nút (đoạn trượt), thanh tiến độ rời không hiện
+      assert.equal((await barInfo(page,"gu-apply")).content,'"2"',"rảnh: ::after của nút Cập nhật là huy hiệu số, chưa phải vạch");
+      let releaseApply;holdApply=new Promise(resolve=>{releaseApply=resolve});await confirm.locator(".whd-ok").click();await page.waitForFunction(()=>document.getElementById("gu-apply").dataset.busy==="true");
+      assert.equal((await page.locator("#gu-apply").innerText()).trim(),"Cập nhật","đang ghi giữ chữ Cập nhật");assert.equal(await page.locator("#gu-apply").isDisabled(),true);expectBar(await barInfo(page,"gu-apply"),"#gu-apply đang ghi");
+      assert.equal(await page.locator("#gu-apply").evaluate(b=>getComputedStyle(b).opacity),"1","đang ghi: nút không mờ để vạch đủ nét");assert.equal(await page.locator("#gu-progress").evaluate(n=>n.getClientRects().length),0,"đang ghi: thanh tiến độ rời không hiện");
+      releaseApply();holdApply=null;await page.waitForFunction(()=>/Hoàn tất/.test(document.getElementById("gu-status").textContent));await page.waitForFunction(()=>document.getElementById("gu-apply").dataset.busy!=="true");assert.notEqual((await barInfo(page,"gu-apply")).content,'""',"ghi xong: vạch load dưới nút mất");
       assert.equal(await page.locator("#gu-cancel").isDisabled(),true,"đã cập nhật xong thì không còn gì để hủy");assert.match(await page.locator("#gu-history").textContent(),/Đã hủy/);
       assert.equal(await page.locator("#gu-history").isVisible(),false,"lịch sử gọn: bảng chỉ mở khi bấm");assert.match(await page.locator("#gu-hist-count").innerText(),/lượt$/);await page.locator("#gu-history-btn").click();await page.locator("#gu-hist-dialog").waitFor({state:"visible"});assert.match(await page.locator("#gu-hist-note").innerText(),/lượt gần nhất$/);assert.deepEqual((await page.locator('#gu-history tr[data-gu-run="55555555-5555-4555-8555-555555555555"] .as-auto-chips .as-chip').allInnerTexts()).map(t=>t.trim()),["Tự động · may-test","Chờ Admin"]);assert.equal(await page.locator('#gu-history tr[data-gu-run="55555555-5555-4555-8555-555555555555"] .as-chip[data-tone="warn"]').getAttribute("title"),"Giữ lại: 3.512 thay đổi vượt ngưỡng 3.000");assert.equal(await page.locator('#gu-history tr[data-gu-run="44444444-4444-4444-8444-444444444444"] .as-auto-chips').count(),0,"lượt bấm tay không có chip tự động");
       // Mở lượt held từ lịch sử: hiện lý do giữ lại + gợi ý chạy lại, nút Cập nhật khoá
@@ -263,12 +316,18 @@ async function mock(page) {
       assert.deepEqual(ingestBodies.map(b=>[b.page,b.total,b.rows.length]),[[1,3,3]],"chỉ đưa lên bản nhất quán: 3 UID, tổng 3");assert.equal(cancelCalls,0);await cancelPreview();
       await scenarioRun("inc-always","#gu-run-incremental");await stopped();
       assert.match(await page.locator("#gu-status").innerText(),/WMS đổi dữ liệu trong lúc đọc [(]tổng 3 → 2 · 3 UID duy nhất[)]/);assert.equal(ingestBodies.length,0);assert.equal(cancelCalls,1);assert.equal((await reads()).length,6,"3 lượt x 2 trang");
+      // Tiến độ thật theo trang WMS (18/10/2026): đọc xong trang 1/2 (trang 2 còn bị giữ) → vạch dưới nút Toàn bộ tô ≈ 50 % bề rộng nút (biến --p); đọc xong thì vạch mất
+      await page.evaluate(()=>{window.__guHold2=new Promise(resolve=>{window.__guRelease2=resolve})});
+      await scenarioRun("two-pages","#gu-run-full");await page.waitForFunction(()=>document.getElementById("gu-run-full").style.getPropertyValue("--p")==="0.5");await page.waitForTimeout(400);
+      expectBar(await barInfo(page,"gu-run-full"),"#gu-run-full sau trang 1/2 (đọc WMS)",0.5);
+      await page.evaluate(()=>{window.__guRelease2();window.__guHold2=null});await done();
+      assert.equal((await barInfo(page,"gu-run-full")).content,"none","đọc xong: vạch load mất");assert.equal(await page.locator("#gu-run-full").evaluate(b=>b.style.getPropertyValue("--p")),"","đọc xong: bỏ biến --p");assert.deepEqual(ingestBodies.map(b=>[b.page,b.total,b.rows.length]),[[1,3,3]]);await cancelPreview();ingestBodies=[]; // trả về rỗng cho vòng 375 px (dùng chung mảng)
       await page.evaluate(()=>{window.__guScenario="normal"});
       assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);assert.deepEqual(errors,[]);await context.close();console.log(`PASS ${width}px: Group UID full/preview/detail/apply, cảnh báo, hủy xem trước, responsive`);
     }
     // 1024 → 1440 px (Admin chỉ xét máy tính; 1024 hẹp nhất còn thanh trái 264): hero vẫn một hàng; sau khi đọc có kết quả: dải phẳng, ô số liệu phân tầng,
-    // dải mốc 5 ô không có ô lẻ một mình một hàng ở 1024–1279 px (trước khối #hero-standard: 4 + 1 ở 1100 px) và nằm một hàng từ 1280 px.
-    for(const width of [1024,1100,1199,1440]){
+    // dải mốc 6 ô (có ô Tự động, 18/10/2026) không có ô lẻ một mình một hàng ở 1024–1359 px (ba cột × hai hàng) và nằm một hàng từ 1360 px (ô 6 cột ở 1280 px chỉ ~163 px: chữ giờ + nút 36 px sẽ đè nhau).
+    for(const width of [1024,1100,1199,1366,1440]){
       const context=await browser.newContext({viewport:{width,height:800}});
       await context.addInitScript(key=>sessionStorage.setItem(key,JSON.stringify({access_token:"test-admin-token",refresh_token:"test-refresh-token"})),SESSION_KEY);
       await context.addInitScript(fakeExtension);
@@ -276,12 +335,13 @@ async function mock(page) {
       await page.goto(BASE+"#admin/group-uid-sync");await page.locator("#group-uid-sync-screen").waitFor({state:"visible"});
       await page.waitForFunction(()=>document.getElementById("gu-strip-full").dataset.stale==="true");
       assert.deepEqual(await heroAudit(page,"#group-uid-sync-screen",HERO_SPECS),[],`hero ${width} px một hàng`);
-      assert.deepEqual(await layoutAudit(page,["gu-strip","gu-auto-strip"],width>=1280?"gu-strip":null),[],`${width} px: dải 5 ô không ô lẻ`);
+      await page.locator("#gu-auto-toggle").waitFor({state:"visible"});assert.deepEqual(await autoCellAudit(page,"gu-strip","gu-strip-auto"),[],`${width} px: ô Tự động — nút 36×36 trong ô, không che chữ`);
+      assert.deepEqual(await layoutAudit(page,["gu-strip"],width>=1360?"gu-strip":null),[],`${width} px: dải 6 ô không ô lẻ${width>=1360?" (một hàng)":" (3 cột × 2 hàng)"}`);
       await page.locator("#gu-run-full").click();await page.waitForFunction(()=>/Đối chiếu xong/.test(document.getElementById("gu-status").textContent));
-      assert.deepEqual(await belowHeroAudit(page,"#group-uid-sync-screen",["gu-strip","gu-auto-strip"],false),[],`${width} px dưới hero: dải phẳng, ô số liệu phân tầng`);
-      assert.deepEqual(await layoutAudit(page,["gu-strip","gu-auto-strip"],width>=1280?"gu-strip":null),[],`${width} px sau khi đọc: dải 5 ô không ô lẻ`);
+      assert.deepEqual(await belowHeroAudit(page,"#group-uid-sync-screen",["gu-strip"],false),[],`${width} px dưới hero: dải phẳng, ô số liệu phân tầng`);
+      assert.deepEqual(await layoutAudit(page,["gu-strip"],width>=1360?"gu-strip":null),[],`${width} px sau khi đọc: dải 6 ô không ô lẻ`);
       assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,"không tràn ngang");
-      await context.close();console.log(`PASS ${width}px: hero một hàng, dải phẳng, ô số liệu phân tầng, dải 5 ô không ô lẻ, không tràn ngang`);
+      await context.close();console.log(`PASS ${width}px: hero một hàng, dải phẳng, ô số liệu phân tầng, dải 6 ô (có ô Tự động) không ô lẻ, không tràn ngang`);
     }
   }finally{await browser.close()}
 })().catch(error=>{console.error(error);process.exitCode=1});

@@ -10,17 +10,19 @@ const mockExtension = () => addEventListener("message", async event => {
   const r = event.data;
   if (!r || r.source !== "PRINT_SKU_APP") return;
   if (window.__hold && r.type === "GET_SKU_COUNT_WAREHOUSES") await window.__hold; // giữ phản hồi để chặn được pha "đang đọc"
+  if (window.__hold2 && /^GET_SKU_COUNT_(APPROVED|INVENTORY)_PAGE$/.test(r.type) && r.payload.page === 2) await window.__hold2; // giữ trang 2 để đo tiến độ sau trang 1 (window.__two = mỗi lần đọc có 2 trang)
+  const more = r.payload && r.payload.page > 1; // trang 2 (chỉ khi window.__two) không có dòng nào thêm
   let data;
   if (r.type === "PING_WMS") data = { version: "0.6.1" };
   else if (r.type === "GET_SKU_COUNT_WAREHOUSES") data = { warehouses: [
     { warehouseId: 1177, warehouseName: "WH - MATERIAL - MTG", companyId: 1002, companyName: "Cty Mastige" },
     { warehouseId: 1339, warehouseName: "WH - MATERIAL - GARMENT", companyId: 1005, companyName: "Cty Garment" },
   ], missingNames: [] };
-  else if (r.type === "GET_SKU_COUNT_APPROVED_PAGE") data = { page: 1, size: 500, total: 2, totalPages: 1, rows: r.payload.warehouseIds[0] === 1177 ? [
+  else if (r.type === "GET_SKU_COUNT_APPROVED_PAGE") data = { page: more ? 2 : 1, size: 500, total: 2, totalPages: window.__two ? 2 : 1, rows: more ? [] : r.payload.warehouseIds[0] === 1177 ? [
     { warehouseId: 1177, warehouseName: "WH - MATERIAL - MTG", sku: "SKU-RECENT", productName: "Vải gần đây", approvedAt: new Date(Date.now() - 10 * 86400000).toISOString(), approvedBy: "manager@hasaki.vn" },
     { warehouseId: 1177, warehouseName: "WH - MATERIAL - MTG", sku: "SKU-OLD", productName: "Vải cũ", approvedAt: new Date(Date.now() - 45 * 86400000).toISOString(), approvedBy: "manager@hasaki.vn" },
   ] : [] };
-  else if (r.type === "GET_SKU_COUNT_INVENTORY_PAGE") data = { page: 1, size: 500, total: r.payload.warehouseIds[0] === 1177 ? 2 : 1, totalPages: 1, rows: r.payload.warehouseIds[0] === 1177 ? [
+  else if (r.type === "GET_SKU_COUNT_INVENTORY_PAGE") data = { page: more ? 2 : 1, size: 500, total: r.payload.warehouseIds[0] === 1177 ? 2 : 1, totalPages: window.__two ? 2 : 1, rows: more ? [] : r.payload.warehouseIds[0] === 1177 ? [
     { warehouseId: 1177, warehouseName: "WH - MATERIAL - MTG", sku: "SKU-RECENT", productName: "Vải gần đây", location: "A-01", qty: 5, uom: "m" },
     { warehouseId: 1177, warehouseName: "WH - MATERIAL - MTG", sku: "SKU-OLD", productName: "Vải cũ", location: "A-02", qty: 3, uom: "m" },
   ] : [{ warehouseId: 1339, warehouseName: "WH - MATERIAL - GARMENT", sku: "SKU-NEVER", productName: "Chỉ chưa kiểm", location: "G-01", qty: 2, uom: "cuộn" }] };
@@ -91,6 +93,26 @@ const srcReadAudit = (page, specs, width) => page.evaluate(async ({ specs, width
   }
   return bad;
 }, { specs, width });
+
+// Dòng load dưới nút đang chạy (18/10/2026, khối #hero-standard): vạch 3 px bo tròn ở ::after của nút, nằm dưới mép nút, không bị cắt hay chồng (điểm giữa vạch trỏ về chính nút);
+// không có tiến độ thật (--p) → đoạn 38 % trượt qua lại; có --p (0–1) → tô theo % bề rộng nút. Trả về thông số đo được.
+const barInfo = (page, id) => page.evaluate(id => {
+  const b = document.getElementById(id), s = getComputedStyle(b, "::after"), r = b.getBoundingClientRect();
+  const h = parseFloat(s.height) || 0, w = parseFloat(s.width) || 0, top = r.top + b.clientTop + (parseFloat(s.top) || 0), left = r.left + b.clientLeft + (parseFloat(s.left) || 0);
+  const token = s.backgroundSize.split(",")[0].trim().split(" ")[0], fillOfTrack = token.endsWith("%") ? parseFloat(token) / 100 : w ? parseFloat(token) / w : NaN;
+  const hit = h ? document.elementFromPoint(left + w / 2, top + h / 2) : null;
+  return { content: s.content, position: s.position, height: h, track: w, btn: r.width, below: top >= r.bottom - 0.5, hit: hit === b, fillOfTrack, fill: fillOfTrack * w, animated: s.animationName !== "none", p: b.style.getPropertyValue("--p") };
+}, id);
+const expectBar = (info, tag, ratio) => {
+  assert.equal(info.content, '""', `${tag}: không có vạch load dưới nút (::after content ${info.content})`);
+  assert.equal(info.position, "absolute", `${tag}: vạch phải nằm tuyệt đối dưới nút`);
+  assert.equal(info.height, 3, `${tag}: vạch cao ${info.height}px, cần 3px`);
+  assert.ok(info.below, `${tag}: vạch phải nằm dưới mép nút`);
+  assert.ok(info.hit, `${tag}: vạch bị cắt hoặc bị phần tử khác chồng lên`);
+  assert.ok(Math.abs(info.track / info.btn - 1) <= 0.03, `${tag}: nền vạch rộng ${info.track.toFixed(1)}px, cần bằng bề rộng nút ${info.btn.toFixed(1)}px`);
+  if (ratio === undefined) { assert.ok(info.animated, `${tag}: chưa có tiến độ thật thì đoạn vạch phải trượt qua lại`); assert.ok(Math.abs(info.fillOfTrack - 0.38) < 0.01, `${tag}: đoạn trượt chiếm ${(info.fillOfTrack * 100).toFixed(1)}%, cần 38%`); }
+  else assert.ok(Math.abs(info.fill / info.btn - ratio) <= 0.05, `${tag}: vạch ${(info.fill / info.btn * 100).toFixed(1)}% bề rộng nút, cần ≈ ${ratio * 100}% ± 5%`);
+};
 
 (async () => {
   const browser = await chromium.launch({ channel: "chrome", headless: true });
@@ -205,6 +227,8 @@ const srcReadAudit = (page, specs, width) => page.evaluate(async ({ specs, width
       else { assert.ok(Math.abs(layout.runW - layout.inner) <= 2, `điện thoại: nút rộng hết hero (${layout.runW} / ${layout.inner})`); assert.ok(layout.runBottom <= layout.connTop, "điện thoại: nút trên, trạng thái Extension dưới (cột đảo)"); }
       // Đang đọc: giữ phản hồi Extension để chặn pha bận — data-busy, nhãn "Đang đọc…", icon đổi sang vòng xoay (động); đọc xong trả "Đọc WMS"
       const idleMask = await page.locator("#ia-run").evaluate(b => getComputedStyle(b, "::before").maskImage);
+      assert.equal((await barInfo(page, "ia-run")).content, "none", "rảnh: không có vạch load dưới nút");
+      assert.equal(await page.locator("#ia-progress").evaluate(n => n.getClientRects().length), 0, "rảnh: thanh tiến độ rời không hiện");
       await page.evaluate(() => { window.__hold = new Promise(resolve => { window.__release = resolve; }); });
       await page.locator("#ia-run").click();
       await page.waitForFunction(() => document.getElementById("ia-run").dataset.busy === "true");
@@ -212,10 +236,13 @@ const srcReadAudit = (page, specs, width) => page.evaluate(async ({ specs, width
       assert.equal(await page.locator("#ia-run").isDisabled(), true, "đang đọc: nút khoá");
       assert.equal(await page.locator("#ia-run").evaluate(b => getComputedStyle(b, "::before").animationName !== "none"), true, "icon vòng xoay khi đang đọc");
       assert.notEqual(await page.locator("#ia-run").evaluate(b => getComputedStyle(b, "::before").maskImage), idleMask, "icon đổi khác lúc rảnh");
+      expectBar(await barInfo(page, "ia-run"), `${width}px #ia-run đang đọc (chưa có trang nào: đoạn 38 % trượt qua lại)`);
+      assert.equal(await page.locator("#ia-progress").evaluate(n => n.getClientRects().length), 0, "đang đọc: thanh tiến độ rời chạy ngang màn không còn hiện");
       await page.evaluate(() => { window.__release(); window.__hold = null; });
       await page.waitForFunction(() => document.getElementById("ia-total").textContent === "3");
       await page.waitForFunction(() => document.getElementById("ia-run").dataset.busy !== "true");
       assert.equal((await page.locator("#ia-run").innerText()).trim(), "Đọc WMS", "đọc xong trả nhãn cũ");
+      assert.equal((await barInfo(page, "ia-run")).content, "none", "đọc xong: vạch load mất");
       assert.match(await page.locator("#ia-status").innerText(), /Đã đồng bộ.*MTG.*Garment/);
       assert.deepEqual(backend.state.calls.filter(c => c.rpc.startsWith("sku_count_")).map(c => c.rpc),
         ["sku_count_overview", "sku_count_save_start", "sku_count_save_chunk", "sku_count_save_finish", "sku_count_overview"], "đọc → bắt đầu → ghi → chốt → đọc lại");
@@ -226,6 +253,18 @@ const srcReadAudit = (page, specs, width) => page.evaluate(async ({ specs, width
       assert.equal(saved.find(r => r.sku === "SKU-NEVER").lastApprovedAt, null, "chưa kiểm kê lưu ngày rỗng");
       assert.equal(typeof saved.find(r => r.sku === "SKU-OLD").qty, "number");
       assert.equal(await page.locator("#ia-run").isDisabled(), false, "nút dùng lại được sau khi xong");
+      // Tiến độ thật theo trang (18/10/2026): mỗi lần đọc 2 trang, trang 2 bị giữ → sau trang 1/2 vạch dưới nút tô ≈ 50 % bề rộng nút (biến --p); đọc xong thì vạch mất
+      await page.evaluate(() => { window.__two = true; window.__hold2 = new Promise(resolve => { window.__release2 = resolve; }); });
+      await page.locator("#ia-run").click();
+      await page.waitForFunction(() => document.getElementById("ia-run").style.getPropertyValue("--p") === "0.5");
+      await page.waitForTimeout(400);
+      expectBar(await barInfo(page, "ia-run"), `${width}px #ia-run sau trang 1/2`, 0.5);
+      assert.equal(await page.locator("#ia-progress").evaluate(n => n.getClientRects().length), 0, "tiến độ thật: thanh rời vẫn không hiện");
+      await page.evaluate(() => { window.__release2(); window.__hold2 = null; });
+      await page.waitForFunction(() => document.getElementById("ia-run").dataset.busy !== "true");
+      await page.evaluate(() => { window.__two = false; });
+      assert.equal((await barInfo(page, "ia-run")).content, "none", "đọc xong: vạch load mất");
+      assert.equal(await page.locator("#ia-run").evaluate(b => b.style.getPropertyValue("--p")), "", "đọc xong: bỏ biến --p");
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `${width}px không được tràn ngang`);
       assert.deepEqual(errors, []);
       await context.close();
