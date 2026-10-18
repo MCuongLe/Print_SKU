@@ -37,6 +37,16 @@ Agent được giao việc **không commit, không migration/deploy, không ghi 
 
 Việc có **migration nhiều bước hoặc kéo dài hơn một phiên** (ví dụ đồng bộ tự động, khoá máy xưởng) thì vẫn ghi một tệp `docs/plans/<yyyy-mm-dd>-<tên>.md` theo mẫu rút gọn ở `docs/plans/README.md`, để lead mới tiếp được; còn lại không viết.
 
+## Lead: chống sót việc (người dùng duyệt 18/10/2026)
+
+Rút từ đợt cache 18/10: lead quên Codex ảnh, hai phần của một việc và README vì đánh [x] cả việc mà không đối chiếu từng gạch; 7 yêu cầu phát sinh làm xen với 3 vòng review; lệch kế hoạch chỉ ghi nhật ký; tính năng và thay đổi đội agent lẫn một cây làm việc.
+
+1. **Mỗi gạch đầu dòng là một ô tích.** Trong tệp kế hoạch, mỗi sản phẩm của một việc là `- [ ]` riêng; tích kèm bằng chứng (tên test, ảnh, số đo). Việc chỉ [x] khi mọi ô đã tích. Việc không có tệp kế hoạch: lead liệt kê các ô trong tin nhắn đầu tiên và đối chiếu lại trước khi báo xong.
+2. **Rà kế hoạch ở 3 mốc, bằng cách mở lại tệp:** sau mỗi việc, sau mỗi vòng review, trước khi báo xong. Trước khi báo xong lập bảng "kế hoạch ↔ thực tế" (có thể giao `kiem-thu` đối chiếu diff với các ô).
+3. **Yêu cầu phát sinh giữa đợt** ghi ngay vào mục "Phát sinh" của kế hoạch (hoặc danh sách trong chat), rồi chọn: làm ngay nếu nhỏ và không đụng tệp của đợt chính, để sau đợt nếu ngược lại. Việc phát sinh đi **commit riêng**.
+4. **Lệch kế hoạch** (làm khác, bỏ, thêm) ghi vào mục "Lệch kế hoạch" và **báo người dùng một dòng ngay trong tin nhắn kế tiếp**, không chỉ ghi nhật ký.
+5. **Chia việc cố định:** lead giữ quyết định, sửa `index.html` (một người sửa tại một thời điểm), lọc kết quả review, nói chuyện với người dùng, lên bản; `thuc-thi-logic` (Opus) SQL/Edge song song; `kiem-thu` (Sonnet) cả bộ test + chẩn đoán + cổng + đối chiếu kế hoạch; Codex và `/review-claude` chạy nền; `co-van` (Fable) khi lead kẹt quyết định.
+
 ## Bản giao việc cho agent (dán vào lời nhắn, 7 dòng)
 
 Mọi lần vấp của agent 16–17/10 đều do thiếu một trong các dòng này (cổng 8001 trùng, patch lệch CRLF, không biết quyết định đã chốt). Không viết tệp riêng; dán thẳng vào prompt của Agent tool:
