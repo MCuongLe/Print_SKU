@@ -141,6 +141,10 @@ const expectBar = (info, tag, ratio) => {
       const tones = await cardTones(page);
       assert.ok(tones[1].ink === RED && tones[1].bg !== tones[0].bg, `${width}px: Chưa kiểm kê > 0 tô đỏ`);
       assert.ok(tones[2].ink === AMBER && tones[2].bg !== tones[0].bg, `${width}px: Quá 30 ngày > 0 tô vàng`);
+      // Thẻ không còn chú thích giải thích (18/10/2026): câu cũ nằm ở title của thẻ; chỉ thẻ đầu còn dòng nhỏ mang số liệu ("N đơn vị In-BIN")
+      assert.deepEqual(await page.evaluate(() => [...document.querySelectorAll("#inventory-audit-screen .ia-metrics .ss-metric")].map(c => [...c.querySelectorAll("small")].map(s => s.id || "(không id)").join("|"))), ["ia-total-qty", "", "", ""], `${width}px: chỉ thẻ đầu còn dòng nhỏ (số liệu), ba thẻ kia không có dòng nhỏ`);
+      assert.deepEqual(await page.evaluate(() => [...document.querySelectorAll("#inventory-audit-screen .ia-metrics .ss-metric")].map(c => c.title)), ["In-BIN > 0", "Không có lần APPROVED", "Lần gần nhất > 30 ngày", "Lần gần nhất ≤ 30 ngày"], `${width}px: câu giải thích chuyển vào title của thẻ`);
+      assert.equal(await page.locator("#ia-total-qty").innerText(), "10 đơn vị In-BIN", `${width}px: dòng nhỏ mang số liệu vẫn còn`);
       assert.equal(await page.locator("#ia-admin-tools").isHidden(), true, "người xem không có nút đồng bộ WMS");
       assert.equal(await page.locator("#inventory-audit-screen .ss-hero").evaluate(h => h.getClientRects().length), 0, `${width}px: người xem không thấy hero (không còn thẻ trắng rỗng)`);
       assert.equal(await page.locator("#ia-admin").getAttribute("aria-pressed"), "false");
@@ -198,6 +202,8 @@ const expectBar = (info, tag, ratio) => {
       await page.locator("#inventory-audit-screen").waitFor({ state: "visible" });
       await page.waitForFunction(() => /Chưa có bản đồng bộ/.test(document.getElementById("ia-status").textContent));
       assert.equal(await page.locator("#ia-total").innerText(), "—");
+      assert.equal(await page.locator("#ia-total-qty").textContent(), "", "chưa có bản chụp: không hiện câu giải thích \"In-BIN > 0\"");
+      assert.equal(await page.locator("#ia-total-qty").evaluate(s => s.getClientRects().length), 0, "chưa có bản chụp: dòng nhỏ trống không chiếm chỗ");
       // Chưa có bản chụp: bốn thẻ trung tính như thẻ SKU có tồn kho (nền, viền), số không đỏ/vàng — chỉ tô khi đã có dữ liệu và số > 0
       const tones = await cardTones(page);
       assert.deepEqual(tones.map(t => `${t.bg} / ${t.border}`), Array(4).fill(`${tones[0].bg} / ${tones[0].border}`), "chưa có bản chụp: bốn thẻ cùng nền/viền trung tính");

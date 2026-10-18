@@ -162,6 +162,9 @@ const expectBar = (info, tag) => {
       assert.equal(await page.locator("#storage-risk-screen .ss-hero").evaluateAll(els => els.every(h => h.getClientRects().length === 0)), true, "1280px: người xem không thấy hero ở cả hai tab (không còn thẻ trắng rỗng)");
       assert.equal(await page.locator("#srt-status").innerText(), "Chỉ Admin đọc được.");
       assert.deepEqual(await metricsOf(page), ["—", "—", "—", "—"], "người xem: dữ liệu rỗng");
+      // Thẻ không còn chú thích giải thích (18/10/2026): câu cũ nằm ở title của thẻ
+      assert.deepEqual(await page.evaluate(() => [...document.querySelectorAll(".ss-metrics[aria-label='Tổng quan UID tạm'] .ss-metric")].map(c => c.querySelectorAll("small").length)), [0, 0, 0, 0], "thẻ UID tạm không còn dòng nhỏ giải thích");
+      assert.deepEqual(await page.evaluate(() => [...document.querySelectorAll(".ss-metrics[aria-label='Tổng quan UID tạm'] .ss-metric")].map(c => c.title)), ["90 ngày gần nhất", "WH - MATERIAL - MTG", "WH - MATERIAL - GARMENT", "Mới tạo"], "câu giải thích chuyển vào title của thẻ");
       assert.match(await page.locator("#srt-body").innerText(), /Chưa có dữ liệu/);
       await page.reload();
       await page.locator("#srt-panel").waitFor({ state: "visible" });

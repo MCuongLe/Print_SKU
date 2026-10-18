@@ -172,6 +172,8 @@ const fakeExtension = () => addEventListener("message", async event => {
   postMessage({ source: "HASAKI_INSIDE_CONNECTOR", requestId: request.requestId, ok: Boolean(data), data, error: data ? null : { message: "Loại yêu cầu chưa giả lập" } }, location.origin);
 });
 
+// Mốc lượt toàn bộ gần nhất mà history trả về (null = chưa chạy); đổi để đo ô "Toàn bộ" quá hạn.
+let guFullAt = "2026-10-07T00:00:00Z";
 async function mock(page) {
   await page.route("**/*", async route => {
     const url = route.request().url(), json = (body, status = 200) => route.fulfill({ status, contentType: "application/json", body: JSON.stringify(body) });
@@ -180,7 +182,7 @@ async function mock(page) {
     if (url.includes("/rest/v1/user_roles")) return json([{ username: "Admin", role: "admin" }]);
     if (url.includes("/functions/v1/group-uid-sync")) {
       const body = JSON.parse(route.request().postData() || "{}"), ok = data => json({ ok: true, data });
-      if (body.action === "history") return ok({ state: { last_successful_incremental_at: "2026-10-08T00:00:00Z", last_successful_full_at: "2026-10-07T00:00:00Z" }, runs: [{ id: "44444444-4444-4444-8444-444444444444", mode: "full", status: "failed", error_message: "Admin hủy bản xem trước", created_at: "2026-10-08T01:00:00Z", source_count: 2, change_counts: {}, range_to: "2026-10-08T01:00:00Z" }, { id: "55555555-5555-4555-8555-555555555555", mode: "incremental", status: "previewed", created_at: "2026-10-08T01:30:00Z", source: "auto", device: "may-test", autoHold: "Giữ lại: 3.512 thay đổi vượt ngưỡng 3.000", source_count: 3512, change_counts: { added: 3000, updated: 512 }, range_from: "2026-10-08T00:00:00Z", range_to: "2026-10-08T01:30:00Z" }] });
+      if (body.action === "history") return ok({ state: { last_successful_incremental_at: "2026-10-08T00:00:00Z", last_successful_full_at: guFullAt }, runs: [{ id: "44444444-4444-4444-8444-444444444444", mode: "full", status: "failed", error_message: "Admin hủy bản xem trước", created_at: "2026-10-08T01:00:00Z", source_count: 2, change_counts: {}, range_to: "2026-10-08T01:00:00Z" }, { id: "55555555-5555-4555-8555-555555555555", mode: "incremental", status: "previewed", created_at: "2026-10-08T01:30:00Z", source: "auto", device: "may-test", autoHold: "Giữ lại: 3.512 thay đổi vượt ngưỡng 3.000", source_count: 3512, change_counts: { added: 3000, updated: 512 }, range_from: "2026-10-08T00:00:00Z", range_to: "2026-10-08T01:30:00Z" }] });
       if (body.action === "auto-config") { if (body.set && typeof body.set.enabled === "boolean") autoEnabled = body.set.enabled; autoBodies.push(body); return ok({ enabled: autoEnabled, intervalMinutes: 30, fullWindow: { start: "00:00", end: "05:00" }, thresholds: {}, updatedAt: "2026-10-08T01:00:00Z" }); }
       if (body.action === "prepare" && hold) await hold;
       if (body.action === "prepare") return ok({ runId: RUN, mode: body.mode, status: "running", rangeFrom: body.mode === "incremental" ? "2026-10-07T23:30:00Z" : null, rangeTo: "2026-10-08T02:00:00Z" });
@@ -209,7 +211,7 @@ async function mock(page) {
       await context.addInitScript(fakeExtension);
       const page=await context.newPage(),errors=[];page.on("pageerror",e=>errors.push(e.message));await mock(page);
       await page.goto(BASE+"#admin/group-uid-sync");await page.locator("#group-uid-sync-screen").waitFor({state:"visible"});
-      await page.waitForFunction(()=>document.getElementById("gu-strip-full").dataset.stale==="true");assert.match(await page.locator("#gu-last-full-rel").innerText(),/quá 24 giờ, nên chạy toàn bộ$/,"toàn bộ cũ hơn 24 giờ phải cảnh báo");assert.equal(await page.locator("#gu-strip-full").evaluate(e=>getComputedStyle(e).backgroundColor),"rgb(255, 250, 235)","thẻ toàn bộ cũ có nền vàng nhạt");
+      await page.waitForFunction(()=>document.getElementById("gu-strip-full").dataset.stale==="true");assert.match(await page.locator("#gu-last-full-rel").innerText(),/ · quá 24 giờ$/,"toàn bộ cũ hơn 24 giờ phải cảnh báo");assert.doesNotMatch(await page.locator("#gu-last-full-rel").innerText(),/nên/,"không còn câu khuyên \"nên chạy toàn bộ\" (18/10/2026)");assert.equal(await page.locator("#gu-strip-full").evaluate(e=>getComputedStyle(e).backgroundColor),"rgb(255, 250, 235)","thẻ toàn bộ cũ có nền vàng nhạt");
       if(width===1280)assert.deepEqual(await heroAudit(page,"#group-uid-sync-screen",HERO_SPECS),[],"khuôn hero (thanh lệnh gọn một hàng, nút .src-read)");
       // Đồng bộ tự động (17/10/2026), gộp vào dải mốc giờ (18/10/2026): ô Tự động là ô thứ 5 của #gu-strip (ngay trước ô Lịch sử), không còn khối #gu-auto-strip riêng;
       // strong = giờ lượt tự động gần nhất, em = máy · x ngày trước, nút Tạm dừng / Tiếp tục là nút chỉ icon 36×36 có aria-label + title (gửi set.enabled); tạm dừng → ô vàng
@@ -324,6 +326,19 @@ async function mock(page) {
       assert.equal((await barInfo(page,"gu-run-full")).content,"none","đọc xong: vạch load mất");assert.equal(await page.locator("#gu-run-full").evaluate(b=>b.style.getPropertyValue("--p")),"","đọc xong: bỏ biến --p");assert.deepEqual(ingestBodies.map(b=>[b.page,b.total,b.rows.length]),[[1,3,3]]);await cancelPreview();ingestBodies=[]; // trả về rỗng cho vòng 375 px (dùng chung mảng)
       await page.evaluate(()=>{window.__guScenario="normal"});
       assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);assert.deepEqual(errors,[]);await context.close();console.log(`PASS ${width}px: Group UID full/preview/detail/apply, cảnh báo, hủy xem trước, responsive`);
+    }
+    // Chưa có lượt toàn bộ nào (18/10/2026): ô chỉ ghi "Chưa chạy" (nền vàng), không còn câu khuyên "nên chạy toàn bộ"
+    {
+      guFullAt=null;
+      const context=await browser.newContext({viewport:{width:1440,height:800}});
+      await context.addInitScript(key=>sessionStorage.setItem(key,JSON.stringify({access_token:"test-admin-token",refresh_token:"test-refresh-token"})),SESSION_KEY);
+      await context.addInitScript(fakeExtension);
+      const page=await context.newPage();await mock(page);
+      await page.goto(BASE+"#admin/group-uid-sync");await page.locator("#group-uid-sync-screen").waitFor({state:"visible"});
+      await page.waitForFunction(()=>document.getElementById("gu-strip-full").dataset.stale==="true");
+      assert.equal((await page.locator("#gu-last-full-rel").innerText()).trim(),"Chưa chạy","chưa có lượt toàn bộ: chỉ ghi \"Chưa chạy\"");
+      assert.equal(await page.locator("#gu-strip-full").evaluate(e=>getComputedStyle(e).backgroundColor),"rgb(255, 250, 235)","ô chưa chạy có nền vàng nhạt");
+      guFullAt="2026-10-07T00:00:00Z";await context.close();console.log("PASS ô Toàn bộ chưa chạy: \"Chưa chạy\", nền vàng, không câu khuyên");
     }
     // 1024 → 1440 px (Admin chỉ xét máy tính; 1024 hẹp nhất còn thanh trái 264): hero vẫn một hàng; sau khi đọc có kết quả: dải phẳng, ô số liệu phân tầng,
     // dải mốc 6 ô (có ô Tự động, 18/10/2026) không có ô lẻ một mình một hàng ở 1024–1359 px (ba cột × hai hàng) và nằm một hàng từ 1360 px (ô 6 cột ở 1280 px chỉ ~163 px: chữ giờ + nút 36 px sẽ đè nhau).

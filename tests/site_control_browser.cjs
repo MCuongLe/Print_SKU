@@ -146,6 +146,11 @@ const expectBar = (info, tag, ratio) => {
       assert.equal(await page.locator("#site-control-screen .ss-hero").evaluate(h => h.getClientRects().length), 0, "1280px: người xem không thấy hero (không còn thẻ trắng rỗng)");
       assert.equal(await page.locator("#sc-admin").getAttribute("aria-pressed"), "false");
       assert.equal(await page.locator("#sc-total").innerText(), "—");
+      // Thẻ không còn chú thích giải thích (18/10/2026): câu cũ nằm ở title của thẻ; chỉ #sc-total-sub còn (số liệu "N SKU chưa lên kệ"), trống khi chưa có
+      assert.deepEqual(await page.evaluate(() => [...document.querySelectorAll("#site-control-screen .ia-metrics .ss-metric")].map(c => [...c.querySelectorAll("small")].map(s => s.id || "(không id)").join("|"))), ["sc-total-sub", "", "", ""], "chỉ ô đầu còn dòng nhỏ (số liệu), ba ô kia không có dòng nhỏ");
+      assert.deepEqual(await page.evaluate(() => [...document.querySelectorAll("#site-control-screen .ia-metrics .ss-metric")].map(c => c.title)), ["SKU trong app", "Tồn app khác tồn WMS", "Nhập app khác nhập WMS", "Xuất app khác xuất WMS"], "câu giải thích chuyển vào title của thẻ");
+      assert.equal(await page.locator("#sc-total-sub").textContent(), "", "chưa đọc: không hiện câu \"SKU trong app\"");
+      assert.equal(await page.locator("#sc-total-sub").evaluate(s => s.getClientRects().length), 0, "chưa đọc: dòng nhỏ trống không chiếm chỗ");
       assert.equal((await page.evaluate(() => window.__extCalls.filter(c => c.type !== "PING"))).length, 0, "không đọc WMS hay app khi chưa là Admin");
       assert.equal(await page.locator("#barcode-site-control").count(), 1, "ô trang chủ có mặt");
       assert.deepEqual(errors, []);
@@ -193,6 +198,7 @@ const expectBar = (info, tag, ratio) => {
       assert.deepEqual(await page.evaluate(() => ["sc-stock", "sc-in", "sc-out"].map(id => document.getElementById(id).textContent)), ["2", "1", "2"], "lệch tồn / nhập / xuất");
       assert.deepEqual(await page.evaluate(() => ["stock", "in", "out"].map(k => document.getElementById(`sc-count-${k}`).textContent)), ["2", "1", "2"]);
       assert.match(await page.locator("#sc-total-sub").innerText(), /1 SKU chưa lên kệ/);
+      assert.equal(await page.locator("#site-control-screen .ia-metrics .ss-metric").first().getAttribute("title"), "SKU trong app", "title của thẻ không bị ghi đè khi có số liệu");
       // Lệnh gửi sang Extension: app đọc stock + wmsImports; WMS đúng kho/công ty; kỳ bắt đầu 0 giờ ngày dòng nhập đầu tiên (giờ Việt Nam)
       const calls = await page.evaluate(() => window.__extCalls.filter(c => c.type !== "PING"));
       const names = calls.map(c => c.type + (c.payload.resource ? `:${c.payload.resource}` : ""));

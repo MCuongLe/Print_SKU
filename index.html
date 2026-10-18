@@ -1719,7 +1719,7 @@ Error generating stack: `+y.message+`
         <section class="ss-hero"><div><h2>Hàng chưa lên kệ</h2></div><div class="as-hero-actions" id="sr-admin-tools" hidden><button class="src-read" id="sr-run" type="button"><span class="src-read__t">Đọc WMS</span></button></div></section>
         <div class="as-strip" id="sr-strip"><div><span data-ico="clock">Cập nhật lúc</span><strong id="sr-read-at">—</strong><em id="sr-read-rel"></em></div><div><span data-ico="database">Kho đã đọc</span><strong id="sr-wh-main">—</strong><em id="sr-wh-sub"></em></div><div><span data-ico="check">Đã đối soát</span><strong id="sr-cover-main">—</strong><em id="sr-cover-sub"></em></div><div><span data-ico="calendar">Mốc ngày</span><strong>7 / 30 ngày</strong><em>Theo Modified date</em></div></div>
         <p class="ss-status" id="sr-status" aria-live="polite">Đang tải dữ liệu…</p><div class="as-warns" id="sr-warn" role="status" hidden></div>
-        <section class="ss-metrics ia-metrics" aria-label="Tổng quan hàng chưa lên kệ"><div class="ss-metric"><span data-ico="box">Dòng chưa lên kệ</span><strong id="sr-total">—</strong><small id="sr-total-sub">SKU × vị trí</small></div><button class="ss-metric" type="button" data-tone="never" data-sr-level="high"><span data-ico="alert">Rủi ro cao</span><strong id="sr-high">—</strong><small>Quá 30 ngày hoặc vị trí lạ</small></button><button class="ss-metric" type="button" data-tone="overdue" data-sr-level="mid"><span data-ico="clock">Cần xử lý</span><strong id="sr-mid">—</strong><small>8–30 ngày hoặc chưa rõ ngày</small></button><button class="ss-metric" type="button" data-tone="recent" data-sr-level="low"><span data-ico="check">Theo dõi</span><strong id="sr-low">—</strong><small>≤ 7 ngày</small></button></section>
+        <section class="ss-metrics ia-metrics" aria-label="Tổng quan hàng chưa lên kệ"><div class="ss-metric" title="SKU × vị trí"><span data-ico="box">Dòng chưa lên kệ</span><strong id="sr-total">—</strong><small id="sr-total-sub"></small></div><button class="ss-metric" type="button" data-tone="never" data-sr-level="high" title="Quá 30 ngày hoặc vị trí lạ"><span data-ico="alert">Rủi ro cao</span><strong id="sr-high">—</strong></button><button class="ss-metric" type="button" data-tone="overdue" data-sr-level="mid" title="8–30 ngày hoặc chưa rõ ngày"><span data-ico="clock">Cần xử lý</span><strong id="sr-mid">—</strong></button><button class="ss-metric" type="button" data-tone="recent" data-sr-level="low" title="≤ 7 ngày"><span data-ico="check">Theo dõi</span><strong id="sr-low">—</strong></button></section>
         <div class="as-bar" id="sr-bar" role="img" aria-label="Cơ cấu mức rủi ro"></div><div class="as-legend" id="sr-legend"></div>
         <section class="ss-panel">
           <div class="as-tabs" role="tablist" aria-label="Mức rủi ro"><button class="as-tab" type="button" role="tab" aria-selected="true" data-sr-tab="all">Tất cả<b id="sr-count-all">0</b></button><button class="as-tab" type="button" role="tab" aria-selected="false" data-sr-tab="high">Rủi ro cao<b id="sr-count-high">0</b></button><button class="as-tab" type="button" role="tab" aria-selected="false" data-sr-tab="mid">Cần xử lý<b id="sr-count-mid">0</b></button><button class="as-tab" type="button" role="tab" aria-selected="false" data-sr-tab="low">Theo dõi<b id="sr-count-low">0</b></button></div>
@@ -1732,7 +1732,7 @@ Error generating stack: `+y.message+`
           <section class="ss-hero"><div><h2>UID tạm</h2></div><div class="as-hero-actions" id="srt-admin-tools" hidden><button class="src-read" id="srt-run" type="button"><span class="src-read__t">Đọc WMS</span></button></div></section>
           <div class="as-strip" id="srt-strip"><div><span data-ico="clock">Đọc lúc</span><strong id="srt-read-at">—</strong><em id="srt-read-rel"></em></div><div><span data-ico="database">Kho đã đọc</span><strong id="srt-wh-main">—</strong><em id="srt-wh-sub"></em></div><div><span data-ico="calendar">Khoảng đọc</span><strong>90 ngày</strong><em>Tính từ lúc đọc</em></div><div><span data-ico="layers">Số dòng đã quét</span><strong id="srt-scan-main">—</strong><em id="srt-scan-sub"></em></div></div>
           <p class="ss-status" id="srt-status" aria-live="polite">Chỉ Admin đọc được.</p><div class="as-warns" id="srt-warn" role="status" hidden></div>
-          <section class="ss-metrics ia-metrics" aria-label="Tổng quan UID tạm"><button class="ss-metric" type="button" data-srt-level="all" aria-pressed="true"><span data-ico="layers">Dòng tạo UID tạm</span><strong id="srt-total">—</strong><small>90 ngày gần nhất</small></button><button class="ss-metric" type="button" data-srt-level="mtg" aria-pressed="false"><span data-ico="database">MTG</span><strong id="srt-mtg">—</strong><small>WH - MATERIAL - MTG</small></button><button class="ss-metric" type="button" data-srt-level="garment" aria-pressed="false"><span data-ico="database">GARMENT</span><strong id="srt-garment">—</strong><small>WH - MATERIAL - GARMENT</small></button><button class="ss-metric" type="button" data-tone="never" data-srt-level="recent" aria-pressed="false"><span data-ico="alert">Trong 3 ngày</span><strong id="srt-recent">—</strong><small>Mới tạo</small></button></section>
+          <section class="ss-metrics ia-metrics" aria-label="Tổng quan UID tạm"><button class="ss-metric" type="button" data-srt-level="all" aria-pressed="true" title="90 ngày gần nhất"><span data-ico="layers">Dòng tạo UID tạm</span><strong id="srt-total">—</strong></button><button class="ss-metric" type="button" data-srt-level="mtg" aria-pressed="false" title="WH - MATERIAL - MTG"><span data-ico="database">MTG</span><strong id="srt-mtg">—</strong></button><button class="ss-metric" type="button" data-srt-level="garment" aria-pressed="false" title="WH - MATERIAL - GARMENT"><span data-ico="database">GARMENT</span><strong id="srt-garment">—</strong></button><button class="ss-metric" type="button" data-tone="never" data-srt-level="recent" aria-pressed="false" title="Mới tạo"><span data-ico="alert">Trong 3 ngày</span><strong id="srt-recent">—</strong></button></section>
           <section class="ss-panel">
             <div class="ss-panel-head"><div><h2 id="srt-list-title">Tất cả</h2><p id="srt-note"></p></div><div class="as-tools" id="srt-tools" hidden></div></div>
             <div class="as-tags" id="srt-tags" hidden></div>
@@ -1794,7 +1794,7 @@ Error generating stack: `+y.message+`
           </div>
           <div class="uid-col">
             <section class="uid-card uid-assign" aria-labelledby="uid-assign-title">
-              <div class="uid-panel__head"><b class="uid-panel__num">3</b><h2 id="uid-assign-title">Gán SKU</h2><span class="uid-head-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5" fill="currentColor"/></svg></span></div>
+              <div class="uid-panel__head"><b class="uid-panel__num">3</b><h2 id="uid-assign-title">Gán SKU</h2></div>
               <div class="uid-tabs" role="tablist" aria-label="Chế độ gán SKU">
                 <button id="uid-tab-manual" type="button" role="tab" aria-selected="true">Gán theo tick chọn</button>
                 <button id="uid-tab-auto" type="button" role="tab" aria-selected="false">Gán tự động</button>
@@ -9718,7 +9718,7 @@ var FSK_CORE = (function () {
         function renderRun(data){activeRun=data;metrics(data);const total=["skuAdded","skuUpdated","comboAdded","comboUpdated"].reduce((n,k)=>n+Number(data?.changeCounts?.[k]||0),0);applyBtn.dataset.count=String(total);applyBtn.textContent="Cập nhật";applyBtn.disabled=busy||!canApply()}
         async function loadHistory(){
           const data=await edge("history",{limit:20});syncedFrom=data.lastSnapshotAt||data.lastSuccessAt;lastDoneAt=Date.parse(data.lastSuccessAt)||0;
-          $("ss-last-done").textContent=dt(data.lastSuccessAt);$("ss-last-done-rel").textContent=rel(data.lastSuccessAt);$("ss-last-snapshot").textContent=dt(data.lastSnapshotAt);$("ss-last-snapshot-rel").textContent=rel(data.lastSnapshotAt);$("ss-strip-done").dataset.stale=String(Boolean(data.lastSuccessAt)&&Date.now()-lastDoneAt>86400000*3);const fullAt=data.lastFullAt,fullStale=!fullAt||Date.now()-Date.parse(fullAt)>36*3600000;$("ss-last-full").textContent=dt(fullAt);$("ss-last-full-rel").textContent=fullStale?(fullAt?`${rel(fullAt)} · quá 36 giờ, nên đối chiếu toàn bộ`:"Chưa chạy, nên đối chiếu toàn bộ"):rel(fullAt);$("ss-strip-full").dataset.stale=String(fullStale);
+          $("ss-last-done").textContent=dt(data.lastSuccessAt);$("ss-last-done-rel").textContent=rel(data.lastSuccessAt);$("ss-last-snapshot").textContent=dt(data.lastSnapshotAt);$("ss-last-snapshot-rel").textContent=rel(data.lastSnapshotAt);$("ss-strip-done").dataset.stale=String(Boolean(data.lastSuccessAt)&&Date.now()-lastDoneAt>86400000*3);const fullAt=data.lastFullAt,fullStale=!fullAt||Date.now()-Date.parse(fullAt)>36*3600000;$("ss-last-full").textContent=dt(fullAt);$("ss-last-full-rel").textContent=fullStale?(fullAt?`${rel(fullAt)} · quá 36 giờ`:"Chưa chạy"):rel(fullAt);$("ss-strip-full").dataset.stale=String(fullStale);
           await loadAuto(data.runs);const runs=data.runs||[],last=runs[0],lastState=last&&(isStale(last)?"expired":last.status);$("ss-hist-last").innerHTML=last?`<span class="ss-badge" data-status="${esc(lastState)}">${esc(statusName(lastState))}</span>`:"—";$("ss-hist-count").textContent=last?`${rel(last.created_at)} · ${num(runs.length)} lượt`:"";$("ss-hist-note").textContent=runs.length?`${num(runs.length)} lượt gần nhất`:"";historyBody.innerHTML=(data.runs||[]).length?data.runs.map(r=>{const c=r.change_counts||{},st=isStale(r)?"expired":r.status,reason=r.status==="failed"&&r.error_message?`<span class="as-reason" title="${esc(r.error_message)}">${esc(r.error_message)}</span>`:"",took=r.completed_at&&r.created_at?dur(Date.parse(r.completed_at)-Date.parse(r.created_at)):"—",pair=(a,u)=>`<span class="as-sumchips">${chip(`+${num(a)}`,Number(a)>0?"new":"","plus")}${chip(`${num(u)} sửa`,Number(u)>0?"upd":"","refresh")}</span>`;return`<tr data-run="${esc(r.id)}"><td>${esc(dt(r.created_at))}<span class="as-run-meta">${esc(rel(r.created_at))}${r.mode==="full"?" · Toàn bộ":""}</span></td><td><span class="ss-badge" data-status="${esc(st)}">${esc(statusName(st))}</span>${reason}${autoChips(r)}</td><td>${pair(c.skuAdded,c.skuUpdated)}</td><td>${pair(c.comboAdded,c.comboUpdated)}</td><td>${esc(took)}</td></tr>`}).join(""):'<tr><td colspan="5" class="ss-empty">Chưa có lượt đồng bộ nào.</td></tr>';
         }
         async function checkExtension(){try{const data=await extensionRequest("PING",{},6000);connection.dataset.state="ok";connection.textContent=`Extension v${data.version} sẵn sàng`;return true}catch(_){connection.dataset.state="error";connection.textContent="Chưa kết nối Extension";return false}}
@@ -9879,7 +9879,7 @@ var FSK_CORE = (function () {
         async function loadHistory(){
           const data=await edge("history",{limit:20}),state=data.state||{},inc=state.last_successful_incremental_at,full=state.last_successful_full_at;
           $("gu-last-incremental").textContent=dt(inc);$("gu-last-incremental-rel").textContent=rel(inc);$("gu-last-full").textContent=dt(full);$("gu-last-full-rel").textContent=rel(full);
-          $("gu-next-from").textContent=inc?dt(new Date(inc).getTime()-30*60000):"—";$("gu-strip-inc").dataset.stale=String(Boolean(inc)&&Date.now()-Date.parse(inc)>86400000);const fullStale=!full||Date.now()-Date.parse(full)>86400000;$("gu-strip-full").dataset.stale=String(fullStale);if(fullStale)$("gu-last-full-rel").textContent=full?`${rel(full)} · quá 24 giờ, nên chạy toàn bộ`:"Chưa chạy, nên chạy toàn bộ";
+          $("gu-next-from").textContent=inc?dt(new Date(inc).getTime()-30*60000):"—";$("gu-strip-inc").dataset.stale=String(Boolean(inc)&&Date.now()-Date.parse(inc)>86400000);const fullStale=!full||Date.now()-Date.parse(full)>86400000;$("gu-strip-full").dataset.stale=String(fullStale);if(fullStale)$("gu-last-full-rel").textContent=full?`${rel(full)} · quá 24 giờ`:"Chưa chạy";
           historyRuns=data.runs||[];await loadAuto(historyRuns);renderHistory();const last=historyRuns[0];$("gu-hist-last").innerHTML=last?`<span class="ss-badge" data-status="${esc(guRunState(last))}">${esc(guRunName(last))}</span>`:"—";$("gu-hist-count").textContent=last?`${rel(last.created_at)} · ${num(historyRuns.length)} lượt`:"";$("gu-hist-note").textContent=historyRuns.length?`${num(historyRuns.length)} lượt gần nhất`:"";
         }
         async function checkExtension(){try{const data=await extensionRequest("PING_WMS",{},6000);connection.dataset.state="ok";connection.textContent=`Extension v${data.version} · WMS sẵn sàng`;return true}catch(error){connection.dataset.state="error";connection.textContent="Chưa kết nối WMS";throw error}}
@@ -10305,7 +10305,7 @@ async function rpc(name,args,retry=true){
         <section class="ss-hero"><div><h2>Đối chiếu kiểm kê theo kho</h2></div><div class="as-hero-actions" id="ia-admin-tools" hidden><span class="ss-connection" id="ia-connection" data-state="idle">Extension…</span><button class="src-read" id="ia-run" type="button"><span class="src-read__t">Đọc WMS</span></button></div></section>
         <div class="as-strip" id="ia-strip"><div><span data-ico="clock">Cập nhật lúc</span><strong id="ia-read-at">—</strong><em id="ia-read-rel"></em></div><div><span data-ico="database">Kho đã đọc</span><strong id="ia-wh-main">—</strong><em id="ia-wh-sub"></em></div><div><span data-ico="box">Tồn kho</span><strong>In-BIN &gt; 0</strong><em>Gộp theo SKU và kho</em></div><div><span data-ico="check">Mốc kiểm kê</span><strong>≤ 30 ngày</strong><em>Lần APPROVED gần nhất</em></div></div>
         <div class="ss-progress" id="ia-progress" aria-hidden="true"><i></i></div><p class="ss-status" id="ia-status" aria-live="polite">Đang tải dữ liệu kiểm kê…</p><div class="as-warns" id="ia-warn" role="status" hidden></div>
-        <section class="ss-metrics ia-metrics" aria-label="Tổng quan kiểm kê"><div class="ss-metric"><span data-ico="database">SKU có tồn kho</span><strong id="ia-total">—</strong><small id="ia-total-qty">In-BIN &gt; 0</small></div><button class="ss-metric" type="button" data-tone="never" data-ia-status="never"><span data-ico="alert">Chưa kiểm kê</span><strong id="ia-never">—</strong><small>Không có lần APPROVED</small></button><button class="ss-metric" type="button" data-tone="overdue" data-ia-status="overdue"><span data-ico="clock">Quá 30 ngày</span><strong id="ia-overdue">—</strong><small>Lần gần nhất &gt; 30 ngày</small></button><button class="ss-metric" type="button" data-tone="recent" data-ia-status="recent"><span data-ico="check">Trong 30 ngày</span><strong id="ia-recent">—</strong><small>Lần gần nhất ≤ 30 ngày</small></button></section>
+        <section class="ss-metrics ia-metrics" aria-label="Tổng quan kiểm kê"><div class="ss-metric" title="In-BIN &gt; 0"><span data-ico="database">SKU có tồn kho</span><strong id="ia-total">—</strong><small id="ia-total-qty"></small></div><button class="ss-metric" type="button" data-tone="never" data-ia-status="never" title="Không có lần APPROVED"><span data-ico="alert">Chưa kiểm kê</span><strong id="ia-never">—</strong></button><button class="ss-metric" type="button" data-tone="overdue" data-ia-status="overdue" title="Lần gần nhất &gt; 30 ngày"><span data-ico="clock">Quá 30 ngày</span><strong id="ia-overdue">—</strong></button><button class="ss-metric" type="button" data-tone="recent" data-ia-status="recent" title="Lần gần nhất ≤ 30 ngày"><span data-ico="check">Trong 30 ngày</span><strong id="ia-recent">—</strong></button></section>
         <div class="as-bar" id="ia-bar" role="img" aria-label="Cơ cấu tình trạng kiểm kê"></div><div class="as-legend" id="ia-legend"></div>
         <section class="ss-panel">
           <div class="as-tabs" role="tablist" aria-label="Tình trạng kiểm kê"><button class="as-tab" type="button" role="tab" aria-selected="true" data-ia-tab="action">Cần kiểm kê<b id="ia-count-action">0</b></button><button class="as-tab" type="button" role="tab" aria-selected="false" data-ia-tab="never">Chưa kiểm kê<b id="ia-count-never">0</b></button><button class="as-tab" type="button" role="tab" aria-selected="false" data-ia-tab="overdue">Quá 30 ngày<b id="ia-count-overdue">0</b></button><button class="as-tab" type="button" role="tab" aria-selected="false" data-ia-tab="recent">Trong 30 ngày<b id="ia-count-recent">0</b></button><button class="as-tab" type="button" role="tab" aria-selected="false" data-ia-tab="all">Tất cả<b id="ia-count-all">0</b></button></div>
@@ -10355,7 +10355,7 @@ async function rpc(name,args,retry=true){
         function renderList(keep=true){$("ia-list-title").textContent=TABS[state.tab];list.show({columns:COLS,rows:rowsOf(state.tab).map(rowFor),facets:[{id:"wh",label:"Kho",icon:"database"}],filename:"kiem-ke-sku",csvHead:CSVH,empty:state.run?"Không có SKU khớp bộ lọc.":"Chưa có dữ liệu kiểm kê."},{keep})}
         function metrics(){
           const s=state.summary,action=s.never+s.overdue,has=state.loaded&&Boolean(state.run);
-          $("ia-total").textContent=has?num(s.total):"—";$("ia-never").textContent=has?num(s.never):"—";$("ia-overdue").textContent=has?num(s.overdue):"—";$("ia-recent").textContent=has?num(s.recent):"—";$("ia-total-qty").textContent=has?`${num(s.qty)} đơn vị In-BIN`:"In-BIN > 0";
+          $("ia-total").textContent=has?num(s.total):"—";$("ia-never").textContent=has?num(s.never):"—";$("ia-overdue").textContent=has?num(s.overdue):"—";$("ia-recent").textContent=has?num(s.recent):"—";$("ia-total-qty").textContent=has?`${num(s.qty)} đơn vị In-BIN`:"";
           [["action",action],["never",s.never],["overdue",s.overdue],["recent",s.recent],["all",s.total]].forEach(([k,n])=>{$(`ia-count-${k}`).textContent=num(n)});
           screen.querySelectorAll("button.ss-metric[data-ia-status]").forEach(b=>{b.dataset.zero=String(!has||!Number(s[b.dataset.iaStatus]));b.setAttribute("aria-pressed",String(b.dataset.iaStatus===state.tab))});
           UI.bar($("ia-bar"),$("ia-legend"),[{label:"Chưa kiểm kê",value:s.never,color:"#d9695f"},{label:"Quá 30 ngày",value:s.overdue,color:"#e0a02f"},{label:"Trong 30 ngày",value:s.recent,color:"#1aa774"}]);
@@ -10623,7 +10623,7 @@ async function rpc(name,args,retry=true){
         function renderList(keep=true){$("sr-list-title").textContent=TABS[state.tab];list.show({columns:COLS,rows:rowsOf(state.tab).map(rowFor),facets:[{id:"wh",label:"Kho",icon:"database"},{id:"zone",label:"Vùng",icon:"pin"}],filename:"hang-chua-len-ke",csvHead:CSVH,sheet:"Hàng chưa lên kệ",empty:state.run?"Không có hàng chưa lên kệ.":"Chưa có dữ liệu."},{keep})}
         function metrics(){
           const has=state.loaded&&Boolean(state.run),c=state.counts,show=n=>has?num(n):"—";
-          $("sr-total").textContent=show(c.all);$("sr-total-sub").textContent=has?`${num(new Set(state.rows.map(r=>`${r.warehouseId}|${r.sku}`)).size)} SKU`:"SKU × vị trí";
+          $("sr-total").textContent=show(c.all);$("sr-total-sub").textContent=has?`${num(new Set(state.rows.map(r=>`${r.warehouseId}|${r.sku}`)).size)} SKU`:"";
           $("sr-high").textContent=show(c.high);$("sr-mid").textContent=show(c.mid);$("sr-low").textContent=show(c.low);
           Object.keys(TABS).forEach(k=>{$(`sr-count-${k}`).textContent=num(c[k])});
           screen.querySelectorAll("button.ss-metric[data-sr-level]").forEach(b=>{b.dataset.zero=String(!has||!Number(c[b.dataset.srLevel]));b.setAttribute("aria-pressed",String(b.dataset.srLevel===state.tab))});
@@ -10910,7 +10910,7 @@ async function rpc(name,args,retry=true){
         <section class="ss-hero"><div><h2>Đối chiếu công trình với WMS</h2></div><div class="as-hero-actions" id="sc-admin-tools" hidden><span class="ss-connection" id="sc-connection" data-state="idle">Extension…</span><button class="src-read" id="sc-run" type="button" title="Đọc WMS và app xây dựng"><span class="src-read__t">Đọc WMS</span></button></div></section>
         <div class="as-strip" id="sc-strip"><div><span data-ico="clock">Đối chiếu lúc</span><strong id="sc-read-at">—</strong><em id="sc-read-rel"></em></div><div><span data-ico="database">Kho WMS</span><strong id="sc-wh-main">—</strong><em id="sc-wh-sub"></em></div><div><span data-ico="link">App xây dựng</span><strong id="sc-app-main">—</strong><em id="sc-app-sub"></em></div><div><span data-ico="calendar">Kỳ nhập xuất</span><strong id="sc-period-main">—</strong><em id="sc-period-sub"></em></div></div>
         <div class="ss-progress" id="sc-progress" aria-hidden="true"><i></i></div><p class="ss-status" id="sc-status" aria-live="polite">Đăng nhập Admin để đối chiếu.</p><div class="as-warns" id="sc-warn" role="status" hidden></div>
-        <section class="ss-metrics ia-metrics" aria-label="Tổng quan đối chiếu"><button class="ss-metric" type="button" aria-haspopup="dialog" data-sc-open="stock" data-sc-diff="0"><span data-ico="box">SKU theo dõi</span><strong id="sc-total">—</strong><small id="sc-total-sub">SKU trong app</small></button><button class="ss-metric" type="button" aria-haspopup="dialog" data-tone="never" data-sc-open="stock" data-sc-diff="1"><span data-ico="alert">Lệch tồn</span><strong id="sc-stock">—</strong><small>Tồn app khác tồn WMS</small></button><button class="ss-metric" type="button" aria-haspopup="dialog" data-tone="overdue" data-sc-open="in" data-sc-diff="1"><span data-ico="download">Lệch nhập</span><strong id="sc-in">—</strong><small>Nhập app khác nhập WMS</small></button><button class="ss-metric" type="button" aria-haspopup="dialog" data-tone="overdue" data-sc-open="out" data-sc-diff="1"><span data-ico="upload">Lệch xuất</span><strong id="sc-out">—</strong><small>Xuất app khác xuất WMS</small></button></section>
+        <section class="ss-metrics ia-metrics" aria-label="Tổng quan đối chiếu"><button class="ss-metric" type="button" aria-haspopup="dialog" data-sc-open="stock" data-sc-diff="0" title="SKU trong app"><span data-ico="box">SKU theo dõi</span><strong id="sc-total">—</strong><small id="sc-total-sub"></small></button><button class="ss-metric" type="button" aria-haspopup="dialog" data-tone="never" data-sc-open="stock" data-sc-diff="1" title="Tồn app khác tồn WMS"><span data-ico="alert">Lệch tồn</span><strong id="sc-stock">—</strong></button><button class="ss-metric" type="button" aria-haspopup="dialog" data-tone="overdue" data-sc-open="in" data-sc-diff="1" title="Nhập app khác nhập WMS"><span data-ico="download">Lệch nhập</span><strong id="sc-in">—</strong></button><button class="ss-metric" type="button" aria-haspopup="dialog" data-tone="overdue" data-sc-open="out" data-sc-diff="1" title="Xuất app khác xuất WMS"><span data-ico="upload">Lệch xuất</span><strong id="sc-out">—</strong></button></section>
         <div class="as-bar" id="sc-bar" role="img" aria-label="Cơ cấu đối chiếu"></div><div class="as-legend" id="sc-legend"></div>
         <dialog class="as-dialog" id="sc-list-dialog" data-size="lg" aria-labelledby="sc-l-title">
           <div class="as-d-head"><span class="as-d-mark" id="sc-l-mark" aria-hidden="true"></span><div class="as-d-title"><h2 id="sc-l-title">Tồn kho</h2><p id="sc-note"></p></div><div class="as-tools" id="sc-tools" hidden></div><button type="button" class="pj-icon" data-as-close aria-label="Đóng" title="Đóng"><svg class="pj-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>
@@ -11035,7 +11035,7 @@ async function rpc(name,args,retry=true){
         const day=v=>{const d=new Date(v+7*3600000);return`${String(d.getUTCDate()).padStart(2,"0")}/${String(d.getUTCMonth()+1).padStart(2,"0")}/${d.getUTCFullYear()}`};
         function metrics(){
           const r=state.result,has=Boolean(r),s=r?.summary||{total:0,stock:0,in:0,out:0,flowOnly:0,clean:0,unplaced:0};
-          $("sc-total").textContent=has?num(s.total):"—";$("sc-total-sub").textContent=has&&s.unplaced?`${num(s.unplaced)} SKU chưa lên kệ`:"SKU trong app";
+          $("sc-total").textContent=has?num(s.total):"—";$("sc-total-sub").textContent=has&&s.unplaced?`${num(s.unplaced)} SKU chưa lên kệ`:"";
           for(const k of ["stock","in","out"]){$(`sc-${k}`).textContent=has?num(s[k]):"—";$(`sc-count-${k}`).textContent=num(s[k])}
           screen.querySelectorAll("button.ss-metric[data-sc-open]").forEach(b=>{b.dataset.zero=String(!has||!Number(b.dataset.scDiff==="1"?s[b.dataset.scOpen]:s.total))});
           for(const k of ["stock","in","out"])$(`sc-count-${k}`).closest(".as-tab").dataset.zero=String(!has||!Number(s[k]));
@@ -14093,10 +14093,9 @@ async function rpc(name,args,retry=true){
          mọi thao tác bấm đúng nút của React (Bỏ, Thêm, In) — không đổi luồng in: In tem vẫn in cả danh sách. */
       #root > main > section > ul.divide-y { display: none !important; }
       #root > main > section > p.items-baseline { align-items: center; }
-      .skq-tag { display: grid; place-items: center; margin-left: auto; color: #005f41; }
       .skq-count { display: inline-flex; align-items: center; min-height: 32px; margin-left: auto; padding: 0 12px; border-radius: 999px; background: #eef4f1; color: #17251f; font-size: 14px; font-weight: 700; white-space: nowrap; }
       .skq-open { display: none; place-items: center; width: 40px; height: 40px; margin: 0 -8px 0 0; padding: 0; border: 0; border-radius: 12px; background: transparent; color: #4f625b; cursor: pointer; }
-      :is(.skq-tag, .skq-open, .skq-list, .skq-sheet, .skq-tools, .skq-sum) svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+      :is(.skq-open, .skq-list, .skq-sheet, .skq-tools, .skq-sum) svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
       .skq-list { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
       .skq-item { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto auto; align-items: center; gap: 10px; padding: 12px; border: 1px solid #e3eae6; border-radius: 14px; background: #f7faf9; }
       .skq-check { display: grid; place-items: center; width: 40px; height: 40px; margin: -8px; cursor: pointer; }
@@ -14159,7 +14158,6 @@ async function rpc(name,args,retry=true){
         if (!root) return;
         const SV = body => `<svg viewBox="0 0 24 24" aria-hidden="true">${body}</svg>`;
         const I = {
-          tag: SV('<path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5" fill="currentColor"/>'),
           chevron: SV('<path d="m9 18 6-6-6-6"/>'),
           edit: SV('<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/>'),
           trash: SV('<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><path d="M10 11v6"/><path d="M14 11v6"/>'),
@@ -14230,12 +14228,11 @@ async function rpc(name,args,retry=true){
         const paint = () => {
           const sections = root.querySelectorAll("main > section");
           const form = sections[0], list = [...sections].find(section => /Danh sách chờ in/.test(section.querySelector("p.items-baseline")?.textContent || ""));
-          // Thẻ 1: tên theo mẫu + icon nhãn (ô SKU giữ gợi ý ngắn "SKU" theo chuẩn không câu hướng dẫn)
+          // Thẻ 1: tên theo mẫu, không icon nhãn trang trí (18/10/2026); ô SKU giữ gợi ý ngắn "SKU" theo chuẩn không câu hướng dẫn
           const formTitle = form?.querySelector("p.items-baseline");
-          if (formTitle && !formTitle.querySelector(".skq-tag")) {
+          if (formTitle) {
             const label = formTitle.querySelector("span");
             if (label && label.textContent.trim() === "Nhập tem") label.textContent = "Nhập thông tin tem";
-            formTitle.insertAdjacentHTML("beforeend", `<span class="skq-tag" aria-hidden="true">${I.tag}</span>`);
           }
           // Thẻ 2: số tem + mở tấm kéo lên; danh sách mới thay danh sách React (đã ẩn)
           const head = list?.querySelector("p.items-baseline");
@@ -14344,7 +14341,7 @@ async function rpc(name,args,retry=true){
 
         let pending = 0;
         new MutationObserver(mutations => {
-          if (mutations.every(m => m.target.closest?.(".skq-list, .skq-tools, .skq-sum, .skq-count, .skq-open, .skq-tag"))) return;
+          if (mutations.every(m => m.target.closest?.(".skq-list, .skq-tools, .skq-sum, .skq-count, .skq-open"))) return;
           cancelAnimationFrame(pending); pending = requestAnimationFrame(sync);
         }).observe(root, { childList: true, subtree: true, characterData: true });
         addEventListener("hashchange", () => { if (sheet.open && !/^#worker\b/.test(location.hash)) sheet.close(); setTimeout(sync, 0); });
@@ -14354,9 +14351,12 @@ async function rpc(name,args,retry=true){
     <style id="sku-it-style">
       /* IN TEM SKU · Phiếu IT: đọc phiếu chuyển kho nội bộ trên WMS (Extension) → chọn SKU, chỉnh số bản → thêm vào danh sách chờ in của React.
          Cần Extension trên máy tính nên nút ẩn ở ≤ 800 px. Tấm dùng khung .uid-sheet. */
-      /* Nút phụ theo chuẩn chung (cao = ô nhập, bo viên thuốc, chữ 16/600), canh giữa theo hàng tiêu đề thẻ 1 */
-      .skit-open { display: inline-flex; align-self: center; align-items: center; gap: 8px; box-sizing: border-box; height: var(--ui-ctl, 52px); margin: -8px 0 -8px auto; padding: 0 18px; border: 1px solid var(--wms-border, #d9e2de); border-radius: 999px; background: #fff; color: #005f41; font: 600 16px/1 var(--wms-font); cursor: pointer; }
+      /* Nút chỉ icon (18/10/2026): tròn 40×40, icon phiếu 20 px, nằm ở mép phải hàng tiêu đề thẻ 1 (chỗ icon nhãn cũ); tên "Phiếu IT" ở aria-label + title.
+         Lề dọc -2px giữ hàng tiêu đề cao 36 như khi nút còn chữ. */
+      .skit-open { display: inline-grid; place-items: center; align-self: center; box-sizing: border-box; width: 40px; height: 40px; margin: -2px 0 -2px auto; padding: 0; border: 1px solid var(--wms-border, #d9e2de); border-radius: 50%; background: #fff; color: #005f41; cursor: pointer; }
       .skit-open svg { width: 20px; height: 20px; flex: none; }
+      .skit-open:hover { border-color: #42a282; background: #f0faf6; }
+      .skit-open:focus-visible { outline: 2px solid #005f41; outline-offset: 2px; }
       @media (max-width: 800px) { .skit-open { display: none; } }
       #sku-it { width: min(100%, 860px); }
       .skit__bar { display: flex; gap: 8px; padding: 0 16px 10px; }
@@ -14626,10 +14626,10 @@ async function rpc(name,args,retry=true){
           const title = document.querySelector("#root main > section p.items-baseline");
           if (!title || title.querySelector(".skit-open")) return;
           const open = document.createElement("button");
-          open.type = "button"; open.className = "skit-open"; open.innerHTML = `${ICON.file}Phiếu IT`; open.setAttribute("aria-haspopup", "dialog");
+          open.type = "button"; open.className = "skit-open"; open.innerHTML = ICON.file; open.setAttribute("aria-haspopup", "dialog");
+          open.setAttribute("aria-label", "Phiếu IT"); open.title = "Phiếu IT";
           open.addEventListener("click", openPicker);
-          const tag = title.querySelector(".skq-tag");
-          tag ? title.insertBefore(open, tag) : title.appendChild(open);
+          title.appendChild(open);
         };
         let frame = 0;
         const root = document.getElementById("root");
@@ -14645,8 +14645,7 @@ async function rpc(name,args,retry=true){
       #uid-screen .uid-import { border-style: solid; border-color: #7c958c; background: #fff; color: #005f41; }
       #uid-screen .uid-import:disabled { opacity: .45; cursor: not-allowed; }
       #uid-screen .uid-panel__head { position: relative; }
-      #uid-screen .uid-head-icon { display: grid; place-items: center; margin-left: auto; color: #005f41; }
-      #uid-screen :is(.uid-head-icon, .uid-sheet-open, .uid-more) svg { width: 20px; height: 20px; }
+      #uid-screen :is(.uid-sheet-open, .uid-more) svg { width: 20px; height: 20px; }
       .uid-sheet-open { display: grid; place-items: center; width: 40px; height: 40px; margin: 0 -8px 0 0; padding: 0; border: 0; border-radius: 12px; background: transparent; color: #4f625b; cursor: pointer; }
       .uid-sheet-open[hidden] { display: none; }
       #uid-screen .uid-badge { margin-left: auto; }
@@ -15170,6 +15169,12 @@ async function rpc(name,args,retry=true){
       :is(#root, body) :is(#ss-apply, #gu-apply)[data-busy="true"]:disabled { opacity: 1; cursor: progress; }
       @keyframes src-read-bar { from { background-position: 0 0, 0 0; } to { background-position: 100% 0, 0 0; } }
       @media (prefers-reduced-motion: reduce) { :is(#root, body) :is(.src-read, #ss-apply, #gu-apply)[data-busy="true"]:not([style*="--p:"])::after { background: #7fcbb1; } } /* animation đã tắt bởi quy tắc chung của Tailwind; chưa có tiến độ thật thì vạch đặc một màu thay vì đoạn 38 % đứng lệch trái */
+    </style>
+    <style id="metric-caption-trim">
+      /* Thẻ số liệu không còn chú thích giải thích (18/10/2026: câu cũ ở title của thẻ). Nhãn và số xếp từ trên xuống (như thẻ Lịch sử UID) để số không nhảy vị trí
+         giữa thẻ có dòng số liệu và thẻ không có; dòng nhỏ còn lại chỉ mang số liệu do JS ghi, chưa có thì trống và không chiếm chỗ */
+      :is(#inventory-audit-screen, #site-control-screen, #storage-risk-screen) .ss-metric { justify-content: flex-start; }
+      :is(#inventory-audit-screen, #site-control-screen, #storage-risk-screen) .ss-metric small:empty { display: none; }
     </style>
   </body>
 </html>

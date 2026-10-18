@@ -103,13 +103,34 @@ const srcReadAudit = (page, specs, width) => page.evaluate(async ({ specs, width
   return bad;
 }, { specs, width });
 
+// Nút Phiếu IT chỉ icon (18/10/2026): tròn 40×40, icon phiếu 20 px, aria-label + title "Phiếu IT", không chữ, nằm ở mép phải hàng tiêu đề "Nhập thông tin tem" (không còn icon nhãn .skq-tag đứng một mình). Trả danh sách điểm lệch (rỗng = đạt).
+const iconOnlyAudit = page => page.evaluate(() => {
+  const b = document.querySelector("#root main > section p.items-baseline .skit-open"), p = b.closest("p.items-baseline"), bad = [];
+  const r = b.getBoundingClientRect(), s = getComputedStyle(b), pr = p.getBoundingClientRect(), ps = getComputedStyle(p), label = p.querySelector("span"), lr = label.getBoundingClientRect();
+  if (b.textContent.trim() !== "" || b.innerText.trim() !== "") bad.push(`còn chữ "${b.textContent.trim()}"`);
+  if (b.getAttribute("aria-label") !== "Phiếu IT") bad.push(`aria-label "${b.getAttribute("aria-label")}", cần "Phiếu IT"`);
+  if (b.title !== "Phiếu IT") bad.push(`title "${b.title}", cần "Phiếu IT"`);
+  if (b.getAttribute("aria-haspopup") !== "dialog") bad.push("mất aria-haspopup");
+  if (Math.abs(r.width - 40) > 1 || Math.abs(r.height - 40) > 1) bad.push(`cỡ ${r.width}×${r.height}, cần 40×40`);
+  if (parseFloat(s.borderTopLeftRadius) < 19) bad.push(`bo ${s.borderTopLeftRadius}, cần tròn`);
+  const svgs = [...b.querySelectorAll("svg")];
+  if (svgs.length !== 1) bad.push(`${svgs.length} svg trong nút, cần 1`);
+  else { const v = svgs[0].getBoundingClientRect(); if (Math.round(v.width) !== 20 || Math.round(v.height) !== 20) bad.push(`icon ${v.width}×${v.height}, cần 20×20`); }
+  if (p.querySelector(".skq-tag")) bad.push("còn icon nhãn .skq-tag ở hàng tiêu đề");
+  if (p.lastElementChild !== b) bad.push("nút không ở cuối hàng tiêu đề");
+  const edge = pr.right - parseFloat(ps.paddingRight) - parseFloat(ps.borderRightWidth);
+  if (Math.abs(edge - r.right) > 1.5) bad.push(`nút không sát mép phải tiêu đề (lệch ${(edge - r.right).toFixed(1)}px)`);
+  if (Math.abs((r.top + r.height / 2) - (lr.top + lr.height / 2)) > 2) bad.push("nút lệch dòng với chữ tiêu đề");
+  return bad;
+});
+
 async function desktop(browser) {
   const { page, context, errors, enqueued } = await open(browser, 1280);
   const openButton = page.locator("#root main > section p.items-baseline .skit-open");
   await openButton.waitFor();
   assert.equal(await openButton.isVisible(), true, "nút Phiếu IT ở thẻ 1 trên máy tính");
-  assert.equal((await openButton.innerText()).trim(), "Phiếu IT");
-  assert.ok((await openButton.boundingBox()).height >= 44);
+  assert.deepEqual(await iconOnlyAudit(page), [], "nút Phiếu IT chỉ icon (tròn 40×40, aria-label/title, mép phải, không icon nhãn)");
+  assert.equal((await page.locator("#root main > section p.items-baseline span").first().innerText()).trim(), "Nhập thông tin tem", "tên thẻ 1 giữ nguyên");
   await openButton.click();
   assert.equal(await page.locator("#sku-it").evaluate(d => d.open), true);
   assert.equal(await page.evaluate(() => document.activeElement?.id), "sku-it-input");

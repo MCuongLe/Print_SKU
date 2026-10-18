@@ -29,6 +29,10 @@ const CODES = ['1028260925000001', '1028260925000002', '1028260925000003', '1028
       });
       await page.goto(BASE + '#group-uid');
       await page.locator('#uid-code').waitFor();
+      // Hàng tiêu đề "3 Gán SKU" (18/10/2026): chỉ chấm số + tên, không còn icon nhãn trang trí đứng một mình ở mép phải
+      assert.equal(await page.locator('#uid-screen .uid-head-icon').count(), 0, `${width}px: Gán SKU không còn icon trang trí`);
+      assert.equal(await page.locator('.uid-assign .uid-panel__head').evaluate(h => [...h.children].map(c => c.tagName.toLowerCase()).join(',')), 'b,h2', `${width}px: hàng tiêu đề Gán SKU chỉ có số và tên`);
+      assert.equal((await page.locator('#uid-assign-title').textContent()).trim(), 'Gán SKU');
       assert.equal((await page.locator('#uid-add').textContent()).trim(), 'Thêm vào danh sách');
       for (const code of CODES) { await page.locator('#uid-code').fill(code); await page.locator('#uid-code').press('Enter'); }
       await page.waitForFunction(() => document.querySelector('#uid-pending-count').textContent === '4' && document.querySelector('#uid-ready-count').textContent === '1');

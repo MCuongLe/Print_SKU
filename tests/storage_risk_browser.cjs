@@ -148,6 +148,10 @@ const expectBar = (info, tag) => {
       const { backend, context, page, errors } = await open(browser, { width, data: snapshot() });
       await page.waitForFunction(() => document.getElementById("sr-total").textContent === "8");
       assert.deepEqual(await page.evaluate(() => ["high", "mid", "low"].map(k => document.getElementById(`sr-${k}`).textContent)), ["2", "2", "4"]);
+      // Thẻ không còn chú thích giải thích (18/10/2026): câu cũ ở title của thẻ; chỉ thẻ đầu còn dòng nhỏ mang số liệu ("N SKU")
+      assert.deepEqual(await page.evaluate(() => [...document.querySelectorAll(".ss-metrics[aria-label='Tổng quan hàng chưa lên kệ'] .ss-metric")].map(c => [...c.querySelectorAll("small")].map(s => s.id || "(không id)").join("|"))), ["sr-total-sub", "", "", ""], `${width}px: chỉ thẻ đầu còn dòng nhỏ (số liệu), ba thẻ kia không có dòng nhỏ`);
+      assert.deepEqual(await page.evaluate(() => [...document.querySelectorAll(".ss-metrics[aria-label='Tổng quan hàng chưa lên kệ'] .ss-metric")].map(c => c.title)), ["SKU × vị trí", "Quá 30 ngày hoặc vị trí lạ", "8–30 ngày hoặc chưa rõ ngày", "≤ 7 ngày"], `${width}px: câu giải thích chuyển vào title của thẻ`);
+      assert.match(await page.locator("#sr-total-sub").innerText(), /^\d+ SKU$/, `${width}px: dòng nhỏ số liệu vẫn còn`);
       assert.equal(await page.locator("#sr-cover-main").innerText(), "11 dòng tồn", "đối soát: mọi dòng tồn đều được phân loại, kể cả giữ chỗ");
       assert.equal(await page.locator("#sr-cover-sub").innerText(), "3 kệ · 7 ảo · 1 lạ");
       const baseWarn = await page.locator("#sr-warn").innerText();

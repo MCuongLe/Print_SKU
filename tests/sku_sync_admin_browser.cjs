@@ -38,6 +38,8 @@ const RUNS = [
   { id: 'run-auto', status: 'previewed', created_at: ago(200), source: 'auto', device: 'may-test', autoHold: 'Giữ lại: 3.512 thay đổi vượt ngưỡng 3.000', change_counts: CHANGE_COUNTS },
 ];
 
+// Mốc lượt Toàn bộ gần nhất mà history trả về (null = chưa chạy); đổi để đo ô "Đối chiếu toàn bộ" quá hạn.
+let histFullAt = null;
 // Giữ phản hồi preview của Edge để chặn được pha "đang đọc" (nút đổi nhãn, icon vòng xoay); đặt lại null để thả.
 let hold = null;
 // Giữ phản hồi apply (ghi Supabase) để chặn được pha "đang cập nhật": nút Cập nhật mang data-busy + vạch load dưới nút; đặt lại null để thả.
@@ -57,7 +59,7 @@ const mockRoutes = async page => { let autoEnabled = true; return page.route('**
       if (set && typeof set.enabled === 'boolean') autoEnabled = set.enabled;
       return ok({ enabled: autoEnabled, intervalMinutes: 30, fullWindow: { start: '00:00', end: '05:00' }, thresholds: {}, updatedAt: ago(1) });
     }
-    if (action === 'history') return ok({ runs: RUNS, lastSuccessAt: ago(119), lastSnapshotAt: ago(120), lastFullAt: null });
+    if (action === 'history') return ok({ runs: RUNS, lastSuccessAt: ago(119), lastSnapshotAt: ago(120), lastFullAt: histFullAt });
     if (action === 'preview' && hold) await hold;
     if (action === 'preview' && mode === 'full') return ok({ runId: 'run-full', status: 'previewed', mode: 'full', sourceCounts: { ...SOURCE_COUNTS, normalRows: 97 }, changeCounts: { ...CHANGE_COUNTS, skuMissing: 1, skuSkippedInactive: 2629 }, changes: { ...CHANGES, skus: { ...CHANGES.skus, missing: [{ sku: '900000009', product_name: 'SKU cũ', category_name: 'Thời Trang', status: '0' }] } }, verification: { previousFullCount: 100, baselineCount: 100, fullDropPercent: 3, skuMissing: 1 } });
     if (action === 'preview') return ok({ runId: 'run-fresh', status: 'previewed', sourceCounts: SOURCE_COUNTS, changeCounts: CHANGE_COUNTS, changes: CHANGES });
@@ -316,7 +318,7 @@ const expectBar = (info, tag, ratio) => {
 
       // Đối chiếu toàn bộ (14/10/2026): thẻ mốc toàn bộ cảnh báo khi chưa chạy; nút riêng gửi mode full; ô Thiếu trên Inside; cảnh báo giảm so với mốc
       assert.equal(await page.locator('#ss-strip-full').getAttribute('data-stale'), 'true');
-      assert.match(await page.locator('#ss-last-full-rel').innerText(), /^Chưa chạy, nên đối chiếu toàn bộ$/);
+      assert.equal((await page.locator('#ss-last-full-rel').innerText()).trim(), 'Chưa chạy', 'chưa có lượt toàn bộ: chỉ ghi "Chưa chạy", không còn câu khuyên (18/10/2026)');
       // Đang đọc: nút vừa bấm có data-busy="true", nhãn "Đang đọc…", icon đổi sang mũi tên vòng xoay; nút kia chỉ khoá, giữ nhãn
       const idleMask = await page.locator('#sku-sync-full').evaluate(b => getComputedStyle(b, '::before').maskImage);
       assert.equal((await barInfo(page, 'sku-sync-full')).content, 'none', 'rảnh: không có vạch load dưới nút');
@@ -466,6 +468,26 @@ const expectBar = (info, tag, ratio) => {
       await context.close();
       console.log(`PASS ${width}px: menu icon SVG, không câu hướng dẫn, tiêu đề bảng theo nhóm, ô cảnh báo, preview hết hạn, không tràn ngang/lỗi`);
     }
+    // Ô Đối chiếu toàn bộ quá 36 giờ (18/10/2026): chỉ ghi "<x> trước · quá 36 giờ" và đổi sang nền vàng, không còn câu khuyên "nên đối chiếu toàn bộ"; trong hạn thì chỉ ghi "<x> trước"
+    for (const [agoMin, stale, pattern] of [[40 * 60, 'true', /^.+ trước · quá 36 giờ$/], [20 * 60, 'false', /^.+ trước$/]]) {
+      histFullAt = ago(agoMin);
+      const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+      await context.addInitScript(key => sessionStorage.setItem(key, JSON.stringify({ access_token: 'test-admin-token', refresh_token: 'test-refresh-token' })), SESSION_KEY);
+      await context.addInitScript(fakeExtension);
+      const page = await context.newPage();
+      await mockRoutes(page);
+      await page.goto(BASE + '#admin/sku-sync');
+      await page.locator('#sku-sync-screen').waitFor({ state: 'visible' });
+      await page.locator('#ss-history tr[data-run]').first().waitFor({ state: 'attached' });
+      await page.waitForFunction(() => document.getElementById('ss-strip-full').dataset.stale !== undefined && /trước/.test(document.getElementById('ss-last-full-rel').textContent));
+      assert.equal(await page.locator('#ss-strip-full').getAttribute('data-stale'), stale, `toàn bộ cách ${agoMin / 60} giờ: data-stale ${stale}`);
+      assert.match((await page.locator('#ss-last-full-rel').innerText()).trim(), pattern, `toàn bộ cách ${agoMin / 60} giờ`);
+      assert.doesNotMatch(await page.locator('#ss-last-full-rel').innerText(), /nên/, 'không còn câu khuyên');
+      if (stale === 'true') assert.equal(await page.locator('#ss-strip-full').evaluate(e => getComputedStyle(e).backgroundColor), 'rgb(255, 250, 235)', 'ô quá hạn có nền vàng nhạt');
+      await context.close();
+      console.log(`PASS ô Toàn bộ cách ${agoMin / 60} giờ: ${stale === 'true' ? 'quá 36 giờ, nền vàng, không câu khuyên' : 'trong hạn, không cảnh báo'}`);
+    }
+    histFullAt = null;
     // 1024 → 1440 px (Admin chỉ xét máy tính; 1024 hẹp nhất còn thanh trái 264): hero vẫn một hàng; sau khi đọc có kết quả: dải phẳng, ô số liệu phân tầng,
     // ≤ 1199 px nhóm SKU 4 ô nằm một hàng và không có ô lẻ (trước khối #hero-standard: ô thứ 4 rơi xuống hàng riêng).
     for (const width of [1024, 1100, 1199, 1440]) {
