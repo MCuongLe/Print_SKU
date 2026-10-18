@@ -19,6 +19,7 @@ __pycache__/
 .claude/*
 !.claude/agents/
 !.claude/skills/
+!.claude/settings.json
 
 # Đoạn JS sinh ra bởi refresh_skus.py snippet — chạy lại lúc nào cũng có
 sku-refresh-snippet.js
