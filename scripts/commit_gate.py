@@ -124,8 +124,12 @@ def main() -> int:
     # 2. Dữ liệu thật
     hit(REAL_DATA, lambda l: f"[2 dữ liệu thật] {l}")
 
-    # 3. Mã hoá
+    # 3. Mã hoá (bỏ qua chính tệp này: nó chứa chuỗi mojibake mẫu trong mô tả và biểu thức dò)
+    self_name = Path(__file__).resolve().relative_to(ROOT).as_posix()
+    saved = added.pop(self_name, None)
     hit([(MOJIBAKE, "mojibake")], lambda l: f"[3 mã hoá] {l}")
+    if saved is not None:
+        added[self_name] = saved
     check = subprocess.run(["git", "diff", "--check", *rng, "--"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace")
     if check.returncode != 0:
         fails.append("[3 mã hoá] git diff --check: " + " | ".join(check.stdout.strip().splitlines()[:4]))
