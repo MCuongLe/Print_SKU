@@ -180,6 +180,8 @@ const measure = ({ id, camera }) => {
             await pss.locator('.pss-card [data-act="type"]').click().catch(() => bad('thẻ lỗi không có nút Gõ tay'));
             await pss.waitFor({ state: 'detached' }).catch(() => bad('Gõ tay không đóng lớp quét'));
             if (!await focused()) bad('Gõ tay không đưa con trỏ về đúng ô');
+            // Gõ tay bấm nút bàn phím sau 80 ms; vài màn (Cấp vải) tự đưa con trỏ về ô sớm hơn → chờ đúng trạng thái bàn phím đã bật, không chỉ chờ focus
+            await page.waitForFunction(id => document.getElementById(id).inputMode === 'text', f.id, { timeout: 3000 }).catch(() => {});
             flows.typed++;
             s = await read();
             if (s.mode !== 'text' || s.pressed !== 'false') bad(`Gõ tay không bật bàn phím của ô: ${JSON.stringify(s)}`);

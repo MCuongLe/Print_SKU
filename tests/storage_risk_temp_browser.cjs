@@ -63,6 +63,17 @@ const backend = (route, calls, ctrl = {}) => {
   if (rpc === "sku_count_save_chunk") return json({ ok: true, data: { saved: (JSON.parse(route.request().postData() || "{}").p_rows || []).length } });
   if (rpc === "sku_count_save_finish") return json({ ok: true, data: { runId: "run-new", rowCount: 2 } });
   if (rpc === "sku_count_overview") return json({ ok: true, data: { run: null, rows: [] } });
+  if (rpc === "uid_temp_overview") {
+    if (ctrl.overviewFail > 0) { ctrl.overviewFail--; return route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ message: "Supabase tạm lỗi" }) }); }
+    const body = JSON.stringify({ ok: true, data: ctrl.tempSnapshot || { run: null, rows: [] } });
+    if (ctrl.overviewDelay) return new Promise(resolve => setTimeout(resolve, ctrl.overviewDelay)).then(() => route.fulfill({ status: 200, contentType: "application/json", body }));
+    return json(JSON.parse(body));
+  }
+  if (rpc === "uid_temp_save") {
+    if (ctrl.saveFail) return json({ ok: false, error: { code: "FORBIDDEN", message: ctrl.saveFail } });
+    const body = JSON.parse(route.request().postData() || "{}"); ctrl.saved = body;
+    return json({ ok: true, data: { runId: "tmp-1", rowCount: (body.p_rows || []).length } });
+  }
   return json({ ok: true, data: [] });
 };
 
@@ -163,7 +174,7 @@ const expectBar = (info, tag) => {
       assert.equal(await page.locator("#srt-admin-tools").isHidden(), true, "người xem không có nút đọc WMS");
       assert.equal(await page.locator("#srt-run").isHidden(), true);
       assert.equal(await page.locator("#storage-risk-screen .ss-hero").evaluateAll(els => els.every(h => h.getClientRects().length === 0)), true, "1280px: người xem không thấy hero ở cả hai tab (không còn thẻ trắng rỗng)");
-      assert.equal(await page.locator("#srt-status").innerText(), "Chỉ Admin đọc được.");
+      await page.waitForFunction(() => document.getElementById("srt-status").textContent === "Chưa có bản đọc UID tạm.");
       assert.deepEqual(await metricsOf(page), ["—", "—", "—", "—"], "người xem: dữ liệu rỗng");
       // Thẻ không còn chú thích giải thích (18/10/2026): câu cũ nằm ở title của thẻ
       assert.deepEqual(await page.evaluate(() => [...document.querySelectorAll(".ss-metrics[aria-label='Tổng quan UID tạm'] .ss-metric")].map(c => c.querySelectorAll("small").length)), [0, 0, 0, 0], "thẻ UID tạm không còn dòng nhỏ giải thích");
@@ -178,7 +189,7 @@ const expectBar = (info, tag) => {
       assert.equal(await page.locator("#srt-subtitle").innerText(), "Hàng chưa lên kệ", "phụ đề quay lại theo tab chính");
       assert.equal(await page.evaluate(() => localStorage.getItem("sr-tab-dang-mo")), "main");
       assert.equal((await page.evaluate(() => window.__extCalls.filter(c => c.type.startsWith("GET_")))).length, 0, "người xem không đọc WMS qua Extension");
-      assert.deepEqual(rpcSet(rpcs), ["sku_count_overview"], "người xem chỉ gọi RPC sku_count_overview");
+      assert.deepEqual(rpcSet(rpcs).sort(), ["sku_count_overview", "uid_temp_overview"], "người xem chỉ đọc hai bản lưu (Kiểm kê + UID tạm)");
       assert.deepEqual(errors, []);
       await context.close();
     }
@@ -188,7 +199,7 @@ const expectBar = (info, tag) => {
       const { context, page, errors, rpcs, ctrl } = await open(browser, { width, admin: true, view: "temp" });
       await page.locator("#srt-admin-tools").waitFor({ state: "visible" });
       assert.equal(await page.locator("#srt-run").isVisible(), true);
-      assert.equal(await page.locator("#srt-status").innerText(), "Chưa đọc từ WMS.");
+      await page.waitForFunction(() => document.getElementById("srt-status").textContent === "Chưa có bản đọc UID tạm.");
       // Khuôn nút đọc một kiểu (17/10/2026): .src-read, nhãn "Đọc WMS", icon mask; điện thoại: nút rộng hết hero
       assert.deepEqual(await srcReadAudit(page, [{ id: "srt-run", strip: true, classes: ["src-read"], text: "Đọc WMS" }], width), [], `${width}px: nút đọc WMS một kiểu`);
       // Bố cục mới (18/10/2026, khối #strip-read): không còn thẻ hero; nhóm nút nằm trong hàng tab (.sr-tabrow). Chi tiết cỡ / vị trí / chấm trạng thái: tests/strip_read_browser.cjs.
@@ -196,7 +207,8 @@ const expectBar = (info, tag) => {
       await page.locator("#srt-run").click();
       await page.waitForFunction(() => document.getElementById("srt-total").textContent === "3");
       assert.deepEqual(await metricsOf(page), ["3", "2", "1", "1"], "tổng 3, MTG 2, GARMENT 1, trong 3 ngày 1");
-      assert.match(await page.locator("#srt-status").innerText(), /^Đã đọc 3 dòng tạo UID tạm trong 90 ngày\.$/);
+      await page.waitForFunction(() => /đã lưu/.test(document.getElementById("srt-status").textContent));
+      assert.match(await page.locator("#srt-status").innerText(), /^Đã đọc 3 dòng tạo UID tạm trong 90 ngày, đã lưu\.$/);
       assert.equal(await page.locator('[data-srt-level="all"] > span').innerText(), "Dòng tạo UID tạm", "nhãn thẻ tổng");
       assert.equal(await page.locator("#srt-subtitle").innerText(), "UID tạm");
       assert.deepEqual(await skus(page), ["900000011", "900000013", "900000012"], "mới nhất trước; dòng nhiễu bị loại");
@@ -209,8 +221,16 @@ const expectBar = (info, tag) => {
       assert.deepEqual(calls.map(c => [c.payload.warehouseIds[0], c.payload.companyId]), [[1177, 1002], [1339, 1005]]);
       assert.ok(Math.abs((calls[0].payload.to - calls[0].payload.from) / 86400000 - 90) < 0.01, "khoảng đọc 90 ngày");
       assert.ok(calls.every(c => c.payload.page === 1 && c.payload.size === 500));
-      assert.deepEqual(rpcSet(rpcs).sort(), ["sku_count_overview", "sku_count_save_chunk", "sku_count_save_finish", "sku_count_save_start"], "chỉ bộ đồng bộ Kiểm kê ghi bản chụp");
-      assert.equal(ctrl.bodies.some(body => /9000000|100126000000/.test(body)), false, "dữ liệu UID tạm không lên Supabase");
+      assert.deepEqual(rpcSet(rpcs).sort(), ["sku_count_overview", "sku_count_save_chunk", "sku_count_save_finish", "sku_count_save_start", "uid_temp_overview", "uid_temp_save"], "đọc xong lưu bản chụp UID tạm");
+      // Bản chụp gửi lên đúng dữ liệu đã đọc (18/10/2026: người dùng chọn lưu Supabase để mọi máy xem được khi không nối WMS)
+      const saved = ctrl.saved;
+      assert.equal(saved.p_rows.length, 3, "lưu đủ 3 dòng UID tạm (không lưu dòng nhiễu)");
+      assert.deepEqual(saved.p_rows.map(r => r.sku), ["900000011", "900000013", "900000012"]);
+      assert.deepEqual(Object.keys(saved.p_rows[0]).sort(), ["createdAt", "createdBy", "mappingId", "productName", "qty", "sku", "sourceCode", "warehouseName", "wh"]);
+      assert.ok(saved.p_rows.every(r => r.createdAt === null || !Number.isNaN(Date.parse(r.createdAt))), "ngày tạo dạng ISO");
+      assert.deepEqual(saved.p_run.warehouses.map(w => w.warehouseName), ["WH - MATERIAL - MTG", "WH - MATERIAL - GARMENT"]);
+      assert.equal(saved.p_run.scanned, 6); assert.equal(saved.p_run.rangeDays, 90);
+      assert.equal(Date.parse(saved.p_run.readAt), calls[0].payload.to, "giờ đọc = mốc cuối khoảng truy vấn WMS (không phải lúc đọc xong)");
       const text = await page.locator("#srt-body").innerText();
       assert.match(text, /1001260000000001/, "Mã ADJ"); assert.match(text, /1001260000000003/, "Phiếu gốc"); assert.match(text, /api@hasaki\.vn/);
       assert.match(await page.locator("#srt-body tr").first().innerText(), /Mới · 1 ngày/, "≤ 3 ngày: chip Mới");
@@ -243,10 +263,73 @@ const expectBar = (info, tag) => {
         assert.equal(await page.locator("#srt-tabs").isVisible(), true);
       }
       await shot(page, `uid-tam-${width}`);
-      // Thoát Admin giữa chừng: dữ liệu trong bộ nhớ bị xoá
+      // Thoát Admin: bản đang xem đã lưu Supabase (ai cũng xem được) → giữ nguyên, chỉ ẩn nút đọc
       await page.evaluate(() => { window.PrintSkuAdminAccess.logout(); });
-      await page.waitForFunction(() => document.getElementById("srt-total").textContent === "—");
-      assert.equal(await page.locator("#srt-admin-tools").isHidden(), true, "thoát Admin: ẩn nút đọc");
+      await page.locator("#srt-admin-tools").waitFor({ state: "hidden" });
+      assert.equal(await page.locator("#srt-total").innerText(), "3", "thoát Admin: vẫn xem bản đã lưu");
+      assert.deepEqual(errors, []);
+      await context.close();
+    }
+
+    // ---- 2b) Bản lưu UID tạm (18/10/2026): người xem không Admin, không có WMS vẫn thấy lần đọc gần nhất ----
+    {
+      const { context, page, errors, rpcs, ctrl } = await open(browser, { view: "temp" });
+      await context.close();
+      const second = await open(browser, { view: "temp" }), now = Date.now();
+      Object.assign(second.ctrl, { tempSnapshot: { run: { id: "tmp-1", readAt: new Date(now - 5 * 3600000).toISOString(), warehouses: [{ warehouseId: 1177, warehouseName: "WH - MATERIAL - MTG", companyName: "Cty Mastige" }], warn: [], scanned: 40, pages: 1, rangeDays: 90, rowCount: 2 },
+        rows: [
+          { wh: "mtg", warehouseName: "WH - MATERIAL - MTG", sku: "900000021", productName: "Vải giả A", qty: 5, sourceCode: "1001260000000021", mappingId: "1001260000000022", createdBy: "api@hasaki.vn", createdAt: new Date(now - 30 * 3600000).toISOString() },
+          { wh: "mtg", warehouseName: "WH - MATERIAL - MTG", sku: "900000022", productName: "Vải giả B", qty: 2, sourceCode: "1001260000000023", mappingId: "", createdBy: "", createdAt: null },
+        ] } });
+      await second.page.reload();
+      await second.page.waitForFunction(() => document.getElementById("srt-total").textContent === "2");
+      assert.deepEqual(await metricsOf(second.page), ["2", "2", "0", "1"], "người xem: thẻ theo bản lưu");
+      assert.match(await second.page.locator("#srt-read-rel").innerText(), /5 giờ trước/, "dải Đọc lúc theo giờ của bản lưu");
+      assert.equal(await second.page.locator("#srt-scan-main").innerText(), "40 dòng");
+      assert.deepEqual(await skus(second.page), ["900000021", "900000022"]);
+      assert.match(await second.page.locator("#srt-status").innerText(), /^Bản đọc lúc .+: 2 dòng tạo UID tạm\.$/);
+      assert.equal(await second.page.locator("#srt-admin-tools").isHidden(), true, "người xem vẫn không có nút đọc");
+      assert.equal((await second.page.evaluate(() => window.__extCalls.filter(c => c.type.startsWith("GET_")))).length, 0, "người xem không đọc WMS");
+      assert.deepEqual(second.errors, []);
+      await second.context.close();
+    }
+    {
+      const { context, page, errors, ctrl } = await open(browser, { admin: true, view: "temp" });
+      ctrl.saveFail = "Chỉ Admin được lưu UID tạm";
+      await page.locator("#srt-run").click();
+      await page.waitForFunction(() => document.getElementById("srt-status").dataset.tone === "error");
+      assert.match(await page.locator("#srt-status").innerText(), /^Đã đọc 3 dòng nhưng chưa lưu được: Chỉ Admin được lưu UID tạm$/);
+      assert.equal(await page.locator("#srt-total").innerText(), "3", "lưu lỗi: vẫn hiện dữ liệu vừa đọc");
+      assert.deepEqual(errors, []);
+      await context.close();
+    }
+
+    // ---- 2c) Nạp bản lưu lỗi một lần: mở lại tab thì tự thử lại (không kẹt ở câu lỗi) ----
+    {
+      const { context, page, errors, ctrl } = await open(browser, { view: "temp" });
+      ctrl.overviewFail = 1;
+      await page.reload();
+      await page.waitForFunction(() => document.getElementById("srt-status").dataset.tone === "error");
+      assert.match(await page.locator("#srt-status").innerText(), /Supabase tạm lỗi|HTTP 503/);
+      await page.locator("#srt-tab-main").click();
+      await page.locator("#srt-tab-temp").click();
+      await page.waitForFunction(() => document.getElementById("srt-status").textContent === "Chưa có bản đọc UID tạm.");
+      assert.deepEqual(errors, []);
+      await context.close();
+    }
+    // ---- 2d) Bản lưu về chậm sau khi Admin đã đọc + lưu xong: không đè dữ liệu / câu "đã lưu" ----
+    {
+      const { context, page, errors, ctrl } = await open(browser, { admin: true });
+      const now = Date.now();
+      Object.assign(ctrl, { overviewDelay: 2500, tempSnapshot: { run: { id: "old", readAt: new Date(now - 86400000).toISOString(), warehouses: [{ warehouseId: 1177, warehouseName: "WH - MATERIAL - MTG" }], warn: [], scanned: 9, pages: 1, rangeDays: 90, rowCount: 1 },
+        rows: [{ wh: "mtg", warehouseName: "WH - MATERIAL - MTG", sku: "900000099", productName: "Bản cũ", qty: 1, sourceCode: "", mappingId: "", createdBy: "", createdAt: null }] } });
+      await page.locator("#srt-tab-temp").click();
+      await page.locator("#srt-run").click();
+      await page.waitForFunction(() => /đã lưu/.test(document.getElementById("srt-status").textContent));
+      await page.waitForTimeout(3000);
+      assert.equal(await page.locator("#srt-total").innerText(), "3", "bản lưu cũ về chậm không đè dữ liệu vừa đọc");
+      assert.match(await page.locator("#srt-status").innerText(), /đã lưu\.$/, "câu đã lưu còn nguyên");
+      assert.equal((await skus(page)).includes("900000099"), false);
       assert.deepEqual(errors, []);
       await context.close();
     }
@@ -341,6 +424,25 @@ const expectBar = (info, tag) => {
       assert.deepEqual(errors, []);
       await context.close();
     }
+    // ---- 8b) Codex vòng 2: bản lưu đang tải chậm, Admin bấm đọc nhưng phiên đã hết (lượt dừng trước khi đọc WMS) → bản lưu vẫn hiện ----
+    {
+      const { context, page, errors, ctrl } = await open(browser, { admin: true, view: "temp" });
+      const now = Date.now();
+      Object.assign(ctrl, { overviewDelay: 2500, tempSnapshot: { run: { id: "s1", readAt: new Date(now - 3600000).toISOString(), warehouses: [{ warehouseId: 1177, warehouseName: "WH - MATERIAL - MTG" }], warn: [], scanned: 12, pages: 1, rangeDays: 90, rowCount: 2 },
+        rows: [
+          { wh: "mtg", warehouseName: "WH - MATERIAL - MTG", sku: "900000031", productName: "Giả 1", qty: 1, sourceCode: "", mappingId: "", createdBy: "", createdAt: null },
+          { wh: "mtg", warehouseName: "WH - MATERIAL - MTG", sku: "900000032", productName: "Giả 2", qty: 2, sourceCode: "", mappingId: "", createdBy: "", createdAt: null },
+        ] } });
+      await page.reload();
+      await page.locator("#srt-run").waitFor({ state: "visible" });
+      ctrl.userStatus = 403;
+      await page.locator("#srt-run").click();
+      await page.waitForFunction(() => document.getElementById("srt-admin-tools").hidden, null, { timeout: 15000 });
+      await page.waitForFunction(() => document.getElementById("srt-total").textContent === "2", null, { timeout: 10000 }).catch(() => {});
+      assert.equal(await page.locator("#srt-total").innerText(), "2", "lượt dừng sớm không được bỏ bản lưu đang tải");
+      assert.deepEqual(errors, []);
+      await context.close();
+    }
     // ---- 9) Đồng bộ một lần: bấm ở tab Hàng chưa lên kệ cũng đọc UID tạm; bước UID tạm lỗi không đổi kết quả tab cũ ----
     for (const failing of [false, true]) {
       const { context, page, errors, rpcs } = await open(browser, { admin: true, options: failing ? { fail: { GET_STOCK_IMPORT_EXPORT_PAGE: "Phiên WMS hết hạn" } } : {} });
@@ -355,7 +457,8 @@ const expectBar = (info, tag) => {
       await page.locator("#srt-tab-temp").click();
       if (!failing) {
         assert.deepEqual(await metricsOf(page), ["3", "2", "1", "1"], "chuyển sang tab UID tạm thấy dữ liệu đã đọc");
-        assert.match(await page.locator("#srt-status").innerText(), /^Đã đọc 3 dòng tạo UID tạm trong 90 ngày\.$/);
+        await page.waitForFunction(() => /đã lưu/.test(document.getElementById("srt-status").textContent));
+      assert.match(await page.locator("#srt-status").innerText(), /^Đã đọc 3 dòng tạo UID tạm trong 90 ngày, đã lưu\.$/);
         assert.equal(await page.evaluate(() => window.__extCalls.filter(c => c.type === "GET_STOCK_IMPORT_EXPORT_PAGE").length), 2, "mỗi kho đọc đúng một lượt");
       } else {
         assert.equal(await page.locator("#srt-status").getAttribute("data-tone"), "error", "lỗi UID tạm chỉ hiện ở tab UID tạm");

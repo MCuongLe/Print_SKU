@@ -29,7 +29,7 @@ Trang chủ: nhóm `section.barcode-home__group[data-tone]` (print / ops / check
 | THEO DÕI XẢ VẢI `#barcode-xa-vai` | `#xa-vai` | `#xa-vai-screen` | bảng `xa_vai_log` |
 | CẤP VẢI `#barcode-cap-vai` | `#cap-vai` | `cap-vai-script`, `#cap-vai-screen` | migration `fabric_issue_*` |
 | KIỂM TRA ĐẦU VÀO `#barcode-inspection` | `#inspection` | `#ins-screen` | |
-| RỦI RO LƯU TRỮ `#barcode-storage-risk` | `#storage-risk` | `storage-risk-script` (Hàng chưa lên kệ), `storage-risk-temp-script` (UID tạm, `window.HasakiStorageRiskTemp`) | Hai nút `sr-run` / `srt-run`, một luồng đọc (sr-run = Kiểm kê + UID tạm) |
+| RỦI RO LƯU TRỮ `#barcode-storage-risk` | `#storage-risk` | `storage-risk-script` (Hàng chưa lên kệ), `storage-risk-temp-script` (UID tạm, `window.HasakiStorageRiskTemp`) | Hai nút `sr-run` / `srt-run`, một luồng đọc (sr-run = Kiểm kê + UID tạm); UID tạm lưu Supabase `uid_temp_snapshot_v1` (`uid_temp_save` Admin, `uid_temp_overview` anon) |
 | KIỂM KÊ SKU `#barcode-inventory-audit` | `#inventory-audit` | `inventory-audit-script`, `#inventory-audit-screen` | migration `sku_count_v1` |
 | KIỂM SOÁT CÔNG TRÌNH `#barcode-site-control` | `#site-control` | `site-control-script` | app xây dựng qua `hcm-bridge.js`, không lưu Supabase |
 | QUẢN TRỊ `#barcode-admin` | `#admin/...` | `admin-sync-shared` (UI.createList, chip, dialog), `sku-sync-admin-script` (`#sku-sync-screen`), `group-uid-sync-admin-script` (`#group-uid-sync-screen`), `print-jobs-admin-script` (`#print-jobs-screen`, tab Thiết bị `print-devices-tab-script`), `admin-command-header-b-script` | Chỉ xét desktop |
@@ -58,6 +58,7 @@ Migration là chuỗi tệp `supabase/*.sql` (idempotent, `notify pgrst`); **b�
 - SKU sync: `sku_sync_admin_v1` → `sku_sync_full_v1` → `sync_auto_v1` → `sku_missing_archive_v1` (RPC `sku_archive_missing`, `sync_history_purge` mới nhất).
 - Group UID sync: `group_uid_sync_v1` (prepare gốc) → … → `group_uid_sync_v7_apply_guard` → `group_uid_qc_status_v1` (preview v6, apply v8, reconcile) → `sync_auto_v1` (prepare 5 tham số, lease).
 - In: `print_queue_v1` → `print_jobs_admin_v1` → `print_devices_v1` (print_enqueue kiểm khoá) → `sku_inactive_v1` (print_enqueue_unchecked, sku_inactive_archive).
+- UID tạm (Rủi ro lưu trữ): `uid_temp_snapshot_v1` — bảng `uid_temp_runs` / `uid_temp_rows` (chỉ service_role), `uid_temp_save(p_run, p_rows)` kiểm `group_uid_admin_allowed()`, `uid_temp_overview()` cho anon; giữ 10 lượt.
 - Khoá máy nhóm ghi xưởng: `floor_access_v1` — 11 hàm ghi (6 `cut_group_uid_*` ghi, `cut_sample_scan/confirm`, `fabric_issue_scan`, `xa_vai_start/end`) bọc thân cũ `_<tên>_body` và gọi `floor_access_check(p_access_token, fn)`: chỉ nhận máy đã kích hoạt (`print_device_by_token`), mode `floor_access_settings` ('enforce' mặc định từ 17/10; 'log' = vẫn chạy + `accessWarning`), máy lạ ghi `floor_access_denials` một dòng/phút; bản mới 5 hàm sample/fabric/xa_vai có `p_access_token` đầu (không default), bản cũ còn để trang cũ nhận ACCESS_DENIED (drop ở v2). RPC Admin `floor_access_summary`/`floor_access_set_mode`. Web: `window.PrintSkuFloorAccess {token, check}` trong `print-device-script`, thẻ `#pdm-floor` ở tab Thiết bị.
 - Cron: `print-jobs-purge` 20:00, `sync-history-purge` 20:30, `print-assistant-purge` 20:50, `floor-access-purge` 20:55, `sku-inactive-archive` CN 20:45, `group-uid-canceled-purge` CN 20:15 (UTC).
 
