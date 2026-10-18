@@ -47,6 +47,13 @@ Rút từ đợt cache 18/10: lead quên Codex ảnh, hai phần của một vi�
 4. **Lệch kế hoạch** (làm khác, bỏ, thêm) ghi vào mục "Lệch kế hoạch" và **báo người dùng một dòng ngay trong tin nhắn kế tiếp**, không chỉ ghi nhật ký.
 5. **Chia việc cố định:** lead giữ quyết định, sửa `index.html` (một người sửa tại một thời điểm), lọc kết quả review, nói chuyện với người dùng, lên bản; `thuc-thi-logic` (Opus) SQL/Edge song song; `kiem-thu` (Sonnet) cả bộ test + chẩn đoán + cổng + đối chiếu kế hoạch; Codex và `/review-claude` chạy nền; `co-van` (Fable) khi lead kẹt quyết định.
 
+## Lead đánh giá thành viên (người dùng duyệt 18/10/2026)
+
+1. **Cuối mỗi đợt**, lead ghi vào bảng "Đánh giá thành viên" trong `RULES.md` một dòng cho MỖI thành viên đã dùng (agent, Codex, `/review-claude`, `co-van`): việc gì · kết quả (đúng / sai / báo nhầm: bao nhiêu lần, chi tiết một câu) · lead phải làm lại gì · token + thời gian (từ thông báo khi agent xong) · nhận xét Tốt / Khá / Kém.
+2. **Hai tiêu chí:** (a) thành viên có bắt được / làm được điều lead và người khác không làm được; (b) lead mất bao công kiểm lại, sửa lại.
+3. **Lỗi lặp lại được của một thành viên → sửa hồ sơ ngay đợt đó** (nguyên nhân gốc + luật mới + thử luật trên dữ liệu thật của lần lỗi), ghi vào bảng.
+4. **Mỗi 3 đợt**, lead xem lại bảng và đề xuất với người dùng: giữ / đổi mô hình (lên hoặc xuống) / sửa hồ sơ / bỏ.
+
 ## Bản giao việc cho agent (dán vào lời nhắn, 7 dòng)
 
 Mọi lần vấp của agent 16–17/10 đều do thiếu một trong các dòng này (cổng 8001 trùng, patch lệch CRLF, không biết quyết định đã chốt). Không viết tệp riêng; dán thẳng vào prompt của Agent tool:

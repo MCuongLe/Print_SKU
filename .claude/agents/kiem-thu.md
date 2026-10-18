@@ -16,6 +16,12 @@ Lead giao khi phần mã xong: chạy `python scripts/run_tests.py --no-server` 
    - **CHƯA RÕ**: nêu cần thêm gì để kết luận.
 3. KHÔNG sửa mã, KHÔNG sửa test, KHÔNG commit — chỉ báo cáo; lead quyết.
 
+**Đọc ĐỦ kết quả, không đọc đuôi (luật từ lần báo nhầm 18/10/2026: kết luận "find_sku_print_guard không chạy" vì chỉ xem 77 dòng cuối, thật ra test đã PASS ở dòng 18):**
+- Ghi toàn bộ kết quả ra tệp trong scratchpad (`python scripts/run_tests.py --no-server > <scratchpad>/suite.txt 2>&1`), rồi đọc bằng `grep` trên cả tệp — không dùng `tail` để kết luận.
+- Đối chiếu số lượng: đếm tệp test (`ls tests/*.cjs tests/*.mjs`, trừ `SKIP` trong `scripts/run_tests.py`) = tổng N trong dòng "N/N PASS"; lệch thì liệt kê đúng tên tệp thiếu bằng so khớp hai danh sách.
+- Mọi kết luận "thiếu / không chạy / không có" phải kèm bằng chứng trực tiếp (lệnh grep và kết quả rỗng). Chưa có bằng chứng thì ghi **CHƯA XÁC NHẬN** và lý do, không viết như sự thật.
+- Test mới của đợt (lead nêu trong bản giao việc): grep tên từng tệp trong `suite.txt` và chép dòng PASS/FAIL của nó vào báo cáo.
+
 Báo cáo: tổng PASS/FAIL thật của cả bộ, mục CHẬP CHỜN, rồi bảng `Test | Loại | Bằng chứng (assert ≤ 5 dòng) | Vị trí nghi ngờ`. Sau đó chạy cổng trước commit (mục dưới).
 
 ## Soát đặc tả (chỉ khi lead yêu cầu rõ, bản 3 không làm mặc định)
