@@ -73,7 +73,7 @@ Chạy migration: `python scripts/apply_supabase_sql.py <tệp> [--dry-run] [--a
 - Edge test Node: `tests/sku_sync_function.mjs`, `group_uid_sync_function.mjs`, `print_assistant_function.mjs`, `sku_vision_function.mjs` (giả `Deno` + `fetch`).
 - Review độc lập: `python scripts/codex_review.py --working-tree|--commit <sha>|--images <thư mục> --brief <md>` (skill `review-codex`).
 - Kế hoạch cho việc có migration nhiều bước hoặc kéo dài hơn một phiên: `docs/plans/<ngày>-<tên>.md` (mẫu `docs/plans/README.md`).
-- Đội agent: `docs/DOI_AGENT.md` (bản 3, 18/10/2026: lead tự làm, bốn luật, Codex một vòng kể cả giao diện, mẫu bản giao việc 7 dòng), hồ sơ `.claude/agents/{trinh-sat,thuc-thi-logic,thuc-thi-khuon,kiem-thu}.md`.
+- Đội agent: `docs/DOI_AGENT.md` (bản 3, 18/10/2026: lead tự làm, bốn luật, Codex một vòng kể cả giao diện, mẫu bản giao việc 7 dòng; 18/10 thêm `/review-claude` song song Codex, bỏ `thuc-thi-khuon`, `kiem-thu` lên Sonnet + chẩn đoán test hỏng), hồ sơ `.claude/agents/{trinh-sat,thuc-thi-logic,kiem-thu}.md`.
 
 ## 6. Quy ước luôn đúng
 Trả lời tiếng Việt có dấu; icon Lucide + nhãn ngắn, không câu hướng dẫn kiểu AI; Admin chỉ xét desktop; `index.html` git lưu LF nhưng trên đĩa có thể là CRLF (autocrlf=true, sau checkout/apply) — giữ nguyên kiểu xuống dòng đang có của từng tệp khi sửa, sửa nhỏ nhất bằng neo; dữ liệu test giả (`9000000xx`, `1028260000000xxx`, `100000001`); không commit `.env`, khoá, SKU thật; commit/push chỉ khi người dùng nói; xong việc phải nhắc commit. Quyết định đã chốt nằm trong `RULES.md` (không vào git) — grep trước khi đề xuất lại.

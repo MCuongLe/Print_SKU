@@ -167,6 +167,8 @@ def main() -> int:
     parser.add_argument("--round", type=int, default=1, help="vòng thứ mấy của đợt này (tối đa 3)")
     parser.add_argument("--since", help="thư mục ảnh chụp vòng trước, hoặc 'last': chỉ review phần sửa từ đó")
     parser.add_argument("--add", nargs="*", default=[], help="tệp mới chưa theo dõi cần đưa vào diff cây làm việc")
+    parser.add_argument("--prepare-only", action="store_true",
+                        help="chỉ dựng nội dung review (diff + RULES + luật vòng) ra outputs/claude-review/prompt-*.md cho /review-claude, không gọi Codex")
     args = parser.parse_args()
     if args.round > MAX_ROUNDS:
         print(f"Đã {MAX_ROUNDS} vòng review cho đợt này mà chưa xong: DỪNG vá, xem lại hướng tiếp cận (thiết kế, nguyên nhân gốc) "
@@ -224,6 +226,18 @@ def main() -> int:
         parts.append("Trọng tâm: " + args.focus)
     parts.append(output.format(max_findings=args.max))
     prompt = "\n\n".join(parts)
+
+    if args.prepare_only:
+        # /review-claude (18/10/2026): cùng phạm vi, cùng luật 3 vòng / --since last với Codex; các agent Claude đọc tệp này.
+        prompt_out = ROOT / "outputs" / "claude-review" / f"prompt-{stamp}.md"
+        prompt_out.parent.mkdir(parents=True, exist_ok=True)
+        prompt_out.write_text(prompt, encoding="utf-8")
+        print(f"PROMPT {prompt_out}")
+        print(f"REPORT {ROOT / 'outputs' / 'claude-review' / f'review-{stamp}.md'}")
+        if args.working_tree:
+            snap = save_snapshot(args.add, stamp)
+            print(f"Ảnh chụp vòng {args.round}: {snap}")
+        return 0
 
     cmd = ["codex", "exec", "--sandbox", "read-only", "-C", str(ROOT), "-o", str(out)]
     for image in images:

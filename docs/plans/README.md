@@ -19,7 +19,7 @@ Từ bản 3 (18/10/2026) chỉ việc có **migration nhiều bước hoặc k�
 ## Kế hoạch
 Thứ tự chạy: <việc 1 → việc 2; việc 3 song song với 1>
 
-### Việc 1 — <tên> · <thuc-thi-logic | thuc-thi-khuon> · [ ]
+### Việc 1 — <tên> · <lead | thuc-thi-logic> · [ ]
 - Tệp và neo: `<tệp>` → `<chuỗi neo nguyên văn>`
 - Test đỏ trước: `<tests/…>` khẳng định <…>
 - Lệnh: `node tests/<…>`
