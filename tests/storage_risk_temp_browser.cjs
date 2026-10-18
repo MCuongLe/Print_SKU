@@ -105,14 +105,17 @@ const srcReadAudit = (page, specs, width) => page.evaluate(async ({ specs, width
     if (spec.aria && b.getAttribute("aria-label") !== spec.aria) bad.push(`#${spec.id} aria-label "${b.getAttribute("aria-label")}", cần "${spec.aria}"`);
     if (!mask || mask === "none" || before.content === "none") bad.push(`#${spec.id}::before không có icon mask`);
     if (b.querySelector("svg")) bad.push(`#${spec.id} còn svg trong nút (icon phải là mask ::before)`);
-    if (Math.abs(h - ctl) > 1) bad.push(`#${spec.id} cao ${h}px, cần ${ctl}px`);
-    if (spec.classes.includes("src-read--icon") && Math.abs(w - ctl) > 1) bad.push(`#${spec.id} rộng ${w}px, nút chỉ icon cần vuông ${ctl}px`);
-    if (s.fontSize !== "16px" || s.fontWeight !== "600") bad.push(`#${spec.id} chữ ${s.fontSize}/${s.fontWeight}, cần 16px/600`);
+    // Nút trong dải mốc giờ / hàng tab (spec.strip, 18/10/2026, khối #strip-read): máy tính gọn 36 chữ 14/600, điện thoại tròn 44 chỉ icon
+    const want = spec.strip ? (mobile ? 44 : 36) : ctl;
+    if (Math.abs(h - want) > 1) bad.push(`#${spec.id} cao ${h}px, cần ${want}px`);
+    if ((spec.classes.includes("src-read--icon") || (spec.strip && mobile)) && Math.abs(w - want) > 1) bad.push(`#${spec.id} rộng ${w}px, nút chỉ icon cần vuông ${want}px`);
+    const fs = spec.strip ? "14px" : "16px";
+    if (s.fontSize !== fs || s.fontWeight !== "600") bad.push(`#${spec.id} chữ ${s.fontSize}/${s.fontWeight}, cần ${fs}/600`);
     if (s.color !== "rgb(0, 95, 65)") bad.push(`#${spec.id} màu chữ ${s.color}, cần #005F41`);
     if (s.backgroundColor !== (all ? "rgb(255, 255, 255)" : "rgb(230, 243, 238)")) bad.push(`#${spec.id} nền ${s.backgroundColor}`);
     if (s.borderTopColor !== "rgb(95, 174, 146)") bad.push(`#${spec.id} viền ${s.borderTopColor}`);
     const r = Math.min(parseFloat(s.borderTopLeftRadius), h / 2);
-    if (mobile ? Math.abs(r - 12) > 1 : r < h / 2 - 1) bad.push(`#${spec.id} bo ${s.borderTopLeftRadius}`);
+    if (mobile && !spec.strip ? Math.abs(r - 12) > 1 : r < h / 2 - 1) bad.push(`#${spec.id} bo ${s.borderTopLeftRadius}`);
   }
   return bad;
 }, { specs, width });
@@ -187,9 +190,9 @@ const expectBar = (info, tag) => {
       assert.equal(await page.locator("#srt-run").isVisible(), true);
       assert.equal(await page.locator("#srt-status").innerText(), "Chưa đọc từ WMS.");
       // Khuôn nút đọc một kiểu (17/10/2026): .src-read, nhãn "Đọc WMS", icon mask; điện thoại: nút rộng hết hero
-      assert.deepEqual(await srcReadAudit(page, [{ id: "srt-run", classes: ["src-read"], text: "Đọc WMS" }], width), [], `${width}px: nút đọc WMS một kiểu`);
-      const layout = await page.evaluate(() => { const hero = document.querySelector("#srt-panel .ss-hero"), s = getComputedStyle(hero); return { inner: hero.getBoundingClientRect().width - parseFloat(s.paddingLeft) - parseFloat(s.paddingRight) - parseFloat(s.borderLeftWidth) - parseFloat(s.borderRightWidth), runW: document.getElementById("srt-run").getBoundingClientRect().width }; });
-      if (width === 375) assert.ok(Math.abs(layout.runW - layout.inner) <= 2, `điện thoại: nút rộng hết hero (${layout.runW} / ${layout.inner})`);
+      assert.deepEqual(await srcReadAudit(page, [{ id: "srt-run", strip: true, classes: ["src-read"], text: "Đọc WMS" }], width), [], `${width}px: nút đọc WMS một kiểu`);
+      // Bố cục mới (18/10/2026, khối #strip-read): không còn thẻ hero; nhóm nút nằm trong hàng tab (.sr-tabrow). Chi tiết cỡ / vị trí / chấm trạng thái: tests/strip_read_browser.cjs.
+      assert.equal(await page.locator("#srt-admin-tools").evaluate(t => t.parentElement.classList.contains("sr-tabrow")), true, "nút đọc nằm cuối hàng tab");
       await page.locator("#srt-run").click();
       await page.waitForFunction(() => document.getElementById("srt-total").textContent === "3");
       assert.deepEqual(await metricsOf(page), ["3", "2", "1", "1"], "tổng 3, MTG 2, GARMENT 1, trong 3 ngày 1");

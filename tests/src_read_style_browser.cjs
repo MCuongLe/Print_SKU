@@ -10,11 +10,11 @@ const SESSION_KEY = "print-sku-admin-session-v1";
 const SCREENS = [
   { name: "Đồng bộ SKU", hash: "#admin/sku-sync", wait: "#sku-sync-screen", id: "sku-sync-preview" },
   { name: "Đồng bộ Group UID", hash: "#admin/group-uid-sync", wait: "#group-uid-sync-screen", id: "gu-run-incremental" },
-  { name: "Kiểm kê SKU", hash: "#inventory-audit", wait: "#inventory-audit-screen", id: "ia-run" },
-  { name: "Rủi ro lưu trữ · Hàng chưa lên kệ", hash: "#storage-risk", wait: "#storage-risk-screen", id: "sr-run" },
-  { name: "Rủi ro lưu trữ · UID tạm", hash: "#storage-risk", wait: "#storage-risk-screen", tab: "temp", id: "srt-run" },
-  { name: "Kiểm soát công trình", hash: "#site-control", wait: "#site-control-screen", id: "sc-run" },
-  { name: "Lịch sử Group UID", hash: "#group-uid-history", wait: "#uidhist-screen", id: "uh-run" },
+  { name: "Kiểm kê SKU", hash: "#inventory-audit", wait: "#inventory-audit-screen", id: "ia-run", strip: true },
+  { name: "Rủi ro lưu trữ · Hàng chưa lên kệ", hash: "#storage-risk", wait: "#storage-risk-screen", id: "sr-run", strip: true },
+  { name: "Rủi ro lưu trữ · UID tạm", hash: "#storage-risk", wait: "#storage-risk-screen", tab: "temp", id: "srt-run", strip: true },
+  { name: "Kiểm soát công trình", hash: "#site-control", wait: "#site-control-screen", id: "sc-run", strip: true },
+  { name: "Lịch sử Group UID", hash: "#group-uid-history", wait: "#uidhist-screen", id: "uh-run", strip: true },
   { name: "IN TEM GROUP UID · Thêm Group UID", hash: "#group-uid", wait: "#uid-screen", id: "uid-wms-open", mate: "uid-import" },
   { name: "IN TEM GROUP UID · Gán WMS", hash: "#group-uid", wait: "#uid-screen", prep: async page => { await page.locator("#uid-tab-po").click(); }, id: "uid-po-go", mate: "uid-po-input" },
   { name: "IN TEM SKU · Phiếu IT", hash: "#worker", wait: "#f-sku", prep: async page => { await page.evaluate(() => document.getElementById("sku-it").showModal()); }, id: "sku-it-load", mate: "sku-it-input" },
@@ -22,6 +22,9 @@ const SCREENS = [
   { name: "CẮT GROUP UID · Theo PO", hash: "#cut-group-uid", wait: "#cut-group-uid-screen:not([hidden])", admin: "stub", id: "cs-po-go", mate: "cs-po",
     prep: async page => { await page.locator("#cs-mode-po").click(); await page.locator("#cs-manage").waitFor({ state: "visible" }); await page.locator("#cs-manage").click(); await page.waitForSelector("#cs-plans-dialog[open]"); } },
 ];
+
+// Nút nằm trong dải mốc giờ / hàng tab (18/10/2026, khối #strip-read): cùng màu / viền / icon / vạch load, nhưng cỡ gọn 36, chữ 14 — so cỡ với nhau, không so với nút 52 của màn đồng bộ.
+const STRIP = new Set(SCREENS.filter(x => x.strip).map(x => x.id));
 
 const fakeExtension = () => addEventListener("message", event => {
   const request = event.data;
@@ -147,7 +150,8 @@ const readStyle = (page, id, mate) => page.evaluate(async ({ id, mate }) => {
     if (s.svg) bad.push(`${tag} còn svg trong nút (icon phải là mask ::before)`);
     if (!s.mask || s.mask === "none" || s.content === "none") bad.push(`${tag} ::before không có icon mask`);
     if (s.ctl !== 52) bad.push(`${tag} --ui-ctl = ${s.ctl}, cần 52 ở 1280 px`);
-    if (Math.abs(s.height - s.ctl) > 1) bad.push(`${tag} cao ${s.height}px, cần --ui-ctl (${s.ctl}px)`);
+    if (STRIP.has(s.id)) { if (Math.abs(s.height - 36) > 1) bad.push(`${tag} cao ${s.height}px, cần 36px (nút trong dải)`); }
+    else if (Math.abs(s.height - s.ctl) > 1) bad.push(`${tag} cao ${s.height}px, cần --ui-ctl (${s.ctl}px)`);
     if (s.mateHeight !== null && Math.abs(s.height - s.mateHeight) > 1) bad.push(`${tag} cao ${s.height}px nhưng ô/nút cùng hàng cao ${s.mateHeight}px`);
     // Giữ chỗ nhãn bận: đổi "Đọc …" ↔ "Đang đọc…" không làm nút đổi bề rộng (ô nhập cạnh nó không co giãn theo)
     if (s.idleWidth === null) { if (["sku-it-load", "gu-run-incremental"].includes(s.id)) bad.push(`${tag} không có span .src-read__t để đổi nhãn bận`); }
@@ -174,11 +178,13 @@ const readStyle = (page, id, mate) => page.evaluate(async ({ id, mate }) => {
   if (reduced.backgroundImage !== "none" || reduced.backgroundColor !== "rgb(127, 203, 177)") bad.push(`reduced-motion: chưa có tiến độ thật thì vạch phải đặc một màu #7fcbb1 (nền ${reduced.backgroundColor}, ảnh nền ${String(reduced.backgroundImage).slice(0, 40)})`);
   const short = value => String(value).length > 90 ? `…${String(value).slice(-70)}` : String(value);
   // 2) Cả 12 nút khớp nhau từng thuộc tính (so với nút đầu tiên) — một kiểu
-  const ref = styles.find(s => !s.missing);
+  const ref = styles.find(s => !s.missing && !STRIP.has(s.id)), stripRef = styles.find(s => !s.missing && STRIP.has(s.id));
   for (const s of styles) {
     if (s.missing || s === ref) continue;
     for (const key of ["backgroundColor", "color", "borderColor", "borderWidth", "radius", "fontSize", "fontWeight", "fontFamily", "mask", "height"]) {
-      if (s[key] !== ref[key]) bad.push(`#${s.id} (${s.screen}) ${key} = ${short(s[key])} ≠ #${ref.id} (${ref.screen}) ${short(ref[key])}`);
+      const base = STRIP.has(s.id) && ["radius", "fontSize", "height"].includes(key) ? stripRef : ref;
+      if (s === base) continue;
+      if (s[key] !== base[key]) bad.push(`#${s.id} (${s.screen}) ${key} = ${short(s[key])} ≠ #${base.id} (${base.screen}) ${short(base[key])}`);
     }
   }
   assert.equal(styles.length, 12, "đủ 12 nút");
