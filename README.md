@@ -104,7 +104,7 @@ Kết luận 11/10/2026: **giữ `index.html` một file, sửa trực tiếp** 
 Cấu hình không còn — không có trong repo (từ commit đầu 31/08/2026 đã là bundle), không có source map, không có bản nào khác trên máy —
 nên không khôi phục source, không tách component, không thêm bước build. Phần tự động hóa đã có: bộ test Playwright trong `tests/`,
 quét axe (`tests/a11y_axe_browser.cjs`), mốc hiệu năng ở mục Chuẩn giao diện chung. Nếu sau này tìm lại được source gốc thì mới làm
-tiếp phần build/component theo `docs/DOI_CHIEU_HIEN_TRANG_VA_HUONG_CAI_THIEN_UI_UX.md` mục 7.
+tiếp phần build/component (lộ trình UI/UX 02/10/2026 đã làm xong các đợt 1–4, tài liệu lộ trình đã bỏ ngày 18/10/2026).
 
 ## Chuẩn icon
 
@@ -759,7 +759,7 @@ dòng ngoài danh mục vàng nhạt; bộ tăng giảm số bản 44. Chung m�
 sáng (Phiếu IT, danh sách chờ in IN TEM SKU, Kích hoạt máy, đăng nhập Admin, popup Admin…) thừa hưởng tối — ô tick chưa chọn tô đen; nay
 `dialog, #admin-auth, #cut-barcode-modal` luôn `color-scheme: light`.
 
-**Soát P0 vùng bấm + focus (16/10/2026, khối `#p0-1610`, theo lộ trình `docs/DOI_CHIEU_HIEN_TRANG_VA_HUONG_CAI_THIEN_UI_UX.md`).** Nút ☰ điện thoại /
+**Soát P0 vùng bấm + focus (16/10/2026, khối `#p0-1610`, theo lộ trình UI/UX 02/10/2026).** Nút ☰ điện thoại /
 máy tính bảng 42 → 44; chip bộ lọc đang dùng của Lịch sử Group UID 32 → 44 (chuẩn chip lọc); ô tìm danh sách IN TEM GROUP UID có vòng focus 3 px.
 Nút icon trong ô nhập trên điện thoại 40 → 44 (người dùng chọn): biến chuẩn `--ui-icon-in` điện thoại 44; cụm camera · bàn phím của ô Group UID liền
 cách mép ô 2 px (ô 48) → nút 44 ở mọi khổ (test `ui_standard` kiểm 44). Sau đợt này không còn vùng bấm < 44 trên 13 màn điện thoại.
