@@ -20,12 +20,13 @@ const CATALOG = new Map([...ITEMS.slice(0, 4), ...BIG].map(item => [item.sku, `$
 
 const fakeExtension = data => {
   window.__extCalls = []; window.__fail = false;
-  addEventListener("message", event => {
+  addEventListener("message", async event => {
     const request = event.data;
     if (!request || request.source !== "PRINT_SKU_APP") return;
     window.__extCalls.push({ type: request.type, payload: request.payload });
     const reply = (ok, body, error) => postMessage({ source: "HASAKI_INSIDE_CONNECTOR", requestId: request.requestId, ok, data: body, error }, location.origin);
     if (/^PING/.test(request.type)) return reply(true, { version: "0.9.1" });
+    if (window.__hold && request.type === "GET_INTERNAL_TRANSFER") await window.__hold; // giữ phản hồi để chặn được pha "đang đọc"
     if (request.type === "GET_INTERNAL_TRANSFER") {
       if (window.__fail) return reply(false, null, { code: "INTERNAL_TRANSFER_READ_FAILED", message: "Phiên WMS không còn quyền đọc phiếu IT; hãy đăng nhập lại" });
       const found = data[request.payload.number];
@@ -74,6 +75,34 @@ const rows = page => page.evaluate(() => [...document.querySelectorAll("#sku-it-
 const reactCount = page => page.evaluate(() => document.querySelector("#root main ul.divide-y")?.children.length || 0);
 const read = async (page, number) => { await page.locator("#sku-it-input").fill(number); await page.locator("#sku-it-load").click(); await page.waitForFunction(() => document.getElementById("sku-it-load").dataset.busy !== "true" && document.getElementById("sku-it-status").textContent); };
 
+// Nút đọc nguồn một kiểu .src-read (17/10/2026, khối #hero-standard): lớp, nhãn, title, icon mask ở ::before (không còn svg trong nút), cùng màu / cỡ / bo với nút đọc ở các màn khác.
+// spec: id, text ("" = nút chỉ icon), title?, aria?, icon? (src-read--icon), size? (cao/rộng cố định), mate? (id nút/ô cùng hàng phải cao bằng). Trả danh sách điểm lệch (rỗng = đạt).
+const srcReadAudit = (page, specs, width) => page.evaluate(async ({ specs, width }) => {
+  const mobile = width <= 800, ctl = mobile ? 48 : 52, bad = [];
+  for (const spec of specs) {
+    const b = document.getElementById(spec.id);
+    if (!b) { bad.push(`#${spec.id} không có`); continue; }
+    await Promise.all(b.getAnimations().filter(a => a instanceof CSSTransition).map(a => a.finished.catch(() => {}))); // chờ chuyển màu .15s xong mới đo
+    const s = getComputedStyle(b), before = getComputedStyle(b, "::before"), mask = before.maskImage || before.webkitMaskImage, text = b.innerText.trim(), h = parseFloat(s.height), w = parseFloat(s.width), want = spec.size || ctl;
+    for (const cls of ["src-read", ...(spec.icon ? ["src-read--icon"] : [])]) if (!b.classList.contains(cls)) bad.push(`#${spec.id} thiếu lớp ${cls}`);
+    if (text !== spec.text) bad.push(`#${spec.id} chữ "${text}", cần "${spec.text}"`);
+    if (spec.title !== undefined && b.title !== spec.title) bad.push(`#${spec.id} title "${b.title}", cần "${spec.title}"`);
+    if (spec.aria && b.getAttribute("aria-label") !== spec.aria) bad.push(`#${spec.id} aria-label "${b.getAttribute("aria-label")}", cần "${spec.aria}"`);
+    if (!mask || mask === "none" || before.content === "none") bad.push(`#${spec.id}::before không có icon mask`);
+    if (b.querySelector("svg")) bad.push(`#${spec.id} còn svg trong nút (icon phải là mask ::before)`);
+    if (Math.abs(h - want) > 1) bad.push(`#${spec.id} cao ${h}px, cần ${want}px`);
+    if (spec.icon && Math.abs(w - want) > 1) bad.push(`#${spec.id} rộng ${w}px, nút chỉ icon cần vuông ${want}px`);
+    if (spec.mate) { const m = document.getElementById(spec.mate); if (!m || Math.abs(m.getBoundingClientRect().height - h) > 1) bad.push(`#${spec.id} cao ${h}px, #${spec.mate} cao ${m && m.getBoundingClientRect().height}px (cùng hàng phải bằng nhau)`); }
+    if (s.fontSize !== "16px" || s.fontWeight !== "600") bad.push(`#${spec.id} chữ ${s.fontSize}/${s.fontWeight}, cần 16px/600`);
+    if (s.color !== "rgb(0, 95, 65)") bad.push(`#${spec.id} màu chữ ${s.color}, cần #005F41`);
+    if (s.backgroundColor !== "rgb(230, 243, 238)") bad.push(`#${spec.id} nền ${s.backgroundColor}`);
+    if (s.borderTopColor !== "rgb(95, 174, 146)") bad.push(`#${spec.id} viền ${s.borderTopColor}`);
+    const r = Math.min(parseFloat(s.borderTopLeftRadius), h / 2);
+    if (mobile ? Math.abs(r - 12) > 1 : r < h / 2 - 1) bad.push(`#${spec.id} bo ${s.borderTopLeftRadius}`);
+  }
+  return bad;
+}, { specs, width });
+
 async function desktop(browser) {
   const { page, context, errors, enqueued } = await open(browser, 1280);
   const openButton = page.locator("#root main > section p.items-baseline .skit-open");
@@ -86,6 +115,8 @@ async function desktop(browser) {
   assert.equal(await page.evaluate(() => document.activeElement?.id), "sku-it-input");
   assert.equal(await page.locator("#sku-it-input").getAttribute("placeholder"), "Số phiếu IT");
   assert.equal(await page.locator("#sku-it-add").isDisabled(), true);
+  // Khuôn nút đọc một kiểu (17/10/2026): "Đọc WMS" + icon mask (không còn svg), cao bằng ô số phiếu cùng hàng
+  assert.deepEqual(await srcReadAudit(page, [{ id: "sku-it-load", text: "Đọc WMS", title: "Đọc phiếu IT từ WMS", mate: "sku-it-input" }], 1280), [], "nút Đọc WMS một kiểu");
 
   // Số phiếu sai: không gọi Extension
   await page.locator("#sku-it-input").fill("IT-12"); await page.locator("#sku-it-load").click();
@@ -93,7 +124,18 @@ async function desktop(browser) {
   assert.deepEqual(await itCalls(page), []);
 
   // Đọc phiếu: SKU + số lượng giữ đúng theo phiếu, số bản mặc định 1, tên theo danh mục; SKU không có trong danh mục bỏ tick
-  await read(page, ` ${IT} `);
+  // Giữ phản hồi Extension để chặn pha "đang đọc": data-busy, "Đang đọc…", khoá nút, icon xoay; đọc xong trả "Đọc WMS"
+  const idleMask = await page.locator("#sku-it-load").evaluate(b => getComputedStyle(b, "::before").maskImage);
+  await page.evaluate(() => { window.__hold = new Promise(resolve => { window.__release = resolve; }); });
+  await page.locator("#sku-it-input").fill(` ${IT} `); await page.locator("#sku-it-load").click();
+  await page.waitForFunction(() => document.getElementById("sku-it-load").dataset.busy === "true");
+  assert.equal((await page.locator("#sku-it-load").innerText()).trim(), "Đang đọc…");
+  assert.equal(await page.locator("#sku-it-load").isDisabled(), true, "đang đọc: nút khoá");
+  assert.equal(await page.locator("#sku-it-load").evaluate(b => getComputedStyle(b, "::before").animationName !== "none"), true, "icon vòng xoay khi đang đọc");
+  assert.notEqual(await page.locator("#sku-it-load").evaluate(b => getComputedStyle(b, "::before").maskImage), idleMask, "icon đổi khác lúc rảnh");
+  await page.evaluate(() => { window.__release(); window.__hold = null; });
+  await page.waitForFunction(() => document.getElementById("sku-it-load").dataset.busy !== "true" && document.getElementById("sku-it-status").textContent);
+  assert.equal((await page.locator("#sku-it-load").innerText()).trim(), "Đọc WMS", "đọc xong trả nhãn");
   assert.deepEqual(await itCalls(page), [IT]);
   const info = await page.locator("#sku-it-info").innerText();
   assert.ok(info.includes(`IT ${IT}`) && info.includes("WH - MATERIAL - MTG") && info.includes("SF - HIEP THANH Q12") && info.includes("In-progress") && info.includes("5 dòng"), info);
@@ -253,6 +295,7 @@ async function narrow(browser, width) {
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `${width}px không tràn ngang`);
   if (width > 800) {
     await page.locator("#root .skit-open").click(); await read(page, IT);
+    assert.deepEqual(await srcReadAudit(page, [{ id: "sku-it-load", text: "Đọc WMS", title: "Đọc phiếu IT từ WMS", mate: "sku-it-input" }], width), [], `${width}px: nút Đọc WMS một kiểu`);
     const fit = await page.evaluate(() => { const d = document.getElementById("sku-it").getBoundingClientRect(); return [...document.querySelectorAll("#sku-it .skit__item > *, #sku-it-add")].filter(e => e.getBoundingClientRect().right > d.right + 1).length; });
     assert.equal(fit, 0, "không phần tử nào tràn khỏi tấm");
   }

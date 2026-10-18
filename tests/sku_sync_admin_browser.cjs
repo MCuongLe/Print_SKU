@@ -38,6 +38,9 @@ const RUNS = [
   { id: 'run-auto', status: 'previewed', created_at: ago(200), source: 'auto', device: 'may-test', autoHold: 'Giữ lại: 3.512 thay đổi vượt ngưỡng 3.000', change_counts: CHANGE_COUNTS },
 ];
 
+// Giữ phản hồi preview của Edge để chặn được pha "đang đọc" (nút đổi nhãn, icon vòng xoay); đặt lại null để thả.
+let hold = null;
+
 const mockRoutes = async page => { let autoEnabled = true; return page.route('**/*', async route => {
   const url = route.request().url();
   const json = (body, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
@@ -53,6 +56,7 @@ const mockRoutes = async page => { let autoEnabled = true; return page.route('**
       return ok({ enabled: autoEnabled, intervalMinutes: 30, fullWindow: { start: '00:00', end: '05:00' }, thresholds: {}, updatedAt: ago(1) });
     }
     if (action === 'history') return ok({ runs: RUNS, lastSuccessAt: ago(119), lastSnapshotAt: ago(120), lastFullAt: null });
+    if (action === 'preview' && hold) await hold;
     if (action === 'preview' && mode === 'full') return ok({ runId: 'run-full', status: 'previewed', mode: 'full', sourceCounts: { ...SOURCE_COUNTS, normalRows: 97 }, changeCounts: { ...CHANGE_COUNTS, skuMissing: 1, skuSkippedInactive: 2629 }, changes: { ...CHANGES, skus: { ...CHANGES.skus, missing: [{ sku: '900000009', product_name: 'SKU cũ', category_name: 'Thời Trang', status: '0' }] } }, verification: { previousFullCount: 100, baselineCount: 100, fullDropPercent: 3, skuMissing: 1 } });
     if (action === 'preview') return ok({ runId: 'run-fresh', status: 'previewed', sourceCounts: SOURCE_COUNTS, changeCounts: CHANGE_COUNTS, changes: CHANGES });
     // sku_missing_archive_v1 (17/10/2026): lượt toàn bộ áp dụng trả số SKU rời nhóm đã lưu trữ / giữ lại.
@@ -88,6 +92,101 @@ const headers = page => page.locator('#ss-change-head th').allInnerTexts();
 const allVisible = async page => { for (const th of await page.locator('#ss-change-head th').all()) assert.equal(await th.isVisible(), true); };
 const cells = async page => (await page.locator('#ss-change-body tr').evaluateAll(rows => rows.map(row => [...row.cells].map(cell => cell.textContent.trim()))));
 
+// Khuôn hero (17/10/2026, khối #hero-standard): thanh lệnh gọn một hàng, h2 vẫn trong DOM nhưng ẩn kiểu sr-only (rộng ≤ 1 px),
+// nút đọc nguồn một kiểu .src-read (icon mask ở ::before), nhóm ghi đẩy sang phải. Trả về danh sách điểm lệch (rỗng = đạt).
+const heroAudit = (page, screenSel, specs) => page.evaluate(({ screenSel, specs }) => {
+  const bad = [], hero = document.querySelector(`${screenSel} .ss-hero`), box = hero.getBoundingClientRect();
+  const h2 = hero.querySelector('h2'), h2w = h2.getBoundingClientRect().width;
+  if (h2w > 1) bad.push(`h2 hero rộng ${Math.round(h2w)}px, cần ≤ 1px (ẩn kiểu sr-only)`);
+  if (!h2.textContent.trim()) bad.push('h2 hero không còn trong DOM');
+  const buttons = [...hero.querySelectorAll('button')], tops = buttons.map(b => Math.round(b.getBoundingClientRect().top));
+  if (new Set(tops).size !== 1) bad.push(`nút hero không cùng một hàng (top ${tops.join(', ')})`);
+  if (box.height > 96) bad.push(`hero cao ${Math.round(box.height)}px, cần thanh lệnh gọn ≤ 96px`);
+  if (buttons[0].getBoundingClientRect().left - box.left > 40) bad.push('nút đọc đầu tiên không nằm sát trái hero');
+  if (box.right - buttons.at(-1).getBoundingClientRect().right > 40) bad.push('nhóm ghi không được đẩy sang phải hero');
+  for (const spec of specs) {
+    const b = document.getElementById(spec.id), before = getComputedStyle(b, '::before'), mask = before.maskImage || before.webkitMaskImage;
+    for (const cls of spec.classes || []) if (!b.classList.contains(cls)) bad.push(`#${spec.id} thiếu lớp ${cls}`);
+    if (b.innerText.trim() !== spec.text) bad.push(`#${spec.id} chữ "${b.innerText.trim()}", cần "${spec.text}"`);
+    if (spec.title && b.title !== spec.title) bad.push(`#${spec.id} title "${b.title}", cần "${spec.title}"`);
+    if (spec.aria && b.getAttribute('aria-label') !== spec.aria) bad.push(`#${spec.id} aria-label "${b.getAttribute('aria-label')}", cần "${spec.aria}"`);
+    if (!mask || mask === 'none' || before.content === 'none') bad.push(`#${spec.id}::before không có icon mask`);
+  }
+  return bad;
+}, { screenSel, specs });
+const HERO_SPECS = [
+  { id: 'sku-sync-preview', classes: ['src-read'], text: 'Đọc Inside', title: 'Đọc thay đổi từ Inside' },
+  { id: 'sku-sync-full', classes: ['src-read', 'src-read--all'], text: 'Toàn bộ', title: 'Đối chiếu toàn bộ dữ liệu Inside' },
+  { id: 'ss-apply', classes: ['ss-primary'], text: 'Cập nhật' },
+];
+
+// Dưới hero (18/10/2026, khối #hero-standard): dải mốc giờ + dải Tự động là bề mặt phẳng lùi sau hero (không bóng, nền không phải trắng thuần, ô cũ vẫn vàng);
+// ô số liệu phân tầng: số 0 phẳng + chữ xám đủ tương phản (không dùng opacity), thay đổi > 0 viền/nền xanh nhạt + số đậm #005F41, cảnh báo giữ vàng, ô nguồn trung tính.
+// Trả về danh sách điểm lệch (rỗng = đạt). `needAlert`: trạng thái đang xem phải có ít nhất một ô cảnh báo.
+const belowHeroAudit = (page, screenSel, stripIds, needAlert) => page.evaluate(async ({ screenSel, stripIds, needAlert }) => {
+  await Promise.all(document.getAnimations().filter(a => a instanceof CSSTransition).map(a => a.finished.catch(() => {}))); // chờ chuyển màu .15s xong mới đo
+  const bad = [], rgb = c => c.match(/[\d.]+/g).map(Number), same = (a, b) => a === b;
+  const lum = ([r, g, b]) => { const f = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); };
+  const effBg = el => { for (let n = el; n; n = n.parentElement) { const c = rgb(getComputedStyle(n).backgroundColor); if ((c.length < 4 ? 1 : c[3]) > 0.99) return c; } return [255, 255, 255]; };
+  const contrast = (fg, bg) => { const a = lum(rgb(fg)), b = lum(bg); return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05); };
+  for (const id of stripIds) {
+    const strip = document.getElementById(id), s = getComputedStyle(strip);
+    if (s.boxShadow !== 'none') bad.push(`#${id} còn box-shadow: ${s.boxShadow}`);
+    if (s.backgroundColor === 'rgb(255, 255, 255)') bad.push(`#${id} nền trắng thuần, cần nền nhẹ lùi sau hero`);
+    for (const cell of strip.querySelectorAll('[data-stale="true"]')) if (getComputedStyle(cell).backgroundColor !== 'rgb(255, 250, 235)') bad.push(`#${id} ô cũ mất nền vàng: ${getComputedStyle(cell).backgroundColor}`);
+  }
+  const sel = x => [...document.querySelectorAll(`${screenSel} ${x}`)];
+  const zero = sel('button.ss-metric[data-zero="true"]'), change = sel('button.ss-metric[data-zero="false"]:not([data-alert="true"])'), alert = sel('button.ss-metric[data-alert="true"]'), source = sel('div.ss-metric');
+  if (!zero.length) bad.push('không có ô số 0 để kiểm');
+  if (!change.length) bad.push('không có ô thay đổi > 0 để kiểm');
+  if (needAlert && !alert.length) bad.push('không có ô cảnh báo để kiểm');
+  if (!source.length) bad.push('không có ô nguồn để kiểm');
+  const name = el => `"${el.querySelector('span').textContent.trim()}"`;
+  for (const el of zero) {
+    const s = getComputedStyle(el), num = getComputedStyle(el.querySelector('strong')), label = getComputedStyle(el.querySelector('span')), bg = effBg(el);
+    if (s.boxShadow !== 'none') bad.push(`ô 0 ${name(el)} còn box-shadow`);
+    if (s.opacity !== '1' || num.opacity !== '1') bad.push(`ô 0 ${name(el)} dùng opacity ${s.opacity}/${num.opacity} (phải dùng màu xám đủ tương phản)`);
+    if (contrast(num.color, bg) < 4.5) bad.push(`ô 0 ${name(el)} số ${num.color} trên nền ${bg} tương phản ${contrast(num.color, bg).toFixed(2)} < 4.5`);
+    if (contrast(label.color, bg) < 4.5) bad.push(`ô 0 ${name(el)} nhãn ${label.color} trên nền ${bg} tương phản ${contrast(label.color, bg).toFixed(2)} < 4.5`);
+  }
+  const z = zero[0] && getComputedStyle(zero[0]), zNum = zero[0] && getComputedStyle(zero[0].querySelector('strong'));
+  for (const el of change) {
+    const s = getComputedStyle(el), num = getComputedStyle(el.querySelector('strong'));
+    if (num.color !== 'rgb(0, 95, 65)') bad.push(`ô thay đổi ${name(el)} số ${num.color}, cần #005F41`);
+    if (Number(num.fontWeight) < 600) bad.push(`ô thay đổi ${name(el)} số đậm ${num.fontWeight}, cần ≥ 600`);
+    if (z && same(s.borderTopColor, z.borderTopColor)) bad.push(`ô thay đổi ${name(el)} viền ${s.borderTopColor} trùng viền ô số 0`);
+    if (z && same(s.backgroundColor, z.backgroundColor)) bad.push(`ô thay đổi ${name(el)} nền ${s.backgroundColor} trùng nền ô số 0`);
+    if (zNum && same(num.color, zNum.color)) bad.push(`ô thay đổi ${name(el)} số cùng màu ô số 0 (${num.color})`);
+    if (contrast(num.color, effBg(el)) < 4.5) bad.push(`ô thay đổi ${name(el)} số tương phản ${contrast(num.color, effBg(el)).toFixed(2)} < 4.5`);
+    if (contrast(getComputedStyle(el.querySelector('span')).color, effBg(el)) < 4.5) bad.push(`ô thay đổi ${name(el)} nhãn tương phản thấp`);
+  }
+  for (const el of alert) if (getComputedStyle(el).backgroundColor !== 'rgb(255, 250, 235)') bad.push(`ô cảnh báo ${name(el)} mất nền vàng: ${getComputedStyle(el).backgroundColor}`);
+  for (const el of source) {
+    const s = getComputedStyle(el), num = getComputedStyle(el.querySelector('strong'));
+    if (s.boxShadow !== 'none') bad.push(`ô nguồn ${name(el)} còn box-shadow`);
+    if (s.backgroundColor !== 'rgb(255, 255, 255)') bad.push(`ô nguồn ${name(el)} nền ${s.backgroundColor}, cần trung tính (trắng)`);
+    if (num.color === 'rgb(0, 95, 65)') bad.push(`ô nguồn ${name(el)} số xanh thương hiệu, cần trung tính`);
+  }
+  return bad;
+}, { screenSel, stripIds, needAlert });
+
+// Lưới không rơi ô lẻ: mỗi nhóm ô (.as-cards) và mỗi dải (.as-strip) không có hàng chỉ một ô khi nhóm có từ 2 ô; nhóm SKU 4 ô nằm một hàng khi `oneRow`.
+const layoutAudit = (page, screenSel, stripIds, oneRow) => page.evaluate(({ screenSel, stripIds, oneRow }) => {
+  const bad = [], rows = nodes => { const map = new Map(); for (const n of nodes) { const k = Math.round(n.getBoundingClientRect().top); map.set(k, (map.get(k) || 0) + 1); } return map; };
+  const lone = (label, nodes) => { if (nodes.length > 1) for (const [top, count] of rows(nodes)) if (count === 1) bad.push(`${label}: ô lẻ một mình một hàng (top ${top})`); };
+  const groups = [...document.querySelectorAll(`${screenSel} .as-cards`)];
+  groups.forEach((g, i) => lone(`nhóm ô ${i + 1}`, [...g.children])); // mọi khổ ≥ 1024: nhóm 4 ô không còn 3 + 1 (≥ 1200 px xếp 2 × 2)
+  if (oneRow && rows([...groups[0].children]).size !== 1) bad.push(`nhóm SKU ${groups[0].children.length} ô không nằm một hàng (${[...rows([...groups[0].children])].map(([top, n]) => `${n} ô ở top ${top}`).join('; ')})`);
+  for (const id of stripIds) {
+    const strip = document.getElementById(id), box = strip.getBoundingClientRect();
+    lone(`#${id}`, [...strip.children]);
+    for (const c of strip.children) if (c.getBoundingClientRect().right > box.right + 1) bad.push(`#${id}: ô tràn khỏi dải`);
+    const rowRight = new Map(); for (const c of strip.children) { const r = c.getBoundingClientRect(), k = Math.round(r.top); rowRight.set(k, Math.max(rowRight.get(k) || 0, r.right)); }
+    for (const [top, right] of rowRight) if (box.right - right > 3) bad.push(`#${id}: hàng top ${top} chưa phủ hết dải, còn trống ${Math.round(box.right - right)}px`);
+  }
+  return bad;
+}, { screenSel, stripIds, oneRow });
+
 (async () => {
   const browser = await chromium.launch({ channel: 'chrome', headless: true });
   try {
@@ -117,6 +216,7 @@ const cells = async page => (await page.locator('#ss-change-body tr').evaluateAl
       for (const phrase of ['Extension đọc phiên Inside', 'Edge Function đối chiếu', 'Không tự xóa SKU', 'Chọn một lượt để xem', 'Bấm “Kiểm tra']) assert.equal(screenText.includes(phrase), false, `đã bỏ câu "${phrase}"`);
       assert.equal(await page.locator('.ss-hero p, .ss-note').count(), 0);
       assert.equal((await page.locator('#ss-change-note').innerText()).trim(), '');
+      if (width === 1280) assert.deepEqual(await heroAudit(page, '#sku-sync-screen', HERO_SPECS), [], 'khuôn hero (thanh lệnh gọn một hàng, nút .src-read)');
 
       // Đồng bộ tự động (17/10/2026): dải trạng thái đọc auto-config, nút Tạm dừng gửi set.enabled=false rồi đổi chữ; lịch sử có chip Tự động · máy và Chờ Admin
       const autoBodies = []; page.on('request', request => { if (request.url().includes('/functions/v1/sku-sync')) { const body = JSON.parse(request.postData() || '{}'); if (body.action === 'auto-config') autoBodies.push(body); } });
@@ -163,8 +263,21 @@ const cells = async page => (await page.locator('#ss-change-body tr').evaluateAl
       // Đối chiếu toàn bộ (14/10/2026): thẻ mốc toàn bộ cảnh báo khi chưa chạy; nút riêng gửi mode full; ô Thiếu trên Inside; cảnh báo giảm so với mốc
       assert.equal(await page.locator('#ss-strip-full').getAttribute('data-stale'), 'true');
       assert.match(await page.locator('#ss-last-full-rel').innerText(), /^Chưa chạy, nên đối chiếu toàn bộ$/);
+      // Đang đọc: nút vừa bấm có data-busy="true", nhãn "Đang đọc…", icon đổi sang mũi tên vòng xoay; nút kia chỉ khoá, giữ nhãn
+      const idleMask = await page.locator('#sku-sync-full').evaluate(b => getComputedStyle(b, '::before').maskImage);
+      let release; hold = new Promise(resolve => { release = resolve; });
       await page.locator('#sku-sync-full').click();
+      await page.waitForFunction(() => document.getElementById('sku-sync-full').dataset.busy === 'true');
+      assert.equal((await page.locator('#sku-sync-full').innerText()).trim(), 'Đang đọc…');
+      assert.equal(await page.locator('#sku-sync-full').evaluate(b => getComputedStyle(b, '::before').maskImage !== 'none' && getComputedStyle(b, '::before').animationName !== 'none'), true, 'icon vòng xoay khi đang đọc');
+      assert.notEqual(await page.locator('#sku-sync-full').evaluate(b => getComputedStyle(b, '::before').maskImage), idleMask, 'icon khác lúc rảnh');
+      assert.equal(await page.locator('#sku-sync-preview').isDisabled(), true);
+      assert.notEqual(await page.locator('#sku-sync-preview').getAttribute('data-busy'), 'true');
+      assert.equal((await page.locator('#sku-sync-preview').innerText()).trim(), 'Đọc Inside');
+      release(); hold = null;
       await page.waitForFunction(() => /Đối chiếu xong/.test(document.getElementById('sku-sync-status').textContent));
+      assert.notEqual(await page.locator('#sku-sync-full').getAttribute('data-busy'), 'true');
+      assert.equal((await page.locator('#sku-sync-full').innerText()).trim(), 'Toàn bộ', 'đọc xong trả nhãn cũ');
       assert.equal(calls.includes('preview:full'), true, 'Edge nhận mode full');
       assert.match(await page.locator('#sku-sync-status').innerText(), /Có 7 cảnh báo\. Tổng SKU nguồn giảm 3% so với mốc 100\./);
       assert.equal((await page.locator('#ss-sku-missing').innerText()).trim(), '1');
@@ -189,6 +302,8 @@ const cells = async page => (await page.locator('#ss-change-body tr').evaluateAl
       }
 
       assert.equal(await dlg(page).evaluate(node => node.open), false, 'xem trước xong không tự mở popup');
+      if (width === 1280) assert.deepEqual(await belowHeroAudit(page, '#sku-sync-screen', ['ss-strip', 'ss-auto-strip'], true), [], 'dưới hero: dải phẳng, ô số liệu phân tầng (0 xám phẳng, thay đổi xanh, cảnh báo vàng, nguồn trung tính)');
+      if (width === 1280) assert.deepEqual(await layoutAudit(page, '#sku-sync-screen', ['ss-strip', 'ss-auto-strip'], false), [], '1280 px: dải không rơi ô lẻ');
       assert.equal(await page.locator('#ss-apply').getAttribute('data-count'), '3', 'nút Cập nhật ghi số thay đổi');
       assert.equal(await page.locator('[data-change-kind="combo-added"]').getAttribute('data-zero'), 'true');
       await page.locator('[data-change-kind="combo-added"]').click(); await page.waitForTimeout(150);
@@ -202,7 +317,9 @@ const cells = async page => (await page.locator('#ss-change-body tr').evaluateAl
       // Thẻ chia 3 cụm có tiêu đề, mọi thẻ có icon
       assert.deepEqual(await page.locator('.as-group > h3').evaluateAll(nodes => nodes.map(n => n.textContent.trim())), ['SKU · 3 thay đổi', 'Combo', 'Cảnh báo · 6'], 'tiêu đề cụm ghi tổng (review 16/10)');
       assert.equal(await page.locator('#sku-sync-status').getAttribute('data-tone'), 'warn', 'dòng kết luận tông vàng khi có cảnh báo');
-      assert.equal((await page.locator('#ss-apply').innerText()).trim(), 'Cập nhật 3 thay đổi', 'nhãn nút ghi số thay đổi');
+      assert.equal((await page.locator('#ss-apply').innerText()).trim(), 'Cập nhật', 'nhãn nút cố định; số thay đổi nằm ở huy hiệu (17/10/2026)');
+      assert.equal(await page.locator('#ss-apply').getAttribute('data-count'), '3');
+      assert.equal(await page.locator('#ss-apply').evaluate(b => getComputedStyle(b, '::after').content), '"3"', 'huy hiệu ::after ghi số thay đổi');
       assert.equal(await page.locator('.as-group .ss-metric > span svg').count(), 11, 'mỗi thẻ có icon');
       assert.equal((await page.locator('#ss-last-done').innerText()).trim() !== '—', true, 'dải lần đồng bộ gần nhất có dữ liệu');
       // Tìm không phân biệt dấu + xuất Excel
@@ -268,7 +385,7 @@ const cells = async page => (await page.locator('#ss-change-body tr').evaluateAl
       await page.locator('#ss-history tr[data-run="run-auto"]').click();
       await page.locator('#ss-hist-dialog').waitFor({ state: 'hidden' });
       await page.waitForFunction(() => /Giữ lại \(tự động\)/.test(document.getElementById('sku-sync-status').textContent));
-      assert.equal((await page.locator('#sku-sync-status').innerText()).trim(), 'Giữ lại (tự động): 21 SKU rời nhóm đồng bộ (ngưỡng 20). Lượt này không cập nhật được; bấm Đối chiếu toàn bộ để có bản mới.');
+      assert.equal((await page.locator('#sku-sync-status').innerText()).trim(), 'Giữ lại (tự động): 21 SKU rời nhóm đồng bộ (ngưỡng 20). Lượt này không cập nhật được; bấm Toàn bộ để có bản mới.');
       assert.equal(await page.locator('#sku-sync-status').getAttribute('data-tone'), 'warn');
       assert.equal(await page.locator('#ss-apply').isDisabled(), true, 'lượt held không cập nhật được');
 
@@ -276,6 +393,26 @@ const cells = async page => (await page.locator('#ss-change-body tr').evaluateAl
       assert.deepEqual(errors, []);
       await context.close();
       console.log(`PASS ${width}px: menu icon SVG, không câu hướng dẫn, tiêu đề bảng theo nhóm, ô cảnh báo, preview hết hạn, không tràn ngang/lỗi`);
+    }
+    // 1024 → 1440 px (Admin chỉ xét máy tính; 1024 hẹp nhất còn thanh trái 264): hero vẫn một hàng; sau khi đọc có kết quả: dải phẳng, ô số liệu phân tầng,
+    // ≤ 1199 px nhóm SKU 4 ô nằm một hàng và không có ô lẻ (trước khối #hero-standard: ô thứ 4 rơi xuống hàng riêng).
+    for (const width of [1024, 1100, 1199, 1440]) {
+      const context = await browser.newContext({ viewport: { width, height: 800 } });
+      await context.addInitScript(key => sessionStorage.setItem(key, JSON.stringify({ access_token: 'test-admin-token', refresh_token: 'test-refresh-token' })), SESSION_KEY);
+      await context.addInitScript(fakeExtension);
+      const page = await context.newPage();
+      await mockRoutes(page);
+      await page.goto(BASE + '#admin/sku-sync');
+      await page.locator('#sku-sync-screen').waitFor({ state: 'visible' });
+      await page.locator('#ss-history tr[data-run]').first().waitFor({ state: 'attached' });
+      assert.deepEqual(await heroAudit(page, '#sku-sync-screen', HERO_SPECS), [], `hero ${width} px một hàng`);
+      await page.locator('#sku-sync-preview').click();
+      await page.waitForFunction(() => /cảnh báo/.test(document.getElementById('sku-sync-status').textContent));
+      assert.deepEqual(await belowHeroAudit(page, '#sku-sync-screen', ['ss-strip', 'ss-auto-strip'], true), [], `${width} px dưới hero: dải phẳng, ô số liệu phân tầng`);
+      assert.deepEqual(await layoutAudit(page, '#sku-sync-screen', ['ss-strip', 'ss-auto-strip'], width <= 1199), [], `${width} px: nhóm SKU một hàng (≤ 1199), dải không ô lẻ`);
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, 'không tràn ngang');
+      await context.close();
+      console.log(`PASS ${width}px: hero một hàng, dải phẳng, ô số liệu phân tầng, ${width <= 1199 ? 'nhóm SKU 4 ô một hàng, ' : ''}dải không ô lẻ, không tràn ngang`);
     }
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

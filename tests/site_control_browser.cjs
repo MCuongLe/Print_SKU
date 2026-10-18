@@ -44,10 +44,11 @@ const FIXTURE = {
 // Extension giả chạy trong trang: ghi mọi lệnh vào window.__extCalls; options.fail = { LOẠI_LỆNH: "thông báo lỗi" }, options.noWarehouse = true.
 const mockExtension = ({ fixture, options }) => {
   window.__extCalls = [];
-  addEventListener("message", event => {
+  addEventListener("message", async event => {
     const r = event.data;
     if (!r || r.source !== "PRINT_SKU_APP") return;
     window.__extCalls.push({ type: r.type, payload: r.payload });
+    if (window.__hold && r.type === "GET_SKU_COUNT_WAREHOUSES") await window.__hold; // giữ phản hồi để chặn được pha "đang đọc"
     const reply = (ok, data, error) => postMessage({ source: "HASAKI_INSIDE_CONNECTOR", requestId: r.requestId, ok, data, error }, location.origin);
     const p = r.payload || {};
     if (options.fail?.[r.type]) return reply(false, undefined, { code: "MOCK", message: options.fail[r.type] });
@@ -87,13 +88,41 @@ const open = async (browser, { width = 1280, admin = true, options = {} } = {}) 
   return { context, page, errors, supabase };
 };
 
+// Nút đọc nguồn một kiểu .src-read (17/10/2026, khối #hero-standard): lớp, nhãn, icon mask ở ::before (không còn svg trong nút), cùng màu/cỡ/bo với nút đọc ở màn đồng bộ. Trả danh sách điểm lệch (rỗng = đạt).
+const srcReadAudit = (page, specs, width) => page.evaluate(async ({ specs, width }) => {
+  const mobile = width <= 800, ctl = mobile ? 48 : 52, bad = [];
+  for (const spec of specs) {
+    const b = document.getElementById(spec.id);
+    if (!b) { bad.push(`#${spec.id} không có`); continue; }
+    await Promise.all(b.getAnimations().filter(a => a instanceof CSSTransition).map(a => a.finished.catch(() => {}))); // chờ chuyển màu .15s xong mới đo
+    const s = getComputedStyle(b), before = getComputedStyle(b, "::before"), mask = before.maskImage || before.webkitMaskImage, text = b.innerText.trim(), h = parseFloat(s.height), w = parseFloat(s.width), all = spec.classes.includes("src-read--all");
+    for (const cls of spec.classes) if (!b.classList.contains(cls)) bad.push(`#${spec.id} thiếu lớp ${cls}`);
+    if (b.classList.contains("ss-primary")) bad.push(`#${spec.id} còn lớp ss-primary`);
+    if (text !== spec.text) bad.push(`#${spec.id} chữ "${text}", cần "${spec.text}"`);
+    if (spec.title !== undefined && b.title !== spec.title) bad.push(`#${spec.id} title "${b.title}", cần "${spec.title}"`);
+    if (spec.aria && b.getAttribute("aria-label") !== spec.aria) bad.push(`#${spec.id} aria-label "${b.getAttribute("aria-label")}", cần "${spec.aria}"`);
+    if (!mask || mask === "none" || before.content === "none") bad.push(`#${spec.id}::before không có icon mask`);
+    if (b.querySelector("svg")) bad.push(`#${spec.id} còn svg trong nút (icon phải là mask ::before)`);
+    if (Math.abs(h - ctl) > 1) bad.push(`#${spec.id} cao ${h}px, cần ${ctl}px`);
+    if (spec.classes.includes("src-read--icon") && Math.abs(w - ctl) > 1) bad.push(`#${spec.id} rộng ${w}px, nút chỉ icon cần vuông ${ctl}px`);
+    if (s.fontSize !== "16px" || s.fontWeight !== "600") bad.push(`#${spec.id} chữ ${s.fontSize}/${s.fontWeight}, cần 16px/600`);
+    if (s.color !== "rgb(0, 95, 65)") bad.push(`#${spec.id} màu chữ ${s.color}, cần #005F41`);
+    if (s.backgroundColor !== (all ? "rgb(255, 255, 255)" : "rgb(230, 243, 238)")) bad.push(`#${spec.id} nền ${s.backgroundColor}`);
+    if (s.borderTopColor !== "rgb(95, 174, 146)") bad.push(`#${spec.id} viền ${s.borderTopColor}`);
+    const r = Math.min(parseFloat(s.borderTopLeftRadius), h / 2);
+    if (mobile ? Math.abs(r - 12) > 1 : r < h / 2 - 1) bad.push(`#${spec.id} bo ${s.borderTopLeftRadius}`);
+  }
+  return bad;
+}, { specs, width });
+
 (async () => {
   const browser = await chromium.launch({ channel: "chrome", headless: true });
   try {
     // ---- 1) Người xem (chưa đăng nhập Admin): không có công cụ, không gọi Extension ----
     {
       const { context, page, errors } = await open(browser, { admin: false });
-      assert.equal(await page.locator("#sc-admin-tools").isHidden(), true, "người xem không có nút Đối chiếu");
+      assert.equal(await page.locator("#sc-admin-tools").isHidden(), true, "người xem không có nút đọc WMS");
+      assert.equal(await page.locator("#site-control-screen .ss-hero").evaluate(h => h.getClientRects().length), 0, "1280px: người xem không thấy hero (không còn thẻ trắng rỗng)");
       assert.equal(await page.locator("#sc-admin").getAttribute("aria-pressed"), "false");
       assert.equal(await page.locator("#sc-total").innerText(), "—");
       assert.equal((await page.evaluate(() => window.__extCalls.filter(c => c.type !== "PING"))).length, 0, "không đọc WMS hay app khi chưa là Admin");
@@ -111,8 +140,27 @@ const open = async (browser, { width = 1280, admin = true, options = {} } = {}) 
       assert.deepEqual(await page.evaluate(() => [...document.querySelectorAll("button.ss-metric[data-sc-open]")].map(b => b.dataset.zero)), ["true", "true", "true", "true"]);
       await page.locator('button.ss-metric[data-sc-open="stock"]').first().click();
       assert.equal(await page.locator("#sc-list-dialog").evaluate(d => d.open), false, "chưa có kết quả thì ô không mở popup");
+      // Khuôn nút đọc một kiểu (17/10/2026): .src-read, nhãn "Đọc WMS" (title nêu phạm vi), icon mask; máy tính: trạng thái Extension bên trái nút trên một hàng; điện thoại: nút rộng hết hero, cột đảo như cũ
+      assert.deepEqual(await srcReadAudit(page, [{ id: "sc-run", classes: ["src-read"], text: "Đọc WMS", title: "Đọc WMS và app xây dựng" }], width), [], `${width}px: nút đọc WMS một kiểu`);
+      const layout = await page.evaluate(() => {
+        const hero = document.querySelector("#site-control-screen .ss-hero"), s = getComputedStyle(hero), box = hero.getBoundingClientRect(), c = document.getElementById("sc-connection").getBoundingClientRect(), b = document.getElementById("sc-run").getBoundingClientRect();
+        return { inner: box.width - parseFloat(s.paddingLeft) - parseFloat(s.paddingRight) - parseFloat(s.borderLeftWidth) - parseFloat(s.borderRightWidth), runW: b.width, rowGap: Math.abs((c.top + c.height / 2) - (b.top + b.height / 2)), connRight: c.right, runLeft: b.left, runBottom: b.bottom, connTop: c.top };
+      });
+      if (width === 1280) { assert.ok(layout.connRight <= layout.runLeft + 1, "trạng thái Extension bên trái nút đọc"); assert.ok(layout.rowGap <= 4, `cùng một hàng (lệch ${layout.rowGap}px)`); }
+      else { assert.ok(Math.abs(layout.runW - layout.inner) <= 2, `điện thoại: nút rộng hết hero (${layout.runW} / ${layout.inner})`); assert.ok(layout.runBottom <= layout.connTop, "điện thoại: nút trên, trạng thái Extension dưới (cột đảo)"); }
+      // Đang đọc: giữ phản hồi Extension — data-busy, nhãn "Đang đọc…", icon đổi sang vòng xoay (động); đọc xong trả "Đọc WMS"
+      const idleMask = await page.locator("#sc-run").evaluate(b => getComputedStyle(b, "::before").maskImage);
+      await page.evaluate(() => { window.__hold = new Promise(resolve => { window.__release = resolve; }); });
       await page.locator("#sc-run").click();
+      await page.waitForFunction(() => document.getElementById("sc-run").dataset.busy === "true");
+      assert.equal((await page.locator("#sc-run").innerText()).trim(), "Đang đọc…");
+      assert.equal(await page.locator("#sc-run").isDisabled(), true, "đang đọc: nút khoá");
+      assert.equal(await page.locator("#sc-run").evaluate(b => getComputedStyle(b, "::before").animationName !== "none"), true, "icon vòng xoay khi đang đọc");
+      assert.notEqual(await page.locator("#sc-run").evaluate(b => getComputedStyle(b, "::before").maskImage), idleMask, "icon đổi khác lúc rảnh");
+      await page.evaluate(() => { window.__release(); window.__hold = null; });
       await page.waitForFunction(() => document.getElementById("sc-total").textContent === "4");
+      await page.waitForFunction(() => document.getElementById("sc-run").dataset.busy !== "true");
+      assert.equal((await page.locator("#sc-run").innerText()).trim(), "Đọc WMS", "đọc xong trả nhãn cũ");
       assert.match(await page.locator("#sc-status").innerText(), /Đã đối chiếu 4 SKU tại OFFICE - 130 AP CHANH - MTG/);
       assert.equal(await page.locator("#sc-list-dialog").evaluate(d => d.open), false, "đối chiếu xong không tự mở popup");
       assert.equal(await page.locator("#site-control-screen .ia-content > .ss-panel").count(), 0, "không còn bảng nằm sẵn trên màn");

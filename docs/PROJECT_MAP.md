@@ -1,4 +1,4 @@
-# BẢN ĐỒ DỰ ÁN Print_SKU (cập nhật 17/10/2026)
+# BẢN ĐỒ DỰ ÁN Print_SKU (cập nhật 18/10/2026)
 
 Đọc tệp này trước khi trinh sát. Mọi vị trí ghi theo **id khối** hoặc **chuỗi neo** (grep được), không ghi số dòng vì `index.html` đổi liên tục. Khi thêm hoặc đổi module, lead cập nhật tệp này trong cùng commit.
 
@@ -10,7 +10,7 @@ Người dùng ─ index.html ─ postMessage ─ app-bridge.js ─ background.j
                  │                                           │ (content script trong tab Inside / WMS / app xây dựng)
                  ├─ REST/RPC (publishable key, JWT Admin) ──► Supabase ◄── Edge: sku-sync · group-uid-sync · print-assistant · sku-vision
                  └─ print_enqueue (khoá máy tb-khoa) ──────► print_jobs ──► agent may-kho-01 ──► máy in
-Extension nền (0.10.0): chrome.alarms 30 phút → auto-sync.js → Edge (phiên Admin riêng trong chrome.storage.local)
+Extension nền (từ 0.10.0): chrome.alarms 30 phút → auto-sync.js → Edge (phiên Admin riêng trong chrome.storage.local)
 ```
 
 ## 2. index.html — khối theo id (`<style id>` / `<script id>` / `<section id>`)
@@ -19,7 +19,7 @@ Trang chủ: nhóm `section.barcode-home__group[data-tone]` (print / ops / check
 | Module (ô trang chủ) | Hash | Khối chính | Ghi chú |
 |---|---|---|---|
 | IN TEM SKU `#barcode-print-sku` | `#worker` | bundle React (dòng minified duy nhất chứa `window.PrintSkuWorker`), `sku-queue-ui-script`, `sku-it-script` (nút Phiếu IT + cổng `window.HasakiSkuIt`), `sku-combo-picker`, `print-sku-scan-ui`, `wms-print-button` | Chỉ sửa bundle bằng neo ngắn |
-| IN TEM GROUP UID `#barcode-print-uid` | `#group-uid` | `uid-wms-script` (Lấy từ WMS), `uid-po-script` (Gán theo PO), `#uid-screen` | Extension `GET_GROUP_UID_PAGE`, PO |
+| IN TEM GROUP UID `#barcode-print-uid` | `#group-uid` | `uid-wms-script` (nút Đọc WMS `#uid-wms-open`), `uid-po-script` (tab Gán WMS), `#uid-screen` | Extension `GET_GROUP_UID_NEW_PAGE`, `GET_PACKING_LIST_PAGE` |
 | MÃ VỊ TRÍ `#barcode-location` | `#location` | `#location-screen`, `location-theme` | enqueue type `location` |
 | TRỢ LÝ IN `#home-assistant` (ẩn ≤ 800px) | `#assistant` | `print-assistant-style/-script`, `#assistant-screen` (id `pa-*`) | Edge `print-assistant`; dùng `window.HasakiSkuIt` |
 | CẮT GROUP UID `#barcode-cut-uid` | `#cut-group-uid` | `#cut-group-uid-screen`, `cut-sample-core`, `cut-sample-script` (Theo PO, pop-up `cs-pop`), `cut-adj-reconcile` (tab Đối chiếu ADJ, STATES gồm `qc`) | RPC `cut_group_uid_*`, `cut_group_uid_reconcile` |
@@ -29,18 +29,18 @@ Trang chủ: nhóm `section.barcode-home__group[data-tone]` (print / ops / check
 | THEO DÕI XẢ VẢI `#barcode-xa-vai` | `#xa-vai` | `#xa-vai-screen` | bảng `xa_vai_log` |
 | CẤP VẢI `#barcode-cap-vai` | `#cap-vai` | `cap-vai-script`, `#cap-vai-screen` | migration `fabric_issue_*` |
 | KIỂM TRA ĐẦU VÀO `#barcode-inspection` | `#inspection` | `#ins-screen` | |
-| RỦI RO LƯU TRỮ `#barcode-storage-risk` | `#storage-risk` | `storage-risk-script` (Hàng chưa lên kệ), `storage-risk-temp-script` (UID tạm, `window.HasakiStorageRiskTemp`) | Một nút đọc WMS cho cả hai tab |
+| RỦI RO LƯU TRỮ `#barcode-storage-risk` | `#storage-risk` | `storage-risk-script` (Hàng chưa lên kệ), `storage-risk-temp-script` (UID tạm, `window.HasakiStorageRiskTemp`) | Hai nút `sr-run` / `srt-run`, một luồng đọc (sr-run = Kiểm kê + UID tạm) |
 | KIỂM KÊ SKU `#barcode-inventory-audit` | `#inventory-audit` | `inventory-audit-script`, `#inventory-audit-screen` | migration `sku_count_v1` |
 | KIỂM SOÁT CÔNG TRÌNH `#barcode-site-control` | `#site-control` | `site-control-script` | app xây dựng qua `hcm-bridge.js`, không lưu Supabase |
 | QUẢN TRỊ `#barcode-admin` | `#admin/...` | `admin-sync-shared` (UI.createList, chip, dialog), `sku-sync-admin-script` (`#sku-sync-screen`), `group-uid-sync-admin-script` (`#group-uid-sync-screen`), `print-jobs-admin-script` (`#print-jobs-screen`, tab Thiết bị `print-devices-tab-script`), `admin-command-header-b-script` | Chỉ xét desktop |
 
-Dùng chung: `PrintSkuQueue` (đầu tệp: `enqueue`, `jobStatus`, `queueStatus`, `deviceKey` = `localStorage["tb-khoa"]`, `publishableKey`), `PrintSkuBridgeReady` + `extensionRequest` (8 helper, test `bridge_ready` đếm), `PrintSkuAdminAccess` (peekToken/getToken/logout) và `PrintSkuAdminAuth` (accessToken, gia hạn khi 401/403, phiên ở `sessionStorage["print-sku-admin-session-v1"]`), `print-device-script` (ô KÍCH HOẠT MÁY), chuẩn giao diện `type-standard` / `icon-standard` / `ui-standard` / `app-nav-theme`.
+Dùng chung: `PrintSkuQueue` (đầu tệp: `enqueue`, `jobStatus`, `queueStatus`, `deviceKey` = `localStorage["tb-khoa"]`, `publishableKey`), `PrintSkuBridgeReady` + `extensionRequest` (8 helper, test `bridge_ready` đếm), `PrintSkuAdminAccess` (peekToken/getToken/logout) và `PrintSkuAdminAuth` (accessToken, gia hạn khi 401/403, phiên ở `sessionStorage["print-sku-admin-session-v1"]`), `print-device-script` (ô KÍCH HOẠT MÁY), chuẩn giao diện `type-standard` / `icon-standard` / `ui-standard` / `app-nav-theme`. Khuôn hero `.ss-hero` (8 màn: thanh lệnh gọn, h2 sr-only, không Admin thì ẩn) + nút đọc nguồn `.src-read` (12 nút "Đọc WMS"/"Đọc Inside"/"Toàn bộ", `data-busy` = vòng xoay + "Đang đọc…", nhãn trong `.src-read__t`) nằm trong `<style id="hero-standard">` cuối tệp; test `src_read_style_browser`.
 
 ## 3. Extension `extension/inside-po-connector` (manifest 0.10.1)
 - `app-bridge.js`: content script trên trang Print SKU; allow-list lệnh; `window.postMessage` ↔ `chrome.runtime.sendMessage`.
 - `background.js`: service worker; kiểm `APP_URL_PATTERN`; `WMS_READ_TYPES`; tìm tab Inside/WMS; nhánh `AUTO_*` cho trang Options; alarms `auto-sync` / `auto-keepalive`; `chrome.storage.local.setAccessLevel(TRUSTED_CONTEXTS)`.
 - `inside-bridge.js`: `GET_PO` (danh sách + trang chi tiết PO; trả `lastModified` = cột LastModified, `deliveryDate`, `items[{sku, orderedQty}]`), `GET_SKU_SYNC_DATA` ({full}|{cutoff}), đọc 7 nhóm hàng `SKU_CATEGORIES`, Combo theo Modified; `sku-sync-core.js` (cutoffKey, comboStampsOrdered).
-- `wms-bridge.js`: `GET_GROUP_UID_PAGE` (group-uid-infos, size ≤ 500, from/to epoch ms), `GET_INTERNAL_TRANSFER` (phiếu IT), đọc Import/Export, history, QC; token từ `localStorage["auth_store"]`; `group-uid-sync-core.js` (`normalizeRow` có `qc_status`), `inventory-audit-core.js`.
+- `wms-bridge.js`: `GET_GROUP_UID_PAGE` (group-uid-infos, size ≤ 500, from/to epoch ms), `GET_INTERNAL_TRANSFER` (phiếu IT), đọc Import/Export, history (QC không có lệnh riêng: `qc_status` đi theo `GET_GROUP_UID_PAGE`); token từ `localStorage["auth_store"]`; `group-uid-sync-core.js` (`normalizeRow` có `qc_status`), `inventory-audit-core.js`.
 - `hcm-bridge.js`: app xây dựng (Cloudflare Access + Bearer) cho Kiểm soát công trình.
 - Nền tự động: `auto-sync.js` (`decide`, `tick`, `runNow`, lease/cooldown, held), `group-uid-snapshot-core.js` (đọc WMS chống lệch, chép từ `readWmsSnapshot` của web), `supabase-session.js` (đăng nhập/gia hạn phiên Admin), `supabase-config.js`, `options.html/js` (Phiên Admin, Tên máy, Trạng thái, Lượt gần nhất, Nhật ký).
 - Nâng phiên bản: đổi `manifest.json` + `tests/inside_po_connector.cjs` + `tests/sku_sync_extension.cjs` + README Extension; sau Reload phải tải lại tab Inside/WMS.
@@ -72,4 +72,4 @@ Chạy migration: `python scripts/apply_supabase_sql.py <tệp> [--dry-run] [--a
 - Đội agent: `docs/DOI_AGENT.md` (bản 2: năm luật, ba hạng việc), hồ sơ `.claude/agents/{trinh-sat,thuc-thi-logic,thuc-thi-khuon,kiem-thu}.md`.
 
 ## 6. Quy ước luôn đúng
-Trả lời tiếng Việt có dấu; icon Lucide + nhãn ngắn, không câu hướng dẫn kiểu AI; Admin chỉ xét desktop; `index.html` CRLF trên đĩa, sửa nhỏ nhất bằng neo; dữ liệu test giả (`9000000xx`, `1028260000000xxx`, `100000001`); không commit `.env`, khoá, SKU thật; commit/push chỉ khi người dùng nói; xong việc phải nhắc commit. Quyết định đã chốt nằm trong `RULES.md` (không vào git) — grep trước khi đề xuất lại.
+Trả lời tiếng Việt có dấu; icon Lucide + nhãn ngắn, không câu hướng dẫn kiểu AI; Admin chỉ xét desktop; `index.html` LF trên đĩa (giữ kiểu xuống dòng từng tệp: `background.js`, vài test là CRLF), sửa nhỏ nhất bằng neo; dữ liệu test giả (`9000000xx`, `1028260000000xxx`, `100000001`); không commit `.env`, khoá, SKU thật; commit/push chỉ khi người dùng nói; xong việc phải nhắc commit. Quyết định đã chốt nằm trong `RULES.md` (không vào git) — grep trước khi đề xuất lại.

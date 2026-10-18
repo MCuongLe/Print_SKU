@@ -3,7 +3,7 @@
 // Chạy với python -m http.server 8000; Extension, WMS và Supabase đều giả lập, không ghi dữ liệu thật.
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
 const assert = require("node:assert/strict");
-const BASE = "http://127.0.0.1:8000/", SESSION_KEY = "print-sku-admin-session-v1", DAY = 86400000, NOW = Date.now();
+const BASE = process.env.BASE || "http://127.0.0.1:8000/", SESSION_KEY = "print-sku-admin-session-v1", DAY = 86400000, NOW = Date.now();
 const fmt = n => n.toLocaleString("vi-VN");
 
 // --- Dữ liệu WMS giả: 620 lượt (2 trang) + 2 lượt cũ (60 và 200 ngày) ---
@@ -27,10 +27,11 @@ const days = n => r => Date.parse(r.moved_at) >= since(n);
 
 const fakeExtension = (data, version) => {
   window.__extCalls = []; window.__wms = data; window.__fail = false;
-  addEventListener("message", event => {
+  addEventListener("message", async event => {
     const request = event.data;
     if (!request || request.source !== "PRINT_SKU_APP") return;
     window.__extCalls.push({ type: request.type, payload: request.payload });
+    if (window.__hold && request.type === "GET_GROUP_UID_MOVES_PAGE") await window.__hold; // giữ phản hồi để chặn được pha "đang đọc"
     const reply = (ok, body, error) => postMessage({ source: "HASAKI_INSIDE_CONNECTOR", requestId: request.requestId, ok, data: body, error }, location.origin);
     if (request.type === "PING" || request.type === "PING_WMS") return reply(true, { version });
     if (request.type === "GET_GROUP_UID_MOVES_PAGE") {
@@ -117,6 +118,33 @@ async function open(browser, width, { admin }) {
   return { context, page, errors };
 }
 
+// Nút đọc nguồn một kiểu .src-read (17/10/2026, khối #hero-standard): lớp, nhãn, icon mask ở ::before (không còn svg trong nút), cùng màu/cỡ/bo với nút đọc ở màn đồng bộ. Trả danh sách điểm lệch (rỗng = đạt).
+const srcReadAudit = (page, specs, width) => page.evaluate(async ({ specs, width }) => {
+  const mobile = width <= 800, ctl = mobile ? 48 : 52, bad = [];
+  for (const spec of specs) {
+    const b = document.getElementById(spec.id);
+    if (!b) { bad.push(`#${spec.id} không có`); continue; }
+    await Promise.all(b.getAnimations().filter(a => a instanceof CSSTransition).map(a => a.finished.catch(() => {}))); // chờ chuyển màu .15s xong mới đo
+    const s = getComputedStyle(b), before = getComputedStyle(b, "::before"), mask = before.maskImage || before.webkitMaskImage, text = b.innerText.trim(), h = parseFloat(s.height), w = parseFloat(s.width), all = spec.classes.includes("src-read--all");
+    for (const cls of spec.classes) if (!b.classList.contains(cls)) bad.push(`#${spec.id} thiếu lớp ${cls}`);
+    if (b.classList.contains("ss-primary")) bad.push(`#${spec.id} còn lớp ss-primary`);
+    if (text !== spec.text) bad.push(`#${spec.id} chữ "${text}", cần "${spec.text}"`);
+    if (spec.title !== undefined && b.title !== spec.title) bad.push(`#${spec.id} title "${b.title}", cần "${spec.title}"`);
+    if (spec.aria && b.getAttribute("aria-label") !== spec.aria) bad.push(`#${spec.id} aria-label "${b.getAttribute("aria-label")}", cần "${spec.aria}"`);
+    if (!mask || mask === "none" || before.content === "none") bad.push(`#${spec.id}::before không có icon mask`);
+    if (b.querySelector("svg")) bad.push(`#${spec.id} còn svg trong nút (icon phải là mask ::before)`);
+    if (Math.abs(h - ctl) > 1) bad.push(`#${spec.id} cao ${h}px, cần ${ctl}px`);
+    if (spec.classes.includes("src-read--icon") && Math.abs(w - ctl) > 1) bad.push(`#${spec.id} rộng ${w}px, nút chỉ icon cần vuông ${ctl}px`);
+    if (s.fontSize !== "16px" || s.fontWeight !== "600") bad.push(`#${spec.id} chữ ${s.fontSize}/${s.fontWeight}, cần 16px/600`);
+    if (s.color !== "rgb(0, 95, 65)") bad.push(`#${spec.id} màu chữ ${s.color}, cần #005F41`);
+    if (s.backgroundColor !== (all ? "rgb(255, 255, 255)" : "rgb(230, 243, 238)")) bad.push(`#${spec.id} nền ${s.backgroundColor}`);
+    if (s.borderTopColor !== "rgb(95, 174, 146)") bad.push(`#${spec.id} viền ${s.borderTopColor}`);
+    const r = Math.min(parseFloat(s.borderTopLeftRadius), h / 2);
+    if (mobile ? Math.abs(r - 12) > 1 : r < h / 2 - 1) bad.push(`#${spec.id} bo ${s.borderTopLeftRadius}`);
+  }
+  return bad;
+}, { specs, width });
+
 (async () => {
   const browser = await chromium.launch({ channel: "chrome", headless: true });
   try {
@@ -138,7 +166,8 @@ async function open(browser, width, { admin }) {
       assert.equal(await page.locator("#uh-total").innerText(), `${fmt(total)} lượt`, "dải thông tin: tổng số lượt đã lưu");
       assert.match(await page.locator("#uh-read-at").innerText(), /^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}$/, "dải thông tin: giờ đọc WMS gần nhất");
       assert.equal(await page.locator("#uh-wh-count").innerText(), "3");
-      assert.equal(await page.locator("#uh-admin-tools").isVisible(), false, "người không phải Admin không thấy nút Đọc từ WMS");
+      assert.equal(await page.locator("#uh-admin-tools").isVisible(), false, "người không phải Admin không thấy nút Đọc WMS");
+      assert.equal(await page.locator("#uidhist-screen .ss-hero").evaluate(h => h.getClientRects().length), 0, `${width}px: người xem không thấy hero (không còn thẻ trắng rỗng)`);
       assert.equal(await adminState(page), "false");
       assert.equal(await page.locator("#uh-dialog").isVisible(), false, "danh sách nằm trong popup, chưa mở");
       assert.deepEqual(await page.locator("#uh-chips .as-tag").allInnerTexts(), ["30 ngày"], "chip bộ lọc mặc định");
@@ -308,10 +337,36 @@ async function open(browser, width, { admin }) {
       await page.waitForFunction(() => document.getElementById("uh-read-at").textContent === "Chưa có dữ liệu");
       assert.equal(await page.locator("#uh-count").innerText(), "0");
       assert.equal(await page.locator('[data-uh-kind="all"]').getAttribute("data-zero"), "true", "thẻ rỗng mờ đi, bấm không mở popup");
-      assert.equal(await page.locator("#uh-admin-tools").isVisible(), true, "Admin thấy nút Đọc từ WMS");
+      assert.equal(await page.locator("#uh-admin-tools").isVisible(), true, "Admin thấy nút Đọc WMS");
       assert.equal(await adminState(page), "true");
+      // Khuôn nút đọc một kiểu (17/10/2026): uh-run = .src-read "Đọc WMS"; uh-full = .src-read--all chỉ icon (title nêu phạm vi); cùng một hàng; điện thoại: nút Đọc WMS giãn hết phần còn lại của hero
+      assert.deepEqual(await srcReadAudit(page, [
+        { id: "uh-run", classes: ["src-read"], text: "Đọc WMS" },
+        { id: "uh-full", classes: ["src-read", "src-read--all", "src-read--icon"], text: "", aria: "Đọc lại 365 ngày", title: "Đọc lại 365 ngày" },
+      ], width), [], `${width}px: nút đọc WMS một kiểu`);
+      const layout = await page.evaluate(() => {
+        const hero = document.querySelector("#uidhist-screen .ss-hero"), s = getComputedStyle(hero), box = hero.getBoundingClientRect(), r = document.getElementById("uh-run").getBoundingClientRect(), f = document.getElementById("uh-full").getBoundingClientRect();
+        return { innerRight: box.right - parseFloat(s.paddingRight) - parseFloat(s.borderRightWidth), runW: r.width, sameRow: Math.abs(r.top - f.top) <= 1, fullRight: f.right, runRight: r.right, fullLeft: f.left };
+      });
+      assert.equal(layout.sameRow, true, "hai nút đọc cùng một hàng");
+      assert.ok(layout.runRight <= layout.fullLeft, "Đọc WMS đứng trước nút icon");
+      if (width === 375) { assert.ok(Math.abs(layout.fullRight - layout.innerRight) <= 2, "điện thoại: cụm nút chạm mép phải hero"); assert.ok(layout.runW > 200, `điện thoại: nút Đọc WMS giãn (${layout.runW}px)`); }
+      // Đang đọc: giữ phản hồi Extension — nút vừa bấm data-busy + "Đang đọc…" (nút icon: chỉ đổi icon vòng xoay); nút kia chỉ khoá, không data-busy; đọc xong trả "Đọc WMS"
+      const idleMask = await page.locator("#uh-run").evaluate(b => getComputedStyle(b, "::before").maskImage), idleFullMask = await page.locator("#uh-full").evaluate(b => getComputedStyle(b, "::before").maskImage);
+      await page.evaluate(() => { window.__hold = new Promise(resolve => { window.__release = resolve; }); });
       await page.locator("#uh-run").click();
+      await page.waitForFunction(() => document.getElementById("uh-run").dataset.busy === "true");
+      assert.equal((await page.locator("#uh-run").innerText()).trim(), "Đang đọc…");
+      assert.equal(await page.locator("#uh-run").isDisabled(), true, "đang đọc: nút khoá");
+      assert.equal(await page.locator("#uh-run").evaluate(b => getComputedStyle(b, "::before").animationName !== "none"), true, "icon vòng xoay khi đang đọc");
+      assert.notEqual(await page.locator("#uh-run").evaluate(b => getComputedStyle(b, "::before").maskImage), idleMask, "icon đổi khác lúc rảnh");
+      assert.equal(await page.locator("#uh-full").isDisabled(), true);
+      assert.notEqual(await page.locator("#uh-full").getAttribute("data-busy"), "true", "nút icon chỉ khoá khi nút kia đang đọc");
+      assert.equal(await page.locator("#uh-full").evaluate(b => getComputedStyle(b, "::before").maskImage), idleFullMask, "nút icon giữ icon history");
+      await page.evaluate(() => { window.__release(); window.__hold = null; });
       await page.waitForFunction(() => /^Đã đọc/.test(document.getElementById("uh-message").textContent));
+      await page.waitForFunction(() => document.getElementById("uh-run").dataset.busy !== "true");
+      assert.equal((await page.locator("#uh-run").innerText()).trim(), "Đọc WMS", "đọc xong trả nhãn cũ");
       assert.equal(db.size, wms.length, "nạp đủ mọi lượt của WMS");
       assert.match(await page.locator("#uh-message").innerText(), new RegExp(`Đã đọc ${fmt(wms.length)} lượt chuyển: ${fmt(wms.length)} mới, 0 cập nhật`));
       let calls = await page.evaluate(() => window.__extCalls.filter(c => c.type === "GET_GROUP_UID_MOVES_PAGE").map(c => c.payload));
@@ -340,8 +395,18 @@ async function open(browser, width, { admin }) {
 
       await page.evaluate(() => { window.__fail = true; window.__extCalls.splice(0); });
       const marks = rpcCalls.filter(c => c.name === "group_uid_moves_mark_read").length;
+      // Nút icon "Đọc lại 365 ngày" đang đọc: chính nó mang data-busy (icon vòng xoay), nút Đọc WMS chỉ khoá và giữ nhãn
+      await page.evaluate(() => { window.__hold = new Promise(resolve => { window.__release = resolve; }); });
       await page.locator("#uh-full").click();
+      await page.waitForFunction(() => document.getElementById("uh-full").dataset.busy === "true");
+      assert.equal(await page.locator("#uh-full").evaluate(b => getComputedStyle(b, "::before").animationName !== "none"), true, "nút icon: vòng xoay khi đang đọc");
+      assert.notEqual(await page.locator("#uh-full").evaluate(b => getComputedStyle(b, "::before").maskImage), idleFullMask, "nút icon: icon đổi khác lúc rảnh");
+      assert.equal(await page.locator("#uh-run").isDisabled(), true);
+      assert.notEqual(await page.locator("#uh-run").getAttribute("data-busy"), "true", "nút Đọc WMS chỉ khoá khi nút icon đang đọc");
+      assert.equal((await page.locator("#uh-run").innerText()).trim(), "Đọc WMS", "nút Đọc WMS giữ nhãn");
+      await page.evaluate(() => { window.__release(); window.__hold = null; });
       await page.waitForFunction(() => document.getElementById("uh-message").dataset.tone === "error");
+      assert.notEqual(await page.locator("#uh-full").getAttribute("data-busy"), "true", "xong thì bỏ trạng thái đọc");
       assert.match(await page.locator("#uh-message").innerText(), /không còn quyền/);
       assert.equal(rpcCalls.filter(c => c.name === "group_uid_moves_mark_read").length, marks, "lần đọc lỗi không được ghi mốc");
       assert.equal(await page.locator("#uh-run").isEnabled(), true, "lỗi xong vẫn đọc lại được");

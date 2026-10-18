@@ -37,12 +37,13 @@ const NAMES = { "422000001": "Vải A đỏ/g", "422000002": "Vải B xanh/mm" }
 
 const fakeExtension = ({ pool, asns }) => {
   window.__extCalls = []; window.__extFail = "";
-  addEventListener("message", event => {
+  addEventListener("message", async event => {
     const request = event.data;
     if (!request || request.source !== "PRINT_SKU_APP") return;
     window.__extCalls.push({ type: request.type, payload: request.payload });
     const reply = (ok, body, error) => postMessage({ source: "HASAKI_INSIDE_CONNECTOR", requestId: request.requestId, ok, data: body, error }, location.origin);
     if (request.type === "PING" || request.type === "PING_WMS") return window.__extFail === "ping" ? reply(false, null, { message: "Không thấy tab WMS" }) : reply(true, { version: "0.9.2" });
+    if (window.__hold && request.type === "GET_PO_GROUP_UID_PAGE") await window.__hold; // giữ phản hồi để chặn được pha "đang đọc"
     if (window.__extFail === "read") return reply(false, null, { message: "Phiên WMS hết hạn; hãy đăng nhập lại WMS" });
     const { purchaseOrder, page, size } = request.payload || {};
     if (request.type === "GET_PO_ASN_PAGE") {
@@ -215,6 +216,32 @@ const scan = async (page, code, title) => {
 const chipsText = page => page.locator('#cs-totals [data-role="cut"], #cs-totals [data-role="qc"], #cs-totals [data-role="store"]').allInnerTexts().then(parts => parts.join(" ").replace(/\s+/g, " ").trim());
 const overflowX = page => page.evaluate(() => { const s = document.getElementById("cut-group-uid-screen"); return s.scrollWidth - s.clientWidth; });
 
+// Nút đọc nguồn một kiểu .src-read (17/10/2026, khối #hero-standard): lớp, nhãn, icon mask ở ::before (không còn svg / act-icon--load), cùng màu / cỡ / bo với nút đọc ở các màn khác.
+// spec: id, text, mate? (id nút/ô cùng hàng phải cao bằng). Trả danh sách điểm lệch (rỗng = đạt).
+const srcReadAudit = (page, specs, width) => page.evaluate(async ({ specs, width }) => {
+  const mobile = width <= 800, ctl = mobile ? 48 : 52, bad = [];
+  for (const spec of specs) {
+    const b = document.getElementById(spec.id);
+    if (!b) { bad.push(`#${spec.id} không có`); continue; }
+    await Promise.all(b.getAnimations().filter(a => a instanceof CSSTransition).map(a => a.finished.catch(() => {}))); // chờ chuyển màu .15s xong mới đo
+    const s = getComputedStyle(b), before = getComputedStyle(b, "::before"), mask = before.maskImage || before.webkitMaskImage, text = b.innerText.trim(), h = parseFloat(s.height);
+    if (!b.classList.contains("src-read")) bad.push(`#${spec.id} thiếu lớp src-read`);
+    if (b.classList.contains("act-icon--load")) bad.push(`#${spec.id} còn lớp act-icon--load`);
+    if (text !== spec.text) bad.push(`#${spec.id} chữ "${text}", cần "${spec.text}"`);
+    if (!mask || mask === "none" || before.content === "none") bad.push(`#${spec.id}::before không có icon mask`);
+    if (b.querySelector("svg")) bad.push(`#${spec.id} còn svg trong nút (icon phải là mask ::before)`);
+    if (Math.abs(h - ctl) > 1) bad.push(`#${spec.id} cao ${h}px, cần ${ctl}px`);
+    if (spec.mate) { const m = document.getElementById(spec.mate); if (!m || Math.abs(m.getBoundingClientRect().height - h) > 1) bad.push(`#${spec.id} cao ${h}px, #${spec.mate} cao ${m && m.getBoundingClientRect().height}px (cùng hàng phải bằng nhau)`); }
+    if (s.fontSize !== "16px" || s.fontWeight !== "600") bad.push(`#${spec.id} chữ ${s.fontSize}/${s.fontWeight}, cần 16px/600`);
+    if (s.color !== "rgb(0, 95, 65)") bad.push(`#${spec.id} màu chữ ${s.color}, cần #005F41`);
+    if (s.backgroundColor !== "rgb(230, 243, 238)") bad.push(`#${spec.id} nền ${s.backgroundColor}`);
+    if (s.borderTopColor !== "rgb(95, 174, 146)") bad.push(`#${spec.id} viền ${s.borderTopColor}`);
+    const r = Math.min(parseFloat(s.borderTopLeftRadius), h / 2);
+    if (mobile ? Math.abs(r - 12) > 1 : r < h / 2 - 1) bad.push(`#${spec.id} bo ${s.borderTopLeftRadius}`);
+  }
+  return bad;
+}, { specs, width });
+
 async function desktop(browser) {
   const server = makeServer(), { page, errors } = await open(browser, server, 1280);
 
@@ -255,6 +282,8 @@ async function desktop(browser) {
   // ---- Admin: đọc PO ----
   assert.equal(await page.locator("#cs-manage").isVisible(), true, "Admin thấy bánh răng quản lý phiên");
   await openPlans(page);
+  // Khuôn nút đọc một kiểu (17/10/2026): "Đọc WMS" + icon mask, cao bằng ô Số PO cùng hàng
+  assert.deepEqual(await srcReadAudit(page, [{ id: "cs-po-go", text: "Đọc WMS", mate: "cs-po" }], 1280), [], "nút Đọc WMS một kiểu");
   await page.locator("#cs-po").fill("abc");
   await page.locator("#cs-po-go").click();
   assert.match(await msg(page), /Nhập đúng số PO/);
@@ -268,10 +297,24 @@ async function desktop(browser) {
   await page.evaluate(() => { window.__extFail = "read"; });
   await page.locator("#cs-po-go").click();
   await page.waitForFunction(() => /Phiên WMS hết hạn/.test(document.getElementById("cs-message").textContent));
+  assert.equal((await page.locator("#cs-po-go").innerText()).trim(), "Đọc WMS", "lỗi xong trả nhãn, nút dùng lại được");
+  assert.equal(await page.locator("#cs-po-go").getAttribute("data-busy"), "false");
   await page.evaluate(() => { window.__extFail = ""; window.__extCalls.length = 0; });
 
+  // Giữ phản hồi Extension để chặn pha "đang đọc": data-busy, "Đang đọc…", khoá nút, icon xoay; đọc xong trả "Đọc WMS"
+  const idleMask = await page.locator("#cs-po-go").evaluate(b => getComputedStyle(b, "::before").maskImage);
+  await page.evaluate(() => { window.__hold = new Promise(resolve => { window.__release = resolve; }); });
   await page.locator("#cs-po-go").click();
+  await page.waitForFunction(() => document.getElementById("cs-po-go").dataset.busy === "true");
+  assert.equal((await page.locator("#cs-po-go").innerText()).trim(), "Đang đọc…");
+  assert.equal(await page.locator("#cs-po-go").isDisabled(), true, "đang đọc: nút khoá");
+  assert.equal(await page.locator("#cs-po-go").evaluate(b => getComputedStyle(b, "::before").animationName !== "none"), true, "icon vòng xoay khi đang đọc");
+  assert.notEqual(await page.locator("#cs-po-go").evaluate(b => getComputedStyle(b, "::before").maskImage), idleMask, "icon đổi khác lúc rảnh");
+  await page.evaluate(() => { window.__release(); window.__hold = null; });
   await page.waitForSelector("#cs-preview:not([hidden]) #cs-create");
+  await page.waitForFunction(() => document.getElementById("cs-po-go").dataset.busy !== "true");
+  assert.equal((await page.locator("#cs-po-go").innerText()).trim(), "Đọc WMS", "đọc xong trả nhãn");
+  assert.equal(await page.locator("#cs-po-go").isDisabled(), false);
   const preview = (await page.locator("#cs-preview").innerText()).replace(/\s+/g, " ");
   assert.match(preview, /19 UID trong PO/);
   assert.match(preview, /16 UID dùng được/);
@@ -556,6 +599,7 @@ async function mobile(browser) {
   await shot(page, "m-scan-po");
   // Tạo phiên rồi quét trên màn hẹp.
   await openPlans(page);
+  assert.deepEqual(await srcReadAudit(page, [{ id: "cs-po-go", text: "Đọc WMS" }], 375), [], "375px: nút Đọc WMS một kiểu");
   await page.locator("#cs-po").fill(PO);
   await page.locator("#cs-po-go").click();
   await page.waitForSelector("#cs-create:not([disabled])");

@@ -28,8 +28,8 @@ Sau khi repository được cập nhật, mở `chrome://extensions` và bấm *
 
 1. Mở tab Inside và đăng nhập.
 2. Vào `#admin/sku-sync` trong Print SKU.
-3. Bấm **Kiểm tra dữ liệu Inside** để xem trước thay đổi.
-4. Xem danh sách SKU và quan hệ Normal–Combo, sau đó bấm **Cập nhật Supabase**.
+3. Bấm **Đọc Inside** để xem trước thay đổi (**Toàn bộ** để đối chiếu toàn bộ).
+4. Xem danh sách SKU và quan hệ Normal–Combo, sau đó bấm **Cập nhật**.
 
 Extension chỉ đọc Inside. Mọi ghi dữ liệu chạy trong Edge Function `sku-sync`, yêu cầu phiên Supabase có vai trò `admin` và luôn xác minh lại sau khi upsert.
 
@@ -65,14 +65,14 @@ Cập nhật lịch sử Group UID (chỉ Admin):
 
 1. Mở tab WMS và đăng nhập.
 2. Vào trang chủ Print SKU, mở ô **LỊCH SỬ GROUP UID** và bấm biểu tượng khiên để đăng nhập Admin.
-3. Bấm **Đọc từ WMS**: lần đầu lấy 365 ngày, các lần sau chỉ lấy phần mới (lùi 30 phút). Nút đồng hồ bên cạnh đọc lại toàn bộ 365 ngày.
+3. Bấm **Đọc WMS**: lần đầu lấy 365 ngày, các lần sau chỉ lấy phần mới (lùi 30 phút). Nút **Đọc lại 365 ngày** (biểu tượng đồng hồ) bên cạnh đọc lại toàn bộ 365 ngày.
 4. Mọi nhân viên mở cùng ô đó (không cần đăng nhập) để lọc SKU, kho, vị trí và khoảng ngày.
 
 Dashboard kiểm kê SKU dành cho Admin:
 
 1. Mở tab WMS và đăng nhập bằng tài khoản có quyền trên cả Mastige và Hasaki Garment.
 2. Vào `#admin/kiem-ke` trong Print SKU.
-3. Bấm **Đọc và đối chiếu WMS**.
+3. Bấm **Đọc WMS**.
 4. Extension tự đọc `WH - MATERIAL - MTG` dưới công ty Mastige và chuyển header `company-ids` sang công ty Garment để đọc `WH - MATERIAL - GARMENT`; không thay đổi công ty đang chọn trên giao diện WMS.
 5. Dashboard đối chiếu tồn kho `In-BIN`, `qty > 0` với kết quả kiểm kê SKU có trạng thái `APPROVED`, rồi chia nhóm chưa kiểm kê, trong 30 ngày và quá 30 ngày.
 
@@ -81,22 +81,22 @@ Nếu tài khoản thiếu quyền ở một công ty, dashboard vẫn hiện ph
 Kiểm soát công trình dành cho Admin:
 
 1. Mở hai tab: WMS (đăng nhập tài khoản có quyền kho `OFFICE - 130 AP CHANH - MTG`) và app Hasaki Construction Management (đã đăng nhập tài khoản app).
-2. Vào ô **KIỂM SOÁT CÔNG TRÌNH** trên trang chủ Print SKU, bấm biểu tượng khiên để đăng nhập Admin rồi bấm **Đối chiếu**.
+2. Vào ô **KIỂM SOÁT CÔNG TRÌNH** trên trang chủ Print SKU, bấm biểu tượng khiên để đăng nhập Admin rồi bấm **Đọc WMS**.
 3. Extension đọc tồn và dòng nhập đã nạp của app xây dựng, tồn theo vị trí (`GET_SKU_COUNT_INVENTORY_PAGE`) và nhập xuất (`GET_STOCK_IMPORT_EXPORT_PAGE`) của kho WMS, từ ngày dòng nhập đầu tiên của app tới hiện tại. Kết quả chỉ nằm trong trình duyệt, không lưu lên Supabase.
 
 Đồng bộ Group UID dành cho Admin:
 
 1. Mở tab WMS và đăng nhập.
 2. Vào `#admin/group-uid-sync` trong Print SKU.
-3. Chọn **Kiểm tra thay đổi** hoặc **Đối chiếu toàn bộ**.
-4. Xem báo cáo rồi bấm **Cập nhật Supabase**.
+3. Chọn **Đọc WMS** hoặc **Toàn bộ**.
+4. Xem báo cáo rồi bấm **Cập nhật**.
 
 Luồng thay đổi đọc chồng lại 30 phút. Luồng toàn bộ vẫn được giữ để tìm UID thiếu hoặc sai lệch. Access token WMS không rời extension.
 
 Đối chiếu UID đã cắt:
 
 1. Đăng nhập WMS bằng tài khoản có quyền xem **Group UID → History**.
-2. Mở `#cut-group-uid`, chọn **4 · Đối chiếu** và bấm **Đọc từ WMS**.
+2. Mở `#cut-group-uid`, chọn **4 · Đối chiếu** và bấm **Đọc WMS**.
 3. Extension chỉ đọc kho `warehouse_id=1177` (**WH - MATERIAL - MTG**), nhận diện dòng Cut theo Note và gửi dữ liệu đã chuẩn hóa về ứng dụng.
 4. Ứng dụng nạp vào Supabase bằng phiên Admin, lùi mốc lần trước 30 phút và loại trùng theo Group UID + thời gian Cut.
 

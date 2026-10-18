@@ -5,6 +5,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const zlib = require('node:zlib');
+const BASE = process.env.BASE || 'http://127.0.0.1:8000/';
 
 // ---- Dung file zip/xlsx gia lap (khong phu thuoc thu vien) ----
 const crcTable = (() => { const table = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; table[n] = c >>> 0; } return table; })();
@@ -87,6 +88,32 @@ const syntheticItems = () => [
 const EXPECTED_STATES = { 'UID-A': 'ok', 'UID-B': 'forgot', 'UID-C': 'wrong', 'UID-D': 'ok', 'UID-E': 'multi', 'UID-F': 'missing', 'UID-G': 'wait', 'UID-H': 'pending', 'UID-I': 'pending', 'UID-J': 'ok', 'UID-K': 'ok', 'UID-L': 'qc' };
 const STATE_ORDER = ['wrong', 'missing', 'multi', 'forgot', 'done', 'qc', 'pending', 'wait', 'ok'];
 
+// Nút đọc nguồn một kiểu .src-read (17/10/2026, khối #hero-standard): lớp, nhãn, icon mask ở ::before (không còn svg / act-icon--load), cùng màu / cỡ / bo với nút đọc ở các màn khác.
+// spec: id, text, mate? (id nút/ô cùng hàng phải cao bằng). Trả danh sách điểm lệch (rỗng = đạt).
+const srcReadAudit = (page, specs, width) => page.evaluate(async ({ specs, width }) => {
+  const mobile = width <= 800, ctl = mobile ? 48 : 52, bad = [];
+  for (const spec of specs) {
+    const b = document.getElementById(spec.id);
+    if (!b) { bad.push(`#${spec.id} không có`); continue; }
+    await Promise.all(b.getAnimations().filter(a => a instanceof CSSTransition).map(a => a.finished.catch(() => {}))); // chờ chuyển màu .15s xong mới đo
+    const s = getComputedStyle(b), before = getComputedStyle(b, '::before'), mask = before.maskImage || before.webkitMaskImage, text = b.innerText.trim(), h = parseFloat(s.height);
+    if (!b.classList.contains('src-read')) bad.push(`#${spec.id} thiếu lớp src-read`);
+    if (b.classList.contains('act-icon--load')) bad.push(`#${spec.id} còn lớp act-icon--load`);
+    if (text !== spec.text) bad.push(`#${spec.id} chữ "${text}", cần "${spec.text}"`);
+    if (!mask || mask === 'none' || before.content === 'none') bad.push(`#${spec.id}::before không có icon mask`);
+    if (b.querySelector('svg')) bad.push(`#${spec.id} còn svg trong nút (icon phải là mask ::before)`);
+    if (Math.abs(h - ctl) > 1) bad.push(`#${spec.id} cao ${h}px, cần ${ctl}px`);
+    if (spec.mate) { const m = document.getElementById(spec.mate); if (!m || Math.abs(m.getBoundingClientRect().height - h) > 1) bad.push(`#${spec.id} cao ${h}px, #${spec.mate} cao ${m && m.getBoundingClientRect().height}px (cùng hàng phải bằng nhau)`); }
+    if (s.fontSize !== '16px' || s.fontWeight !== '600') bad.push(`#${spec.id} chữ ${s.fontSize}/${s.fontWeight}, cần 16px/600`);
+    if (s.color !== 'rgb(0, 95, 65)') bad.push(`#${spec.id} màu chữ ${s.color}, cần #005F41`);
+    if (s.backgroundColor !== 'rgb(230, 243, 238)') bad.push(`#${spec.id} nền ${s.backgroundColor}`);
+    if (s.borderTopColor !== 'rgb(95, 174, 146)') bad.push(`#${spec.id} viền ${s.borderTopColor}`);
+    const r = Math.min(parseFloat(s.borderTopLeftRadius), h / 2);
+    if (mobile ? Math.abs(r - 12) > 1 : r < h / 2 - 1) bad.push(`#${spec.id} bo ${s.borderTopLeftRadius}`);
+  }
+  return bad;
+}, { specs, width });
+
 (async () => {
   const browser = await chromium.launch({ channel: 'chrome', headless: true });
   try {
@@ -101,7 +128,7 @@ const STATE_ORDER = ['wrong', 'missing', 'multi', 'forgot', 'done', 'qc', 'pendi
       // Mo phong server theo dung quy tac SQL: chi tinh Cut co gio >= gio quet cat tren app.
       await page.route('**/*', async route => {
         const request = route.request(), url = request.url();
-        if (url.startsWith('http://127.0.0.1:8000/')) return route.continue();
+        if (url.startsWith(BASE)) return route.continue();
         const rpc = url.split('/rpc/')[1] || '';
         const body = request.postDataJSON?.() || {};
         let result = { ok: true, data: {} };
@@ -151,13 +178,16 @@ const STATE_ORDER = ['wrong', 'missing', 'multi', 'forgot', 'done', 'qc', 'pendi
       const closeAdj = async () => { if (await page.locator('#cut-adj-dialog').evaluate(d => d.open)) { await page.keyboard.press('Escape'); await page.locator('#cut-adj-dialog').waitFor({ state: 'hidden' }); } };
       const tile = async st => { await closeAdj(); await page.locator(`.cut-adj-kpi[data-st="${st}"]`).click(); await page.locator('#cut-adj-dialog').waitFor({ state: 'visible' }); };
 
-      await page.goto('http://127.0.0.1:8000/#home');
+      await page.goto(`${BASE}#home`);
       await page.locator('#barcode-cut-uid').click();
       await page.locator('#cut-group-uid-screen').waitFor({ state: 'visible' });
       await page.locator('#cut-tab-adj').click();
       await page.waitForFunction(() => document.querySelector('#cut-adj-cov').textContent.includes('Chưa nạp'));
       assert.equal(await page.locator('#cut-adj-issues').textContent(), '0');
       assert.match(await page.locator('#cut-adj-rows').innerText(), /Chưa nạp dữ liệu WMS/);
+      // Khuôn nút đọc một kiểu (17/10/2026): "Đọc WMS" + icon mask, cao bằng nút Nạp ZIP/XLSX cùng hàng (điện thoại: bo 12 như mọi nút ≤ 800 px); 6 nút tải lại khác vẫn dùng act-icon--load
+      assert.deepEqual(await srcReadAudit(page, [{ id: 'cut-adj-wms', text: 'Đọc WMS', ...(width > 800 ? { mate: 'cut-adj-upload' } : {}) }], width), [], `${width}px: nút Đọc WMS một kiểu`);
+      assert.equal(await page.locator('#cut-adj-reload').evaluate(b => b.classList.contains('act-icon--load')), true, 'nút Tải lại (icon refresh) giữ nguyên');
 
       // File sai: khong phai zip, thieu cot, dong Cut loi -> bao loi, khong goi RPC nap.
       const upload = (name, buffer) => page.locator('#cut-adj-file').setInputFiles({ name, mimeType: 'application/zip', buffer });
@@ -203,10 +233,11 @@ const STATE_ORDER = ['wrong', 'missing', 'multi', 'forgot', 'done', 'qc', 'pendi
       // (totalPages = 1). repeat: API bỏ qua tham số page, trang nào cũng trả trang 1.
       await page.evaluate(source => {
         window.__wms = { source, noTotal: false, repeat: false, pages: [] };
-        window.addEventListener('message', event => {
+        window.addEventListener('message', async event => {
           const req = event.data;
           if (event.source !== window || req?.source !== 'PRINT_SKU_APP') return;
           if (req.type === 'PING' || req.type === 'PING_WMS') window.postMessage({ source: 'HASAKI_INSIDE_CONNECTOR', requestId: req.requestId, ok: true, data: { version: '0.5.0' } }, location.origin);
+          if (window.__hold && req.type === 'GET_GROUP_UID_HISTORY_PAGE') await window.__hold; // giữ phản hồi để chặn được pha "đang đọc"
           if (req.type === 'GET_GROUP_UID_HISTORY_PAGE') {
             const wms = window.__wms, size = req.payload.size || 500, pageNo = req.payload.page || 1, at = wms.repeat ? 1 : pageNo;
             wms.pages.push(pageNo);
@@ -224,8 +255,20 @@ const STATE_ORDER = ['wrong', 'missing', 'multi', 'forgot', 'done', 'qc', 'pendi
           }
         });
       }, apiRows);
+      // Giữ phản hồi Extension để chặn pha "đang đọc": data-busy, "Đang đọc…", khoá nút, icon xoay; đọc xong trả "Đọc WMS"
+      const idleMask = await page.locator('#cut-adj-wms').evaluate(b => getComputedStyle(b, '::before').maskImage);
+      await page.evaluate(() => { window.__hold = new Promise(resolve => { window.__release = resolve; }); });
       await page.locator('#cut-adj-wms').click();
+      await page.waitForFunction(() => document.getElementById('cut-adj-wms').dataset.busy === 'true');
+      assert.equal((await page.locator('#cut-adj-wms').innerText()).trim(), 'Đang đọc…');
+      assert.equal(await page.locator('#cut-adj-wms').isDisabled(), true, 'đang đọc: nút khoá');
+      assert.equal(await page.locator('#cut-adj-wms').evaluate(b => getComputedStyle(b, '::before').animationName !== 'none'), true, 'icon vòng xoay khi đang đọc');
+      assert.notEqual(await page.locator('#cut-adj-wms').evaluate(b => getComputedStyle(b, '::before').maskImage), idleMask, 'icon đổi khác lúc rảnh');
+      await page.evaluate(() => { window.__release(); window.__hold = null; });
       await page.waitForFunction(() => document.querySelector('#cut-message').textContent.startsWith('Đã đọc'));
+      await page.waitForFunction(() => document.getElementById('cut-adj-wms').dataset.busy !== 'true');
+      assert.equal((await page.locator('#cut-adj-wms').innerText()).trim(), 'Đọc WMS', 'đọc xong trả nhãn');
+      assert.equal(await page.locator('#cut-adj-wms').isDisabled(), false);
       assert.match(await message(), new RegExp(`Đã đọc ${HISTORY.length - 1} dòng lịch sử kho WH - MATERIAL - MTG; nạp ${CUT_ROWS} dòng Cut: 0 mới, 0 đổi, ${CUT_ROWS} giữ nguyên`));
       assert.equal(store.importCalls.length, 2);
       assert.match(store.importCalls[1].body.p_file_name, /^WMS_API_WH_MATERIAL_/);

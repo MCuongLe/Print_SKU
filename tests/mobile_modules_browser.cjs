@@ -4,7 +4,7 @@
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const assert = require('node:assert/strict');
 
-const BASE = 'http://127.0.0.1:8000/';
+const BASE = process.env.BASE || 'http://127.0.0.1:8000/';
 // 11/10/2026: bỏ Gom hàng mẫu (#sample) và Tem xả vải (#fabric-relaxation) khỏi app.
 const SCREENS = { 'group-uid': 'uid-screen', inspection: 'ins-screen', 'cut-group-uid': 'cut-group-uid-screen', 'xa-vai': 'xa-vai-screen', location: 'location-screen', 'storage-risk': 'storage-risk-screen' };
 

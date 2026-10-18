@@ -3,7 +3,7 @@
 // Tab "Gán tự động" (luồng cũ) phải còn nguyên. Chạy với python -m http.server 8000; Extension và Supabase giả lập.
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
 const assert = require("node:assert/strict");
-const BASE = "http://127.0.0.1:8000/";
+const BASE = process.env.BASE || "http://127.0.0.1:8000/";
 
 // --- Packing List giả (mỗi dòng một cuộn) ---
 const pl = (po, sku, i, extra = {}) => ({ purchase_order: po, shipment: "1001260803118522", sku, product_name: `(Combo) Vải ${sku}/kg`, quantity: 18 + (i % 5) / 10, code: `1148/8-${String(i + 1).padStart(3, "0")}`, batch_code: "1148/8", status: "Approved", delivery: "PARTIAL", ...extra });
@@ -25,12 +25,13 @@ const COMBOS = { "422513455": [{ normal_sku: "422513459", product_name: "Vải S
 
 const fakeExtension = packing => {
   window.__extCalls = []; window.__fail = false; window.__packing = packing;
-  addEventListener("message", event => {
+  addEventListener("message", async event => {
     const request = event.data;
     if (!request || request.source !== "PRINT_SKU_APP") return;
     window.__extCalls.push({ type: request.type, payload: request.payload });
     const reply = (ok, body, error) => postMessage({ source: "HASAKI_INSIDE_CONNECTOR", requestId: request.requestId, ok, data: body, error }, location.origin);
     if (request.type === "PING" || request.type === "PING_WMS") return reply(true, { version: "0.8.4" });
+    if (window.__hold && request.type === "GET_PACKING_LIST_PAGE") await window.__hold; // giữ phản hồi để chặn được pha "đang đọc"
     if (request.type === "GET_PACKING_LIST_PAGE") {
       if (window.__fail) return reply(false, null, { message: "Phiên WMS không còn quyền đọc Packing List; hãy đăng nhập lại" });
       const { purchaseOrders, page, size } = request.payload;
@@ -68,6 +69,34 @@ const packingCalls = page => page.evaluate(() => window.__extCalls.filter(c => c
 const poRows = page => page.evaluate(() => [...document.querySelectorAll("#uid-po-rows .uid-auto__row")].map(r => ({ sku: r.querySelector('[data-field="sku"]').value, qty: Number(r.querySelector('[data-field="qty"]').value), name: r.querySelector('[data-field="name"]').value })));
 const poHelp = page => page.locator("#uid-po-help").innerText();
 const run = async (page, text) => { await page.locator("#uid-po-input").fill(text); await page.locator("#uid-po-go").click(); await page.waitForFunction(() => document.getElementById("uid-po-go").dataset.busy !== "true"); };
+
+// Nút đọc nguồn một kiểu .src-read (17/10/2026, khối #hero-standard): lớp, nhãn, title, icon mask ở ::before (không còn svg trong nút), cùng màu / cỡ / bo với nút đọc ở các màn khác.
+// spec: id, text ("" = nút chỉ icon), title?, aria?, icon? (src-read--icon), size? (cao/rộng cố định), mate? (id nút/ô cùng hàng phải cao bằng). Trả danh sách điểm lệch (rỗng = đạt).
+const srcReadAudit = (page, specs, width) => page.evaluate(async ({ specs, width }) => {
+  const mobile = width <= 800, ctl = mobile ? 48 : 52, bad = [];
+  for (const spec of specs) {
+    const b = document.getElementById(spec.id);
+    if (!b) { bad.push(`#${spec.id} không có`); continue; }
+    await Promise.all(b.getAnimations().filter(a => a instanceof CSSTransition).map(a => a.finished.catch(() => {}))); // chờ chuyển màu .15s xong mới đo
+    const s = getComputedStyle(b), before = getComputedStyle(b, "::before"), mask = before.maskImage || before.webkitMaskImage, text = b.innerText.trim(), h = parseFloat(s.height), w = parseFloat(s.width), want = spec.size || ctl;
+    for (const cls of ["src-read", ...(spec.icon ? ["src-read--icon"] : [])]) if (!b.classList.contains(cls)) bad.push(`#${spec.id} thiếu lớp ${cls}`);
+    if (text !== spec.text) bad.push(`#${spec.id} chữ "${text}", cần "${spec.text}"`);
+    if (spec.title !== undefined && b.title !== spec.title) bad.push(`#${spec.id} title "${b.title}", cần "${spec.title}"`);
+    if (spec.aria && b.getAttribute("aria-label") !== spec.aria) bad.push(`#${spec.id} aria-label "${b.getAttribute("aria-label")}", cần "${spec.aria}"`);
+    if (!mask || mask === "none" || before.content === "none") bad.push(`#${spec.id}::before không có icon mask`);
+    if (b.querySelector("svg")) bad.push(`#${spec.id} còn svg trong nút (icon phải là mask ::before)`);
+    if (Math.abs(h - want) > 1) bad.push(`#${spec.id} cao ${h}px, cần ${want}px`);
+    if (spec.icon && Math.abs(w - want) > 1) bad.push(`#${spec.id} rộng ${w}px, nút chỉ icon cần vuông ${want}px`);
+    if (spec.mate) { const m = document.getElementById(spec.mate); if (!m || Math.abs(m.getBoundingClientRect().height - h) > 1) bad.push(`#${spec.id} cao ${h}px, #${spec.mate} cao ${m && m.getBoundingClientRect().height}px (cùng hàng phải bằng nhau)`); }
+    if (s.fontSize !== "16px" || s.fontWeight !== "600") bad.push(`#${spec.id} chữ ${s.fontSize}/${s.fontWeight}, cần 16px/600`);
+    if (s.color !== "rgb(0, 95, 65)") bad.push(`#${spec.id} màu chữ ${s.color}, cần #005F41`);
+    if (s.backgroundColor !== "rgb(230, 243, 238)") bad.push(`#${spec.id} nền ${s.backgroundColor}`);
+    if (s.borderTopColor !== "rgb(95, 174, 146)") bad.push(`#${spec.id} viền ${s.borderTopColor}`);
+    const r = Math.min(parseFloat(s.borderTopLeftRadius), h / 2);
+    if (mobile ? Math.abs(r - 12) > 1 : r < h / 2 - 1) bad.push(`#${spec.id} bo ${s.borderTopLeftRadius}`);
+  }
+  return bad;
+}, { specs, width });
 const addUids = (page, codes) => page.evaluate(list => window.PrintSkuUid.add(list.map(code => ({ group_uid_code: code, batch_code: null, roll_code: null }))), codes);
 const pendingIs = (page, n) => page.waitForFunction(count => document.getElementById("uid-pending-count").textContent === count, String(n));
 
@@ -82,6 +111,8 @@ async function desktop(browser) {
   const [inputBox, buttonBox] = await Promise.all([page.locator("#uid-po-input").boundingBox(), page.locator("#uid-po-go").boundingBox()]);
   assert.equal(Math.round(inputBox.y), Math.round(buttonBox.y), "ô PO và nút cùng một hàng");
   assert.ok(inputBox.height >= 44 && buttonBox.height >= 44);
+  // Khuôn nút đọc một kiểu (17/10/2026): "Đọc WMS" + icon mask (không còn svg), cao bằng ô Mã PO cùng hàng
+  assert.deepEqual(await srcReadAudit(page, [{ id: "uid-po-go", text: "Đọc WMS", title: "Đọc Packing List từ WMS", mate: "uid-po-input" }], 1280), [], "nút Đọc WMS một kiểu");
   assert.equal(await page.locator("#uid-po-input").getAttribute("placeholder"), "Mã PO");
   assert.equal(await page.locator("#uid-po-apply").isDisabled(), true, "chưa có dòng SKU thì chưa gán được");
   const tabs = await page.locator("#uid-tab-manual, #uid-tab-auto, #uid-tab-po").evaluateAll(list => list.map(e => ({ w: Math.round(e.getBoundingClientRect().width), scroll: e.scrollWidth > e.clientWidth })));
@@ -92,8 +123,19 @@ async function desktop(browser) {
   assert.match(await poHelp(page), /Chưa có mã PO hợp lệ/);
   assert.deepEqual(await packingCalls(page), []);
 
-  // PO có Packing List: đổi Combo → Normal, mỗi dòng là một cuộn
-  await run(page, PO1);
+  // PO có Packing List: đổi Combo → Normal, mỗi dòng là một cuộn. Giữ phản hồi Extension để chặn pha "đang đọc": data-busy, "Đang đọc…", khoá nút, icon xoay; đọc xong trả "Đọc WMS"
+  const idleMask = await page.locator("#uid-po-go").evaluate(b => getComputedStyle(b, "::before").maskImage);
+  await page.evaluate(() => { window.__hold = new Promise(resolve => { window.__release = resolve; }); });
+  await page.locator("#uid-po-input").fill(PO1); await page.locator("#uid-po-go").click();
+  await page.waitForFunction(() => document.getElementById("uid-po-go").dataset.busy === "true");
+  assert.equal((await page.locator("#uid-po-go").innerText()).trim(), "Đang đọc…");
+  assert.equal(await page.locator("#uid-po-go").isDisabled(), true, "đang đọc: nút khoá");
+  assert.equal(await page.locator("#uid-po-go").evaluate(b => getComputedStyle(b, "::before").animationName !== "none"), true, "icon vòng xoay khi đang đọc");
+  assert.notEqual(await page.locator("#uid-po-go").evaluate(b => getComputedStyle(b, "::before").maskImage), idleMask, "icon đổi khác lúc rảnh");
+  await page.evaluate(() => { window.__release(); window.__hold = null; });
+  await page.waitForFunction(() => document.getElementById("uid-po-go").dataset.busy !== "true");
+  assert.equal((await page.locator("#uid-po-go").innerText()).trim(), "Đọc WMS", "đọc xong trả nhãn");
+  assert.equal(await page.locator("#uid-po-go").isDisabled(), false);
   assert.deepEqual(await packingCalls(page), [{ purchaseOrders: [PO1], page: 1, size: 500 }]);
   assert.deepEqual(await poRows(page), [
     { sku: "422513459", qty: 53, name: "Vải Single Normal 422513459" },
@@ -269,7 +311,10 @@ async function narrow(browser, width) {
   assert.equal(await page.locator("#uid-tab-po").isVisible(), width > 800, width > 800 ? "máy tính bảng còn tab Gán WMS" : "điện thoại không có Extension nên ẩn tab Gán WMS");
   const tabs = await page.locator("#uid-tab-manual, #uid-tab-auto").evaluateAll(list => list.map(e => e.scrollWidth > e.clientWidth));
   assert.deepEqual(tabs, [false, false], "hai tab cũ không vỡ chữ");
-  if (width > 800) { await page.locator("#uid-tab-po").click(); assert.equal(await page.locator("#uid-map-po").isVisible(), true); }
+  if (width > 800) {
+    await page.locator("#uid-tab-po").click(); assert.equal(await page.locator("#uid-map-po").isVisible(), true);
+    assert.deepEqual(await srcReadAudit(page, [{ id: "uid-po-go", text: "Đọc WMS", title: "Đọc Packing List từ WMS", mate: "uid-po-input" }], width), [], `${width}px: nút Đọc WMS một kiểu`);
+  }
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `${width}px không tràn ngang`);
   assert.deepEqual(errors, []);
   await page.close();

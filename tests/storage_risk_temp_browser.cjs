@@ -28,10 +28,11 @@ const mockExtension = ({ options }) => {
   if (options.edge) moves[1177].push(
     { ...base, id: 7, warehouseId: 1177, sku: "900000021", productName: "Vải mẫu biên bốn/Cuộn", qty: 1, sourceCode: "1001260000000021", mappingId: "1001260000000005", createdAt: iso(now - (3 * 24 + 23) * 3600000) },
     { ...base, id: 8, warehouseId: 1177, sku: "900000022", productName: "Vải mẫu biên năm/Cuộn", qty: 1, sourceCode: "1001260000000022", mappingId: "1001260000000006", createdAt: iso(now - (2 * 24 + 23) * 3600000) });
-  addEventListener("message", event => {
+  addEventListener("message", async event => {
     const r = event.data;
     if (!r || r.source !== "PRINT_SKU_APP") return;
     window.__extCalls.push({ type: r.type, payload: r.payload });
+    if (window.__hold && r.type === "GET_SKU_COUNT_WAREHOUSES") await window.__hold; // giữ phản hồi để chặn được pha "đang đọc"
     const reply = (ok, data, error) => postMessage({ source: "HASAKI_INSIDE_CONNECTOR", requestId: r.requestId, ok, data, error }, location.origin);
     const p = r.payload || {};
     if (options.fail?.[r.type]) return reply(false, undefined, { code: "MOCK", message: options.fail[r.type] });
@@ -89,6 +90,33 @@ const skus = page => page.locator("#srt-body tr td:nth-child(3) code").allInnerT
 const metricsOf = page => page.evaluate(() => ["total", "mtg", "garment", "recent"].map(k => document.getElementById(`srt-${k}`).textContent));
 const rpcSet = rpcs => [...new Set(rpcs.filter(r => r !== "print_queue_status"))];
 
+// Nút đọc nguồn một kiểu .src-read (17/10/2026, khối #hero-standard): lớp, nhãn, icon mask ở ::before (không còn svg trong nút), cùng màu/cỡ/bo với nút đọc ở màn đồng bộ. Trả danh sách điểm lệch (rỗng = đạt).
+const srcReadAudit = (page, specs, width) => page.evaluate(async ({ specs, width }) => {
+  const mobile = width <= 800, ctl = mobile ? 48 : 52, bad = [];
+  for (const spec of specs) {
+    const b = document.getElementById(spec.id);
+    if (!b) { bad.push(`#${spec.id} không có`); continue; }
+    await Promise.all(b.getAnimations().filter(a => a instanceof CSSTransition).map(a => a.finished.catch(() => {}))); // chờ chuyển màu .15s xong mới đo
+    const s = getComputedStyle(b), before = getComputedStyle(b, "::before"), mask = before.maskImage || before.webkitMaskImage, text = b.innerText.trim(), h = parseFloat(s.height), w = parseFloat(s.width), all = spec.classes.includes("src-read--all");
+    for (const cls of spec.classes) if (!b.classList.contains(cls)) bad.push(`#${spec.id} thiếu lớp ${cls}`);
+    if (b.classList.contains("ss-primary")) bad.push(`#${spec.id} còn lớp ss-primary`);
+    if (text !== spec.text) bad.push(`#${spec.id} chữ "${text}", cần "${spec.text}"`);
+    if (spec.title !== undefined && b.title !== spec.title) bad.push(`#${spec.id} title "${b.title}", cần "${spec.title}"`);
+    if (spec.aria && b.getAttribute("aria-label") !== spec.aria) bad.push(`#${spec.id} aria-label "${b.getAttribute("aria-label")}", cần "${spec.aria}"`);
+    if (!mask || mask === "none" || before.content === "none") bad.push(`#${spec.id}::before không có icon mask`);
+    if (b.querySelector("svg")) bad.push(`#${spec.id} còn svg trong nút (icon phải là mask ::before)`);
+    if (Math.abs(h - ctl) > 1) bad.push(`#${spec.id} cao ${h}px, cần ${ctl}px`);
+    if (spec.classes.includes("src-read--icon") && Math.abs(w - ctl) > 1) bad.push(`#${spec.id} rộng ${w}px, nút chỉ icon cần vuông ${ctl}px`);
+    if (s.fontSize !== "16px" || s.fontWeight !== "600") bad.push(`#${spec.id} chữ ${s.fontSize}/${s.fontWeight}, cần 16px/600`);
+    if (s.color !== "rgb(0, 95, 65)") bad.push(`#${spec.id} màu chữ ${s.color}, cần #005F41`);
+    if (s.backgroundColor !== (all ? "rgb(255, 255, 255)" : "rgb(230, 243, 238)")) bad.push(`#${spec.id} nền ${s.backgroundColor}`);
+    if (s.borderTopColor !== "rgb(95, 174, 146)") bad.push(`#${spec.id} viền ${s.borderTopColor}`);
+    const r = Math.min(parseFloat(s.borderTopLeftRadius), h / 2);
+    if (mobile ? Math.abs(r - 12) > 1 : r < h / 2 - 1) bad.push(`#${spec.id} bo ${s.borderTopLeftRadius}`);
+  }
+  return bad;
+}, { specs, width });
+
 (async () => {
   const browser = await chromium.launch({ channel: "chrome", headless: true });
   try {
@@ -111,6 +139,7 @@ const rpcSet = rpcs => [...new Set(rpcs.filter(r => r !== "print_queue_status"))
       assert.equal(await page.evaluate(() => localStorage.getItem("sr-tab-dang-mo")), "temp", "nhớ tab theo máy");
       assert.equal(await page.locator("#srt-admin-tools").isHidden(), true, "người xem không có nút đọc WMS");
       assert.equal(await page.locator("#srt-run").isHidden(), true);
+      assert.equal(await page.locator("#storage-risk-screen .ss-hero").evaluateAll(els => els.every(h => h.getClientRects().length === 0)), true, "1280px: người xem không thấy hero ở cả hai tab (không còn thẻ trắng rỗng)");
       assert.equal(await page.locator("#srt-status").innerText(), "Chỉ Admin đọc được.");
       assert.deepEqual(await metricsOf(page), ["—", "—", "—", "—"], "người xem: dữ liệu rỗng");
       assert.match(await page.locator("#srt-body").innerText(), /Chưa có dữ liệu/);
@@ -134,6 +163,10 @@ const rpcSet = rpcs => [...new Set(rpcs.filter(r => r !== "print_queue_status"))
       await page.locator("#srt-admin-tools").waitFor({ state: "visible" });
       assert.equal(await page.locator("#srt-run").isVisible(), true);
       assert.equal(await page.locator("#srt-status").innerText(), "Chưa đọc từ WMS.");
+      // Khuôn nút đọc một kiểu (17/10/2026): .src-read, nhãn "Đọc WMS", icon mask; điện thoại: nút rộng hết hero
+      assert.deepEqual(await srcReadAudit(page, [{ id: "srt-run", classes: ["src-read"], text: "Đọc WMS" }], width), [], `${width}px: nút đọc WMS một kiểu`);
+      const layout = await page.evaluate(() => { const hero = document.querySelector("#srt-panel .ss-hero"), s = getComputedStyle(hero); return { inner: hero.getBoundingClientRect().width - parseFloat(s.paddingLeft) - parseFloat(s.paddingRight) - parseFloat(s.borderLeftWidth) - parseFloat(s.borderRightWidth), runW: document.getElementById("srt-run").getBoundingClientRect().width }; });
+      if (width === 375) assert.ok(Math.abs(layout.runW - layout.inner) <= 2, `điện thoại: nút rộng hết hero (${layout.runW} / ${layout.inner})`);
       await page.locator("#srt-run").click();
       await page.waitForFunction(() => document.getElementById("srt-total").textContent === "3");
       assert.deepEqual(await metricsOf(page), ["3", "2", "1", "1"], "tổng 3, MTG 2, GARMENT 1, trong 3 ngày 1");
@@ -307,17 +340,29 @@ const rpcSet = rpcs => [...new Set(rpcs.filter(r => r !== "print_queue_status"))
       await context.close();
     }
 
-    // ---- 10) Bấm Đọc và đồng bộ WMS ở tab UID tạm: Kiểm kê + Import/Export, hai nút cùng khoá khi chạy, không đọc UID tạm hai lần ----
+    // ---- 10) Bấm Đọc WMS ở tab UID tạm: Kiểm kê + Import/Export, hai nút cùng khoá khi chạy, không đọc UID tạm hai lần ----
     {
       const { context, page, errors, rpcs } = await open(browser, { admin: true, view: "temp" });
-      assert.equal((await page.locator("#srt-run").innerText()).trim(), "Đọc và đồng bộ WMS");
+      assert.equal((await page.locator("#srt-run").innerText()).trim(), "Đọc WMS");
       await page.evaluate(() => {
         window.__seq = [];
         new MutationObserver(() => window.__seq.push({ t: document.getElementById("srt-status").textContent, a: document.getElementById("srt-run").disabled, b: document.getElementById("sr-run").disabled }))
           .observe(document.getElementById("srt-status"), { childList: true, characterData: true, subtree: true });
       });
+      // Đang đọc: giữ phản hồi Extension — nút vừa bấm data-busy + "Đang đọc…" + icon vòng xoay; đọc xong trả "Đọc WMS"
+      const idleMask = await page.locator("#srt-run").evaluate(b => getComputedStyle(b, "::before").maskImage);
+      await page.evaluate(() => { window.__hold = new Promise(resolve => { window.__release = resolve; }); });
       await page.locator("#srt-run").click();
+      await page.waitForFunction(() => document.getElementById("srt-run").dataset.busy === "true");
+      assert.equal((await page.locator("#srt-run").innerText()).trim(), "Đang đọc…");
+      assert.equal(await page.locator("#srt-run").isDisabled(), true, "đang đọc: nút khoá");
+      assert.equal(await page.locator("#srt-run").evaluate(b => getComputedStyle(b, "::before").animationName !== "none"), true, "icon vòng xoay khi đang đọc");
+      assert.notEqual(await page.locator("#srt-run").evaluate(b => getComputedStyle(b, "::before").maskImage), idleMask, "icon đổi khác lúc rảnh");
+      assert.equal(await page.locator("#sr-run").isDisabled(), true, "nút Hàng chưa lên kệ cũng khoá (bộ đồng bộ của nó là bước đầu của lượt này nên cũng báo đang đọc)");
+      await page.evaluate(() => { window.__release(); window.__hold = null; });
       await page.waitForFunction(() => document.getElementById("srt-total").textContent === "3" && !document.getElementById("srt-run").disabled && !document.getElementById("sr-run").disabled, null, { timeout: 15000 });
+      assert.notEqual(await page.locator("#srt-run").getAttribute("data-busy"), "true");
+      assert.equal((await page.locator("#srt-run").innerText()).trim(), "Đọc WMS", "đọc xong trả nhãn cũ");
       const seq = await page.evaluate(() => window.__seq);
       const texts = seq.map(x => x.t), sync = texts.indexOf("Đang đồng bộ Hàng chưa lên kệ…"), read = texts.indexOf("Đang đọc UID tạm…");
       assert.ok(sync >= 0 && read > sync, `trạng thái lần lượt: đồng bộ Hàng chưa lên kệ rồi đọc UID tạm (${texts.join(" | ")})`);

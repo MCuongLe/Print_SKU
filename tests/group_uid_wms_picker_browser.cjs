@@ -3,7 +3,7 @@
 // Chạy với python -m http.server 8000; Extension và Supabase đều giả lập, không đụng WMS hay dữ liệu thật.
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
 const assert = require("node:assert/strict");
-const BASE = "http://127.0.0.1:8000/", DAY = 86400000, NOW = Date.now();
+const BASE = process.env.BASE || "http://127.0.0.1:8000/", DAY = 86400000, NOW = Date.now();
 
 // --- Dữ liệu WMS giả: 620 UID New (mỗi giờ một UID, 2 trang) + 2 UID cũ (40 và 90 ngày) ---
 const USERS = ["tuanlq5@hasaki.vn", "nhudty@hasaki.vn", "tamlc@hasaki.vn"];
@@ -28,12 +28,13 @@ const expect = ({ whs = [1177, 1339], from = null, to = null, by = "" } = {}) =>
 
 const fakeExtension = data => {
   window.__extCalls = []; window.__wms = data; window.__fail = false;
-  addEventListener("message", event => {
+  addEventListener("message", async event => {
     const request = event.data;
     if (!request || request.source !== "PRINT_SKU_APP") return;
     window.__extCalls.push({ type: request.type, payload: request.payload });
     const reply = (ok, body, error) => postMessage({ source: "HASAKI_INSIDE_CONNECTOR", requestId: request.requestId, ok, data: body, error }, location.origin);
     if (request.type === "PING" || request.type === "PING_WMS") return reply(true, { version: "0.8.3" });
+    if (window.__hold && request.type === "GET_GROUP_UID_NEW_PAGE") await window.__hold; // giữ phản hồi để chặn được pha "đang đọc"
     if (request.type === "GET_GROUP_UID_NEW_PAGE") {
       const { warehouseIds, page, size, from, to } = request.payload;
       if (window.__fail) return reply(false, null, { message: "Phiên WMS không còn quyền đọc Group UID; hãy đăng nhập lại" });
@@ -80,6 +81,34 @@ const listed = page => page.locator("#uid-wms-list .uid-wms__item").count();
 const totalText = page => page.locator("#uid-wms-total").innerText();
 const ready = page => page.waitForFunction(() => /Đã đọc|Không|Phiên/.test(document.getElementById("uid-wms-status").textContent) && document.getElementById("uid-wms-load").dataset.busy !== "true");
 
+// Nút đọc nguồn một kiểu .src-read (17/10/2026, khối #hero-standard): lớp, nhãn, title, icon mask ở ::before (không còn svg trong nút), cùng màu / cỡ / bo với nút đọc ở các màn khác.
+// spec: id, text ("" = nút chỉ icon), title?, aria?, icon? (src-read--icon), size? (cao/rộng cố định), mate? (id nút/ô cùng hàng phải cao bằng). Trả danh sách điểm lệch (rỗng = đạt).
+const srcReadAudit = (page, specs, width) => page.evaluate(async ({ specs, width }) => {
+  const mobile = width <= 800, ctl = mobile ? 48 : 52, bad = [];
+  for (const spec of specs) {
+    const b = document.getElementById(spec.id);
+    if (!b) { bad.push(`#${spec.id} không có`); continue; }
+    await Promise.all(b.getAnimations().filter(a => a instanceof CSSTransition).map(a => a.finished.catch(() => {}))); // chờ chuyển màu .15s xong mới đo
+    const s = getComputedStyle(b), before = getComputedStyle(b, "::before"), mask = before.maskImage || before.webkitMaskImage, text = b.innerText.trim(), h = parseFloat(s.height), w = parseFloat(s.width), want = spec.size || ctl;
+    for (const cls of ["src-read", ...(spec.icon ? ["src-read--icon"] : [])]) if (!b.classList.contains(cls)) bad.push(`#${spec.id} thiếu lớp ${cls}`);
+    if (text !== spec.text) bad.push(`#${spec.id} chữ "${text}", cần "${spec.text}"`);
+    if (spec.title !== undefined && b.title !== spec.title) bad.push(`#${spec.id} title "${b.title}", cần "${spec.title}"`);
+    if (spec.aria && b.getAttribute("aria-label") !== spec.aria) bad.push(`#${spec.id} aria-label "${b.getAttribute("aria-label")}", cần "${spec.aria}"`);
+    if (!mask || mask === "none" || before.content === "none") bad.push(`#${spec.id}::before không có icon mask`);
+    if (b.querySelector("svg")) bad.push(`#${spec.id} còn svg trong nút (icon phải là mask ::before)`);
+    if (Math.abs(h - want) > 1) bad.push(`#${spec.id} cao ${h}px, cần ${want}px`);
+    if (spec.icon && Math.abs(w - want) > 1) bad.push(`#${spec.id} rộng ${w}px, nút chỉ icon cần vuông ${want}px`);
+    if (spec.mate) { const m = document.getElementById(spec.mate); if (!m || Math.abs(m.getBoundingClientRect().height - h) > 1) bad.push(`#${spec.id} cao ${h}px, #${spec.mate} cao ${m && m.getBoundingClientRect().height}px (cùng hàng phải bằng nhau)`); }
+    if (s.fontSize !== "16px" || s.fontWeight !== "600") bad.push(`#${spec.id} chữ ${s.fontSize}/${s.fontWeight}, cần 16px/600`);
+    if (s.color !== "rgb(0, 95, 65)") bad.push(`#${spec.id} màu chữ ${s.color}, cần #005F41`);
+    if (s.backgroundColor !== "rgb(230, 243, 238)") bad.push(`#${spec.id} nền ${s.backgroundColor}`);
+    if (s.borderTopColor !== "rgb(95, 174, 146)") bad.push(`#${spec.id} viền ${s.borderTopColor}`);
+    const r = Math.min(parseFloat(s.borderTopLeftRadius), h / 2);
+    if (mobile ? Math.abs(r - 12) > 1 : r < h / 2 - 1) bad.push(`#${spec.id} bo ${s.borderTopLeftRadius}`);
+  }
+  return bad;
+}, { specs, width });
+
 async function desktop(browser) {
   const { page, errors } = await open(browser, 1280);
   assert.equal(await page.locator("#uid-wms-open").isVisible(), true, "nút Lấy từ WMS hiện trên máy tính");
@@ -87,6 +116,9 @@ async function desktop(browser) {
   const [excel, wmsBtn] = await Promise.all([page.locator("#uid-import").boundingBox(), page.locator("#uid-wms-open").boundingBox()]);
   assert.equal(Math.round(excel.y), Math.round(wmsBtn.y), "hai nút cùng một hàng");
   assert.ok(excel.height >= 44 && wmsBtn.height >= 44, "nút đủ cao để bấm");
+  // Khuôn nút đọc một kiểu (17/10/2026): "Đọc WMS" + icon mask, cao bằng nút Nhập Excel cùng hàng, hai nút chia đều hàng
+  assert.deepEqual(await srcReadAudit(page, [{ id: "uid-wms-open", text: "Đọc WMS", title: "Đọc Group UID New từ WMS", mate: "uid-import" }], 1280), [], "nút Đọc WMS một kiểu");
+  assert.ok(Math.abs(excel.width - wmsBtn.width) <= 1, `hai nút chia đều hàng (${excel.width} / ${wmsBtn.width})`);
 
   // Mở hộp: tự đọc, mặc định cả 2 kho và 7 ngày
   await page.locator("#uid-wms-open").click();
@@ -209,6 +241,18 @@ async function desktop(browser) {
   await page.locator("#uid-wms-all").uncheck();
   assert.equal(await page.locator("#uid-wms-add").isDisabled(), true);
 
+  // Nút tải lại chỉ icon (cùng kiểu .src-read, vuông 44 trong thanh bộ lọc): giữ icon refresh; đang đọc → data-busy, khoá nút, icon xoay; đọc xong trả lại
+  assert.deepEqual(await srcReadAudit(page, [{ id: "uid-wms-load", text: "", aria: "Tải lại từ WMS", icon: true, size: 44 }], 1280), [], "nút tải lại một kiểu");
+  assert.equal(await page.locator("#uid-wms-load").getAttribute("title"), "Tải lại từ WMS");
+  await page.evaluate(() => { window.__hold = new Promise(resolve => { window.__release = resolve; }); });
+  await page.locator("#uid-wms-load").click();
+  await page.waitForFunction(() => document.getElementById("uid-wms-load").dataset.busy === "true");
+  assert.equal(await page.locator("#uid-wms-load").isDisabled(), true, "đang đọc: nút khoá");
+  assert.equal(await page.locator("#uid-wms-load").evaluate(b => getComputedStyle(b, "::before").animationName !== "none"), true, "icon vòng xoay khi đang đọc");
+  await page.evaluate(() => { window.__release(); window.__hold = null; });
+  await ready(page);
+  assert.equal(await page.locator("#uid-wms-load").evaluate(b => getComputedStyle(b, "::before").animationName), "none", "đọc xong hết xoay");
+
   // Lỗi từ Extension: báo lỗi, giữ dữ liệu đã tải
   await page.evaluate(() => { window.__fail = true; });
   await page.locator("#uid-wms-load").click(); await ready(page);
@@ -242,6 +286,7 @@ async function narrow(browser, width) {
       small: [...document.querySelectorAll("#uid-wms button, #uid-wms select, #uid-wms input[type=date]")].filter(e => e.offsetParent && box(e).height < 44).map(e => e.id || e.className) };
   });
   assert.ok(fit.dialogWidth <= fit.viewport && !fit.overflow, `hộp vừa màn hình ${width}`);
+  assert.deepEqual(await srcReadAudit(page, [{ id: "uid-wms-load", text: "", icon: true, size: phone ? 48 : 44 }], width), [], `${width}px: nút tải lại một kiểu`);
   assert.deepEqual(fit.clipped, [], "không phần tử nào tràn khỏi hộp");
   assert.deepEqual(fit.small, [], "mục bấm cao tối thiểu 44px");
   assert.deepEqual(errors, []);
