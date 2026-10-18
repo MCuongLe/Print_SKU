@@ -81,10 +81,13 @@ const CODES = ['1028260925000001', '1028260925000002', '1028260925000003', '1028
       assert.equal(await page.locator('#uid-pending [data-drag]').count(), 0, 'đang tìm thì ẩn tay kéo');
       await page.locator('#uid-search').fill('');
 
-      // Ô SKU khi gán: nút ẩn/hiện bàn phím
+      // Ô SKU khi gán (khung quét chuẩn 18/10/2026): bàn phím ẩn mặc định, nút trong khay bật rồi tắt lại
+      const skuMode = () => page.evaluate(() => [document.getElementById('uid-sku-kb').getAttribute('aria-pressed'), document.getElementById('uid-bulk-sku').inputMode]);
+      assert.deepEqual(await skuMode(), ['true', 'none'], 'mặc định ẩn bàn phím');
       await page.locator('#uid-sku-kb').click();
-      assert.equal(await page.locator('#uid-sku-kb').getAttribute('aria-pressed'), 'true');
-      assert.equal(await page.evaluate(() => document.getElementById('uid-bulk-sku').inputMode), 'none');
+      assert.deepEqual(await skuMode(), ['false', 'text'], 'bấm → hiện bàn phím');
+      await page.locator('#uid-sku-kb').click();
+      assert.deepEqual(await skuMode(), ['true', 'none'], 'bấm lần nữa → ẩn lại');
 
       if (mobile) {
         // Tấm "Danh sách Group UID": cả chờ gán và đã gán

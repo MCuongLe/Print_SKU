@@ -539,7 +539,7 @@
             setTimeout(() => {
               const target = document.querySelector(typeFocus);
               // Ô đang giấu bàn phím ảo cho máy quét cầm tay: người dùng chọn gõ tay thì bật bàn phím lên luôn.
-              const keyboard = target?.id ? document.querySelector(`[aria-controls="${target.id}"][aria-pressed="true"]`) : null;
+              const keyboard = target?.id ? document.querySelector(`[aria-controls~="${target.id}"][aria-pressed="true"]`) : null; // ~= : nút điều khiển nhiều ô (IN TEM SKU "f-sku f-pn f-sl f-ban")
               if (keyboard) keyboard.click();
               else target?.focus();
             }, 80);
@@ -1759,8 +1759,7 @@ Error generating stack: `+y.message+`
             <form class="uid-card uid-add" id="uid-form" novalidate>
               <div class="uid-panel__head"><b class="uid-panel__num">1</b><h2>Thêm Group UID</h2></div>
               <div class="uid-add__row">
-                <input id="uid-code" autocomplete="off" placeholder="Group UID" required>
-                <button class="uid-add__cam act-icon act-icon--camera" id="uid-camera" type="button" aria-label="Quét bằng camera" title="Quét bằng camera" hidden></button>
+                <div class="scan-field"><input id="uid-code" autocomplete="off" inputmode="none" placeholder="Group UID" required><span class="scan-field__tools"><button class="act-icon act-icon--camera" id="uid-camera" type="button" aria-label="Quét bằng camera" title="Quét bằng camera" hidden></button><button class="act-icon act-icon--keyboard" id="uid-keyboard" type="button" aria-controls="uid-code" aria-label="Hiện bàn phím" title="Hiện bàn phím" aria-pressed="true" data-kb-key="uid-ban-phim"></button></span></div>
                 <button class="uid-add__btn act-icon act-icon--add" id="uid-add" type="submit">Thêm vào danh sách</button>
               </div>
               <div class="uid-add__tools">
@@ -1802,7 +1801,7 @@ Error generating stack: `+y.message+`
               </div>
               <div class="uid-map" id="uid-map-manual" role="tabpanel" aria-label="Gán SKU cho UID đã chọn">
                 <div class="uid-map__grid">
-                  <label>SKU<span class="uid-skurow"><input id="uid-bulk-sku" autocomplete="off" placeholder="SKU"><button class="uid-sku-btn uid-sku-btn--scan" id="uid-sku-scan" type="button" aria-label="Quét SKU" title="Quét SKU" hidden></button><button class="uid-sku-btn uid-sku-btn--kb" id="uid-sku-kb" type="button" aria-pressed="false" aria-label="Ẩn bàn phím" title="Ẩn bàn phím"></button></span></label>
+                  <label>SKU<span class="scan-field"><input id="uid-bulk-sku" autocomplete="off" inputmode="none" placeholder="SKU"><span class="scan-field__tools"><button class="act-icon act-icon--camera" id="uid-sku-scan" type="button" aria-label="Quét SKU" title="Quét SKU" hidden></button><button class="act-icon act-icon--keyboard" id="uid-sku-kb" type="button" aria-controls="uid-bulk-sku" aria-label="Hiện bàn phím" title="Hiện bàn phím" aria-pressed="true" data-kb-key="uid-sku-ban-phim"></button></span></span></label>
                   <label>Tên sản phẩm<input id="uid-bulk-product" autocomplete="off" placeholder="Tự điền theo SKU"></label>
                   <label>Lot<input id="uid-bulk-lot" autocomplete="off" maxlength="20" placeholder="VD: B"></label>
                   <label>Roll<input id="uid-bulk-roll" autocomplete="off" maxlength="20" placeholder="VD: 56"></label>
@@ -2858,17 +2857,10 @@ Error generating stack: `+y.message+`
             addEventListener("pointermove", move); addEventListener("pointerup", end); addEventListener("pointercancel", end);
           });
         });
-        // Ô SKU khi gán: quét bằng camera (lớp quét SKU dùng chung) và nút ẩn/hiện bàn phím (máy quét cầm tay không cần bàn phím ảo)
-        const skuScan = document.getElementById("uid-sku-scan"), skuKeyboard = document.getElementById("uid-sku-kb");
+        // Ô SKU khi gán: quét bằng camera (lớp quét SKU dùng chung); nút ẩn/hiện bàn phím do khối scan-field-std-script lo (máy quét cầm tay không cần bàn phím ảo)
+        const skuScan = document.getElementById("uid-sku-scan");
         if (window.PrintSkuScanUI?.canOpen()) skuScan.hidden = false;
         skuScan.addEventListener("click", () => window.PrintSkuScanUI?.open({ typeFocus: "#uid-bulk-sku", onCode: code => { bulkSku.value = code; bulkSku.dispatchEvent(new Event("input", { bubbles: true })); } }));
-        skuKeyboard.addEventListener("click", () => {
-          const hide = bulkSku.inputMode !== "none";
-          bulkSku.inputMode = hide ? "none" : "text";
-          const label = hide ? "Hiện bàn phím" : "Ẩn bàn phím";
-          skuKeyboard.setAttribute("aria-pressed", String(hide)); skuKeyboard.setAttribute("aria-label", label); skuKeyboard.title = label;
-          bulkSku.blur(); setTimeout(() => bulkSku.focus(), 60);
-        });
 
         selectAll.addEventListener("change", () => {
           const checked = selectAll.checked;
@@ -4271,7 +4263,7 @@ Error generating stack: `+y.message+`
             <details class="cut-card uc-lookup" id="uc-lookup-details" open>
               <summary><span class="uc-step-number">1</span><strong>Nhận diện hàng</strong><small id="uc-lookup-summary"></small><span class="uc-lookup-chevron" aria-hidden="true"></span></summary>
               <div class="uc-lookup-body">
-                <form class="uc-code-row" id="uc-code-form"><input class="cut-input" id="uc-code" autocomplete="off" inputmode="text" placeholder="SKU hoặc Group UID" aria-label="SKU hoặc Group UID"><button class="act-icon act-icon--camera" id="uc-camera" type="button" aria-label="Quét bằng camera" title="Quét bằng camera"></button><button class="cut-secondary act-icon act-icon--search" type="submit">Tra thông số</button></form>
+                <form class="uc-code-row" id="uc-code-form"><div class="scan-field"><input class="cut-input" id="uc-code" autocomplete="off" inputmode="none" placeholder="SKU hoặc Group UID" aria-label="SKU hoặc Group UID"><span class="scan-field__tools"><button class="act-icon act-icon--camera" id="uc-camera" type="button" aria-label="Quét bằng camera" title="Quét bằng camera" hidden></button><button class="act-icon act-icon--keyboard" id="uc-keyboard" type="button" aria-controls="uc-code" aria-label="Hiện bàn phím" title="Hiện bàn phím" aria-pressed="true" data-kb-key="uc-ban-phim"></button></span></div><button class="cut-secondary act-icon act-icon--search" type="submit">Tra thông số</button></form>
                 <div class="uc-picked" id="uc-picked" hidden><strong id="uc-picked-code"></strong><span id="uc-picked-name"></span><small id="uc-picked-spec"></small></div>
               </div>
             </details>
@@ -7761,7 +7753,7 @@ var FSK_CORE = (function () {
         };
         $("uc-code-form").addEventListener("submit", event => { event.preventDefault(); const code = $("uc-code").value.trim(); if (code) runLookup(code); });
         $("uc-camera").hidden = !window.PrintSkuScanUI?.canOpen?.();
-        $("uc-camera").addEventListener("click", () => window.PrintSkuScanUI?.open({ title: "Quét SKU hoặc Group UID", typeLabel: "Gõ SKU hoặc Group UID", notFound: "Không tìm thấy mã trong dữ liệu", check: async code => { const hit = await lookup(code); return hit ? { sku: code, ten: hit.pn } : null; }, onCode: code => { $("uc-code").value = code; runLookup(code); }, typeFocus: "uc-code" }));
+        $("uc-camera").addEventListener("click", () => window.PrintSkuScanUI?.open({ title: "Quét SKU hoặc Group UID", typeLabel: "Gõ SKU hoặc Group UID", notFound: "Không tìm thấy mã trong dữ liệu", check: async code => { const hit = await lookup(code); return hit ? { sku: code, ten: hit.pn } : null; }, onCode: code => { $("uc-code").value = code; runLookup(code); }, typeFocus: "#uc-code" }));
         screen.querySelector(".uc-kind").addEventListener("click", event => { const button = event.target.closest("[data-uc-kind]"); if (button) setKind(button.dataset.ucKind); });
         const unitGroups = { "uc-weight-unit": "weightUnit", "uc-thread-spec-unit": "threadSpecUnit", "uc-fabric-width-unit": "fabricWidthUnit", "uc-fabric-roll-unit": "fabricRollUnit" };
         Object.keys(unitGroups).forEach(id => $(id).addEventListener("click", event => { const button = event.target.closest("button[data-unit]"); if (!button) return; state[unitGroups[id]] = button.dataset.unit; pressed(id, "unit", button.dataset.unit); compute(); }));
@@ -11230,8 +11222,8 @@ async function rpc(name,args,retry=true){
         <p class="ss-status" id="uh-message" aria-live="polite"></p>
         <section class="ss-panel uh-search" aria-label="Tìm lượt chuyển">
           <div class="uh-fields">
-            <div class="uh-field" data-ico="box"><input id="uh-sku" type="search" autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="search" maxlength="40" placeholder="SKU" aria-label="SKU"><button class="uh-scan" id="uh-sku-scan" type="button" aria-label="Quét SKU bằng camera" title="Quét SKU bằng camera" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/><circle cx="12" cy="13" r="3"/></svg></button></div>
-            <div class="uh-field" data-ico="pin"><input id="uh-loc" type="search" autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="search" maxlength="40" placeholder="Mã vị trí" aria-label="Mã vị trí"><button class="uh-scan" id="uh-loc-scan" type="button" aria-label="Quét mã vị trí bằng camera" title="Quét mã vị trí bằng camera" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/><circle cx="12" cy="13" r="3"/></svg></button></div>
+            <div class="scan-field"><input id="uh-sku" type="search" autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="search" inputmode="none" maxlength="40" placeholder="SKU" aria-label="SKU"><span class="scan-field__tools"><button class="act-icon act-icon--camera" id="uh-sku-scan" type="button" aria-label="Quét SKU bằng camera" title="Quét SKU bằng camera" hidden></button><button class="act-icon act-icon--keyboard" id="uh-sku-kb" type="button" aria-controls="uh-sku" aria-label="Hiện bàn phím" title="Hiện bàn phím" aria-pressed="true" data-kb-key="uh-sku-ban-phim"></button></span></div>
+            <div class="scan-field"><input id="uh-loc" type="search" autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="search" inputmode="none" maxlength="40" placeholder="Mã vị trí" aria-label="Mã vị trí"><span class="scan-field__tools"><button class="act-icon act-icon--camera" id="uh-loc-scan" type="button" aria-label="Quét mã vị trí bằng camera" title="Quét mã vị trí bằng camera" hidden></button><button class="act-icon act-icon--keyboard" id="uh-loc-kb" type="button" aria-controls="uh-loc" aria-label="Hiện bàn phím" title="Hiện bàn phím" aria-pressed="true" data-kb-key="uh-loc-ban-phim"></button></span></div>
             <button class="ss-secondary uh-btn" id="uh-filter-open" type="button" aria-haspopup="dialog"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 4h-7"/><path d="M10 4H3"/><path d="M21 12h-9"/><path d="M8 12H3"/><path d="M21 20h-5"/><path d="M12 20H3"/><path d="M14 2v4"/><path d="M8 10v4"/><path d="M16 18v4"/></svg><span>Bộ lọc</span><b id="uh-filter-count" hidden>0</b></button>
             <button class="ss-primary uh-btn" id="uh-view" type="button" aria-haspopup="dialog"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/><path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/></svg><span>Xem kết quả</span></button>
           </div>
@@ -15176,5 +15168,102 @@ async function rpc(name,args,retry=true){
       :is(#inventory-audit-screen, #site-control-screen, #storage-risk-screen) .ss-metric { justify-content: flex-start; }
       :is(#inventory-audit-screen, #site-control-screen, #storage-risk-screen) .ss-metric small:empty { display: none; }
     </style>
+    <style id="scan-field-std">
+      /* Khung quét chuẩn (18/10/2026, docs/plans/2026-10-18-khung-quet-chuan.md): mọi ô quét Group UID / SKU / mã vị trí là một khối liền như Cắt UID, Xả vải, Cấp vải
+         (khối #scan-field chỉ gắn ba màn đó và vẫn giữ nguyên): icon quét + vạch ngăn đầu ô, khay nền xanh nhạt TRONG ô bên phải gồm camera · bàn phím (vạch giữa hai nút,
+         bàn phím đang hiện = nền trắng), ô cao --ui-ctl 52 / 48, nút trong khay 44. Áp cho .scan-field ở BẤT KỲ màn nào: IN TEM GROUP UID (#uid-code, Gán SKU #uid-bulk-sku),
+         CHUYỂN ĐỔI ĐƠN VỊ (#uc-code), LỊCH SỬ GROUP UID (#uh-sku, #uh-loc). ":not(#sfs-a):not(#sfs-b)" (hai id không tồn tại nên luôn khớp) chỉ để nâng độ ưu tiên lên
+         (2,x,x), thắng các luật theo id của từng màn ("#uid-code", "#uid-screen #uid-code", "#unit-converter-screen .cut-input") mà không dùng !important.
+         Bàn phím: script #scan-field-std-script (nút có data-kb-key + aria-controls = id ô). */
+      .scan-field:not(#sfs-a):not(#sfs-b) { position: relative; display: block; min-width: 0; }
+      .scan-field:not(#sfs-a):not(#sfs-b) > input { display: block; box-sizing: border-box; width: 100%; min-width: 0; height: var(--ui-ctl, 52px); min-height: 0; margin: 0; padding: 0 112px 0 60px; border: 1px solid rgba(0, 95, 65, .3); border-radius: var(--ui-in-r, 13px); box-shadow: 0 0 0 3px rgba(0, 95, 65, .06); background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='%23005f41' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 7V5a2 2 0 0 1 2-2h2'/%3E%3Cpath d='M17 3h2a2 2 0 0 1 2 2v2'/%3E%3Cpath d='M21 17v2a2 2 0 0 1-2 2h-2'/%3E%3Cpath d='M7 21H5a2 2 0 0 1-2-2v-2'/%3E%3Cpath d='M7 12h10'/%3E%3C/svg%3E") no-repeat 16px 50% / 22px 22px, linear-gradient(rgba(0, 95, 65, .2), rgba(0, 95, 65, .2)) no-repeat 50px 50% / 1px 24px, linear-gradient(180deg, #fff, #f6faf8); color: var(--wms-text, #17251f); font-family: var(--wms-font, system-ui, sans-serif); font-size: 16px; font-weight: 400; line-height: 1.5; text-overflow: ellipsis; }
+      .scan-field:not(#sfs-a):not(#sfs-b) > input:focus { border-color: var(--wms-brand, #005f41); box-shadow: 0 0 0 3px rgba(0, 95, 65, .16); }
+      .scan-field:not(#sfs-a):not(#sfs-b):has(.act-icon--camera[hidden]) > input { padding-right: 64px; }
+      .scan-field:not(#sfs-a):not(#sfs-b) > .scan-field__tools { position: absolute; top: 4px; right: 4px; bottom: 4px; display: flex; align-items: stretch; padding: 0 2px; border-radius: 10px; background: rgba(0, 95, 65, .08); }
+      .scan-field:not(#sfs-a):not(#sfs-b) > .scan-field__tools > button { position: relative; flex: none; box-sizing: border-box; width: 48px; min-width: 48px; height: auto; min-height: 0; margin: 0; padding: 0; border: 0; border-radius: 8px; background: transparent; box-shadow: none; transform: none; color: var(--wms-brand, #005f41); font-size: 0; cursor: pointer; }
+      .scan-field:not(#sfs-a):not(#sfs-b) > .scan-field__tools > button::before { width: 20px; height: 20px; }
+      .scan-field:not(#sfs-a):not(#sfs-b) > .scan-field__tools > button[hidden] { display: none; }
+      .scan-field:not(#sfs-a):not(#sfs-b) > .scan-field__tools > button:not([hidden]) + button::after { content: ""; position: absolute; left: 0; top: 9px; bottom: 9px; width: 1px; background: rgba(0, 95, 65, .2); }
+      .scan-field:not(#sfs-a):not(#sfs-b) > .scan-field__tools > button[aria-pressed="false"] { background: #fff; box-shadow: 0 1px 3px rgba(13, 40, 30, .12); }
+      @media (hover: hover) {
+        .scan-field:not(#sfs-a):not(#sfs-b) > .scan-field__tools > button:hover { background: rgba(0, 95, 65, .1); }
+      }
+      @media (max-width: 800px) {
+        .scan-field:not(#sfs-a):not(#sfs-b) > .scan-field__tools { top: 2px; right: 2px; bottom: 2px; }
+      }
+      @media (max-width: 480px) {
+        .scan-field:not(#sfs-a):not(#sfs-b) > input { padding-left: 56px; background-position: 14px 50%, 46px 50%, 0 0; }
+      }
+      /* IN TEM SKU #f-sku vào khung chuẩn (Việc 2, 18/10/2026): bundle React nên chỉ đổi bằng CSS, DOM giữ nguyên (.sku-row > .relative > #f-sku + nút camera React; #f-sku-kb ngoài).
+         Khay vẽ bằng .sku-row::after; nút camera (svg khung quét ẩn, icon camera mask --i-camera) và #f-sku-kb đặt tuyệt đối vào khay; không có camera thì khay chỉ còn bàn phím.
+         Nền icon quét + màu viền dùng !important vì luật cũ "#root input … { background: #fff !important }" của IN TEM SKU đè mọi ô nhập trong #root.
+         Bàn phím vẫn theo __kbH (khoá print-sku-ban-phim, ẩn cả chuỗi ô SKU → Tên hàng → Số lượng, quyết định 03/10/2026). */
+      #root .sku-row:not(#sfs-a) { position: relative; display: block; }
+      #root .sku-row:not(#sfs-a) > .relative { display: block; min-width: 0; }
+      #root .sku-row:not(#sfs-a) #f-sku { display: block; box-sizing: border-box; width: 100%; min-width: 0; height: var(--ui-ctl, 52px); min-height: 0; margin: 0; padding: 0 112px 0 60px; border: 1px solid rgba(0, 95, 65, .3); border-radius: var(--ui-in-r, 13px); box-shadow: 0 0 0 3px rgba(0, 95, 65, .06); background-color: #fff !important; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='%23005f41' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 7V5a2 2 0 0 1 2-2h2'/%3E%3Cpath d='M17 3h2a2 2 0 0 1 2 2v2'/%3E%3Cpath d='M21 17v2a2 2 0 0 1-2 2h-2'/%3E%3Cpath d='M7 21H5a2 2 0 0 1-2-2v-2'/%3E%3Cpath d='M7 12h10'/%3E%3C/svg%3E"), linear-gradient(rgba(0, 95, 65, .2), rgba(0, 95, 65, .2)), linear-gradient(180deg, #fff, #f6faf8) !important; background-repeat: no-repeat !important; background-position: 16px 50%, 50px 50%, 0% 0% !important; background-size: 22px 22px, 1px 24px, auto !important; border-color: rgba(0, 95, 65, .3) !important; color: var(--wms-text, #17251f); font-size: 16px; font-weight: 400; letter-spacing: normal; line-height: 1.5; text-overflow: ellipsis; }
+      #root .sku-row:not(#sfs-a) #f-sku:focus { border-color: var(--wms-brand, #005f41) !important; box-shadow: 0 0 0 3px rgba(0, 95, 65, .16); }
+      #root .sku-row:not(#sfs-a):not(:has(button[aria-label="Quét mã bằng camera"])) #f-sku { padding-right: 64px; }
+      #root .sku-row:not(#sfs-a)::after { content: ""; position: absolute; z-index: 0; top: 4px; right: 4px; bottom: 4px; width: 100px; border-radius: 10px; background: rgba(0, 95, 65, .08); pointer-events: none; }
+      #root .sku-row:not(#sfs-a):not(:has(button[aria-label="Quét mã bằng camera"]))::after { width: 52px; }
+      :is(#root .sku-row:not(#sfs-a) > .relative > button[aria-label="Quét mã bằng camera"], #root .sku-row:not(#sfs-a) > #f-sku-kb) { position: absolute; z-index: 1; top: 4px; bottom: 4px; display: grid; place-items: center; box-sizing: border-box; width: 48px; min-width: 48px; height: auto; min-height: 0; margin: 0; padding: 0; border: 0; border-radius: 8px; background: transparent; box-shadow: none; transform: none; translate: none; color: var(--wms-brand, #005f41); font-size: 0; cursor: pointer; }
+      #root .sku-row:not(#sfs-a) > #f-sku-kb { right: 6px; }
+      #root .sku-row:not(#sfs-a) > .relative > button[aria-label="Quét mã bằng camera"] { left: auto; right: 54px; }
+      #root .sku-row:not(#sfs-a) > .relative > button[aria-label="Quét mã bằng camera"] > svg { display: none; }
+      #root .sku-row:not(#sfs-a) > .relative > button[aria-label="Quét mã bằng camera"]::before { content: ""; width: 20px; height: 20px; background-color: currentColor; -webkit-mask: var(--i-camera) center / contain no-repeat; mask: var(--i-camera) center / contain no-repeat; }
+      #root .sku-row:not(#sfs-a) > #f-sku-kb::before { width: 20px; height: 20px; }
+      #root .sku-row:not(#sfs-a) > .relative > button[aria-label="Quét mã bằng camera"]::after { content: ""; position: absolute; right: 0; top: 9px; bottom: 9px; width: 1px; background: rgba(0, 95, 65, .2); }
+      #root .sku-row:not(#sfs-a) > #f-sku-kb[aria-pressed="false"] { background: #fff; box-shadow: 0 1px 3px rgba(13, 40, 30, .12); }
+      @media (hover: hover) {
+        :is(#root .sku-row:not(#sfs-a) > .relative > button[aria-label="Quét mã bằng camera"], #root .sku-row:not(#sfs-a) > #f-sku-kb[aria-pressed="true"]):hover { background: rgba(0, 95, 65, .1); color: var(--wms-brand, #005f41); }
+      }
+      @media (max-width: 800px) {
+        #root .sku-row:not(#sfs-a)::after { top: 2px; right: 2px; bottom: 2px; }
+        :is(#root .sku-row:not(#sfs-a) > .relative > button[aria-label="Quét mã bằng camera"], #root .sku-row:not(#sfs-a) > #f-sku-kb) { top: 2px; bottom: 2px; }
+        #root .sku-row:not(#sfs-a) > #f-sku-kb { right: 4px; }
+        #root .sku-row:not(#sfs-a) > .relative > button[aria-label="Quét mã bằng camera"] { right: 52px; }
+      }
+      @media (max-width: 480px) {
+        #root .sku-row:not(#sfs-a) #f-sku { padding-left: 56px; background-position: 14px 50%, 46px 50%, 0 0 !important; }
+      }
+      /* Chỗ đặt ô trong từng màn */
+      #uid-form .uid-add__row > .scan-field { grid-column: 1 / -1; }
+      #unit-converter-screen .uc-code-row { grid-template-columns: minmax(0, 1fr) auto; }
+      @media (max-width: 800px) {
+        #unit-converter-screen .uc-code-row { grid-template-columns: minmax(0, 1fr); }
+      }
+      @media (max-width: 760px) {
+        #uidhist-screen .uh-fields > .scan-field { grid-column: 1 / -1; }
+      }
+    </style>
+    <script id="scan-field-std-script">
+      (() => {
+        // Nút bàn phím của ô quét liền (18/10/2026): ẩn bàn phím ảo mặc định (inputmode="none" — máy quét cầm tay gõ qua IME nên bắt buộc có nút bật lại),
+        // bấm = hiện / ẩn, nhớ theo máy ở localStorage[storageKey] ('hien' | 'an', như Cắt UID / Xả vải / Cấp vải). aria-pressed="true" = đang ẩn; aria-controls = id ô
+        // để "Gõ tay" của PrintSkuScanUI bấm đúng nút này (ô đang ẩn bàn phím thì bật lên, rồi trỏ về ô).
+        const hideNow = () => { try { navigator.virtualKeyboard?.hide?.(); } catch (_) { /* không có API này thì thôi */ } };
+        const keyboard = (input, button, storageKey) => {
+          if (!input || !button || button.dataset.kbBound === "1") return null;
+          button.dataset.kbBound = "1";
+          let hidden = true;
+          try { hidden = localStorage.getItem(storageKey) !== "hien"; } catch (_) { /* không đọc được thì giữ mặc định ẩn */ }
+          const apply = () => {
+            const label = hidden ? "Hiện bàn phím" : "Ẩn bàn phím";
+            input.inputMode = hidden ? "none" : "text";
+            button.setAttribute("aria-pressed", String(hidden)); button.setAttribute("aria-label", label); button.title = label;
+          };
+          button.addEventListener("click", () => {
+            hidden = !hidden;
+            try { localStorage.setItem(storageKey, hidden ? "an" : "hien"); } catch (_) { /* không lưu được thì chỉ đổi lần này */ }
+            apply(); input.blur();
+            setTimeout(() => { input.focus(); if (hidden) hideNow(); }, 60);
+          });
+          apply();
+          return { isHidden: () => hidden };
+        };
+        const init = (root = document) => root.querySelectorAll(".scan-field__tools > button[data-kb-key][aria-controls]").forEach(button => keyboard(document.getElementById(button.getAttribute("aria-controls").trim().split(/\s+/)[0]), button, button.dataset.kbKey));
+        window.PrintSkuScanField = { keyboard, init };
+        init();
+      })();
+    </script>
   </body>
 </html>

@@ -5,12 +5,13 @@ description: Gửi thay đổi (một commit, cây làm việc, hoặc bộ ản
 
 # Review độc lập bằng Codex
 
-Review chất lượng độc lập bằng mô hình khác họ (bước 3 của `docs/DOI_AGENT.md` bản 3). Một vòng mỗi đợt; khởi động nền rồi làm việc khác trong lúc chờ. Codex chỉ nhận xét; lead xử lý.
+Review chất lượng độc lập bằng mô hình khác họ (bước 3 của `docs/DOI_AGENT.md` bản 3). Mặc định một vòng; có phát hiện phải sửa thì vòng 2–3 chỉ review phần vừa sửa, tối đa 3 vòng (xem Ba luật dưới); khởi động nền rồi làm việc khác trong lúc chờ. Codex chỉ nhận xét; lead xử lý.
 
 ## Khi nào
 - Trước khi báo xong một đợt có thay đổi `supabase/*.sql`, `supabase/functions/*`, `extension/inside-po-connector/*`, luồng `print_*`, quyền: `--working-tree` (hoặc `--commit`).
 - Mọi thay đổi giao diện người dùng thấy (18/10/2026, kể cả sửa nhỏ): `--images` với ảnh chụp 390 + 1280 (trang chủ, màn xưởng) hoặc 1280/1440 (Admin), chụp bằng Playwright với dữ liệu giả; kèm `--working-tree` nếu có đổi hành vi. **Thời điểm: ngay khi màn chạy được lần đầu**, trước khi người dùng duyệt; sửa theo góp ý xong thì không chụp gửi lại (vòng hai 17–18/10 cho 0/5 góp ý phải sửa).
-- Một vòng; vòng hai chỉ khi vòng một có phát hiện "sửa" đụng SQL/Edge/quyền.
+- **Ba luật (18/10/2026):** tối đa 3 vòng một đợt (`--round N`, vòng 4 script từ chối → dừng, xem lại hướng tiếp cận, báo người dùng); vòng 2–3 chỉ review phần vừa sửa (`--working-tree --since last --round N`, script tự lưu ảnh chụp tệp sau mỗi lượt `--working-tree`); Codex gom lỗi theo loại, lead sửa cả nhóm một lần. Ảnh giao diện vẫn một vòng.
+- Tệp mới chưa theo dõi (test mới…) phải đưa vào bằng `--add <tệp>`, nếu không diff cây làm việc bỏ sót.
 - Trong lúc Codex chạy không chạy cả bộ test (test chập chờn vì tải máy).
 - Bỏ qua cho tài liệu và test thuần.
 

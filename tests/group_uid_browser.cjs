@@ -3,6 +3,8 @@
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const assert = require('node:assert/strict');
 
+const BASE = process.env.BASE || 'http://127.0.0.1:8000/';
+
 (async () => {
   const browser = await chromium.launch({ channel: 'chrome', headless: true });
   try {
@@ -12,7 +14,7 @@ const assert = require('node:assert/strict');
       page.on('pageerror', error => errors.push(error.message));
       await page.route('**/*', async route => {
         const url = route.request().url();
-        if (url.startsWith('http://127.0.0.1:8000/')) return route.continue();
+        if (url.startsWith(BASE)) return route.continue();
         if (url.endsWith('/rpc/group_uid_lookup')) {
           const { p_codes } = route.request().postDataJSON();
           await new Promise(resolve => setTimeout(resolve, 150));
@@ -26,7 +28,7 @@ const assert = require('node:assert/strict');
         }
         return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ ok: true, data: { agents: [], jobs: [] } }) });
       });
-      await page.goto('http://127.0.0.1:8000/#group-uid');
+      await page.goto(BASE + '#group-uid');
       await page.evaluate(() => {
         window.testJobs = [];
         window.PrintSkuQueue.enqueue = async job => { window.testJobs.push(job); return { ok: true }; };
@@ -68,8 +70,9 @@ const assert = require('node:assert/strict');
       // Quét Group UID bằng camera điện thoại: giả lập camera + bộ đọc mã. Mã 9 số (SKU trên cùng tem) bị hỏi lại, mã 16 số được thêm.
       assert.equal(await page.locator('#uid-camera').isVisible(), true);
       const box = async id => page.locator(id).evaluate(e => { const r = e.getBoundingClientRect(); return { top: Math.round(r.top), left: Math.round(r.left) }; });
-      const [codeBox, cameraBox, addBox] = [await box('#uid-code'), await box('#uid-camera'), await box('#uid-add')];
-      assert.equal(cameraBox.top, codeBox.top);
+      const [codeBox, addBox] = [await box('#uid-code'), await box('#uid-add')];
+      // Khung quét chuẩn (18/10/2026): camera nằm trong khay bên phải của chính ô Group UID, không còn nút vuông cạnh ô
+      assert.equal(await page.locator('#uid-camera').evaluate(b => { const f = document.getElementById('uid-code').getBoundingClientRect(), r = b.getBoundingClientRect(); return b.parentElement.classList.contains('scan-field__tools') && r.top >= f.top && r.bottom <= f.bottom && r.left >= f.left && r.right <= f.right; }), true, 'nút camera nằm trong khay của ô Group UID');
       assert.equal(addBox.top > codeBox.top, true, 'nút Thêm vào danh sách xuống hàng riêng dưới ô Group UID + camera (mẫu 11/10/2026)');
       await page.evaluate(() => {
         const canvas = document.createElement('canvas'); canvas.width = 320; canvas.height = 240;

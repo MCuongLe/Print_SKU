@@ -334,6 +334,9 @@ const expectBar = (info, tag, ratio) => {
       await page.locator("#uh-loc-scan").click();
       const locScan = await page.evaluate(() => ({ title: window.__scan[0].title, ok: !!window.__scan[0].check("F0-VR-00-00-00-00"), okLower: !!window.__scan[0].check("f0-kho-503-02-04-01"), bad: !!window.__scan[0].check("khong phai ma vi tri") }));
       assert.deepEqual(locScan, { title: "Quét mã vị trí", ok: true, okLower: true, bad: false });
+      // Gõ tay trỏ về đúng ô (typeFocus) và bấm được nút bàn phím trong khay của ô (khung quét chuẩn 18/10/2026)
+      const typeTarget = i => page.evaluate(i => { const o = window.__scan[i], input = document.querySelector(o.typeFocus), kb = document.querySelector(`.scan-field__tools > button[aria-controls="${input?.id}"]`); return { id: input?.id, kb: !!kb, inField: !!input?.closest(".scan-field"), pressed: kb?.getAttribute("aria-pressed") }; }, i);
+      assert.deepEqual(await typeTarget(0), { id: "uh-loc", kb: true, inField: true, pressed: "true" }, "Gõ tay về ô Vị trí");
       await page.evaluate(() => window.__scan[0].onCode("f0-vr-00-00-00-00"));
       assert.equal(await page.locator("#uh-loc").inputValue(), "F0-VR-00-00-00-00", "mã quét điền vào ô Vị trí (chữ hoa)");
       await dialog.waitFor({ state: "visible" });
@@ -343,6 +346,7 @@ const expectBar = (info, tag, ratio) => {
       await page.locator("#uh-sku-scan").click();
       const skuScan = await page.evaluate(() => ({ title: window.__scan[1].title, ok: !!window.__scan[1].check("422500001"), bad: !!window.__scan[1].check("12345") }));
       assert.deepEqual(skuScan, { title: "Quét SKU", ok: true, bad: false });
+      assert.deepEqual(await typeTarget(1), { id: "uh-sku", kb: true, inField: true, pressed: "true" }, "Gõ tay về ô SKU");
       await page.evaluate(() => window.__scan[1].onCode("422500001"));
       assert.equal(await page.locator("#uh-sku").inputValue(), "422500001");
       await dialog.waitFor({ state: "visible" }); await page.keyboard.press("Escape");

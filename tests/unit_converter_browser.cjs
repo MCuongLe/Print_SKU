@@ -2,6 +2,8 @@
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const assert = require('node:assert/strict');
 
+const BASE = process.env.BASE || 'http://127.0.0.1:8000/';
+
 (async () => {
   const browser = await chromium.launch({ channel: 'chrome', headless: true });
   try {
@@ -11,7 +13,7 @@ const assert = require('node:assert/strict');
       page.on('pageerror', error => errors.push(error.message));
       await page.route('**/*', async route => {
         const url = route.request().url();
-        if (url.startsWith('http://127.0.0.1:8000/')) return route.continue();
+        if (url.startsWith(BASE)) return route.continue();
         if (url.includes('/SKU_Name?') && url.includes('sku=eq.900000201')) {
           return route.fulfill({ contentType: 'application/json', body: JSON.stringify([{ sku: '900000201', product_name: 'Vải mẫu/Canvas/220gsm/58_60in/g' }]) });
         }
@@ -31,9 +33,20 @@ const assert = require('node:assert/strict');
         return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ ok: true, data: { agents: [], jobs: [] } }) });
       });
 
-      await page.goto('http://127.0.0.1:8000/#home');
+      await page.goto(BASE + '#home');
       await page.locator('#barcode-unit-converter').click();
       await page.locator('#unit-converter-screen').waitFor({ state: 'visible' });
+
+      // Khung quét chuẩn (18/10/2026): ô SKU/UID ẩn bàn phím ảo mặc định; camera (giả lập không có camera) → "Gõ tay" bấm nút bàn phím của ô và đưa con trỏ về #uc-code
+      assert.equal(await page.locator('#uc-code').getAttribute('inputmode'), 'none', 'mặc định ẩn bàn phím ảo');
+      await page.evaluate(() => { window.PrintSkuScanner = { ...window.PrintSkuScanner, gl: () => true, k0: () => true, Jp: async () => ({ doc: async () => null }), ev: async () => { throw Object.assign(new Error('giả lập'), { name: 'NotFoundError' }); } }; });
+      await page.locator('#uc-camera').click();
+      await page.locator('.pss .pss-card [data-act="type"]').click();
+      await page.waitForFunction(() => document.activeElement?.id === 'uc-code');
+      assert.equal(await page.locator('#uc-code').getAttribute('inputmode'), 'text', 'Gõ tay bật bàn phím');
+      assert.equal(await page.locator('.scan-field__tools > [aria-controls="uc-code"]').getAttribute('aria-pressed'), 'false');
+      await page.locator('.scan-field__tools > [aria-controls="uc-code"]').click();
+      assert.equal(await page.locator('#uc-code').getAttribute('inputmode'), 'none', 'bấm lại → ẩn');
 
       // Điện thoại: "Thông số hàng" và "Cách tính" là popup (tờ trượt dưới); từ 801 px nằm sẵn trong trang như cũ.
       const modal = width < 800;

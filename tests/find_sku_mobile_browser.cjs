@@ -4,7 +4,7 @@
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const assert = require('node:assert/strict');
 
-const BASE = 'http://127.0.0.1:8000/';
+const BASE = process.env.BASE || 'http://127.0.0.1:8000/';
 const SKU = '422412924';
 const NAME = 'Chỉ Irisa/FS9286_Phong Việt/100% Polyester/none/Black Marle-Melange/none/Tex 60- 20-2/mm';
 

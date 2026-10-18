@@ -1,6 +1,6 @@
 // Chuẩn giao diện chung (11/10/2026, khối CSS #ui-standard) cho mọi ô trang chủ (390 + 1280 px) và Admin (1280 px):
 // thẻ bo 22 / 14; tiêu đề khối = chấm tròn số 30 / 22 + chữ 18/600 (không ẩn ở khổ nào); ô nhập + nút hành động cao 52 / 48,
-// nút viên thuốc / bo 12, chữ 16/600, ô nhập bo 13 / 10; nút chỉ có icon cạnh ô nhập vuông 52 / 48; ô Group UID liền (Cắt UID, Xả vải, Cấp vải) có camera · bàn phím nằm trong ô
+// nút viên thuốc / bo 12, chữ 16/600, ô nhập bo 13 / 10; nút chỉ có icon cạnh ô nhập vuông 52 / 48; ô quét liền (.scan-field: Cắt UID, Xả vải, Cấp vải, IN TEM GROUP UID, Gán SKU, Chuyển đổi đơn vị, Lịch sử Group UID) có camera · bàn phím nằm trong ô
 // cao 44; điều khiển gọn (tab, ô tìm/lọc,
 // chip lọc, nút trong dòng, nút icon thanh công cụ Admin) cao 44. Dữ liệu giả rỗng. Chạy với python -m http.server 8000 (đổi bằng BASE).
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
@@ -47,12 +47,12 @@ const audit = mobile => {
   // Ô nhập thường (bỏ ô tìm/lọc trên thanh công cụ = điều khiển gọn, ô số trong bộ tăng giảm)
   for (const i of root.querySelectorAll('input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=range]), select')) {
     if (!vis(i) || i.closest('.pss, dialog, table, .uid-row, .as-tags, .uid-auto__qty, .fsk-stepper, .as-search, .pj-day, .pj-search, .as-tools') || i.getBoundingClientRect().width < 80) continue;
-    const wrap = i.closest('.uh-field, .fsk-inrow, .pa-field'), box = wrap && cs(wrap).borderTopWidth !== '0px' ? wrap : i, s = cs(i);
+    const wrap = i.closest('.fsk-inrow, .pa-field'), box = wrap && cs(wrap).borderTopWidth !== '0px' ? wrap : i, s = cs(i);
     const h = Math.round(box.getBoundingClientRect().height), r = Math.round(parseFloat(cs(box).borderTopLeftRadius));
     if (!near(h, S.ctl) || !near(r, S.inR) || s.fontSize !== '16px') bad.push(`ô nhập ${h}px r${r} ${s.fontSize} · ${nm(box)}`);
   }
   // Nút chỉ có icon cạnh ô nhập: vuông bằng điều khiển thường
-  for (const b of root.querySelectorAll('#uid-camera, #uc-camera, #fsk-more-open, #f-sku-kb, .ss-hero .as-icon-btn')) {
+  for (const b of root.querySelectorAll('#fsk-more-open, .ss-hero .as-icon-btn')) {
     if (!vis(b)) continue; const r = b.getBoundingClientRect();
     if (!near(r.width, S.ctl) || !near(r.height, S.ctl)) bad.push(`nút icon ${Math.round(r.width)}×${Math.round(r.height)} · ${nm(b)}`);
   }
@@ -60,6 +60,15 @@ const audit = mobile => {
   for (const b of root.querySelectorAll('.scan-field__tools > button')) {
     if (!vis(b)) continue; const r = b.getBoundingClientRect(), f = b.closest('.scan-field').querySelector('input').getBoundingClientRect();
     if (!near(r.height, 44) || r.top < f.top || r.bottom > f.bottom || r.left < f.left || r.right > f.right) bad.push(`nút trong ô ${Math.round(r.width)}×${Math.round(r.height)} · ${nm(b)}`);
+  }
+  // Khung quét chuẩn (18/10/2026): nút camera / bàn phím của IN TEM GROUP UID, Gán SKU, Chuyển đổi đơn vị, Lịch sử UID nằm trong khay của ô, không còn nút vuông cạnh ô
+  for (const b of root.querySelectorAll('#uid-camera, #uid-sku-scan, #uid-sku-kb, #uc-camera, #uh-sku-scan, #uh-loc-scan')) {
+    if (vis(b) && !b.parentElement.matches('.scan-field__tools')) bad.push(`nút quét ngoài khay của ô · ${nm(b)}`);
+  }
+  // IN TEM SKU (bundle React, khung quét chuẩn bằng CSS 18/10/2026): nút camera + #f-sku-kb nằm trong ô #f-sku, cao 44
+  for (const b of root.querySelectorAll('#f-sku-kb, #root .sku-row button[aria-label="Quét mã bằng camera"]')) {
+    if (!vis(b)) continue; const r = b.getBoundingClientRect(), f = document.getElementById('f-sku').getBoundingClientRect();
+    if (!near(r.height, 44) || r.top < f.top || r.bottom > f.bottom || r.left < f.left || r.right > f.right) bad.push(`nút trong ô SKU ${Math.round(r.width)}×${Math.round(r.height)} · ${nm(b)}`);
   }
   // Điều khiển gọn: 44
   for (const e of root.querySelectorAll('.cut-tab, .as-tab, .pj-type, .pj-day, .pj-search, .as-search, .pj-icon, .ss-top-refresh, #root aside ~ div button.min-h-\\[42px\\], #root aside ~ div button.min-h-\\[38px\\]')) {
