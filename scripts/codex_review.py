@@ -234,9 +234,8 @@ def main() -> int:
         prompt_out.write_text(prompt, encoding="utf-8")
         print(f"PROMPT {prompt_out}")
         print(f"REPORT {ROOT / 'outputs' / 'claude-review' / f'review-{stamp}.md'}")
-        if args.working_tree:
-            snap = save_snapshot(args.add, stamp)
-            print(f"Ảnh chụp vòng {args.round}: {snap}")
+        # Không lưu ảnh chụp ở đây: lượt Codex chạy song song (cùng tham số) lưu một lần. Lưu ở cả hai sẽ dời mốc last-snapshot
+        # và lượt Codex `--since last` cùng vòng thấy diff rỗng (gặp lần đầu dùng 18/10/2026).
         return 0
 
     cmd = ["codex", "exec", "--sandbox", "read-only", "-C", str(ROOT), "-o", str(out)]
