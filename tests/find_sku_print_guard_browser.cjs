@@ -42,7 +42,7 @@ const open = async (browser, srv, queue) => {
       const d = srv.delta || { upserts: [], removed: [] };
       return json({ ok: true, data: { version, tooMany: false, upserts: d.upserts, removed: d.removed } });
     }
-    if (rpc === "print_enqueue") { srv.enqueued.push(JSON.parse(route.request().postData() || "{}")); return json({ ok: true, data: { id: "job-gia-1" } }); }
+    if (rpc === "print_enqueue") { srv.enqueued.push(JSON.parse(route.request().postData() || "{}")); return json({ ok: true, data: { id: "job-gia-1", ...(srv.serverRenamed ? { renamed: srv.serverRenamed } : {}) } }); }
     return json({ ok: true, data: { agents: [], jobs: [], items: [] } });
   });
   return { context, page, errors };
@@ -62,7 +62,7 @@ const settle = ms => new Promise(r => setTimeout(r, ms));
       await waitNote(page, /Danh mục 3 SKU/);
       assert.equal(srv.full >= 1, true, "lần đầu tải toàn bộ");
       await settle(300);
-      assert.deepEqual(srv.changes, [null], "lần đầu hỏi phiên bản với p_since null");
+      assert.deepEqual(srv.changes, [null, T1], "lần đầu: hỏi phiên bản (null) + phần đổi phát sinh trong lúc tải (review G6)");
       // Máy chủ đổi: A đổi tên, C ngừng, thêm D → lần sau chỉ nhận phần đổi
       srv.db = [row("900000801", "Vải giả A mới"), row("900000802", "Vải giả B"), row("900000804", "Vải giả D")];
       srv.max = T2; srv.delta = { upserts: [row("900000801", "Vải giả A mới"), row("900000804", "Vải giả D")], removed: ["900000803"] };
@@ -125,11 +125,22 @@ const settle = ms => new Promise(r => setTimeout(r, ms));
       await page.waitForFunction(() => document.getElementById("fsk-message")?.dataset.tone === "ok");
       assert.match(await page.locator("#fsk-message").innerText(), /dùng tên mới trên máy chủ cho 900000821/, "báo đã thay tên");
       assert.match(await page.locator('#fsk-list .cut-row[data-id="q1"]').innerText(), /Tên đã cập nhật/, "nhãn trên dòng đổi tên");
-      // Tên mới ghi vào danh mục trên máy (mốc checkedAt mới → lần vào màn sau dựng lại chỉ mục)
-      const cachedName = () => page.evaluate(() => new Promise(res => { const r = indexedDB.open("print-sku-find-sku", 1); r.onsuccess = () => { const g = r.result.transaction("kv").objectStore("kv").get("catalog"); g.onsuccess = () => res(((g.result?.rows || []).find(x => x[0] === "900000821") || [])[1] || null); }; }));
+      // Tên mới vào danh mục trên máy (RAM — không ghi IndexedDB, co-van Fable review vòng 3; Tìm SKU dựng lại chỉ mục qua onChange)
+      const cachedName = () => page.evaluate(() => window.PrintSkuCatalog.get("900000821")?.name || null);
       let name = null;
       for (let i = 0; i < 50 && name !== "Tên đúng trên database"; i++) { name = await cachedName(); if (name !== "Tên đúng trên database") await settle(100); }
       assert.equal(name, "Tên đúng trên database", "danh mục trên máy nhận tên database");
+      assert.deepEqual(errors, []);
+      await context.close();
+    }
+    {
+      // B1b. Máy chủ đặt lại tên khác lúc kiểm (print_name_from_db_v1 trả renamed) → dòng chờ in mang tên máy chủ + nhãn
+      const srv = { db: [row("900000821", "Tên cũ trên máy"), row("900000822", "Băng giả")], serverRenamed: [{ sku: "900000822", productName: "Băng giả bản database" }], max: T1, changes: [], guard: [], full: 0, enqueued: [] };
+      const { context, page, errors } = await open(browser, srv, queue);
+      await toPrint(page);
+      await page.waitForFunction(() => document.getElementById("fsk-message")?.dataset.tone === "ok", null, { timeout: 10000 });
+      assert.match(await page.locator('#fsk-list .cut-row[data-id="q2"]').innerText(), /Băng giả bản database[\s\S]*Tên đã cập nhật/, "dòng nhận tên máy chủ trả về");
+      assert.match(await page.locator("#fsk-message").innerText(), /900000822/, "câu báo gồm SKU máy chủ đổi tên");
       assert.deepEqual(errors, []);
       await context.close();
     }

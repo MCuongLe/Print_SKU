@@ -63,7 +63,17 @@
           headers: { "Content-Type": "application/json; charset=utf-8" }
         });
 
-        const enqueue = async ({ type, payload, copies, requestedBy, requestNonce, templateVersion = 1 }) => deniedWatch(rpc("print_enqueue", {
+        // Máy chủ đặt lại tên SKU theo database (print_name_from_db_v1, 18/10/2026) và trả data.renamed: danh mục trên máy nhận tên mới,
+        // báo qua sự kiện print-sku-names-updated (thông báo #sku-name-note ở sku-catalog-script). Lệnh trùng nonce trả renamed rỗng.
+        const namesWatch = promise => promise.then(result => {
+          const renamed = result?.ok && !result.data?.duplicate && Array.isArray(result.data?.renamed) ? result.data.renamed.filter(r => r && r.sku) : [];
+          if (renamed.length) {
+            Promise.resolve().then(() => window.PrintSkuCatalog?.patchNames(renamed)).catch(() => { /* danh mục chưa nạp: lần kiểm sau sẽ có tên mới */ });
+            window.dispatchEvent(new CustomEvent("print-sku-names-updated", { detail: renamed }));
+          }
+          return result;
+        });
+        const enqueue = async ({ type, payload, copies, requestedBy, requestNonce, templateVersion = 1 }) => namesWatch(deniedWatch(rpc("print_enqueue", {
           p_access_token: accessToken(),
           p_nonce: requestNonce || nonce(),
           p_type: type,
@@ -71,7 +81,7 @@
           p_payload: payload,
           p_copies: copies,
           p_requested_by: requestedBy || ""
-        }));
+        })));
         const jobStatus = id => deniedWatch(rpc("print_job_status", { p_access_token: accessToken(), p_job_id: id }));
         const queueStatus = () => deniedWatch(rpc("print_queue_status", { p_access_token: accessToken() }));
 
@@ -218,6 +228,232 @@
       @media (max-width:540px) { .sku-combo-dialog{width:calc(100% - 20px);max-height:calc(100dvh - 20px);border-radius:18px}.sku-combo-head{padding:16px}.sku-combo-mark{width:42px;height:42px;flex-basis:42px;border-radius:12px}.sku-combo-dialog h2{font-size:18px}.sku-combo-body{padding:16px}.sku-combo-option__top,.sku-combo-name{padding-right:0}.sku-combo-choose{position:static;display:block;margin-top:10px;transform:none}.sku-combo-actions{display:grid;grid-template-columns:1fr}.sku-combo-actions button{width:100%} }
       @media print { .sku-combo-dialog { display:none!important; } }
     </style>
+    <style id="sku-name-note-style">
+      /* Thông báo "Tên đã cập nhật" (18/10/2026): máy chủ in theo tên database khác tên màn gửi. Nổi giữa, TRÊN thanh đáy các màn in (≈ 75–80 px,
+         góp ý ảnh Codex), tự ẩn 6 giây, không chặn thao tác. */
+      .sku-name-note{position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:9000;display:flex;align-items:center;gap:8px;max-width:calc(100% - 32px);box-sizing:border-box;padding:10px 16px;border:1px solid #b9d8cc;border-radius:999px;background:#edf8f4;color:#075f44;font-size:13px;font-weight:600;line-height:1.35;box-shadow:0 6px 18px rgba(16,58,44,.14);pointer-events:none}
+      .sku-name-note[hidden]{display:none}
+      .sku-name-note i{flex:none;width:16px;height:16px;background-color:currentColor;-webkit-mask:var(--i-refresh) center/contain no-repeat;mask:var(--i-refresh) center/contain no-repeat}
+      .sku-name-note span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+      @media print{.sku-name-note{display:none!important}}
+    </style>
+    <script id="sku-catalog-script">
+      (() => {
+        // Danh mục SKU trên máy dùng chung (18/10/2026, docs/plans/2026-10-18-danh-muc-sku-tren-may.md): TÌM SKU, IN TEM SKU (gõ mã, gợi ý,
+        // ô quét), CHUYỂN ĐỔI ĐƠN VỊ, GÁN WMS theo PO tra tên ngay trên máy thay vì hỏi Supabase mỗi mã (0,6–1,4 s/lần).
+        // Bản ghi IndexedDB "print-sku-find-sku"/"catalog" = {at (lần tải toàn bộ), checkedAt, rows:[[sku, tên, status]], version}.
+        // Mở một màn trên → nạp nền một lần; các lần vào màn sau chỉ hỏi sku_catalog_changes(maxUpdatedAt) và ghép phần đổi; quá 2.000 dòng,
+        // lệch activeCount hoặc quá 12 giờ từ lần tải toàn bộ → tải toàn bộ. Chưa có hàm (PGRST202) / mất mạng → giữ bản đang có.
+        // Supabase luôn đúng: màn chỉ dùng bản trên máy để HIỆN tên; tên trên tem do máy chủ đặt lại (print_enqueue_unchecked).
+        // get() trả undefined khi chưa nạp, null khi không có → màn hỏi máy chủ như cũ (SKU vừa đồng bộ vẫn tìm thấy).
+        const DB = "print-sku-find-sku", KEY = "catalog", TTL = 12 * 3600 * 1000;
+        const ROUTES = new Set(["worker", "unit-converter", "group-uid", "find-sku"]);
+        let rows = null, map = null, meta = { at: 0, checkedAt: 0, version: null }, loading = null, fullP = null, checking = null, fullCount = 0, rev = 0, lastFail = 0;
+        const listeners = new Set();
+        const cmp = (a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0);
+        let dbP = null;
+        const openDb = () => dbP || (dbP = new Promise((resolve, reject) => {
+          try {
+            const request = indexedDB.open(DB, 1);
+            request.onupgradeneeded = () => request.result.createObjectStore("kv");
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+          } catch (error) { reject(error); }
+        }).catch(error => { dbP = null; throw error; }));
+        const idbGet = async () => {
+          try {
+            const db = await openDb();
+            return await new Promise((resolve, reject) => { const q = db.transaction("kv").objectStore("kv").get(KEY); q.onsuccess = () => resolve(q.result ?? null); q.onerror = () => reject(q.error); });
+          } catch (_) { return null; }
+        };
+        // Ghi có điều kiện, nguyên tử liên tab (co-van Fable, review vòng 3, 18/10/2026): đọc bản trên đĩa, so newer(), rồi mới ghi — trong
+        // MỘT giao dịch readwrite (IndexedDB xếp hàng các giao dịch này giữa mọi tab). Đĩa đã có bản mới hơn → không ghi, trả bản đó để adopt.
+        const idbPutIfNewer = async value => {
+          try {
+            const db = await openDb();
+            return await new Promise((resolve, reject) => {
+              const tx = db.transaction("kv", "readwrite"), st = tx.objectStore("kv"), q = st.get(KEY);
+              let kept = null;
+              q.onsuccess = () => { const cur = q.result; if (cur?.rows?.length && newer(cur, value)) kept = cur; else st.put(value, KEY); };
+              tx.oncomplete = () => resolve(kept); tx.onerror = () => reject(tx.error);
+            });
+          } catch (_) { return null; /* không lưu được thì lần sau tải lại */ }
+        };
+        const auth = () => { const q = window.PrintSkuQueue; return { apikey: q.publishableKey, Authorization: `Bearer ${q.publishableKey}` }; };
+        const changes = async since => {
+          const q = window.PrintSkuQueue;
+          const response = await fetch(`${q.supabaseUrl}/rest/v1/rpc/sku_catalog_changes`, { method: "POST", headers: { ...auth(), "Content-Type": "application/json" }, body: JSON.stringify({ p_since: since || null }), signal: AbortSignal.timeout(20000) });
+          const result = await response.json().catch(() => null);
+          if (!response.ok || !result?.ok) throw new Error(result?.message || result?.error?.message || `HTTP ${response.status}`);
+          return result.data;
+        };
+        const fetchAll = async progress => {
+          const q = window.PrintSkuQueue;
+          const page = async (from, withCount) => {
+            const response = await fetch(`${q.supabaseUrl}/rest/v1/SKU_Name?select=sku,product_name,status&order=sku.asc`, {
+              headers: { ...auth(), Range: `${from}-${from + 999}`, ...(withCount ? { Prefer: "count=exact" } : {}) }, signal: AbortSignal.timeout(20000)
+            });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const total = Number(String(response.headers.get("content-range") || "").split("/")[1]) || 0;
+            return { rows: await response.json(), total };
+          };
+          const first = await page(0, true), list = [...first.rows];
+          if (first.total > list.length) {
+            const starts = [];
+            for (let from = 1000; from < first.total; from += 1000) starts.push(from);
+            for (let i = 0; i < starts.length; i += 4) {
+              progress?.(`Đang tải danh mục SKU… ${Math.min(100, Math.round((1000 * (i + 1)) / first.total * 100))}%`);
+              (await Promise.all(starts.slice(i, i + 4).map(from => page(from, false)))).forEach(p => list.push(...p.rows));
+            }
+          } else if (list.length === 1000) {
+            for (let from = 1000; ; from += 1000) { const p = await page(from, false); list.push(...p.rows); if (p.rows.length < 1000) break; }
+          }
+          return list.map(r => [String(r.sku ?? ""), String(r.product_name ?? ""), String(r.status ?? "")]).filter(r => r[0]);
+        };
+        const adopt = (record, notify) => {
+          rows = record.rows.slice().sort(cmp); map = new Map(rows.map(r => [r[0], r]));
+          meta = { at: record.at || 0, checkedAt: record.checkedAt || record.at || 0, version: record.version || null };
+          if (notify) rev++;
+          if (notify) listeners.forEach(cb => { try { cb(); } catch (_) { /* lỗi của màn không chặn màn khác */ } });
+        };
+        // Mọi thao tác ghi danh mục trong tab chạy NỐI TIẾP (tải toàn bộ, kiểm phiên bản, vá tên) → không lượt nào tính trên bản cũ rồi ghi đè.
+        let chain = Promise.resolve();
+        const lock = fn => { const run = chain.then(fn, fn); chain = run.catch(() => {}); return run; };
+        // Bản nào mới hơn: so phiên bản dữ liệu (maxUpdatedAt) trước, bằng nhau mới so giờ kiểm. Giờ ghi KHÔNG cho biết dữ liệu mới hay cũ
+        // (một tab giữ bản cũ hàng giờ vẫn ghi được giờ mới nhất khi vá tên) — review vòng 2, 18/10/2026.
+        const newer = (record, than) => {
+          const a = String(record?.version?.maxUpdatedAt || ""), b = String(than?.version?.maxUpdatedAt || "");
+          if (a !== b) return a > b;
+          return (record?.checkedAt || record?.at || 0) > (than?.checkedAt || 0);
+        };
+        const merge = (list, d) => {
+          const next = new Map(list.map(r => [r[0], r]));
+          (d.upserts || []).forEach(u => { const sku = String(u.sku ?? ""); if (sku) next.set(sku, [sku, String(u.product_name ?? ""), String(u.status ?? "")]); });
+          (d.removed || []).forEach(sku => next.delete(String(sku)));
+          return [...next.values()];
+        };
+        // Tải toàn bộ: hỏi phiên bản TRƯỚC, tải xong hỏi lại phần đổi phát sinh TRONG LÚC tải (phân trang theo offset có thể trượt khi
+        // dữ liệu đổi giữa chừng) và ghép vào — một lời gọi nhỏ; lỗi thì giữ bản vừa tải, lần vào màn sau kiểm tiếp.
+        const doFull = async progress => {
+          progress?.("Đang tải danh mục SKU…");
+          let version, list;
+          for (let attempt = 0; attempt < 2; attempt++) {
+            version = await changes(null).then(d => d?.version || null, () => null);
+            list = await fetchAll(progress);
+            if (version?.maxUpdatedAt) {
+              try { const d = await changes(version.maxUpdatedAt); if (d?.version && !d.tooMany) { list = merge(list, d); version = d.version; } } catch (_) { /* giữ bản vừa tải */ }
+            }
+            // Lệch số SKU (trang trượt) → tải lại một lần; vẫn lệch thì giữ, lần vào màn sau check() thấy lệch sẽ tải lại.
+            if (!version || new Set(list.map(r => r[0])).size === Number(version.activeCount)) break;
+          }
+          const at = Date.now(), record = { at, checkedAt: at, rows: list, version };
+          fullCount++; const kept = await idbPutIfNewer(record); adopt(kept || record, true);
+          return api;
+        };
+        const full = progress => fullP || (fullP = lock(() => doFull(progress)).finally(() => { fullP = null; }));
+        const ensure = ({ progress } = {}) => {
+          if (rows) return Promise.resolve(api);
+          if (!loading) loading = (async () => {
+            const cached = await idbGet();
+            if (cached?.rows?.length && !rows) {
+              adopt(cached, true);
+              if (Date.now() - (cached.at || 0) > TTL) full().catch(() => {});
+              return api;
+            }
+            return full(progress);
+          })().catch(error => { lastFail = Date.now(); throw error; }).finally(() => { loading = null; });
+          return loading;
+        };
+        // Kiểm phiên bản (mỗi lần vào màn): đọc lại IndexedDB (tab khác có thể vừa cập nhật) rồi hỏi máy chủ phần đổi.
+        const check = () => {
+          if (!rows) return ensure();
+          if (checking) return checking;
+          checking = lock(async () => {
+            const cached = await idbGet();
+            if (cached?.rows?.length && newer(cached, meta)) adopt(cached, true);
+            if (Date.now() - (meta.at || 0) > TTL) return doFull();
+            let d;
+            try { d = await changes(meta.version?.maxUpdatedAt || null); } catch (_) { return api; }
+            if (!d?.version) return api;
+            if (d.tooMany) return doFull();
+            const changed = Boolean(d.upserts?.length || d.removed?.length);
+            const list = changed ? merge(rows, d) : rows;
+            if (list.length !== Number(d.version.activeCount)) return doFull();
+            const record = { at: meta.at, checkedAt: Date.now(), rows: list, version: d.version };
+            const kept = await idbPutIfNewer(record);
+            adopt(kept || record, Boolean(kept) || changed);
+            return api;
+          }).catch(() => api).finally(() => { checking = null; });
+          return checking;
+        };
+        const view = r => (r ? { sku: r[0], name: r[1], status: r[2] } : null);
+        const soft = () => { if (!loading && Date.now() - lastFail > 60000) ensure().catch(() => {}); };
+        const get = sku => {
+          if (!rows) { soft(); return undefined; }
+          return view(map.get(String(sku ?? "").trim()));
+        };
+        // Giống gợi ý máy chủ của IN TEM SKU: mã bắt đầu bằng q (8 dòng, theo thứ tự mã), thiếu thì thêm tên chứa q khi q ≥ 3 ký tự.
+        const search = (q, limit = 10) => {
+          const s = String(q ?? "").trim();
+          if (!rows) { soft(); return []; }
+          if (s.length < 2) return [];
+          let lo = 0, hi = rows.length;
+          while (lo < hi) { const mid = (lo + hi) >> 1; if (rows[mid][0] < s) lo = mid + 1; else hi = mid; }
+          const out = [];
+          for (let i = lo; i < rows.length && out.length < 8 && rows[i][0].startsWith(s); i++) out.push(rows[i]);
+          if (out.length < 8 && s.length >= 3) {
+            const low = s.toLowerCase(), seen = new Set(out.map(r => r[0]));
+            let named = 0;
+            for (const r of rows) { if (out.length >= limit || named >= 8) break; if (!seen.has(r[0]) && r[1].toLowerCase().includes(low)) { out.push(r); named++; } }
+          }
+          return out.slice(0, limit).map(view);
+        };
+        // Tên máy chủ vừa đặt khi in (print_enqueue trả renamed) → vá trong RAM để màn hiện ngay; KHÔNG ghi IndexedDB (co-van Fable, review
+        // vòng 3): phản hồi in không mang phiên bản, ghi xuống đĩa có thể hạ tên mới hơn. sku-sync đóng dấu updated_at mỗi lần đổi tên nên
+        // lần check() kế (mỗi lần vào màn) tự lấy tên đúng từ máy chủ; tải lại trang khi mất mạng có thể thấy tên cũ — tem vẫn đúng (máy chủ đặt tên).
+        const patchNames = list => lock(async () => {
+          if (!rows || !Array.isArray(list)) return;
+          const names = new Map(list.filter(x => x && x.sku).map(x => [String(x.sku), String(x.productName ?? x.name ?? "")]));
+          let hit = false;
+          const next = rows.map(r => (names.get(r[0]) && r[1] !== names.get(r[0]) ? ((hit = true), [r[0], names.get(r[0]), r[2]]) : r));
+          if (hit) adopt({ at: meta.at, checkedAt: meta.checkedAt, rows: next, version: meta.version }, true);
+        });
+        const onChange = cb => { listeners.add(cb); return () => listeners.delete(cb); };
+        const api = Object.freeze({
+          ensure, check, get, search, patchNames, onChange, refresh: ({ progress } = {}) => full(progress),
+          ready: () => Boolean(rows), rows: () => rows || [], info: () => ({ count: rows ? rows.length : 0, at: meta.at, checkedAt: meta.checkedAt, rev })
+        });
+        window.PrintSkuCatalog = api;
+        // Vào một màn dùng tên SKU: nạp nền (không chặn gõ), đã có bản thì hỏi phiên bản một lần. Vừa tải toàn bộ thì khỏi hỏi lại.
+        let lastRoute = "";
+        const entry = async () => {
+          const before = fullCount;
+          try { await ensure(); } catch (_) { return; }
+          if (fullCount === before) await check();
+        };
+        const route = () => {
+          const r = location.hash.replace(/^#/, "").split("&")[0];
+          if (ROUTES.has(r) && r !== lastRoute) entry();
+          lastRoute = r;
+        };
+        addEventListener("hashchange", route);
+        route();
+        // Thông báo "Tên đã cập nhật · <SKU>" khi máy chủ in theo tên database khác tên màn gửi (sự kiện từ PrintSkuQueue.enqueue).
+        let noteTimer = 0;
+        addEventListener("print-sku-names-updated", event => {
+          const list = Array.isArray(event.detail) ? event.detail : [];
+          if (!list.length || !document.body) return;
+          let note = document.getElementById("sku-name-note");
+          if (!note) {
+            note = document.createElement("div"); note.id = "sku-name-note"; note.className = "sku-name-note"; note.setAttribute("role", "status");
+            note.innerHTML = '<i aria-hidden="true"></i><span></span>'; document.body.appendChild(note);
+          }
+          const skus = [...new Set(list.map(r => String(r.sku)))];
+          note.querySelector("span").textContent = `Tên đã cập nhật · ${skus.slice(0, 3).join(", ")}${skus.length > 3 ? ` +${skus.length - 3}` : ""}`;
+          note.hidden = false; clearTimeout(noteTimer); noteTimer = setTimeout(() => { note.hidden = true; }, 6000);
+        });
+      })();
+    </script>
     <script id="sku-combo-picker">
       (() => {
         const selector = '#f-sku, #uid-bulk-sku, #uid-auto-rows input[data-field="sku"]';
@@ -474,6 +710,9 @@
           return w > 0 && h > 0 ? { x: x / W, y: y / H, w: w / W, h: h / H } : undefined;
         };
         const lookup = async code => {
+          // Danh mục SKU trên máy (sku-catalog-script, 18/10/2026): có thì nhận ngay; không có / chưa nạp → hỏi máy chủ như cũ.
+          const local = window.PrintSkuCatalog?.get(code);
+          if (local) return { sku: local.sku, ten: local.name };
           const q = window.PrintSkuQueue;
           if (!q?.supabaseUrl) throw new Error("Chưa có cấu hình Supabase");
           const response = await fetch(`${q.supabaseUrl}/rest/v1/SKU_Name?select=sku,product_name&sku=eq.${encodeURIComponent(code)}&limit=1`, {
@@ -859,7 +1098,7 @@ Error generating stack: `+y.message+`
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
- */const R0=Ye("X",[["path",{d:"M18 6 6 18",key:"1bl5f8"}],["path",{d:"m6 6 12 12",key:"d8bk6v"}]]),jp="legacy://print-queue-shim",zp=r=>new Promise(e=>setTimeout(e,r));function M0(){return"pr-"+Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,8)}async function Js(r,e){const t={tb:e,...r};t.nonce||(t.nonce=M0());let n="";for(let i=0;i<2;i++){i&&await zp(900);let o="";try{o=await(await fetch(jp,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(t),signal:AbortSignal.timeout(45e3)})).text()}catch(l){n=String((l==null?void 0:l.message)||l);continue}const s=o.trim();if(s.startsWith("{")||s.startsWith("["))try{return JSON.parse(s)}catch{n="phản hồi không phải JSON";continue}n=/^<!DOCTYPE|^<html/i.test(s)?"Apps Script trả về trang HTML":"phản hồi lạ: "+s.slice(0,60)}throw new Error(n||"không gọi được Apps Script")}const yi=r=>{try{return localStorage.getItem(r)||""}catch{return""}},ya=(r,e)=>{try{localStorage.setItem(r,e)}catch{}};function Hp(){try{const r=(location.hash||"").match(/[#&]khoa=([^&]+)/);if(!r)return;ya("tb-khoa",decodeURIComponent(r[1]).trim()),history.replaceState(null,"",location.pathname+location.search)}catch{}}const el=()=>yi("tb-khoa"),Zc=()=>!!yi("tb-khoa");function Vp(){const r=yi("nds-mail")||yi("uidgr-mail");if(/^[a-z0-9._%+-]+@hasaki\.vn$/i.test(r))return r.toLowerCase();const e="may-"+Math.random().toString(36).slice(2,10)+"@hasaki.vn";return ya("nds-mail",e),e}const hl=()=>yi("nds-ten-may").trim()||"Máy kho",Gp=r=>ya("nds-ten-may",r.replace(/\s+/g," ").trim().slice(0,24));function bl(){try{return JSON.parse(yi("tem-sotay")||"{}")||{}}catch{return{}}}function pl(r,e){if(!r||!e)return;const t=bl();t[r]=e;const n=Object.keys(t);n.length>800&&delete t[n[0]],ya("tem-sotay",JSON.stringify(t))}const P0=r=>bl()[r]||"";function Wp(){ya("tem-sotay","{}")}const Xp=["tongquan","hangdoi","cauhinh"];function Qc(r){const e=(r||"").replace(/^#/,"").split("?")[0],[t,n]=e.split("/");return t!=="admin"?{mode:"worker",tab:"tongquan"}:{mode:"admin",tab:Xp.includes(n)?n:"tongquan"}}const $p=(r,e)=>r==="admin"?`#admin/${e}`:"#worker";var Kp=(function(){var r="11011001100110011011001100110011010010011000100100011001000100110010011001000100110001001000110010011001001000110010001001100010010010110011100100110111001001100111010111001100100111011001001110011011001110010110010111001100100111011011100100110011101001110110111011101001100111001011001110010011011101100100111001101001110011001011011011000110110001101100011011010100011000100010110001000100011010110001000100011010001000110001011010001000110001010001100010001010110111000101100011101000110111010111011000101110001101000111011011101110110110100011101100010111011011101000110111000101101110111011101011000111010001101110001011011101101000111011000101110001101011101111010110010000101111000101010100110000101000011001001011000010010000110100001011001000010011010110010000101100001001001101000010011000010100001101001000011001011000010010110010100001111011101011000010100100011110101010011110010010111100100100111101011110010010011110100100111100101111010010011110010100111100100101101101111011011110110111101101101010111100010100011110100010111101011110100010111100010111101010001111010001010111011110101111011101110101111011110101110110100001001101001000011010011100",e="1100011101011",t=104,n=105,i=99,o=103;function s(j){return j===106?e:r.substr(j*11,11)}function l(j){var G=String(j??""),V=[],ee,k;if(/^[0-9]+$/.test(G)&&G.length>=4)for(ee=0,G.length%2===1?(V.push(t),V.push(G.charCodeAt(0)-32),V.push(i),ee=1):V.push(n);ee<G.length;ee+=2)V.push(Number(G.substr(ee,2)));else for(V.push(t),ee=0;ee<G.length;ee++){if(k=G.charCodeAt(ee),k<32||k>126)return null;V.push(k-32)}var K=V[0];for(ee=1;ee<V.length;ee++)K+=ee*V[ee];return V.push(K%o),V.push(106),V}function c(j){var G=l(j);if(!G)return"";for(var V="",ee=0;ee<G.length;ee++)V+=s(G[ee]);return V}function h(j,G){G=G||{};var V=c(j);if(!V)return"";for(var ee=G.mm||.28,k=G.cao||9,K=V.length*ee,Z=0,O="";Z<V.length;)if(V[Z]==="1"){for(var F=Z;F<V.length&&V[F]==="1";)F++;O+='<rect x="'+(Z*ee).toFixed(3)+'" y="0" width="'+((F-Z)*ee).toFixed(3)+'" height="'+k+'" fill="#000"/>',Z=F}else Z++;return'<svg class="pr-bc" width="'+K.toFixed(2)+'mm" height="'+k+'mm" viewBox="0 0 '+K.toFixed(3)+" "+k+'" preserveAspectRatio="none" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg">'+O+"</svg>"}function p(j,G){G=G||{};var V=c(j);if(!V)return null;for(var ee=G.dotMm||8,k=Math.max(2,Math.round((G.mm||.25)*ee)),K=k,Z=G.cao||9,O=G.x||0,F=G.y||0,pe=0,ve="";pe<V.length;)if(V[pe]==="1"){for(var ge=pe;ge<V.length&&V[ge]==="1";)ge++;ve+='<rect x="'+(O+pe*K).toFixed(3)+'" y="'+F+'" width="'+((ge-pe)*K).toFixed(3)+'" height="'+Z+'" fill="#000"/>',pe=ge}else pe++;return{rects:ve,rong:+(V.length*K).toFixed(3),soModule:V.length,modMm:K}}function v(j,G){for(var V=String(j??""),ee=V.match(/[^\s\/]*[\/\s]|[^\s\/]+$/g)||[],k=[],K="",Z=0;Z<ee.length;Z++){for(var O=ee[Z];O.replace(/\s+$/,"").length>G;)K.trim()&&(k.push(K.replace(/\s+$/,"")),K=""),k.push(O.slice(0,G)),O=O.slice(G);(K+O).replace(/\s+$/,"").length>G?(K.trim()&&k.push(K.replace(/\s+$/,"")),K=O):K+=O}return K.trim()&&k.push(K.replace(/\s+$/,"")),k}function x(j,G,V,ee,k){ee=ee||34,k=k||7;var c=x.c===void 0?(x.c=typeof document!="undefined"&&document.createElement("canvas").getContext("2d")||null):x.c;if(!c)return xUocLuongCu(j,G,V,ee,k);var w=function(t,K){return c.font=K+"px Arial, Helvetica, sans-serif",c.measureText(t).width},b=function(K){for(var T=String(j??"").match(/[^\s\/]*[\/\s]|[^\s\/]+$/g)||[],L=[],R="",i=0;i<T.length;i++){for(var t=T[i];t.replace(/\s+$/,"").length>1&&w(t.replace(/\s+$/,""),K)>G;){R.trim()&&(L.push(R.replace(/\s+$/,"")),R="");for(var n=t.length-1;n>1&&w(t.slice(0,n),K)>G;)n--;L.push(t.slice(0,n)),t=t.slice(n)}w((R+t).replace(/\s+$/,""),K)>G&&R.trim()?(L.push(R.replace(/\s+$/,"")),R=t):R+=t}return R.trim()&&L.push(R.replace(/\s+$/,"")),L};for(var K=ee;K>=k;K--){var O=b(K);if(O.length*K*1.22<=V)return{co:K,dong:O}}return{co:k,dong:b(k).slice(0,Math.max(1,Math.floor(V/(k*1.22))))}}function xUocLuongCu(j,G,V,ee,k){ee=ee||34,k=k||7;for(var K=ee;K>=k;K--){var Z=Math.floor(G/(K*.55));if(!(Z<4)){var O=v(j,Z);if(O.length*K*1.22<=V)return{co:K,dong:O}}}var F=Math.max(4,Math.floor(G/(k*.55)));return{co:k,dong:v(j,F).slice(0,Math.max(1,Math.floor(V/(k*1.22))))}}function m(j){var G=String(j??"").trim();if(!G)return"";var V=G.match(/^(-?\d+)(?:([.,])(\d+))?(.*)$/);if(!V)return G;var ee=V[1].replace(/\B(?=(\d{3})+(?!\d))/g,"."),k=V[3]?","+V[3]:"";return ee+k+(V[4]||"")}function w(j){j=j||new Date;var G=function(V){return(V<10?"0":"")+V};return G(j.getDate())+"-"+G(j.getMonth()+1)+"-"+String(j.getFullYear()).slice(-2)}function C(j,G,V){V=V||{};var ee=W(G),k=V.dotMm||8,K=Math.round(ee.w*k),Z=Math.round(ee.h*k),O=Math.round((V.leMm||3)*k),F=Math.round((V.lechMm||0)*k),pe=V.coSku||34,ve=V.coChan||16,ge=V.caoVach||Math.round(8*k),Se=K/2-F,Te=O-F,Ie=O,Ne='<svg xmlns="http://www.w3.org/2000/svg" width="'+K+'" height="'+Z+'" viewBox="0 0 '+K+" "+Z+'" shape-rendering="crispEdges" font-family="Arial, Helvetica, sans-serif"><rect width="'+K+'" height="'+Z+'" fill="#fff"/><rect x="'+(2-F)+'" y="2" width="'+(K-4)+'" height="'+(Z-4)+'" fill="none" stroke="#000" stroke-width="2"/>',Ze=String(j.uid==null?"":j.uid).trim(),Jt=j.loai==="ug"&&!!Ze,pn=Jt?Ze:String(j.sku==null?"":j.sku),Or=K-O*2,jr=pe;Jt&&(jr=Math.max(14,Math.min(pe,Math.floor((Or-pn.length)/(pn.length*.6))))),Ne+='<text x="'+Se+'" y="'+(Ie+jr)+'" font-size="'+jr+'" font-weight="bold" text-anchor="middle" letter-spacing="1">'+N(pn)+"</text>",Ie+=jr+Math.round(.8*k);var vn=p(pn,{mm:.25,dotMm:k,cao:ge,x:0,y:Ie});if(vn&&(!Jt||vn.rong<=Or)&&(Ne+='<g transform="translate('+(Se-vn.rong/2)+',0)">'+vn.rects+"</g>",Ie+=ge+Math.round(.7*k)),Jt){var Fn=Math.round(2.6*k);Ne+='<text x="'+Te+'" y="'+(Ie+Fn)+'" font-size="'+Fn+'" font-weight="bold">'+N("SKU "+String(j.sku==null?"":j.sku))+"</text>",Ie+=Fn+Math.round(.6*k)}for(var _i=44+Math.round(1.4*k),Un=Ze&&!Jt?Math.round(2.5*k):0,Ci=Ze&&!Jt?Un+Math.round(.5*k):0,gn=Z-Ie-_i-Ci-O,er=x(String(j.pn==null?"":j.pn),Or,gn,V.coTenMax||34,V.coTenMin||7),zr=0;zr<er.dong.length;zr++)Ne+='<text x="'+Te+'" y="'+(Ie+er.co+zr*Math.round(er.co*1.22))+'" font-size="'+er.co+'">'+N(er.dong[zr])+"</text>";if(Ze&&!Jt){var Ca=T("UIDgr "+Ze,Math.max(8,Math.floor(Or/(Un*.56))));Ne+='<text x="'+Te+'" y="'+(Z-O-44-Math.round(.6*k))+'" font-size="'+Un+'" font-weight="bold" fill="#000">'+N(Ca)+"</text>"}var xn=String(j.ngay==null?"":j.ngay),yn=m(j.sl),Ei=Math.round(ve*1.05),Ai=xn?Math.round(xn.length*Ei*.56):0,jn=K-O*2-Ai-Math.round(1*k),Hr=ve;if(yn)for(var wr=44;wr>=10;wr--){if(yn.length*wr*.62<=jn){Hr=wr;break}Hr=10}var _r=Z-Math.round(1.2*k);return Ne+='<line x1="'+Te+'" y1="'+(_r-Hr-5)+'" x2="'+(K-O-F)+'" y2="'+(_r-Hr-5)+'" stroke="#000" stroke-width="1.5"/>',yn&&(Ne+='<text x="'+Te+'" y="'+_r+'" font-size="'+Hr+'" font-weight="bold">'+N(yn)+"</text>"),xn&&(Ne+='<text x="'+(K-O-F)+'" y="'+_r+'" font-size="'+Ei+'" text-anchor="end">'+N(xn)+"</text>"),Ne+"</svg>"}function S(j,G,V){V=V||{};for(var ee=W(G||z),k=V.dotMm||8,K=Math.round(ee.w*k),Z=Math.round(ee.h*k),O=Math.round((V.leMm||3)*k),F=Math.round((V.lechMm!=null?V.lechMm:2)*k),pe=O-F,ve=K/2-F,ge='<svg xmlns="http://www.w3.org/2000/svg" width="'+K+'" height="'+Z+'" viewBox="0 0 '+K+" "+Z+'" shape-rendering="crispEdges" font-family="Arial, Helvetica, sans-serif"><rect width="'+K+'" height="'+Z+'" fill="#fff"/><rect x="'+(2-F)+'" y="2" width="'+(K-4)+'" height="'+(Z-4)+'" fill="none" stroke="#000" stroke-width="4"/><rect x="'+(2-F)+'" y="2" width="'+(K-4)+'" height="'+Math.round(7*k)+'" fill="#000"/><text x="'+ve+'" y="'+Math.round(5.6*k)+'" font-size="'+Math.round(3.4*k)+'" font-weight="bold" fill="#fff" text-anchor="middle">ĐỢT IN TEM</text>',Se=Math.round(11*k),Te=Math.round(2.6*k),Ie=Math.round(Te*1.5),Ne=[["Người gửi",String(j.nguoi||"—")],["Lúc",String(j.luc||"")],["Số tem",String(j.soTem==null?"":j.soTem)],["Số SKU",String(j.soSku==null?"":j.soSku)]],Ze=0;Ze<Ne.length;Ze++)ge+='<text x="'+pe+'" y="'+Se+'" font-size="'+Math.round(Te*.8)+'" fill="#333">'+N(Ne[Ze][0])+"</text>",ge+='<text x="'+pe+'" y="'+(Se+Te+2)+'" font-size="'+Te+'" font-weight="bold">'+N(Ne[Ze][1])+"</text>",Se+=Ie+Te;return ge+='<text x="'+ve+'" y="'+(Z-Math.round(2*k))+'" font-size="'+Math.round(2*k)+'" text-anchor="middle" fill="#333">tem của đợt này in ngay bên dưới</text>',ge+"</svg>"}function N(j){return String(j??"").replace(/[&<>"']/g,function(G){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[G]})}function T(j,G){return j=String(j??""),j.length>G?j.slice(0,G-1)+"…":j}var M={soCot:2,khe:2,kheNgang:3},P={t40x60:{ten:"Tem SKU 40 × 60 mm (2 tem/hàng — giấy đang lắp)",w:40,h:60,mm:.25,cao:10,ve:function(j){return C(j,"t40x60",{lechMm:2})}},t42x62:{ten:"Tem SKU 42,5 × 62 mm (form sku.btw)",w:42.5,h:62,mm:.25,cao:10,ve:function(j){return C(j,"t42x62",{lechMm:2})}},t46x76:{ten:"Tem lớn 46 × 76 mm (TSC PE200)",w:46,h:76,mm:.26,cao:11,ve:function(j){return C(j,"t46x76",{lechMm:2})}},t42x25:{ten:"Tem ngang 42 × 25 mm (Zebra ZT230)",w:42,h:25,mm:.22,cao:6,ve:function(j){return C(j,"t42x25",{coSku:20,coChan:12,caoVach:40,coTenMax:14,leMm:2,lechMm:1})}},t22x13:{ten:"Tem mini 21,6 × 12,7 mm (chỉ mã)",w:21.6,h:12.7,mm:.15,cao:5,ve:function(j){return C(j,"t22x13",{coSku:13,coChan:9,caoVach:26,coTenMax:8,coTenMin:6,leMm:1.2,lechMm:.5})}}},z="t40x60";function W(j){return P[j]||P[z]}function $(j){var G=W(j),V=Math.max(1,M.soCot|0);return{w:+(G.w*V+M.khe*(V-1)).toFixed(2),h:G.h,cot:V,khe:M.khe,tem:G}}function X(j,G){for(var V=$(G).cot,ee=[],k=0;k<j.length;k+=V)ee.push(j.slice(k,k+V));return ee}function ie(j){var G=String(j??"").trim();return G?G.split(/[,;\/\n\t ]+/).map(function(V){return String(V).trim()}).filter(function(V){return V!==""&&/[0-9]/.test(V)}):[]}function ae(j){var G=ie(j&&j.slHang);return G.length>1?G.length:Math.max(0,Number(j&&j.sl)||0)}function Ce(j){var G=0;return(j||[]).forEach(function(V){G+=ae(V)}),G}function me(j){var G=[];return(j||[]).forEach(function(V){var ee=ie(V.slHang);if(ee.length>1){ee.forEach(function(Z){G.push({sku:V.sku,pn:V.pn,slHang:Z,mau:V.mau,uid:V.uid||"",loai:V.loai||""})});return}for(var k=Math.max(0,Number(V.sl)||0),K=0;K<k;K++)G.push({sku:V.sku,pn:V.pn,slHang:ee.length?ee[0]:V.slHang||"",mau:V.mau,uid:V.uid||"",loai:V.loai||""})}),G}function Y(j){var G={},V=[];return(j||[]).forEach(function(ee){var k=P[ee.mau]?ee.mau:z;G[k]||(G[k]=[],V.push(k)),G[k].push(ee)}),{m:G,thuTu:V}}return{maHoa:l,bit:c,svg:h,MAU:P,MAU_MAC_DINH:z,mau:W,tongTem:Ce,theoMau:Y,cat:T,GIAY:M,khoTrang:$,chiaHang:X,tachSl:ie,temCuaDong:ae,moRong:me,svgTem:C,vachRect:p,coChuVua:x,beDong:v,soGon:m,ngayTem:w,svgTemDot:S}})();const Nr=Kp,Bl=r=>({sku:r.sku,pn:r.pn,slHang:r.slHang,sl:r.ban,mau:r.mau}),vl=r=>Nr.temCuaDong(Bl(r)),qc=r=>Nr.tongTem(r.map(Bl)),Yp=r=>Nr.moRong(r.map(Bl)),Zp=(r,e)=>Nr.chiaHang(Yp(r),e),Jc=["code_128","code_39","ean_13","ean_8","upc_a","upc_e","itf","qr_code"],gl=()=>{var r;return typeof navigator<"u"&&!!((r=navigator.mediaDevices)!=null&&r.getUserMedia)},k0=()=>typeof window<"u"&&(window.isSecureContext||location.hostname==="localhost"||location.protocol==="file:");/* 01/10/2026: doc(video, vung?) — vung {x,y,w,h} theo ti le khung hinh, chi doc trong khung ngam (tem nhieu ma khong bi doc nham); nhieu ma thi lay ma gan tam nhat. ZXing: KHONG dung BrowserMultiFormatReader.decode(video) — ban nay dao mau xen ke moi lan dung anh tu video (HTMLCanvasElementLuminanceSource.FRAME_INDEX), lan thu xoay 90 do lam lech nhip nen anh thang luon bi dao: QR va ma vach ngang khong bao gio doc duoc. Tu ve khung len canvas, doc anh thuong; cu 4 lan thu 1 lan anh dao cho tem in trang tren nen den. */function __psCrop(v,g,c){const W=v.videoWidth||v.width,H=v.videoHeight||v.height;if(!W||!H)return null;const q=g&&g.w>0&&g.h>0?g:{x:0,y:0,w:1,h:1},sx=Math.max(0,Math.round(q.x*W)),sy=Math.max(0,Math.round(q.y*H)),sw=Math.max(1,Math.min(W-sx,Math.round(q.w*W))),sh=Math.max(1,Math.min(H-sy,Math.round(q.h*H))),k=Math.min(1,960/Math.max(sw,sh));c.width=Math.max(1,Math.round(sw*k));c.height=Math.max(1,Math.round(sh*k));c.getContext("2d",{willReadFrequently:!0}).drawImage(v,sx,sy,sw,sh,0,0,c.width,c.height);return c}const __psDist=(a,c)=>{const b=a.boundingBox||{x:0,y:0,width:0,height:0};return Math.hypot(b.x+b.width/2-c.width/2,b.y+b.height/2-c.height/2)};async function Qp(){var n;const r=globalThis.BarcodeDetector;if(!r)return null;let e=Jc;try{const i=await((n=r.getSupportedFormats)==null?void 0:n.call(r));if(i!=null&&i.length&&(e=Jc.filter(o=>i.includes(o))),!e.length)return null}catch{}const t=new r({formats:e}),c=document.createElement("canvas");return async(i,g)=>{const f=__psCrop(i,g,c);if(!f)return null;const o=await t.detect(f),s=(o||[]).filter(a=>a.rawValue).sort((a,b)=>__psDist(a,f)-__psDist(b,f))[0];return s?{ma:s.rawValue,dinhDang:s.format}:null}}async function qp(){try{const r=await I0(()=>Promise.resolve().then(()=>ty),void 0,import.meta.url),e=new Map;e.set(r.DecodeHintType.POSSIBLE_FORMATS,[r.BarcodeFormat.CODE_128,r.BarcodeFormat.CODE_39,r.BarcodeFormat.EAN_13,r.BarcodeFormat.EAN_8,r.BarcodeFormat.UPC_A,r.BarcodeFormat.ITF,r.BarcodeFormat.QR_CODE]),e.set(r.DecodeHintType.TRY_HARDER,!0);const t=new r.MultiFormatReader;t.setHints(e);const c=document.createElement("canvas");let k=0;return async(n,g)=>{var o;const f=__psCrop(n,g,c);if(!f)return null;try{const h=new r.HTMLCanvasElementLuminanceSource(f),s=t.decodeWithState(new r.BinaryBitmap(new r.HybridBinarizer(++k%4===0?h.invert():h))),l=s==null?void 0:s.getText();return l?{ma:l,dinhDang:String(((o=s.getBarcodeFormat)==null?void 0:o.call(s))??"")}:null}catch{return null}}}catch{return null}}async function Jp(){const r=await Qp();if(r)return{doc:r,nguon:"native"};const e=await qp();return e?{doc:e,nguon:"zxing"}:null}function ev(){return navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"},width:{ideal:1280},height:{ideal:720}},audio:!1})}window.PrintSkuScanner={gl,k0,ev,Jp};async function tv(r,e){var i;const t=r.getVideoTracks()[0];if(!t)return!1;const n=(i=t.getCapabilities)==null?void 0:i.call(t);if(!(n!=null&&n.torch))return!1;try{return await t.applyConstraints({advanced:[{torch:e}]}),!0}catch{return!1}}const rv=r=>{var e,t,n;return!!((n=(t=(e=r.getVideoTracks()[0])==null?void 0:e.getCapabilities)==null?void 0:t.call(e))!=null&&n.torch)};function e0(r){r==null||r.getTracks().forEach(e=>e.stop())}function nv({gia:r,onDoi:e,min:t=1,max:n=200,id:i,onEnter:o,kbAn:__kbA}){const[s,l]=we.useState(null),c=we.useRef(void 0),h=we.useRef(void 0),p=C=>e(Math.max(t,Math.min(n,C))),v=C=>{p(r+C),c.current=window.setTimeout(()=>{h.current=window.setInterval(()=>e(m.current+C>n?n:Math.max(t,m.current+C)),90)},450)},x=()=>{window.clearTimeout(c.current),window.clearInterval(h.current),c.current=void 0,h.current=void 0},m=we.useRef(r);we.useEffect(()=>{m.current=r},[r]),we.useEffect(()=>x,[]);const w="w-12 h-[46px] shrink-0 rounded-xl flex items-center justify-center transition select-none bg-brand-light text-brand active:scale-95 disabled:opacity-35 disabled:active:scale-100";return A.jsxs("div",{className:"flex items-center gap-2 rounded-xl border-[1.5px] border-slate-200 bg-white p-1.5 focus-within:border-brand",children:[A.jsx("button",{type:"button",className:w,disabled:r<=t,"aria-label":"Giảm",onPointerDown:()=>v(-1),onPointerUp:x,onPointerLeave:x,onPointerCancel:x,children:A.jsx(kp,{size:20})}),A.jsx("input",{id:i,inputMode:__kbA?"none":"numeric",pattern:"[0-9]*",className:"flex-1 min-w-0 text-center text-xl font-bold so bg-transparent outline-none",value:s??String(r),onFocus:C=>{l(String(r)),C.currentTarget.select()},onChange:C=>l(C.target.value.replace(/[^0-9]/g,"")),onBlur:()=>{p(Number(s)||t),l(null)},onKeyDown:C=>{C.key==="Enter"&&(C.preventDefault(),p(Number(s)||t),l(null),C.currentTarget.blur(),o==null||o())}}),A.jsx("button",{type:"button",className:w,disabled:r>=n,"aria-label":"Tăng",onPointerDown:()=>v(1),onPointerUp:x,onPointerLeave:x,onPointerCancel:x,children:A.jsx(O0,{size:20})})]})}const iv="https://ikzhitdqkoatlmkrxuuh.supabase.co/rest/v1",t0="sb_publishable_mBl--Ep5nNxuC4Xvyi1gfg_SLGEcRhI",Ho="SKU_Name",Bn="sku",Ll="product_name",xl=`${Bn},${Ll}`,av={apikey:t0,Authorization:"Bearer "+t0},yl=r=>({sku:String(r[Bn]??""),ten:String(r[Ll]??"")}),tl=new Map;let ov=0,r0=0,di="";async function Vo(r){try{const e=await fetch(iv+r,{headers:av,signal:AbortSignal.timeout(8e3)});if(!e.ok)throw di="HTTP "+e.status+" — "+(await e.text()).slice(0,200),new Error(di);ov=Date.now(),r0=0,di="";const t=await e.json();return Array.isArray(t)?t:[]}catch(e){return r0++,di||(di=String((e==null?void 0:e.message)||e).slice(0,200)),null}}async function uv(r){const e=r.trim();if(!e)return null;if(tl.has(e))return tl.get(e);const t=await Vo(`/${Ho}?select=${xl}&${Bn}=eq.${encodeURIComponent(e)}&limit=1`);if(t===null)return;const n=t[0]?yl(t[0]):null;return tl.set(e,n),n}async function sv(r){const e=r.trim();if(e.length<2)return[];const n=(await Vo(`/${Ho}?select=${xl}&${Bn}=like.${encodeURIComponent(e+"*")}&order=${Bn}.asc&limit=8`)??[]).map(yl);if(n.length>=8)return n;if(e.length>=3){const i=await Vo(`/${Ho}?select=${xl}&${Ll}=ilike.${encodeURIComponent("*"+e+"*")}&order=${Bn}.asc&limit=8`),o=new Set(n.map(s=>s.sku));for(const s of i??[]){const l=yl(s);if(o.has(l.sku)||n.push(l),n.length>=10)break}}return n}async function lv(){const r=await Vo(`/${Ho}?select=${Bn}&limit=1`);return r===null?{ok:!1,chu:di||"không gọi được"}:{ok:!0,chu:r.length?"đọc được danh mục":"gọi được nhưng bảng đang rỗng"}}const rl="w-full min-h-[50px] px-3.5 py-3 text-base rounded-xl bg-white border-[1.5px] border-slate-200 outline-none transition focus:border-brand focus:ring-[3px] focus:ring-brand-light",Mo="block text-[10.5px] font-bold tracking-[0.09em] uppercase text-slate-400 mb-1.5";function fv({sku:r,pn:e,slHang:t,ban:n,onDoi:i,onThem:o,goiY:s,onGoiY:l,onQuet:c,coQuet:h}){const p=we.useRef(null),v=we.useRef(null),x=we.useRef(null),m=[p,v,x],w=X=>ie=>{var ae,Ce;ie.key==="Enter"&&(ie.preventDefault(),X<m.length-1?(ae=m[X+1].current)==null||ae.focus():(Ce=document.getElementById("f-ban"))==null||Ce.focus())},[C,S]=we.useState(""),[N,T]=we.useState([]),[M,P]=we.useState(!1),[__kbH,__kbSet]=we.useState(()=>{try{return localStorage.getItem("print-sku-ban-phim")!=="hien"}catch{return!0}}),z=we.useRef(0),W=X=>{const ie=X.trim();const ae=P0(ie);i({sku:X,pn:ae||"",pnCho:!!ae});S("");ae&&l("Tên hàng lấy từ lần in trước — đang đối chiếu danh mục…")};we.useEffect(()=>{const X=r.trim();if(!X){T([]),S("");return}const ie=++z.current;S("dang");const ae=setTimeout(async()=>{const[Ce,me]=await Promise.all([uv(X),sv(X)]);if(ie===z.current){if(Ce===void 0){S("mang"),T([]),i({pn:"",pnCho:!1});return}T(me.filter(Y=>Y.sku!==X)),Ce?(S("thay"),i({pn:Ce.ten,pnCho:!1}),pl(Ce.sku,Ce.ten),l("Tên hàng lấy từ danh mục — sửa được nếu cần.")):(S("khong"),i({pn:"",pnCho:!1}))}},300);return()=>{clearTimeout(ae);z.current++}},[r]);const $=X=>{i({sku:X.sku,pn:X.ten}),pl(X.sku,X.ten),P(!1),T([]),l("Đã chọn từ danh mục."),setTimeout(()=>{var ie;return(ie=x.current)==null?void 0:ie.focus()},40)};return A.jsxs("section",{className:"bg-white rounded-2xl border border-slate-100 shadow-sm p-4 sm:p-5",children:[A.jsxs("p",{className:"flex items-baseline gap-2 mb-3",children:[A.jsx("b",{className:"text-[11px] font-extrabold text-brand tracking-wider",children:"1"}),A.jsx("span",{className:"text-[15px] font-bold text-slate-800",children:"Nhập tem"})]}),A.jsx("label",{className:Mo,htmlFor:"f-sku",children:"Mã SKU"}),A.jsxs("div",{className:"sku-row",children:[A.jsxs("div",{className:"relative",children:[A.jsx("input",{id:"f-sku",ref:p,value:r,inputMode:__kbH?"none":"text",className:`${rl} so text-lg font-bold tracking-wider ${h?"pr-16":""}`,autoComplete:"off",spellCheck:!1,enterKeyHint:"next",placeholder:"SKU",onChange:X=>W(X.target.value),onKeyDown:w(0),onFocus:()=>P(!0),onBlur:()=>setTimeout(()=>P(!1),150)}),h&&A.jsx("button",{type:"button",onClick:c,"aria-label":"Quét mã bằng camera",className:`absolute right-1.5 top-1/2 -translate-y-1/2 w-12 h-[42px] rounded-lg
+ */const R0=Ye("X",[["path",{d:"M18 6 6 18",key:"1bl5f8"}],["path",{d:"m6 6 12 12",key:"d8bk6v"}]]),jp="legacy://print-queue-shim",zp=r=>new Promise(e=>setTimeout(e,r));function M0(){return"pr-"+Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,8)}async function Js(r,e){const t={tb:e,...r};t.nonce||(t.nonce=M0());let n="";for(let i=0;i<2;i++){i&&await zp(900);let o="";try{o=await(await fetch(jp,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(t),signal:AbortSignal.timeout(45e3)})).text()}catch(l){n=String((l==null?void 0:l.message)||l);continue}const s=o.trim();if(s.startsWith("{")||s.startsWith("["))try{return JSON.parse(s)}catch{n="phản hồi không phải JSON";continue}n=/^<!DOCTYPE|^<html/i.test(s)?"Apps Script trả về trang HTML":"phản hồi lạ: "+s.slice(0,60)}throw new Error(n||"không gọi được Apps Script")}const yi=r=>{try{return localStorage.getItem(r)||""}catch{return""}},ya=(r,e)=>{try{localStorage.setItem(r,e)}catch{}};function Hp(){try{const r=(location.hash||"").match(/[#&]khoa=([^&]+)/);if(!r)return;ya("tb-khoa",decodeURIComponent(r[1]).trim()),history.replaceState(null,"",location.pathname+location.search)}catch{}}const el=()=>yi("tb-khoa"),Zc=()=>!!yi("tb-khoa");function Vp(){const r=yi("nds-mail")||yi("uidgr-mail");if(/^[a-z0-9._%+-]+@hasaki\.vn$/i.test(r))return r.toLowerCase();const e="may-"+Math.random().toString(36).slice(2,10)+"@hasaki.vn";return ya("nds-mail",e),e}const hl=()=>yi("nds-ten-may").trim()||"Máy kho",Gp=r=>ya("nds-ten-may",r.replace(/\s+/g," ").trim().slice(0,24));function bl(){try{return JSON.parse(yi("tem-sotay")||"{}")||{}}catch{return{}}}function pl(r,e){if(!r||!e)return;const t=bl();t[r]=e;const n=Object.keys(t);n.length>800&&delete t[n[0]],ya("tem-sotay",JSON.stringify(t))}const P0=r=>bl()[r]||"";function Wp(){ya("tem-sotay","{}")}const Xp=["tongquan","hangdoi","cauhinh"];function Qc(r){const e=(r||"").replace(/^#/,"").split("?")[0],[t,n]=e.split("/");return t!=="admin"?{mode:"worker",tab:"tongquan"}:{mode:"admin",tab:Xp.includes(n)?n:"tongquan"}}const $p=(r,e)=>r==="admin"?`#admin/${e}`:"#worker";var Kp=(function(){var r="11011001100110011011001100110011010010011000100100011001000100110010011001000100110001001000110010011001001000110010001001100010010010110011100100110111001001100111010111001100100111011001001110011011001110010110010111001100100111011011100100110011101001110110111011101001100111001011001110010011011101100100111001101001110011001011011011000110110001101100011011010100011000100010110001000100011010110001000100011010001000110001011010001000110001010001100010001010110111000101100011101000110111010111011000101110001101000111011011101110110110100011101100010111011011101000110111000101101110111011101011000111010001101110001011011101101000111011000101110001101011101111010110010000101111000101010100110000101000011001001011000010010000110100001011001000010011010110010000101100001001001101000010011000010100001101001000011001011000010010110010100001111011101011000010100100011110101010011110010010111100100100111101011110010010011110100100111100101111010010011110010100111100100101101101111011011110110111101101101010111100010100011110100010111101011110100010111100010111101010001111010001010111011110101111011101110101111011110101110110100001001101001000011010011100",e="1100011101011",t=104,n=105,i=99,o=103;function s(j){return j===106?e:r.substr(j*11,11)}function l(j){var G=String(j??""),V=[],ee,k;if(/^[0-9]+$/.test(G)&&G.length>=4)for(ee=0,G.length%2===1?(V.push(t),V.push(G.charCodeAt(0)-32),V.push(i),ee=1):V.push(n);ee<G.length;ee+=2)V.push(Number(G.substr(ee,2)));else for(V.push(t),ee=0;ee<G.length;ee++){if(k=G.charCodeAt(ee),k<32||k>126)return null;V.push(k-32)}var K=V[0];for(ee=1;ee<V.length;ee++)K+=ee*V[ee];return V.push(K%o),V.push(106),V}function c(j){var G=l(j);if(!G)return"";for(var V="",ee=0;ee<G.length;ee++)V+=s(G[ee]);return V}function h(j,G){G=G||{};var V=c(j);if(!V)return"";for(var ee=G.mm||.28,k=G.cao||9,K=V.length*ee,Z=0,O="";Z<V.length;)if(V[Z]==="1"){for(var F=Z;F<V.length&&V[F]==="1";)F++;O+='<rect x="'+(Z*ee).toFixed(3)+'" y="0" width="'+((F-Z)*ee).toFixed(3)+'" height="'+k+'" fill="#000"/>',Z=F}else Z++;return'<svg class="pr-bc" width="'+K.toFixed(2)+'mm" height="'+k+'mm" viewBox="0 0 '+K.toFixed(3)+" "+k+'" preserveAspectRatio="none" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg">'+O+"</svg>"}function p(j,G){G=G||{};var V=c(j);if(!V)return null;for(var ee=G.dotMm||8,k=Math.max(2,Math.round((G.mm||.25)*ee)),K=k,Z=G.cao||9,O=G.x||0,F=G.y||0,pe=0,ve="";pe<V.length;)if(V[pe]==="1"){for(var ge=pe;ge<V.length&&V[ge]==="1";)ge++;ve+='<rect x="'+(O+pe*K).toFixed(3)+'" y="'+F+'" width="'+((ge-pe)*K).toFixed(3)+'" height="'+Z+'" fill="#000"/>',pe=ge}else pe++;return{rects:ve,rong:+(V.length*K).toFixed(3),soModule:V.length,modMm:K}}function v(j,G){for(var V=String(j??""),ee=V.match(/[^\s\/]*[\/\s]|[^\s\/]+$/g)||[],k=[],K="",Z=0;Z<ee.length;Z++){for(var O=ee[Z];O.replace(/\s+$/,"").length>G;)K.trim()&&(k.push(K.replace(/\s+$/,"")),K=""),k.push(O.slice(0,G)),O=O.slice(G);(K+O).replace(/\s+$/,"").length>G?(K.trim()&&k.push(K.replace(/\s+$/,"")),K=O):K+=O}return K.trim()&&k.push(K.replace(/\s+$/,"")),k}function x(j,G,V,ee,k){ee=ee||34,k=k||7;var c=x.c===void 0?(x.c=typeof document!="undefined"&&document.createElement("canvas").getContext("2d")||null):x.c;if(!c)return xUocLuongCu(j,G,V,ee,k);var w=function(t,K){return c.font=K+"px Arial, Helvetica, sans-serif",c.measureText(t).width},b=function(K){for(var T=String(j??"").match(/[^\s\/]*[\/\s]|[^\s\/]+$/g)||[],L=[],R="",i=0;i<T.length;i++){for(var t=T[i];t.replace(/\s+$/,"").length>1&&w(t.replace(/\s+$/,""),K)>G;){R.trim()&&(L.push(R.replace(/\s+$/,"")),R="");for(var n=t.length-1;n>1&&w(t.slice(0,n),K)>G;)n--;L.push(t.slice(0,n)),t=t.slice(n)}w((R+t).replace(/\s+$/,""),K)>G&&R.trim()?(L.push(R.replace(/\s+$/,"")),R=t):R+=t}return R.trim()&&L.push(R.replace(/\s+$/,"")),L};for(var K=ee;K>=k;K--){var O=b(K);if(O.length*K*1.22<=V)return{co:K,dong:O}}return{co:k,dong:b(k).slice(0,Math.max(1,Math.floor(V/(k*1.22))))}}function xUocLuongCu(j,G,V,ee,k){ee=ee||34,k=k||7;for(var K=ee;K>=k;K--){var Z=Math.floor(G/(K*.55));if(!(Z<4)){var O=v(j,Z);if(O.length*K*1.22<=V)return{co:K,dong:O}}}var F=Math.max(4,Math.floor(G/(k*.55)));return{co:k,dong:v(j,F).slice(0,Math.max(1,Math.floor(V/(k*1.22))))}}function m(j){var G=String(j??"").trim();if(!G)return"";var V=G.match(/^(-?\d+)(?:([.,])(\d+))?(.*)$/);if(!V)return G;var ee=V[1].replace(/\B(?=(\d{3})+(?!\d))/g,"."),k=V[3]?","+V[3]:"";return ee+k+(V[4]||"")}function w(j){j=j||new Date;var G=function(V){return(V<10?"0":"")+V};return G(j.getDate())+"-"+G(j.getMonth()+1)+"-"+String(j.getFullYear()).slice(-2)}function C(j,G,V){V=V||{};var ee=W(G),k=V.dotMm||8,K=Math.round(ee.w*k),Z=Math.round(ee.h*k),O=Math.round((V.leMm||3)*k),F=Math.round((V.lechMm||0)*k),pe=V.coSku||34,ve=V.coChan||16,ge=V.caoVach||Math.round(8*k),Se=K/2-F,Te=O-F,Ie=O,Ne='<svg xmlns="http://www.w3.org/2000/svg" width="'+K+'" height="'+Z+'" viewBox="0 0 '+K+" "+Z+'" shape-rendering="crispEdges" font-family="Arial, Helvetica, sans-serif"><rect width="'+K+'" height="'+Z+'" fill="#fff"/><rect x="'+(2-F)+'" y="2" width="'+(K-4)+'" height="'+(Z-4)+'" fill="none" stroke="#000" stroke-width="2"/>',Ze=String(j.uid==null?"":j.uid).trim(),Jt=j.loai==="ug"&&!!Ze,pn=Jt?Ze:String(j.sku==null?"":j.sku),Or=K-O*2,jr=pe;Jt&&(jr=Math.max(14,Math.min(pe,Math.floor((Or-pn.length)/(pn.length*.6))))),Ne+='<text x="'+Se+'" y="'+(Ie+jr)+'" font-size="'+jr+'" font-weight="bold" text-anchor="middle" letter-spacing="1">'+N(pn)+"</text>",Ie+=jr+Math.round(.8*k);var vn=p(pn,{mm:.25,dotMm:k,cao:ge,x:0,y:Ie});if(vn&&(!Jt||vn.rong<=Or)&&(Ne+='<g transform="translate('+(Se-vn.rong/2)+',0)">'+vn.rects+"</g>",Ie+=ge+Math.round(.7*k)),Jt){var Fn=Math.round(2.6*k);Ne+='<text x="'+Te+'" y="'+(Ie+Fn)+'" font-size="'+Fn+'" font-weight="bold">'+N("SKU "+String(j.sku==null?"":j.sku))+"</text>",Ie+=Fn+Math.round(.6*k)}for(var _i=44+Math.round(1.4*k),Un=Ze&&!Jt?Math.round(2.5*k):0,Ci=Ze&&!Jt?Un+Math.round(.5*k):0,gn=Z-Ie-_i-Ci-O,er=x(String(j.pn==null?"":j.pn),Or,gn,V.coTenMax||34,V.coTenMin||7),zr=0;zr<er.dong.length;zr++)Ne+='<text x="'+Te+'" y="'+(Ie+er.co+zr*Math.round(er.co*1.22))+'" font-size="'+er.co+'">'+N(er.dong[zr])+"</text>";if(Ze&&!Jt){var Ca=T("UIDgr "+Ze,Math.max(8,Math.floor(Or/(Un*.56))));Ne+='<text x="'+Te+'" y="'+(Z-O-44-Math.round(.6*k))+'" font-size="'+Un+'" font-weight="bold" fill="#000">'+N(Ca)+"</text>"}var xn=String(j.ngay==null?"":j.ngay),yn=m(j.sl),Ei=Math.round(ve*1.05),Ai=xn?Math.round(xn.length*Ei*.56):0,jn=K-O*2-Ai-Math.round(1*k),Hr=ve;if(yn)for(var wr=44;wr>=10;wr--){if(yn.length*wr*.62<=jn){Hr=wr;break}Hr=10}var _r=Z-Math.round(1.2*k);return Ne+='<line x1="'+Te+'" y1="'+(_r-Hr-5)+'" x2="'+(K-O-F)+'" y2="'+(_r-Hr-5)+'" stroke="#000" stroke-width="1.5"/>',yn&&(Ne+='<text x="'+Te+'" y="'+_r+'" font-size="'+Hr+'" font-weight="bold">'+N(yn)+"</text>"),xn&&(Ne+='<text x="'+(K-O-F)+'" y="'+_r+'" font-size="'+Ei+'" text-anchor="end">'+N(xn)+"</text>"),Ne+"</svg>"}function S(j,G,V){V=V||{};for(var ee=W(G||z),k=V.dotMm||8,K=Math.round(ee.w*k),Z=Math.round(ee.h*k),O=Math.round((V.leMm||3)*k),F=Math.round((V.lechMm!=null?V.lechMm:2)*k),pe=O-F,ve=K/2-F,ge='<svg xmlns="http://www.w3.org/2000/svg" width="'+K+'" height="'+Z+'" viewBox="0 0 '+K+" "+Z+'" shape-rendering="crispEdges" font-family="Arial, Helvetica, sans-serif"><rect width="'+K+'" height="'+Z+'" fill="#fff"/><rect x="'+(2-F)+'" y="2" width="'+(K-4)+'" height="'+(Z-4)+'" fill="none" stroke="#000" stroke-width="4"/><rect x="'+(2-F)+'" y="2" width="'+(K-4)+'" height="'+Math.round(7*k)+'" fill="#000"/><text x="'+ve+'" y="'+Math.round(5.6*k)+'" font-size="'+Math.round(3.4*k)+'" font-weight="bold" fill="#fff" text-anchor="middle">ĐỢT IN TEM</text>',Se=Math.round(11*k),Te=Math.round(2.6*k),Ie=Math.round(Te*1.5),Ne=[["Người gửi",String(j.nguoi||"—")],["Lúc",String(j.luc||"")],["Số tem",String(j.soTem==null?"":j.soTem)],["Số SKU",String(j.soSku==null?"":j.soSku)]],Ze=0;Ze<Ne.length;Ze++)ge+='<text x="'+pe+'" y="'+Se+'" font-size="'+Math.round(Te*.8)+'" fill="#333">'+N(Ne[Ze][0])+"</text>",ge+='<text x="'+pe+'" y="'+(Se+Te+2)+'" font-size="'+Te+'" font-weight="bold">'+N(Ne[Ze][1])+"</text>",Se+=Ie+Te;return ge+='<text x="'+ve+'" y="'+(Z-Math.round(2*k))+'" font-size="'+Math.round(2*k)+'" text-anchor="middle" fill="#333">tem của đợt này in ngay bên dưới</text>',ge+"</svg>"}function N(j){return String(j??"").replace(/[&<>"']/g,function(G){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[G]})}function T(j,G){return j=String(j??""),j.length>G?j.slice(0,G-1)+"…":j}var M={soCot:2,khe:2,kheNgang:3},P={t40x60:{ten:"Tem SKU 40 × 60 mm (2 tem/hàng — giấy đang lắp)",w:40,h:60,mm:.25,cao:10,ve:function(j){return C(j,"t40x60",{lechMm:2})}},t42x62:{ten:"Tem SKU 42,5 × 62 mm (form sku.btw)",w:42.5,h:62,mm:.25,cao:10,ve:function(j){return C(j,"t42x62",{lechMm:2})}},t46x76:{ten:"Tem lớn 46 × 76 mm (TSC PE200)",w:46,h:76,mm:.26,cao:11,ve:function(j){return C(j,"t46x76",{lechMm:2})}},t42x25:{ten:"Tem ngang 42 × 25 mm (Zebra ZT230)",w:42,h:25,mm:.22,cao:6,ve:function(j){return C(j,"t42x25",{coSku:20,coChan:12,caoVach:40,coTenMax:14,leMm:2,lechMm:1})}},t22x13:{ten:"Tem mini 21,6 × 12,7 mm (chỉ mã)",w:21.6,h:12.7,mm:.15,cao:5,ve:function(j){return C(j,"t22x13",{coSku:13,coChan:9,caoVach:26,coTenMax:8,coTenMin:6,leMm:1.2,lechMm:.5})}}},z="t40x60";function W(j){return P[j]||P[z]}function $(j){var G=W(j),V=Math.max(1,M.soCot|0);return{w:+(G.w*V+M.khe*(V-1)).toFixed(2),h:G.h,cot:V,khe:M.khe,tem:G}}function X(j,G){for(var V=$(G).cot,ee=[],k=0;k<j.length;k+=V)ee.push(j.slice(k,k+V));return ee}function ie(j){var G=String(j??"").trim();return G?G.split(/[,;\/\n\t ]+/).map(function(V){return String(V).trim()}).filter(function(V){return V!==""&&/[0-9]/.test(V)}):[]}function ae(j){var G=ie(j&&j.slHang);return G.length>1?G.length:Math.max(0,Number(j&&j.sl)||0)}function Ce(j){var G=0;return(j||[]).forEach(function(V){G+=ae(V)}),G}function me(j){var G=[];return(j||[]).forEach(function(V){var ee=ie(V.slHang);if(ee.length>1){ee.forEach(function(Z){G.push({sku:V.sku,pn:V.pn,slHang:Z,mau:V.mau,uid:V.uid||"",loai:V.loai||""})});return}for(var k=Math.max(0,Number(V.sl)||0),K=0;K<k;K++)G.push({sku:V.sku,pn:V.pn,slHang:ee.length?ee[0]:V.slHang||"",mau:V.mau,uid:V.uid||"",loai:V.loai||""})}),G}function Y(j){var G={},V=[];return(j||[]).forEach(function(ee){var k=P[ee.mau]?ee.mau:z;G[k]||(G[k]=[],V.push(k)),G[k].push(ee)}),{m:G,thuTu:V}}return{maHoa:l,bit:c,svg:h,MAU:P,MAU_MAC_DINH:z,mau:W,tongTem:Ce,theoMau:Y,cat:T,GIAY:M,khoTrang:$,chiaHang:X,tachSl:ie,temCuaDong:ae,moRong:me,svgTem:C,vachRect:p,coChuVua:x,beDong:v,soGon:m,ngayTem:w,svgTemDot:S}})();const Nr=Kp,Bl=r=>({sku:r.sku,pn:r.pn,slHang:r.slHang,sl:r.ban,mau:r.mau}),vl=r=>Nr.temCuaDong(Bl(r)),qc=r=>Nr.tongTem(r.map(Bl)),Yp=r=>Nr.moRong(r.map(Bl)),Zp=(r,e)=>Nr.chiaHang(Yp(r),e),Jc=["code_128","code_39","ean_13","ean_8","upc_a","upc_e","itf","qr_code"],gl=()=>{var r;return typeof navigator<"u"&&!!((r=navigator.mediaDevices)!=null&&r.getUserMedia)},k0=()=>typeof window<"u"&&(window.isSecureContext||location.hostname==="localhost"||location.protocol==="file:");/* 01/10/2026: doc(video, vung?) — vung {x,y,w,h} theo ti le khung hinh, chi doc trong khung ngam (tem nhieu ma khong bi doc nham); nhieu ma thi lay ma gan tam nhat. ZXing: KHONG dung BrowserMultiFormatReader.decode(video) — ban nay dao mau xen ke moi lan dung anh tu video (HTMLCanvasElementLuminanceSource.FRAME_INDEX), lan thu xoay 90 do lam lech nhip nen anh thang luon bi dao: QR va ma vach ngang khong bao gio doc duoc. Tu ve khung len canvas, doc anh thuong; cu 4 lan thu 1 lan anh dao cho tem in trang tren nen den. */function __psCrop(v,g,c){const W=v.videoWidth||v.width,H=v.videoHeight||v.height;if(!W||!H)return null;const q=g&&g.w>0&&g.h>0?g:{x:0,y:0,w:1,h:1},sx=Math.max(0,Math.round(q.x*W)),sy=Math.max(0,Math.round(q.y*H)),sw=Math.max(1,Math.min(W-sx,Math.round(q.w*W))),sh=Math.max(1,Math.min(H-sy,Math.round(q.h*H))),k=Math.min(1,960/Math.max(sw,sh));c.width=Math.max(1,Math.round(sw*k));c.height=Math.max(1,Math.round(sh*k));c.getContext("2d",{willReadFrequently:!0}).drawImage(v,sx,sy,sw,sh,0,0,c.width,c.height);return c}const __psDist=(a,c)=>{const b=a.boundingBox||{x:0,y:0,width:0,height:0};return Math.hypot(b.x+b.width/2-c.width/2,b.y+b.height/2-c.height/2)};async function Qp(){var n;const r=globalThis.BarcodeDetector;if(!r)return null;let e=Jc;try{const i=await((n=r.getSupportedFormats)==null?void 0:n.call(r));if(i!=null&&i.length&&(e=Jc.filter(o=>i.includes(o))),!e.length)return null}catch{}const t=new r({formats:e}),c=document.createElement("canvas");return async(i,g)=>{const f=__psCrop(i,g,c);if(!f)return null;const o=await t.detect(f),s=(o||[]).filter(a=>a.rawValue).sort((a,b)=>__psDist(a,f)-__psDist(b,f))[0];return s?{ma:s.rawValue,dinhDang:s.format}:null}}async function qp(){try{const r=await I0(()=>Promise.resolve().then(()=>ty),void 0,import.meta.url),e=new Map;e.set(r.DecodeHintType.POSSIBLE_FORMATS,[r.BarcodeFormat.CODE_128,r.BarcodeFormat.CODE_39,r.BarcodeFormat.EAN_13,r.BarcodeFormat.EAN_8,r.BarcodeFormat.UPC_A,r.BarcodeFormat.ITF,r.BarcodeFormat.QR_CODE]),e.set(r.DecodeHintType.TRY_HARDER,!0);const t=new r.MultiFormatReader;t.setHints(e);const c=document.createElement("canvas");let k=0;return async(n,g)=>{var o;const f=__psCrop(n,g,c);if(!f)return null;try{const h=new r.HTMLCanvasElementLuminanceSource(f),s=t.decodeWithState(new r.BinaryBitmap(new r.HybridBinarizer(++k%4===0?h.invert():h))),l=s==null?void 0:s.getText();return l?{ma:l,dinhDang:String(((o=s.getBarcodeFormat)==null?void 0:o.call(s))??"")}:null}catch{return null}}}catch{return null}}async function Jp(){const r=await Qp();if(r)return{doc:r,nguon:"native"};const e=await qp();return e?{doc:e,nguon:"zxing"}:null}function ev(){return navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"},width:{ideal:1280},height:{ideal:720}},audio:!1})}window.PrintSkuScanner={gl,k0,ev,Jp};async function tv(r,e){var i;const t=r.getVideoTracks()[0];if(!t)return!1;const n=(i=t.getCapabilities)==null?void 0:i.call(t);if(!(n!=null&&n.torch))return!1;try{return await t.applyConstraints({advanced:[{torch:e}]}),!0}catch{return!1}}const rv=r=>{var e,t,n;return!!((n=(t=(e=r.getVideoTracks()[0])==null?void 0:e.getCapabilities)==null?void 0:t.call(e))!=null&&n.torch)};function e0(r){r==null||r.getTracks().forEach(e=>e.stop())}function nv({gia:r,onDoi:e,min:t=1,max:n=200,id:i,onEnter:o,kbAn:__kbA}){const[s,l]=we.useState(null),c=we.useRef(void 0),h=we.useRef(void 0),p=C=>e(Math.max(t,Math.min(n,C))),v=C=>{p(r+C),c.current=window.setTimeout(()=>{h.current=window.setInterval(()=>e(m.current+C>n?n:Math.max(t,m.current+C)),90)},450)},x=()=>{window.clearTimeout(c.current),window.clearInterval(h.current),c.current=void 0,h.current=void 0},m=we.useRef(r);we.useEffect(()=>{m.current=r},[r]),we.useEffect(()=>x,[]);const w="w-12 h-[46px] shrink-0 rounded-xl flex items-center justify-center transition select-none bg-brand-light text-brand active:scale-95 disabled:opacity-35 disabled:active:scale-100";return A.jsxs("div",{className:"flex items-center gap-2 rounded-xl border-[1.5px] border-slate-200 bg-white p-1.5 focus-within:border-brand",children:[A.jsx("button",{type:"button",className:w,disabled:r<=t,"aria-label":"Giảm",onPointerDown:()=>v(-1),onPointerUp:x,onPointerLeave:x,onPointerCancel:x,children:A.jsx(kp,{size:20})}),A.jsx("input",{id:i,inputMode:__kbA?"none":"numeric",pattern:"[0-9]*",className:"flex-1 min-w-0 text-center text-xl font-bold so bg-transparent outline-none",value:s??String(r),onFocus:C=>{l(String(r)),C.currentTarget.select()},onChange:C=>l(C.target.value.replace(/[^0-9]/g,"")),onBlur:()=>{p(Number(s)||t),l(null)},onKeyDown:C=>{C.key==="Enter"&&(C.preventDefault(),p(Number(s)||t),l(null),C.currentTarget.blur(),o==null||o())}}),A.jsx("button",{type:"button",className:w,disabled:r>=n,"aria-label":"Tăng",onPointerDown:()=>v(1),onPointerUp:x,onPointerLeave:x,onPointerCancel:x,children:A.jsx(O0,{size:20})})]})}const iv="https://ikzhitdqkoatlmkrxuuh.supabase.co/rest/v1",t0="sb_publishable_mBl--Ep5nNxuC4Xvyi1gfg_SLGEcRhI",Ho="SKU_Name",Bn="sku",Ll="product_name",xl=`${Bn},${Ll}`,av={apikey:t0,Authorization:"Bearer "+t0},yl=r=>({sku:String(r[Bn]??""),ten:String(r[Ll]??"")}),tl=new Map;let ov=0,r0=0,di="";async function Vo(r){try{const e=await fetch(iv+r,{headers:av,signal:AbortSignal.timeout(8e3)});if(!e.ok)throw di="HTTP "+e.status+" — "+(await e.text()).slice(0,200),new Error(di);ov=Date.now(),r0=0,di="";const t=await e.json();return Array.isArray(t)?t:[]}catch(e){return r0++,di||(di=String((e==null?void 0:e.message)||e).slice(0,200)),null}}async function uv(r){const e=r.trim();if(!e)return null;{const c=window.PrintSkuCatalog?.get(e);if(c)return yl({[Bn]:c.sku,[Ll]:c.name})}if(tl.has(e))return tl.get(e);const t=await Vo(`/${Ho}?select=${xl}&${Bn}=eq.${encodeURIComponent(e)}&limit=1`);if(t===null)return;const n=t[0]?yl(t[0]):null;return tl.set(e,n),n}async function sv(r){const e=r.trim();if(e.length<2)return[];{const C=window.PrintSkuCatalog;if(C?.ready?.()){const L=C.search(e,10);if(L.length)return L.map(c=>yl({[Bn]:c.sku,[Ll]:c.name}))}}const n=(await Vo(`/${Ho}?select=${xl}&${Bn}=like.${encodeURIComponent(e+"*")}&order=${Bn}.asc&limit=8`)??[]).map(yl);if(n.length>=8)return n;if(e.length>=3){const i=await Vo(`/${Ho}?select=${xl}&${Ll}=ilike.${encodeURIComponent("*"+e+"*")}&order=${Bn}.asc&limit=8`),o=new Set(n.map(s=>s.sku));for(const s of i??[]){const l=yl(s);if(o.has(l.sku)||n.push(l),n.length>=10)break}}return n}async function lv(){const r=await Vo(`/${Ho}?select=${Bn}&limit=1`);return r===null?{ok:!1,chu:di||"không gọi được"}:{ok:!0,chu:r.length?"đọc được danh mục":"gọi được nhưng bảng đang rỗng"}}const rl="w-full min-h-[50px] px-3.5 py-3 text-base rounded-xl bg-white border-[1.5px] border-slate-200 outline-none transition focus:border-brand focus:ring-[3px] focus:ring-brand-light",Mo="block text-[10.5px] font-bold tracking-[0.09em] uppercase text-slate-400 mb-1.5";function fv({sku:r,pn:e,slHang:t,ban:n,onDoi:i,onThem:o,goiY:s,onGoiY:l,onQuet:c,coQuet:h}){const p=we.useRef(null),v=we.useRef(null),x=we.useRef(null),m=[p,v,x],w=X=>ie=>{var ae,Ce;ie.key==="Enter"&&(ie.preventDefault(),X<m.length-1?(ae=m[X+1].current)==null||ae.focus():(Ce=document.getElementById("f-ban"))==null||Ce.focus())},[C,S]=we.useState(""),[N,T]=we.useState([]),[M,P]=we.useState(!1),[__kbH,__kbSet]=we.useState(()=>{try{return localStorage.getItem("print-sku-ban-phim")!=="hien"}catch{return!0}}),z=we.useRef(0),W=X=>{const ie=X.trim();const ae=P0(ie);i({sku:X,pn:ae||"",pnCho:!!ae});S("");ae&&l("Tên hàng lấy từ lần in trước — đang đối chiếu danh mục…")};we.useEffect(()=>{const X=r.trim();if(!X){T([]),S("");return}const ie=++z.current;S("dang");const ae=setTimeout(async()=>{const[Ce,me]=await Promise.all([uv(X),sv(X)]);if(ie===z.current){if(Ce===void 0){S("mang"),T([]),i({pn:"",pnCho:!1});return}T(me.filter(Y=>Y.sku!==X)),Ce?(S("thay"),i({pn:Ce.ten,pnCho:!1}),pl(Ce.sku,Ce.ten),l("Tên hàng lấy từ danh mục — sửa được nếu cần.")):(S("khong"),i({pn:"",pnCho:!1}))}},300);return()=>{clearTimeout(ae);z.current++}},[r]);const $=X=>{i({sku:X.sku,pn:X.ten}),pl(X.sku,X.ten),P(!1),T([]),l("Đã chọn từ danh mục."),setTimeout(()=>{var ie;return(ie=x.current)==null?void 0:ie.focus()},40)};return A.jsxs("section",{className:"bg-white rounded-2xl border border-slate-100 shadow-sm p-4 sm:p-5",children:[A.jsxs("p",{className:"flex items-baseline gap-2 mb-3",children:[A.jsx("b",{className:"text-[11px] font-extrabold text-brand tracking-wider",children:"1"}),A.jsx("span",{className:"text-[15px] font-bold text-slate-800",children:"Nhập tem"})]}),A.jsx("label",{className:Mo,htmlFor:"f-sku",children:"Mã SKU"}),A.jsxs("div",{className:"sku-row",children:[A.jsxs("div",{className:"relative",children:[A.jsx("input",{id:"f-sku",ref:p,value:r,inputMode:__kbH?"none":"text",className:`${rl} so text-lg font-bold tracking-wider ${h?"pr-16":""}`,autoComplete:"off",spellCheck:!1,enterKeyHint:"next",placeholder:"SKU",onChange:X=>W(X.target.value),onKeyDown:w(0),onFocus:()=>P(!0),onBlur:()=>setTimeout(()=>P(!1),150)}),h&&A.jsx("button",{type:"button",onClick:c,"aria-label":"Quét mã bằng camera",className:`absolute right-1.5 top-1/2 -translate-y-1/2 w-12 h-[42px] rounded-lg
                        bg-brand-light text-brand flex items-center justify-center
                        transition active:scale-95 hover:bg-brand hover:text-white`,children:A.jsx(bp,{size:20})})]}),A.jsx("button",{type:"button",id:"f-sku-kb",className:"sample-kb act-icon act-icon--keyboard","aria-controls":"f-sku f-pn f-sl f-ban","aria-pressed":String(__kbH),"aria-label":__kbH?"Hiện bàn phím":"Ẩn bàn phím",title:__kbH?"Hiện bàn phím":"Ẩn bàn phím",onClick:()=>{const v=!__kbH;__kbSet(v);try{localStorage.setItem("print-sku-ban-phim",v?"an":"hien")}catch{}const el=p.current;el&&(el.blur(),setTimeout(()=>el.focus(),60))}})]}),M&&N.length>0&&A.jsx("ul",{className:"relative z-20 -mt-1 mb-1 rounded-xl border border-slate-200 bg-white shadow-lg overflow-hidden",children:N.map(X=>A.jsx("li",{children:A.jsxs("button",{type:"button",onMouseDown:ie=>ie.preventDefault(),onClick:()=>$(X),className:"w-full text-left px-3.5 py-2.5 hover:bg-brand-light border-b border-slate-100 last:border-0",children:[A.jsx("span",{className:"so font-bold text-slate-800",children:X.sku}),A.jsx("span",{className:"block text-[12.5px] text-slate-500 truncate",children:X.ten})]})},X.sku))}),A.jsxs("p",{className:"text-xs mt-1.5 flex items-start gap-1.5",role:"status","aria-live":"polite",children:[C==="dang"&&A.jsxs(A.Fragment,{children:[A.jsx(kl,{size:13,className:"shrink-0 mt-0.5 animate-spin text-slate-400"}),A.jsx("span",{className:"text-slate-500",children:"Đang tra danh mục…"})]}),C==="thay"&&A.jsxs(A.Fragment,{children:[A.jsx(N0,{size:13,className:"shrink-0 mt-0.5 text-tt-ok"}),A.jsx("span",{className:"text-tt-ok font-bold",children:"Có trong danh mục"})]}),C==="khong"&&A.jsxs(A.Fragment,{children:[A.jsx(zo,{size:13,className:"shrink-0 mt-0.5 text-tt-canh"}),A.jsx("span",{className:"text-tt-canh",children:"Chưa có trong danh mục — kiểm lại mã. Vẫn in được nếu bạn chắc."})]}),C==="mang"&&A.jsxs(A.Fragment,{children:[A.jsx(Ip,{size:13,className:"shrink-0 mt-0.5 text-slate-400"}),A.jsx("span",{className:"text-slate-500",children:"Không tra được danh mục — gõ tên hàng như bình thường."})]}),!C&&A.jsx("span",{className:"text-slate-500",children:s})]}),A.jsx("label",{className:`${Mo} mt-3.5`,htmlFor:"f-pn",children:"Tên hàng"}),A.jsx("input",{id:"f-pn",ref:v,inputMode:__kbH?"none":"text",className:rl,value:e,autoComplete:"off",enterKeyHint:"next",placeholder:"Vải thun cotton 4 chiều / Navy / 180gsm",onChange:X=>i({pn:X.target.value,pnCho:!1}),onKeyDown:w(1)}),A.jsxs("div",{className:"sku-pair flex flex-wrap gap-2.5 mt-3.5",children:[A.jsxs("div",{className:"flex-1 min-w-[160px]",children:[A.jsx("label",{className:Mo,htmlFor:"f-sl",children:"Số lượng in lên tem"}),A.jsx("input",{id:"f-sl",ref:x,inputMode:__kbH?"none":"text",className:rl,value:t,autoComplete:"off",enterKeyHint:"next",placeholder:"1.200 m",onChange:X=>i({slHang:X.target.value}),onKeyDown:w(2)}),A.jsxs("p",{className:"text-xs text-slate-500 mt-1.5",children:["Nhiều bịch khác nhau thì gõ ",A.jsx("b",{children:"12, 14, 16"})," — ra 3 tem, mỗi tem một số."]})]}),A.jsxs("div",{className:"w-[172px] shrink-0",children:[A.jsx("label",{className:Mo,htmlFor:"f-ban",children:"Số bản in"}),A.jsx(nv,{id:"f-ban",gia:n,onDoi:X=>i({ban:X}),kbAn:__kbH,onEnter:()=>document.getElementById("sku-add-to-list")?.click()}),A.jsx("p",{className:"text-xs text-slate-500 mt-1.5",children:"Tem giống hệt nhau."})]})]}),A.jsxs("button",{id:"sku-add-to-list",onClick:o,className:`w-full mt-4 min-h-[50px] rounded-full bg-brand text-white font-bold text-[15px]
                    flex items-center justify-center gap-2 transition active:scale-[0.98]
@@ -2355,6 +2594,9 @@ Error generating stack: `+y.message+`
         renderRoute();
 
         const fetchProductName = async value => {
+          // Danh mục SKU trên máy (sku-catalog-script, 18/10/2026); không có / chưa nạp → hỏi máy chủ như cũ.
+          const local = window.PrintSkuCatalog?.get(value);
+          if (local?.name) return local.name;
           const queue = window.PrintSkuQueue;
           const url = `${queue.supabaseUrl}/rest/v1/SKU_Name?select=sku,product_name&sku=eq.${encodeURIComponent(value)}&limit=1`;
           const response = await fetch(url, { headers: { apikey: queue.publishableKey, Authorization: `Bearer ${queue.publishableKey}` }, signal: AbortSignal.timeout(8000) });
@@ -6773,65 +7015,10 @@ var FSK_CORE = (function () {
         Object.entries(tabs).forEach(([key, t]) => t.btn.addEventListener("click", () => setActiveTab(key, true)));
         screen.addEventListener("click", event => { if (event.target.closest("[data-goto-scan]")) setActiveTab("scan", true); });
 
-        // ---------- Danh mục SKU_Name: IndexedDB, 12 giờ tải lại ----------
-        const openDb = () => new Promise((resolve, reject) => {
-          const request = indexedDB.open("print-sku-find-sku", 1);
-          request.onupgradeneeded = () => request.result.createObjectStore("kv");
-          request.onsuccess = () => resolve(request.result);
-          request.onerror = () => reject(request.error);
-        });
-        const cacheGet = async key => {
-          try {
-            const db = await openDb();
-            return await new Promise((resolve, reject) => {
-              const request = db.transaction("kv").objectStore("kv").get(key);
-              request.onsuccess = () => resolve(request.result ?? null);
-              request.onerror = () => reject(request.error);
-            });
-          } catch (_) { return null; }
-        };
-        const cachePut = async (key, value) => {
-          try {
-            const db = await openDb();
-            await new Promise((resolve, reject) => {
-              const tx = db.transaction("kv", "readwrite");
-              tx.objectStore("kv").put(value, key);
-              tx.oncomplete = resolve;
-              tx.onerror = () => reject(tx.error);
-            });
-          } catch (_) { /* không lưu được thì lần sau tải lại */ }
-        };
-        const fetchCatalog = async () => {
-          const queue = window.PrintSkuQueue;
-          const headers = { apikey: queue.publishableKey, Authorization: `Bearer ${queue.publishableKey}` };
-          const page = async (from, withCount) => {
-            const response = await fetch(`${queue.supabaseUrl}/rest/v1/SKU_Name?select=sku,product_name,status&order=sku.asc`, {
-              headers: { ...headers, Range: `${from}-${from + 999}`, ...(withCount ? { Prefer: "count=exact" } : {}) },
-              signal: AbortSignal.timeout(20000)
-            });
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            const total = Number(String(response.headers.get("content-range") || "").split("/")[1]) || 0;
-            return { rows: await response.json(), total };
-          };
-          const first = await page(0, true);
-          const rows = [...first.rows];
-          if (first.total > rows.length) {
-            const starts = [];
-            for (let from = 1000; from < first.total; from += 1000) starts.push(from);
-            for (let i = 0; i < starts.length; i += 4) {
-              setCatalog(`Đang tải danh mục SKU… ${Math.min(100, Math.round((1000 * (i + 1)) / first.total * 100))}%`);
-              const pages = await Promise.all(starts.slice(i, i + 4).map(from => page(from, false)));
-              pages.forEach(p => rows.push(...p.rows));
-            }
-          } else if (rows.length === 1000) {
-            for (let from = 1000; ; from += 1000) {
-              const p = await page(from, false);
-              rows.push(...p.rows);
-              if (p.rows.length < 1000) break;
-            }
-          }
-          return rows.map(row => [String(row.sku ?? ""), String(row.product_name ?? ""), String(row.status ?? "")]).filter(row => row[0]);
-        };
+        // ---------- Danh mục SKU_Name: khối dùng chung window.PrintSkuCatalog (18/10/2026, sku-catalog-script) ----------
+        // Nạp nền, kiểm phiên bản khi vào màn, ghép phần đổi, tên mới khi in: đều ở PrintSkuCatalog (dùng chung IN TEM SKU, CHUYỂN ĐỔI
+        // ĐƠN VỊ, GÁN WMS). Màn này chỉ dựng chỉ mục NDS_ENGINE từ danh mục và dựng lại khi danh mục đổi.
+        const Catalog = window.PrintSkuCatalog;
         const toRow = ([sku, pn, status]) => ({ sku, pn, type: /^\s*\(combo\)/i.test(pn) ? "COMBO" : "NORMAL", status: /^(0|false|inactive)$/i.test(status.trim()) ? "INACTIVE" : "ACTIVE", qty: 0 });
         const buildIndex = async rows => {
           const job = NDS_ENGINE.dungChiMucViec(rows.map(toRow));
@@ -6842,76 +7029,20 @@ var FSK_CORE = (function () {
           }
           return job.cm;
         };
-        // Phiên bản danh mục (18/10/2026, supabase/snapshot_cache_v1.sql): bản trên máy giữ kèm {activeCount, maxUpdatedAt}. Mỗi lần mở
-        // hỏi sku_catalog_changes(maxUpdatedAt) đúng một lần → ghép phần đổi (upserts / removed) thay vì tải lại ~22.000 SKU; quá nhiều,
-        // ghép xong lệch activeCount hoặc quá 12 giờ từ lần tải toàn bộ → tải toàn bộ. Chưa có hàm (PGRST202) / mất mạng → giữ như cũ.
-        // Tên in luôn đọc lại từ SKU_Name lúc bấm in (verifyNames), nên bản trên máy cũ cũng không in sai tên.
-        const catalogChanges = async since => {
-          const queue = window.PrintSkuQueue;
-          const response = await fetch(`${queue.supabaseUrl}/rest/v1/rpc/sku_catalog_changes`, {
-            method: "POST",
-            headers: { apikey: queue.publishableKey, Authorization: `Bearer ${queue.publishableKey}`, "Content-Type": "application/json" },
-            body: JSON.stringify({ p_since: since || null }),
-            signal: AbortSignal.timeout(20000)
-          });
-          const result = await response.json().catch(() => null);
-          if (!response.ok || !result?.ok) throw new Error(result?.message || result?.error?.message || `HTTP ${response.status}`);
-          return result.data;
-        };
-        const syncCatalog = async cached => {
-          if (state.syncing) return;
-          state.syncing = true;
-          try { await syncCatalogOnce(cached); } finally { state.syncing = false; }
-        };
-        // Vào lại màn trong cùng phiên: hỏi phiên bản một lần (quá 12 giờ từ lần tải toàn bộ → tải toàn bộ).
-        const recheckCatalog = async () => {
-          if (!state.cm || state.loading || state.syncing) return;
-          const cached = await cacheGet("catalog");
-          if (!cached?.rows?.length) return;
-          if (Date.now() - (cached.at || 0) > CATALOG_TTL) return refreshCatalog(false);
-          return syncCatalog(cached);
-        };
-        const syncCatalogOnce = async cached => {
-          let d;
-          try { d = await catalogChanges(cached.version?.maxUpdatedAt || null); } catch (_) { return; }
-          if (!d?.version || state.loading) return;
-          if (d.tooMany) return refreshCatalog(false);
-          const map = new Map(cached.rows.map(r => [r[0], r]));
-          (d.upserts || []).forEach(u => { const sku = String(u.sku ?? ""); if (sku) map.set(sku, [sku, String(u.product_name ?? ""), String(u.status ?? "")]); });
-          (d.removed || []).forEach(sku => map.delete(String(sku)));
-          const rows = [...map.values()].sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
-          if (rows.length !== Number(d.version.activeCount)) return refreshCatalog(false);
-          // Tab khác đã cập nhật bản trên máy (khác bản đang nằm trong RAM) → cũng dựng lại chỉ mục.
-          const checkedAt = Date.now(), changed = Boolean(d.upserts?.length || d.removed?.length) || (cached.checkedAt || cached.at) !== state.ramAt;
-          cachePut("catalog", { at: cached.at, checkedAt, rows, version: d.version });
-          state.at = checkedAt;
-          // Không đổi: chỉ mục trong RAM đã đúng bản này. Có đổi: chỉ đánh dấu sau khi dựng xong (dựng lỗi → lần vào sau thử lại).
-          if (!changed) { state.ramAt = checkedAt; return setCatalog(`Danh mục ${rows.length.toLocaleString("vi-VN")} SKU · cập nhật ${when(checkedAt)}`); }
-          state.loading = (async () => {
+        // Dựng chỉ mục xong mới đánh dấu bản đang nằm trong RAM (dựng lỗi → lần đổi sau thử lại).
+        const indexRows = async () => {
+          for (let round = 0; round < 3; round++) {
+            const rows = Catalog.rows(), rev = Catalog.info().rev;
             const cm = await buildIndex(rows);
-            state.cm = cm; state.count = rows.length; state.ramAt = checkedAt;
-            setCatalog(`Danh mục ${rows.length.toLocaleString("vi-VN")} SKU · cập nhật ${when(checkedAt)}`);
-            return state.cm;
-          })().finally(() => { state.loading = null; });
-          await state.loading;
-          if (state.tokens.length) await match();
+            state.cm = cm; state.count = rows.length; state.ramAt = rev; state.at = Catalog.info().checkedAt;
+            setCatalog(`Danh mục ${rows.length.toLocaleString("vi-VN")} SKU · cập nhật ${when(state.at)}`);
+            if (Catalog.info().rev === rev) break; // danh mục đổi trong lúc dựng → dựng lại theo bản mới
+          }
+          return state.cm;
         };
         const loadCatalog = async force => {
-          const cached = force ? null : await cacheGet("catalog");
-          let rows = cached?.rows, at = cached?.at || 0;
-          if (!rows?.length) {
-            setCatalog("Đang tải danh mục SKU…");
-            // Hỏi phiên bản TRƯỚC khi tải: SKU đổi trong lúc tải sẽ được ghép ở lần mở sau.
-            const version = await catalogChanges(null).then(d => d?.version || null, () => null);
-            rows = await fetchCatalog();
-            at = Date.now();
-            cachePut("catalog", { at, checkedAt: at, rows, version });
-          }
-          state.cm = await buildIndex(rows); state.count = rows.length; state.at = cached?.checkedAt || at; state.ramAt = cached ? (cached.checkedAt || cached.at) : at;
-          setCatalog(`Danh mục ${rows.length.toLocaleString("vi-VN")} SKU · cập nhật ${when(state.at)}`);
-          if (!force && Date.now() - at > CATALOG_TTL) setTimeout(() => refreshCatalog(false), 1500);
-          else if (cached?.rows?.length) setTimeout(() => syncCatalog(cached), 300);
-          return state.cm;
+          await (force ? Catalog.refresh({ progress: setCatalog }) : Catalog.ensure({ progress: setCatalog }));
+          return indexRows();
         };
         const ensureCatalog = (force = false) => {
           if (state.cm && !force) return Promise.resolve(state.cm);
@@ -6929,6 +7060,16 @@ var FSK_CORE = (function () {
           } catch (_) { if (announce) tell("Chưa tải lại được danh mục — kiểm tra mạng.", "error"); }
         };
 
+        // Danh mục đổi (phần đổi từ máy chủ, tab khác, tên mới khi in) → dựng lại chỉ mục nếu màn đã có chỉ mục.
+        // Đang dựng: chờ xong rồi xét lại (dựng bù nếu vẫn lệch); chưa mở màn: lần mở sẽ dựng từ bản mới.
+        const rebuildIfStale = () => {
+          if (Catalog.info().rev === state.ramAt) return;
+          if (state.loading) { state.loading.finally(() => setTimeout(rebuildIfStale, 0)).catch(() => {}); return; }
+          if (!state.cm) return;
+          state.loading = indexRows().finally(() => { state.loading = null; });
+          state.loading.then(() => (state.tokens.length ? match() : null)).catch(() => {});
+        };
+        Catalog.onChange(rebuildIfStale);
         // ---------- Từ khoá và đối chiếu ----------
         const addToken = (text, role, source) => {
           const t = NDS_ENGINE.chuan(String(text ?? ""));
@@ -7451,15 +7592,8 @@ var FSK_CORE = (function () {
           setActiveTab("print");
           tell(`Đã thêm ${s.sku} · ${copies} tem vào chờ in${quantity ? "" : " (không có số lượng trên tem)"}.`, "ok");
         };
-        // Tên database vừa xác nhận lúc in → ghi vào danh mục trên máy, mốc checkedAt mới để lần vào màn sau dựng lại chỉ mục (state.ramAt lệch).
-        const patchCatalogNames = async list => {
-          const cached = await cacheGet("catalog");
-          if (!cached?.rows?.length) return;
-          const names = new Map(list.map(item => [String(item.sku), item.pn]));
-          let hit = false;
-          const rows = cached.rows.map(r => (names.has(r[0]) && r[1] !== names.get(r[0]) ? ((hit = true), [r[0], names.get(r[0]), r[2]]) : r));
-          if (hit) await cachePut("catalog", { ...cached, rows, checkedAt: Date.now() });
-        };
+        // Tên database vừa xác nhận lúc in → ghi vào danh mục trên máy (khối chung; màn dựng lại chỉ mục qua onChange).
+        const patchCatalogNames = list => Catalog.patchNames(list.map(item => ({ sku: item.sku, productName: item.pn })));
         const verifyNames = async items => {
           const queue = window.PrintSkuQueue, skus = [...new Set(items.map(item => String(item.sku)))];
           // PostgREST in.(): bọc ngoặc kép, escape \ và " (không xoá ký tự — xoá sẽ tra nhầm mã và chặn in oan).
@@ -7506,6 +7640,9 @@ var FSK_CORE = (function () {
             const result = await window.PrintSkuQueue.enqueue({ type: "sku", copies, requestedBy: "web-find-sku", payload, requestNonce: shared });
             if (!result?.ok || !result.data?.id) throw new Error(result?.error?.message || "Hàng đợi chưa nhận lệnh");
             items.forEach(item => { item.status = "queued"; item.jobId = result.data.id; item.error = ""; });
+            // Máy chủ đặt lại tên theo database (print_name_from_db_v1) → dòng chờ in mang đúng tên đã in.
+            const serverRenamed = !result.data.duplicate && Array.isArray(result.data.renamed) ? result.data.renamed : [];
+            serverRenamed.forEach(r => items.filter(item => String(item.sku).trim() === String(r.sku)).forEach(item => { item.pn = String(r.productName || item.pn); item.renamed = true; if (!renamed.includes(item)) renamed.push(item); }));
             saveQueue(); renderQueue();
             const renamedNote = renamed.length && !result.data.duplicate ? ` · dùng tên mới trên máy chủ cho ${[...new Set(renamed.map(item => item.sku))].join(", ")}` : "";
             tell((result.data.duplicate ? "Lệnh này vừa gửi rồi — không gửi lại để tránh in trùng." : `Đã gửi ${copies} tem · ${result.data.id}`) + renamedNote, "ok");
@@ -7664,8 +7801,7 @@ var FSK_CORE = (function () {
         const render = () => {
           const open = active();
           screen.hidden = !open;
-          if (!open) { state.on = false; stopCamera(); clearTimeout(state.pollTimer); return; }
-          if (!state.on) { state.on = true; recheckCatalog().catch(() => {}); }
+          if (!open) { stopCamera(); clearTimeout(state.pollTimer); return; }
           consumeUnitResult();
           renderTags(); renderSelected(); renderQueue();
           ensureCatalog().catch(() => {});
@@ -7809,6 +7945,9 @@ var FSK_CORE = (function () {
         }
         const apiHeaders = () => ({ apikey: window.PrintSkuQueue.publishableKey, Authorization: `Bearer ${window.PrintSkuQueue.publishableKey}` });
         const lookupSku = async code => {
+          // Danh mục SKU trên máy (sku-catalog-script, 18/10/2026); không có / chưa nạp → hỏi máy chủ như cũ.
+          const local = window.PrintSkuCatalog?.get(code);
+          if (local) return { code, sku: local.sku, pn: local.name, uid: "" };
           const q = window.PrintSkuQueue, response = await fetch(`${q.supabaseUrl}/rest/v1/SKU_Name?select=sku,product_name&sku=eq.${encodeURIComponent(code)}&limit=1`, { headers: apiHeaders(), signal: AbortSignal.timeout(8000) });
           if (!response.ok) throw new Error(`HTTP ${response.status}`); const rows = await response.json();
           return rows[0] ? { code, sku: String(rows[0].sku || code), pn: String(rows[0].product_name || ""), uid: "" } : null;

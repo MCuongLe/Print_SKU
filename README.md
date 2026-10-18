@@ -635,6 +635,8 @@ Mở **TÌM SKU** ở WH-MATERIAL hoặc `#find-sku`. Ba bước, bố cục nh�
    gửi lệnh `sku` vào hàng đợi Supabase như PRINT SKU (tối đa 100 SKU · 500 tem/lượt), theo dõi
    tới khi agent báo xong (tự rời danh sách) hoặc lỗi (tick lại để in lại). Gửi lại sau lỗi mạng
    dùng cùng nonce nên không tạo lệnh trùng.
+   **Danh mục SKU trên máy dùng chung (18/10/2026, khối `sku-catalog-script`):** TÌM SKU, IN TEM SKU (gõ mã, gợi ý khi gõ, ô quét), CHUYỂN ĐỔI ĐƠN VỊ và Gán tự động ở IN TEM GROUP UID tra tên SKU ngay trên máy (trước đây mỗi mã hỏi Supabase 0,6–1,4 s). Mở một trong các màn này thì danh mục nạp nền một lần; các lần vào màn sau chỉ hỏi phiên bản và lấy phần đổi. Mã không có trên máy hoặc danh mục chưa nạp xong → hỏi máy chủ như cũ.
+   **Tên trên tem luôn theo database (migration `print_name_from_db_v1`):** mọi lệnh in SKU và Group UID — SKU có trong danh mục thì máy chủ thay tên bằng tên database, không có thì giữ tên màn gửi, SKU ngừng vẫn bị chặn; tên đã thay hiện thông báo ngắn "Tên đã cập nhật · <SKU>" và ghi vào danh mục trên máy.
    **Chốt chặn tên (18/10/2026):** bấm in thì đọc lại tên các SKU sắp in từ `SKU_Name` (một lần gọi) và **in theo tên database**:
    tên khác bản trên máy → sửa dòng chờ in + danh mục trên máy, báo "dùng tên mới trên máy chủ cho …"; SKU không còn trong
    danh mục (ngừng / gỡ) → không gửi lệnh, dòng đó ghi "in lỗi: SKU không còn trong danh mục"; không đọc được (mất mạng) →
