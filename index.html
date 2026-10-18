@@ -6842,18 +6842,75 @@ var FSK_CORE = (function () {
           }
           return job.cm;
         };
+        // Phiên bản danh mục (18/10/2026, supabase/snapshot_cache_v1.sql): bản trên máy giữ kèm {activeCount, maxUpdatedAt}. Mỗi lần mở
+        // hỏi sku_catalog_changes(maxUpdatedAt) đúng một lần → ghép phần đổi (upserts / removed) thay vì tải lại ~22.000 SKU; quá nhiều,
+        // ghép xong lệch activeCount hoặc quá 12 giờ từ lần tải toàn bộ → tải toàn bộ. Chưa có hàm (PGRST202) / mất mạng → giữ như cũ.
+        // Tên in luôn đọc lại từ SKU_Name lúc bấm in (verifyNames), nên bản trên máy cũ cũng không in sai tên.
+        const catalogChanges = async since => {
+          const queue = window.PrintSkuQueue;
+          const response = await fetch(`${queue.supabaseUrl}/rest/v1/rpc/sku_catalog_changes`, {
+            method: "POST",
+            headers: { apikey: queue.publishableKey, Authorization: `Bearer ${queue.publishableKey}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ p_since: since || null }),
+            signal: AbortSignal.timeout(20000)
+          });
+          const result = await response.json().catch(() => null);
+          if (!response.ok || !result?.ok) throw new Error(result?.message || result?.error?.message || `HTTP ${response.status}`);
+          return result.data;
+        };
+        const syncCatalog = async cached => {
+          if (state.syncing) return;
+          state.syncing = true;
+          try { await syncCatalogOnce(cached); } finally { state.syncing = false; }
+        };
+        // Vào lại màn trong cùng phiên: hỏi phiên bản một lần (quá 12 giờ từ lần tải toàn bộ → tải toàn bộ).
+        const recheckCatalog = async () => {
+          if (!state.cm || state.loading || state.syncing) return;
+          const cached = await cacheGet("catalog");
+          if (!cached?.rows?.length) return;
+          if (Date.now() - (cached.at || 0) > CATALOG_TTL) return refreshCatalog(false);
+          return syncCatalog(cached);
+        };
+        const syncCatalogOnce = async cached => {
+          let d;
+          try { d = await catalogChanges(cached.version?.maxUpdatedAt || null); } catch (_) { return; }
+          if (!d?.version || state.loading) return;
+          if (d.tooMany) return refreshCatalog(false);
+          const map = new Map(cached.rows.map(r => [r[0], r]));
+          (d.upserts || []).forEach(u => { const sku = String(u.sku ?? ""); if (sku) map.set(sku, [sku, String(u.product_name ?? ""), String(u.status ?? "")]); });
+          (d.removed || []).forEach(sku => map.delete(String(sku)));
+          const rows = [...map.values()].sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
+          if (rows.length !== Number(d.version.activeCount)) return refreshCatalog(false);
+          // Tab khác đã cập nhật bản trên máy (khác bản đang nằm trong RAM) → cũng dựng lại chỉ mục.
+          const checkedAt = Date.now(), changed = Boolean(d.upserts?.length || d.removed?.length) || (cached.checkedAt || cached.at) !== state.ramAt;
+          cachePut("catalog", { at: cached.at, checkedAt, rows, version: d.version });
+          state.at = checkedAt;
+          // Không đổi: chỉ mục trong RAM đã đúng bản này. Có đổi: chỉ đánh dấu sau khi dựng xong (dựng lỗi → lần vào sau thử lại).
+          if (!changed) { state.ramAt = checkedAt; return setCatalog(`Danh mục ${rows.length.toLocaleString("vi-VN")} SKU · cập nhật ${when(checkedAt)}`); }
+          state.loading = (async () => {
+            const cm = await buildIndex(rows);
+            state.cm = cm; state.count = rows.length; state.ramAt = checkedAt;
+            setCatalog(`Danh mục ${rows.length.toLocaleString("vi-VN")} SKU · cập nhật ${when(checkedAt)}`);
+            return state.cm;
+          })().finally(() => { state.loading = null; });
+          await state.loading;
+          if (state.tokens.length) await match();
+        };
         const loadCatalog = async force => {
           const cached = force ? null : await cacheGet("catalog");
           let rows = cached?.rows, at = cached?.at || 0;
           if (!rows?.length) {
             setCatalog("Đang tải danh mục SKU…");
+            // Hỏi phiên bản TRƯỚC khi tải: SKU đổi trong lúc tải sẽ được ghép ở lần mở sau.
+            const version = await catalogChanges(null).then(d => d?.version || null, () => null);
             rows = await fetchCatalog();
             at = Date.now();
-            cachePut("catalog", { at, rows });
+            cachePut("catalog", { at, checkedAt: at, rows, version });
           }
-          state.cm = await buildIndex(rows); state.count = rows.length; state.at = at;
-          setCatalog(`Danh mục ${rows.length.toLocaleString("vi-VN")} SKU · cập nhật ${when(at)}`);
+          state.cm = await buildIndex(rows); state.count = rows.length; state.at = cached?.checkedAt || at; state.ramAt = cached ? (cached.checkedAt || cached.at) : at;
+          setCatalog(`Danh mục ${rows.length.toLocaleString("vi-VN")} SKU · cập nhật ${when(state.at)}`);
           if (!force && Date.now() - at > CATALOG_TTL) setTimeout(() => refreshCatalog(false), 1500);
+          else if (cached?.rows?.length) setTimeout(() => syncCatalog(cached), 300);
           return state.cm;
         };
         const ensureCatalog = (force = false) => {
@@ -7363,12 +7420,12 @@ var FSK_CORE = (function () {
         const QUEUE_KEY = "fsk-queue-v1";
         state.queue = storeGet(QUEUE_KEY, []).filter(item => item && item.sku);
         const saveQueue = () => storeSet(QUEUE_KEY, state.queue);
-        const printable = item => item.status === "pending" || item.status === "failed";
+        const printable = item => (item.status === "pending" || item.status === "failed") && !item.gone;
         const renderQueue = () => {
           queueBadge.textContent = state.queue.length;
           const empty = !state.queue.length;
           $("fsk-list-empty").hidden = !empty; $("fsk-all-row").hidden = empty; $("fsk-list-note").hidden = empty; $("fsk-print-bar").hidden = empty;
-          list.innerHTML = empty ? "" : state.queue.map(item => `<div class="cut-row" data-id="${esc(item.id)}" data-status="${esc(item.status)}"><input type="checkbox" ${printable(item) ? "checked" : "disabled"} aria-label="Chọn ${esc(item.sku)}"><div class="cut-row__body"><strong>${esc(item.sku)}</strong><span>${esc(item.pn)}</span><small>${esc(item.quantity ? labelQuantity(item.quantity) : "—")}${item.unit ? " " + esc(item.unit) : ""} · ${item.copies} tem${item.status === "pending" ? "" : ` · ${esc(item.status === "failed" && item.error ? `in lỗi: ${item.error}` : STATUS_TEXT[item.status] || item.status)}`}</small></div><button class="fsk-row-del" type="button" data-remove="${esc(item.id)}" ${item.status === "queued" ? "disabled" : ""} aria-label="Xoá ${esc(item.sku)} khỏi chờ in">×</button></div>`).join("");
+          list.innerHTML = empty ? "" : state.queue.map(item => `<div class="cut-row" data-id="${esc(item.id)}" data-status="${esc(item.status)}"${item.gone ? ' data-gone="true"' : ""}><input type="checkbox" ${printable(item) ? "checked" : "disabled"} aria-label="Chọn ${esc(item.sku)}"><div class="cut-row__body"><strong>${esc(item.sku)}</strong><span>${esc(item.pn)}</span><small>${esc(item.quantity ? labelQuantity(item.quantity) : "—")}${item.unit ? " " + esc(item.unit) : ""} · ${item.copies} tem${item.status === "pending" || item.gone ? "" : ` · ${esc(item.status === "failed" && item.error ? `in lỗi: ${item.error}` : STATUS_TEXT[item.status] || item.status)}`}</small>${item.gone ? '<em class="fsk-tag" data-tone="bad">SKU không còn</em>' : item.renamed ? '<em class="fsk-tag">Tên đã cập nhật</em>' : ""}</div><button class="fsk-row-del" type="button" data-remove="${esc(item.id)}" ${item.status === "queued" ? "disabled" : ""} aria-label="Xoá ${esc(item.sku)} khỏi chờ in">×</button></div>`).join("");
           syncSelection();
         };
         const selectedItems = () => [...list.querySelectorAll(".cut-row input:checked")].map(input => state.queue.find(item => item.id === input.closest(".cut-row").dataset.id)).filter(Boolean);
@@ -7394,6 +7451,27 @@ var FSK_CORE = (function () {
           setActiveTab("print");
           tell(`Đã thêm ${s.sku} · ${copies} tem vào chờ in${quantity ? "" : " (không có số lượng trên tem)"}.`, "ok");
         };
+        // Tên database vừa xác nhận lúc in → ghi vào danh mục trên máy, mốc checkedAt mới để lần vào màn sau dựng lại chỉ mục (state.ramAt lệch).
+        const patchCatalogNames = async list => {
+          const cached = await cacheGet("catalog");
+          if (!cached?.rows?.length) return;
+          const names = new Map(list.map(item => [String(item.sku), item.pn]));
+          let hit = false;
+          const rows = cached.rows.map(r => (names.has(r[0]) && r[1] !== names.get(r[0]) ? ((hit = true), [r[0], names.get(r[0]), r[2]]) : r));
+          if (hit) await cachePut("catalog", { ...cached, rows, checkedAt: Date.now() });
+        };
+        const verifyNames = async items => {
+          const queue = window.PrintSkuQueue, skus = [...new Set(items.map(item => String(item.sku)))];
+          // PostgREST in.(): bọc ngoặc kép, escape \ và " (không xoá ký tự — xoá sẽ tra nhầm mã và chặn in oan).
+          const inList = encodeURIComponent(skus.map(sku => `"${sku.replace(/[\\"]/g, ch => `\\${ch}`)}"`).join(","));
+          const response = await fetch(`${queue.supabaseUrl}/rest/v1/SKU_Name?select=sku,product_name&sku=in.(${inList})`, {
+            headers: { apikey: queue.publishableKey, Authorization: `Bearer ${queue.publishableKey}` },
+            signal: AbortSignal.timeout(15000)
+          });
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          const rows = await response.json();
+          return new Map((Array.isArray(rows) ? rows : []).map(row => [String(row.sku), String(row.product_name ?? "")]));
+        };
         const printSelected = async () => {
           const items = selectedItems();
           if (!items.length || state.busy) return;
@@ -7405,14 +7483,32 @@ var FSK_CORE = (function () {
           items.forEach(item => { item.nonce = shared; });
           saveQueue();
           state.busy = true; WmsPrint.begin(printButton, "Đang gửi…"); syncSelection();
-          tell(`Đang gửi ${copies} tem đến máy trạm…`);
+          tell("Đang kiểm tên SKU trên máy chủ…");
           try {
+            // Chốt chặn tên (18/10/2026): Supabase luôn đúng → in theo tên database; SKU không còn / không kiểm được → không in.
+            let names;
+            try { names = await verifyNames(items); } catch (error) {
+              tell(`Chưa kiểm được tên SKU trên máy chủ (${error?.message || error}) — chưa in, kiểm tra mạng rồi thử lại.`, "error");
+              WmsPrint.fail(printButton, "Thử lại", { key: copies }); return;
+            }
+            const gone = [...new Set(items.filter(item => !names.has(item.sku)).map(item => item.sku))];
+            if (gone.length) {
+              items.filter(item => !names.has(item.sku)).forEach(item => { item.status = "failed"; item.gone = true; item.error = "SKU không còn"; item.nonce = null; });
+              saveQueue(); renderQueue();
+              tell(`SKU ${gone.join(", ")} không còn trong danh mục — chưa gửi lệnh.`, "error");
+              return;
+            }
+            const renamed = items.filter(item => names.get(item.sku) !== item.pn);
+            renamed.forEach(item => { item.pn = names.get(item.sku); item.renamed = true; });
+            if (renamed.length) { saveQueue(); renderQueue(); patchCatalogNames(renamed).catch(() => {}); }
+            tell(`Đang gửi ${copies} tem đến máy trạm…`);
             const payload = { items: items.map(item => ({ sku: item.sku, productName: item.pn, quantity: item.quantity, printedDate: printDate(), copies: item.copies })) };
             const result = await window.PrintSkuQueue.enqueue({ type: "sku", copies, requestedBy: "web-find-sku", payload, requestNonce: shared });
             if (!result?.ok || !result.data?.id) throw new Error(result?.error?.message || "Hàng đợi chưa nhận lệnh");
             items.forEach(item => { item.status = "queued"; item.jobId = result.data.id; item.error = ""; });
             saveQueue(); renderQueue();
-            tell(result.data.duplicate ? "Lệnh này vừa gửi rồi — không gửi lại để tránh in trùng." : `Đã gửi ${copies} tem · ${result.data.id}`, "ok");
+            const renamedNote = renamed.length && !result.data.duplicate ? ` · dùng tên mới trên máy chủ cho ${[...new Set(renamed.map(item => item.sku))].join(", ")}` : "";
+            tell((result.data.duplicate ? "Lệnh này vừa gửi rồi — không gửi lại để tránh in trùng." : `Đã gửi ${copies} tem · ${result.data.id}`) + renamedNote, "ok");
             schedulePoll(500);
             WmsPrint.sent(printButton, [result.data.id]);
           } catch (error) {
@@ -7568,7 +7664,8 @@ var FSK_CORE = (function () {
         const render = () => {
           const open = active();
           screen.hidden = !open;
-          if (!open) { stopCamera(); clearTimeout(state.pollTimer); return; }
+          if (!open) { state.on = false; stopCamera(); clearTimeout(state.pollTimer); return; }
+          if (!state.on) { state.on = true; recheckCatalog().catch(() => {}); }
           consumeUnitResult();
           renderTags(); renderSelected(); renderQueue();
           ensureCatalog().catch(() => {});
@@ -10312,6 +10409,83 @@ async function rpc(name,args,retry=true){
         </dialog>
       </div>
     </section>
+    <style id="snapshot-cache-style">
+      /* Cache trên máy (18/10/2026, góp ý ảnh Codex): đang xem bản lưu trên máy vì mất mạng → dải cảnh báo cam có icon wifi-off,
+         không phải dòng chữ xám dễ bỏ qua. TÌM SKU: nhãn ngắn trên dòng chờ in (SKU không còn / Tên đã cập nhật). */
+      .ss-status[data-tone="offline"]{display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid #e8c37a;border-radius:12px;background:#fff6e0;color:#7a4f00;font-size:13px;font-weight:600;line-height:1.4}
+      .ss-status[data-tone="offline"]::before{content:"";flex:none;width:16px;height:16px;background-color:currentColor;-webkit-mask:var(--i-wifi-off) center/contain no-repeat;mask:var(--i-wifi-off) center/contain no-repeat}
+      :root{--i-wifi-off:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 20h.01'/%3E%3Cpath d='M8.5 16.429a5 5 0 0 1 7 0'/%3E%3Cpath d='M5 12.859a10 10 0 0 1 5.17-2.69'/%3E%3Cpath d='M19 12.859a10 10 0 0 0-2.007-1.523'/%3E%3Cpath d='M2 8.82a15 15 0 0 1 4.177-2.643'/%3E%3Cpath d='M22 8.82a15 15 0 0 0-11.288-3.764'/%3E%3Cpath d='m2 2 20 20'/%3E%3C/svg%3E")}
+      .fsk-tag{display:inline-flex;align-items:center;gap:6px;margin-top:4px;color:#176248;font-size:12px;font-weight:600;font-style:normal}
+      .fsk-tag::before{content:"";flex:none;width:16px;height:16px;background-color:currentColor;-webkit-mask:var(--i-refresh) center/contain no-repeat;mask:var(--i-refresh) center/contain no-repeat}
+      .fsk-tag[data-tone="bad"]{color:#8f2f2a}
+      .fsk-tag[data-tone="bad"]::before{-webkit-mask-image:var(--i-circle-x);mask-image:var(--i-circle-x)}
+      .cut-row[data-gone="true"]{opacity:.72}
+    </style>
+    <script id="snapshot-cache-script">
+      (() => {
+        // Cache trên máy + kiểm phiên bản cho bản lưu Supabase (18/10/2026, docs/plans/2026-10-18-cache-phien-ban.md).
+        // Supabase luôn đúng; cache chỉ để hiện nhanh, KHÔNG bao giờ ghi ngược lên Supabase. Mỗi lần mở màn đúng 1 lần gọi *_snapshot kèm mã lượt
+        // đang có: máy chủ trả {unchanged:true} (vài chục byte) hoặc bản đầy đủ. Mất mạng → trả bản trên máy (source "cache-offline").
+        // Chưa có hàm mới (web lên trước migration, PGRST202) → lùi về hàm cũ *_overview. IndexedDB bị chặn / hỏng → chạy như không có cache.
+        const DB = "print-sku-cache", STORE = "kv", SCHEMA = 1, MISSING = /PGRST202|Could not find the function|schema cache/i;
+        let dbPromise = null;
+        const openDb = () => dbPromise || (dbPromise = new Promise((resolve, reject) => {
+          try {
+            const request = indexedDB.open(DB, 1);
+            request.onupgradeneeded = () => request.result.createObjectStore(STORE);
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+          } catch (error) { reject(error); }
+        }).catch(error => { dbPromise = null; throw error; }));
+        const run = async (mode, action) => {
+          const db = await openDb();
+          return new Promise((resolve, reject) => {
+            const tx = db.transaction(STORE, mode), request = action(tx.objectStore(STORE));
+            tx.oncomplete = () => resolve(request ? request.result : undefined);
+            tx.onerror = () => reject(tx.error); tx.onabort = () => reject(tx.error);
+          });
+        };
+        const get = async key => { try { const v = await run("readonly", st => st.get(key)); return v && v.schema === SCHEMA && v.data ? v : null; } catch (_) { return null; } };
+        const put = async (key, data) => { try { await run("readwrite", st => st.put({ schema: SCHEMA, savedAt: Date.now(), data }, key)); return true; } catch (_) { return false; } };
+        const drop = async key => { try { await run("readwrite", st => st.delete(key)); } catch (_) { /* không xoá được thì lần sau so phiên bản vẫn đúng */ } };
+        const label = savedAt => `Bản lưu trên máy lúc ${new Date(savedAt || Date.now()).toLocaleString("vi-VN", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" })} · chưa nối được máy chủ`;
+        const runIdOf = data => (data && data.run && data.run.id) || null;
+        // Các lượt cùng một khoá chạy NỐI TIẾP (Kiểm kê + Hàng chưa lên kệ dùng chung "sku_count", hay hai lượt chồng nhau): lượt sau
+        // chỉ bắt đầu khi lượt trước đã đọc cache, hỏi máy chủ và ghi xong → lượt bắt đầu sau luôn ghi sau, không có phản hồi muộn ghi
+        // lùi; lượt lỗi (mất mạng, IndexedDB đầy) không ghi gì nên không chặn ai. Lượt sau đọc cache vừa ghi → máy chủ thường trả
+        // "không đổi" (vài chục byte). (Codex vòng 3 18/10/2026: bỏ đếm thế hệ.)
+        const chains = Object.create(null);
+        function load(opts) {
+          const run = (chains[opts.key] || Promise.resolve()).then(() => loadOnce(opts));
+          chains[opts.key] = run.catch(() => {});
+          return run;
+        }
+        async function loadOnce({ key, rpc, fallback, call, onCached, idOf = runIdOf }) {
+          const store = async data => { if (idOf(data)) await put(key, data); else await drop(key); };
+          const cached = await get(key);
+          if (cached && onCached) { try { onCached(cached.data); } catch (_) { /* hiện cache lỗi thì chờ bản máy chủ */ } }
+          const offline = error => { if (cached) return { data: cached.data, source: "cache-offline", savedAt: cached.savedAt, error }; throw error; };
+          let res;
+          try {
+            res = await call(rpc, { p_known_run_id: (cached && idOf(cached.data)) || null });
+          } catch (error) {
+            if (!fallback || !MISSING.test(String((error && error.message) || ""))) return offline(error);
+            let data;
+            try { data = await call(fallback, {}); } catch (fallbackError) { return offline(fallbackError); }
+            await store(data);
+            return { data, source: "server" };
+          }
+          if (res && res.unchanged) {
+            if (cached) return { data: cached.data, source: "cache-verified", savedAt: cached.savedAt };
+            try { res = await call(rpc, { p_known_run_id: null }); } catch (error) { return offline(error); }
+          }
+          const data = Object.assign({}, res); delete data.unchanged;
+          await store(data);
+          return { data, source: "server" };
+        }
+        window.PrintSkuSnapshotCache = Object.freeze({ get, put, drop, load, label });
+      })();
+    </script>
     <script id="inventory-audit-script">
       (()=>{
         const $=id=>document.getElementById(id),screen=$("inventory-audit-screen");
@@ -10396,17 +10570,33 @@ async function rpc(name,args,retry=true){
           summary.qty=Number(summary.qty.toFixed(6));
           return{rows,summary};
         }
-        async function load({quiet=false}={}){
-          if(state.loading)return;state.loading=true;if(!quiet)say("Đang tải dữ liệu kiểm kê…");
-          try{
-            const data=await anonRpc("sku_count_overview"),run=data?.run||null;
-            if(!run){
-              Object.assign(state,{run:null,rows:[],summary:{total:0,never:0,recent:0,overdue:0,qty:0},warehouses:[],missing:[],readAt:0,loaded:true,loadedAt:Date.now()});
-              render(false);say("Chưa có bản đồng bộ kiểm kê.");return;
-            }
+        // Xếp hàng lượt tải (18/10/2026): đang tải mà có yêu cầu mới (Admin vừa lưu, vào lại màn) → chạy thêm một lượt sau lượt đang chạy,
+        // người gọi chờ tới lượt cuối. Trước đây yêu cầu mới bị bỏ qua nên Admin có thể thấy bản cũ sau khi đồng bộ.
+        let loadP=null,loadAgain=null;
+        function load(opts={}){
+          if(loadP){loadAgain=opts;return loadP}
+          loadP=(async()=>{let o=opts;while(o){loadAgain=null;await loadOnce(o);o=loadAgain}})().finally(()=>{loadP=null});
+          return loadP;
+        }
+        async function loadOnce({quiet=false}={}){
+          state.loading=true;if(!quiet)say("Đang tải dữ liệu kiểm kê…");
+          // Bản lưu dùng chung với Rủi ro lưu trữ (khoá cache "sku_count"): hiện ngay bản trên máy, máy chủ xác nhận / gửi bản mới (snapshot-cache-script).
+          const show=data=>{
+            const run=data?.run||null;
+            if(!run){Object.assign(state,{run:null,rows:[],summary:{total:0,never:0,recent:0,overdue:0,qty:0},warehouses:[],missing:[],readAt:0,loaded:true,loadedAt:Date.now()});render(false);return 0}
             const result=classify(data.rows,Date.now(),run.thresholdDays||30);
             Object.assign(state,{run,rows:result.rows,summary:result.summary,warehouses:run.warehouses||[],missing:run.missing||[],readAt:Date.parse(run.readAt)||0,loaded:true,loadedAt:Date.now()});
-            render(false);say(`Đã tải ${num(result.summary.total)} SKU.`);
+            render(false);return result.summary.total;
+          };
+          try{
+            const snap=window.PrintSkuSnapshotCache,shown=state.loaded;
+            const got=snap?await snap.load({key:"sku_count",rpc:"sku_count_snapshot",fallback:"sku_count_overview",call:anonRpc,onCached:shown?null:show}):{data:await anonRpc("sku_count_overview"),source:"server"};
+            // Mất mạng mà màn đã có dữ liệu: giữ màn (có thể mới hơn bản trên máy), chỉ báo chưa nối được máy chủ.
+            if(shown&&got.source==="cache-offline"){say(snap.label(got.savedAt),"offline");return}
+            const total=show(got.data);
+            if(!got.data?.run)say("Chưa có bản đồng bộ kiểm kê.");
+            else if(got.source==="cache-offline")say(snap.label(got.savedAt),"offline");
+            else say(`Đã tải ${num(total)} SKU.`);
           }catch(error){say(error.message||"Không tải được dữ liệu kiểm kê.","error")}finally{state.loading=false}
         }
         // Admin: đọc WMS qua Extension, đối chiếu rồi lưu bản chụp (start → chunk ≤ 500 dòng → finish); người xem chỉ thấy sau khi finish.
@@ -10456,7 +10646,7 @@ async function rpc(name,args,retry=true){
           const on=active();screen.hidden=!on;
           if(!on){UI.closeDialogs(screen);wasOn=false;return}
           if(root)root.inert=true;
-          if(!wasOn){wasOn=true;syncAdmin();if(!state.loaded||Date.now()-state.loadedAt>30000)load()}
+          if(!wasOn){wasOn=true;syncAdmin();load({quiet:state.loaded})}
         }
         const tile=$("barcode-inventory-audit");
         if(tile)tile.addEventListener("click",()=>{location.hash="#"+ROUTE});
@@ -10642,9 +10832,25 @@ async function rpc(name,args,retry=true){
           if(!result.ok)throw new Error(result.error?.message||"Supabase từ chối yêu cầu");
           return result.data;
         };
-        async function load({quiet=false}={}){
-          if(state.loading)return;state.loading=true;if(!quiet)say("Đang tải dữ liệu…");
-          try{apply(await anonRpc("sku_count_overview"))}catch(error){say(error.message||"Không tải được dữ liệu.","error")}finally{state.loading=false}
+        // Xếp hàng lượt tải (18/10/2026): đang tải mà có yêu cầu mới (Admin vừa lưu, vào lại màn) → chạy thêm một lượt sau lượt đang chạy,
+        // người gọi chờ tới lượt cuối. Trước đây yêu cầu mới bị bỏ qua nên Admin có thể thấy bản cũ sau khi đồng bộ.
+        let loadP=null,loadAgain=null;
+        function load(opts={}){
+          if(loadP){loadAgain=opts;return loadP}
+          loadP=(async()=>{let o=opts;while(o){loadAgain=null;await loadOnce(o);o=loadAgain}})().finally(()=>{loadP=null});
+          return loadP;
+        }
+        async function loadOnce({quiet=false}={}){
+          state.loading=true;if(!quiet)say("Đang tải dữ liệu…");
+          try{
+            // Dùng chung bản lưu + cache "sku_count" với Kiểm kê (snapshot-cache-script): lần đầu hiện ngay bản trên máy, máy chủ xác nhận / gửi bản mới.
+            const snap=window.PrintSkuSnapshotCache;
+            if(!snap){apply(await anonRpc("sku_count_overview"));return}
+            const shown=state.loaded;
+            const got=await snap.load({key:"sku_count",rpc:"sku_count_snapshot",fallback:"sku_count_overview",call:anonRpc,onCached:shown?null:data=>apply(data)});
+            // Mất mạng mà màn đã có dữ liệu: giữ màn (có thể mới hơn bản trên máy), chỉ báo chưa nối được máy chủ.
+            if(!(shown&&got.source==="cache-offline"))apply(got.data);if(got.source==="cache-offline")say(snap.label(got.savedAt),"offline");
+          }catch(error){say(error.message||"Không tải được dữ liệu.","error")}finally{state.loading=false}
         }
         // Admin: dùng chung bộ đồng bộ của Kiểm kê SKU (đọc WMS qua Extension → lưu bản chụp), rồi đọc lại bản chụp mới.
         async function run({withTemp=true}={}){
@@ -10683,7 +10889,7 @@ async function rpc(name,args,retry=true){
           const on=active();screen.hidden=!on;
           if(!on){wasOn=false;return}
           if(root)root.inert=true;
-          if(!wasOn){wasOn=true;syncAdmin();if(!state.loaded||Date.now()-state.loadedAt>30000)load()}
+          if(!wasOn){wasOn=true;syncAdmin();load({quiet:state.loaded})}
         }
         UI.hydrate(screen);
         screen.addEventListener("click",e=>{const t=e.target.closest("[data-sr-tab],button.ss-metric[data-sr-level]");if(t&&t.dataset.zero!=="true")setTab(t.dataset.srTab||t.dataset.srLevel)});
@@ -10711,7 +10917,7 @@ async function rpc(name,args,retry=true){
         const CSVH=["Kho","Ngày tạo","SKU","Sản phẩm","Số lượng","Mã ADJ","Phiếu gốc","Người tạo","Tuổi (ngày)"];
         const state={rows:[],warehouses:[],warn:[],scanned:0,pages:0,readAt:0,filter:"all",busy:false,admin:false,loaded:false};
         // ---- Bản lưu Supabase: ai cũng đọc uid_temp_overview; Admin đọc WMS xong ghi uid_temp_save ----
-        let fetched=false,loadGen=0,readFailed=false; // loadGen: bỏ kết quả nạp cũ khi Admin đã đọc lượt mới; readFailed: lượt đọc WMS vừa lỗi thì giữ câu báo lỗi
+        let fetched=false,loadGen=0,readFailed=false,fromSaved=false; // fromSaved: đang xem bản lưu Supabase (không phải lượt đọc WMS chưa lưu) → vào lại thì kiểm phiên bản; // loadGen: bỏ kết quả nạp cũ khi Admin đã đọc lượt mới; readFailed: lượt đọc WMS vừa lỗi thì giữ câu báo lỗi
         const rpcCall=async(name,args,token)=>{
           const q=window.PrintSkuQueue,response=await fetch(`${q.supabaseUrl}/rest/v1/rpc/${name}`,{method:"POST",headers:{apikey:q.publishableKey,Authorization:`Bearer ${token||q.publishableKey}`,"Content-Type":"application/json"},body:JSON.stringify(args||{}),signal:AbortSignal.timeout(60000)});
           const result=await response.json().catch(()=>null);
@@ -10723,15 +10929,27 @@ async function rpc(name,args,retry=true){
           const run=data&&data.run;if(!run)return false;
           const now=Date.now(),rows=(Array.isArray(data.rows)?data.rows:[]).map(r=>({wh:r.wh,warehouseName:r.warehouseName||"",sku:String(r.sku||""),productName:r.productName||"",qty:Number(r.qty)||0,sourceCode:r.sourceCode||"",mappingId:r.mappingId||"",createdBy:r.createdBy||"",at:r.createdAt?Date.parse(r.createdAt):NaN}));
           rows.forEach(r=>{r.ageMs=Number.isFinite(r.at)?Math.max(0,now-r.at):null;r.days=daysOf(r,now)});
-          Object.assign(state,{rows,warehouses:Array.isArray(run.warehouses)?run.warehouses:[],warn:Array.isArray(run.warn)?run.warn:[],scanned:Number(run.scanned)||0,pages:Number(run.pages)||0,readAt:Date.parse(run.readAt)||0,filter:"all",loaded:true});
+          Object.assign(state,{rows,warehouses:Array.isArray(run.warehouses)?run.warehouses:[],warn:Array.isArray(run.warn)?run.warn:[],scanned:Number(run.scanned)||0,pages:Number(run.pages)||0,readAt:Date.parse(run.readAt)||0,filter:"all",loaded:true,runId:run.id||null});
           render(false);
           say(`Bản đọc lúc ${dt(state.readAt)}: ${num(rows.length)} dòng tạo UID tạm.`);
           return true;
         }
         async function load(){
-          if(fetched||state.busy||state.loaded||screen.dataset.view!=="temp"||readFailed||location.hash.replace(/^#/,"").split("&")[0]!==ROUTE)return;
-          fetched=true;const gen=++loadGen;
-          try{const data=await rpcCall("uid_temp_overview");if(gen!==loadGen||state.busy||state.loaded)return;if(!applySaved(data))say("Chưa có bản đọc UID tạm.")}
+          if(fetched||state.busy||(state.loaded&&!fromSaved)||screen.dataset.view!=="temp"||readFailed||location.hash.replace(/^#/,"").split("&")[0]!==ROUTE)return;
+          fetched=true;const gen=++loadGen,shown=state.loaded;let fromCache=false;
+          // Cache trên máy + kiểm phiên bản (snapshot-cache-script, khoá "uid_temp"): hiện ngay bản trên máy, máy chủ xác nhận / gửi bản mới.
+          const live=()=>gen===loadGen&&!state.busy&&(!state.loaded||fromCache||fromSaved);
+          try{
+            const snap=window.PrintSkuSnapshotCache;
+            const got=snap?await snap.load({key:"uid_temp",rpc:"uid_temp_snapshot",fallback:"uid_temp_overview",call:(name,args)=>rpcCall(name,args),onCached:shown?null:data=>{if(live()&&applySaved(data)){fromCache=true;fromSaved=true}}}):{data:await rpcCall("uid_temp_overview"),source:"server"};
+            if(!live())return;
+            const same=state.loaded&&state.runId&&got.data?.run?.id===state.runId;
+            // Mất mạng mà màn đã có dữ liệu (vd. Admin vừa lưu lượt mới, hoặc vừa vẽ từ cache): giữ màn, luôn báo chưa nối được máy chủ.
+            if(got.source==="cache-offline"&&(shown||same)){say(snap.label(got.savedAt),"offline");return}
+            // Máy chủ trả đúng lượt đang hiện (vd. Admin vừa lưu, vào lại tab): giữ nguyên màn và câu trạng thái.
+            if(same){fromSaved=true;return}
+            if(!applySaved(got.data)){reset();fromSaved=false;say("Chưa có bản đọc UID tạm.")}else{fromSaved=true;if(got.source==="cache-offline")say(snap.label(got.savedAt),"offline")}
+          }
           catch(error){if(gen!==loadGen)return;fetched=false;say(error?.message||"Không tải được bản đọc UID tạm.","error")}
         }
         async function saveRun(now){
@@ -10827,7 +11045,7 @@ async function rpc(name,args,retry=true){
             const token=await window.PrintSkuAdminAccess?.getToken?.();
             if(!token){setBusy(false);syncAdmin();return}
             if(!state.admin)return;
-            loadGen++;readFailed=false; // từ đây mới chắc chắn đọc WMS: bỏ kết quả nạp bản lưu đang chờ
+            loadGen++;readFailed=false;fromSaved=false; // từ đây mới chắc chắn đọc WMS: bỏ kết quả nạp bản lưu đang chờ
             reset();
             say("Đang xác định kho WMS…");
             const meta=await ext("GET_SKU_COUNT_WAREHOUSES",{warehouseNames:WANT.map(w=>w.name)});
@@ -10854,7 +11072,7 @@ async function rpc(name,args,retry=true){
             render(false);
             const done=rows.length?`Đã đọc ${num(rows.length)} dòng tạo UID tạm trong ${RANGE_DAYS} ngày`:`Không có dòng tạo UID tạm trong ${RANGE_DAYS} ngày (đã quét ${num(scanned)} dòng)`;
             say(`${done}, đang lưu…`);
-            try{await saveRun(to);fetched=true;say(`${done}, đã lưu.`)}catch(error){say(`Đã đọc ${num(rows.length)} dòng nhưng chưa lưu được: ${error?.message||"lỗi không rõ"}`,"error")}
+            try{const saved=await saveRun(to);state.runId=saved?.runId||null;fetched=true;fromSaved=true;say(`${done}, đã lưu.`)}catch(error){say(`Đã đọc ${num(rows.length)} dòng nhưng chưa lưu được: ${error?.message||"lỗi không rõ"}`,"error")}
           }catch(error){readFailed=true;const m=String(error?.message||"");say(/Failed to fetch|NetworkError|load failed/i.test(m)?"WMS ngắt kết nối giữa chừng; tải lại tab WMS rồi bấm lại.":m||"Không đọc được dữ liệu.","error")}finally{setBusy(false);if(!state.loaded&&!readFailed){fetched=false;load()}}
         }
         // Bấm ở tab này: đồng bộ Kiểm kê (Hàng chưa lên kệ) trước, rồi đọc UID tạm; bộ đồng bộ cũ không tự đọc UID tạm lần nữa.
@@ -10876,8 +11094,11 @@ async function rpc(name,args,retry=true){
         }
         // ---- Tab cấp màn ----
         const tabs=[...screen.querySelectorAll("#srt-tabs [data-srt-view]")];
+        // Vào lại tab / màn: cho phép một lượt kiểm phiên bản mới (chỉ khi đang xem bản lưu hoặc chưa có gì).
+        const recheck=(screenEntry=false)=>{if(state.busy)return;if(screenEntry)readFailed=false;if(!readFailed&&(fromSaved||!state.loaded))fetched=false};
         function setView(view,persist=true){
           if(view!=="temp")view="main";
+          if(view==="temp"&&screen.dataset.view!=="temp")recheck();
           screen.dataset.view=view;
           tabs.forEach(b=>{const on=b.dataset.srtView===view;b.setAttribute("aria-selected",String(on));b.tabIndex=on?0:-1});
           const sub=$("srt-subtitle");if(sub)sub.textContent=view==="temp"?"UID tạm":"Hàng chưa lên kệ";
@@ -10895,7 +11116,8 @@ async function rpc(name,args,retry=true){
         $("srt-run").onclick=sync;
         UI.hydrate(screen);
         addEventListener("print-sku-admin-ready",syncAdmin);addEventListener("print-sku-admin-logout",syncAdmin);
-        addEventListener("hashchange",()=>{if(location.hash.replace(/^#/,"").split("&")[0]===ROUTE)syncAdmin()});
+        let onRoute=location.hash.replace(/^#/,"").split("&")[0]===ROUTE;
+        addEventListener("hashchange",()=>{const on=location.hash.replace(/^#/,"").split("&")[0]===ROUTE;if(on&&!onRoute)recheck(true);onRoute=on;if(on)syncAdmin()});
         window.HasakiStorageRiskTemp=Object.freeze({isTempUid,run,get busy(){return state.busy}});
         setView(savedView(),false);metrics();renderList(false);syncAdmin();
       })();

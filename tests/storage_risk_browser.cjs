@@ -63,7 +63,8 @@ const makeBackend = (initial = null) => {
     const url = route.request().url(), json = body => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
     if (url.endsWith("/auth/v1/user")) return json({ id: "test-admin" });
     if (url.includes("/rest/v1/user_roles")) return json([{ username: "Test Admin", role: "admin" }]);
-    const rpc = url.match(/\/rest\/v1\/rpc\/([a-z_0-9]+)/)?.[1];
+    // *_snapshot (cache + kiểm phiên bản) được trả như *_overview: luôn gửi bản đầy đủ; phần "không đổi" kiểm ở snapshot_cache_browser.cjs.
+    const rpc = url.match(/\/rest\/v1\/rpc\/([a-z_0-9]+)/)?.[1]?.replace(/_snapshot$/, "_overview");
     if (!rpc) return json(url.includes("/rest/v1/") ? [] : { ok: true, data: [] });
     const body = JSON.parse(route.request().postData() || "{}"), bearer = route.request().headers().authorization || "";
     state.calls.push({ rpc, body, admin: /test-admin-token/.test(bearer) });

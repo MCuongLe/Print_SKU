@@ -55,7 +55,8 @@ const backend = (route, calls, ctrl = {}) => {
   const url = route.request().url(), json = body => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
   if (url.endsWith("/auth/v1/user")) return ctrl.userStatus ? route.fulfill({ status: ctrl.userStatus, contentType: "application/json", body: JSON.stringify({ msg: "mock" }) }) : json({ id: "test-admin" });
   if (url.includes("/rest/v1/user_roles")) return json([{ username: "Test Admin", role: "admin" }]);
-  const rpc = url.match(/\/rest\/v1\/rpc\/([a-z_0-9]+)/)?.[1];
+  // *_snapshot (cache + kiểm phiên bản) được trả như *_overview: luôn gửi bản đầy đủ; phần "không đổi" kiểm ở snapshot_cache_browser.cjs.
+  const rpc = url.match(/\/rest\/v1\/rpc\/([a-z_0-9]+)/)?.[1]?.replace(/_snapshot$/, "_overview");
   if (!rpc) return json(url.includes("/rest/v1/") ? [] : { ok: true, data: [] });
   calls.push(rpc);
   (ctrl.bodies ||= []).push(route.request().postData() || "");
@@ -72,6 +73,8 @@ const backend = (route, calls, ctrl = {}) => {
   if (rpc === "uid_temp_save") {
     if (ctrl.saveFail) return json({ ok: false, error: { code: "FORBIDDEN", message: ctrl.saveFail } });
     const body = JSON.parse(route.request().postData() || "{}"); ctrl.saved = body;
+    // Như máy chủ thật: lượt vừa lưu thành bản lưu mới nhất (uid_temp_snapshot / overview trả lại lượt này).
+    ctrl.tempSnapshot = { run: { id: "tmp-1", ...body.p_run, rowCount: (body.p_rows || []).length }, rows: body.p_rows || [], history: [] };
     return json({ ok: true, data: { runId: "tmp-1", rowCount: (body.p_rows || []).length } });
   }
   return json({ ok: true, data: [] });
