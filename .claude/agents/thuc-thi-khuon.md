@@ -5,7 +5,7 @@ tools: Read, Edit, Write, Grep, Glob, Bash
 model: sonnet
 ---
 
-Bạn thực thi phần giao diện và test theo khuôn của repo Print_SKU, theo **một việc** trong kế hoạch của lead (`docs/plans/<ngày>-<tên>.md`). Đọc `docs/DOI_AGENT.md` (năm luật), `docs/PROJECT_MAP.md`, mục chuẩn giao diện trong `RULES.md` (không có trong worktree — đọc bằng đường dẫn tuyệt đối `C:\Users\HASAKI\Documents\GitHub\Print_SKU\RULES.md`) và một màn mẫu cùng loại trước khi viết.
+Bạn thực thi **một màn trọn vẹn** theo khuôn của repo Print_SKU, theo bản giao việc của lead (trong lời nhắn, hoặc tệp `docs/plans/…` nếu có). Đọc `docs/DOI_AGENT.md` (bốn luật), `docs/PROJECT_MAP.md`, mục chuẩn giao diện trong `RULES.md` (không có trong worktree — đọc bằng đường dẫn tuyệt đối `C:\Users\HASAKI\Documents\GitHub\Print_SKU\RULES.md`) và một màn mẫu cùng loại trước khi viết.
 
 Test trước: với thay đổi hành vi (luồng bấm, trạng thái, dữ liệu hiển thị), thêm khẳng định Playwright cho hành vi mới **trước**, chạy thấy FAIL, rồi mới sửa màn cho PASS. Với thay đổi thuần trình bày (màu, khoảng cách), bộ chuẩn chữ/giao diện/icon/axe phải PASS và kèm ảnh chụp.
 

@@ -1,73 +1,56 @@
-# Đội agent của Print_SKU — bản 2 (17/10/2026)
+# Đội agent của Print_SKU — bản 3 (18/10/2026)
 
-Bản 2 lấy kỷ luật của Superpowers (thiết kế trước, kế hoạch theo việc nhỏ, TDD, gỡ lỗi có hệ thống, review hai lớp, không báo xong khi chưa có bằng chứng) nhưng giữ khung riêng của dự án: commit thẳng `main` chỉ khi người dùng nói, Codex làm review độc lập, migration → deploy Edge → Reload Extension. Hồ sơ agent ở `.claude/agents/*.md`, gọi bằng Agent tool (`subagent_type` = tên tệp). Nếu plugin Superpowers được cài, **tệp này thắng khi hai bên khác nhau**.
+Bản 3 quay về cách làm nhanh: **lead tự làm phần lớn việc**, chỉ gọi agent khi có lợi thật, bỏ giấy tờ và vòng soát trung gian. Giữ lại những luật rẻ mà đáng giá của bản 2 (bằng chứng trước khi báo xong, nguyên nhân gốc trước khi sửa lỗi, commit khi người dùng nói, migration trước push) và giữ Codex làm mắt thứ hai, kể cả cho giao diện. Hồ sơ agent ở `.claude/agents/*.md`, gọi bằng Agent tool (`subagent_type` = tên tệp). Nếu plugin Superpowers được cài, **tệp này thắng khi hai bên khác nhau**.
 
-## Năm luật không ngoại lệ
+Lý do đổi (18/10/2026): bản 2 làm việc Vừa chậm gấp 3–5 lần vì mỗi việc qua trinh sát → người thực thi trong worktree → soát đặc tả → Codex hai vòng; mỗi agent mới phải đọc lại bối cảnh, dựng worktree và cổng riêng; cả bộ test (~10 phút) bị chạy nhiều lần; việc Lớn phải viết tệp kế hoạch có ô trạng thái.
 
-1. **Không viết mã cho việc Lớn khi chưa có thiết kế được người dùng chốt.**
-2. **Không sửa logic khi chưa thấy test đỏ** đúng lý do (TDD: đỏ → xanh → dọn).
-3. **Không sửa lỗi khi chưa có nguyên nhân gốc có bằng chứng** (xem Quy trình sửa lỗi).
-4. **Không báo "xong" khi chưa trích kết quả lệnh thật.** Điều chưa kiểm được phải nói rõ là chưa kiểm.
-5. **Không commit/push khi người dùng chưa nói**; xong việc thì nhắc commit kèm danh sách tệp.
+## Bốn luật không ngoại lệ
 
-## Ba hạng việc
+1. **Không báo "xong" khi chưa trích kết quả lệnh thật.** Điều chưa kiểm được phải nói rõ là chưa kiểm.
+2. **Không sửa lỗi khi chưa có nguyên nhân gốc có bằng chứng** (xem Quy trình sửa lỗi).
+3. **Không commit/push khi người dùng chưa nói**; xong việc thì nhắc commit kèm danh sách tệp.
+4. **Push `main` = deploy web.** Web cần hàm/cột/Edge mới thì: commit (chưa push) → migration → deploy Edge → push → Reload Extension.
 
-Lead phân hạng ngay khi nhận yêu cầu và nói hạng trong câu cập nhật đầu tiên.
+## Ai làm gì
 
-| Hạng | Dấu hiệu | Quy trình |
-|---|---|---|
-| **Nhỏ** | một khối, ≤ ~20 dòng, không đổi SQL/Edge/Extension/quyền (sửa nhãn, đổi một dòng ưu tiên, CSS nhỏ) | Lead làm thẳng → test liên quan + `git diff --check` → báo kết quả |
-| **Vừa** | một luồng, 1–3 tệp, có thể đụng Extension hoặc Edge (ví dụ Rcvd date = LastModified) | Trinh sát → một người thực thi theo TDD → kiểm thử soát đặc tả + test → Codex nếu đụng SQL/Edge/Extension/in/quyền |
-| **Lớn** | tính năng mới, nhiều tệp, có migration hoặc màn mới (ví dụ đồng bộ tự động, trợ lý in) | Đủ 6 bước bên dưới |
+| Vai | Mô hình | Hồ sơ | Khi nào dùng |
+|---|---|---|---|
+| Lead | Fable 5.1 (dự phòng Opus 5.5) | phiên chính | **Mặc định làm thẳng mọi việc**: đọc `docs/PROJECT_MAP.md`, grep xác minh neo, sửa, viết test, chạy test liên quan, gọi Codex, báo cáo, migration/deploy cùng người dùng, commit khi được bảo |
+| Thực thi logic | Opus | `thuc-thi-logic` | Chỉ khi có **một khối logic lớn tách được** (hàm SQL mới nhiều nhánh, Edge action mới, bộ đọc Extension mới) **và** lead đang làm việc khác song song. Giao một lần cả khối, không chia việc con |
+| Thực thi khuôn | Sonnet | `thuc-thi-khuon` | Chỉ khi có **màn thứ hai cùng khuôn** cần dựng song song với việc lead đang làm |
+| Trinh sát | Haiku | `trinh-sat` | Chỉ khi vùng mã lạ với lead **và** bản đồ dự án không đủ (ví dụ truy đường dữ liệu qua 4–5 chặng cho một lỗi). Không gọi cho việc đã rõ neo |
+| Kiểm thử | Haiku | `kiem-thu` | Tuỳ chọn: chạy cả bộ test rồi đọc kết quả và `commit_gate.py` khi lead muốn rảnh tay; **không** soát đặc tả từng việc nữa. Cổng 7 mục đã thành script nên vai này ít dùng |
+| Review chất lượng | Codex CLI | kỹ năng `review-codex` | **Một vòng** cuối mỗi đợt: SQL, Edge, Extension, luồng in/quyền **và giao diện** (ảnh chụp). Bỏ qua cho tài liệu và test thuần |
+| Nghiệm thu | người dùng | | chốt thiết kế khi có lựa chọn, chạy thật trên Inside/WMS/máy in, duyệt ảnh |
 
-Sửa lỗi ở bất kỳ hạng nào đều đi qua **Quy trình sửa lỗi** trước.
+Agent được giao việc **không commit, không migration/deploy, không ghi `RULES.md`**, báo cáo kèm dòng test thật. `RULES.md` không vào git: đọc bằng đường dẫn tuyệt đối `C:\Users\HASAKI\Documents\GitHub\Print_SKU\RULES.md`. Agent làm trong worktree thì dùng cổng máy chủ riêng (8001, 8002, …) và `BASE=`.
 
-## Vai trò
+## Một yêu cầu đi thế nào
 
-| Vai | Mô hình | Hồ sơ | Làm | Không làm |
-|---|---|---|---|---|
-| Lead | Fable 5.1 (dự phòng Opus 5.5) | phiên chính | phân hạng, thiết kế, kế hoạch, giao việc, gộp, lọc review, migration/deploy cùng người dùng, commit | giao việc chưa có chuỗi neo và test nghiệm thu |
-| Trinh sát | Haiku | `trinh-sat` | đọc `docs/PROJECT_MAP.md` rồi grep xác minh: tệp, chuỗi neo, chỗ gọi, test, quyết định đã chốt; với lỗi: đường dữ liệu từ nguồn tới chỗ hiển thị | sửa tệp, đề xuất thiết kế |
-| Thực thi logic | Opus | `thuc-thi-logic` | SQL, Edge, Extension, luồng in/quyền, hàm tính trong `index.html` — theo TDD | migration thật, deploy, commit, mở rộng phạm vi |
-| Thực thi khuôn | Sonnet | `thuc-thi-khuon` | màn web theo khuôn, test Playwright, README | logic máy chủ, Extension |
-| Kiểm thử | Haiku | `kiem-thu` | **soát đặc tả sau từng việc**, chạy test, cổng 7 mục trước commit | sửa mã nghiệp vụ |
-| Review chất lượng | Codex CLI | kỹ năng `review-codex` | review mã và ảnh màn bằng mô hình khác họ, cuối mỗi đợt | sửa thẳng repo |
-| Nghiệm thu | người dùng | | chốt thiết kế, chạy thật trên Inside/WMS/máy in, duyệt ảnh | |
+1. **Hiểu và quyết.** Lead đọc `docs/PROJECT_MAP.md`, grep xác minh neo, đo dữ liệu thật nếu cần (Supabase MCP chỉ đọc, DevTools trên tab Inside/WMS, không dùng `get_network_request` vì lộ token). Có lựa chọn ảnh hưởng người dùng thấy thì hỏi **một lượt** (tối đa 4 câu, phương án khuyến nghị đứng đầu); điều suy được từ mã hay dữ liệu thì không hỏi. Thiết kế nói gọn trong chat, không viết tệp kế hoạch.
+2. **Làm.** Lead sửa thẳng trên cây chính. Test đỏ trước **bắt buộc khi sửa lỗi và khi đổi logic** (SQL, Edge, Extension, hàm tính, luồng in/quyền); với giao diện, viết test cùng lúc với mã là đủ nhưng test phải khẳng định hành vi mới. Trong lúc làm **chỉ chạy test liên quan** (`node tests/<tên>` hoặc `run_tests.py --only`).
+3. **Codex một vòng** (`python scripts/codex_review.py --working-tree --brief <md tạm>`; giao diện thêm `--images <ảnh 390/1280>`). **Giao diện: chụp ảnh ngay khi màn chạy được lần đầu, gửi Codex, sửa theo góp ý, rồi KHÔNG gửi lại** (số đo 17–18/10: vòng ảnh đầu 4/9 và 6/7 góp ý dùng được, vòng hai sau khi sửa 0/5). Lead lọc từng phát hiện thành **sửa / làm sau / bỏ qua có lý do** (trái quyết định đã chốt), tự quyết, chỉ hỏi người dùng khi bản sửa đổi một quyết định đã chốt hoặc đổi hành vi người dùng thấy. Ghi kết quả lọc vào `RULES.md`. Codex chạy 2–15 phút: khởi động nền rồi làm tiếp việc khác, **nhưng không chạy cả bộ test cùng lúc** (hai lần test chập chờn 17/10 đều lúc máy chạy Codex + agent song song).
+4. **Cả bộ test một lần, chạy nền** (`python scripts/run_tests.py --no-server` khi máy chủ 8000 đang chạy) trước khi báo xong; script tự chạy lại test hỏng một lần, tuần tự, và in mục **CHẬP CHỜN** cho test chỉ đạt lần hai — chép mục đó vào báo cáo. **Cổng trước commit là script:** `python scripts/commit_gate.py` (bí mật, dữ liệu thật, mojibake + `diff --check`, đổi CRLF cả tệp, phiên bản Extension khi manifest đổi, CDN/npm mới, cảnh báo bản đồ) phải in "Đủ điều kiện commit" trước khi nhắc commit; mục KHÔNG ĐẠT nào là dữ liệu giả hợp lệ bị bắt nhầm thì ghi rõ trong báo cáo. Riêng mục "hunk `index.html` ngoài vùng được giao" lead tự nhìn diff.
+5. **Báo cáo và nhắc commit.** Hành vi đổi, dòng test thật, Codex đã xử lý thế nào, điều chưa kiểm, danh sách tệp chờ. Lead cập nhật `docs/PROJECT_MAP.md` cùng commit khi đổi module/lệnh/Edge/migration; `README.md` khi đổi hành vi người dùng; `RULES.md` quyết định và số đo.
+6. **Lên:** theo luật 4. Sau khi lên, lead kiểm thật (Supabase MCP chỉ đọc hoặc SQL/DevTools) và ghi số đo vào `RULES.md`.
 
-## Quy trình việc Lớn (6 bước)
+Việc có **migration nhiều bước hoặc kéo dài hơn một phiên** (ví dụ đồng bộ tự động, khoá máy xưởng) thì vẫn ghi một tệp `docs/plans/<yyyy-mm-dd>-<tên>.md` theo mẫu rút gọn ở `docs/plans/README.md`, để lead mới tiếp được; còn lại không viết.
 
-### 1. Thiết kế
-- Trinh sát lấy bản đồ phần liên quan (đọc `docs/PROJECT_MAP.md` trước).
-- Lead đo dữ liệu thật khi cần (Supabase SQL, DevTools trên tab Inside/WMS — không dùng `get_network_request` vì lộ token).
-- **Một lượt câu hỏi** cho người dùng (AskUserQuestion, tối đa 4 câu, mỗi câu có phương án khuyến nghị đứng đầu). Không hỏi nhiều vòng; điều suy ra được từ mã hay dữ liệu thì không hỏi.
-- Ghi `docs/plans/<yyyy-mm-dd>-<tên>.md` phần **Thiết kế** (mẫu ở `docs/plans/README.md`): mục tiêu nhìn thấy được, quyết định đã chốt (kể cả quyết định đổi so với `RULES.md`), hợp đồng dữ liệu, rủi ro, điều chưa kiểm được bằng máy. Ghi tóm tắt vào `RULES.md`.
+## Bản giao việc cho agent (dán vào lời nhắn, 7 dòng)
 
-### 2. Kế hoạch
-- Cùng tệp, phần **Kế hoạch**: chia thành việc nhỏ, mỗi việc **một người thực thi, một nhóm tệp không trùng, kiểm được độc lập**, thường 5–30 phút. Mỗi việc ghi: tệp → chuỗi neo nguyên văn; test sẽ đỏ trước (tên + điều khẳng định); lệnh chạy; kết quả mong đợi; ô trạng thái `[ ]`.
-- Việc cùng sửa `index.html` hoặc phụ thuộc nhau → tuần tự; còn lại → song song trong worktree riêng.
+Mọi lần vấp của agent 16–17/10 đều do thiếu một trong các dòng này (cổng 8001 trùng, patch lệch CRLF, không biết quyết định đã chốt). Không viết tệp riêng; dán thẳng vào prompt của Agent tool:
 
-### 3. Thực thi theo việc
-- **Mỗi việc một subagent mới** (`thuc-thi-logic` hoặc `thuc-thi-khuon`), bản giao việc = đúng mục việc trong kế hoạch + phần thiết kế liên quan. Không giao "cả tính năng" cho một agent.
-- Người thực thi làm TDD: viết/sửa test → chạy thấy **FAIL đúng lý do** → sửa mã → **PASS** → chạy bộ chuẩn liên quan. Báo cáo phải trích cả dòng đỏ lẫn dòng xanh.
-- Worktree: agent dùng cổng máy chủ riêng (không phải 8000, mỗi agent một cổng: 8001, 8002, …) và `BASE=`; bàn giao `git diff > scratchpad/<việc>.patch`; lead gộp (`git apply --ignore-whitespace` nếu lệch CRLF), xoá worktree. Việc sửa nhỏ sau review có thể giao làm thẳng trên cây chính (ghi rõ trong bản giao việc).
-- `RULES.md` không vào git nên **không có trong worktree**: người thực thi đọc bằng đường dẫn tuyệt đối `C:\Users\HASAKI\Documents\GitHub\Print_SKU\RULES.md` và KHÔNG ghi vào đó; mọi ghi chép `RULES.md` do lead làm. Tệp kế hoạch chưa commit cũng đọc bằng đường dẫn tuyệt đối của cây chính.
+```
+Việc: <một câu; kết quả nhìn thấy được>
+Tệp → neo: <tệp> → `<chuỗi neo nguyên văn, grep -c = 1>`; xuống dòng của tệp: <CRLF|LF>
+Ngoài phạm vi: <tệp/khối không chạm>
+Đã chốt (RULES.md, đọc ở C:\Users\HASAKI\Documents\GitHub\Print_SKU\RULES.md): <mỗi mục một câu>
+Test: <tên test đỏ trước (nếu là logic/lỗi) + điều khẳng định; bộ chuẩn phải PASS>
+Môi trường: cây chính | worktree; máy chủ cổng <800N> + BASE=http://127.0.0.1:<800N>/; PLAYWRIGHT_MODULE=C:/Users/HASAKI/playwright-tools/node_modules/playwright
+Bàn giao: sửa thẳng (cây chính) | git diff > <scratchpad>/<việc>.patch (worktree); báo cáo kèm dòng FAIL/PASS thật; không commit, không RULES.md
+```
 
-### 4. Soát đặc tả sau từng việc
-- `kiem-thu` so diff của việc với mục kế hoạch: **ĐÚNG ĐẶC TẢ** hoặc **LỆCH** (thiếu gì, thừa gì, chạm ngoài phạm vi). Kiểm luôn có bằng chứng đỏ → xanh.
-- Lệch → trả lại đúng người thực thi đó (SendMessage), không chuyển việc tiếp theo. Lead đánh `[x]` vào kế hoạch khi việc qua.
-
-### 5. Review chất lượng cuối đợt
-- Bắt buộc khi đụng SQL, Edge, Extension, luồng in/quyền hoặc có màn mới: `python scripts/codex_review.py --working-tree --brief docs/plans/<tệp>.md` (màn mới thêm `--images`).
-- Lead lọc từng phát hiện thành ba nhóm: **sửa** (giao lại theo bước 3–4, hoặc lead tự sửa nếu nhỏ, vẫn TDD), **làm sau**, **bỏ qua có lý do** (trái quyết định đã chốt). Lead tự quyết; **chỉ hỏi người dùng khi bản sửa đổi một quyết định đã chốt hoặc đổi hành vi người dùng thấy**. Ghi kết quả lọc vào `RULES.md`. Tối đa hai vòng Codex; vòng hai chỉ hỏi về các sửa của vòng một và phần chưa review.
-
-### 6. Xác minh, bàn giao, lên
-- Cả bộ `python scripts/run_tests.py` + cổng trước commit: lead tự chạy hoặc giao `kiem-thu` (lead chịu trách nhiệm kết quả). Test chập chờn do tải máy thì chạy lẻ lại và ghi rõ.
-- Lead cập nhật `docs/PROJECT_MAP.md` nếu đổi module/lệnh/Edge/migration, `README.md`, `RULES.md`.
-- Báo người dùng: hành vi đổi, kết quả test (trích số liệu), review đã xử lý, điều chưa kiểm, danh sách tệp chờ, **nhắc commit**.
-- **Push `main` = deploy web ngay (GitHub Pages).** Web gọi hàm/cột/Edge mới thì thứ tự là: commit (chưa push) → migration → deploy Edge → **push** → Reload Extension + tải lại tab. Chỉ push trước migration khi web mới vẫn chạy được với database cũ (đã kiểm). Thay đổi chỉ có SQL/Edge thì commit + push trước, migration sau.
-- Sau khi lên: lead kiểm thật (Supabase MCP chỉ đọc hoặc SQL/DevTools) và ghi số đo vào `RULES.md`.
-
-## Quy trình sửa lỗi (mọi hạng)
+## Quy trình sửa lỗi (mọi cỡ)
 
 1. **Tái hiện bằng bằng chứng**, không đoán: ảnh/câu người dùng → SQL trên Supabase, DevTools trên tab thật, log Edge, `print_events`. Ghi lại dữ liệu sai cụ thể (giá trị, thời điểm, mã lệnh).
 2. **Truy ngược tới nguyên nhân gốc**: đi theo đường dữ liệu từ nguồn (Inside/WMS/RPC) tới chỗ hiển thị; so trường hợp đúng với trường hợp sai; mỗi lần kiểm **một** giả thuyết. Ví dụ đã làm: "Failed to fetch" → Supabase trả 403 cho token hết hạn chứ không phải 401; Rcvd date → `cells[5]` là cột Delivery, LastModified ở `cells[4]`.
@@ -77,22 +60,24 @@ Sửa lỗi ở bất kỳ hạng nào đều đi qua **Quy trình sửa lỗi**
 
 ## Khi phiên bị gián đoạn
 
-- Tệp kế hoạch trong `docs/plans/` là nguồn sự thật cho việc đang dở: ô `[x]`/`[ ]` cho biết việc nào xong. Lead mới (hết ngữ cảnh, đổi model, phiên mới) đọc theo thứ tự: `docs/PROJECT_MAP.md` → tệp kế hoạch mới nhất → mục cuối của `RULES.md` → `git status`.
-- **Lead dự phòng**: Fable 5.1 hết hạn mức → Opus 5.5 làm lead trong cùng phiên (đổi model ở bộ chọn của app), giữ nguyên năm luật và quy trình. Sonnet và Haiku không làm lead. Hết ngữ cảnh khác hết hạn mức: phiên tự tóm tắt và tiếp tục với cùng model.
+- Lead mới (hết ngữ cảnh, đổi model, phiên mới) đọc theo thứ tự: `docs/PROJECT_MAP.md` → mục cuối của `RULES.md` → `git status` → tệp kế hoạch mới nhất trong `docs/plans/` nếu có.
+- **Lead dự phòng**: Fable 5.1 hết hạn mức → Opus 5.5 làm lead trong cùng phiên (đổi model ở bộ chọn của app), giữ nguyên bốn luật và quy trình. Sonnet và Haiku không làm lead. Hết ngữ cảnh khác hết hạn mức: phiên tự tóm tắt và tiếp tục với cùng model.
 
 ## Quy tắc chung không đổi
 
-- Sửa nhỏ nhất trong `index.html`, không reformat; giữ CRLF/LF hiện trạng; đọc lại tệp ngay trước khi ghi; không ghi lại cả tệp từ bản đọc cũ.
-- Tiếng Việt có dấu; icon Lucide trước nhãn ngắn; không câu hướng dẫn kiểu AI trong màn; Admin chỉ xét máy tính.
-- Màn mới hoặc làm lại giao diện: người thực thi khuôn nạp kỹ năng `frontend-design` (plugin đã cài 17/10/2026) để lấy hướng bố cục, thứ bậc thị giác, khoảng trắng, trạng thái rỗng/đang chờ/kết quả. **Chuẩn dự án thắng khi khác nhau:** giữ màu chính #005F41 và bảng màu hiện có, một font hệ thống, thang chữ và cỡ icon mà `typography_browser`/`icon_standard_browser`/`ui_standard_browser`/`a11y_axe_browser` kiểm; không thêm font, CDN hay thư viện.
+- Sửa nhỏ nhất trong `index.html`, không reformat; giữ CRLF/LF hiện trạng; đọc lại tệp ngay trước khi ghi; không ghi lại cả tệp từ bản đọc cũ. Khối mới đặt trong `<style id="…">`/`<script id="…">` riêng.
+- Tiếng Việt có dấu; icon Lucide trước nhãn ngắn; không câu hướng dẫn kiểu AI trong màn; Admin chỉ xét máy tính; trang chủ và màn xưởng xét cả 390 px.
+- Màn mới hoặc làm lại giao diện: nạp kỹ năng `frontend-design` để lấy hướng bố cục, thứ bậc thị giác, khoảng trắng, trạng thái rỗng/đang chờ/kết quả. **Chuẩn dự án thắng khi khác nhau:** giữ màu chính #005F41 và bảng màu hiện có, một font hệ thống, thang chữ và cỡ icon mà `typography_browser`/`icon_standard_browser`/`ui_standard_browser`/`a11y_axe_browser` kiểm; không thêm font, CDN hay thư viện.
 - Không phụ thuộc ngoài, không gọi mạng mới khi chưa được duyệt, không bí mật hay dữ liệu thật trong repo. Dữ liệu giả chuẩn: SKU `9000000xx`, Group UID `1028260000000xxx` (cũ còn dùng `9999991000000001`), số phiếu/PO `100000001`; fixture cũ đã có trong HEAD giữ nguyên.
 - **Supabase MCP (plugin, 17/10/2026) chỉ dùng để ĐỌC** (schema, RLS, log Edge, advisors, SELECT) trên project `ikzhitdqkoatlmkrxuuh`. Migration, deploy, ghi dữ liệu, đổi cấu hình/khoá vẫn qua `scripts/apply_supabase_sql.py` / `deploy_*.py` do người dùng chạy, trừ khi người dùng cho phép rõ từng lần. Thiết lập Auth/bảo mật trong Dashboard do người dùng tự bấm.
-- Việc đã chốt là không làm trong `RULES.md` thì người thực thi không được "sửa lại cho đúng".
+- Extension đổi hành vi thì nâng phiên bản trong `manifest.json`, cập nhật mọi test khẳng định số đó (`grep -l` trong `tests/`) và ghi chú trong `extension/inside-po-connector/README.md`.
+- Việc đã chốt là không làm trong `RULES.md` thì không ai được "sửa lại cho đúng".
 - Nhiều phiên cùng sửa `index.html`: `git status` trước khi gộp; commit chỉ phần của đội.
 
 ## Chạy nhanh
 
-- Cả bộ test: `python scripts/run_tests.py [--no-server] [--only <tên>]`; máy chủ tĩnh cổng 8000; `PLAYWRIGHT_MODULE=C:/Users/HASAKI/playwright-tools/node_modules/playwright`.
+- Cả bộ test: `python scripts/run_tests.py [--no-server] [--only <tên>] [--no-retry]` (tự chạy lại test hỏng một lần, in mục CHẬP CHỜN); máy chủ tĩnh cổng 8000; `PLAYWRIGHT_MODULE=C:/Users/HASAKI/playwright-tools/node_modules/playwright`.
+- Cổng trước commit: `python scripts/commit_gate.py [--cached | --commit <sha>]` (thoát 1 khi có mục KHÔNG ĐẠT).
 - Review Codex: `/review-codex`, hoặc `python scripts/codex_review.py --commit <sha> | --working-tree | --images <thư mục> --brief <md>`.
 - Migration: `python scripts/apply_supabase_sql.py <tệp> [--dry-run] [--allow-destructive]`; deploy Edge: `python scripts/deploy_<tên>.py [--dry-run]`.
-- Bản đồ dự án: `docs/PROJECT_MAP.md`; mẫu thiết kế/kế hoạch: `docs/plans/README.md`.
+- Bản đồ dự án: `docs/PROJECT_MAP.md`; mẫu kế hoạch cho việc nhiều bước: `docs/plans/README.md`.

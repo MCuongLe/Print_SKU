@@ -5,7 +5,7 @@ tools: Read, Edit, Write, Grep, Glob, Bash
 model: opus
 ---
 
-Bạn thực thi phần logic của repo Print_SKU theo **một việc** trong kế hoạch do lead viết (`docs/plans/<ngày>-<tên>.md`: tệp, chuỗi neo, test đỏ trước, lệnh, kết quả mong đợi). Đọc `docs/DOI_AGENT.md` (năm luật), `docs/PROJECT_MAP.md`, phần Thiết kế của tệp kế hoạch và mục liên quan trong `RULES.md` (không có trong worktree — đọc bằng đường dẫn tuyệt đối `C:\Users\HASAKI\Documents\GitHub\Print_SKU\RULES.md`) trước khi sửa. Cần chạy test trình duyệt ở worktree thì dùng cổng riêng (không phải 8000) và `BASE=`.
+Bạn thực thi **một khối logic trọn vẹn** của repo Print_SKU theo bản giao việc của lead (trong lời nhắn, hoặc tệp `docs/plans/…` nếu có: tệp, chuỗi neo, test đỏ trước, lệnh, kết quả mong đợi). Đọc `docs/DOI_AGENT.md` (bốn luật), `docs/PROJECT_MAP.md` và mục liên quan trong `RULES.md` (không có trong worktree — đọc bằng đường dẫn tuyệt đối `C:\Users\HASAKI\Documents\GitHub\Print_SKU\RULES.md`) trước khi sửa. Cần chạy test trình duyệt ở worktree thì dùng cổng riêng (không phải 8000) và `BASE=`.
 
 ## TDD bắt buộc
 1. Viết hoặc sửa test theo mục "Test đỏ trước" của việc.

@@ -64,12 +64,13 @@ Migration là chuỗi tệp `supabase/*.sql` (idempotent, `notify pgrst`); **b�
 Chạy migration: `python scripts/apply_supabase_sql.py <tệp> [--dry-run] [--allow-destructive]` (token Management trong `.env`, gitignored). Thứ tự lên luôn là migration → deploy Edge → Reload Extension.
 
 ## 5. Kiểm thử và công cụ
-- `python scripts/run_tests.py [--no-server] [--only <tên>]` chạy mọi `tests/*.cjs|*.mjs` (≈ 70 tệp, ~8–9 phút). Máy chủ tĩnh cổng 8000 cho cây chính (`.claude/launch.json` → `print-sku-test-8000`); worktree của agent dùng cổng khác + `BASE=`.
+- `python scripts/run_tests.py [--no-server] [--only <tên>] [--no-retry]` chạy mọi `tests/*.cjs|*.mjs` (≈ 70 tệp, ~8–10 phút); test hỏng được chạy lại một lần tuần tự, in mục CHẬP CHỜN.
+- `python scripts/commit_gate.py [--cached | --commit <sha>]`: cổng trước commit bằng máy (bí mật, dữ liệu thật, mojibake, CRLF cả tệp, phiên bản Extension, CDN/npm, cảnh báo bản đồ). Máy chủ tĩnh cổng 8000 cho cây chính (`.claude/launch.json` → `print-sku-test-8000`); worktree của agent dùng cổng khác + `BASE=`.
 - Playwright: `PLAYWRIGHT_MODULE=C:/Users/HASAKI/playwright-tools/node_modules/playwright`. Bộ chuẩn: `typography_browser`, `ui_standard_browser`, `icon_standard_browser`, `a11y_axe_browser`, `app_nav_browser`, `mobile_home_browser` (trang chủ điện thoại ≤ 1,25 màn).
 - Edge test Node: `tests/sku_sync_function.mjs`, `group_uid_sync_function.mjs`, `print_assistant_function.mjs`, `sku_vision_function.mjs` (giả `Deno` + `fetch`).
 - Review độc lập: `python scripts/codex_review.py --working-tree|--commit <sha>|--images <thư mục> --brief <md>` (skill `review-codex`).
-- Thiết kế và kế hoạch việc Lớn: `docs/plans/<ngày>-<tên>.md` (mẫu `docs/plans/README.md`), có ô trạng thái để tiếp việc dở.
-- Đội agent: `docs/DOI_AGENT.md` (bản 2: năm luật, ba hạng việc), hồ sơ `.claude/agents/{trinh-sat,thuc-thi-logic,thuc-thi-khuon,kiem-thu}.md`.
+- Kế hoạch cho việc có migration nhiều bước hoặc kéo dài hơn một phiên: `docs/plans/<ngày>-<tên>.md` (mẫu `docs/plans/README.md`).
+- Đội agent: `docs/DOI_AGENT.md` (bản 3, 18/10/2026: lead tự làm, bốn luật, Codex một vòng kể cả giao diện, mẫu bản giao việc 7 dòng), hồ sơ `.claude/agents/{trinh-sat,thuc-thi-logic,thuc-thi-khuon,kiem-thu}.md`.
 
 ## 6. Quy ước luôn đúng
 Trả lời tiếng Việt có dấu; icon Lucide + nhãn ngắn, không câu hướng dẫn kiểu AI; Admin chỉ xét desktop; `index.html` git lưu LF nhưng trên đĩa có thể là CRLF (autocrlf=true, sau checkout/apply) — giữ nguyên kiểu xuống dòng đang có của từng tệp khi sửa, sửa nhỏ nhất bằng neo; dữ liệu test giả (`9000000xx`, `1028260000000xxx`, `100000001`); không commit `.env`, khoá, SKU thật; commit/push chỉ khi người dùng nói; xong việc phải nhắc commit. Quyết định đã chốt nằm trong `RULES.md` (không vào git) — grep trước khi đề xuất lại.

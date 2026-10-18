@@ -1,6 +1,6 @@
-# docs/plans — thiết kế và kế hoạch cho việc Lớn
+# docs/plans — kế hoạch cho việc nhiều bước
 
-Mỗi việc Lớn (xem `docs/DOI_AGENT.md`) có một tệp `yyyy-mm-dd-<tên-ngắn>.md` trong thư mục này. Tệp vào git để lead nào (hết ngữ cảnh, đổi model, phiên mới) cũng tiếp được việc đang dở. Không ghi khoá, token, mã SKU/UID thật; dùng dữ liệu giả.
+Từ bản 3 (18/10/2026) chỉ việc có **migration nhiều bước hoặc kéo dài hơn một phiên** mới có tệp `yyyy-mm-dd-<tên-ngắn>.md` ở đây (xem `docs/DOI_AGENT.md`); việc khác thiết kế gọn trong chat. Tệp vào git để lead nào (hết ngữ cảnh, đổi model, phiên mới) cũng tiếp được việc đang dở; mẫu dưới dùng rút gọn, bỏ mục nào không cần. Không ghi khoá, token, mã SKU/UID thật; dùng dữ liệu giả.
 
 ## Mẫu
 
