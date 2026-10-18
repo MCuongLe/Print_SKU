@@ -119,6 +119,21 @@ async function desktop(browser) {
   // Khuôn nút đọc một kiểu (17/10/2026): "Đọc WMS" + icon mask, cao bằng nút Nhập Excel cùng hàng, hai nút chia đều hàng
   assert.deepEqual(await srcReadAudit(page, [{ id: "uid-wms-open", text: "Đọc WMS", title: "Đọc Group UID New từ WMS", mate: "uid-import" }], 1280), [], "nút Đọc WMS một kiểu");
   assert.ok(Math.abs(excel.width - wmsBtn.width) <= 1, `hai nút chia đều hàng (${excel.width} / ${wmsBtn.width})`);
+  // Nhập Excel dùng được không trông như bị khoá: chữ #005F41 như Đọc WMS, viền ≥ 3:1 trên nền nút; chỉ nhạt khi disabled
+  const excelLook = () => page.locator("#uid-import").evaluate(async b => {
+    await Promise.all(b.getAnimations().map(a => a.finished.catch(() => {})));
+    const s = getComputedStyle(b), rgb = v => v.match(/[\d.]+/g).slice(0, 3).map(Number);
+    const lum = c => c.map(v => (v /= 255) <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4).reduce((t, v, i) => t + v * [0.2126, 0.7152, 0.0722][i], 0);
+    const ratio = (a, c) => { const [x, y] = [lum(rgb(a)), lum(rgb(c))].sort((p, q) => q - p); return Math.round((x + 0.05) / (y + 0.05) * 100) / 100; };
+    return { color: s.color, opacity: s.opacity, border: ratio(s.borderTopColor, s.backgroundColor) };
+  });
+  const excelIdle = await excelLook();
+  assert.equal(excelIdle.color, "rgb(0, 95, 65)", "Nhập Excel dùng được: chữ #005F41 như Đọc WMS");
+  assert.equal(excelIdle.opacity, "1", "Nhập Excel dùng được: không mờ");
+  assert.ok(excelIdle.border >= 3, `Nhập Excel dùng được: viền đủ tương phản (${excelIdle.border}:1)`);
+  await page.locator("#uid-import").evaluate(b => { b.disabled = true; });
+  assert.ok(Number((await excelLook()).opacity) < 1, "Nhập Excel khoá: nhạt đi");
+  await page.locator("#uid-import").evaluate(b => { b.disabled = false; });
 
   // Mở hộp: tự đọc, mặc định cả 2 kho và 7 ngày
   await page.locator("#uid-wms-open").click();

@@ -8041,7 +8041,7 @@ var FSK_CORE = (function () {
       .cut-adj-bar .cut-secondary{flex:none}
       .cut-adj-cov{display:inline-flex;align-items:center;gap:6px;flex:1 1 200px;min-width:0;color:var(--wms-muted,#60736b);font-size:13px;font-weight:600}
       .cut-adj-cov svg{flex:none}
-      .cut-adj-cov[data-tone="warn"]{color:var(--wms-warning,#b7791f)}
+      .cut-adj-cov[data-tone="warn"]{color:#8b6100} /* vàng đậm: #b7791f chỉ 3,64:1 trên nền trắng (axe color-contrast) */
       .cut-adj-kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:14px}
       .cut-adj-kpi{display:flex;align-items:center;gap:10px;min-height:56px;padding:8px 12px;border:1px solid var(--wms-border,#d9e2de);border-radius:14px;background:var(--wms-surface,#fff);color:var(--wms-muted,#60736b);font:inherit;font-size:13px;font-weight:600;text-align:left;cursor:pointer}
       .cut-adj-kpi svg{flex:none;width:24px;height:24px}
@@ -10264,6 +10264,8 @@ async function rpc(name,args,retry=true){
     <style id="inventory-audit-style">
       .ia-metrics{grid-template-columns:repeat(4,minmax(0,1fr))}.ss-metric small{display:block;margin-top:4px;color:#60736b;font-size:12px;font-weight:400;line-height:1.35}
       .ss-metric[data-tone=never]{border-color:#efb3ad;background:#fff6f5}.ss-metric[data-tone=never] strong{color:#a53730}.ss-metric[data-tone=overdue]{border-color:#e3b64d;background:#fffaeb}.ss-metric[data-tone=overdue] strong{color:#8b6100}.ss-metric[data-tone=recent] strong{color:#126348}
+      /* Chưa có bản chụp hoặc số = 0: thẻ trung tính như thẻ SKU có tồn kho; chỉ tô đỏ/vàng khi có dữ liệu và số > 0 (data-zero=false) */
+      #inventory-audit-screen .ss-metric[data-tone]:not([data-zero=false]){border-color:#dce7e3;background:#fff}#inventory-audit-screen .ss-metric[data-tone]:not([data-zero=false]) strong{color:#60736b}
       .ss-panel .as-tags{padding:0 0 14px}.ia-table td:nth-child(1){white-space:nowrap}.ia-table th.n,.ia-table td.n{text-align:right}.ia-table th.n .as-th{flex-direction:row-reverse}.ia-table td.n{font-variant-numeric:tabular-nums}
       .ia-table tbody tr[data-ia-key]{cursor:pointer}.ia-table tbody tr[data-ia-key]:hover{background:#f3faf7}.ia-pname{display:-webkit-box;max-width:300px;min-width:180px;overflow:hidden;-webkit-box-orient:vertical;-webkit-line-clamp:2}
       .ia-qty b{display:block;color:#17382d;font-size:14px}.ia-qty small{display:block;color:#60736b;font-size:12px}.ia-locs{display:flex;flex-direction:column;align-items:flex-start;gap:4px}.ia-loc{padding:2px 8px;border-radius:7px;background:#eef4f1;color:#31483f;font-size:12px;font-weight:600;white-space:nowrap}
@@ -11340,21 +11342,23 @@ async function rpc(name,args,retry=true){
           $("uh-d-title").textContent = TAB_TITLE[state.tab];
           list.show({ columns: COLS, rows: rows.map(rowFor), total: state.tab === "all" ? state.total : rows.length, facets: [{ id: "wh", label: "Kho", icon: "database" }, { id: "by", label: "Người cập nhật", icon: "user" }], filename: "lich-su-group-uid", csvHead: CSV_HEAD, empty: state.loaded ? "Không có lượt chuyển khớp bộ lọc." : "Đang tải…" }, { keep });
         }
+        // Đang đọc WMS: số 0 / câu rỗng hiện "—" tới khi đọc xong (đọc xong mới hiện trạng thái rỗng thật)
+        const wait = n => state.busy && !n;
         function renderMetrics() {
-          const c = counts(), ready = state.loaded;
-          $("uh-count").textContent = ready ? num(state.total) : "—";
-          $("uh-count-sub").textContent = ready ? `${num(new Set(state.rows.map(r => r.uid)).size)} Group UID${state.truncated ? ` · ${num(state.rows.length)} lượt mới nhất` : ""}` : "";
-          [["now", "uh-m-now"], ["moved", "uh-m-moved"], ["vr", "uh-m-vr"]].forEach(([k, id]) => { $(id).textContent = ready ? num(c[k]) : "—"; });
-          screen.querySelectorAll("[data-uh-kind]").forEach(b => { b.dataset.zero = String(ready && !c[b.dataset.uhKind]); });
+          const c = counts(), ready = state.loaded, shown = n => ready && !wait(n);
+          $("uh-count").textContent = shown(state.total) ? num(state.total) : "—";
+          $("uh-count-sub").textContent = shown(state.total) ? `${num(new Set(state.rows.map(r => r.uid)).size)} Group UID${state.truncated ? ` · ${num(state.rows.length)} lượt mới nhất` : ""}` : "";
+          [["now", "uh-m-now"], ["moved", "uh-m-moved"], ["vr", "uh-m-vr"]].forEach(([k, id]) => { $(id).textContent = shown(c[k]) ? num(c[k]) : "—"; });
+          screen.querySelectorAll("[data-uh-kind]").forEach(b => { b.dataset.zero = String(ready && !state.busy && !c[b.dataset.uhKind]); });
           Object.keys(TABS).forEach(k => { $(`uh-tab-${k}`).textContent = num(k === "all" ? Math.max(state.total, c.all) : c[k]); });
         }
         function renderOverview() {
           const o = state.overview, whs = o?.warehouses || [];
-          $("uh-read-at").textContent = !o ? "—" : o.lastReadAt ? dt(o.lastReadAt) : "Chưa có dữ liệu";
+          $("uh-read-at").textContent = !o ? "—" : o.lastReadAt ? dt(o.lastReadAt) : state.busy ? "—" : "Chưa có dữ liệu";
           $("uh-read-rel").textContent = o?.lastReadAt ? rel(o.lastReadAt) : "";
-          $("uh-total").textContent = o ? `${num(o.total)} lượt` : "—";
+          $("uh-total").textContent = o && !wait(o.total) ? `${num(o.total)} lượt` : "—";
           $("uh-span").textContent = o?.firstAt ? `${day(o.firstAt)} – ${day(o.lastAt)}` : "";
-          $("uh-wh-count").textContent = o ? num(whs.length) : "—";
+          $("uh-wh-count").textContent = o && !wait(whs.length) ? num(whs.length) : "—";
           $("uh-wh-top").textContent = whs.map(w => shortWh(w.name)).join(" · ");
           const current = whSelect.value;
           whSelect.innerHTML = `<option value="">Tất cả kho</option>` + whs.map(w => `<option value="${esc(w.name)}">${esc(w.name)} (${num(w.count)})</option>`).join("");
@@ -11438,6 +11442,7 @@ async function rpc(name,args,retry=true){
           run.querySelector(".src-read__t").textContent = on && !full ? "Đang đọc…" : "Đọc WMS";
           $("uh-progress").dataset.on = String(on);
           if (!on) $("uh-progress").querySelector("i").style.width = "0%";
+          renderOverview(); renderMetrics();
         }
         const progress = (done, total) => { $("uh-progress").querySelector("i").style.width = total ? `${Math.min(100, done / total * 100)}%` : "0%"; const b = [$("uh-run"), $("uh-full")].find(x => x.dataset.busy === "true"); if (b) b.style.setProperty("--p", String(total ? Math.min(1, done / total) : 0)); };
         // WMS không lọc lịch sử theo company-ids (3 công ty cùng trả 5.072 dòng, 10/10/2026) nên chỉ đọc một luồng; p_company_id = 0 là "mọi công ty".
@@ -11496,7 +11501,7 @@ async function rpc(name,args,retry=true){
           const match = event.target.closest("[data-uh-match]"), range = event.target.closest("[data-uh-range]"), kind = event.target.closest("[data-uh-kind]"), tab = event.target.closest("[data-uh-tab]");
           if (match) { setMatch(match.dataset.uhMatch); queue(); return; }
           if (range) { setRange(range.dataset.uhRange); if (range.dataset.uhRange !== "custom") queue(); else renderChips(); return; }
-          if (kind) { if (state.loaded && kind.dataset.zero !== "true") openResults(kind.dataset.uhKind); return; }
+          if (kind) { if (state.loaded && kind.dataset.zero !== "true" && kind.querySelector("strong").textContent !== "—") openResults(kind.dataset.uhKind); return; }
           if (tab) { setTab(tab.dataset.uhTab); renderList(true); return; }
           if (event.target.closest("[data-uh-open-filter]")) UI.openDialog(filterDialog);
         });
@@ -14511,18 +14516,19 @@ async function rpc(name,args,retry=true){
               <div class="skit__main"><b>${esc(row.sku)}</b><span class="skit__name">${esc(row.name || "—")}</span>${row.flag ? `<span class="skit__tag">${esc(row.flag)}</span>` : ""}</div>
               <div class="skit__qty" title="Số lượng theo phiếu IT"><b>${esc(qtyText(row.quantity))}</b>${row.unit ? ` <span>${esc(row.unit)}</span>` : ""}</div>
               <div class="skit__copies"><button type="button" data-step="-1" aria-label="Giảm số bản in SKU ${esc(row.sku)}">${ICON.minus}</button><input type="number" min="1" max="${MAX_COPIES}" data-field="copies" value="${row.copies}" aria-label="Số bản in SKU ${esc(row.sku)}"><button type="button" data-step="1" aria-label="Tăng số bản in SKU ${esc(row.sku)}">${ICON.plus}</button></div>
-            </div>`).join("") : `<div class="skit__empty">${it ? "Phiếu IT không có dòng nào." : "Chưa đọc phiếu."}</div>`;
+            </div>`).join("") : `<div class="skit__empty">${busy ? "—" : it ? "Phiếu IT không có dòng nào." : "Chưa đọc phiếu."}</div>`;
           meter();
         };
         // Tổng và nút Thêm cập nhật riêng để không vẽ lại khi đang gõ số bản
         const meter = () => {
           const chosen = picked(), free = room(), copies = chosen.reduce((sum, row) => sum + row.copies, 0);
-          $("sku-it-sum").textContent = `${num(chosen.length)} SKU · ${num(copies)} bản in`;
+          $("sku-it-sum").textContent = busy && !rows.length ? "—" : `${num(chosen.length)} SKU · ${num(copies)} bản in`;
           $("sku-it-room").textContent = worker() ? `Danh sách còn chỗ ${num(free)} SKU` : "";
           add.disabled = busy || !chosen.length || chosen.some(row => !(row.copies >= 1 && row.copies <= MAX_COPIES));
           add.textContent = chosen.length ? `Thêm ${num(chosen.length)} SKU vào danh sách` : "Thêm vào danh sách";
         };
-        const setBusy = on => { busy = on; load.disabled = on; load.dataset.busy = String(on); load.querySelector(".src-read__t").textContent = on ? "Đang đọc…" : "Đọc WMS"; meter(); };
+        // Tấm trống đang đọc: danh sách và tổng hiện "—" (không câu rỗng / số 0) tới khi đọc xong
+        const setBusy = on => { busy = on; load.disabled = on; load.dataset.busy = String(on); load.querySelector(".src-read__t").textContent = on ? "Đang đọc…" : "Đọc WMS"; rows.length ? meter() : render(); };
 
         const read = async () => {
           if (busy) return;
@@ -14636,7 +14642,8 @@ async function rpc(name,args,retry=true){
     <style id="uid-mockup">
       /* IN TEM GROUP UID theo mẫu (11/10/2026) */
       #uid-code { padding-left: 46px; background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235c6f68' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M3 5v14M7 5v14M10 5v14M14 5v14M17 5v14M21 5v14'/%3E%3C/svg%3E") 14px center / 20px no-repeat; }
-      #uid-screen .uid-import { border-style: solid; background: #fff; }
+      #uid-screen .uid-import { border-style: solid; border-color: #7c958c; background: #fff; color: #005f41; }
+      #uid-screen .uid-import:disabled { opacity: .45; cursor: not-allowed; }
       #uid-screen .uid-panel__head { position: relative; }
       #uid-screen .uid-head-icon { display: grid; place-items: center; margin-left: auto; color: #005f41; }
       #uid-screen :is(.uid-head-icon, .uid-sheet-open, .uid-more) svg { width: 20px; height: 20px; }

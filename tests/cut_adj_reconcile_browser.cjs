@@ -6,6 +6,11 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const zlib = require('node:zlib');
 const BASE = process.env.BASE || 'http://127.0.0.1:8000/';
+const path = require('node:path');
+let AXE;
+try { AXE = require.resolve('axe-core/axe.min.js', { paths: [path.join(__dirname, '..')] }); } catch (_) {
+  console.error('Chưa có axe-core: chạy `npm install` ở thư mục gốc repo rồi chạy lại test này.'); process.exit(1);
+}
 
 // ---- Dung file zip/xlsx gia lap (khong phu thuoc thu vien) ----
 const crcTable = (() => { const table = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; table[n] = c >>> 0; } return table; })();
@@ -185,6 +190,11 @@ const srcReadAudit = (page, specs, width) => page.evaluate(async ({ specs, width
       await page.waitForFunction(() => document.querySelector('#cut-adj-cov').textContent.includes('Chưa nạp'));
       assert.equal(await page.locator('#cut-adj-issues').textContent(), '0');
       assert.match(await page.locator('#cut-adj-rows').innerText(), /Chưa nạp dữ liệu WMS/);
+      // axe color-contrast (WCAG AA 4,5:1): chữ cảnh báo "Chưa nạp dữ liệu WMS" ở #cut-adj-cov đủ tương phản trên nền thẻ
+      await page.addScriptTag({ path: AXE });
+      const lowContrast = await page.evaluate(async () => (await axe.run({ include: ['#cut-adj-cov'] }, { runOnly: { type: 'rule', values: ['color-contrast'] }, resultTypes: ['violations'] })).violations
+        .flatMap(v => v.nodes.map(n => `${n.target.join(' ')}: ${n.any.map(a => a.message).join('; ')}`)));
+      assert.deepEqual(lowContrast, [], `${width}px: #cut-adj-cov đủ tương phản`);
       // Khuôn nút đọc một kiểu (17/10/2026): "Đọc WMS" + icon mask, cao bằng nút Nạp ZIP/XLSX cùng hàng (điện thoại: bo 12 như mọi nút ≤ 800 px); 6 nút tải lại khác vẫn dùng act-icon--load
       assert.deepEqual(await srcReadAudit(page, [{ id: 'cut-adj-wms', text: 'Đọc WMS', ...(width > 800 ? { mate: 'cut-adj-upload' } : {}) }], width), [], `${width}px: nút Đọc WMS một kiểu`);
       assert.equal(await page.locator('#cut-adj-reload').evaluate(b => b.classList.contains('act-icon--load')), true, 'nút Tải lại (icon refresh) giữ nguyên');

@@ -5,6 +5,13 @@ const assert = require("node:assert/strict");
 const BASE = process.env.BASE || "http://127.0.0.1:8000/";
 const SESSION_KEY = "print-sku-admin-session-v1";
 const DAY = 86400000;
+// Bốn thẻ số liệu (SKU có tồn kho / Chưa kiểm kê / Quá 30 ngày / Trong 30 ngày): nền, viền, màu số — chờ chuyển màu xong mới đo
+const cardTones = page => page.evaluate(() => Promise.all([...document.querySelectorAll("#inventory-audit-screen .ia-metrics .ss-metric")].map(async card => {
+  await Promise.all(card.getAnimations().map(a => a.finished.catch(() => {})));
+  const s = getComputedStyle(card);
+  return { bg: s.backgroundColor, border: s.borderTopColor, ink: getComputedStyle(card.querySelector("strong")).color };
+})));
+const RED = "rgb(165, 55, 48)", AMBER = "rgb(139, 97, 0)";
 
 const mockExtension = () => addEventListener("message", async event => {
   const r = event.data;
@@ -131,6 +138,9 @@ const expectBar = (info, tag, ratio) => {
       assert.equal(await page.locator("#ia-never").innerText(), "1");
       assert.equal(await page.locator("#ia-recent").innerText(), "1");
       assert.equal(await page.locator("#ia-overdue").innerText(), "1");
+      const tones = await cardTones(page);
+      assert.ok(tones[1].ink === RED && tones[1].bg !== tones[0].bg, `${width}px: Chưa kiểm kê > 0 tô đỏ`);
+      assert.ok(tones[2].ink === AMBER && tones[2].bg !== tones[0].bg, `${width}px: Quá 30 ngày > 0 tô vàng`);
       assert.equal(await page.locator("#ia-admin-tools").isHidden(), true, "người xem không có nút đồng bộ WMS");
       assert.equal(await page.locator("#inventory-audit-screen .ss-hero").evaluate(h => h.getClientRects().length), 0, `${width}px: người xem không thấy hero (không còn thẻ trắng rỗng)`);
       assert.equal(await page.locator("#ia-admin").getAttribute("aria-pressed"), "false");
@@ -188,6 +198,10 @@ const expectBar = (info, tag, ratio) => {
       await page.locator("#inventory-audit-screen").waitFor({ state: "visible" });
       await page.waitForFunction(() => /Chưa có bản đồng bộ/.test(document.getElementById("ia-status").textContent));
       assert.equal(await page.locator("#ia-total").innerText(), "—");
+      // Chưa có bản chụp: bốn thẻ trung tính như thẻ SKU có tồn kho (nền, viền), số không đỏ/vàng — chỉ tô khi đã có dữ liệu và số > 0
+      const tones = await cardTones(page);
+      assert.deepEqual(tones.map(t => `${t.bg} / ${t.border}`), Array(4).fill(`${tones[0].bg} / ${tones[0].border}`), "chưa có bản chụp: bốn thẻ cùng nền/viền trung tính");
+      assert.deepEqual(tones.filter(t => t.ink === RED || t.ink === AMBER), [], "chưa có bản chụp: số không tô đỏ/vàng");
       assert.deepEqual(errors, []);
       await context.close();
     }

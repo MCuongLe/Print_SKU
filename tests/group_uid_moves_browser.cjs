@@ -372,6 +372,18 @@ const expectBar = (info, tag, ratio) => {
       assert.equal(layout.sameRow, true, "hai nút đọc cùng một hàng");
       assert.ok(layout.runRight <= layout.fullLeft, "Đọc WMS đứng trước nút icon");
       if (width === 375) { assert.ok(Math.abs(layout.fullRight - layout.innerRight) <= 2, "điện thoại: cụm nút chạm mép phải hero"); assert.ok(layout.runW > 200, `điện thoại: nút Đọc WMS giãn (${layout.runW}px)`); }
+      // Đang đọc khi chưa có dữ liệu: dải thông tin + thẻ số liệu hiện "—" (không "Chưa có dữ liệu", không số 0, thẻ không mờ, bấm không mở popup); đọc xong (ở đây: lỗi) mới hiện trạng thái rỗng thật
+      const figures = () => page.evaluate(() => ({ text: ["uh-read-at", "uh-total", "uh-wh-count", "uh-count", "uh-m-now", "uh-m-moved", "uh-m-vr"].map(id => document.getElementById(id).textContent).join(" | "), zero: [...document.querySelectorAll("[data-uh-kind]")].map(b => b.dataset.zero).join(",") }));
+      await page.evaluate(() => { window.__fail = true; window.__hold = new Promise(resolve => { window.__release = resolve; }); });
+      await page.locator("#uh-run").click();
+      await page.waitForFunction(() => document.getElementById("uh-run").dataset.busy === "true");
+      assert.deepEqual(await figures(), { text: "— | — | — | — | — | — | —", zero: "false,false,false,false" }, `${width}px: đang đọc không hiện trạng thái rỗng / số 0`);
+      await page.locator('[data-uh-kind="all"]').click();
+      assert.equal(await page.locator("#uh-dialog").evaluate(d => d.open), false, "thẻ đang chờ (—) không mở popup");
+      await page.evaluate(() => { window.__release(); window.__hold = null; });
+      await page.waitForFunction(() => document.getElementById("uh-message").dataset.tone === "error");
+      assert.deepEqual(await figures(), { text: "Chưa có dữ liệu | 0 lượt | 0 | 0 | 0 | 0 | 0", zero: "true,true,true,true" }, `${width}px: đọc xong mới hiện trạng thái rỗng thật`);
+      await page.evaluate(() => { window.__fail = false; window.__extCalls.splice(0); });
       // Đang đọc: giữ phản hồi Extension — nút vừa bấm data-busy + "Đang đọc…" (nút icon: chỉ đổi icon vòng xoay); nút kia chỉ khoá, không data-busy; đọc xong trả "Đọc WMS"
       const idleMask = await page.locator("#uh-run").evaluate(b => getComputedStyle(b, "::before").maskImage), idleFullMask = await page.locator("#uh-full").evaluate(b => getComputedStyle(b, "::before").maskImage);
       assert.equal((await barInfo(page, "uh-run")).content, "none", "rảnh: không có vạch load dưới nút");

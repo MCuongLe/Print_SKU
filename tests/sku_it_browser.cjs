@@ -123,6 +123,18 @@ async function desktop(browser) {
   assert.match(await status(page), /Số phiếu IT không hợp lệ/);
   assert.deepEqual(await itCalls(page), []);
 
+  // Đang đọc khi tấm còn trống: danh sách và tổng hiện "—" (không "Chưa đọc phiếu.", không số 0); đọc xong (ở đây: lỗi) mới hiện trạng thái rỗng thật
+  const blank = () => page.evaluate(() => `${document.getElementById("sku-it-list").innerText.trim()} | ${document.getElementById("sku-it-sum").textContent}`);
+  assert.equal(await blank(), "Chưa đọc phiếu. | 0 SKU · 0 bản in");
+  await page.evaluate(() => { window.__fail = true; window.__hold = new Promise(resolve => { window.__release = resolve; }); });
+  await page.locator("#sku-it-input").fill(IT); await page.locator("#sku-it-load").click();
+  await page.waitForFunction(() => document.getElementById("sku-it-load").dataset.busy === "true");
+  assert.equal(await blank(), "— | —", "đang đọc: không hiện câu rỗng / số 0");
+  await page.evaluate(() => { window.__release(); window.__hold = null; });
+  await page.waitForFunction(() => document.getElementById("sku-it-load").dataset.busy !== "true" && document.getElementById("sku-it-status").dataset.tone === "error");
+  assert.equal(await blank(), "Chưa đọc phiếu. | 0 SKU · 0 bản in", "đọc xong mới hiện trạng thái rỗng thật");
+  await page.evaluate(() => { window.__fail = false; window.__extCalls.splice(0); });
+
   // Đọc phiếu: SKU + số lượng giữ đúng theo phiếu, số bản mặc định 1, tên theo danh mục; SKU không có trong danh mục bỏ tick
   // Giữ phản hồi Extension để chặn pha "đang đọc": data-busy, "Đang đọc…", khoá nút, icon xoay; đọc xong trả "Đọc WMS"
   const idleMask = await page.locator("#sku-it-load").evaluate(b => getComputedStyle(b, "::before").maskImage);
