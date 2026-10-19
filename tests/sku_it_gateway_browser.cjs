@@ -1,5 +1,5 @@
 // Cổng window.HasakiSkuIt (17/10/2026, dùng cho TRỢ LÝ IN): readSlip đọc phiếu IT qua Extension + đối chiếu danh mục,
-// buildItems dựng item y như nút Phiếu IT → hàng chờ React → lệnh in, enqueue chia ≤ 30 SKU / ≤ 500 tem mỗi lệnh,
+// buildItems dựng item y như nút Phiếu IT → hàng chờ React → lệnh in, enqueue chia ≤ 100 SKU / ≤ 500 tem mỗi lệnh,
 // máy chưa kích hoạt (khoá "public") thì báo lỗi trước khi gọi Supabase. Extension và Supabase giả lập; dữ liệu giả.
 //   BASE=http://127.0.0.1:8000/ node tests/sku_it_gateway_browser.cjs
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
@@ -72,7 +72,7 @@ const fakeExtension = slip => {
 
     // API đúng hợp đồng
     const api = await page.evaluate(() => ({ keys: Object.keys(window.HasakiSkuIt).sort(), max: window.HasakiSkuIt.MAX_COPIES, perJob: window.HasakiSkuIt.MAX_SKU_PER_JOB, frozen: Object.isFrozen(window.HasakiSkuIt) }));
-    assert.deepEqual(api, { keys: ["MAX_COPIES", "MAX_SKU_PER_JOB", "buildItems", "enqueue", "readSlip"], max: 200, perJob: 30, frozen: true });
+    assert.deepEqual(api, { keys: ["MAX_COPIES", "MAX_SKU_PER_JOB", "buildItems", "enqueue", "readSlip"], max: 200, perJob: 100, frozen: true });
 
     // readSlip: số phiếu sai và chưa Admin báo đúng câu, không gọi WMS
     const fail = expr => page.evaluate(expr).then(() => "", error => error.message);
@@ -116,13 +116,13 @@ const fakeExtension = slip => {
     assert.match(await page.evaluate(rows => { try { window.HasakiSkuIt.buildItems(rows); return ""; } catch (e) { return e.message; } }, [{ ...read.rows[0], copies: 201 }]), /Số bản in mỗi SKU từ 1 đến 200/);
     enqueued.length = 0;
 
-    // enqueue 31 SKU → 2 lệnh (30 + 1), mỗi lệnh nonce UUID riêng, khoá máy đúng, requestedBy ≤ 100
-    const many = Array.from({ length: 31 }, (_, i) => ({ sku: `9000001${String(i).padStart(2, "0")}`, productName: `Hàng giả ${i}`, quantity: "10", printedDate: "17/10/26", copies: 1 }));
+    // enqueue 101 SKU → 2 lệnh (100 + 1), mỗi lệnh nonce UUID riêng, khoá máy đúng, requestedBy ≤ 100
+    const many = Array.from({ length: 101 }, (_, i) => ({ sku: `900001${String(i).padStart(3, "0")}`, productName: `Hàng giả ${i}`, quantity: "10", printedDate: "17/10/26", copies: 1 }));
     const longBy = `tro-ly:${"a".repeat(120)}@example.com`;
     const sent = await page.evaluate(([items, by]) => window.HasakiSkuIt.enqueue(items, { requestedBy: by }), [many, longBy]);
-    assert.deepEqual(sent, { jobIds: ["99999999-0000-4000-8000-000000000001", "99999999-0000-4000-8000-000000000002"], labels: 31 });
+    assert.deepEqual(sent, { jobIds: ["99999999-0000-4000-8000-000000000001", "99999999-0000-4000-8000-000000000002"], labels: 101 });
     assert.equal(enqueued.length, 2);
-    assert.deepEqual(enqueued.map(job => [job.p_type, job.p_payload.items.length, job.p_copies]), [["sku", 30, 30], ["sku", 1, 1]]);
+    assert.deepEqual(enqueued.map(job => [job.p_type, job.p_payload.items.length, job.p_copies]), [["sku", 100, 100], ["sku", 1, 1]]);
     assert.ok(enqueued.every(job => job.p_access_token === "tb-khoa-test" && job.p_requested_by === longBy.slice(0, 100) && /^[0-9a-f-]{36}$/.test(job.p_nonce)));
     assert.notEqual(enqueued[0].p_nonce, enqueued[1].p_nonce);
     assert.deepEqual(enqueued[0].p_payload.items[0], many[0]);
@@ -147,7 +147,7 @@ const fakeExtension = slip => {
     assert.deepEqual(inactive, { message: "SKU đã ngừng hoạt động, không in tem mới: 900000002", code: "SKU_INACTIVE", jobIds: [] });
     enqueued.length = 0; enqueueMode = "second-fails";
     const partial = await page.evaluate(items => window.HasakiSkuIt.enqueue(items, {}).then(() => null, e => ({ message: e.message, code: e.code, jobIds: e.jobIds, labels: e.labels })), many);
-    assert.deepEqual(partial, { message: "Khoá máy không hợp lệ", code: "ACCESS_DENIED", jobIds: ["99999999-0000-4000-8000-000000000001"], labels: 30 });
+    assert.deepEqual(partial, { message: "Khoá máy không hợp lệ", code: "ACCESS_DENIED", jobIds: ["99999999-0000-4000-8000-000000000001"], labels: 100 });
     enqueued.length = 0; enqueueMode = "ok";
 
     // Máy chưa kích hoạt (khoá trống hoặc "public") → báo đúng câu, không gọi Supabase
@@ -161,6 +161,6 @@ const fakeExtension = slip => {
 
     assert.deepEqual(errors, []);
     await context.close();
-    console.log("sku_it_gateway_browser: đạt (HasakiSkuIt: readSlip + danh mục, buildItems = item nút Phiếu IT, enqueue chia 30 SKU / 500 tem, khoá public, lỗi RPC)");
+    console.log("sku_it_gateway_browser: đạt (HasakiSkuIt: readSlip + danh mục, buildItems = item nút Phiếu IT, enqueue chia 100 SKU / 500 tem, khoá public, lỗi RPC)");
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exit(1); });

@@ -20,7 +20,7 @@ const ROWS = [
 const fakeGate = ({ slip, rows, it404, itExt }) => {
   window.__calls = { read: [], enqueue: [], build: [] };
   window.HasakiSkuIt = {
-    MAX_COPIES: 200, MAX_SKU_PER_JOB: 30,
+    MAX_COPIES: 200, MAX_SKU_PER_JOB: 100,
     readSlip: async number => {
       window.__calls.read.push(number);
       if (window.__readGate) await window.__readGate;

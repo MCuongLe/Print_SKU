@@ -13,7 +13,7 @@ const ITEMS = [
   { sku: "422386183", name: "Vải lẻ", quantity: 1.5, unit: null },
   { sku: "422999999", name: "SKU đã ngừng (tên WMS)", quantity: 5, unit: "pcs" },
 ];
-const BIG = Array.from({ length: 35 }, (_, i) => ({ sku: `4225${String(i).padStart(5, "0")}`, name: `Hàng ${i}`, quantity: 100 + i, unit: "mm" }));
+const BIG = Array.from({ length: 105 }, (_, i) => ({ sku: `4225${String(i).padStart(5, "0")}`, name: `Hàng ${i}`, quantity: 100 + i, unit: "mm" }));
 const DATA = { [IT]: head(IT, ITEMS), [IT_BIG]: head(IT_BIG, BIG) };
 // Danh mục (SKU_Name chỉ trả SKU đang hoạt động): 422999999 không có
 const CATALOG = new Map([...ITEMS.slice(0, 4), ...BIG].map(item => [item.sku, `${item.name.replace(" (tên WMS)", "")} · danh mục`]));
@@ -182,7 +182,7 @@ async function desktop(browser) {
   assert.match(await status(page), /Đã đọc 5 dòng · 1 SKU không có trong danh mục \(bỏ tick\)/);
   assert.equal(await page.locator("#sku-it-status").getAttribute("data-tone"), "warn");
   assert.equal(await page.locator("#sku-it-sum").innerText(), "4 SKU · 4 bản in");
-  assert.equal(await page.locator("#sku-it-room").innerText(), "Danh sách còn chỗ 30 SKU");
+  assert.equal(await page.locator("#sku-it-room").innerText(), "Danh sách còn chỗ 100 SKU");
   assert.equal(await page.locator("#sku-it-add").innerText(), "Thêm 4 SKU vào danh sách");
   assert.equal(await page.locator("#sku-it-all").evaluate(e => e.indeterminate), true);
 
@@ -214,15 +214,15 @@ async function desktop(browser) {
   assert.ok(sent.includes("422292974") && sent.includes("170000") && sent.includes("Chỉ may astra C8154 · danh mục"), sent.slice(0, 400));
   assert.ok(!sent.includes("422999999"), "SKU bỏ tick không vào lệnh in");
 
-  // Phiếu lớn hơn chỗ còn trống (một lệnh tối đa 30 SKU): báo lỗi, không thêm; bỏ bớt thì thêm được
+  // Phiếu lớn hơn chỗ còn trống (một lệnh tối đa 100 SKU — 19/10/2026 nâng từ 30, khớp agent + Tìm SKU): báo lỗi, không thêm; bỏ bớt thì thêm được
   await page.waitForFunction(() => (document.querySelector("#root main ul.divide-y")?.children.length || 0) === 0).catch(() => {});
   const before = await reactCount(page);
   await openButton.click();
   await read(page, IT_BIG);
-  assert.equal((await rows(page)).length, 35);
-  assert.equal(await page.locator("#sku-it-sum").innerText(), "35 SKU · 35 bản in");
+  assert.equal((await rows(page)).length, 105);
+  assert.equal(await page.locator("#sku-it-sum").innerText(), "105 SKU · 105 bản in");
   await page.locator("#sku-it-add").click();
-  assert.match(await status(page), new RegExp(`Danh sách chỉ còn chỗ ${30 - before} SKU \\(một lệnh in tối đa 30 SKU\\)`));
+  assert.match(await status(page), new RegExp(`Danh sách chỉ còn chỗ ${100 - before} SKU \\(một lệnh in tối đa 100 SKU\\)`));
   assert.equal(await page.locator("#sku-it-status").getAttribute("data-tone"), "error");
   assert.equal(await page.locator("#sku-it").evaluate(d => d.open), true, "lỗi thì giữ tấm mở");
   assert.equal(await reactCount(page), before);
@@ -234,7 +234,7 @@ async function desktop(browser) {
 
   // Mở lại: dòng đã thêm bị bỏ khỏi tấm, dòng chưa thêm còn lại
   await openButton.click();
-  assert.equal((await rows(page)).length, 33);
+  assert.equal((await rows(page)).length, 103);
   await page.locator(".uid-sheet__close[data-skit]").click();
 
   // Không tìm thấy phiếu / lỗi Extension
@@ -342,6 +342,6 @@ async function narrow(browser, width) {
     await desktop(browser);
     await gate(browser);
     for (const width of [820, 375]) await narrow(browser, width);
-    console.log("sku_it_browser: đạt (Phiếu IT → danh sách chờ in: số lượng theo phiếu, số bản mặc định 1, danh mục, giới hạn 30 SKU, Admin; 1280 / 820 / 375)");
+    console.log("sku_it_browser: đạt (Phiếu IT → danh sách chờ in: số lượng theo phiếu, số bản mặc định 1, danh mục, giới hạn 100 SKU, Admin; 1280 / 820 / 375)");
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exit(1); });

@@ -46,10 +46,10 @@
 - [x] Codex ảnh 1 vòng (gợi ý khi gõ, thông báo tên đã cập nhật; 390 + 1280)
 - [x] Lọc 3 nhóm, ghi `RULES.md`
 
-### Việc 6 — Xác minh + lên · lead · [ ]
+### Việc 6 — Xác minh + lên · lead · [x]
 - [x] `kiem-thu` (Sonnet): cả bộ test + chẩn đoán + `commit_gate` + đối chiếu ô tích với diff
 - [x] README (In tem SKU, Tìm SKU, mục In), `docs/PROJECT_MAP.md` (khối `sku-catalog-script`, migration)
-- [ ] Commit (chưa push) → người dùng chạy `python scripts/apply_supabase_sql.py supabase/print_name_from_db_v1.sql` → lead kiểm chỉ đọc (`pg_get_functiondef`) → push
+- [x] Commit (chưa push) → người dùng chạy `python scripts/apply_supabase_sql.py supabase/print_name_from_db_v1.sql` → lead kiểm chỉ đọc (`pg_get_functiondef`) → push
 - [x] Bảng "Đánh giá thành viên" trong `RULES.md` (đợt 2)
 
 ## Phát sinh
@@ -64,6 +64,7 @@
 - Việc 1: so tên sau btrim + NFC (tên chỉ khác khoảng trắng / dạng Unicode không bị báo "đã cập nhật"); `print_admin_reprint` không chuyển tiếp `renamed` (tem in lại vẫn mang tên database, màn In lại không báo) — chấp nhận. · báo người dùng 18/10
 
 ## Nhật ký
+- 19/10 Người dùng chạy migration print_name_from_db_v1; push lần đầu chưa lên GitHub (ls-remote vẫn e5fb2d2) → lead push e5fb2d2..4d92abe theo lời "push". Trang thật (GitHub Pages): không lỗi, danh mục 22.105 SKU nạp 9 s (máy mới, 23 trang, 2 lần hỏi phiên bản). Chưa kiểm được migration bằng truy vấn (MCP Supabase mất kết nối) — người dùng xác nhận đã chạy.
 - 18/10 Việc 6: kiem-thu (Sonnet) cả bộ 82/82 PASS (711 s, không chập chờn; đếm 82 tệp = 82 dòng), commit_gate 7 mục ĐẠT, hunk index.html đúng vùng, ô tích khớp diff. Người dùng: "khi test xong bạn commit giúp tôi" → commit, CHƯA push (chờ migration print_name_from_db_v1 sáng 19/10).
 - 18/10 Review vòng 3 (cuối): Codex 2 nhóm trung bình (ghi IndexedDB đa tab không nguyên tử; patchNames hạ tên mới hơn vì phản hồi in không mang phiên bản). Đủ 3 vòng → gọi co-van (Fable, lần đầu, ~54k token): hướng B — (i) patchNames chỉ vá RAM, không ghi IndexedDB (Fable kiểm: sku-sync đóng dấu updated_at mọi dòng đổi product_name → check() kế tự lấy tên đúng); (ii) idbPutIfNewer đọc–so–ghi trong một giao dịch readwrite (nguyên tử liên tab). Không cần người dùng quyết (không đổi hành vi thấy được). Không chạy thêm vòng Codex. Test đỏ trước + đột biến (bỏ so newer trong giao dịch → đỏ); 2 test lệch (kỳ vọng ghi đĩa) cập nhật.
 - 18/10 Review vòng 3: reviewer A [] (không lỗi). Codex ảnh 1 vòng (6 ảnh 390+1280): 4 góp ý — sửa 1 (thông báo đè thanh đáy "In tem" → bottom 96 px, test đỏ→xanh); bỏ 2 (đổi chữ "Tên tem đã đồng bộ": người dùng đã chốt "Tên đã cập nhật"); 3–4 (kiểu danh sách gợi ý In tem SKU) có từ trước → đợt sau.

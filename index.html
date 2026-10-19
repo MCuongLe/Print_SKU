@@ -159,7 +159,7 @@
               if (!result.ok) return legacyResponse({ status: "error", canKhoa: result.error?.code === "ACCESS_DENIED", message: result.error?.message });
               const agents = result.data?.agents || [];
               const latest = [...agents].sort((a, b) => Date.parse(b.lastSeenAt || 0) - Date.parse(a.lastSeenAt || 0))[0];
-              return legacyResponse({ status: "success", may: printerView(latest), cho: Number(result.data?.queued) || 0, temCho: Number(result.data?.queuedCopies) || 0, tranSku: 30, tranTem: 500 });
+              return legacyResponse({ status: "success", may: printerView(latest), cho: Number(result.data?.queued) || 0, temCho: Number(result.data?.queuedCopies) || 0, tranSku: 100, tranTem: 500 }); // 19/10/2026: 30 → 100 SKU/lệnh, khớp agent (job-validator cắt ở 100) và TÌM SKU; phiếu IT 37 dòng thêm được hết
             }
             if (command.action === "pr_them") {
               const rows = JSON.parse(command.dong || "[]");
@@ -14824,8 +14824,8 @@ async function rpc(name,args,retry=true){
         const viDate = () => new Intl.DateTimeFormat("vi-VN", { day: "2-digit", month: "2-digit", year: "2-digit" }).format(new Date());
 
         // Cổng dùng chung cho nút Phiếu IT và TRỢ LÝ IN (17/10/2026): đọc phiếu + danh mục, dựng item lệnh in SKU, gửi hàng đợi.
-        // Một lệnh in tối đa 30 SKU và 500 tem (như hàng chờ React); nhiều hơn thì chia nhiều lệnh, mỗi lệnh một nonce riêng.
-        const MAX_SKU_PER_JOB = 30, MAX_LABELS_PER_JOB = 500;
+        // Một lệnh in tối đa 100 SKU và 500 tem (như hàng chờ React; 19/10/2026 nâng từ 30 — agent cắt ở 100 dòng); nhiều hơn thì chia nhiều lệnh, mỗi lệnh một nonce riêng.
+        const MAX_SKU_PER_JOB = 100, MAX_LABELS_PER_JOB = 500;
         const readSlip = async (value, { onReading } = {}) => {
           const number = String(value ?? "").replace(/\s+/g, "");
           if (!/^\d{6,40}$/.test(number)) throw new Error("Số phiếu IT không hợp lệ.");
