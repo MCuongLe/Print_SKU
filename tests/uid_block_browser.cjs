@@ -2,9 +2,11 @@
 //   * ô trang chủ + #uid-block; danh sách blocked tải về máy (uid_block_snapshot, cache kiểm phiên bản khoá "uid_block");
 //   * máy scan bắn mã (kèm tiền tố / Enter) vào khung quét: UID trong danh sách → thẻ đỏ BLOCKED + SKU/Lot/Roll/kho/vị trí, ghi "Đã lựa";
 //     quét lại → thẻ vàng "đã lựa lúc …"; UID ngoài danh sách → thẻ xanh; mã không phải Group UID → thẻ cảnh báo;
-//   * phiên lựa giữ trên máy (localStorage) qua tải lại trang; danh sách mới (listId khác) → phiên mới;
-//   * mất mạng → vẫn quét theo bản trên máy;
-//   * Admin nạp Excel: đọc MỌI sheet, lấy dòng Status = Blocked, bỏ trùng; xem trước + đối chiếu (uid_block_compare); Lưu → uid_block_import.
+//   * lượt quét lưu Supabase dùng chung (uid_block_scan kèm khoá máy; uid_block_scans đồng bộ): máy khác đã scan → thẻ vàng ĐÃ SCAN + tên máy;
+//     máy chưa kích hoạt → thẻ đỏ "chưa ghi nhận", không tính đã lựa; mất mạng → thẻ đỏ + hàng chờ, có mạng lại tự gửi;
+//   * lượt quét đọc lại từ máy chủ sau tải lại trang; danh sách mới (listId khác) → lượt theo danh sách mới;
+//   * Admin nạp Excel: đọc MỌI sheet theo workbook.xml.rels, dòng tiêu đề nằm dưới dòng tên báo cáo, lấy Status = Blocked, bỏ trùng, đếm mã lỗi;
+//     xem trước + đối chiếu (uid_block_compare; đang chờ thì khoá Lưu, lỗi thì không hiện số 0); Lưu → uid_block_import.
 // Supabase giả lập, dữ liệu giả (Group UID 1028260000000xxx, SKU 9000000xx). Chạy với python -m http.server 8000 (đổi bằng BASE).
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
 const assert = require("node:assert/strict");
@@ -15,10 +17,13 @@ const item = (n, extra = {}) => ({ groupUid: `10282600000001${String(n).padStart
 const LIST_A = { list: { id: "11111111-1111-4111-8111-111111111111", fileName: "danh-sach-gia-A.xlsx", sheets: ["blocked"], itemCount: 3, byWarehouse: { "WH - MATERIAL - MTG": 3 }, importedAt: "2026-10-20T01:00:00+00:00" }, items: [item(1), item(2), item(3)] };
 const LIST_B = { list: { id: "22222222-2222-4222-8222-222222222222", fileName: "danh-sach-gia-B.xlsx", sheets: ["blocked"], itemCount: 1, byWarehouse: { "WH - MATERIAL - GARMENT": 1 }, importedAt: "2026-10-20T02:00:00+00:00" }, items: [item(9, { warehouse: "WH - MATERIAL - GARMENT" })] };
 const settle = ms => new Promise(r => setTimeout(r, ms));
+const DEVICE = "pd_test_device";
 
 const open = async (browser, srv, { width = 1280, height = 900, admin = false } = {}) => {
   const context = await browser.newContext({ viewport: { width, height }, isMobile: width < 800, hasTouch: width < 800 });
   if (admin) await context.addInitScript(key => sessionStorage.setItem(key, JSON.stringify({ access_token: "test-admin-token", refresh_token: "test-refresh-token" })), SESSION_KEY);
+  if (srv.device !== false) await context.addInitScript(t => { if (!localStorage.getItem("tb-khoa")) localStorage.setItem("tb-khoa", t); }, DEVICE);
+  srv.scans = srv.scans || {};
   const page = await context.newPage(), errors = [];
   page.on("pageerror", e => errors.push(e.message));
   await page.route("**/*", async route => {
@@ -34,7 +39,27 @@ const open = async (browser, srv, { width = 1280, height = 900, admin = false } 
       const cur = srv.list;
       return json({ ok: true, data: cur && body.p_known_list_id === cur.list.id ? { unchanged: true, listId: cur.list.id } : { unchanged: false, ...(cur || { list: null, items: [] }) } });
     }
+    if (rpc === "uid_block_scan") {
+      if (srv.offlineScan) return route.abort("internetdisconnected");
+      if (body.p_access_token !== DEVICE) return json({ ok: false, error: { code: "ACCESS_DENIED", message: "Máy chưa kích hoạt" } });
+      const cur = srv.list;
+      if (!cur || body.p_list_id !== cur.list.id) return json({ ok: false, error: { code: "STALE_LIST", message: "Danh sách đã đổi", data: { listId: cur?.list.id } } });
+      if (!cur.items.some(i => i.groupUid === body.p_group_uid)) return json({ ok: true, data: { result: "not_blocked", groupUid: body.p_group_uid } });
+      const m = scansOf(srv, cur.list.id), had = m.get(body.p_group_uid);
+      if (had) return json({ ok: true, data: { result: "dup", groupUid: body.p_group_uid, scannedAt: had.scannedAt, deviceName: had.deviceName, mine: had.device === body.p_access_token } });
+      const row = { scannedAt: body.p_scanned_at || new Date().toISOString(), deviceName: "Máy test", device: body.p_access_token };
+      m.set(body.p_group_uid, row);
+      return json({ ok: true, data: { result: "new", groupUid: body.p_group_uid, scannedAt: row.scannedAt, deviceName: row.deviceName, mine: true } });
+    }
+    if (rpc === "uid_block_scans") {
+      if (srv.offline) return route.abort("internetdisconnected");
+      const m = scansOf(srv, body.p_list_id), count = m.size;
+      if (body.p_known_count === count) return json({ ok: true, data: { listId: body.p_list_id, unchanged: true, count } });
+      return json({ ok: true, data: { listId: body.p_list_id, unchanged: false, count, rows: [...m].map(([groupUid, r]) => ({ groupUid, scannedAt: r.scannedAt, deviceName: r.deviceName })) } });
+    }
     if (rpc === "uid_block_compare") {
+      if (srv.compareFail) return json({ ok: false, error: { code: "INTERNAL", message: "giả lập lỗi đối chiếu" } });
+      if (srv.compareDelay) await settle(srv.compareDelay);
       const codes = body.p_codes || [];
       return json({ ok: true, data: { rows: codes.filter(c => c !== "1028260000000199").map(c => ({ groupUid: c, status: c.endsWith("103") ? "Available" : "Blocked", qcStatus: null, warehouse: "WH - MATERIAL - MTG", location: "F0-A0-00-00-00-01" })), missing: codes.filter(c => c === "1028260000000199"), blockedOutside: [{ groupUid: "1028260000000188", warehouse: "WH - MATERIAL - MTG", sku: "900000088" }], blockedOutsideTotal: 1 } });
     }
@@ -44,6 +69,9 @@ const open = async (browser, srv, { width = 1280, height = 900, admin = false } 
   });
   return { context, page, errors };
 };
+const scansOf = (srv, id) => ((srv.scans = srv.scans || {})[id] = srv.scans[id] || new Map());
+const picked = (page, n) => page.waitForFunction(v => document.getElementById("ub-picked").textContent.trim() === v, String(n), { timeout: 10000 });
+const toneIs = (page, t) => page.waitForFunction(v => document.getElementById("ub-result").dataset.tone === v, t, { timeout: 10000 });
 const scan = async (page, text) => { await page.locator("#ub-code").fill(text); await page.locator("#ub-form").press("Enter"); };
 const tone = page => page.locator("#ub-result").getAttribute("data-tone");
 const ready = page => page.waitForFunction(() => document.getElementById("ub-total")?.textContent?.trim() !== "—", null, { timeout: 15000 });
@@ -70,6 +98,10 @@ const ready = page => page.waitForFunction(() => document.getElementById("ub-tot
       assert.match(card, /BLOCKED/); assert.match(card, /1028260000000101/); assert.match(card, /900000001/); assert.match(card, /L1/); assert.match(card, /R1/); assert.match(card, /F0-A0-00-00-00-01/);
       assert.equal((await page.locator("#ub-picked").innerText()).trim(), "1");
       assert.equal((await page.locator("#ub-left").innerText()).trim(), "2");
+      const sent = srv.calls.find(c => c.rpc === "uid_block_scan");
+      assert.equal(sent.body.p_access_token, DEVICE, "ghi lượt quét kèm khoá máy");
+      assert.equal(sent.body.p_list_id, LIST_A.list.id);
+      assert.equal(scansOf(srv, LIST_A.list.id).has("1028260000000101"), true, "lượt quét lưu trên máy chủ");
       // 3) Quét lại → đã lựa; UID ngoài danh sách → xanh; mã sai → cảnh báo
       await scan(page, "1028260000000101");
       assert.equal(await tone(page), "dup");
@@ -93,22 +125,47 @@ const ready = page => page.waitForFunction(() => document.getElementById("ub-tot
       assert.match(groups[0].head, /F0-A0-00-00-00-02.*1/);
       await page.locator('[data-ub-tab="picked"]').click();
       await page.waitForFunction(() => document.querySelectorAll("#ub-body tr").length === 1 && /1028260000000101/.test(document.getElementById("ub-body").textContent));
-      // 5) Tải lại trang: phiên giữ nguyên, chỉ hỏi phiên bản (gửi mã danh sách đang giữ)
+      // 5) Tải lại trang: lượt quét đọc lại từ máy chủ, chỉ hỏi phiên bản danh sách (gửi mã danh sách đang giữ)
       srv.calls.length = 0;
-      await page.reload(); await ready(page);
-      assert.equal((await page.locator("#ub-picked").innerText()).trim(), "1", "phiên lựa giữ qua tải lại");
+      await page.reload(); await ready(page); await picked(page, 1);
       assert.equal(srv.calls.find(c => c.rpc === "uid_block_snapshot")?.body.p_known_list_id, LIST_A.list.id);
-      // 6) Mất mạng: vẫn quét theo bản trên máy
-      srv.offline = true;
-      await page.reload(); await ready(page);
+      // 6) Máy khác (3 người quét chung): 102 đã scan trên máy chủ → đồng bộ về, quét 102 → ĐÃ SCAN + tên máy; 103 máy khác vừa scan
+      //    (máy này chưa đồng bộ) → máy chủ trả dup → ĐÃ SCAN, không phải BLOCKED
+      scansOf(srv, LIST_A.list.id).set("1028260000000102", { scannedAt: "2026-10-20T03:04:05+00:00", deviceName: "Máy B", device: "pd_b" });
+      await page.reload(); await ready(page); await picked(page, 2);
       await scan(page, "1028260000000102");
-      assert.equal(await tone(page), "blocked", "mất mạng vẫn báo blocked");
-      srv.offline = false;
-      // 7) Danh sách mới trên máy chủ → phiên mới
+      await toneIs(page, "dup");
+      assert.match(await page.locator("#ub-result").innerText(), /Máy B/, "báo máy đã scan trước");
+      scansOf(srv, LIST_A.list.id).set("1028260000000103", { scannedAt: "2026-10-20T03:05:00+00:00", deviceName: "Máy C", device: "pd_c" });
+      await scan(page, "1028260000000103");
+      await page.waitForFunction(() => /1028260000000103/.test(document.getElementById("ub-result").textContent), null, { timeout: 10000 });
+      assert.equal(await tone(page), "dup");
+      assert.match(await page.locator("#ub-result").innerText(), /Máy C/, "máy chủ báo trùng → ĐÃ SCAN dù máy này chưa đồng bộ");
+      scansOf(srv, LIST_A.list.id).delete("1028260000000102"); scansOf(srv, LIST_A.list.id).delete("1028260000000103");
+      // 7) Mất mạng khi ghi: vẫn báo BLOCKED + chờ gửi; có mạng lại → tự gửi lên máy chủ
+      await page.reload(); await ready(page); await picked(page, 1);
+      srv.offlineScan = true;
+      await scan(page, "1028260000000102");
+      await toneIs(page, "blocked");
+      assert.match(await page.locator("#ub-result").innerText(), /Chưa gửi được/);
+      assert.equal(scansOf(srv, LIST_A.list.id).has("1028260000000102"), false);
+      srv.offlineScan = false;
+      await page.reload(); await ready(page); await picked(page, 2);
+      await page.waitForFunction(() => !JSON.parse(localStorage.getItem("uid-block-cho-gui") || "[]").length, null, { timeout: 10000 });
+      assert.equal(scansOf(srv, LIST_A.list.id).has("1028260000000102"), true, "hàng chờ tự gửi khi có mạng");
+      // 8) Mất mạng cả danh sách lẫn ghi: vẫn quét theo bản trên máy, nhớ lượt đã scan
+      srv.offline = true; srv.offlineScan = true;
+      await page.reload(); await ready(page);
+      await scan(page, "1028260000000101");
+      await toneIs(page, "dup");
+      await scan(page, "1028260000000103");
+      await toneIs(page, "blocked");
+      srv.offline = false; srv.offlineScan = false;
+      // 9) Danh sách mới trên máy chủ → lượt theo danh sách mới
       srv.list = LIST_B;
       await page.reload();
       await page.waitForFunction(() => document.getElementById("ub-total")?.textContent?.trim() === "1");
-      assert.equal((await page.locator("#ub-picked").innerText()).trim(), "0", "danh sách mới → phiên mới");
+      await picked(page, 0);
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, `${width}: không tràn ngang`);
       // Màn có overflow-x:auto nên document không tràn dù nội dung tràn — đo chính màn (ảnh 390 ngày 20/10 bị cắt mép phải).
       for (const tab of ["scan", "left", "list"]) {
@@ -120,7 +177,7 @@ const ready = page => page.waitForFunction(() => document.getElementById("ub-tot
     }
     // 8) Admin nạp Excel nhiều sheet: lấy dòng Status = Blocked, bỏ trùng; xem trước + đối chiếu; Lưu
     {
-      const srv = { calls: [], list: LIST_A };
+      const srv = { calls: [], list: LIST_A, compareDelay: 800 };
       const { context, page, errors } = await open(browser, srv, { admin: true });
       await page.goto(BASE + "#uid-block"); await ready(page);
       await page.locator('[data-ub-tab="list"]').click();
@@ -129,18 +186,24 @@ const ready = page => page.waitForFunction(() => document.getElementById("ub-tot
         const enc = new TextEncoder(), x = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;");
         const row = (r, cells) => `<row r="${r}">${cells.map((v, i) => `<c r="${String.fromCharCode(65 + i)}${r}" t="inlineStr"><is><t>${x(v)}</t></is></c>`).join("")}</row>`;
         const head = ["No.", "Group UID Code", "Batch Code", "Roll Code", "Warehouse", "Location", "SKU", "Product Name", "Status"];
-        const sheet = rows => `<?xml version="1.0" encoding="UTF-8"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>${[head, ...rows].map((r, i) => row(i + 1, r)).join("")}</sheetData></worksheet>`;
-        const s1 = sheet([["1", "1028260000000101", "L1", "R1", "WH - MATERIAL - MTG", "F0-A0-00-00-00-01", "900000001", "Vải giả 1", "Blocked"], ["2", "1028260000000103", "L3", "R3", "WH - MATERIAL - MTG", "F0-A0-00-00-00-03", "900000003", "Vải giả 3", "Blocked"]]);
+        const sheet = rows => `<?xml version="1.0" encoding="UTF-8"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>${[["Danh sách Group UID kho Material"], head, ...rows].map((r, i) => row(i + 1, r)).join("")}</sheetData></worksheet>`;
+        const s1 = sheet([["1", "1028260000000101", "L1", "R1", "WH - MATERIAL - MTG", "F0-A0-00-00-00-01", "900000001", "Vải giả 1", "Blocked"], ["2", "1028260000000103", "L3", "R3", "WH - MATERIAL - MTG", "F0-A0-00-00-00-03", "900000003", "Vải giả 3", "Blocked"], ["3", "1.02826E+15", "L4", "R4", "WH - MATERIAL - MTG", "F0-A0-00-00-00-04", "900000004", "Vải giả 4", "Blocked"]]);
         const s2 = sheet([["1", "1028260000000101", "L1", "R1", "WH - MATERIAL - MTG", "F0-A0-00-00-00-01", "900000001", "Vải giả 1", "Blocked"], ["2", "1028260000000150", "L5", "R5", "WH - MATERIAL - GARMENT", "F0-B0-00-00-00-05", "900000005", "Vải giả 5", "Available"], ["3", "1028260000000199", "L9", "R9", "WH - MATERIAL - GARMENT", "F0-B0-00-00-00-09", "900000009", "Vải giả 9", "blocked"]]);
         const wb = `<?xml version="1.0" encoding="UTF-8"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="blocked-QC fail" sheetId="1" r:id="rId1"/><sheet name="toan-kho" sheetId="2" r:id="rId2"/></sheets></workbook>`;
-        const bytes = window.PrintSkuZip.buildZip([{ name: "xl/workbook.xml", data: enc.encode(wb) }, { name: "xl/worksheets/sheet1.xml", data: enc.encode(s1) }, { name: "xl/worksheets/sheet2.xml", data: enc.encode(s2) }]);
+        // Quan hệ đảo: sheet "blocked-QC fail" (rId1) nằm ở tệp sheet2.xml, "toan-kho" (rId2) ở sheet1.xml
+        const rels = `<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>`;
+        const bytes = window.PrintSkuZip.buildZip([{ name: "xl/workbook.xml", data: enc.encode(wb) }, { name: "xl/_rels/workbook.xml.rels", data: enc.encode(rels) }, { name: "xl/worksheets/sheet2.xml", data: enc.encode(s1) }, { name: "xl/worksheets/sheet1.xml", data: enc.encode(s2) }]);
         const file = new File([bytes], "danh-sach-gia-moi.xlsx", { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
         const dt = new DataTransfer(); dt.items.add(file);
         const input = document.getElementById("ub-file-input"); input.files = dt.files; input.dispatchEvent(new Event("change", { bubbles: true }));
       });
       await page.locator("#ub-preview").waitFor({ state: "visible", timeout: 10000 });
+      assert.equal(await page.locator("#ub-save").isDisabled(), true, "đang đối chiếu → khoá Lưu");
       await page.waitForFunction(() => /1028260000000188/.test(document.getElementById("ub-preview").textContent), null, { timeout: 10000 });
+      assert.equal(await page.locator("#ub-save").isDisabled(), false);
       const preview = (await page.locator("#ub-preview").innerText()).replace(/\s+/g, " ");
+      assert.match(preview, /Sheet blocked-QC fail 2 dòng · 1 mã lỗi/, "tên sheet theo workbook.xml.rels, đếm ô Group UID lỗi");
+      assert.match(preview, /Sheet toan-kho 2 dòng · bỏ 1/);
       assert.match(preview, /3 UID/, "3 UID blocked (bỏ trùng, bỏ Available, nhận 'blocked' chữ thường)");
       assert.match(preview, /1028260000000103[\s\S]*Available/, "đối chiếu: UID trong tệp mà WMS hiện Available");
       assert.match(preview, /1028260000000199/, "đối chiếu: UID không có trên WMS");
@@ -151,10 +214,28 @@ const ready = page => page.waitForFunction(() => document.getElementById("ub-tot
       assert.equal(srv.imported.p_list.fileName, "danh-sach-gia-moi.xlsx");
       assert.deepEqual(srv.imported.p_list.sheets, ["blocked-QC fail", "toan-kho"]);
       assert.equal(srv.calls.find(c => c.rpc === "uid_block_import").admin, true, "lưu bằng token Admin");
+      // Đối chiếu lỗi → báo lỗi riêng, không dựng bảng số 0 như đã khớp
+      srv.compareFail = true; srv.compareDelay = 0;
+      await page.locator("#ub-compare").click();
+      await page.waitForFunction(() => /Chưa đối chiếu được/.test(document.getElementById("ub-compare-out").textContent), null, { timeout: 10000 });
+      assert.doesNotMatch(await page.locator("#ub-compare-out").innerText(), /Khớp Blocked/);
       assert.deepEqual(errors, []);
       await context.close();
     }
-    // 9) Người không phải Admin không thấy nút Nạp Excel
+    // 10) Máy chưa kích hoạt: vẫn báo BLOCKED nhưng "chưa ghi nhận", không tính đã lựa, không lưu máy chủ
+    {
+      const srv = { calls: [], list: LIST_A, device: false };
+      const { context, page, errors } = await open(browser, srv);
+      await page.goto(BASE + "#uid-block"); await ready(page);
+      await scan(page, "1028260000000101");
+      await page.waitForFunction(() => /máy chưa kích hoạt/.test(document.getElementById("ub-result").textContent), null, { timeout: 10000 });
+      assert.equal(await tone(page), "blocked");
+      assert.equal((await page.locator("#ub-picked").innerText()).trim(), "0");
+      assert.equal(scansOf(srv, LIST_A.list.id).size, 0);
+      assert.deepEqual(errors, []);
+      await context.close();
+    }
+    // 11) Người không phải Admin không thấy nút Nạp Excel
     {
       const srv = { calls: [], list: LIST_A };
       const { context, page, errors } = await open(browser, srv);

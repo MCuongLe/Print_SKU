@@ -12594,9 +12594,8 @@ async function rpc(name,args,retry=true){
           <div class="ss-panel-head"><div><h2 id="ub-list-title">Đã lựa</h2><p id="ub-note"></p></div><div class="as-tools" id="ub-tools" hidden></div></div>
           <div class="ub-groups" id="ub-groups" hidden></div>
           <div class="as-tags" id="ub-tags" hidden></div>
-          <div class="ss-table-wrap"><table class="ss-table ub-table"><thead><tr id="ub-head"></tr></thead><tbody id="ub-body"><tr><td colspan="8" class="ss-empty">Chưa có dữ liệu.</td></tr></tbody></table></div>
+          <div class="ss-table-wrap"><table class="ss-table ub-table"><thead><tr id="ub-head"></tr></thead><tbody id="ub-body"><tr><td colspan="9" class="ss-empty">Chưa có dữ liệu.</td></tr></tbody></table></div>
           <div class="as-pager" id="ub-pager" hidden></div>
-          <div class="ub-actions" style="margin-top:12px"><button class="ub-btn" id="ub-reset" type="button" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>Phiên mới</button></div>
         </section>
         <section class="ub-panel" data-ub-panel="list" aria-label="Danh sách blocked" hidden>
           <div class="ub-head"><h2>Danh sách blocked</h2><div class="ub-actions"><input id="ub-file-input" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden><button class="ub-btn ub-btn--primary" id="ub-import" type="button" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m17 8-5-5-5 5"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/></svg>Nạp Excel</button><button class="ub-btn" id="ub-compare" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/></svg>Đối chiếu WMS</button></div></div>
@@ -12608,74 +12607,132 @@ async function rpc(name,args,retry=true){
     </section>
     <script id="uid-block-script">
       // LỰA UID BLOCKED (20/10/2026, docs/plans/2026-10-20-lua-uid-blocked.md, supabase/uid_block_v1.sql). Admin nạp Excel danh sách Group UID
-      // blocked (mọi sheet, dòng Status = Blocked, bỏ trùng) → Supabase; mọi máy tải danh sách về (cache kiểm phiên bản, khoá "uid_block") rồi
-      // máy scan bắn mã → kiểm NGAY trên máy (mất mạng vẫn báo): trong danh sách → thẻ đỏ + âm báo + rung, ghi "Đã lựa" (phiên giữ trên máy).
-      // Không ghi lượt quét lên Supabase. Đối chiếu tệp với Group UID đã đồng bộ WMS: uid_block_compare.
+      // blocked (mọi sheet, dòng Status = Blocked, bỏ trùng) → Supabase; mọi máy tải danh sách về (cache kiểm phiên bản, khoá "uid_block") để
+      // máy scan báo ngay, mất mạng vẫn báo. Lượt quét lưu Supabase dùng chung (uid_block_scan, khoá máy như Cắt / Cấp vải): 3 người quét chung
+      // một danh sách, quét trùng (kể cả máy khác) báo ĐÃ SCAN + máy + giờ. Mất mạng → hàng chờ trên máy, tự gửi lại. Đồng bộ lượt quét 20 giây/lần.
       (()=>{
         const $=id=>document.getElementById(id),screen=$('uid-block-screen');
         if(!screen)return;
         const UI=window.AdminSyncUI,ROUTE='uid-block',active=()=>location.hash.replace(/^#/,'').split('&')[0]===ROUTE;
-        const K={session:'uid-block-phien',sound:'uid-block-am-thanh'};
-        const store={get:k=>{try{return localStorage.getItem(k)}catch(_){return null}},set:(k,v)=>{try{localStorage.setItem(k,v)}catch(_){}}};
+        const K={scans:'uid-block-phien',outbox:'uid-block-cho-gui',sound:'uid-block-am-thanh'},POLL_MS=20000,WAIT_MS=2000;
+        const store={get:k=>{try{return localStorage.getItem(k)}catch(_){return null}},set:(k,v)=>{try{localStorage.setItem(k,v);return true}catch(_){return false}}};
         const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
         const nf=new Intl.NumberFormat('vi-VN'),num=v=>nf.format(Number(v)||0);
         const fmtAt=v=>{const d=new Date(v);return Number.isNaN(d.getTime())?'':new Intl.DateTimeFormat('vi-VN',{timeZone:'Asia/Ho_Chi_Minh',hour:'2-digit',minute:'2-digit',day:'2-digit',month:'2-digit',year:'numeric'}).format(d)};
         const fmtTime=v=>{const d=new Date(v);return Number.isNaN(d.getTime())?'':new Intl.DateTimeFormat('vi-VN',{timeZone:'Asia/Ho_Chi_Minh',hour:'2-digit',minute:'2-digit',second:'2-digit'}).format(d)};
+        const fmtWhen=v=>Date.now()-v<20*3600e3?fmtTime(v):fmtAt(v);
         const svg=(b,s=20)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${b}</svg>`;
         const ICON={ban:'<circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/>',ok:'<path d="M21.801 10A10 10 0 1 1 17 3.335"/><path d="m9 11 3 3L22 4"/>',warn:'<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',dup:'<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>',soundOn:'<path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z"/><path d="M16 9a5 5 0 0 1 0 6"/><path d="M19.364 18.364a9 9 0 0 0 0-12.728"/>',soundOff:'<path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z"/><line x1="22" x2="16" y1="9" y2="15"/><line x1="16" x2="22" y1="9" y2="15"/>'};
-        const S={list:null,items:[],byCode:new Map(),session:{listId:null,picked:{}},tab:'scan',admin:false,busy:false,sound:store.get(K.sound)!=='tat',recent:[],preview:null,compare:null,loading:false};
+        // scans: mã → {at, device, mine, pending}; scanCount = số lượt máy chủ đã báo (uid_block_scans đếm trùng → không đổi)
+        const S={list:null,items:[],byCode:new Map(),scans:new Map(),scanCount:null,listId:null,outbox:[],tab:'scan',admin:false,busy:false,sound:store.get(K.sound)!=='tat',recent:[],preview:null,pid:0,compare:null,loading:false,offlineAt:null,netDown:false,seq:0,storeWarned:false};
         const tell=(t,tone='')=>{const m=$('ub-message');m.textContent=t||'';m.dataset.tone=tone};
+        const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 
-        // ---- Supabase RPC: đọc công khai; nạp danh sách cần token Admin ----
+        // ---- Supabase RPC: đọc công khai; ghi lượt quét kèm khoá máy; nạp danh sách cần token Admin ----
         const post=async(name,args,token)=>{const q=window.PrintSkuQueue,res=await fetch(`${q.supabaseUrl}/rest/v1/rpc/${name}`,{method:'POST',headers:{apikey:q.publishableKey,Authorization:`Bearer ${token||q.publishableKey}`,'Content-Type':'application/json'},body:JSON.stringify(args||{}),signal:AbortSignal.timeout(45000)});let body=null;try{body=await res.json()}catch(_){}return{res,body}};
         const MISSING=/PGRST202|Could not find the function|schema cache/i;
-        const anonRpc=async(name,args)=>{const{res,body}=await post(name,args);if(!res.ok||!body)throw new Error(body?.message||`Supabase HTTP ${res.status}`);if(!body.ok)throw Object.assign(new Error(body.error?.message||'Supabase từ chối yêu cầu'),{code:body.error?.code});return body.data};
+        const fail=(body,res)=>Object.assign(new Error(body?.error?.message||body?.message||`Supabase HTTP ${res.status}`),{code:body?.error?.code||body?.code,data:body?.error?.data,server:true});
+        const anonRpc=async(name,args)=>{const{res,body}=await post(name,args);if(!res.ok||!body||!body.ok)throw fail(body,res);return body.data};
         const adminRpc=async(name,args,retry=true)=>{
           const token=window.PrintSkuAdminAccess?.peekToken?.()||await window.PrintSkuAdminAuth.accessToken();
           const{res,body}=await post(name,args,token);
-          if(res.status===401&&retry){await window.PrintSkuAdminAuth.accessToken();return adminRpc(name,args,false)}
-          if(!res.ok||!body)throw new Error(body?.message||`Supabase HTTP ${res.status}`);
-          if(!body.ok)throw Object.assign(new Error(body.error?.message||'Supabase từ chối yêu cầu'),{code:body.error?.code});
+          if((res.status===401||res.status===403)&&retry){await window.PrintSkuAdminAuth.accessToken();return adminRpc(name,args,false)}
+          if(!res.ok||!body||!body.ok)throw fail(body,res);
           return body.data;
         };
 
-        // ---- Phiên lựa trên máy: {listId, picked:{uid: thời điểm}}; danh sách khác → phiên mới ----
-        const readSession=()=>{try{const v=JSON.parse(store.get(K.session)||'null');return v&&typeof v==='object'&&v.picked&&typeof v.picked==='object'?v:{listId:null,picked:{}}}catch(_){return{listId:null,picked:{}}}};
-        const saveSession=()=>store.set(K.session,JSON.stringify(S.session));
-        S.session=readSession();
-        const pickedCount=()=>Object.keys(S.session.picked).filter(c=>S.byCode.has(c)).length;
+        // ---- Lượt quét trên máy: bản sao của máy chủ (xem khi mất mạng) + hàng chờ gửi ----
+        const persist=()=>{
+          const ok=store.set(K.scans,JSON.stringify({listId:S.listId,count:S.scanCount,scans:[...S.scans].filter(([,v])=>!v.pending).map(([c,v])=>[c,v.at,v.device,v.mine?1:0])}))&store.set(K.outbox,JSON.stringify(S.outbox));
+          if(!ok&&!S.storeWarned){S.storeWarned=true;tell('Không lưu được trên máy này — lượt quét chưa gửi sẽ mất khi tải lại trang.','error')}
+        };
+        (()=>{
+          try{const v=JSON.parse(store.get(K.scans)||'null');if(v&&Array.isArray(v.scans)){S.listId=v.listId||null;S.scanCount=Number.isInteger(v.count)?v.count:null;v.scans.forEach(([c,at,device,mine])=>S.scans.set(String(c),{at:Number(at)||0,device:String(device||''),mine:Boolean(mine)}))}}catch(_){}
+          try{const o=JSON.parse(store.get(K.outbox)||'[]');if(Array.isArray(o))S.outbox=o.filter(x=>/^\d{16}$/.test(x?.code)).map(x=>({code:x.code,at:Number(x.at)||Date.now()}))}catch(_){}
+          S.outbox.forEach(x=>{if(!S.scans.has(x.code))S.scans.set(x.code,{at:x.at,device:'',mine:true,pending:true})});
+        })();
+        const myName=()=>window.PrintSkuDevice?.name?.()||'Máy này';
+        const outboxDrop=code=>{S.outbox=S.outbox.filter(x=>x.code!==code)};
+        const pickedCount=()=>{let n=0;S.scans.forEach((_,c)=>{if(S.byCode.has(c))n++});return n};
+
+        // Gửi một lượt quét; cập nhật S.scans / hàng chờ theo phản hồi. kind: mine | other | queued | denied | not_blocked | error
+        const record=async(code,at)=>{
+          if(!S.list)return{kind:'queued'};
+          let res,body;
+          try{({res,body}=await post('uid_block_scan',{p_access_token:window.PrintSkuFloorAccess?.token?.()||'public',p_list_id:S.list.id,p_group_uid:code,p_scanned_at:new Date(at).toISOString()}))}
+          catch(_){S.netDown=true;return{kind:'queued'}}
+          S.netDown=false;
+          window.PrintSkuFloorAccess?.check?.(body);
+          const done=v=>{outboxDrop(code);persist();renderCounts();if(S.tab==='picked'||S.tab==='left')renderTable();return v};
+          if(res.ok&&body?.ok&&body.data){
+            const d=body.data;
+            if(d.result==='not_blocked'){S.scans.delete(code);load();return done({kind:'not_blocked'})}
+            const mine=d.result==='new'||Boolean(d.mine);
+            S.scans.set(code,{at:Date.parse(d.scannedAt)||at,device:String(d.deviceName||''),mine});
+            return done({kind:mine?'mine':'other',at:Date.parse(d.scannedAt)||at,device:String(d.deviceName||'')});
+          }
+          const code2=body?.error?.code||body?.code||'';
+          if(code2==='ACCESS_DENIED'){S.scans.delete(code);return done({kind:'denied'})}
+          if(code2==='STALE_LIST'||code2==='NO_LIST'){load();return{kind:'queued'}}
+          if(!res.ok&&(res.status>=500||MISSING.test(String(body?.message||''))))return{kind:'queued'};
+          S.scans.delete(code);return done({kind:'error',message:body?.error?.message||body?.message||`Supabase HTTP ${res.status}`});
+        };
+        let flushing=false;
+        const flush=async()=>{
+          if(flushing||!S.list||!S.outbox.length)return;flushing=true;
+          try{for(const x of [...S.outbox]){const r=await record(x.code,x.at);if(r.kind==='queued')break}}finally{flushing=false}
+        };
+        // Lượt quét của danh sách (máy chủ là gốc; mã đang chờ gửi của máy này giữ lại)
+        const syncScans=async()=>{
+          if(!S.list)return;
+          try{
+            const d=await anonRpc('uid_block_scans',{p_list_id:S.list.id,p_known_count:S.listId===S.list.id?S.scanCount:null});
+            if(d?.listId&&d.listId!==S.list.id)return;
+            if(!d?.unchanged){
+              const m=new Map();(Array.isArray(d?.rows)?d.rows:[]).forEach(r=>{const prev=S.scans.get(r.groupUid);m.set(String(r.groupUid),{at:Date.parse(r.scannedAt)||0,device:String(r.deviceName||''),mine:Boolean(prev?.mine)})});
+              S.outbox.forEach(x=>{if(!m.has(x.code))m.set(x.code,{at:x.at,device:'',mine:true,pending:true})});
+              S.scans=m;S.scanCount=Number(d?.count)||0;S.listId=S.list.id;persist();renderCounts();if(S.tab==='picked'||S.tab==='left')renderTable();
+            }
+          }catch(e){if(e.server&&!MISSING.test(e.message))tell(`Chưa đọc được lượt quét: ${e.message}`,'error')}
+          await flush();
+        };
 
         // ---- Danh sách: tải về máy (cache kiểm phiên bản như Kiểm kê) ----
-        const apply=data=>{
+        const apply=(data,fromServer)=>{
+          const prevId=S.list?.id;
           S.list=data?.list||null;S.items=Array.isArray(data?.items)?data.items:[];S.byCode=new Map(S.items.map(i=>[String(i.groupUid),i]));
-          if(S.list&&S.session.listId!==S.list.id){
-            const had=Object.keys(S.session.picked).length;
-            S.session={listId:S.list.id,picked:{}};saveSession();
-            if(had)tell(`Danh sách mới (${S.list.fileName||'Excel'}) — bắt đầu phiên lựa mới.`,'warn');
+          if(S.list&&prevId&&prevId!==S.list.id)S.compare=null;
+          // Danh sách khác (máy chủ đã chép lượt quét của UID còn có): giữ lượt của UID còn trong danh sách mới, đọc lại cả lượt quét
+          if(S.list&&fromServer&&S.listId!==S.list.id){
+            const had=S.listId!==null;
+            S.scans=new Map([...S.scans].filter(([c])=>S.byCode.has(c)));S.scanCount=null;S.listId=S.list.id;persist();
+            if(had)tell(`Danh sách mới: ${S.list.fileName||'Excel'}`,'warn');
           }
           renderAll();
         };
-        const load=async()=>{
-          if(S.loading)return;S.loading=true;
+        let loadP=null;
+        const load=()=>loadP||(loadP=(async()=>{
+          S.loading=true;
           try{
             const snap=window.PrintSkuSnapshotCache;
-            const got=snap?await snap.load({key:'uid_block',rpc:'uid_block_snapshot',arg:'p_known_list_id',call:anonRpc,idOf:d=>d?.list?.id||null,onCached:S.list?null:apply}):{data:await anonRpc('uid_block_snapshot',{p_known_list_id:null}),source:'server'};
-            if(S.list&&got.source==='cache-offline'){tell(snap.label(got.savedAt),'offline');return}
-            apply(got.data);
-            if(got.source==='cache-offline')tell(snap.label(got.savedAt),'offline');
-            else if(!S.list)tell('Chưa có danh sách blocked — Admin nạp Excel ở tab Danh sách.','warn');
-          }catch(e){tell(MISSING.test(String(e?.message))?'Supabase chưa có chức năng Lựa UID blocked (chưa chạy migration uid_block_v1).':`Chưa tải được danh sách: ${e.message}`,'error')}
-          finally{S.loading=false}
-        };
+            const got=snap?await snap.load({key:'uid_block',rpc:'uid_block_snapshot',arg:'p_known_list_id',call:anonRpc,idOf:d=>d?.list?.id||null,onCached:S.list?null:d=>apply(d,false)}):{data:await anonRpc('uid_block_snapshot',{p_known_list_id:null}),source:'server'};
+            if(got.source==='cache-offline'){S.offlineAt=got.savedAt;if(!S.list)apply(got.data,false);tell(snap.label(got.savedAt),'offline');return}
+            S.offlineAt=null;if($('ub-message').dataset.tone==='offline')tell('');
+            apply(got.data,true);
+            if(!S.list)tell('Chưa có danh sách blocked.','warn');
+            await syncScans();
+          }catch(e){tell(MISSING.test(String(e?.message))?'Supabase chưa có chức năng Lựa UID blocked.':`Chưa tải được danh sách: ${e.message}`,'error')}
+          finally{S.loading=false;renderCounts()}
+        })().finally(()=>{loadP=null}));
 
-        // ---- Âm báo: blocked = 2 tiếng trầm dài + rung dài; đã lựa = 2 tiếng giữa; ngoài danh sách = 1 tiếng cao ngắn ----
+        // ---- Âm báo: blocked = 2 tiếng trầm dài + rung dài; đã scan = 2 tiếng giữa; ngoài danh sách = 1 tiếng cao ngắn ----
         let audio=null;
-        const beep=(f,ms,at=0,g=.18)=>{try{audio=audio||new(window.AudioContext||window.webkitAudioContext)();const o=audio.createOscillator(),gn=audio.createGain(),t=audio.currentTime+at;o.frequency.value=f;gn.gain.setValueAtTime(g,t);gn.gain.exponentialRampToValueAtTime(.0001,t+ms/1000);o.connect(gn).connect(audio.destination);o.start(t);o.stop(t+ms/1000+.02)}catch(_){}};
+        const beep=(f,ms,at=0,g=.18)=>{try{audio=audio||new(window.AudioContext||window.webkitAudioContext)();if(audio.state==='suspended')audio.resume();const o=audio.createOscillator(),gn=audio.createGain(),t=audio.currentTime+at;o.frequency.value=f;gn.gain.setValueAtTime(g,t);gn.gain.exponentialRampToValueAtTime(.0001,t+ms/1000);o.connect(gn).connect(audio.destination);o.start(t);o.stop(t+ms/1000+.02)}catch(_){}};
         const cue=tone=>{if(S.sound){if(tone==='blocked'){beep(220,420,0,.25);beep(180,520,.5,.25)}else if(tone==='ok')beep(1040,110);else{beep(660,120);beep(660,120,.2)}}try{navigator.vibrate?.(tone==='blocked'?[220,90,220,90,220]:tone==='ok'?25:[70,50,70])}catch(_){}};
         const paintSound=()=>{const b=$('ub-sound');b.innerHTML=svg(S.sound?ICON.soundOn:ICON.soundOff);const l=S.sound?'Tắt âm báo':'Bật âm báo';b.setAttribute('aria-pressed',String(S.sound));b.setAttribute('aria-label',l);b.title=l};
         $('ub-sound').addEventListener('click',()=>{S.sound=!S.sound;store.set(K.sound,S.sound?'bat':'tat');paintSound();if(S.sound)cue('ok');$('ub-code').focus()});
 
-        // ---- Quét: máy scan gửi kèm tiền tố / Enter → lấy 16 chữ số Group UID ----
+        // ---- Quét: máy scan gửi kèm tiền tố / Enter → đúng 16 chữ số Group UID (dãy số dài hơn không bị cắt) ----
         const norm=raw=>(String(raw||'').match(/(?<!\d)\d{16}(?!\d)/)||[])[0]||'';
         const facts=i=>[['SKU',i.sku],['Tên hàng',i.productName],['Lot',i.lot],['Roll',i.roll],['Kho',i.warehouse],['Vị trí',i.location]].filter(([,v])=>v).map(([k,v])=>`<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('');
         const paint=({tone,title,code,note,item})=>{
@@ -12684,16 +12741,24 @@ async function rpc(name,args,retry=true){
           r.innerHTML=`<div class="ub-result__top">${svg(icon,28)}<p class="ub-result__title">${esc(title)}</p></div>${code?`<p class="ub-result__code">${esc(code)}</p>`:''}${note?`<p class="ub-result__note">${esc(note)}</p>`:''}${item?`<dl class="ub-facts">${facts(item)}</dl>`:''}`;
         };
         const pushRecent=(tone,code,label)=>{S.recent.unshift({tone,code,label,at:Date.now()});S.recent=S.recent.slice(0,8);$('ub-recent').innerHTML=S.recent.map(x=>`<li data-tone="${x.tone}"><i aria-hidden="true"></i><b>${esc(x.code||'—')}</b><span>${esc(x.label)} · ${fmtTime(x.at)}</span></li>`).join('')};
-        const check=raw=>{
-          const code=norm(raw);
-          if(!code){paint({tone:'bad',title:'Không phải Group UID',code:String(raw||'').trim().slice(0,60),note:'Group UID gồm 16 chữ số.'});cue('bad');pushRecent('bad',String(raw||'').trim().slice(0,30),'Mã sai');return}
-          if(!S.list){paint({tone:'none',title:'Chưa có danh sách',code,note:'Chưa tải được danh sách blocked.'});cue('bad');pushRecent('none',code,'Chưa có danh sách');return}
+        const who=v=>v.mine?(v.device||myName()):(v.device||'Máy khác');
+        const dupCard=(code,v,item)=>{paint({tone:'dup',title:'ĐÃ SCAN',code,note:`Đã scan lúc ${fmtWhen(v.at)} · ${who(v)}`,item});cue('dup');pushRecent('dup',code,'Đã scan')};
+        const check=async raw=>{
+          const code=norm(raw),seq=++S.seq;
+          if(!code){paint({tone:'bad',title:'Không phải Group UID',code:String(raw||'').trim().slice(0,60)});cue('bad');pushRecent('bad',String(raw||'').trim().slice(0,30),'Mã sai');return}
+          if(!S.list){paint({tone:'none',title:S.loading?'Đang tải danh sách':'Chưa có danh sách',code});cue('bad');pushRecent('none',code,'Chưa có danh sách');return}
           const item=S.byCode.get(code);
-          if(!item){paint({tone:'ok',title:'Không blocked',code});cue('ok');pushRecent('ok',code,'Không blocked');return}
-          const prev=S.session.picked[code];
-          if(prev){paint({tone:'dup',title:'ĐÃ SCAN',code,note:`Đã scan lúc ${fmtTime(prev)} — không lựa lại`,item});cue('dup');pushRecent('dup',code,'Đã scan');return}
-          S.session.picked[code]=Date.now();saveSession();
-          paint({tone:'blocked',title:'BLOCKED — lựa ra',code,item});cue('blocked');pushRecent('blocked',code,'Blocked');
+          if(!item){paint({tone:'ok',title:'Không blocked',code,note:S.offlineAt?`Danh sách trên máy lúc ${fmtAt(S.offlineAt)}`:''});cue('ok');pushRecent('ok',code,'Không blocked');return}
+          const prev=S.scans.get(code);
+          if(prev){dupCard(code,prev,item);return}
+          // Ghi lên máy chủ trước khi báo (≤ 2 giây) để biết máy khác đã scan chưa; mất mạng → báo đỏ ngay + hàng chờ
+          const at=Date.now();S.scans.set(code,{at,device:'',mine:true,pending:true});S.outbox.push({code,at});persist();renderCounts();
+          const r=await Promise.race([record(code,at),sleep(S.netDown||navigator.onLine===false?0:WAIT_MS).then(()=>({kind:'queued'}))]);
+          if(seq!==S.seq){pushRecent(r.kind==='other'?'dup':r.kind==='not_blocked'?'ok':'blocked',code,r.kind==='other'?'Đã scan':r.kind==='not_blocked'?'Không blocked':r.kind==='mine'?'Blocked':'Blocked · chưa ghi nhận');renderCounts();return}
+          if(r.kind==='other'){dupCard(code,{at:r.at,device:r.device,mine:false},item);return}
+          if(r.kind==='not_blocked'){paint({tone:'ok',title:'Không blocked',code});cue('ok');pushRecent('ok',code,'Không blocked');return}
+          const note=r.kind==='queued'?'Chưa gửi được — tự gửi lại':r.kind==='denied'?'Chưa ghi nhận: máy chưa kích hoạt':r.kind==='error'?`Chưa ghi nhận: ${r.message}`:'';
+          paint({tone:'blocked',title:'BLOCKED — lựa ra',code,note,item});cue('blocked');pushRecent('blocked',code,r.kind==='mine'?'Blocked':'Blocked · chưa ghi nhận');
           renderCounts();if(S.tab==='picked'||S.tab==='left')renderTable();
         };
         $('ub-form').addEventListener('submit',e=>{e.preventDefault();const input=$('ub-code'),v=input.value;input.value='';if(v.trim())check(v);input.focus()});
@@ -12710,7 +12775,7 @@ async function rpc(name,args,retry=true){
           $('ub-bar').style.width=total?`${Math.round(picked/total*100)}%`:'0';
         };
         const list=UI.createList({tools:$('ub-tools'),tagsBox:$('ub-tags'),head:$('ub-head'),body:$('ub-body'),pager:$('ub-pager'),note:$('ub-note')});
-        const COLS=[{label:'Group UID'},{label:'SKU',sort:'sku'},{label:'Tên hàng'},{label:'Lot'},{label:'Roll'},{label:'Kho',sort:'wh'},{label:'Vị trí',sort:'loc'},{label:'Lúc lựa',sort:'at',first:'desc'}];
+        const COLS=[{label:'Group UID'},{label:'SKU',sort:'sku'},{label:'Tên hàng'},{label:'Lot'},{label:'Roll'},{label:'Kho',sort:'wh'},{label:'Vị trí',sort:'loc'},{label:'Lúc lựa',sort:'at',first:'desc'},{label:'Máy',sort:'dev'}];
         // Còn thiếu: gom theo vị trí (xếp theo mã vị trí) để người lựa đi từng vị trí; mỗi nhóm ghi số cuộn còn phải lựa.
         const renderGroups=rows=>{
           const box=$('ub-groups');box.hidden=!rows;if(!rows)return;
@@ -12719,19 +12784,21 @@ async function rpc(name,args,retry=true){
           box.innerHTML=keys.length?keys.map(k=>{const list=by.get(k).sort((a,b)=>String(a.groupUid).localeCompare(String(b.groupUid)));return`<details class="ub-loc" data-ub-loc="${esc(k)}" open><summary class="ub-loc__head">${svg('<path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/>',18)}<b>${esc(k)}</b><span>${num(list.length)} cuộn</span></summary><ul>${list.map(i=>`<li data-ub-uid="${esc(i.groupUid)}"><code>${esc(i.groupUid)}</code><span>${esc([i.sku,i.lot&&`Lot ${i.lot}`,i.roll&&`Roll ${i.roll}`].filter(Boolean).join(' · '))}</span></li>`).join('')}</ul></details>`}).join(''):`<p class="ub-msg">${S.list?'Đã lựa đủ danh sách.':'Chưa có danh sách.'}</p>`;
         };
         const renderTable=()=>{
-          const picked=S.tab==='picked',rows=S.items.filter(i=>Boolean(S.session.picked[i.groupUid])===picked);
+          const picked=S.tab==='picked',rows=S.items.filter(i=>S.scans.has(String(i.groupUid))===picked);
           renderGroups(picked?null:rows);
-          $('ub-list-title').textContent=picked?'Đã lựa':'Còn thiếu';$('ub-reset').hidden=!picked||!pickedCount();
-          list.show({columns:picked?COLS:COLS.slice(0,7),rows:rows.map(i=>{const at=S.session.picked[i.groupUid]||0,cells=[`<code>${esc(i.groupUid)}</code>`,esc(i.sku),esc(i.productName),esc(i.lot),esc(i.roll),esc(i.warehouse),esc(i.location)];if(picked)cells.push(esc(fmtTime(at)));return{cells,text:[i.groupUid,i.sku,i.productName,i.lot,i.roll,i.warehouse,i.location].join(' '),facets:{wh:i.warehouse||''},sort:{sku:i.sku||'',wh:i.warehouse||'',loc:i.location||'',at},csv:[i.groupUid,i.sku,i.productName,i.lot,i.roll,i.warehouse,i.location,...(picked?[fmtAt(at)]:[])]}}),facets:[{id:'wh',label:'Kho',icon:'database'}],filename:picked?'uid-blocked-da-lua':'uid-blocked-con-thieu',csvHead:['Group UID','SKU','Tên hàng','Lot','Roll','Kho','Vị trí',...(picked?['Lúc lựa']:[])],sheet:picked?'Đã lựa':'Còn thiếu',empty:S.list?(picked?'Chưa lựa UID nào.':'Đã lựa đủ danh sách.'):'Chưa có danh sách.'},{keep:true});
+          $('ub-list-title').textContent=picked?'Đã lựa':'Còn thiếu';
+          list.show({columns:picked?COLS:COLS.slice(0,7),rows:rows.map(i=>{const v=S.scans.get(String(i.groupUid)),at=v?.at||0,dev=v?who(v)+(v.pending?' · chờ gửi':''):'',cells=[`<code>${esc(i.groupUid)}</code>`,esc(i.sku),esc(i.productName),esc(i.lot),esc(i.roll),esc(i.warehouse),esc(i.location)];if(picked)cells.push(esc(fmtWhen(at)),esc(dev));return{cells,text:[i.groupUid,i.sku,i.productName,i.lot,i.roll,i.warehouse,i.location,dev].join(' '),facets:{wh:i.warehouse||''},sort:{sku:i.sku||'',wh:i.warehouse||'',loc:i.location||'',at,dev},csv:[i.groupUid,i.sku,i.productName,i.lot,i.roll,i.warehouse,i.location,...(picked?[fmtAt(at),dev]:[])]}}),facets:[{id:'wh',label:'Kho',icon:'database'}],filename:picked?'uid-blocked-da-lua':'uid-blocked-con-thieu',csvHead:['Group UID','SKU','Tên hàng','Lot','Roll','Kho','Vị trí',...(picked?['Lúc lựa','Máy']:[])],sheet:picked?'Đã lựa':'Còn thiếu',empty:S.list?(picked?'Chưa lựa UID nào.':'Đã lựa đủ danh sách.'):'Chưa có danh sách.'},{keep:true});
         };
-        $('ub-reset').addEventListener('click',async()=>{if(!await window.WhDialog?.confirm?.({icon:'undo',title:'Bắt đầu phiên lựa mới?',confirmText:'Phiên mới',cancelText:'Giữ'}))return;S.session={listId:S.list?.id||null,picked:{}};saveSession();renderCounts();renderTable();tell('Đã bắt đầu phiên lựa mới.','ok')});
 
         // ---- Tab Danh sách: thông tin + đối chiếu WMS + nạp Excel (Admin) ----
         const kv=(label,value,tone='',wide=false)=>`<div${tone?` data-tone="${tone}"`:''}${wide?' data-wide':''}><dt>${esc(label)}</dt><dd>${value}</dd></div>`;
         const codeList=(rows,limit=60)=>rows.length?`<ul class="ub-codes">${rows.slice(0,limit).map(r=>`<li>${esc(r.groupUid||r)}${r.note?`<em>${esc(r.note)}</em>`:''}</li>`).join('')}${rows.length>limit?`<li>+${num(rows.length-limit)}</li>`:''}</ul>`:'';
+        // c = {state:'pending'|'ok'|'error', data, error}: lỗi hiện riêng, không dựng bảng số 0
         const compareHtml=(c,codes)=>{
           if(!c)return'';
-          const rows=Array.isArray(c.rows)?c.rows:[],blocked=rows.filter(r=>/^blocked$/i.test(r.status||'')),other=rows.filter(r=>!/^blocked$/i.test(r.status||'')),missing=Array.isArray(c.missing)?c.missing:[],outside=Array.isArray(c.blockedOutside)?c.blockedOutside:[],outsideTotal=Number(c.blockedOutsideTotal)||outside.length;
+          if(c.state==='pending')return`<p class="ub-msg">Đang đối chiếu với WMS…</p>`;
+          if(c.state==='error')return`<h3 class="ub-sub">Đối chiếu WMS</h3><dl class="ub-kv">${kv('Chưa đối chiếu được',esc(c.error||'Lỗi'),'bad',true)}</dl>`;
+          const d=c.data||{},rows=Array.isArray(d.rows)?d.rows:[],blocked=rows.filter(r=>/^blocked$/i.test(r.status||'')),other=rows.filter(r=>!/^blocked$/i.test(r.status||'')),missing=Array.isArray(d.missing)?d.missing:[],outside=Array.isArray(d.blockedOutside)?d.blockedOutside:[],outsideTotal=Number(d.blockedOutsideTotal)||outside.length;
           return`<h3 class="ub-sub">Đối chiếu WMS (${num(codes)} UID)</h3><dl class="ub-kv">${kv('Khớp Blocked',num(blocked.length))}${kv('WMS trạng thái khác',num(other.length),other.length?'warn':'')}${kv('Không có trên WMS',num(missing.length),missing.length?'bad':'')}${kv('Blocked WMS ngoài danh sách',num(outsideTotal),outsideTotal?'warn':'')}</dl>`
             +(other.length?`<h3 class="ub-sub">WMS trạng thái khác</h3>${codeList(other.map(r=>({groupUid:r.groupUid,note:r.status})))}`:'')
             +(missing.length?`<h3 class="ub-sub">Không có trên WMS</h3>${codeList(missing)}`:'')
@@ -12740,73 +12807,89 @@ async function rpc(name,args,retry=true){
         const renderInfo=()=>{
           const l=S.list,byWh=l?.byWarehouse&&typeof l.byWarehouse==='object'?Object.entries(l.byWarehouse):[];
           $('ub-info').innerHTML=l?kv('Tệp',esc(l.fileName||'—'),'',true)+kv('Nạp lúc',esc(fmtAt(l.importedAt)))+kv('Sheet',esc((l.sheets||[]).join(', ')||'—'),'',true)+byWh.map(([w,n])=>kv(w,num(n))).join(''):kv('Danh sách','Chưa có');
-          $('ub-compare-out').innerHTML=compareHtml(S.compare,S.items.length);
-          $('ub-import').hidden=!S.admin;$('ub-compare').disabled=!S.items.length||S.busy;
+          $('ub-compare-out').innerHTML=S.compare&&S.compare.listId===l?.id?compareHtml(S.compare,S.items.length):'';
+          $('ub-import').hidden=!S.admin;$('ub-compare').disabled=!S.items.length||S.busy||S.compare?.state==='pending';
         };
         $('ub-compare').addEventListener('click',async()=>{
-          if(!S.items.length||S.busy)return;S.busy=true;renderInfo();tell('Đang đối chiếu với Group UID đã đồng bộ WMS…');
-          try{S.compare=await anonRpc('uid_block_compare',{p_codes:S.items.map(i=>i.groupUid)});tell('Đã đối chiếu.','ok')}
-          catch(e){tell(`Chưa đối chiếu được: ${e.message}`,'error')}finally{S.busy=false;renderInfo()}
+          if(!S.items.length||S.busy||S.compare?.state==='pending')return;
+          const listId=S.list.id;S.compare={listId,state:'pending'};renderInfo();
+          try{const data=await anonRpc('uid_block_compare',{p_codes:S.items.map(i=>i.groupUid)});if(S.compare?.listId===listId)S.compare={listId,state:'ok',data,at:Date.now()}}
+          catch(e){if(S.compare?.listId===listId)S.compare={listId,state:'error',error:e.message}}
+          finally{renderInfo()}
         });
 
-        // Đọc MỌI sheet của tệp (PrintSkuZip có sẵn): tìm dòng tiêu đề có "Group UID", lấy dòng có Status = Blocked (không có cột Status → mọi dòng).
+        // Đọc MỌI sheet theo đúng thứ tự + tên trong workbook (workbook.xml.rels → tệp sheet), chuỗi dùng chung, chuỗi trong ô, số.
         const readWorkbook=async bytes=>{
           const Z=window.PrintSkuZip,entries=Z.readZipEntries(bytes),dec=new TextDecoder(),parser=new DOMParser();
-          const xml=async name=>entries[name]?parser.parseFromString(dec.decode(await Z.inflateZipEntry(bytes,entries[name])),'application/xml'):null;
-          const shared=[];const ss=await xml('xl/sharedStrings.xml');if(ss)ss.querySelectorAll('si').forEach(si=>{let t='';si.querySelectorAll('t').forEach(n=>{t+=n.textContent});shared.push(t)});
-          const wb=await xml('xl/workbook.xml'),names=wb?[...wb.getElementsByTagName('sheet')].map(s=>s.getAttribute('name')||''):[];
+          const xml=async name=>{if(!entries[name])return null;const d=parser.parseFromString(dec.decode(await Z.inflateZipEntry(bytes,entries[name])),'application/xml');if(d.getElementsByTagName('parsererror').length)throw new Error(`tệp hỏng (${name})`);return d};
+          const shared=[];const ss=await xml('xl/sharedStrings.xml');if(ss)[...ss.getElementsByTagName('si')].forEach(si=>shared.push([...si.getElementsByTagName('t')].filter(t=>t.parentNode.nodeName!=='rPh').map(t=>t.textContent).join('')));
+          const wb=await xml('xl/workbook.xml'),rels=await xml('xl/_rels/workbook.xml.rels');
+          const target=new Map(rels?[...rels.getElementsByTagName('Relationship')].map(r=>[r.getAttribute('Id'),r.getAttribute('Target')||'']):[]);
           const files=Object.keys(entries).filter(n=>/^xl\/worksheets\/sheet\d+\.xml$/.test(n)).sort((a,b)=>Number(a.match(/\d+/g).pop())-Number(b.match(/\d+/g).pop()));
+          const list=wb?[...wb.getElementsByTagName('sheet')].map((s,i)=>{const t=target.get(s.getAttribute('r:id'));return{name:s.getAttribute('name')||`Sheet ${i+1}`,path:t?(t.startsWith('/')?t.slice(1):`xl/${t.replace(/^\.\//,'')}`):files[i]}}):files.map((f,i)=>({name:`Sheet ${i+1}`,path:f}));
           const col=ref=>{let n=0;for(const ch of ref.replace(/\d+$/,''))n=n*26+(ch.charCodeAt(0)-64);return n-1};
           const sheets=[];
-          for(let i=0;i<files.length;i++){
-            const doc=await xml(files[i]),rows=new Map();
-            doc.querySelectorAll('sheetData > row > c').forEach(c=>{const ref=c.getAttribute('r')||'',r=Number(ref.replace(/^[A-Z]+/,''))-1,v=c.querySelector('v');let val='';if(c.getAttribute('t')==='inlineStr')val=c.textContent;else if(v)val=c.getAttribute('t')==='s'?(shared[Number(v.textContent)]??''):v.textContent;if(!rows.has(r))rows.set(r,[]);rows.get(r)[col(ref)]=String(val??'').trim()});
-            sheets.push({name:names[i]||`Sheet ${i+1}`,rows:[...rows.keys()].sort((a,b)=>a-b).map(k=>rows.get(k))});
+          for(const{name,path}of list){
+            const doc=path?await xml(path):null;if(!doc)continue;
+            const rows=new Map();
+            [...doc.getElementsByTagName('row')].forEach(row=>{const r=Number(row.getAttribute('r'))-1;[...row.getElementsByTagName('c')].forEach((c,ci)=>{const ref=c.getAttribute('r')||'',t=c.getAttribute('t'),v=c.getElementsByTagName('v')[0];let val='';if(t==='inlineStr')val=[...c.getElementsByTagName('t')].map(x=>x.textContent).join('');else if(v)val=t==='s'?(shared[Number(v.textContent)]??''):v.textContent;if(!rows.has(r))rows.set(r,[]);rows.get(r)[ref?col(ref):ci]=String(val??'').trim()})});
+            sheets.push({name,rows:[...rows.keys()].sort((a,b)=>a-b).map(k=>rows.get(k))});
           }
           return sheets;
         };
-        const FIELD={groupUid:/group\s*uid/i,sku:/^sku$/i,productName:/product\s*name|tên/i,lot:/batch|lot/i,roll:/roll/i,warehouse:/warehouse|kho/i,location:/location|vị trí/i,status:/^status$|trạng thái/i};
+        // Tên cột chuẩn bản xuất WMS (Group UID Code, Batch Code, Roll Code, Warehouse, Location, SKU, Product Name, Status) — khớp NGUYÊN ô.
+        const FIELD={groupUid:/^group\s*uid(\s*code)?$/i,sku:/^sku$/i,productName:/^(product\s*name|tên\s*hàng)$/i,lot:/^(batch(\s*code)?|lot(\s*no\.?)?)$/i,roll:/^roll(\s*(code|no\.?))?$/i,warehouse:/^(warehouse|kho)$/i,location:/^(location|vị\s*trí)$/i,status:/^(status|trạng\s*thái)$/i};
+        const cut=v=>v?String(v).slice(0,300):null;
         const parseSheets=sheets=>{
           const out=new Map(),stat=[];
           for(const sh of sheets){
-            const hi=sh.rows.findIndex(r=>(r||[]).some(c=>FIELD.groupUid.test(c||'')));
-            if(hi<0){stat.push({name:sh.name,taken:0,skipped:0,note:'không có cột Group UID'});continue}
+            const hi=sh.rows.slice(0,30).findIndex(r=>(r||[]).some(c=>FIELD.groupUid.test(c||'')));
+            if(hi<0){stat.push({name:sh.name,taken:0,skipped:0,bad:0,note:'không có cột Group UID Code'});continue}
             const head=sh.rows[hi],idx={};for(const[k,re]of Object.entries(FIELD))idx[k]=head.findIndex(c=>re.test(c||''));
-            let taken=0,skipped=0;
+            let taken=0,skipped=0,bad=0;
             for(const r of sh.rows.slice(hi+1)){
-              const code=norm(r?.[idx.groupUid]);if(!code)continue;
+              const cell=String(r?.[idx.groupUid]??'').trim();if(!cell)continue;
+              const code=norm(cell);if(!code||cell.replace(/\D/g,'')!==code){bad++;continue}
               if(idx.status>=0&&!/^blocked$/i.test(String(r[idx.status]||'').trim())){skipped++;continue}
-              taken++;if(!out.has(code))out.set(code,{groupUid:code,sku:r[idx.sku]||null,productName:r[idx.productName]||null,lot:r[idx.lot]||null,roll:r[idx.roll]||null,warehouse:r[idx.warehouse]||null,location:r[idx.location]||null});
+              taken++;if(!out.has(code))out.set(code,{groupUid:code,sku:cut(r[idx.sku]),productName:cut(r[idx.productName]),lot:cut(r[idx.lot]),roll:cut(r[idx.roll]),warehouse:cut(r[idx.warehouse]),location:cut(r[idx.location]),fileStatus:idx.status>=0?cut(r[idx.status]):null});
             }
-            stat.push({name:sh.name,taken,skipped});
+            stat.push({name:sh.name,taken,skipped,bad,note:idx.status<0?'không có cột Status — lấy mọi dòng':''});
           }
           return{items:[...out.values()],stat};
         };
         const renderPreview=()=>{
           const p=S.preview,box=$('ub-preview');box.hidden=!p;if(!p)return;
           const byWh={};p.items.forEach(i=>{const w=i.warehouse||'—';byWh[w]=(byWh[w]||0)+1});
-          box.innerHTML=`<h3 class="ub-sub" style="margin-top:0">${esc(p.fileName)} · ${num(p.items.length)} UID blocked</h3><dl class="ub-kv">${p.stat.map(s=>kv(`Sheet ${s.name}`,`${num(s.taken)} dòng${s.skipped?` · bỏ ${num(s.skipped)}`:''}${s.note?` · ${esc(s.note)}`:''}`,'',true)).join('')}${Object.entries(byWh).map(([w,n])=>kv(w,num(n))).join('')}</dl>${p.compare?compareHtml(p.compare,p.items.length):`<p class="ub-msg">Đang đối chiếu với WMS…</p>`}<div class="ub-actions" style="margin-top:14px"><button class="ub-btn ub-btn--primary" id="ub-save" type="button"${p.items.length&&!S.busy?'':' disabled'}>${svg('<path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/><path d="M7 3v4a1 1 0 0 0 1 1h7"/>',18)}Lưu danh sách</button><button class="ub-btn" id="ub-cancel" type="button">Huỷ</button></div>`;
+          const pending=p.compare?.state==='pending';
+          box.innerHTML=`<h3 class="ub-sub" style="margin-top:0">${esc(p.fileName)} · ${num(p.items.length)} UID blocked</h3><dl class="ub-kv">${p.stat.map(s=>kv(`Sheet ${s.name}`,`${num(s.taken)} dòng${s.skipped?` · bỏ ${num(s.skipped)}`:''}${s.bad?` · ${num(s.bad)} mã lỗi`:''}${s.note?` · ${esc(s.note)}`:''}`,s.bad?'bad':s.note?'warn':'',true)).join('')}${Object.entries(byWh).map(([w,n])=>kv(w,num(n))).join('')}</dl>${compareHtml(p.compare,p.items.length)}<div class="ub-actions" style="margin-top:14px"><button class="ub-btn ub-btn--primary" id="ub-save" type="button"${p.items.length&&!S.busy&&!pending?'':' disabled'}>${svg('<path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/><path d="M7 3v4a1 1 0 0 0 1 1h7"/>',18)}Lưu danh sách</button><button class="ub-btn" id="ub-cancel" type="button">Huỷ</button></div>`;
           $('ub-save').addEventListener('click',save);$('ub-cancel').addEventListener('click',()=>{S.preview=null;renderPreview()});
         };
         $('ub-import').addEventListener('click',()=>{$('ub-file-input').value='';$('ub-file-input').click()});
         $('ub-file-input').addEventListener('change',async e=>{
           const file=e.target.files?.[0];if(!file)return;
+          const id=++S.pid;
           try{
             tell(`Đang đọc ${file.name}…`);
             const sheets=await readWorkbook(new Uint8Array(await file.arrayBuffer())),{items,stat}=parseSheets(sheets);
-            if(!items.length){tell('Tệp không có dòng Group UID nào ở trạng thái Blocked.','error');return}
-            if(items.length>20000){tell(`Tệp có ${num(items.length)} UID — tối đa 20.000.`,'error');return}
-            S.preview={fileName:file.name,sheets:sheets.map(s=>s.name),items,stat,compare:null};renderPreview();tell(`Đã đọc ${num(items.length)} UID blocked — xem đối chiếu rồi Lưu.`,'ok');
-            try{const c=await anonRpc('uid_block_compare',{p_codes:items.map(i=>i.groupUid)});if(S.preview?.fileName===file.name){S.preview.compare=c;renderPreview()}}catch(err){if(S.preview){S.preview.compare={rows:[],missing:[],blockedOutside:[],blockedOutsideTotal:0,error:err.message};renderPreview();tell(`Chưa đối chiếu được: ${err.message}`,'warn')}}
-          }catch(err){tell(`Không đọc được tệp: ${err.message||err}`,'error')}
+            if(id!==S.pid)return;
+            if(!items.length){S.preview=null;renderPreview();tell('Tệp không có Group UID nào ở trạng thái Blocked.','error');return}
+            if(items.length>20000){S.preview=null;renderPreview();tell(`Tệp có ${num(items.length)} UID — tối đa 20.000.`,'error');return}
+            S.preview={id,fileName:file.name,sheets:sheets.map(s=>s.name),items,stat,compare:{state:'pending'}};renderPreview();tell(`Đã đọc ${num(items.length)} UID blocked.`,'ok');
+            try{const data=await anonRpc('uid_block_compare',{p_codes:items.map(i=>i.groupUid)});if(S.preview?.id===id){S.preview.compare={state:'ok',data};renderPreview()}}
+            catch(err){if(S.preview?.id===id){S.preview.compare={state:'error',error:err.message};renderPreview()}}
+          }catch(err){if(id===S.pid)tell(`Không đọc được tệp: ${err.message||err}`,'error')}
         });
         const save=async()=>{
-          const p=S.preview;if(!p||S.busy)return;S.busy=true;renderPreview();tell('Đang lưu danh sách…');
+          const p=S.preview;if(!p||S.busy||p.compare?.state==='pending')return;
+          if(p.compare?.state==='error'&&!await window.WhDialog?.confirm?.({icon:'alert',tone:'warning',title:'Lưu khi chưa đối chiếu WMS?',confirmText:'Lưu',cancelText:'Huỷ'}))return;
+          S.busy=true;renderPreview();tell('Đang lưu danh sách…');
           try{
             const d=await adminRpc('uid_block_import',{p_list:{fileName:p.fileName.slice(0,200),sheets:p.sheets},p_items:p.items});
-            S.preview=null;renderPreview();S.compare=null;
-            await window.PrintSkuSnapshotCache?.drop?.('uid_block');S.list=null;await load();
-            tell(`Đã lưu ${num(d?.itemCount??p.items.length)} UID blocked.`,'ok');
+            if(S.preview===p)S.preview=null;
+            // Chờ lượt tải đang chạy (có thể mang bản cũ) xong rồi mới bỏ bản trên máy và tải lại
+            await loadP;await window.PrintSkuSnapshotCache?.drop?.('uid_block');await load();
+            const ok=S.list?.id===d?.listId;
+            tell(ok?`Đã lưu ${num(d?.itemCount??p.items.length)} UID blocked.`:`Đã lưu ${num(d?.itemCount??p.items.length)} UID blocked — chưa tải lại được danh sách.`,ok?'ok':'warn');
           }catch(e){tell(e.code==='FORBIDDEN'||/admin/i.test(e.message)?'Chỉ Admin được nạp danh sách.':`Chưa lưu được: ${e.message}`,'error')}
           finally{S.busy=false;renderPreview();renderInfo()}
         };
@@ -12835,10 +12918,12 @@ async function rpc(name,args,retry=true){
         const tile=$('barcode-uid-block');if(tile)tile.addEventListener('click',()=>{location.hash='#'+ROUTE});
         $('ub-back').addEventListener('click',()=>{location.hash='#home'});
         document.addEventListener('visibilitychange',()=>{if(!document.hidden&&active())load()});
+        addEventListener('online',()=>{if(active())load()});
+        setInterval(()=>{if(active()&&!document.hidden)load()},POLL_MS);
         window.addEventListener('hashchange',route);
         paintSound();renderAll();route();
       })();
-    </script>
+</script>
     <style id="cap-vai-style">
       /* CẤP VẢI (12/10/2026): khung .cut-screen như Xả vải / Cắt UID, thêm khối tiến độ, thẻ kết quả quét và bảng cuộn. */
       #cap-vai-screen .cv-plan-row{display:flex;gap:8px;align-items:center;margin-bottom:12px}
