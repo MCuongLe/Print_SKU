@@ -59,6 +59,10 @@ const open = async (browser, srv, { width = 1280, height = 900, admin = false } 
       if (body.p_known_count === count) return json({ ok: true, data: { listId: body.p_list_id, unchanged: true, count } });
       return json({ ok: true, data: { listId: body.p_list_id, unchanged: false, count, rows: [...m].map(([groupUid, r]) => ({ groupUid, scannedAt: r.scannedAt, deviceName: r.deviceName })) } });
     }
+    if (rpc === "group_uid_by_rfid") {
+      const map = srv.rfidMap || {};
+      return json({ ok: true, data: { rows: (body.p_codes || []).filter(c => map[c]).map(c => ({ rfid: c, groupUid: map[c], status: "Blocked" })) } });
+    }
     if (rpc === "uid_block_compare") {
       if (srv.compareFail) return json({ ok: false, error: { code: "INTERNAL", message: "giả lập lỗi đối chiếu" } });
       if (srv.compareDelay) await settle(srv.compareDelay);
@@ -140,8 +144,7 @@ const ready = page => page.waitForFunction(() => document.getElementById("ub-tot
       assert.match(await page.locator("#ub-result").innerText(), /Máy B/, "báo máy đã scan trước");
       scansOf(srv, LIST_A.list.id).set("1028260000000103", { scannedAt: "2026-10-20T03:05:00+00:00", deviceName: "Máy C", device: "pd_c" });
       await scan(page, "1028260000000103");
-      await page.waitForFunction(() => /1028260000000103/.test(document.getElementById("ub-result").textContent), null, { timeout: 10000 });
-      assert.equal(await tone(page), "dup");
+      await page.waitForFunction(() => /1028260000000103/.test(document.getElementById("ub-result").textContent) && document.getElementById("ub-result").dataset.tone === "dup", null, { timeout: 10000 });
       assert.match(await page.locator("#ub-result").innerText(), /Máy C/, "máy chủ báo trùng → ĐÃ SCAN dù máy này chưa đồng bộ");
       scansOf(srv, LIST_A.list.id).delete("1028260000000102"); scansOf(srv, LIST_A.list.id).delete("1028260000000103");
       // 7) Mất mạng khi ghi: vẫn báo BLOCKED + chờ gửi; có mạng lại → tự gửi lên máy chủ
@@ -246,7 +249,7 @@ const ready = page => page.waitForFunction(() => document.getElementById("ub-tot
       await page.goto(BASE + "#uid-block"); await ready(page);
       await scan(page, "1028260000000101");
       await page.waitForFunction(() => /1028260000000101/.test(document.getElementById("ub-result").textContent), null, { timeout: 10000 });
-      assert.equal(await tone(page), "dup", "máy chủ trả dup + mine (lượt cũ) → ĐÃ SCAN");
+      await toneIs(page, "dup"); // máy chủ trả dup + mine (lượt cũ) → ĐÃ SCAN (thẻ đỏ báo ngay rồi nâng cấp)
       srv.scanHtml = true;
       await scan(page, "1028260000000102");
       await page.waitForFunction(() => /1028260000000102[\s\S]*Chưa gửi được/.test(document.getElementById("ub-result").textContent), null, { timeout: 10000 });
@@ -291,6 +294,29 @@ const ready = page => page.waitForFunction(() => document.getElementById("ub-tot
       assert.ok(recent.some(t => /1028260000000102\s*Blocked/.test(t)), "lượt 102 bị chen vẫn có dòng Blocked");
       for (let i = 0; i < 50 && !scansOf(srv, LIST_A.list.id).has("1028260000000102"); i++) await settle(100);
       assert.equal(scansOf(srv, LIST_A.list.id).has("1028260000000102"), true, "lượt bị chen vẫn ghi máy chủ");
+      assert.deepEqual(errors, []);
+      await context.close();
+    }
+    // 14) RFID (đợt RFID 20/10): mã in trên tem (1 chữ + 11 số) → Group UID: có trên máy (snapshot trả rfid) → báo ngay; không có →
+    //     hỏi máy chủ group_uid_by_rfid; chưa liên kết → thẻ cảnh báo. Chữ thường vẫn nhận. Dữ liệu giả.
+    {
+      const LIST_R = { list: { ...LIST_A.list, id: "44444444-4444-4444-8444-444444444444" }, items: [item(1, { rfid: "A00000000101" }), item(2), item(3)] };
+      const srv = { calls: [], list: LIST_R, rfidMap: { B00000000103: "1028260000000103" } };
+      const { context, page, errors } = await open(browser, srv);
+      await page.goto(BASE + "#uid-block"); await ready(page);
+      await scan(page, "a00000000101");
+      await page.waitForFunction(() => /1028260000000101/.test(document.getElementById("ub-result").textContent), null, { timeout: 5000 });
+      assert.equal(await tone(page), "blocked");
+      assert.match(await page.locator("#ub-result").innerText(), /RFID A00000000101/);
+      assert.equal(srv.calls.some(c => c.rpc === "group_uid_by_rfid"), false, "RFID có trên máy → không hỏi máy chủ");
+      await scan(page, "B00000000103");
+      await page.waitForFunction(() => /1028260000000103/.test(document.getElementById("ub-result").textContent), null, { timeout: 5000 });
+      assert.equal(await tone(page), "blocked");
+      assert.match(await page.locator("#ub-result").innerText(), /RFID B00000000103/);
+      assert.deepEqual(srv.calls.find(c => c.rpc === "group_uid_by_rfid")?.body.p_codes, ["B00000000103"]);
+      await scan(page, "C00000000999");
+      await page.waitForFunction(() => /RFID chưa liên kết/.test(document.getElementById("ub-result").textContent), null, { timeout: 5000 });
+      assert.equal(await tone(page), "bad");
       assert.deepEqual(errors, []);
       await context.close();
     }

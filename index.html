@@ -10006,7 +10006,7 @@ var FSK_CORE = (function () {
         const API="https://ikzhitdqkoatlmkrxuuh.supabase.co",KEY="sb_publishable_mBl--Ep5nNxuC4Xvyi1gfg_SLGEcRhI";
         const KINDS=["added","updated","missing","stale_source"],LABELS={added:"UID mới",updated:"UID cập nhật",missing:"Thiếu trên WMS",stale_source:"WMS cũ hơn database"},KIND_ICON={added:["plus","new"],updated:["refresh","upd"],missing:["xcircle","warn"],stale_source:["history","warn"]};
         // [trường, nhãn, nhóm lọc] — updated_date không hiện trong phần so sánh vì đã có cột "Cập nhật WMS".
-        const UF=[["qty","Số lượng","qty"],["status","Trạng thái","status"],["qc_status","QC","qc"],["location","Vị trí","loc"],["warehouse","Kho","wh"],["sku","SKU","sku"],["batch_code","Lot","lot"],["roll_code","Roll","lot"],["updated_by","Người cập nhật","other"]];
+        const UF=[["qty","Số lượng","qty"],["status","Trạng thái","status"],["qc_status","QC","qc"],["location","Vị trí","loc"],["warehouse","Kho","wh"],["sku","SKU","sku"],["batch_code","Lot","lot"],["roll_code","Roll","lot"],["group_rfid_mapping","RFID","other"],["updated_by","Người cập nhật","other"]];
         const TAGS=[{id:"qty",label:"Số lượng"},{id:"status",label:"Trạng thái"},{id:"qc",label:"QC"},{id:"loc",label:"Vị trí"},{id:"wh",label:"Đổi kho"},{id:"sku",label:"SKU"},{id:"lot",label:"Lot/Roll"},{id:"other",label:"Khác"}];
         const COLS={
           added:[{label:"Group UID",sort:"code"},{label:"Kho",sort:"wh"},{label:"Thông tin"},{label:"Cập nhật WMS",sort:"wms"}],
@@ -12495,6 +12495,7 @@ async function rpc(name,args,retry=true){
       #uid-block-screen .ub-result__top { display: flex; align-items: center; gap: 12px; }
       #uid-block-screen .ub-result__top svg { flex: none; width: 28px; height: 28px; }
       #uid-block-screen .ub-result__title { margin: 0; font-size: 28px; font-weight: 700; line-height: 1.15; letter-spacing: 0; }
+      #uid-block-screen .ub-result__via { margin: 6px 0 0; font: 600 14px/1.3 ui-monospace, SFMono-Regular, Consolas, monospace; opacity: .8; }
       #uid-block-screen .ub-result__code { margin: 6px 0 0; font: 700 18px/1.3 ui-monospace, SFMono-Regular, Consolas, monospace; word-break: break-all; }
       #uid-block-screen .ub-result__note { margin: 6px 0 0; font-size: 14px; font-weight: 600; }
       #uid-block-screen .ub-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px 16px; margin: 12px 0 0; }
@@ -12627,7 +12628,7 @@ async function rpc(name,args,retry=true){
         const svg=(b,s=20)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${b}</svg>`;
         const ICON={ban:'<circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/>',ok:'<path d="M21.801 10A10 10 0 1 1 17 3.335"/><path d="m9 11 3 3L22 4"/>',warn:'<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',dup:'<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>',soundOn:'<path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z"/><path d="M16 9a5 5 0 0 1 0 6"/><path d="M19.364 18.364a9 9 0 0 0 0-12.728"/>',soundOff:'<path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z"/><line x1="22" x2="16" y1="9" y2="15"/><line x1="16" x2="22" y1="9" y2="15"/>'};
         // scans: mã → {at, device, mine, pending}; scanCount = số lượt máy chủ đã báo (uid_block_scans đếm trùng → không đổi)
-        const S={list:null,items:[],byCode:new Map(),scans:new Map(),scanCount:null,listId:null,outbox:[],tab:'scan',admin:false,busy:false,sound:store.get(K.sound)!=='tat',recent:[],preview:null,pid:0,compare:null,loading:false,offlineAt:null,verifiedAt:0,seq:0,storeFail:false,inflight:new Map(),epoch:0,loadMsg:'',deniedAt:0};
+        const S={list:null,items:[],byCode:new Map(),byRfid:new Map(),rfidCache:new Map(),scans:new Map(),scanCount:null,listId:null,outbox:[],tab:'scan',admin:false,busy:false,sound:store.get(K.sound)!=='tat',recent:[],preview:null,pid:0,compare:null,loading:false,offlineAt:null,verifiedAt:0,seq:0,storeFail:false,inflight:new Map(),epoch:0,loadMsg:'',deniedAt:0};
         const tell=(t,tone='')=>{const m=$('ub-message');m.textContent=t||'';m.dataset.tone=tone};
         // Thông báo do load() đặt: lần tải sau thành công tự xoá (nếu chưa bị thông báo khác đè)
         const tellLoad=(t,tone)=>{tell(t,tone);S.loadMsg=t||''};
@@ -12728,6 +12729,7 @@ async function rpc(name,args,retry=true){
         const apply=(data,fromServer)=>{
           const prevId=S.list?.id;
           S.list=data?.list||null;S.items=Array.isArray(data?.items)?data.items:[];S.byCode=new Map(S.items.map(i=>[String(i.groupUid),i]));
+          S.byRfid=new Map(S.items.filter(i=>i.rfid).map(i=>[String(i.rfid).toUpperCase(),i]));
           if(S.list&&prevId&&prevId!==S.list.id)S.compare=null;
           // Danh sách khác (máy chủ đã chép lượt quét của UID còn có): giữ lượt của UID còn trong danh sách mới, đọc lại cả lượt quét
           if(S.list&&fromServer&&S.listId!==S.list.id){
@@ -12761,17 +12763,30 @@ async function rpc(name,args,retry=true){
 
         // ---- Quét: máy scan gửi kèm tiền tố / Enter → đúng 16 chữ số Group UID (dãy số dài hơn không bị cắt) ----
         const norm=raw=>(String(raw||'').match(/(?<!\d)\d{16}(?!\d)/)||[])[0]||'';
+        const rfidOf=raw=>(String(raw||'').toUpperCase().match(/(?<![A-Z0-9])[A-Z][0-9]{11}(?![A-Z0-9])/)||[])[0]||'';
+        // RFID → Group UID: danh sách trên máy trước, không có thì hỏi máy chủ (group_uid_by_rfid, ≤ 2 giây); kết quả nhớ trong phiên
+        const resolveRfid=async rf=>{
+          const hit=S.byRfid.get(rf);if(hit)return{code:String(hit.groupUid)};
+          if(S.rfidCache.has(rf))return{code:S.rfidCache.get(rf)};
+          if(navigator.onLine===false)return{error:true};
+          try{
+            const d=await Promise.race([anonRpc('group_uid_by_rfid',{p_codes:[rf]}),sleep(WAIT_MS).then(()=>{throw new Error('timeout')})]);
+            const row=(Array.isArray(d?.rows)?d.rows:[]).find(r=>String(r.rfid||'').toUpperCase()===rf);
+            const code=row&&/^\d{16}$/.test(String(row.groupUid))?String(row.groupUid):null;
+            S.rfidCache.set(rf,code);return{code};
+          }catch(_){return{error:true}}
+        };
         const facts=i=>[['SKU',i.sku],['Tên hàng',i.productName],['Lot',i.lot],['Roll',i.roll],['Kho',i.warehouse],['Vị trí',i.location]].filter(([,v])=>v).map(([k,v])=>`<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('');
-        const paint=({tone,title,code,note,item})=>{
-          const r=$('ub-result');r.hidden=false;r.dataset.tone=tone;r.dataset.code=code||'';
+        const paint=({tone,title,code,note,item,via=''})=>{
+          const r=$('ub-result');r.hidden=false;r.dataset.tone=tone;r.dataset.code=code||'';r.dataset.via=via;
           const icon=tone==='blocked'?ICON.ban:tone==='ok'?ICON.ok:tone==='dup'?ICON.dup:ICON.warn;
-          r.innerHTML=`<div class="ub-result__top">${svg(icon,28)}<p class="ub-result__title">${esc(title)}</p></div>${code?`<p class="ub-result__code">${esc(code)}</p>`:''}${note?`<p class="ub-result__note">${esc(note)}</p>`:''}${item?`<dl class="ub-facts">${facts(item)}</dl>`:''}`;
+          r.innerHTML=`<div class="ub-result__top">${svg(icon,28)}<p class="ub-result__title">${esc(title)}</p></div>${via?`<p class="ub-result__via">RFID ${esc(via)}</p>`:''}${code?`<p class="ub-result__code">${esc(code)}</p>`:''}${note?`<p class="ub-result__note">${esc(note)}</p>`:''}${item?`<dl class="ub-facts">${facts(item)}</dl>`:''}`;
         };
         const paintRecent=()=>{$('ub-recent').innerHTML=S.recent.map(x=>`<li data-tone="${x.tone}"><i aria-hidden="true"></i><b>${esc(x.code||'—')}</b><span>${esc(x.label)} · ${fmtTime(x.at)}</span></li>`).join('')};
         const pushRecent=(tone,code,label,id=null)=>{S.recent.unshift({tone,code,label,id,at:Date.now()});S.recent=S.recent.slice(0,8);paintRecent()};
         const fixRecent=(id,tone,label)=>{const x=S.recent.find(r=>r.id===id);if(x){x.tone=tone;x.label=label;paintRecent()}};
         const who=v=>v.mine?(v.device||myName()):(v.device||'Máy khác');
-        const dupCard=(code,v,item,{quiet=false,silent=false}={})=>{paint({tone:'dup',title:'ĐÃ SCAN',code,note:`Đã scan lúc ${fmtWhen(v.at)} · ${who(v)}${v.pending?' · chờ gửi':''}`,item});if(!silent)cue('dup');if(!quiet)pushRecent('dup',code,v.pending?'Đã scan · chờ gửi':'Đã scan')};
+        const dupCard=(code,v,item,{quiet=false,silent=false,via=''}={})=>{paint({tone:'dup',title:'ĐÃ SCAN',code,note:`Đã scan lúc ${fmtWhen(v.at)} · ${who(v)}${v.pending?' · chờ gửi':''}`,item,via});if(!silent)cue('dup');if(!quiet)pushRecent('dup',code,v.pending?'Đã scan · chờ gửi':'Đã scan')};
         // Danh sách chưa được máy chủ xác nhận gần đây (đang vào lại màn, poll lỗi, mất mạng) → chưa dám báo xanh
         const stale=()=>!S.verifiedAt||Date.now()-S.verifiedAt>POLL_MS*2;
         // Kết quả máy chủ của một lượt quét mới (đã báo BLOCKED ngay theo danh sách trên máy): sửa dòng "Vừa quét" của lượt đó; thẻ chỉ
@@ -12781,28 +12796,35 @@ async function rpc(name,args,retry=true){
           const label=r.kind==='dup'?['dup','Đã scan']:r.kind==='not_blocked'?['ok','Không blocked']:r.kind==='mine'?['blocked','Blocked']:r.kind==='queued'?['blocked','Blocked · chờ gửi']:['blocked','Blocked · chưa ghi nhận'];
           fixRecent(seq,...label);renderCounts();if(S.tab==='picked'||S.tab==='left')renderTable();
           if($('ub-result').dataset.code!==code)return;
-          if(r.kind==='dup'){dupCard(code,S.scans.get(code)||{at:r.at,device:r.device,mine:r.mine},item,{quiet:true});return}
-          if(r.kind==='not_blocked'){paint({tone:'ok',title:'Không blocked',code});cue('ok');return}
+          const via=$('ub-result').dataset.via||'';
+          if(r.kind==='dup'){dupCard(code,S.scans.get(code)||{at:r.at,device:r.device,mine:r.mine},item,{quiet:true,via});return}
+          if(r.kind==='not_blocked'){paint({tone:'ok',title:'Không blocked',code,via});cue('ok');return}
           const note=r.kind==='queued'?'Chưa gửi được — tự gửi lại':r.kind==='denied'?'Chưa ghi nhận: máy chưa kích hoạt':r.kind==='error'?`Chưa ghi nhận: ${r.message}`:'';
-          if(note||$('ub-result').dataset.tone!=='blocked')paint({tone:'blocked',title:'BLOCKED — lựa ra',code,note,item});
+          if(note||$('ub-result').dataset.tone!=='blocked')paint({tone:'blocked',title:'BLOCKED — lựa ra',code,note,item,via});
         };
         const check=async raw=>{
-          const code=norm(raw),seq=++S.seq;
+          const seq=++S.seq;let code=norm(raw);const via=code?'':rfidOf(raw);
+          if(via){
+            const got=await resolveRfid(via);
+            if(got.error){paint({tone:'none',title:'RFID chưa kiểm được',code:'',via});cue('bad');pushRecent('none',via,'RFID chưa kiểm được');return}
+            if(!got.code){paint({tone:'bad',title:'RFID chưa liên kết',code:'',via});cue('bad');pushRecent('bad',via,'RFID chưa liên kết');return}
+            code=got.code;
+          }
           if(!code){paint({tone:'bad',title:'Không phải Group UID',code:String(raw||'').trim().slice(0,60)});cue('bad');pushRecent('bad',String(raw||'').trim().slice(0,30),'Mã sai');return}
           if(!S.list){paint({tone:'none',title:S.loading?'Đang tải danh sách':'Chưa có danh sách',code});cue('bad');pushRecent('none',code,'Chưa có danh sách');return}
           let item=S.byCode.get(code);
           // Danh sách chưa được máy chủ xác nhận gần đây → tải lại (≤ 2 giây) trước khi dám báo xanh
           if(!item&&stale()){await Promise.race([load(),sleep(WAIT_MS)]);item=S.byCode.get(code)}
           if(!item){
-            if(stale()){paint({tone:'none',title:'Chưa kiểm được',code,note:`Danh sách trên máy lúc ${fmtAt(S.offlineAt||S.verifiedAt||S.list.importedAt)}`});cue('bad');pushRecent('none',code,'Chưa kiểm được');return}
-            paint({tone:'ok',title:'Không blocked',code});cue('ok');pushRecent('ok',code,'Không blocked');return;
+            if(stale()){paint({tone:'none',title:'Chưa kiểm được',code,via,note:`Danh sách trên máy lúc ${fmtAt(S.offlineAt||S.verifiedAt||S.list.importedAt)}`});cue('bad');pushRecent('none',code,'Chưa kiểm được');return}
+            paint({tone:'ok',title:'Không blocked',code,via});cue('ok');pushRecent('ok',code,'Không blocked');return;
           }
           const prev=S.scans.get(code);
           // Đã scan (máy này hoặc máy khác); bắn lặp ngay sau lượt đầu → hiện ĐÃ SCAN nhưng không kêu đè lên tiếng blocked
-          if(prev){dupCard(code,prev,item,{silent:prev.pending&&Date.now()-prev.at<1500});if(prev.pending&&!S.inflight.has(code))flush();return}
+          if(prev){dupCard(code,prev,item,{silent:prev.pending&&Date.now()-prev.at<1500,via});if(prev.pending&&!S.inflight.has(code))flush();return}
           // Lượt mới: báo BLOCKED ngay theo danh sách trên máy, ghi máy chủ chạy nền rồi nâng cấp kết quả (máy khác đã scan → ĐÃ SCAN)
           const at=Date.now();S.scans.set(code,{at,device:'',mine:true,pending:true});S.outbox.push({code,at});persist();renderCounts();
-          paint({tone:'blocked',title:'BLOCKED — lựa ra',code,item});cue('blocked');pushRecent('blocked',code,'Blocked',seq);
+          paint({tone:'blocked',title:'BLOCKED — lựa ra',code,item,via});cue('blocked');pushRecent('blocked',code,'Blocked',seq);
           if(S.tab==='picked'||S.tab==='left')renderTable();
           record(code,at).then(r=>upgrade(code,item,seq,r));
         };
