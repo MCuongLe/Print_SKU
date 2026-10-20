@@ -41,6 +41,8 @@ const open = async (browser, srv, { width = 1280, height = 900, admin = false } 
     }
     if (rpc === "uid_block_scan") {
       if (srv.offlineScan) return route.abort("internetdisconnected");
+      if (srv.scanHtml) return route.fulfill({ status: 200, contentType: "text/html", body: "<html><body>Wi-Fi login</body></html>" });
+      if (srv.scanDelay) await settle(srv.scanDelay);
       if (body.p_access_token !== DEVICE) return json({ ok: false, error: { code: "ACCESS_DENIED", message: "Máy chưa kích hoạt" } });
       const cur = srv.list;
       if (!cur || body.p_list_id !== cur.list.id) return json({ ok: false, error: { code: "STALE_LIST", message: "Danh sách đã đổi", data: { listId: cur?.list.id } } });
@@ -53,7 +55,7 @@ const open = async (browser, srv, { width = 1280, height = 900, admin = false } 
     }
     if (rpc === "uid_block_scans") {
       if (srv.offline) return route.abort("internetdisconnected");
-      const m = scansOf(srv, body.p_list_id), count = m.size;
+      const m = srv.hideScans ? new Map() : scansOf(srv, body.p_list_id), count = m.size;
       if (body.p_known_count === count) return json({ ok: true, data: { listId: body.p_list_id, unchanged: true, count } });
       return json({ ok: true, data: { listId: body.p_list_id, unchanged: false, count, rows: [...m].map(([groupUid, r]) => ({ groupUid, scannedAt: r.scannedAt, deviceName: r.deviceName })) } });
     }
@@ -147,7 +149,7 @@ const ready = page => page.waitForFunction(() => document.getElementById("ub-tot
       srv.offlineScan = true;
       await scan(page, "1028260000000102");
       await toneIs(page, "blocked");
-      assert.match(await page.locator("#ub-result").innerText(), /Chưa gửi được/);
+      await page.waitForFunction(() => /Chưa gửi được/.test(document.getElementById("ub-result").textContent), null, { timeout: 10000 });
       assert.equal(scansOf(srv, LIST_A.list.id).has("1028260000000102"), false);
       srv.offlineScan = false;
       await page.reload(); await ready(page); await picked(page, 2);
@@ -186,7 +188,7 @@ const ready = page => page.waitForFunction(() => document.getElementById("ub-tot
         const enc = new TextEncoder(), x = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;");
         const row = (r, cells) => `<row r="${r}">${cells.map((v, i) => `<c r="${String.fromCharCode(65 + i)}${r}" t="inlineStr"><is><t>${x(v)}</t></is></c>`).join("")}</row>`;
         const head = ["No.", "Group UID Code", "Batch Code", "Roll Code", "Warehouse", "Location", "SKU", "Product Name", "Status"];
-        const sheet = rows => `<?xml version="1.0" encoding="UTF-8"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>${[["Danh sách Group UID kho Material"], head, ...rows].map((r, i) => row(i + 1, r)).join("")}</sheetData></worksheet>`;
+        const sheet = rows => `<?xml version="1.0" encoding="UTF-8"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>${[["Danh sách Group UID kho Material"], ["Group UID Code"], head, ...rows].map((r, i) => row(i + 1, r)).join("")}</sheetData></worksheet>`;
         const s1 = sheet([["1", "1028260000000101", "L1", "R1", "WH - MATERIAL - MTG", "F0-A0-00-00-00-01", "900000001", "Vải giả 1", "Blocked"], ["2", "1028260000000103", "L3", "R3", "WH - MATERIAL - MTG", "F0-A0-00-00-00-03", "900000003", "Vải giả 3", "Blocked"], ["3", "1.02826E+15", "L4", "R4", "WH - MATERIAL - MTG", "F0-A0-00-00-00-04", "900000004", "Vải giả 4", "Blocked"]]);
         const s2 = sheet([["1", "1028260000000101", "L1", "R1", "WH - MATERIAL - MTG", "F0-A0-00-00-00-01", "900000001", "Vải giả 1", "Blocked"], ["2", "1028260000000150", "L5", "R5", "WH - MATERIAL - GARMENT", "F0-B0-00-00-00-05", "900000005", "Vải giả 5", "Available"], ["3", "1028260000000199", "L9", "R9", "WH - MATERIAL - GARMENT", "F0-B0-00-00-00-09", "900000009", "Vải giả 9", "blocked"]]);
         const wb = `<?xml version="1.0" encoding="UTF-8"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="blocked-QC fail" sheetId="1" r:id="rId1"/><sheet name="toan-kho" sheetId="2" r:id="rId2"/></sheets></workbook>`;
@@ -232,6 +234,63 @@ const ready = page => page.waitForFunction(() => document.getElementById("ub-tot
       assert.equal(await tone(page), "blocked");
       assert.equal((await page.locator("#ub-picked").innerText()).trim(), "0");
       assert.equal(scansOf(srv, LIST_A.list.id).size, 0);
+      assert.deepEqual(errors, []);
+      await context.close();
+    }
+    // 12) Review vòng 2: lượt trùng của CHÍNH máy khi bản trên máy trống → ĐÃ SCAN (không báo BLOCKED lựa lại); trang portal Wi-Fi
+    //     trả HTML → giữ hàng chờ + chip "Chờ gửi", có mạng thật thì gửi; kết quả về sau 2 giây → vẽ lại thẻ thành ĐÃ SCAN
+    {
+      const srv = { calls: [], list: LIST_A, hideScans: true };
+      scansOf(srv, LIST_A.list.id).set("1028260000000101", { scannedAt: "2026-10-20T01:30:00+00:00", deviceName: "Máy test", device: DEVICE });
+      const { context, page, errors } = await open(browser, srv);
+      await page.goto(BASE + "#uid-block"); await ready(page);
+      await scan(page, "1028260000000101");
+      await page.waitForFunction(() => /1028260000000101/.test(document.getElementById("ub-result").textContent), null, { timeout: 10000 });
+      assert.equal(await tone(page), "dup", "máy chủ trả dup + mine (lượt cũ) → ĐÃ SCAN");
+      srv.scanHtml = true;
+      await scan(page, "1028260000000102");
+      await page.waitForFunction(() => /1028260000000102[\s\S]*Chưa gửi được/.test(document.getElementById("ub-result").textContent), null, { timeout: 10000 });
+      assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem("uid-block-cho-gui") || "[]").length), 1, "trang portal → giữ hàng chờ");
+      assert.match(await page.locator("#ub-pending").innerText(), /Chờ gửi 1/);
+      // Codex vòng 3: quét lại lượt còn chờ gửi → ĐÃ SCAN nhưng ghi rõ "chờ gửi" (máy chủ chưa có), hàng chờ giữ nguyên
+      await scan(page, "1028260000000102");
+      await toneIs(page, "dup");
+      assert.match(await page.locator("#ub-result").innerText(), /chờ gửi/);
+      assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem("uid-block-cho-gui") || "[]").length), 1);
+      srv.scanHtml = false;
+      await page.evaluate(() => dispatchEvent(new Event("online")));
+      await page.waitForFunction(() => !JSON.parse(localStorage.getItem("uid-block-cho-gui") || "[]").length, null, { timeout: 10000 });
+      assert.equal(scansOf(srv, LIST_A.list.id).has("1028260000000102"), true);
+      assert.equal(await page.locator("#ub-pending").isVisible(), false);
+      scansOf(srv, LIST_A.list.id).set("1028260000000103", { scannedAt: "2026-10-20T03:05:00+00:00", deviceName: "Máy C", device: "pd_c" });
+      srv.scanDelay = 2600;
+      await scan(page, "1028260000000103");
+      await page.waitForFunction(() => /1028260000000103/.test(document.getElementById("ub-result").textContent) && document.getElementById("ub-result").dataset.tone === "blocked", null, { timeout: 1000 });
+      await page.waitForFunction(() => document.getElementById("ub-result").dataset.tone === "dup", null, { timeout: 10000 });
+      assert.match(await page.locator("#ub-result").innerText(), /Máy C/, "kết quả về muộn vẽ lại thẻ ĐÃ SCAN");
+      assert.match(await page.locator("#ub-recent li").first().innerText(), /1028260000000103[\s\S]*Đã scan/, "kết quả muộn sửa dòng Vừa quét");
+      assert.deepEqual(errors, []);
+      await context.close();
+    }
+    // 13) Cố vấn 20/10: máy chủ chậm → thẻ BLOCKED hiện NGAY theo danh sách trên máy; bắn lặp cùng mã → ĐÃ SCAN, lượt đầu vẫn có
+    //     dòng "Blocked"; quét chen mã khác → lượt trước vẫn giữ dòng Blocked và được ghi lên máy chủ
+    {
+      const srv = { calls: [], list: LIST_A, scanDelay: 1500 };
+      const { context, page, errors } = await open(browser, srv);
+      await page.goto(BASE + "#uid-block"); await ready(page);
+      await scan(page, "1028260000000101");
+      await page.waitForFunction(() => document.getElementById("ub-result").dataset.tone === "blocked", null, { timeout: 500 });
+      await scan(page, "1028260000000101");
+      await toneIs(page, "dup");
+      await scan(page, "1028260000000102");
+      await scan(page, "1028260000000777");
+      await toneIs(page, "ok");
+      await page.waitForFunction(() => [...document.querySelectorAll("#ub-recent li")].filter(li => /Blocked/.test(li.textContent) && !/chờ gửi|chưa ghi nhận/.test(li.textContent)).length === 2, null, { timeout: 10000 });
+      const recent = await page.locator("#ub-recent li").evaluateAll(els => els.map(e => e.textContent.replace(/\s+/g, " ")));
+      assert.ok(recent.some(t => /1028260000000101\s*Blocked/.test(t)), "lượt đầu 101 vẫn có dòng Blocked");
+      assert.ok(recent.some(t => /1028260000000102\s*Blocked/.test(t)), "lượt 102 bị chen vẫn có dòng Blocked");
+      for (let i = 0; i < 50 && !scansOf(srv, LIST_A.list.id).has("1028260000000102"); i++) await settle(100);
+      assert.equal(scansOf(srv, LIST_A.list.id).has("1028260000000102"), true, "lượt bị chen vẫn ghi máy chủ");
       assert.deepEqual(errors, []);
       await context.close();
     }

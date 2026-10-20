@@ -17,6 +17,7 @@
 -- Tác động: chỉ THÊM 3 bảng + 5 hàm, không đổi bảng/hàm cũ, không drop gì: không cần --allow-destructive.
 -- uid_block_compare cho anon thấy status/qc_status/kho/vị trí của Group UID (group_uid_lookup cũ không trả status) và tối đa 500
 -- UID đang Blocked; uid_block_scans cho anon thấy mã đã quét + tên máy + giờ — người dùng chốt ai cũng quét/đối chiếu được.
+-- Cần có trước: print_devices_v1 (bảng print_devices, print_device_by_token), floor_access_v1 (floor_access_check/denied/result).
 -- Chạy migration TRƯỚC khi push index.html (web gọi 5 hàm).
 -- Chạy: python scripts/apply_supabase_sql.py supabase/uid_block_v1.sql
 begin;

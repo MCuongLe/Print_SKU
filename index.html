@@ -12484,6 +12484,9 @@ async function rpc(name,args,retry=true){
       #uid-block-screen .ub-panel[hidden] { display: none; }
       #uid-block-screen .ub-scan { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: stretch; }
       #uid-block-screen .ub-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0 0 12px; }
+      #uid-block-screen .ub-pending { margin-left: auto; padding: 4px 10px; border-radius: 999px; background: #fff4dc; color: #8a5b00; font-size: 13px; font-weight: 700; white-space: nowrap; }
+      #uid-block-screen .ub-pending[data-tone="error"] { background: #fbeceb; color: #a53730; }
+      #uid-block-screen .ub-pending[hidden] { display: none; }
       #uid-block-screen .ub-head h2 { display: flex; align-items: center; gap: 8px; margin: 0; color: #12352a; font-size: 18px; font-weight: 600; }
       #uid-block-screen .ub-icon-btn { display: inline-grid; place-items: center; width: 44px; height: 44px; border: 1px solid #cfe0d8; border-radius: 12px; background: #fff; color: #0b5c43; cursor: pointer; }
       #uid-block-screen .ub-icon-btn svg { width: 20px; height: 20px; }
@@ -12585,7 +12588,7 @@ async function rpc(name,args,retry=true){
           <button class="as-tab" type="button" role="tab" aria-selected="false" data-ub-tab="list">Danh sách</button>
         </div>
         <section class="ub-panel" data-ub-panel="scan" aria-label="Quét Group UID">
-          <div class="ub-head"><h2>Quét Group UID</h2><button class="ub-icon-btn" id="ub-sound" type="button" aria-pressed="true" aria-label="Tắt âm báo" title="Tắt âm báo"></button></div>
+          <div class="ub-head"><h2>Quét Group UID</h2><span class="ub-pending" id="ub-pending" role="status" hidden></span><button class="ub-icon-btn" id="ub-sound" type="button" aria-pressed="true" aria-label="Tắt âm báo" title="Tắt âm báo"></button></div>
           <form class="ub-scan" id="ub-form"><div class="scan-field"><input id="ub-code" autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="go" inputmode="none" maxlength="60" placeholder="Group UID" aria-label="Group UID"><span class="scan-field__tools"><button class="act-icon act-icon--camera" id="ub-camera" type="button" aria-label="Quét bằng camera" title="Quét bằng camera" hidden></button><button class="act-icon act-icon--keyboard" id="ub-keyboard" type="button" data-kb-key="uid-block-ban-phim" aria-controls="ub-code" aria-pressed="false" aria-label="Gõ tay" title="Gõ tay"></button></span></div><button class="ub-btn ub-btn--primary" type="submit">Kiểm</button></form>
           <div class="ub-result" id="ub-result" role="status" aria-live="assertive" hidden></div>
           <ul class="ub-recent" id="ub-recent" aria-label="Vừa quét"></ul>
@@ -12624,8 +12627,11 @@ async function rpc(name,args,retry=true){
         const svg=(b,s=20)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${b}</svg>`;
         const ICON={ban:'<circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/>',ok:'<path d="M21.801 10A10 10 0 1 1 17 3.335"/><path d="m9 11 3 3L22 4"/>',warn:'<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',dup:'<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>',soundOn:'<path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z"/><path d="M16 9a5 5 0 0 1 0 6"/><path d="M19.364 18.364a9 9 0 0 0 0-12.728"/>',soundOff:'<path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z"/><line x1="22" x2="16" y1="9" y2="15"/><line x1="16" x2="22" y1="9" y2="15"/>'};
         // scans: mã → {at, device, mine, pending}; scanCount = số lượt máy chủ đã báo (uid_block_scans đếm trùng → không đổi)
-        const S={list:null,items:[],byCode:new Map(),scans:new Map(),scanCount:null,listId:null,outbox:[],tab:'scan',admin:false,busy:false,sound:store.get(K.sound)!=='tat',recent:[],preview:null,pid:0,compare:null,loading:false,offlineAt:null,netDown:false,seq:0,storeWarned:false};
+        const S={list:null,items:[],byCode:new Map(),scans:new Map(),scanCount:null,listId:null,outbox:[],tab:'scan',admin:false,busy:false,sound:store.get(K.sound)!=='tat',recent:[],preview:null,pid:0,compare:null,loading:false,offlineAt:null,verifiedAt:0,seq:0,storeFail:false,inflight:new Map(),epoch:0,loadMsg:'',deniedAt:0};
         const tell=(t,tone='')=>{const m=$('ub-message');m.textContent=t||'';m.dataset.tone=tone};
+        // Thông báo do load() đặt: lần tải sau thành công tự xoá (nếu chưa bị thông báo khác đè)
+        const tellLoad=(t,tone)=>{tell(t,tone);S.loadMsg=t||''};
+        const clearLoad=()=>{if(S.loadMsg&&$('ub-message').textContent===S.loadMsg)tell('');S.loadMsg=''};
         const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 
         // ---- Supabase RPC: đọc công khai; ghi lượt quét kèm khoá máy; nạp danh sách cần token Admin ----
@@ -12642,9 +12648,10 @@ async function rpc(name,args,retry=true){
         };
 
         // ---- Lượt quét trên máy: bản sao của máy chủ (xem khi mất mạng) + hàng chờ gửi ----
+        const paintPending=()=>{const c=$('ub-pending');if(!c)return;const n=S.outbox.length;c.hidden=!S.storeFail&&!n;c.dataset.tone=S.storeFail?'error':'warn';c.textContent=S.storeFail?'Không lưu được trên máy':`Chờ gửi ${num(n)}`};
         const persist=()=>{
-          const ok=store.set(K.scans,JSON.stringify({listId:S.listId,count:S.scanCount,scans:[...S.scans].filter(([,v])=>!v.pending).map(([c,v])=>[c,v.at,v.device,v.mine?1:0])}))&store.set(K.outbox,JSON.stringify(S.outbox));
-          if(!ok&&!S.storeWarned){S.storeWarned=true;tell('Không lưu được trên máy này — lượt quét chưa gửi sẽ mất khi tải lại trang.','error')}
+          S.storeFail=!(store.set(K.scans,JSON.stringify({listId:S.listId,count:S.scanCount,scans:[...S.scans].filter(([,v])=>!v.pending).map(([c,v])=>[c,v.at,v.device,v.mine?1:0])}))&store.set(K.outbox,JSON.stringify(S.outbox)));
+          paintPending();
         };
         (()=>{
           try{const v=JSON.parse(store.get(K.scans)||'null');if(v&&Array.isArray(v.scans)){S.listId=v.listId||null;S.scanCount=Number.isInteger(v.count)?v.count:null;v.scans.forEach(([c,at,device,mine])=>S.scans.set(String(c),{at:Number(at)||0,device:String(device||''),mine:Boolean(mine)}))}}catch(_){}
@@ -12655,46 +12662,66 @@ async function rpc(name,args,retry=true){
         const outboxDrop=code=>{S.outbox=S.outbox.filter(x=>x.code!==code)};
         const pickedCount=()=>{let n=0;S.scans.forEach((_,c)=>{if(S.byCode.has(c))n++});return n};
 
-        // Gửi một lượt quét; cập nhật S.scans / hàng chờ theo phản hồi. kind: mine | other | queued | denied | not_blocked | error
-        const record=async(code,at)=>{
-          if(!S.list)return{kind:'queued'};
-          let res,body;
-          try{({res,body}=await post('uid_block_scan',{p_access_token:window.PrintSkuFloorAccess?.token?.()||'public',p_list_id:S.list.id,p_group_uid:code,p_scanned_at:new Date(at).toISOString()}))}
-          catch(_){S.netDown=true;return{kind:'queued'}}
-          S.netDown=false;
-          window.PrintSkuFloorAccess?.check?.(body);
-          const done=v=>{outboxDrop(code);persist();renderCounts();if(S.tab==='picked'||S.tab==='left')renderTable();return v};
-          if(res.ok&&body?.ok&&body.data){
-            const d=body.data;
-            if(d.result==='not_blocked'){S.scans.delete(code);load();return done({kind:'not_blocked'})}
-            const mine=d.result==='new'||Boolean(d.mine);
-            S.scans.set(code,{at:Date.parse(d.scannedAt)||at,device:String(d.deviceName||''),mine});
-            return done({kind:mine?'mine':'other',at:Date.parse(d.scannedAt)||at,device:String(d.deviceName||'')});
-          }
-          const code2=body?.error?.code||body?.code||'';
-          if(code2==='ACCESS_DENIED'){S.scans.delete(code);return done({kind:'denied'})}
-          if(code2==='STALE_LIST'||code2==='NO_LIST'){load();return{kind:'queued'}}
-          if(!res.ok&&(res.status>=500||MISSING.test(String(body?.message||''))))return{kind:'queued'};
-          S.scans.delete(code);return done({kind:'error',message:body?.error?.message||body?.message||`Supabase HTTP ${res.status}`});
+        // Gửi một lượt quét; cập nhật S.scans / hàng chờ theo phản hồi. kind: mine (vừa ghi) | dup (đã có trước) | queued | denied | not_blocked | error.
+        // Chỉ bỏ khỏi hàng chờ khi máy chủ trả kết quả nghiệp vụ rõ ràng; mọi thứ khác (mất mạng, trang portal Wi-Fi, 408/425/429/5xx,
+        // thiếu hàm, danh sách đổi) giữ lại để gửi lại — gửi lại an toàn vì máy chủ trả dup cho lượt đã có. Một mã chỉ một yêu cầu đang bay.
+        const record=(code,at,{background=false}={})=>{
+          const fly=S.inflight.get(code);if(fly)return fly;
+          const attempt=async retried=>{
+            if(!S.list)return{kind:'queued'};
+            let res,body;
+            try{({res,body}=await post('uid_block_scan',{p_access_token:window.PrintSkuFloorAccess?.token?.()||'public',p_list_id:S.list.id,p_group_uid:code,p_scanned_at:new Date(at).toISOString()}))}
+            catch(_){return{kind:'queued'}}
+            // Gửi nền khi không ở màn này: không bật hộp Kích hoạt máy trên màn khác
+            if(body&&typeof body==='object'&&(!background||active()))window.PrintSkuFloorAccess?.check?.(body);
+            const done=v=>{outboxDrop(code);persist();renderCounts();if(S.tab==='picked'||S.tab==='left')renderTable();return v};
+            const d=res.ok&&body?.ok===true?body.data:null;
+            if(d&&(d.result==='new'||d.result==='dup')){
+              const sAt=Date.parse(d.scannedAt)||at,device=String(d.deviceName||''),mine=d.result==='new'||Boolean(d.mine);
+              S.scans.set(code,{at:sAt,device,mine});S.epoch++;
+              return done({kind:d.result==='new'?'mine':'dup',at:sAt,device,mine});
+            }
+            if(d&&d.result==='not_blocked'){S.scans.delete(code);S.epoch++;load();return done({kind:'not_blocked'})}
+            const ec=body?.ok===false?String(body.error?.code||''):'';
+            if(ec==='ACCESS_DENIED')return{kind:'denied'};
+            // Danh sách đã đổi: tải danh sách mới rồi gửi lại một lần (mã không còn trong danh sách → không blocked)
+            if((ec==='STALE_LIST'||ec==='NO_LIST')&&!retried){
+              await load();
+              if(S.list&&!S.byCode.has(code)){S.scans.delete(code);S.epoch++;return done({kind:'not_blocked'})}
+              return attempt(true);
+            }
+            if(ec==='INVALID_GROUP_UID'||ec==='INVALID_LIST'){S.scans.delete(code);S.epoch++;return done({kind:'error',message:body.error?.message||ec})}
+            return{kind:'queued'};
+          };
+          const p=attempt(false).finally(()=>S.inflight.delete(code));
+          S.inflight.set(code,p);return p;
         };
         let flushing=false;
         const flush=async()=>{
-          if(flushing||!S.list||!S.outbox.length)return;flushing=true;
-          try{for(const x of [...S.outbox]){const r=await record(x.code,x.at);if(r.kind==='queued')break}}finally{flushing=false}
+          if(flushing||!S.list||!S.outbox.length||Date.now()-S.deniedAt<300000)return;flushing=true;
+          try{
+            for(const x of [...S.outbox]){
+              const r=await record(x.code,x.at,{background:true});
+              if(r.kind==='queued')break;
+              if(r.kind==='denied'){S.deniedAt=Date.now();if(active())tellLoad(`Chờ gửi ${num(S.outbox.length)} lượt — máy chưa kích hoạt`,'error');break}
+            }
+          }finally{flushing=false;paintPending()}
         };
-        // Lượt quét của danh sách (máy chủ là gốc; mã đang chờ gửi của máy này giữ lại)
+        // Lượt quét của danh sách (máy chủ là gốc). Lượt máy này ghi xong trong lúc chờ phản hồi (epoch đổi) được giữ lại, lần sau đọc đủ.
         const syncScans=async()=>{
           if(!S.list)return;
+          const ep=S.epoch,listId=S.list.id;
           try{
-            const d=await anonRpc('uid_block_scans',{p_list_id:S.list.id,p_known_count:S.listId===S.list.id?S.scanCount:null});
-            if(d?.listId&&d.listId!==S.list.id)return;
-            if(!d?.unchanged){
-              const m=new Map();(Array.isArray(d?.rows)?d.rows:[]).forEach(r=>{const prev=S.scans.get(r.groupUid);m.set(String(r.groupUid),{at:Date.parse(r.scannedAt)||0,device:String(r.deviceName||''),mine:Boolean(prev?.mine)})});
-              S.outbox.forEach(x=>{if(!m.has(x.code))m.set(x.code,{at:x.at,device:'',mine:true,pending:true})});
-              S.scans=m;S.scanCount=Number(d?.count)||0;S.listId=S.list.id;persist();renderCounts();if(S.tab==='picked'||S.tab==='left')renderTable();
+            const d=await anonRpc('uid_block_scans',{p_list_id:listId,p_known_count:S.listId===listId?S.scanCount:null});
+            if(d?.listId!==listId||S.list?.id!==listId)return;
+            if(!d.unchanged){
+              const m=new Map();(Array.isArray(d.rows)?d.rows:[]).forEach(r=>{const prev=S.scans.get(String(r.groupUid));m.set(String(r.groupUid),{at:Date.parse(r.scannedAt)||0,device:String(r.deviceName||''),mine:Boolean(prev?.mine)})});
+              const raced=S.epoch!==ep;
+              S.scans.forEach((v,c)=>{if(!m.has(c)&&(v.pending||raced))m.set(c,v)});
+              S.scans=m;S.scanCount=raced?null:Number(d.count)||0;S.listId=listId;persist();renderCounts();if(S.tab==='picked'||S.tab==='left')renderTable();
             }
-          }catch(e){if(e.server&&!MISSING.test(e.message))tell(`Chưa đọc được lượt quét: ${e.message}`,'error')}
-          await flush();
+          }catch(e){if(e.server&&!MISSING.test(e.message))tellLoad(`Chưa đọc được lượt quét: ${e.message}`,'error')}
+          flush();
         };
 
         // ---- Danh sách: tải về máy (cache kiểm phiên bản như Kiểm kê) ----
@@ -12716,12 +12743,12 @@ async function rpc(name,args,retry=true){
           try{
             const snap=window.PrintSkuSnapshotCache;
             const got=snap?await snap.load({key:'uid_block',rpc:'uid_block_snapshot',arg:'p_known_list_id',call:anonRpc,idOf:d=>d?.list?.id||null,onCached:S.list?null:d=>apply(d,false)}):{data:await anonRpc('uid_block_snapshot',{p_known_list_id:null}),source:'server'};
-            if(got.source==='cache-offline'){S.offlineAt=got.savedAt;if(!S.list)apply(got.data,false);tell(snap.label(got.savedAt),'offline');return}
-            S.offlineAt=null;if($('ub-message').dataset.tone==='offline')tell('');
+            if(got.source==='cache-offline'){S.offlineAt=got.savedAt;if(!S.list)apply(got.data,false);tellLoad(snap.label(got.savedAt),'offline');return}
+            S.offlineAt=null;S.verifiedAt=Date.now();clearLoad();
             apply(got.data,true);
-            if(!S.list)tell('Chưa có danh sách blocked.','warn');
+            if(!S.list)tellLoad('Chưa có danh sách blocked.','warn');
             await syncScans();
-          }catch(e){tell(MISSING.test(String(e?.message))?'Supabase chưa có chức năng Lựa UID blocked.':`Chưa tải được danh sách: ${e.message}`,'error')}
+          }catch(e){tellLoad(MISSING.test(String(e?.message))?'Supabase chưa có chức năng Lựa UID blocked.':`Chưa tải được danh sách: ${e.message}`,'error')}
           finally{S.loading=false;renderCounts()}
         })().finally(()=>{loadP=null}));
 
@@ -12736,30 +12763,48 @@ async function rpc(name,args,retry=true){
         const norm=raw=>(String(raw||'').match(/(?<!\d)\d{16}(?!\d)/)||[])[0]||'';
         const facts=i=>[['SKU',i.sku],['Tên hàng',i.productName],['Lot',i.lot],['Roll',i.roll],['Kho',i.warehouse],['Vị trí',i.location]].filter(([,v])=>v).map(([k,v])=>`<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('');
         const paint=({tone,title,code,note,item})=>{
-          const r=$('ub-result');r.hidden=false;r.dataset.tone=tone;
+          const r=$('ub-result');r.hidden=false;r.dataset.tone=tone;r.dataset.code=code||'';
           const icon=tone==='blocked'?ICON.ban:tone==='ok'?ICON.ok:tone==='dup'?ICON.dup:ICON.warn;
           r.innerHTML=`<div class="ub-result__top">${svg(icon,28)}<p class="ub-result__title">${esc(title)}</p></div>${code?`<p class="ub-result__code">${esc(code)}</p>`:''}${note?`<p class="ub-result__note">${esc(note)}</p>`:''}${item?`<dl class="ub-facts">${facts(item)}</dl>`:''}`;
         };
-        const pushRecent=(tone,code,label)=>{S.recent.unshift({tone,code,label,at:Date.now()});S.recent=S.recent.slice(0,8);$('ub-recent').innerHTML=S.recent.map(x=>`<li data-tone="${x.tone}"><i aria-hidden="true"></i><b>${esc(x.code||'—')}</b><span>${esc(x.label)} · ${fmtTime(x.at)}</span></li>`).join('')};
+        const paintRecent=()=>{$('ub-recent').innerHTML=S.recent.map(x=>`<li data-tone="${x.tone}"><i aria-hidden="true"></i><b>${esc(x.code||'—')}</b><span>${esc(x.label)} · ${fmtTime(x.at)}</span></li>`).join('')};
+        const pushRecent=(tone,code,label,id=null)=>{S.recent.unshift({tone,code,label,id,at:Date.now()});S.recent=S.recent.slice(0,8);paintRecent()};
+        const fixRecent=(id,tone,label)=>{const x=S.recent.find(r=>r.id===id);if(x){x.tone=tone;x.label=label;paintRecent()}};
         const who=v=>v.mine?(v.device||myName()):(v.device||'Máy khác');
-        const dupCard=(code,v,item)=>{paint({tone:'dup',title:'ĐÃ SCAN',code,note:`Đã scan lúc ${fmtWhen(v.at)} · ${who(v)}`,item});cue('dup');pushRecent('dup',code,'Đã scan')};
+        const dupCard=(code,v,item,{quiet=false,silent=false}={})=>{paint({tone:'dup',title:'ĐÃ SCAN',code,note:`Đã scan lúc ${fmtWhen(v.at)} · ${who(v)}${v.pending?' · chờ gửi':''}`,item});if(!silent)cue('dup');if(!quiet)pushRecent('dup',code,v.pending?'Đã scan · chờ gửi':'Đã scan')};
+        // Danh sách chưa được máy chủ xác nhận gần đây (đang vào lại màn, poll lỗi, mất mạng) → chưa dám báo xanh
+        const stale=()=>!S.verifiedAt||Date.now()-S.verifiedAt>POLL_MS*2;
+        // Kết quả máy chủ của một lượt quét mới (đã báo BLOCKED ngay theo danh sách trên máy): sửa dòng "Vừa quét" của lượt đó; thẻ chỉ
+        // vẽ lại khi còn đang hiện đúng mã này. Máy chưa kích hoạt / lỗi nghiệp vụ → bỏ lượt khỏi hàng chờ (thẻ ghi "chưa ghi nhận").
+        const upgrade=(code,item,seq,r)=>{
+          if((r.kind==='denied'||r.kind==='error')&&S.scans.get(code)?.pending){S.scans.delete(code);outboxDrop(code);persist()}
+          const label=r.kind==='dup'?['dup','Đã scan']:r.kind==='not_blocked'?['ok','Không blocked']:r.kind==='mine'?['blocked','Blocked']:r.kind==='queued'?['blocked','Blocked · chờ gửi']:['blocked','Blocked · chưa ghi nhận'];
+          fixRecent(seq,...label);renderCounts();if(S.tab==='picked'||S.tab==='left')renderTable();
+          if($('ub-result').dataset.code!==code)return;
+          if(r.kind==='dup'){dupCard(code,S.scans.get(code)||{at:r.at,device:r.device,mine:r.mine},item,{quiet:true});return}
+          if(r.kind==='not_blocked'){paint({tone:'ok',title:'Không blocked',code});cue('ok');return}
+          const note=r.kind==='queued'?'Chưa gửi được — tự gửi lại':r.kind==='denied'?'Chưa ghi nhận: máy chưa kích hoạt':r.kind==='error'?`Chưa ghi nhận: ${r.message}`:'';
+          if(note||$('ub-result').dataset.tone!=='blocked')paint({tone:'blocked',title:'BLOCKED — lựa ra',code,note,item});
+        };
         const check=async raw=>{
           const code=norm(raw),seq=++S.seq;
           if(!code){paint({tone:'bad',title:'Không phải Group UID',code:String(raw||'').trim().slice(0,60)});cue('bad');pushRecent('bad',String(raw||'').trim().slice(0,30),'Mã sai');return}
           if(!S.list){paint({tone:'none',title:S.loading?'Đang tải danh sách':'Chưa có danh sách',code});cue('bad');pushRecent('none',code,'Chưa có danh sách');return}
-          const item=S.byCode.get(code);
-          if(!item){paint({tone:'ok',title:'Không blocked',code,note:S.offlineAt?`Danh sách trên máy lúc ${fmtAt(S.offlineAt)}`:''});cue('ok');pushRecent('ok',code,'Không blocked');return}
+          let item=S.byCode.get(code);
+          // Danh sách chưa được máy chủ xác nhận gần đây → tải lại (≤ 2 giây) trước khi dám báo xanh
+          if(!item&&stale()){await Promise.race([load(),sleep(WAIT_MS)]);item=S.byCode.get(code)}
+          if(!item){
+            if(stale()){paint({tone:'none',title:'Chưa kiểm được',code,note:`Danh sách trên máy lúc ${fmtAt(S.offlineAt||S.verifiedAt||S.list.importedAt)}`});cue('bad');pushRecent('none',code,'Chưa kiểm được');return}
+            paint({tone:'ok',title:'Không blocked',code});cue('ok');pushRecent('ok',code,'Không blocked');return;
+          }
           const prev=S.scans.get(code);
-          if(prev){dupCard(code,prev,item);return}
-          // Ghi lên máy chủ trước khi báo (≤ 2 giây) để biết máy khác đã scan chưa; mất mạng → báo đỏ ngay + hàng chờ
+          // Đã scan (máy này hoặc máy khác); bắn lặp ngay sau lượt đầu → hiện ĐÃ SCAN nhưng không kêu đè lên tiếng blocked
+          if(prev){dupCard(code,prev,item,{silent:prev.pending&&Date.now()-prev.at<1500});if(prev.pending&&!S.inflight.has(code))flush();return}
+          // Lượt mới: báo BLOCKED ngay theo danh sách trên máy, ghi máy chủ chạy nền rồi nâng cấp kết quả (máy khác đã scan → ĐÃ SCAN)
           const at=Date.now();S.scans.set(code,{at,device:'',mine:true,pending:true});S.outbox.push({code,at});persist();renderCounts();
-          const r=await Promise.race([record(code,at),sleep(S.netDown||navigator.onLine===false?0:WAIT_MS).then(()=>({kind:'queued'}))]);
-          if(seq!==S.seq){pushRecent(r.kind==='other'?'dup':r.kind==='not_blocked'?'ok':'blocked',code,r.kind==='other'?'Đã scan':r.kind==='not_blocked'?'Không blocked':r.kind==='mine'?'Blocked':'Blocked · chưa ghi nhận');renderCounts();return}
-          if(r.kind==='other'){dupCard(code,{at:r.at,device:r.device,mine:false},item);return}
-          if(r.kind==='not_blocked'){paint({tone:'ok',title:'Không blocked',code});cue('ok');pushRecent('ok',code,'Không blocked');return}
-          const note=r.kind==='queued'?'Chưa gửi được — tự gửi lại':r.kind==='denied'?'Chưa ghi nhận: máy chưa kích hoạt':r.kind==='error'?`Chưa ghi nhận: ${r.message}`:'';
-          paint({tone:'blocked',title:'BLOCKED — lựa ra',code,note,item});cue('blocked');pushRecent('blocked',code,r.kind==='mine'?'Blocked':'Blocked · chưa ghi nhận');
-          renderCounts();if(S.tab==='picked'||S.tab==='left')renderTable();
+          paint({tone:'blocked',title:'BLOCKED — lựa ra',code,item});cue('blocked');pushRecent('blocked',code,'Blocked',seq);
+          if(S.tab==='picked'||S.tab==='left')renderTable();
+          record(code,at).then(r=>upgrade(code,item,seq,r));
         };
         $('ub-form').addEventListener('submit',e=>{e.preventDefault();const input=$('ub-code'),v=input.value;input.value='';if(v.trim())check(v);input.focus()});
         if(window.PrintSkuScanUI?.canOpen?.())$('ub-camera').hidden=false;
@@ -12843,7 +12888,8 @@ async function rpc(name,args,retry=true){
         const parseSheets=sheets=>{
           const out=new Map(),stat=[];
           for(const sh of sheets){
-            const hi=sh.rows.slice(0,30).findIndex(r=>(r||[]).some(c=>FIELD.groupUid.test(c||'')));
+            const score=r=>(r||[]).some(c=>FIELD.groupUid.test(c||''))?Object.values(FIELD).filter(re=>(r||[]).some(c=>re.test(c||''))).length:0;
+            let hi=-1,best=0;sh.rows.forEach((r,i)=>{const v=score(r);if(v>best){best=v;hi=i}});
             if(hi<0){stat.push({name:sh.name,taken:0,skipped:0,bad:0,note:'không có cột Group UID Code'});continue}
             const head=sh.rows[hi],idx={};for(const[k,re]of Object.entries(FIELD))idx[k]=head.findIndex(c=>re.test(c||''));
             let taken=0,skipped=0,bad=0;
@@ -12886,8 +12932,8 @@ async function rpc(name,args,retry=true){
           try{
             const d=await adminRpc('uid_block_import',{p_list:{fileName:p.fileName.slice(0,200),sheets:p.sheets},p_items:p.items});
             if(S.preview===p)S.preview=null;
-            // Chờ lượt tải đang chạy (có thể mang bản cũ) xong rồi mới bỏ bản trên máy và tải lại
-            await loadP;await window.PrintSkuSnapshotCache?.drop?.('uid_block');await load();
+            // Chờ lượt tải đang chạy (có thể mang bản cũ) xong rồi mới bỏ bản trên máy và tải lại; lỗi ở bước này không phải lỗi lưu
+            try{await loadP;await window.PrintSkuSnapshotCache?.drop?.('uid_block');await load()}catch(_){}
             const ok=S.list?.id===d?.listId;
             tell(ok?`Đã lưu ${num(d?.itemCount??p.items.length)} UID blocked.`:`Đã lưu ${num(d?.itemCount??p.items.length)} UID blocked — chưa tải lại được danh sách.`,ok?'ok':'warn');
           }catch(e){tell(e.code==='FORBIDDEN'||/admin/i.test(e.message)?'Chỉ Admin được nạp danh sách.':`Chưa lưu được: ${e.message}`,'error')}
@@ -12918,12 +12964,13 @@ async function rpc(name,args,retry=true){
         const tile=$('barcode-uid-block');if(tile)tile.addEventListener('click',()=>{location.hash='#'+ROUTE});
         $('ub-back').addEventListener('click',()=>{location.hash='#home'});
         document.addEventListener('visibilitychange',()=>{if(!document.hidden&&active())load()});
-        addEventListener('online',()=>{if(active())load()});
-        setInterval(()=>{if(active()&&!document.hidden)load()},POLL_MS);
+        addEventListener('online',()=>{S.deniedAt=0;if(active()||S.outbox.length)load()});
+        setInterval(()=>{if(!document.hidden&&(active()||S.outbox.length))load()},POLL_MS);
+        if(S.outbox.length&&!active())load();
         window.addEventListener('hashchange',route);
-        paintSound();renderAll();route();
+        paintSound();paintPending();renderAll();route();
       })();
-</script>
+    </script>
     <style id="cap-vai-style">
       /* CẤP VẢI (12/10/2026): khung .cut-screen như Xả vải / Cắt UID, thêm khối tiến độ, thẻ kết quả quét và bảng cuộn. */
       #cap-vai-screen .cv-plan-row{display:flex;gap:8px;align-items:center;margin-bottom:12px}
@@ -14231,7 +14278,7 @@ async function rpc(name,args,retry=true){
           finally{sw.disabled=false}
         }
         // Khoá máy xưởng (17/10/2026): chế độ Ghi nhận | Bắt buộc của nhóm lệnh ghi ở xưởng + số lần máy chưa kích hoạt 7 ngày theo hàm. RPC lỗi hoặc chưa có → thẻ ẩn.
-        const FLOOR_FN={cut_group_uid_scan:"Quét cắt",cut_group_uid_mark_adj:"Đánh dấu ADJ",cut_group_uid_mark_queued:"Đưa vào hàng in",cut_group_uid_mark_result:"Kết quả in",cut_group_uid_adj_from_wms:"Đọc ADJ từ WMS",cut_group_uid_adj_resolve:"Xử lý ADJ",cut_sample_scan:"Quét lấy mẫu",cut_sample_confirm:"Xác nhận lấy mẫu",fabric_issue_scan:"Quét cấp vải",xa_vai_start:"Bắt đầu xả vải",xa_vai_end:"Kết thúc xả vải"};
+        const FLOOR_FN={cut_group_uid_scan:"Quét cắt",cut_group_uid_mark_adj:"Đánh dấu ADJ",cut_group_uid_mark_queued:"Đưa vào hàng in",cut_group_uid_mark_result:"Kết quả in",cut_group_uid_adj_from_wms:"Đọc ADJ từ WMS",cut_group_uid_adj_resolve:"Xử lý ADJ",cut_sample_scan:"Quét lấy mẫu",cut_sample_confirm:"Xác nhận lấy mẫu",uid_block_scan:"Quét lựa UID blocked",fabric_issue_scan:"Quét cấp vải",xa_vai_start:"Bắt đầu xả vải",xa_vai_end:"Kết thúc xả vải"};
         function renderFloor(){
           const box=$("pdm-floor"),f=state.floor;
           if(!f||!f.mode){box.hidden=true;return}

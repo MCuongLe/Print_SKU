@@ -28,7 +28,7 @@
 - [x] Phiên trên máy (`localStorage`): Đã lựa / Còn thiếu / Đối chiếu, xuất Excel (`UI.createList`), xoá phiên
 - [x] Test `tests/uid_block_browser.cjs` (390 + 1280): nạp tệp giả, quét blocked / không blocked / trùng / mất mạng, đếm, xuất
 
-### Việc 3 — Review · lead + Codex + `/review-claude` · [ ]
+### Việc 3 — Review · lead + Codex + `/review-claude` · [x]
 - [x] Codex ảnh 1 vòng (390 + 1280) — đã sửa điểm 4, 5, 7, 8; giữ chữ "ĐÃ SCAN" (lời người dùng); điểm 3 (bảng lặp cụm vị trí), 6 để sau
 - [ ] Codex mã + reviewer A/B/C + Haiku chấm — B xong (sửa #root inert + chuẩn hoá mã > 16 số), C xong (6 nhóm chờ chấm/sửa), A + Codex mã đang chạy
 
@@ -38,15 +38,17 @@
 - [ ] Commit (chưa push) → người dùng chạy migration → lead kiểm chỉ đọc → push → Admin nạp tệp thật
 - [ ] Bảng "Đánh giá thành viên" (đợt 3 — xem lại đội sau đợt này)
 
-### Việc 5 — Lượt quét lưu Supabase (3 người quét chung) · thuc-thi-logic (SQL) ∥ lead (web) · [ ]
+### Việc 5 — Lượt quét lưu Supabase (3 người quét chung) · thuc-thi-logic (SQL) ∥ lead (web) · [x]
 Người dùng 20/10: "dữ liệu này cần lưu trên supabase, 3 người dùng sẽ trực tiếp scan" → thay quyết định "phiên trên máy".
 - [x] SQL (sửa thẳng `uid_block_v1.sql`, chưa chạy): bảng `uid_block_scans` (list_id, group_uid_code, scanned_at, recorded_at, device_id, device_name; khoá (list_id, mã)); `uid_block_scan(p_access_token, p_list_id, p_group_uid, p_scanned_at)` qua `floor_access_check` (khoá máy như Cắt/Cấp vải) → new / dup (máy + giờ lần đầu) / not_blocked / STALE_LIST; `uid_block_scans(p_list_id, p_known_count)` anon (đếm trùng → unchanged); import chép lượt quét của danh sách trước sang danh sách mới cho UID còn có; compare tính "Blocked ngoài" một lần
 - [x] Web: quét → chờ máy chủ ≤ 2 giây rồi tô thẻ (dup của máy khác → vàng "ĐÃ SCAN · máy … lúc …"); mất mạng → thẻ đỏ + hàng chờ gửi lại (localStorage); đồng bộ lượt quét 20 giây/lần khi màn mở; bảng Đã lựa thêm cột Máy; bỏ nút Phiên mới
 - [x] Sửa 5 nhóm review vòng 1: đọc Excel (rels, header neo, đếm dòng bỏ, cắt 300), đối chiếu (previewId, lỗi không hiện 0, khoá Lưu khi chờ), ghi localStorage báo lỗi, đổi danh sách giữ lượt, save/load chờ lượt đang chạy; câu hướng dẫn rút gọn; âm báo resume
 - [x] Test đỏ trước cho lượt quét chung + các lỗi review (bản HEAD đỏ: thiếu uid_block_scan)
-- [ ] Codex vòng 2 (`--since last`) + review-claude vòng 2
+- [x] Codex vòng 2 (`--since last`) + review-claude vòng 2 — SQL cả 3 bên không lỗi; web: dup của chính máy báo đỏ, hàng chờ bị xoá khi portal/429, sync đè lượt vừa ghi, kết quả muộn không vẽ lại, netDown kẹt, gửi trùng, xanh trên danh sách cũ, hàng chờ chỉ gửi khi mở màn, tiêu đề Excel, tài liệu khoá máy → đã sửa + test đỏ trước
+- [x] Vòng 3 (cuối): Codex 3 nhóm + A 5 nhóm (cùng lớp lỗi song song) → co-van: báo NGAY theo danh sách trên máy, máy chủ chỉ nâng cấp dòng Vừa quét/thẻ (bác hướng tuần tự của lead) → đã sửa + test đỏ trước
 
 ## Phát sinh
+- 20/10 người dùng: "mở Chrome dev tool mcp dò rfid mapping với group UID. Cho phép Scan RFID mapping link với group UID" → dò xong (trường WMS `group_rfid_mapping`, lọc `group_rfid_mappings=<RFID>` trả đúng 1 UID; tệp blocked chỉ 1/719 dòng có RFID). Người dùng chọn: đồng bộ RFID từ WMS (Extension + Edge + migration), máy quét bắn mã in trên tem (1 chữ + 11 số) → đợt riêng `docs/plans/2026-10-20-rfid-group-uid.md`.
 - 20/10 người dùng (giữa việc 2): "cần gom theo vị trí để người dùng dễ tìm kiếm" → tab Còn thiếu gom UID theo vị trí (xếp theo mã vị trí, số cuộn mỗi vị trí) — làm ngay, cùng module.
 - 20/10 người dùng: "group blocked đã scan thì ghi nhận lại, scan trùng thì báo đã scan" → đã có (phiên trên máy); đổi chữ thẻ thành "ĐÃ SCAN" + "Đã scan lúc …". Ghi nhận theo TỪNG MÁY (người dùng đã chọn "danh sách phiên trên máy"); nhiều máy cùng lựa cần lưu Supabase — đã báo người dùng, chờ trả lời.
 
@@ -59,3 +61,5 @@ Người dùng 20/10: "dữ liệu này cần lưu trên supabase, 3 người d�
 - 20/10 Soát ảnh 390: cả màn tràn ngang 419px (ub-content grid track min-content) — test cũ đo document.scrollWidth nên không bắt; sửa `grid-template-columns: minmax(0,1fr)`, test đo chính màn ở 3 tab; 4 tab ép một hàng trên điện thoại.
 - 20/10 Commit df52180 (trigger) + 7f93326 (module, chưa push). Review vòng 1: Codex mã 3 nhóm, A 5, B 5 (2 đã sửa), C 6 — trùng nhau: đọc Excel, đối chiếu lỗi/cũ, localStorage nuốt lỗi, xoá phiên khi đổi danh sách, save/load race. Người dùng đổi: lượt quét lưu Supabase → Việc 5.
 - 20/10 Việc 5 (thuc-thi-logic SQL ~122k token, 7 phút): uid_block_sql PASS, 27/27 đột biến đỏ, dry-run 31 câu; tự thêm khoá chia sẻ advisory trong uid_block_scan (lượt quét không ghi vào danh sách cũ lúc đang nạp) + meta. Web: uid_block_browser PASS (lượt quét chung, máy khác dup, máy chưa kích hoạt, hàng chờ mất mạng tự gửi, Excel rels đảo + tiêu đề dòng 2 + mã lỗi, đối chiếu chậm khoá Lưu, đối chiếu lỗi không hiện 0). Lỗi quy trình: `cp` chép index.html bị hook chặn sau khi đã ghi bản HEAD → khôi phục bằng Python từ bản lưu scratchpad (đã kiểm diff).
+- 20/10 Người dùng cho phép lead chạy migration uid_block_v1 → chạy, kiểm chỉ đọc (3 bảng service_role, import chỉ authenticated, 4 hàm anon; gọi thử API: snapshot OK, scan máy chưa kích hoạt → ACCESS_DENIED) → push f8f828a. Vòng 2: Codex 5, A 4, B 4, C 6 nhóm, sửa gộp (record chỉ bỏ hàng chờ khi có kết quả nghiệp vụ; inflight; epoch; settle late; stale → tải lại / thẻ Chưa kiểm được; chip Chờ gửi; tiêu đề Excel theo điểm).
+- 20/10 Cả bộ test (bản vòng 2) 85/85 PASS (print_devices chập chờn, đạt lần 2). Bản vòng 3: uid_block_browser 3 lần liền PASS, uid_block_sql, scan_field_standard, a11y_axe, mobile_home, print_devices, floor_access PASS; commit_gate ĐẠT 7 mục.
