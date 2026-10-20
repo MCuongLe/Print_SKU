@@ -10054,7 +10054,7 @@ var FSK_CORE = (function () {
         }
         function staleCell(row){
           const b=row.before||row.before_data||{},a=row.after||row.after_data||{},lines=[],csv=[];
-          UF.forEach(([key,label])=>{const ov=b[key],nv=a[key];if(String(ov??"")===String(nv??""))return;const f=v=>v===null||v===undefined||v===""?"—":key==="qty"?num(v):String(v),h=v=>key==="qc_status"?qcChip(v):esc(f(v));lines.push(`<div class="as-diff"><span class="as-k">${esc(label)}</span><span class="as-new">${h(ov)}</span><span class="as-arrow">database ≠ WMS</span><span class="as-old" style="text-decoration:none">${h(nv)}</span></div>`);csv.push(`${label}: database ${f(ov)} ≠ WMS ${f(nv)}`)});
+          UF.forEach(([key,label])=>{const ov=b[key],nv=a[key];if(String(ov??"")===String(nv??""))return;if(key==="group_rfid_mapping"&&a.group_rfid_known===false)return;const f=v=>v===null||v===undefined||v===""?"—":key==="qty"?num(v):String(v),h=v=>key==="qc_status"?qcChip(v):esc(f(v));lines.push(`<div class="as-diff"><span class="as-k">${esc(label)}</span><span class="as-new">${h(ov)}</span><span class="as-arrow">database ≠ WMS</span><span class="as-old" style="text-decoration:none">${h(nv)}</span></div>`);csv.push(`${label}: database ${f(ov)} ≠ WMS ${f(nv)}`)});
           return{html:lines.join("")||'<span class="as-empty">—</span>',csv:csv.join("; "),text:csv.join(" ")};
         }
         function rowFor(kind,row){
@@ -12628,7 +12628,7 @@ async function rpc(name,args,retry=true){
         const svg=(b,s=20)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${b}</svg>`;
         const ICON={ban:'<circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/>',ok:'<path d="M21.801 10A10 10 0 1 1 17 3.335"/><path d="m9 11 3 3L22 4"/>',warn:'<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',dup:'<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>',soundOn:'<path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z"/><path d="M16 9a5 5 0 0 1 0 6"/><path d="M19.364 18.364a9 9 0 0 0 0-12.728"/>',soundOff:'<path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z"/><line x1="22" x2="16" y1="9" y2="15"/><line x1="16" x2="22" y1="9" y2="15"/>'};
         // scans: mã → {at, device, mine, pending}; scanCount = số lượt máy chủ đã báo (uid_block_scans đếm trùng → không đổi)
-        const S={list:null,items:[],byCode:new Map(),byRfid:new Map(),rfidCache:new Map(),scans:new Map(),scanCount:null,listId:null,outbox:[],tab:'scan',admin:false,busy:false,sound:store.get(K.sound)!=='tat',recent:[],preview:null,pid:0,compare:null,loading:false,offlineAt:null,verifiedAt:0,seq:0,storeFail:false,inflight:new Map(),epoch:0,loadMsg:'',deniedAt:0};
+        const S={list:null,items:[],byCode:new Map(),byRfid:new Map(),scans:new Map(),scanCount:null,listId:null,outbox:[],tab:'scan',admin:false,busy:false,sound:store.get(K.sound)!=='tat',recent:[],preview:null,pid:0,compare:null,loading:false,offlineAt:null,verifiedAt:0,seq:0,storeFail:false,inflight:new Map(),epoch:0,loadMsg:'',deniedAt:0};
         const tell=(t,tone='')=>{const m=$('ub-message');m.textContent=t||'';m.dataset.tone=tone};
         // Thông báo do load() đặt: lần tải sau thành công tự xoá (nếu chưa bị thông báo khác đè)
         const tellLoad=(t,tone)=>{tell(t,tone);S.loadMsg=t||''};
@@ -12729,7 +12729,7 @@ async function rpc(name,args,retry=true){
         const apply=(data,fromServer)=>{
           const prevId=S.list?.id;
           S.list=data?.list||null;S.items=Array.isArray(data?.items)?data.items:[];S.byCode=new Map(S.items.map(i=>[String(i.groupUid),i]));
-          S.byRfid=new Map(S.items.filter(i=>i.rfid).map(i=>[String(i.rfid).toUpperCase(),i]));
+          S.byRfid=new Map();S.items.forEach(i=>{if(!i.rfid)return;const k=String(i.rfid).toUpperCase();S.byRfid.set(k,S.byRfid.has(k)?'dup':i)});
           if(S.list&&prevId&&prevId!==S.list.id)S.compare=null;
           // Danh sách khác (máy chủ đã chép lượt quét của UID còn có): giữ lượt của UID còn trong danh sách mới, đọc lại cả lượt quét
           if(S.list&&fromServer&&S.listId!==S.list.id){
@@ -12764,17 +12764,19 @@ async function rpc(name,args,retry=true){
         // ---- Quét: máy scan gửi kèm tiền tố / Enter → đúng 16 chữ số Group UID (dãy số dài hơn không bị cắt) ----
         const norm=raw=>(String(raw||'').match(/(?<!\d)\d{16}(?!\d)/)||[])[0]||'';
         const rfidOf=raw=>(String(raw||'').toUpperCase().match(/(?<![A-Z0-9])[A-Z][0-9]{11}(?![A-Z0-9])/)||[])[0]||'';
-        // RFID → Group UID: danh sách trên máy trước, không có thì hỏi máy chủ (group_uid_by_rfid, ≤ 2 giây); kết quả nhớ trong phiên
+        // RFID → Group UID (review 20/10): có mạng thì luôn hỏi máy chủ (group_uid_by_rfid, ≤ 2 giây) — liên kết có thể đã đổi sau lúc
+        // nạp danh sách; chỉ nhận khi ra đúng 1 UID (ưu tiên UID không Canceled), nhiều UID → báo trùng. Mất mạng / lỗi → danh sách trên máy.
         const resolveRfid=async rf=>{
-          const hit=S.byRfid.get(rf);if(hit)return{code:String(hit.groupUid)};
-          if(S.rfidCache.has(rf))return{code:S.rfidCache.get(rf)};
-          if(navigator.onLine===false)return{error:true};
-          try{
-            const d=await Promise.race([anonRpc('group_uid_by_rfid',{p_codes:[rf]}),sleep(WAIT_MS).then(()=>{throw new Error('timeout')})]);
-            const row=(Array.isArray(d?.rows)?d.rows:[]).find(r=>String(r.rfid||'').toUpperCase()===rf);
-            const code=row&&/^\d{16}$/.test(String(row.groupUid))?String(row.groupUid):null;
-            S.rfidCache.set(rf,code);return{code};
-          }catch(_){return{error:true}}
+          if(navigator.onLine!==false){
+            try{
+              const d=await Promise.race([anonRpc('group_uid_by_rfid',{p_codes:[rf]}),sleep(WAIT_MS).then(()=>{throw new Error('timeout')})]);
+              const rows=(Array.isArray(d?.rows)?d.rows:[]).filter(r=>String(r.rfid||'').toUpperCase()===rf&&/^\d{16}$/.test(String(r.groupUid)));
+              const live=rows.filter(r=>!/^cancel/i.test(String(r.status||''))),uids=[...new Set((live.length?live:rows).map(r=>String(r.groupUid)))];
+              return uids.length>1?{many:true}:{code:uids[0]||null};
+            }catch(_){}
+          }
+          const hit=S.byRfid.get(rf);
+          return hit==='dup'?{many:true}:hit?{code:String(hit.groupUid)}:{error:true};
         };
         const facts=i=>[['SKU',i.sku],['Tên hàng',i.productName],['Lot',i.lot],['Roll',i.roll],['Kho',i.warehouse],['Vị trí',i.location]].filter(([,v])=>v).map(([k,v])=>`<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('');
         const paint=({tone,title,code,note,item,via=''})=>{
@@ -12807,6 +12809,7 @@ async function rpc(name,args,retry=true){
           if(via){
             const got=await resolveRfid(via);
             if(got.error){paint({tone:'none',title:'RFID chưa kiểm được',code:'',via});cue('bad');pushRecent('none',via,'RFID chưa kiểm được');return}
+            if(got.many){paint({tone:'bad',title:'RFID trùng nhiều UID',code:'',via});cue('bad');pushRecent('bad',via,'RFID trùng nhiều UID');return}
             if(!got.code){paint({tone:'bad',title:'RFID chưa liên kết',code:'',via});cue('bad');pushRecent('bad',via,'RFID chưa liên kết');return}
             code=got.code;
           }

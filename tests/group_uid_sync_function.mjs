@@ -13,7 +13,7 @@ const TEMP = fs.mkdtempSync(path.join(os.tmpdir(), "group-uid-sync-test-"));
 after(() => fs.rmSync(TEMP, { recursive: true, force: true }));
 
 const RUN_A = "11111111-1111-4111-8111-111111111111";
-let runs, settings, leases, rpcCalls, requests, handler;
+let runs, settings, leases, rpcCalls, requests, posts, handler;
 // holder = tên máy + "#" + mã máy (auto-sync.js holderOf); lượt tự động phải đang giữ khoá thuê còn hạn mới được ghi.
 const HOLDER = "may-test-01#abc123";
 function holdLease(holder = HOLDER, untilMs = 10 * 60 * 1000) { leases.length = 0; leases.push({ kind: "group_uid", holder, leased_until: new Date(Date.now() + untilMs).toISOString() }); }
@@ -70,17 +70,18 @@ function install() {
       matched.forEach(row => Object.assign(row, JSON.parse(init.body)));
       return json(matched);
     }
+    if (method === "POST") { posts.push({ table, body: JSON.parse(init.body) }); return new Response(null, { status: 201 }); }
     throw new Error(`phương thức chưa giả lập: ${method}`);
   };
 }
 
 const file = path.join(TEMP, "group-uid-sync.ts");
 fs.writeFileSync(file, SOURCE);
-runs = []; settings = []; leases = []; rpcCalls = []; requests = [];
+runs = []; settings = []; leases = []; rpcCalls = []; requests = []; posts = [];
 install();
 const { evaluateGroupUidHold } = await import(pathToFileURL(file).href);
 
-beforeEach(() => { runs = []; settings = []; leases = []; rpcCalls = []; requests = []; install(); });
+beforeEach(() => { runs = []; settings = []; leases = []; rpcCalls = []; requests = []; posts = []; install(); });
 
 async function call(body) {
   const response = await handler(new Request("https://example.invalid/functions/v1/group-uid-sync", {
@@ -101,6 +102,31 @@ test("evaluateGroupUidHold: dưới ngưỡng không giữ; vượt 3.000 thay �
   assert.equal(evaluateGroupUidHold({ added: 5000 }, { maxChanges: 6000 }), null, "ngưỡng riêng từ cấu hình");
   assert.ok(evaluateGroupUidHold({ added: 3001 }, { maxChanges: "abc", maxMissing: -1 }), "ngưỡng hỏng quay về mặc định");
   assert.equal(evaluateGroupUidHold(null, null), null);
+});
+
+test("ingest: group_rfid_mapping vào staging viết hoa, rác → null; group_rfid_known = dòng có khoá (Extension cũ không gửi → false, apply giữ RFID cũ)", async () => {
+  runs.push(makeRun({ status: "running", expected_pages: null }));
+  const base = { qty: 5, status: "Available", updated_date: "2026-10-20T01:00:00.000Z", products: [] };
+  const rows = [
+    { ...base, group_uid_code: "1028260000000701", group_rfid_mapping: " a00000000004 " },
+    { ...base, group_uid_code: "1028260000000702" },
+    { ...base, group_uid_code: "1028260000000703", group_rfid_mapping: "A0000-0000004" },
+    { ...base, group_uid_code: "1028260000000704", group_rfid_mapping: "A".repeat(41) },
+    { ...base, group_uid_code: "1028260000000705", group_rfid_mapping: ["A00000000004"] },
+    { ...base, group_uid_code: "1028260000000706", group_rfid_mapping: "" },
+    { ...base, group_uid_code: "1028260000000707", group_rfid_mapping: null },
+  ];
+  const result = await call({ action: "ingest", runId: RUN_A, page: 1, totalPages: 1, total: rows.length, rows });
+  assert.equal(result.status, 200, JSON.stringify(result.body));
+  const staged = posts.find(item => item.table === "group_uid_sync_staging")?.body;
+  assert.ok(Array.isArray(staged), "phải lưu trang vào staging");
+  assert.deepEqual(staged.map(row => [row.group_uid_code, row.group_rfid_mapping, row.group_rfid_known]), [
+    // Codex 20/10: có giá trị nhưng sai dạng (703 ký tự lạ, 704 dài 41, 705 mảng) → known = false (giữ RFID đang lưu, không xoá nhầm)
+    ["1028260000000701", "A00000000004", true], ["1028260000000702", null, false], ["1028260000000703", null, false],
+    ["1028260000000704", null, false], ["1028260000000705", null, false], ["1028260000000706", null, true],
+    ["1028260000000707", null, true],
+  ]);
+  assert.ok(staged.every(row => row.run_id === RUN_A && "group_rfid_mapping" in row), "mọi dòng staging có run_id + khoá group_rfid_mapping");
 });
 
 test("prepare: lượt tự động truyền source auto + tên máy; thiếu trường thì manual/null như cũ", async () => {

@@ -89,6 +89,15 @@ function dateValue(value: unknown, label: string): string {
   if (!Number.isFinite(date.getTime())) throw new Error(`INVALID_DATE:${label} không hợp lệ`);
   return date.toISOString();
 }
+// Mã RFID dán trên cuộn (WMS group_rfid_mapping): chuỗi 1–40 chữ/số → viết hoa; null / rỗng → null; có giá trị nhưng sai dạng
+// (ký tự lạ, dài quá 40 — không cắt bớt, không phải chuỗi) → undefined = "không biết" (known = false, giữ RFID đang lưu).
+function rfidCode(value: unknown): string | null | undefined {
+  if (value === undefined || value === null) return null;
+  if (typeof value !== "string") return undefined;
+  const code = value.trim();
+  if (!code) return null;
+  return /^[A-Za-z0-9]{1,40}$/.test(code) ? code.toUpperCase() : undefined;
+}
 function normalizedRows(value: unknown): Json[] {
   if (!Array.isArray(value) || value.length > MAX_PAGE_SIZE) throw new Error("INVALID_PAGE:Mỗi trang tối đa 500 Group UID");
   const seen = new Set<string>();
@@ -101,6 +110,7 @@ function normalizedRows(value: unknown): Json[] {
       return { sku, quantity, product_name: clean(product.product_name, 500) || null };
     }) : [];
     if (!/^\d{6,40}$/.test(code) || seen.has(code)) throw new Error(`INVALID_ROW:Dòng ${index + 1} có Group UID rỗng, sai hoặc trùng`);
+    const rfid = rfidCode(row.group_rfid_mapping);
     if (!Number.isFinite(qty) || qty < 0 || !status) throw new Error(`INVALID_ROW:Group UID ${code} thiếu số lượng hoặc trạng thái`);
     seen.add(code);
     return {
@@ -110,6 +120,11 @@ function normalizedRows(value: unknown): Json[] {
       // Trạng thái QC WMS (quality_control_status_name). Extension cũ không gửi → null → apply không ghi đè giá trị đã lưu.
       // Cột staging.qc_status có từ migration group_uid_qc_status_v1.sql: phải chạy migration trước khi deploy bản này.
       qc_status: clean(row.qc_status, 60) || null,
+      // RFID (group_uid_rfid_v1.sql, phải chạy migration trước khi deploy bản này). Extension 0.10.2+ luôn gửi khoá (kể cả null)
+      // → known = true, apply ghi đúng nguồn (null = WMS gỡ RFID → xoá theo). Extension cũ / web cũ không có khoá → known = false,
+      // preview/apply bỏ qua RFID và giữ giá trị đang lưu.
+      group_rfid_mapping: rfid ?? null,
+      group_rfid_known: Object.prototype.hasOwnProperty.call(row, "group_rfid_mapping") && rfid !== undefined,
     };
   });
 }

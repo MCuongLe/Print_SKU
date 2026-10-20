@@ -15,18 +15,20 @@
 - **Chưa kiểm được bằng máy:** máy quét RFID thật.
 
 ## Kế hoạch
-### Việc 1 — Extension + Edge + migration · thuc-thi-logic · [ ]
-- [ ] Test đỏ trước (group_uid_sync_extension, po_group_uid_core, Edge normalizedRows, test SQL tĩnh mới)
-- [ ] normalizeRow + Edge + migration group_uid_rfid_v1 + version 0.10.2 (manifest, test, README)
+### Việc 1 — Extension + Edge + migration · thuc-thi-logic · [x]
+- [x] Test đỏ trước (group_uid_sync_extension, po_group_uid_core, Edge normalizedRows, test SQL tĩnh mới)
+- [x] normalizeRow + Edge + migration group_uid_rfid_v1 + version 0.10.2 (manifest, test, README) + cờ group_rfid_known (Extension cũ không xoá RFID)
 ### Việc 2 — Web: quét RFID ở LỰA UID BLOCKED + nhãn Admin · lead · [x]
 - [x] Test đỏ trước trong uid_block_browser (RFID trong danh sách / tra máy chủ / chưa liên kết / mất mạng)
-### Việc 3 — Review · Codex + /review-claude · [ ]
+### Việc 3 — Review · Codex + reviewer A · [x]
 ### Việc 4 — Xác minh + lên · lead · [ ]
 - [ ] Cả bộ test + cổng; PROJECT_MAP + README; commit (chưa push) → migration → deploy Edge → Reload Extension → push → Đối chiếu toàn bộ → kiểm chỉ đọc số UID có RFID
 
 ## Phát sinh
 
 ## Lệch kế hoạch
+- 20/10 Thêm cờ `group_rfid_known` (agent báo: Extension 0.10.1 / auto-sync đêm chưa Reload sẽ xoá ~2.000 RFID). Review 1 vòng Codex + A (không chạy B/C/Haiku — người dùng cần lên nhanh): sửa RFID sai dạng = "không biết" (không xoá), bỏ RFID khỏi nhánh stale_source (tránh held mãi), group_uid_by_rfid ưu tiên UID không Canceled + mới nhất, web luôn hỏi máy chủ + báo trùng nhiều UID + bỏ cache phiên. Người dùng: Reload Extension + Đối chiếu toàn bộ để sáng 21/10.
 
 ## Nhật ký
 - 20/10 Việc 2: uid_block_browser khối 14 (RFID có trên máy / tra máy chủ / chưa liên kết, chữ thường) đỏ trên bản cũ → xanh 2 lần liền; nhãn UF "RFID" màn đồng bộ Admin. Kèm sửa 2 chỗ chờ racy trong test cũ (thẻ đỏ báo ngay rồi nâng cấp ĐÃ SCAN).
+- 20/10 Việc 1 (thuc-thi-logic, 2 lượt ~400k token, ~26 phút): 42/42 rồi 53/53 đột biến SQL đỏ, dry-run 25 câu. Sau review: test node 9 + Edge 13/13 + trình duyệt 6 (uid_block, group_uid_sync_admin, extension_options, sku_it_gateway, snapshot_cache_edge, src_read_style) PASS; commit_gate ĐẠT.

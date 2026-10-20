@@ -11,6 +11,17 @@
     if (!Number.isFinite(date.getTime())) throw new Error(`Ngày cập nhật Group UID không hợp lệ: ${clean(value, 80)}`);
     return date.toISOString();
   };
+  // Mã RFID dán trên cuộn (WMS group_rfid_mapping, 20/10/2026: 1 chữ + 11 số; khoá chỉ có khi UID đã gắn RFID).
+  // Ba trạng thái (Codex 20/10): thiếu khoá / null / rỗng → null (= chưa gắn hoặc WMS đã gỡ → Supabase xoá theo); chuỗi 1–40
+  // chữ/số → viết hoa; giá trị có nhưng SAI dạng (ký tự lạ, dài quá 40, không phải chuỗi) → undefined: khoá bị bỏ khi gửi
+  // (JSON bỏ undefined) → Edge coi là "không biết" và giữ RFID đang lưu, không xoá nhầm.
+  const rfidCode = value => {
+    if (value === undefined || value === null) return null;
+    if (typeof value !== "string") return undefined;
+    const code = value.trim();
+    if (!code) return null;
+    return /^[A-Za-z0-9]{1,40}$/.test(code) ? code.toUpperCase() : undefined;
+  };
   const CUT_NOTE = /^Cut\s+([\d.,]+)\s+out of group\s+(\S+)\s+\(remaining\s+([\d.,]+)\)\s*$/i;
 
   function responseRows(payload) {
@@ -69,6 +80,7 @@
       updated_date: isoDate(updated),
       status,
       qc_status: clean(raw?.quality_control_status_name, 60) || null,
+      group_rfid_mapping: rfidCode(raw?.group_rfid_mapping),
       products,
     };
   }

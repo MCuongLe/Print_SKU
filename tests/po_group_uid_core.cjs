@@ -27,9 +27,21 @@ test('đọc dòng Group UID của PO: mã số → chuỗi, Lot, Roll, SKU Norm
   assert.equal(out.sourceRows, 1);
   assert.deepEqual(plain(out.rows[0]), {
     group_uid_code: '1028260000000611', batch_code: '1/12', roll_code: '4-1', warehouse: 'WH - MATERIAL - MTG', location: 'F0-BAIXE-PL-00-00-01',
-    sku: '900000001', qty: 70000, updated_by: 'api@hasaki.vn', updated_date: '2026-10-15T11:50:51.000Z', status: 'Available', qc_status: null,
+    sku: '900000001', qty: 70000, updated_by: 'api@hasaki.vn', updated_date: '2026-10-15T11:50:51.000Z', status: 'Available', qc_status: null, group_rfid_mapping: null,
     products: [{ sku: '900000001', quantity: 70000, product_name: 'Vải woven' }], purchase_order: PO, source_type: 'PURCHASE_ORDER'
   });
+});
+
+test('RFID theo PO: có khoá group_rfid_mapping → mã viết hoa; vắng khoá → null; giá trị sai dạng → bỏ khoá khi gửi', () => {
+  const out = core.normalizePoGroupUidPage({ count: 3, records: [
+    uid(1028260000000614, { group_rfid_mapping: 'a00000000003' }),
+    uid(1028260000000615),
+    uid(1028260000000616, { group_rfid_mapping: 'A0000-0000003' }),
+  ] }, PO);
+  assert.deepEqual(plain(out.rows.map(row => [row.group_uid_code, row.group_rfid_mapping])), [
+    ['1028260000000614', 'A00000000003'], ['1028260000000615', null], ['1028260000000616', null]
+  ]);
+  assert.equal('group_rfid_mapping' in JSON.parse(JSON.stringify(out.rows[2])), false, 'sai dạng → không gửi khoá');
 });
 
 test('WMS bỏ qua bộ lọc (trả UID của PO khác) thì báo lỗi, không trộn dữ liệu', () => {

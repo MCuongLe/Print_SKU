@@ -514,7 +514,7 @@ python scripts/apply_supabase_sql.py supabase/cut_group_uid_v5_adj_export.sql --
 trang web cũ vẫn gọi được). Web chỉ gửi `p_adj` khi có chọn lọc ADJ.
 
 **Đối chiếu ADJ với lịch sử WMS.** Tab **4 · Đối chiếu** so UID đã cắt với lịch sử Group UID của WMS trong
-phạm vi `warehouse_id=1177` (**WH - MATERIAL - MTG**). Extension (đọc lịch sử từ bản 0.5.0; hiện 0.9.5) dùng phiên WMS Admin đang mở để đọc
+phạm vi `warehouse_id=1177` (**WH - MATERIAL - MTG**). Extension (đọc lịch sử từ bản 0.5.0; hiện 0.10.2) dùng phiên WMS Admin đang mở để đọc
 trực tiếp API theo trang 500 dòng; lần sau đọc chồng lại 30 phút và nhận diện lệnh ADJ bằng Note
 `Cut ... out of group ...` (WMS có thể hiển thị Action là `N/A`). Bấm **Đọc WMS** để nạp tự động. Nút
 **Nạp ZIP/XLSX** giữ vai trò đối chiếu toàn bộ/dự phòng; cả hai cách đều cần phiên Supabase Admin. Dữ liệu nạp chồng

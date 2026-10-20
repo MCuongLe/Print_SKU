@@ -60,6 +60,8 @@ const open = async (browser, srv, { width = 1280, height = 900, admin = false } 
       return json({ ok: true, data: { listId: body.p_list_id, unchanged: false, count, rows: [...m].map(([groupUid, r]) => ({ groupUid, scannedAt: r.scannedAt, deviceName: r.deviceName })) } });
     }
     if (rpc === "group_uid_by_rfid") {
+      if (srv.rfidFail) return route.abort("internetdisconnected");
+      if (srv.rfidRows) return json({ ok: true, data: { rows: srv.rfidRows.filter(r => (body.p_codes || []).includes(r.rfid)) } });
       const map = srv.rfidMap || {};
       return json({ ok: true, data: { rows: (body.p_codes || []).filter(c => map[c]).map(c => ({ rfid: c, groupUid: map[c], status: "Blocked" })) } });
     }
@@ -301,22 +303,35 @@ const ready = page => page.waitForFunction(() => document.getElementById("ub-tot
     //     hỏi máy chủ group_uid_by_rfid; chưa liên kết → thẻ cảnh báo. Chữ thường vẫn nhận. Dữ liệu giả.
     {
       const LIST_R = { list: { ...LIST_A.list, id: "44444444-4444-4444-8444-444444444444" }, items: [item(1, { rfid: "A00000000101" }), item(2), item(3)] };
-      const srv = { calls: [], list: LIST_R, rfidMap: { B00000000103: "1028260000000103" } };
+      const srv = { calls: [], list: LIST_R, rfidMap: { A00000000101: "1028260000000101", B00000000103: "1028260000000103" } };
       const { context, page, errors } = await open(browser, srv);
       await page.goto(BASE + "#uid-block"); await ready(page);
       await scan(page, "a00000000101");
       await page.waitForFunction(() => /1028260000000101/.test(document.getElementById("ub-result").textContent), null, { timeout: 5000 });
       assert.equal(await tone(page), "blocked");
       assert.match(await page.locator("#ub-result").innerText(), /RFID A00000000101/);
-      assert.equal(srv.calls.some(c => c.rpc === "group_uid_by_rfid"), false, "RFID có trên máy → không hỏi máy chủ");
+      assert.deepEqual(srv.calls.find(c => c.rpc === "group_uid_by_rfid")?.body.p_codes, ["A00000000101"], "có mạng → luôn hỏi máy chủ (liên kết có thể đã đổi)");
       await scan(page, "B00000000103");
       await page.waitForFunction(() => /1028260000000103/.test(document.getElementById("ub-result").textContent), null, { timeout: 5000 });
       assert.equal(await tone(page), "blocked");
       assert.match(await page.locator("#ub-result").innerText(), /RFID B00000000103/);
-      assert.deepEqual(srv.calls.find(c => c.rpc === "group_uid_by_rfid")?.body.p_codes, ["B00000000103"]);
+      assert.deepEqual(srv.calls.filter(c => c.rpc === "group_uid_by_rfid").pop()?.body.p_codes, ["B00000000103"]);
       await scan(page, "C00000000999");
       await page.waitForFunction(() => /RFID chưa liên kết/.test(document.getElementById("ub-result").textContent), null, { timeout: 5000 });
       assert.equal(await tone(page), "bad");
+      // RFID gắn trùng 2 UID còn dùng → báo trùng, không đoán; 1 UID Canceled + 1 UID còn dùng → lấy UID còn dùng
+      srv.rfidRows = [{ rfid: "D00000000001", groupUid: "1028260000000101", status: "Available" }, { rfid: "D00000000001", groupUid: "1028260000000102", status: "Blocked" },
+        { rfid: "E00000000001", groupUid: "1028260000000199", status: "Canceled" }, { rfid: "E00000000001", groupUid: "1028260000000102", status: "Blocked" }];
+      await scan(page, "D00000000001");
+      await page.waitForFunction(() => /RFID trùng nhiều UID/.test(document.getElementById("ub-result").textContent), null, { timeout: 5000 });
+      await scan(page, "E00000000001");
+      await page.waitForFunction(() => /1028260000000102/.test(document.getElementById("ub-result").textContent), null, { timeout: 5000 });
+      srv.rfidRows = null;
+      // Máy chủ lỗi / mất mạng → dùng liên kết trên máy (snapshot có rfid)
+      srv.rfidFail = true;
+      await scan(page, "A00000000101");
+      await page.waitForFunction(() => /RFID A00000000101[\s\S]*1028260000000101/.test(document.getElementById("ub-result").textContent), null, { timeout: 5000 });
+      srv.rfidFail = false;
       assert.deepEqual(errors, []);
       await context.close();
     }
