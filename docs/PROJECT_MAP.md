@@ -55,7 +55,7 @@ Edge (`supabase/functions/*/index.ts`, deploy một tệp bằng `scripts/deploy
 Bảng chính: `SKU_Name`, `sku_combo_links`, `sku_archive`, `sku_sync_runs`; `group_uid_details`, `group_uid_products`, `group_uid_sync_runs/staging/pages/changes/state`; `cut_group_uids`, `cut_sample_*`; `print_jobs`, `print_events`, `print_devices`, `print_activation_codes`; `sync_auto_settings`, `sync_auto_leases`; `print_assistant_log`; `user_roles`.
 
 Migration là chuỗi tệp `supabase/*.sql` (idempotent, `notify pgrst`); **bản mới nhất của một hàm nằm ở tệp mới nhất đụng nó**:
-- SKU sync: `sku_sync_admin_v1` → `sku_sync_full_v1` → `sync_auto_v1` → `sku_missing_archive_v1` (RPC `sku_archive_missing`, `sync_history_purge` mới nhất).
+- SKU sync: `sku_sync_admin_v1` → `sku_sync_full_v1` → `sync_auto_v1` → `sku_missing_archive_v1` (RPC `sku_archive_missing`, `sync_history_purge` mới nhất) → `sku_name_touch_v1` (trigger: `SKU_Name.updated_at` = `clock_timestamp()` khi thêm / dữ liệu đổi, ghi y nguyên giữ mốc — danh mục SKU trên máy dựa vào mốc này).
 - Group UID sync: `group_uid_sync_v1` (prepare gốc) → … → `group_uid_sync_v7_apply_guard` → `group_uid_qc_status_v1` (preview v6, apply v8, reconcile) → `sync_auto_v1` (prepare 5 tham số, lease).
 - In: `print_queue_v1` → `print_jobs_admin_v1` → `print_devices_v1` (print_enqueue kiểm khoá) → `sku_inactive_v1` (print_enqueue_unchecked, sku_inactive_archive).
 - UID tạm (Rủi ro lưu trữ): `uid_temp_snapshot_v1` — bảng `uid_temp_runs` / `uid_temp_rows` (chỉ service_role), `uid_temp_save(p_run, p_rows)` kiểm `group_uid_admin_allowed()`, `uid_temp_overview()` cho anon; giữ 10 lượt.

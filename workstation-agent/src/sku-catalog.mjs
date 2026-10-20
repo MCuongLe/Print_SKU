@@ -9,7 +9,9 @@ import { planProductNames } from "./render.mjs";
  * chữ cho mọi tên trong SKU_Name vào text-cache, để cả SKU in lần đầu cũng không phải mở
  * PowerShell đo chữ (~0,7–1,5 giây/lệnh).
  *
- * Cập nhật: script đồng bộ SKU buổi sáng ghi `updated_at` cho mọi dòng. Cứ `checkMs` (mặc định
+ * Cập nhật: từ 19/10/2026 `updated_at` do trigger `sku_name_touch` (supabase/sku_name_touch_v1.sql)
+ * đóng dấu bằng giờ database mỗi khi dòng được thêm hoặc tên / nhóm / trạng thái đổi (ghi y nguyên
+ * thì giữ mốc) — tên đổi luôn làm `updated_at` mới nhất đổi theo. Cứ `checkMs` (mặc định
  * 15 phút) agent hỏi `updated_at` mới nhất — một truy vấn một dòng; khác lần trước thì tải lại cả
  * danh mục (~22 trang × 1.000 dòng, ~4 MB) và chỉ đo các TÊN chưa đo (tên giữ nguyên thì thôi).
  * Lần đầu đo toàn bộ (~11 nghìn từ + các dòng ngắt) — chạy nền theo từng đợt `chunkSize` tên,
