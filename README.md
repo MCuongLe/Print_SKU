@@ -426,6 +426,23 @@ web đi qua RPC `fabric_issue_*`).
 - **Số mét**: tiến độ tính theo Packing List; từng cuộn hiện số mét WMS (đổi từ mm khi tên SKU kết thúc `/mm`) và "PL …"
   khi khác Packing List.
 
+## Lựa UID blocked
+
+Ô **LỰA UID BLOCKED** (`#uid-block`, nhóm Vận hành kho): người kho bắn máy scan vào khung quét chuẩn (có camera, gõ tay);
+Group UID nằm trong danh sách blocked → thẻ đỏ **BLOCKED** + SKU, tên hàng, Lot, Roll, kho, vị trí, âm báo riêng và rung,
+ghi vào *Đã lựa*; quét lại UID đã lựa → thẻ vàng **ĐÃ SCAN** kèm giờ quét lần đầu; UID ngoài danh sách → thẻ xanh ngắn.
+Tab *Còn thiếu* gom UID theo vị trí (số cuộn mỗi vị trí) để đi tìm; *Đã lựa* / *Còn thiếu* xuất Excel. Nạp schema một lần:
+`python scripts/apply_supabase_sql.py supabase/uid_block_v1.sql`.
+
+- **Nạp danh sách (chỉ Admin)**: tab *Danh sách* → *Nạp Excel*. Tệp đọc trên trình duyệt (mọi sheet), lấy dòng có cột
+  `Status` = Blocked (không phân biệt hoa thường; không có cột Status → mọi dòng có Group UID), bỏ UID trùng, áp mọi kho.
+  Xem trước số UID theo kho + *Đối chiếu WMS* (`uid_block_compare`: trạng thái hiện tại trong `group_uid_details`, UID đang
+  Blocked trên WMS mà tệp không có) → *Lưu*. Danh sách mới thay danh sách đang dùng; Supabase giữ 5 lần nạp gần nhất.
+- **Quét (mọi người, không cần kích hoạt máy)**: danh sách tải về máy một lần (IndexedDB `print-sku-cache`, khoá `uid_block`),
+  mỗi lần vào màn hỏi lại phiên bản; mất mạng vẫn báo theo bản trên máy. Lượt quét lưu **trên từng máy**
+  (`localStorage` `uid-block-phien`), không lên Supabase; danh sách mới → phiên mới. Nút xoá phiên ở tab bảng.
+- Test: `tests/uid_block_browser.cjs` (390 + 1280, dữ liệu giả `1028260000000xxx`), `tests/uid_block_sql.cjs`.
+
 ## Cắt Group UID
 
 Mở **CẮT GROUP UID** ở WH-MATERIAL hoặc `#cut-group-uid`. Người dùng quét một
