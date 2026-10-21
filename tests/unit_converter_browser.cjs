@@ -47,6 +47,8 @@ const BASE = process.env.BASE || 'http://127.0.0.1:8000/';
       assert.equal(await page.locator('.scan-field__tools > [aria-controls="uc-code"]').getAttribute('aria-pressed'), 'false');
       await page.locator('.scan-field__tools > [aria-controls="uc-code"]').click();
       assert.equal(await page.locator('#uc-code').getAttribute('inputmode'), 'none', 'bấm lại → ẩn');
+      // Nút bàn phím trả con trỏ về #uc-code sau một nhịp (setTimeout) — chờ xong, kẻo lần gõ tiếp theo của test rơi nhầm vào ô quét (chập chờn 21/10/2026)
+      await page.waitForFunction(() => document.activeElement?.id === 'uc-code'); await page.waitForTimeout(200);
 
       // Điện thoại: "Thông số hàng" và "Cách tính" là popup (tờ trượt dưới); từ 801 px nằm sẵn trong trang như cũ.
       const modal = width < 800;
