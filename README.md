@@ -444,6 +444,11 @@ Tab *Còn thiếu* gom UID theo vị trí (số cuộn mỗi vị trí) để đ
 - **Lấy từ WMS (chỉ Admin, từ 21/10/2026, nguồn chính)**: tab *Danh sách* → *Lấy từ WMS* → danh sách = mọi Group UID đang
   **Blocked** ở WH - MATERIAL - MTG và WH - MATERIAL - GARMENT trong dữ liệu đồng bộ WMS (`uid_block_import_wms`, migration
   `supabase/uid_block_wms_v1.sql`); số liệu mới tới lượt đồng bộ Group UID gần nhất. Giữ lượt đã scan của UID còn trong danh sách.
+- **Tự cập nhật (21/10/2026, `supabase/uid_block_auto_v1.sql`)**: khi danh sách đang dùng lấy từ WMS, máy chủ tự so với dữ liệu đồng bộ
+  mỗi 30 phút (pg_cron `uid-block-refresh-wms`): UID mới Blocked → thêm vào (nhãn **Mới** 24 giờ); UID hết Blocked → bỏ khỏi Còn thiếu, hiện ở mục
+  **Hết Blocked** (trạng thái WMS hiện tại), quét trúng → thẻ **HẾT BLOCKED**; giữ 7 ngày (UID đã quét thì giữ luôn trong Đã lựa). Danh sách Excel không tự đổi.
+- **Giao diện (21/10/2026)**: khung quét luôn ở đầu, dưới là dải tiến độ gọn (Đã lựa x/y · Còn thiếu), rồi tab **Còn thiếu** (vị trí còn cuộn chưa quét,
+  đóng sẵn — chạm để mở, vị trí đủ không hiện, ô lọc vị trí / UID / SKU) · **Đã lựa** · **Danh sách** (Admin).
 - **Nạp danh sách từ Excel (chỉ Admin, cách cũ)**: tab *Danh sách* → *Nạp Excel*. Tệp đọc trên trình duyệt (mọi sheet), lấy dòng có cột
   `Status` = Blocked (không phân biệt hoa thường; không có cột Status → mọi dòng có Group UID, xem trước báo vàng), bỏ UID trùng,
   áp mọi kho. Tên cột theo bản xuất WMS (Group UID Code, Batch Code, Roll Code, Warehouse, Location, SKU, Product Name, Status),

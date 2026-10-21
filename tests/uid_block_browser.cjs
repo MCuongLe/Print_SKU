@@ -36,7 +36,7 @@ const open = async (browser, srv, { width = 1280, height = 900, admin = false } 
     if (rpc) srv.calls.push({ rpc, body, admin: /test-admin-token/.test(req.headers().authorization || "") });
     if (rpc === "uid_block_snapshot") {
       if (srv.offline) return route.abort("internetdisconnected");
-      const cur = srv.list;
+      const cur = srv.snapshotOverride || srv.list;
       return json({ ok: true, data: cur && body.p_known_list_id === cur.list.id ? { unchanged: true, listId: cur.list.id } : { unchanged: false, ...(cur || { list: null, items: [] }) } });
     }
     if (rpc === "uid_block_scan") {
@@ -45,8 +45,12 @@ const open = async (browser, srv, { width = 1280, height = 900, admin = false } 
       if (srv.scanDelay) await settle(srv.scanDelay);
       if (body.p_access_token !== DEVICE) return json({ ok: false, error: { code: "ACCESS_DENIED", message: "Máy chưa kích hoạt" } });
       const cur = srv.list;
-      if (!cur || body.p_list_id !== cur.list.id) return json({ ok: false, error: { code: "STALE_LIST", message: "Danh sách đã đổi", data: { listId: cur?.list.id } } });
+      if (!cur || body.p_list_id !== cur.list.id) { srv.staleHits = (srv.staleHits || 0) + 1; srv.snapshotOverride = null; return json({ ok: false, error: { code: "STALE_LIST", message: "Danh sách đã đổi", data: { listId: cur?.list.id } } }); }
       if (!cur.items.some(i => i.groupUid === body.p_group_uid)) return json({ ok: true, data: { result: "not_blocked", groupUid: body.p_group_uid } });
+      const relItem = cur.items.find(i => i.groupUid === body.p_group_uid && i.releasedAt);
+      if (relItem && Date.parse(body.p_scanned_at) > Date.parse(relItem.releasedAt)) return json({ ok: true, data: { result: "not_blocked", groupUid: body.p_group_uid, released: true, wmsStatus: relItem.wmsStatus, releasedAt: relItem.releasedAt } });
+      // uid_block_auto_v1: dòng đã hết Blocked trên máy chủ (released) → không ghi, trả not_blocked + released
+      if ((srv.releasedOnServer || []).includes(body.p_group_uid)) return json({ ok: true, data: { result: "not_blocked", groupUid: body.p_group_uid, released: true, wmsStatus: "Available", releasedAt: new Date().toISOString() } });
       const m = scansOf(srv, cur.list.id), had = m.get(body.p_group_uid);
       if (had) return json({ ok: true, data: { result: "dup", groupUid: body.p_group_uid, scannedAt: had.scannedAt, deviceName: had.deviceName, mine: had.device === body.p_access_token } });
       const row = { scannedAt: body.p_scanned_at || new Date().toISOString(), deviceName: "Máy test", device: body.p_access_token };
@@ -134,12 +138,20 @@ const ready = page => page.waitForFunction(() => document.getElementById("ub-tot
       await scan(page, "10282600000001010000");
       assert.equal(await tone(page), "bad", "mã 20 số → không phải Group UID");
       assert.equal((await page.locator("#ub-picked").innerText()).trim(), "1", "chỉ UID blocked mới tính đã lựa");
-      // 4) Tab Còn thiếu: gom theo vị trí (mỗi vị trí một nhóm, số cuộn còn), bảng 2 dòng; Đã lựa: 1 dòng
-      await page.locator('[data-ub-tab="left"]').click();
-      await page.waitForFunction(() => document.querySelectorAll("#ub-body tr").length === 2);
-      const groups = await page.locator("#ub-groups [data-ub-loc]").evaluateAll(els => els.map(e => ({ loc: e.dataset.ubLoc, n: e.querySelectorAll("[data-ub-uid]").length, head: e.querySelector(".ub-loc__head")?.textContent.replace(/\s+/g, " ").trim() })));
-      assert.deepEqual(groups.map(g => [g.loc, g.n]), [["F0-A0-00-00-00-02", 1], ["F0-A0-00-00-00-03", 1]], "gom theo vị trí, chỉ UID còn thiếu, xếp theo vị trí");
+      // 4) 21/10 quét trước: khung quét ở đầu, dải số gọn, tab mặc định Còn thiếu = vị trí còn thiếu đóng sẵn (chạm mở);
+      //    vị trí đã quét đủ (F0-…-01 chỉ có 101) không hiển thị; Đã lựa: 1 dòng
+      const order = await page.evaluate(() => [...document.querySelector("#uid-block-screen .ub-content").children].filter(e => !e.hidden && getComputedStyle(e).display !== "none").map(e => e.id || e.dataset.ubPanel || e.className.split(" ")[0]));
+      assert.deepEqual(order.slice(0, 4), ["fu-switch", "scan", "ub-strip", "as-tabs"], `thứ tự màn: công tắc → khung quét → dải số → tab (${order})`);
+      assert.equal(await page.locator('[data-ub-tab="left"]').getAttribute("aria-selected"), "true", "tab mặc định Còn thiếu");
+      assert.equal(await page.locator('[data-ub-tab="scan"]').count(), 0, "không còn tab Quét (khung quét luôn ở đầu)");
+      const groups = await page.locator("#ub-locs [data-ub-loc]").evaluateAll(els => els.map(e => ({ loc: e.dataset.ubLoc, n: e.querySelectorAll("[data-ub-uid]").length, open: e.open, head: e.querySelector(".ub-loc__head")?.textContent.replace(/\s+/g, " ").trim() })));
+      assert.deepEqual(groups.map(g => [g.loc, g.n, g.open]), [["F0-A0-00-00-00-02", 1, false], ["F0-A0-00-00-00-03", 1, false]], "chỉ vị trí còn thiếu, đóng sẵn, xếp theo vị trí");
       assert.match(groups[0].head, /F0-A0-00-00-00-02.*1/);
+      await page.locator('#ub-locs [data-ub-loc="F0-A0-00-00-00-02"] summary').click();
+      assert.equal(await page.locator('#ub-locs [data-ub-loc="F0-A0-00-00-00-02"]').evaluate(e => e.open), true, "chạm để mở");
+      await page.locator("#ub-loc-filter").fill("0103");
+      await page.waitForFunction(() => document.querySelectorAll("#ub-locs [data-ub-loc]").length === 1 && document.querySelector('#ub-locs [data-ub-loc="F0-A0-00-00-00-03"]')?.open);
+      await page.locator("#ub-loc-filter").fill("");
       await page.locator('[data-ub-tab="picked"]').click();
       await page.waitForFunction(() => document.querySelectorAll("#ub-body tr").length === 1 && /1028260000000101/.test(document.getElementById("ub-body").textContent));
       // 5) Tải lại trang: lượt quét đọc lại từ máy chủ, chỉ hỏi phiên bản danh sách (gửi mã danh sách đang giữ)
@@ -184,7 +196,7 @@ const ready = page => page.waitForFunction(() => document.getElementById("ub-tot
       await picked(page, 0);
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, `${width}: không tràn ngang`);
       // Màn có overflow-x:auto nên document không tràn dù nội dung tràn — đo chính màn (ảnh 390 ngày 20/10 bị cắt mép phải).
-      for (const tab of ["scan", "left", "list"]) {
+      for (const tab of ["left", "picked", "list"]) {
         await page.locator(`[data-ub-tab="${tab}"]`).click();
         assert.equal(await page.evaluate(() => { const s = document.getElementById("uid-block-screen"); return s.scrollWidth <= s.clientWidth; }), true, `${width} tab ${tab}: màn không tràn ngang`);
       }
@@ -354,6 +366,45 @@ const ready = page => page.waitForFunction(() => document.getElementById("ub-tot
       await scan(page, "A00000000101");
       await page.waitForFunction(() => /RFID A00000000101[\s\S]*1028260000000101/.test(document.getElementById("ub-result").textContent), null, { timeout: 5000 });
       srv.rfidFail = false;
+      assert.deepEqual(errors, []);
+      await context.close();
+    }
+    // 15) Tự cập nhật (21/10): UID hết Blocked trên WMS → không tính, không ở Còn thiếu, hiện ở "Hết Blocked (n)"; quét trúng → thẻ HẾT BLOCKED;
+    //     UID mới (addedAt trong 24 giờ) → nhãn "Mới" ở vị trí
+    {
+      const now = new Date().toISOString();
+      const LIST_W = { list: { ...LIST_A.list, id: "66666666-6666-4666-8666-666666666666", source: "wms", fileName: "WMS Blocked · WH - MATERIAL - MTG · 21/10 09:00" },
+        items: [item(1), item(2, { addedAt: now }), item(3, { releasedAt: now, wmsStatus: "Available" })] };
+      const srv = { calls: [], list: LIST_W };
+      const { context, page, errors } = await open(browser, srv);
+      await page.goto(BASE + "#uid-block"); await ready(page);
+      assert.equal((await page.locator("#ub-total").innerText()).trim(), "2", "UID hết Blocked không tính");
+      assert.equal(await page.locator('#ub-locs [data-ub-loc="F0-A0-00-00-00-03"]').count(), 0, "UID hết Blocked không ở Còn thiếu");
+      assert.equal(await page.locator('#ub-locs [data-ub-loc="F0-A0-00-00-00-02"] .ub-new').count() > 0, true, "UID mới có nhãn Mới");
+      assert.match(await page.locator("#ub-released summary").innerText(), /Hết Blocked\s*1/);
+      assert.match(await page.locator("#ub-released").textContent(), /1028260000000103[\s\S]*Available/);
+      await scan(page, "1028260000000103");
+      await page.waitForFunction(() => /HẾT BLOCKED/.test(document.getElementById("ub-result").textContent), null, { timeout: 5000 });
+      assert.equal(srv.calls.some(c => c.rpc === "uid_block_scan"), false, "không ghi lượt quét cho UID hết Blocked");
+      // Codex 21/10: máy đang giữ danh sách cũ (UID còn Blocked trên máy) nhưng máy chủ đã hết Blocked → thẻ đổi sang HẾT BLOCKED, không tính đã lựa
+      srv.releasedOnServer = ["1028260000000102"];
+      await scan(page, "1028260000000102");
+      await page.waitForFunction(() => /1028260000000102/.test(document.getElementById("ub-result").textContent) && /HẾT BLOCKED/.test(document.getElementById("ub-result").textContent), null, { timeout: 5000 });
+      assert.match(await page.locator("#ub-result").innerText(), /Available/);
+      assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem("uid-block-cho-gui") || "[]").length), 0, "bỏ khỏi hàng chờ");
+      // Codex vòng 2: quét 101 lúc mất mạng (còn Blocked) → cron tạo danh sách MỚI (id khác) đánh 101 hết Blocked SAU lúc quét →
+      //   có mạng: STALE_LIST → tải danh sách mới → gửi lại (không tự xoá) → máy chủ ghi vì quét trước lúc hết Blocked
+      srv.offlineScan = true;
+      await scan(page, "1028260000000101");
+      await page.waitForFunction(() => JSON.parse(localStorage.getItem("uid-block-cho-gui") || "[]").some(x => x.code === "1028260000000101"), null, { timeout: 5000 });
+      await settle(50);
+      srv.snapshotOverride = srv.list; // lần tải đầu còn trả danh sách cũ → lượt gửi đầu dính STALE_LIST (đúng thực tế: cron đổi giữa chừng)
+      srv.list = { list: { ...LIST_W.list, id: "77777777-7777-4777-8777-777777777777" }, items: [{ ...item(1), releasedAt: new Date(Date.now() + 1000).toISOString(), wmsStatus: "Available" }, item(2, { addedAt: now }), item(3, { releasedAt: now, wmsStatus: "Available" })] };
+      srv.offlineScan = false;
+      await page.evaluate(() => dispatchEvent(new Event("online")));
+      await page.waitForFunction(() => !JSON.parse(localStorage.getItem("uid-block-cho-gui") || "[]").length, null, { timeout: 10000 });
+      assert.equal(scansOf(srv, "77777777-7777-4777-8777-777777777777").has("1028260000000101"), true, "lượt quét trước lúc hết Blocked được ghi vào danh sách mới");
+      assert.ok(srv.staleHits >= 1, "đã đi qua nhánh STALE_LIST");
       assert.deepEqual(errors, []);
       await context.close();
     }

@@ -12472,14 +12472,49 @@ async function rpc(name,args,retry=true){
          (.scan-field, khối scan-field-std), bảng UI.createList. Riêng màn này: thanh tổng, thẻ kết quả lớn (đỏ BLOCKED / vàng đã lựa / xanh / cảnh báo),
          vết quét gần đây, xem trước nạp Excel. Icon Lucide + nhãn ngắn, thang chữ 12/13/14/16/18/22/28. */
       #uid-block-screen .ub-content { width: min(1100px, calc(100% - 40px)); margin: 0 auto; padding: 18px 0 40px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
-      #uid-block-screen .ub-sum { display: grid; grid-template-columns: minmax(0, 1.6fr) repeat(3, minmax(0, 1fr)); gap: 10px; }
-      #uid-block-screen .ub-sum > div { min-width: 0; padding: 12px 14px; border: 1px solid #dbe7e2; border-radius: 14px; background: #fff; }
-      #uid-block-screen .ub-sum span { display: flex; align-items: center; gap: 6px; color: #5d7068; font-size: 12px; font-weight: 600; }
-      #uid-block-screen .ub-sum span svg { flex: none; width: 16px; height: 16px; }
-      #uid-block-screen .ub-sum strong { display: block; margin-top: 4px; overflow: hidden; color: #12352a; font-size: 22px; font-weight: 700; line-height: 1.2; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
-      #uid-block-screen .ub-sum .ub-sum__file strong { font-size: 16px; }
-      #uid-block-screen .ub-sum em { display: block; margin-top: 2px; color: #6b7d76; font-size: 12px; font-style: normal; }
-      #uid-block-screen .ub-sum [data-k="picked"] strong { color: #a53730; }
+      /* 21/10 quét trước: dải tiến độ gọn một hàng thay 4 thẻ số; danh sách vị trí còn thiếu đóng sẵn; mục Hết Blocked */
+      #uid-block-screen .ub-strip { display: grid; gap: 4px; padding: 10px 14px; border: 1px solid #dbe7e2; border-radius: 14px; background: #fff; }
+      #uid-block-screen .ub-strip__main { display: flex; align-items: center; gap: 10px; min-width: 0; }
+      #uid-block-screen .ub-strip__lab { color: #5d7068; font-size: 13px; font-weight: 600; white-space: nowrap; }
+      #uid-block-screen .ub-strip strong { color: #a53730; font-size: 20px; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
+      #uid-block-screen .ub-strip strong small { color: #12352a; font-size: 15px; font-weight: 600; }
+      #uid-block-screen .ub-strip .ub-bar { flex: 1; min-width: 40px; margin: 0; }
+      #uid-block-screen .ub-strip__left { color: #5d7068; font-size: 13px; font-weight: 600; white-space: nowrap; }
+      #uid-block-screen .ub-strip__left b { color: #12352a; font-size: 16px; font-variant-numeric: tabular-nums; }
+      #uid-block-screen .ub-filter input { width: 100%; min-height: 44px; padding: 0 14px; border: 1px solid #dbe7e2; border-radius: 12px; background: #fff; color: #12352a; font: 500 15px var(--wms-font); }
+      #uid-block-screen .ub-filter input:focus { outline: 2px solid var(--wms-brand, #005f41); outline-offset: 1px; }
+      #uid-block-screen .ub-locpanel { display: grid; gap: 10px; }
+      #uid-block-screen .ub-locpanel[hidden] { display: none; }
+      #uid-block-screen .ub-locs { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: 8px; align-items: start; }
+      #uid-block-screen .ub-new { flex: none; padding: 1px 8px; border-radius: 999px; background: #e3f0fb; color: #1f4e78; font-size: 11px; font-style: normal; font-weight: 700; }
+      #uid-block-screen .ub-released { border: 1px solid #f0dfb5; border-radius: 14px; background: #fffaf0; }
+      #uid-block-screen .ub-released summary { display: flex; align-items: center; gap: 8px; min-height: 46px; padding: 0 14px; color: #7a4f00; font-weight: 700; cursor: pointer; }
+      #uid-block-screen .ub-released summary b { padding: 1px 9px; border-radius: 999px; background: #fbe8c2; font-size: 13px; }
+      #uid-block-screen .ub-released ul { display: grid; gap: 4px; margin: 0; padding: 0 10px 10px; list-style: none; }
+      #uid-block-screen .ub-released li { display: grid; gap: 2px; padding: 8px 10px; border-radius: 10px; background: #fff; font-size: 12px; color: #5d7068; }
+      #uid-block-screen .ub-released li code { color: #12352a; font: 600 13px/1.3 ui-monospace, SFMono-Regular, Consolas, monospace; }
+      #uid-block-screen .ub-listname { display: grid; gap: 2px; min-width: 0; }
+      #uid-block-screen .ub-filehead { display: flex; flex-wrap: wrap; gap: 4px 10px; margin: 0; color: #5d7068; font-size: 13px; }
+      #uid-block-screen .ub-filehead #ub-file { color: #12352a; font-weight: 600; overflow-wrap: anywhere; }
+      /* 2) mũi tên mở/đóng (Lucide chevron-right, xoay khi mở) cho vị trí + Hết Blocked */
+      #uid-block-screen :is(.ub-loc__head, .ub-released summary)::after { content: ""; flex: none; width: 16px; height: 16px; margin-left: 4px; background-color: currentColor; opacity: .7; transition: transform .15s;
+        -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m9 18 6-6-6-6'/%3E%3C/svg%3E") center / contain no-repeat;
+        mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m9 18 6-6-6-6'/%3E%3C/svg%3E") center / contain no-repeat; }
+      #uid-block-screen :is(.ub-loc[open] > .ub-loc__head, .ub-released[open] > summary)::after { transform: rotate(90deg); }
+      #uid-block-screen .ub-released summary::-webkit-details-marker { display: none; }
+      #uid-block-screen .ub-released summary { list-style: none; }
+      /* 5) mã vị trí một dòng; cụm Mới · n cuộn ghim phải */
+      #uid-block-screen .ub-loc__head b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      #uid-block-screen .ub-loc__head .ub-new { margin-left: auto; }
+      #uid-block-screen .ub-loc__head .ub-new + span { margin-left: 0; }
+      /* 4) tiến độ = màu chủ đạo (đỏ để riêng cho BLOCKED) */
+      #uid-block-screen .ub-strip strong { color: var(--wms-brand, #005f41); }
+      #uid-block-screen .ub-strip .ub-bar i { background: var(--wms-brand, #005f41); }
+      /* 6) trạng thái Vừa quét đọc được */
+      #uid-block-screen .ub-recent li span { color: #34463f; font-weight: 600; }
+      #uid-block-screen .ub-recent i { width: 12px; height: 12px; }
+      /* 7) ô Sheet rộng gấp đôi trên máy tính */
+      @media (min-width: 761px) { #uid-block-screen .ub-kv div[data-wide] { grid-column: span 2; } }
       #uid-block-screen .ub-bar { height: 6px; margin-top: 8px; overflow: hidden; border-radius: 999px; background: #edf2f0; }
       #uid-block-screen .ub-bar i { display: block; width: 0; height: 100%; border-radius: inherit; background: #c2413b; transition: width .2s; }
       #uid-block-screen .ub-tabs { margin-bottom: 0; }
@@ -12539,8 +12574,6 @@ async function rpc(name,args,retry=true){
       #uid-block-screen .ub-sub { margin: 14px 0 0; color: #12352a; font-size: 14px; font-weight: 600; }
       #uid-block-screen .ub-preview { margin-top: 14px; padding: 14px; border: 1px dashed #8fcfb5; border-radius: 14px; background: #fbfdfc; }
       #uid-block-screen .ub-preview[hidden] { display: none; }
-      #uid-block-screen .ub-groups { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; margin: 0 0 14px; }
-      #uid-block-screen .ub-groups[hidden] { display: none; }
       #uid-block-screen .ub-loc { min-width: 0; border: 1px solid #dbe7e2; border-radius: 14px; background: #fff; }
       #uid-block-screen .ub-loc__head { display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 14px; cursor: pointer; list-style: none; color: #12352a; }
       #uid-block-screen .ub-loc__head::-webkit-details-marker { display: none; }
@@ -12558,17 +12591,19 @@ async function rpc(name,args,retry=true){
       #uid-block-screen .ub-msg[data-tone="offline"], #uid-block-screen .ub-msg[data-tone="warn"] { color: #7a4f00; font-weight: 600; }
       @media (max-width: 760px) {
         #uid-block-screen .ub-content { width: calc(100% - 28px); padding-top: 12px; gap: 12px; }
-        #uid-block-screen .ub-sum { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-        #uid-block-screen .ub-sum .ub-sum__file { grid-column: 1 / -1; }
-        #uid-block-screen .ub-sum > div { padding: 10px 12px; }
-        #uid-block-screen .ub-sum strong { font-size: 18px; }
         #uid-block-screen .ub-head:has(> .ub-actions) { flex-wrap: wrap; }
         #uid-block-screen .ub-head:has(> .ub-actions) h2 { flex: 1 0 100%; }
         #uid-block-screen .ub-head > .ub-actions { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); width: 100%; }
         #uid-block-screen .ub-kv { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         #uid-block-screen .ub-kv div[data-wide] { grid-column: 1 / -1; }
         #uid-block-screen .ub-kv dd { font-size: 15px; }
-        #uid-block-screen .ub-tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); width: 100%; }
+        #uid-block-screen .ub-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; }
+        #uid-block-screen .ub-loc__head { gap: 6px; padding: 0 10px; }
+        #uid-block-screen .ub-loc__head b { flex: 0 0 auto; font-size: 14px; overflow: visible; }
+        #uid-block-screen .ub-loc__head span { padding: 2px 8px; font-size: 12px; }
+        #uid-block-screen .ub-recent li:nth-child(n+3) { display: none; } /* điện thoại: 2 lượt gần nhất, nhường chỗ danh sách vị trí */
+        #uid-block-screen .ub-result { padding: 12px; }
+        #uid-block-screen .ub-facts { gap: 6px 12px; margin-top: 8px; }
         #uid-block-screen .ub-tabs .as-tab { justify-content: center; min-width: 0; padding: 0 6px; }
         #uid-block-screen .ub-tabs .as-tab b { margin-left: 4px; padding: 1px 7px; }
         #uid-block-screen .ub-panel { padding: 12px; }
@@ -12580,34 +12615,34 @@ async function rpc(name,args,retry=true){
     <section class="cut-screen" id="uid-block-screen" aria-labelledby="ub-title" hidden>
       <header class="uid-topbar"><div class="uid-topbar__inner"><button class="uid-back" id="ub-back" type="button" aria-label="Quay lại trang chủ WH-MATERIAL">WH-MATERIAL</button><span class="uid-topbar__mark" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/></svg></span><div class="uid-topbar__name"><h1 id="ub-title">TÌM GROUP UID</h1><span>Quét Group UID · danh sách Blocked</span></div><button class="uid-topbar__admin" id="ub-admin" type="button" aria-pressed="false" aria-label="Đăng nhập Admin" title="Đăng nhập Admin"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path class="uid-topbar__admin-check" d="m9 12 2 2 4-4"/></svg></button></div></header>
       <div class="ub-content">
-        <section class="ub-sum" aria-label="Danh sách đang dùng">
-          <div class="ub-sum__file"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>Danh sách</span><strong id="ub-file">—</strong><em id="ub-at"></em></div>
-          <div data-k="total"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/></svg>Blocked</span><strong id="ub-total">—</strong></div>
-          <div data-k="picked"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.801 10A10 10 0 1 1 17 3.335"/><path d="m9 11 3 3L22 4"/></svg>Đã lựa</span><strong id="ub-picked">0</strong><div class="ub-bar" aria-hidden="true"><i id="ub-bar"></i></div></div>
-          <div data-k="left"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>Còn thiếu</span><strong id="ub-left">—</strong></div>
-        </section>
-        <p class="ub-msg" id="ub-message" aria-live="polite"></p>
-        <div class="as-tabs ub-tabs" role="tablist" aria-label="Lựa UID blocked">
-          <button class="as-tab" type="button" role="tab" aria-selected="true" data-ub-tab="scan">Quét</button>
-          <button class="as-tab" type="button" role="tab" aria-selected="false" data-ub-tab="picked">Đã lựa<b id="ub-tab-picked">0</b></button>
-          <button class="as-tab" type="button" role="tab" aria-selected="false" data-ub-tab="left">Còn thiếu<b id="ub-tab-left">0</b></button>
-          <button class="as-tab" type="button" role="tab" aria-selected="false" data-ub-tab="list">Danh sách</button>
-        </div>
-        <section class="ub-panel" data-ub-panel="scan" aria-label="Quét Group UID">
+        <section class="ub-panel ub-scanpanel" data-ub-panel="scan" aria-label="Quét Group UID">
           <div class="ub-head"><h2>Quét Group UID</h2><span class="ub-pending" id="ub-pending" role="status" hidden></span><button class="ub-icon-btn" id="ub-sound" type="button" aria-pressed="true" aria-label="Tắt âm báo" title="Tắt âm báo"></button></div>
           <form class="ub-scan" id="ub-form"><div class="scan-field"><input id="ub-code" autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="go" inputmode="none" maxlength="60" placeholder="Group UID" aria-label="Group UID"><span class="scan-field__tools"><button class="act-icon act-icon--camera" id="ub-camera" type="button" aria-label="Quét bằng camera" title="Quét bằng camera" hidden></button><button class="act-icon act-icon--keyboard" id="ub-keyboard" type="button" data-kb-key="uid-block-ban-phim" aria-controls="ub-code" aria-pressed="false" aria-label="Gõ tay" title="Gõ tay"></button></span></div><button class="ub-btn ub-btn--primary" type="submit">Kiểm</button></form>
           <div class="ub-result" id="ub-result" role="status" aria-live="assertive" hidden></div>
           <ul class="ub-recent" id="ub-recent" aria-label="Vừa quét"></ul>
         </section>
-        <section class="ss-panel ub-panel" data-ub-panel="table" aria-label="Danh sách UID" hidden>
+        <section class="ub-strip" id="ub-strip" aria-label="Tiến độ lựa">
+          <div class="ub-strip__main"><span class="ub-strip__lab">Đã lựa</span><strong><span id="ub-picked">0</span><small>/<span id="ub-total">—</span></small></strong><div class="ub-bar" aria-hidden="true"><i id="ub-bar"></i></div><span class="ub-strip__left">Còn thiếu <b id="ub-left">—</b></span></div>
+        </section>
+        <p class="ub-msg" id="ub-message" aria-live="polite"></p>
+        <div class="as-tabs ub-tabs" role="tablist" aria-label="UID blocked">
+          <button class="as-tab" type="button" role="tab" aria-selected="true" data-ub-tab="left">Còn thiếu<b id="ub-tab-left">0</b></button>
+          <button class="as-tab" type="button" role="tab" aria-selected="false" data-ub-tab="picked">Đã lựa<b id="ub-tab-picked">0</b></button>
+          <button class="as-tab" type="button" role="tab" aria-selected="false" data-ub-tab="list">Danh sách</button>
+        </div>
+        <section class="ub-panel ub-locpanel" data-ub-panel="left" aria-label="Vị trí còn thiếu">
+          <label class="ub-filter"><input id="ub-loc-filter" type="search" autocomplete="off" spellcheck="false" placeholder="Vị trí, Group UID, SKU" aria-label="Lọc vị trí còn thiếu"></label>
+          <div class="ub-locs" id="ub-locs"></div>
+          <details class="ub-released" id="ub-released" hidden><summary>Hết Blocked<b id="ub-released-n">0</b></summary><ul id="ub-released-list"></ul></details>
+        </section>
+<section class="ss-panel ub-panel" data-ub-panel="table" aria-label="Danh sách UID" hidden>
           <div class="ss-panel-head"><div><h2 id="ub-list-title">Đã lựa</h2><p id="ub-note"></p></div><div class="as-tools" id="ub-tools" hidden></div></div>
-          <div class="ub-groups" id="ub-groups" hidden></div>
           <div class="as-tags" id="ub-tags" hidden></div>
           <div class="ss-table-wrap"><table class="ss-table ub-table"><thead><tr id="ub-head"></tr></thead><tbody id="ub-body"><tr><td colspan="9" class="ss-empty">Chưa có dữ liệu.</td></tr></tbody></table></div>
           <div class="as-pager" id="ub-pager" hidden></div>
         </section>
         <section class="ub-panel" data-ub-panel="list" aria-label="Danh sách blocked" hidden>
-          <div class="ub-head"><h2>Danh sách blocked</h2><div class="ub-actions"><input id="ub-file-input" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden><button class="src-read" id="ub-wms" type="button" hidden title="Lấy UID Blocked của kho MTG + Garment từ dữ liệu WMS"><span class="src-read__t">Đọc WMS</span></button><button class="ub-btn" id="ub-import" type="button" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m17 8-5-5-5 5"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/></svg>Nạp Excel</button><button class="src-read src-read--all" id="ub-compare" type="button" title="Đối chiếu danh sách với dữ liệu WMS"><span class="src-read__t">Đối chiếu</span></button></div></div>
+          <div class="ub-head"><div class="ub-listname"><h2>Danh sách blocked</h2><p class="ub-filehead"><span id="ub-file">—</span><span id="ub-at"></span></p></div><div class="ub-actions"><input id="ub-file-input" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden><button class="src-read" id="ub-wms" type="button" hidden title="Lấy UID Blocked của kho MTG + Garment từ dữ liệu WMS"><span class="src-read__t">Đọc WMS</span></button><button class="ub-btn" id="ub-import" type="button" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m17 8-5-5-5 5"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/></svg>Nạp Excel</button><button class="src-read src-read--all" id="ub-compare" type="button" title="Đối chiếu danh sách với dữ liệu WMS"><span class="src-read__t">Đối chiếu</span></button></div></div>
           <dl class="ub-kv" id="ub-info"></dl>
           <div id="ub-compare-out"></div>
           <div class="ub-preview" id="ub-preview" hidden></div>
@@ -12633,7 +12668,7 @@ async function rpc(name,args,retry=true){
         const svg=(b,s=20)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${b}</svg>`;
         const ICON={ban:'<circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/>',ok:'<path d="M21.801 10A10 10 0 1 1 17 3.335"/><path d="m9 11 3 3L22 4"/>',warn:'<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',dup:'<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>',soundOn:'<path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z"/><path d="M16 9a5 5 0 0 1 0 6"/><path d="M19.364 18.364a9 9 0 0 0 0-12.728"/>',soundOff:'<path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z"/><line x1="22" x2="16" y1="9" y2="15"/><line x1="16" x2="22" y1="9" y2="15"/>'};
         // scans: mã → {at, device, mine, pending}; scanCount = số lượt máy chủ đã báo (uid_block_scans đếm trùng → không đổi)
-        const S={list:null,items:[],byCode:new Map(),byRfid:new Map(),scans:new Map(),scanCount:null,listId:null,outbox:[],tab:'scan',admin:false,busy:false,sound:store.get(K.sound)!=='tat',recent:[],preview:null,pid:0,compare:null,loading:false,offlineAt:null,verifiedAt:0,seq:0,storeFail:false,inflight:new Map(),epoch:0,loadMsg:'',deniedAt:0};
+        const S={list:null,items:[],byCode:new Map(),byRfid:new Map(),scans:new Map(),scanCount:null,listId:null,outbox:[],tab:'left',released:new Map(),openLocs:new Set(),locFilter:'',admin:false,busy:false,sound:store.get(K.sound)!=='tat',recent:[],preview:null,pid:0,compare:null,loading:false,offlineAt:null,verifiedAt:0,seq:0,storeFail:false,inflight:new Map(),epoch:0,loadMsg:'',deniedAt:0};
         const tell=(t,tone='')=>{const m=$('ub-message');m.textContent=t||'';m.dataset.tone=tone};
         // Thông báo do load() đặt: lần tải sau thành công tự xoá (nếu chưa bị thông báo khác đè)
         const tellLoad=(t,tone)=>{tell(t,tone);S.loadMsg=t||''};
@@ -12687,13 +12722,15 @@ async function rpc(name,args,retry=true){
               S.scans.set(code,{at:sAt,device,mine});S.epoch++;
               return done({kind:d.result==='new'?'mine':'dup',at:sAt,device,mine});
             }
-            if(d&&d.result==='not_blocked'){S.scans.delete(code);S.epoch++;load();return done({kind:'not_blocked'})}
+            // Máy chủ báo không blocked; released = UID đã hết Blocked trên WMS (uid_block_auto_v1) → thẻ HẾT BLOCKED
+            if(d&&d.result==='not_blocked'){S.scans.delete(code);S.epoch++;load();return done({kind:'not_blocked',released:Boolean(d.released),wmsStatus:d.wmsStatus||'',releasedAt:d.releasedAt||''})}
             const ec=body?.ok===false?String(body.error?.code||''):'';
             if(ec==='ACCESS_DENIED')return{kind:'denied'};
             // Danh sách đã đổi: tải danh sách mới rồi gửi lại một lần (mã không còn trong danh sách → không blocked)
             if((ec==='STALE_LIST'||ec==='NO_LIST')&&!retried){
               await load();
-              if(S.list&&!S.byCode.has(code)){S.scans.delete(code);S.epoch++;return done({kind:'not_blocked'})}
+              // UID hết Blocked ở danh sách mới vẫn gửi lại: máy chủ ghi nếu lượt quét xảy ra trước lúc hết Blocked, sau thì trả released
+              if(S.list&&!S.byCode.has(code)&&!S.released.has(code)){S.scans.delete(code);S.epoch++;return done({kind:'not_blocked'})}
               return attempt(true);
             }
             if(ec==='INVALID_GROUP_UID'||ec==='INVALID_LIST'){S.scans.delete(code);S.epoch++;return done({kind:'error',message:body.error?.message||ec})}
@@ -12733,13 +12770,14 @@ async function rpc(name,args,retry=true){
         // ---- Danh sách: tải về máy (cache kiểm phiên bản như Kiểm kê) ----
         const apply=(data,fromServer)=>{
           const prevId=S.list?.id;
-          S.list=data?.list||null;S.items=Array.isArray(data?.items)?data.items:[];S.byCode=new Map(S.items.map(i=>[String(i.groupUid),i]));
+          S.list=data?.list||null;S.items=Array.isArray(data?.items)?data.items:[];// UID hết Blocked trên WMS (uid_block_auto_v1, releasedAt): không tính, không ở Còn thiếu, hiện ở mục Hết Blocked
+          S.byCode=new Map(S.items.filter(i=>!i.releasedAt).map(i=>[String(i.groupUid),i]));S.released=new Map(S.items.filter(i=>i.releasedAt).map(i=>[String(i.groupUid),i]));
           S.byRfid=new Map();S.items.forEach(i=>{if(!i.rfid)return;const k=String(i.rfid).toUpperCase();S.byRfid.set(k,S.byRfid.has(k)?'dup':i)});
           if(S.list&&prevId&&prevId!==S.list.id)S.compare=null;
           // Danh sách khác (máy chủ đã chép lượt quét của UID còn có): giữ lượt của UID còn trong danh sách mới, đọc lại cả lượt quét
           if(S.list&&fromServer&&S.listId!==S.list.id){
             const had=S.listId!==null;
-            S.scans=new Map([...S.scans].filter(([c])=>S.byCode.has(c)));S.scanCount=null;S.listId=S.list.id;persist();
+            S.scans=new Map([...S.scans].filter(([c])=>S.byCode.has(c)||S.released.has(c)));S.scanCount=null;S.listId=S.list.id;persist();
             if(had&&!S.busy)tell(`Danh sách mới: ${S.list.fileName||'Excel'}`,'warn');
           }
           renderAll();
@@ -12800,11 +12838,12 @@ async function rpc(name,args,retry=true){
         // vẽ lại khi còn đang hiện đúng mã này. Máy chưa kích hoạt / lỗi nghiệp vụ → bỏ lượt khỏi hàng chờ (thẻ ghi "chưa ghi nhận").
         const upgrade=(code,item,seq,r)=>{
           if((r.kind==='denied'||r.kind==='error')&&S.scans.get(code)?.pending){S.scans.delete(code);outboxDrop(code);persist()}
-          const label=r.kind==='dup'?['dup','Đã scan']:r.kind==='not_blocked'?['ok','Không blocked']:r.kind==='mine'?['blocked','Blocked']:r.kind==='queued'?['blocked','Blocked · chờ gửi']:['blocked','Blocked · chưa ghi nhận'];
+          const label=r.kind==='dup'?['dup','Đã scan']:r.kind==='not_blocked'?(r.released?['none','Hết Blocked']:['ok','Không blocked']):r.kind==='mine'?['blocked','Blocked']:r.kind==='queued'?['blocked','Blocked · chờ gửi']:['blocked','Blocked · chưa ghi nhận'];
           fixRecent(seq,...label);renderCounts();if(S.tab==='picked'||S.tab==='left')renderTable();
           if($('ub-result').dataset.code!==code)return;
           const via=$('ub-result').dataset.via||'';
           if(r.kind==='dup'){dupCard(code,S.scans.get(code)||{at:r.at,device:r.device,mine:r.mine},item,{quiet:true,via});return}
+          if(r.kind==='not_blocked'&&r.released){paint({tone:'none',title:'HẾT BLOCKED',code,via,note:`WMS: ${r.wmsStatus||'không còn'}${r.releasedAt?` · ${fmtWhen(Date.parse(r.releasedAt))}`:''}`,item});cue('dup');return}
           if(r.kind==='not_blocked'){paint({tone:'ok',title:'Không blocked',code,via});cue('ok');return}
           const note=r.kind==='queued'?'Chưa gửi được — tự gửi lại':r.kind==='denied'?'Chưa ghi nhận: máy chưa kích hoạt':r.kind==='error'?`Chưa ghi nhận: ${r.message}`:'';
           if(note||$('ub-result').dataset.tone!=='blocked')paint({tone:'blocked',title:'BLOCKED — lựa ra',code,note,item,via});
@@ -12822,6 +12861,8 @@ async function rpc(name,args,retry=true){
           if(!S.list){paint({tone:'none',title:S.loading?'Đang tải danh sách':'Chưa có danh sách',code});cue('bad');pushRecent('none',code,'Chưa có danh sách');return}
           let item=S.byCode.get(code);
           // Danh sách chưa được máy chủ xác nhận gần đây → tải lại (≤ 2 giây) trước khi dám báo xanh
+          const rel=S.released.get(code);
+          if(!item&&rel){paint({tone:'none',title:'HẾT BLOCKED',code,via,note:`WMS: ${rel.wmsStatus||'không còn'} · ${fmtWhen(Date.parse(rel.releasedAt))}`,item:rel});cue('dup');pushRecent('none',code,'Hết Blocked');return}
           if(!item&&stale()){await Promise.race([load(),sleep(WAIT_MS)]);item=S.byCode.get(code)}
           if(!item){
             if(stale()){paint({tone:'none',title:'Chưa kiểm được',code,via,note:`Danh sách trên máy lúc ${fmtAt(S.offlineAt||S.verifiedAt||S.list.importedAt)}`});cue('bad');pushRecent('none',code,'Chưa kiểm được');return}
@@ -12842,7 +12883,7 @@ async function rpc(name,args,retry=true){
 
         // ---- Tổng + bảng Đã lựa / Còn thiếu ----
         const renderCounts=()=>{
-          const total=S.items.length,picked=pickedCount(),left=Math.max(0,total-picked);
+          const total=S.byCode.size,picked=pickedCount(),left=Math.max(0,total-picked);
           $('ub-file').textContent=S.list?.fileName||'—';$('ub-file').title=S.list?.fileName||'';
           $('ub-at').textContent=S.list?`Nạp ${fmtAt(S.list.importedAt)}`:'';
           $('ub-total').textContent=S.list?num(total):'—';$('ub-picked').textContent=num(picked);$('ub-left').textContent=S.list?num(left):'—';
@@ -12851,18 +12892,29 @@ async function rpc(name,args,retry=true){
         };
         const list=UI.createList({tools:$('ub-tools'),tagsBox:$('ub-tags'),head:$('ub-head'),body:$('ub-body'),pager:$('ub-pager'),note:$('ub-note')});
         const COLS=[{label:'Group UID'},{label:'SKU',sort:'sku'},{label:'Tên hàng'},{label:'Lot'},{label:'Roll'},{label:'Kho',sort:'wh'},{label:'Vị trí',sort:'loc'},{label:'Lúc lựa',sort:'at',first:'desc'},{label:'Máy',sort:'dev'}];
-        // Còn thiếu: gom theo vị trí (xếp theo mã vị trí) để người lựa đi từng vị trí; mỗi nhóm ghi số cuộn còn phải lựa.
-        const renderGroups=rows=>{
-          const box=$('ub-groups');box.hidden=!rows;if(!rows)return;
-          const by=new Map();rows.forEach(i=>{const k=i.location||'Chưa rõ vị trí';if(!by.has(k))by.set(k,[]);by.get(k).push(i)});
+        // Còn thiếu (21/10 quét trước): vị trí còn cuộn chưa quét, đóng sẵn (chạm mở, nhớ mở/đóng), vị trí đủ không hiện; lọc theo vị trí / UID / SKU.
+        const isNew=i=>{const t=Date.parse(i?.addedAt||'');return Number.isFinite(t)&&Date.now()-t<24*3600e3};
+        const NEW='<i class="ub-new">Mới</i>';
+        const PIN='<path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/>';
+        const renderLocs=()=>{
+          const q=S.locFilter.trim().toLowerCase(),by=new Map();
+          [...S.byCode.values()].filter(i=>!S.scans.has(String(i.groupUid))).forEach(i=>{
+            if(q&&![i.location,i.groupUid,i.sku,i.lot,i.roll].some(v=>String(v||'').toLowerCase().includes(q)))return;
+            const k=i.location||'Chưa rõ vị trí';if(!by.has(k))by.set(k,[]);by.get(k).push(i);
+          });
           const keys=[...by.keys()].sort((a,b)=>a.localeCompare(b,'vi',{numeric:true}));
-          box.innerHTML=keys.length?keys.map(k=>{const list=by.get(k).sort((a,b)=>String(a.groupUid).localeCompare(String(b.groupUid)));return`<details class="ub-loc" data-ub-loc="${esc(k)}" open><summary class="ub-loc__head">${svg('<path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/>',18)}<b>${esc(k)}</b><span>${num(list.length)} cuộn</span></summary><ul>${list.map(i=>`<li data-ub-uid="${esc(i.groupUid)}"><code>${esc(i.groupUid)}</code><span>${esc([i.sku,i.lot&&`Lot ${i.lot}`,i.roll&&`Roll ${i.roll}`].filter(Boolean).join(' · '))}</span></li>`).join('')}</ul></details>`}).join(''):`<p class="ub-msg">${S.list?'Đã lựa đủ danh sách.':'Chưa có danh sách.'}</p>`;
+          $('ub-locs').innerHTML=keys.length?keys.map(k=>{const items=by.get(k).sort((a,b)=>String(a.groupUid).localeCompare(String(b.groupUid)));const open=q||S.openLocs.has(k);return`<details class="ub-loc" data-ub-loc="${esc(k)}"${open?' open':''}><summary class="ub-loc__head">${svg(PIN,18)}<b>${esc(k)}</b>${items.some(isNew)?NEW:''}<span>${num(items.length)} cuộn</span></summary><ul>${items.map(i=>`<li data-ub-uid="${esc(i.groupUid)}"><code>${esc(i.groupUid)}${isNew(i)?' '+NEW:''}</code><span>${esc([i.sku,i.lot&&`Lot ${i.lot}`,i.roll&&`Roll ${i.roll}`].filter(Boolean).join(' · '))}</span></li>`).join('')}</ul></details>`}).join(''):`<p class="ub-msg">${!S.list?'Chưa có danh sách.':q?'Không có vị trí khớp.':'Đã lựa đủ danh sách.'}</p>`;
+          const rel=[...S.released.values()].sort((a,b)=>String(b.releasedAt).localeCompare(String(a.releasedAt)));
+          $('ub-released').hidden=!rel.length;$('ub-released-n').textContent=num(rel.length);
+          $('ub-released-list').innerHTML=rel.map(i=>`<li><code>${esc(i.groupUid)}</code><span>${esc([`WMS: ${i.wmsStatus||'không còn'}`,i.location,fmtWhen(Date.parse(i.releasedAt)),S.scans.has(String(i.groupUid))?'đã lựa':''].filter(Boolean).join(' · '))}</span></li>`).join('');
         };
+        $('ub-locs').addEventListener('toggle',e=>{const d=e.target.closest?.('[data-ub-loc]');if(!d||S.locFilter.trim())return;if(d.open)S.openLocs.add(d.dataset.ubLoc);else S.openLocs.delete(d.dataset.ubLoc)},true);
+        $('ub-loc-filter').addEventListener('input',e=>{S.locFilter=e.target.value;renderLocs()});
         const renderTable=()=>{
-          const picked=S.tab==='picked',rows=S.items.filter(i=>S.scans.has(String(i.groupUid))===picked);
-          renderGroups(picked?null:rows);
-          $('ub-list-title').textContent=picked?'Đã lựa':'Còn thiếu';
-          list.show({columns:picked?COLS:COLS.slice(0,7),rows:rows.map(i=>{const v=S.scans.get(String(i.groupUid)),at=v?.at||0,dev=v?who(v)+(v.pending?' · chờ gửi':''):'',cells=[`<code>${esc(i.groupUid)}</code>`,esc(i.sku),esc(i.productName),esc(i.lot),esc(i.roll),esc(i.warehouse),esc(i.location)];if(picked)cells.push(esc(fmtWhen(at)),esc(dev));return{cells,text:[i.groupUid,i.sku,i.productName,i.lot,i.roll,i.warehouse,i.location,dev].join(' '),facets:{wh:i.warehouse||''},sort:{sku:i.sku||'',wh:i.warehouse||'',loc:i.location||'',at,dev},csv:[i.groupUid,i.sku,i.productName,i.lot,i.roll,i.warehouse,i.location,...(picked?[fmtAt(at),dev]:[])]}}),facets:[{id:'wh',label:'Kho',icon:'database'}],filename:picked?'uid-blocked-da-lua':'uid-blocked-con-thieu',csvHead:['Group UID','SKU','Tên hàng','Lot','Roll','Kho','Vị trí',...(picked?['Lúc lựa','Máy']:[])],sheet:picked?'Đã lựa':'Còn thiếu',empty:S.list?(picked?'Chưa lựa UID nào.':'Đã lựa đủ danh sách.'):'Chưa có danh sách.'},{keep:true});
+          if(S.tab==='left'){renderLocs();return}
+          const picked=true,rows=S.items.filter(i=>S.scans.has(String(i.groupUid)));
+          $('ub-list-title').textContent='Đã lựa';
+          list.show({columns:picked?COLS:COLS.slice(0,7),rows:rows.map(i=>{const v=S.scans.get(String(i.groupUid)),at=v?.at||0,dev=v?who(v)+(v.pending?' · chờ gửi':'')+(i.releasedAt?' · Hết Blocked':''):'',cells=[`<code>${esc(i.groupUid)}</code>`,esc(i.sku),esc(i.productName),esc(i.lot),esc(i.roll),esc(i.warehouse),esc(i.location)];if(picked)cells.push(esc(fmtWhen(at)),esc(dev));return{cells,text:[i.groupUid,i.sku,i.productName,i.lot,i.roll,i.warehouse,i.location,dev].join(' '),facets:{wh:i.warehouse||''},sort:{sku:i.sku||'',wh:i.warehouse||'',loc:i.location||'',at,dev},csv:[i.groupUid,i.sku,i.productName,i.lot,i.roll,i.warehouse,i.location,...(picked?[fmtAt(at),dev]:[])]}}),facets:[{id:'wh',label:'Kho',icon:'database'}],filename:picked?'uid-blocked-da-lua':'uid-blocked-con-thieu',csvHead:['Group UID','SKU','Tên hàng','Lot','Roll','Kho','Vị trí',...(picked?['Lúc lựa','Máy']:[])],sheet:picked?'Đã lựa':'Còn thiếu',empty:S.list?(picked?'Chưa lựa UID nào.':'Đã lựa đủ danh sách.'):'Chưa có danh sách.'},{keep:true});
         };
 
         // ---- Tab Danh sách: thông tin + đối chiếu WMS + nạp Excel (Admin) ----
@@ -12883,7 +12935,7 @@ async function rpc(name,args,retry=true){
         const readBusy=(id,on,label)=>{const b=$(id);b.dataset.busy=String(on);b.querySelector('.src-read__t').textContent=on?'Đang đọc…':label};
         const renderInfo=()=>{
           const l=S.list,byWh=l?.byWarehouse&&typeof l.byWarehouse==='object'?Object.entries(l.byWarehouse):[];
-          $('ub-info').innerHTML=l?kv('Tệp',esc(l.fileName||'—'),'',true)+kv('Nạp lúc',esc(fmtAt(l.importedAt)))+kv('Sheet',esc((l.sheets||[]).join(', ')||'—'),'',true)+byWh.map(([w,n])=>kv(w,num(n))).join(''):kv('Danh sách','Chưa có');
+          $('ub-info').innerHTML=l?kv('Sheet',esc((l.sheets||[]).join(', ')||'—'),'',true)+byWh.map(([w,n])=>kv(w,num(n))).join(''):kv('Danh sách','Chưa có');
           $('ub-compare-out').innerHTML=S.compare&&S.compare.listId===l?.id?compareHtml(S.compare,S.items.length):'';
           $('ub-import').hidden=!S.admin;$('ub-wms').hidden=!S.admin;$('ub-wms').disabled=S.busy;$('ub-import').disabled=S.busy;$('ub-compare').disabled=!S.items.length||S.busy||S.compare?.state==='pending';
           readBusy('ub-wms',S.busy==='wms','Đọc WMS');readBusy('ub-compare',S.compare?.state==='pending'&&S.compare?.listId===S.list?.id,'Đối chiếu');
@@ -12991,8 +13043,9 @@ async function rpc(name,args,retry=true){
         // ---- Tab + Admin + vào/ra màn ----
         const setTab=tab=>{
           S.tab=tab;screen.querySelectorAll('[data-ub-tab]').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.ubTab===tab)));
-          screen.querySelector('[data-ub-panel="scan"]').hidden=tab!=='scan';screen.querySelector('[data-ub-panel="table"]').hidden=!(tab==='picked'||tab==='left');screen.querySelector('[data-ub-panel="list"]').hidden=tab!=='list';
-          if(tab==='picked'||tab==='left')renderTable();if(tab==='list')renderInfo();if(tab==='scan')setTimeout(()=>$('ub-code').focus(),40);
+          // Khung quét luôn ở đầu (21/10); tab chỉ đổi phần dưới: Còn thiếu (vị trí) · Đã lựa (bảng) · Danh sách (Admin)
+          screen.querySelector('[data-ub-panel="left"]').hidden=tab!=='left';screen.querySelector('[data-ub-panel="table"]').hidden=tab!=='picked';screen.querySelector('[data-ub-panel="list"]').hidden=tab!=='list';
+          if(tab==='picked'||tab==='left')renderTable();if(tab==='list')renderInfo();
         };
         screen.querySelector('.ub-tabs').addEventListener('click',e=>{const b=e.target.closest('[data-ub-tab]');if(b)setTab(b.dataset.ubTab)});
         const syncAdmin=()=>{S.admin=Boolean(window.PrintSkuAdminAccess?.peekToken?.());const b=$('ub-admin'),l=S.admin?'Đang là Admin · bấm để thoát':'Đăng nhập Admin';b.setAttribute('aria-pressed',String(S.admin));b.setAttribute('aria-label',l);b.title=l;renderInfo()};
@@ -13007,7 +13060,7 @@ async function rpc(name,args,retry=true){
           const on=active();screen.hidden=!on;
           if(!on){wasOn=false;return}
           const root=$('root');if(root)root.inert=true;
-          if(!wasOn){wasOn=true;syncAdmin();load();setTab(S.tab)}
+          if(!wasOn){wasOn=true;syncAdmin();load();setTab(S.tab);setTimeout(()=>$('ub-code').focus(),40)}
         };
         const tile=$('barcode-uid-block');if(tile)tile.addEventListener('click',()=>{location.hash='#'+ROUTE});
         $('ub-back').addEventListener('click',()=>{location.hash='#home'});
