@@ -75,6 +75,16 @@ test('convertWeight: "chỉ riêng chỉ" không trừ lõi ở cuộn nguyên; 
   assert.match(CORE.convertWeight({ specMm: 5000000, total: 0.4, unit: 'kg', cones: 10, coreG: 50, fullG: 120, fullIncludesCore: true }).reason, /không còn chỉ nào/);
 });
 
+test('convertWeight: có Tex thì KHÔNG bắt buộc quy cách (người dùng 21/10: nhập đủ thông số là ra mm, không cần SKU); không Tex thì vẫn cần', () => {
+  const r = CORE.convertWeight({ specMm: NaN, total: 1, unit: 'kg', cones: 10, coreG: 20, fullG: NaN, tex: 27 });
+  assert.equal(r.ok, true, JSON.stringify(r));
+  assert.equal(r.method, 'tex');
+  assert.equal(r.mm, 29629630, '800 gr chỉ ÷ 0,027 g/m');
+  assert.equal(r.flag, null, 'không quy cách → không kiểm cuộn thừa dài hơn cuộn nguyên');
+  assert.ok(Number.isNaN(r.equivalentCones) && Number.isNaN(r.avgPct), 'không quy cách → không quy ra cuộn nguyên');
+  assert.deepEqual(CORE.convertWeight({ specMm: NaN, total: 1, unit: 'kg', cones: 10, coreG: 20, fullG: 120 }).missing, ['quy cách cuộn nguyên', 'khối lượng cuộn nguyên hoặc chỉ số Tex'], 'cân cuộn nguyên cần quy cách');
+});
+
 test('convertWeight: tính theo Tex khi không cân cuộn nguyên; cân cuộn nguyên luôn được ưu tiên', () => {
   const tex = CORE.convertWeight({ specMm: 5000000, total: 10000, unit: 'g', cones: 10, coreG: 14, fullG: NaN, tex: 27 });
   assert.equal(tex.ok, true);

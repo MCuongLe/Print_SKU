@@ -60,21 +60,28 @@ const BASE = process.env.BASE || 'http://127.0.0.1:8000/';
 
       // Chỉ: đúng ví dụ Audit Factory, dùng Tex khi không có khối lượng cuộn nguyên.
       assert.equal((await page.locator('#uc-thread-open span').innerText()).trim(), 'Thông số hàng', 'chưa nhập thì dòng tóm tắt chỉ ghi tên');
-      await withParams('thread', async () => {
-        await page.locator('#uc-thread-spec').fill('5000');
-        await page.locator('#uc-thread-tex').fill('27');
-      });
-      // Khối lượng 1 lõi nằm ngoài popup, cùng hàng với Số cuộn thừa (cả trên điện thoại).
+      // Khối lượng 1 lõi và Chỉ số Tex (21/10/2026) nằm ngoài popup, cùng khu với Số cuộn thừa (cả trên điện thoại).
       assert.equal(await page.locator('#uc-thread-params #uc-thread-core').count(), 0, 'khối lượng lõi không còn trong popup Thông số hàng');
+      assert.equal(await page.locator('#uc-thread-params #uc-thread-tex').count(), 0, 'Chỉ số Tex không còn trong popup Thông số hàng');
+      assert.equal(await page.locator('#uc-thread-tex').isVisible(), true, 'Chỉ số Tex hiện ngay trên màn');
       const coneBox = await page.locator('#uc-thread-cones').boundingBox(), coreBox = await page.locator('#uc-thread-core').boundingBox();
       assert.ok(Math.abs(coneBox.y - coreBox.y) < 2 && coreBox.x > coneBox.x, `Số cuộn thừa và Khối lượng 1 lõi cùng một hàng (${width}px)`);
-      await page.locator('#uc-thread-core').fill('14');
-      await page.locator('#uc-total').fill('10000');
+      // Người dùng 21/10: nhập đủ thông số là ra mm — không cần SKU, không bắt buộc quy cách khi có Tex; nhập dở → báo còn thiếu ô nào
       await page.locator('#uc-weight-unit [data-unit="g"]').click();
+      await page.locator('#uc-total').fill('10000');
+      await page.waitForFunction(() => /Còn thiếu/.test(document.getElementById('uc-empty').textContent) && !document.getElementById('uc-empty').hidden);
+      assert.match(await page.locator('#uc-empty').innerText(), /số cuộn/);
+      await page.locator('#uc-thread-core').fill('14');
       await page.locator('#uc-thread-cones').fill('10');
+      await page.locator('#uc-thread-tex').fill('27');
       await page.waitForFunction(() => document.querySelector('#uc-mm')?.textContent === '365.185.185');
+      assert.equal(await page.locator('#uc-result').isVisible(), true, 'không SKU, không quy cách vẫn ra số mm');
       assert.equal(await page.locator('#uc-basis').innerText(), 'Tex 27');
-      assert.equal((await page.locator('#uc-thread-open span').innerText()).trim(), '5.000 m · Tex 27', 'dòng tóm tắt thông số hàng (không lặp khối lượng lõi)');
+      await withParams('thread', async () => {
+        await page.locator('#uc-thread-spec').fill('5000');
+      });
+      assert.equal(await page.locator('#uc-mm').innerText(), '365.185.185', 'quy cách không đổi số theo Tex');
+      assert.equal((await page.locator('#uc-thread-open span').innerText()).trim(), '5.000 m', 'dòng tóm tắt thông số hàng (không lặp lõi, Tex)');
       assert.match(await page.locator('#uc-sub').innerText(), /^365\.185[,.]2 m · Tex 27$/, 'dòng phụ dưới kết quả: mét + thước đang dùng');
       assert.equal(await page.locator('.uc-steps-open').isVisible(), modal);
       if (modal) {
@@ -98,7 +105,7 @@ const BASE = process.env.BASE || 'http://127.0.0.1:8000/';
       assert.deepEqual(await page.locator('#uc-spec-choices button').allInnerTexts(), ['5.000 m']);
       assert.equal(await page.locator('#uc-spec-choices button').getAttribute('aria-pressed'), 'true');
       assert.equal(await page.locator('#uc-spec-choices button').getAttribute('title'), 'Theo Combo 900000311');
-      assert.equal((await page.locator('#uc-thread-open span').innerText()).trim(), '5.000 m · Tex 27');
+      assert.equal((await page.locator('#uc-thread-open span').innerText()).trim(), '5.000 m', 'Tex tự điền ở ô ngoài, tóm tắt chỉ còn quy cách');
       await page.locator('#uc-clear').click();
       assert.equal(await page.locator('#uc-spec-choices').isVisible(), false, 'Nhập lại từ đầu thì bỏ chip quy cách');
       await page.locator('#uc-code').fill('900000302'); await page.locator('#uc-code-form').press('Enter');

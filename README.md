@@ -854,6 +854,9 @@ Mở **CHUYỂN ĐỔI ĐƠN VỊ** ở WH-MATERIAL hoặc `#unit-converter`:
 - Có thể nhập tay, quét/nhập SKU hoặc Group UID (ô là khung quét chuẩn: bàn phím ảo ẩn mặc định, nút camera · bàn phím trong ô, nhớ ở khoá `uc-ban-phim`). Tên hàng được đọc để tự điền Tex, quy cách cuộn,
   khổ vải và GSM. Chỉ SKU có đơn vị chiều dài mới được đưa kết quả mm sang TÌM SKU để in, tránh
   gắn nhầm số mm vào SKU đơn vị gram/cuộn.
+- **Không cần SKU, Tex ở ngoài (21/10/2026).** Ô **Chỉ số Tex** nằm ngay trên màn (cạnh Số cuộn thừa / Khối lượng 1 lõi), không còn trong
+  "Thông số hàng". Có Tex thì **quy cách cuộn nguyên không bắt buộc**: nhập đủ tổng khối lượng, số cuộn, lõi, Tex là ra mm, không cần SKU
+  (quy cách chỉ để cảnh báo cuộn thừa dài hơn cuộn nguyên; tính bằng cân cuộn nguyên vẫn cần quy cách). Nhập dở → dòng "Còn thiếu: …".
 - **Quy cách cuộn nguyên suy ra từ Combo (10/10/2026).** Tên SKU Normal chỉ (`…/Tex 27- 60-3/mm`) không ghi quy cách, nhưng Combo của nó
   (`…/cuộn 5000m`) có quan hệ `1 Combo = 5.000.000 mm`. Chọn SKU Normal chỉ thì màn hình gọi RPC `sku_combo_by_normal`
   (`supabase/sku_combo_links_v3_by_normal.sql`; tra ngược Normal → Combo, bảng quan hệ vẫn private) và lấy `quantity` làm quy cách:

@@ -4521,6 +4521,7 @@ Error generating stack: `+y.message+`
                 <div class="uc-two uc-cone-row">
                   <div class="fsk-field"><label for="uc-thread-cones">Số cuộn thừa</label><div class="fsk-inrow"><input class="cut-input" id="uc-thread-cones" inputmode="numeric" autocomplete="off"><span class="fsk-unit">cuộn</span></div></div>
                   <div class="fsk-field"><label for="uc-thread-core">Khối lượng 1 lõi</label><div class="fsk-inrow"><input class="cut-input" id="uc-thread-core" inputmode="decimal" autocomplete="off"><span class="fsk-unit">gr</span></div></div>
+                  <div class="fsk-field uc-tex-field"><label for="uc-thread-tex">Chỉ số Tex</label><div class="fsk-inrow"><input class="cut-input" id="uc-thread-tex" inputmode="decimal" autocomplete="off"><span class="fsk-unit">Tex</span></div></div>
                 </div>
                 <div class="uc-spec-choices" id="uc-spec-choices" role="group" aria-label="Quy cách theo Combo" hidden></div>
                 <button class="uc-params-open" id="uc-thread-open" type="button" data-sheet-open="uc-thread-params" aria-haspopup="dialog"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 4h-7"/><path d="M10 4H3"/><path d="M21 12h-9"/><path d="M8 12H3"/><path d="M21 20h-5"/><path d="M12 20H3"/><path d="M14 2v4"/><path d="M8 10v4"/><path d="M16 18v4"/></svg><span>Thông số hàng</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></button>
@@ -4529,7 +4530,6 @@ Error generating stack: `+y.message+`
                   <div class="uc-sheet-body">
                     <div class="uc-two">
                       <div class="fsk-field"><label for="uc-thread-spec">Quy cách cuộn nguyên</label><div class="fsk-inrow"><input class="cut-input" id="uc-thread-spec" inputmode="decimal" autocomplete="off"><span class="fsk-seg" id="uc-thread-spec-unit" role="group" aria-label="Đơn vị quy cách"><button type="button" data-unit="m" aria-pressed="true">m</button><button type="button" data-unit="yard" aria-pressed="false">yard</button></span></div></div>
-                      <div class="fsk-field"><label for="uc-thread-tex">Chỉ số Tex</label><div class="fsk-inrow"><input class="cut-input" id="uc-thread-tex" inputmode="decimal" autocomplete="off"><span class="fsk-unit">Tex</span></div></div>
                     </div>
                     <div class="uc-two">
                       <div class="fsk-field"><label for="uc-thread-full">Khối lượng 1 cuộn nguyên</label><div class="fsk-inrow"><input class="cut-input" id="uc-thread-full" inputmode="decimal" autocomplete="off"><span class="fsk-unit">gr</span></div><div class="fsk-seg uc-mode" id="uc-thread-full-mode" role="group" aria-label="Cách hiểu khối lượng cuộn nguyên"><button type="button" data-mode="all" aria-pressed="true">cân cả lõi</button><button type="button" data-mode="thread" aria-pressed="false">chỉ riêng chỉ</button></div></div>
@@ -4585,10 +4585,10 @@ Error generating stack: `+y.message+`
     </section>
     <style id="unit-converter-theme">
       .uc-screen{background:#f3f7f5}.uc-main{max-width:1180px}.uc-kind{display:flex;width:min(420px,100%);margin:0 auto 16px;padding:4px;border:1px solid var(--wms-border,#d9e2de);border-radius:15px;background:#e8efec}.uc-kind button{flex:1;min-height:48px;border:0;border-radius:11px;background:transparent;color:#526861;font:600 16px var(--wms-font);cursor:pointer}.uc-kind button[aria-pressed="true"]{color:#fff;background:var(--wms-brand,#005f41);box-shadow:0 5px 14px rgba(0,95,65,.2)}
-      .uc-layout{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(340px,.8fr);gap:16px;align-items:start}.uc-inputs{display:grid;gap:16px}.uc-lookup{padding:0;overflow:hidden}.uc-lookup>summary{display:grid;grid-template-columns:30px auto minmax(0,1fr) 20px;align-items:center;gap:9px;min-height:68px;padding:14px 20px;cursor:pointer;list-style:none}.uc-lookup>summary::-webkit-details-marker{display:none}.uc-step-number{display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:#007754;color:#fff;font-weight:600}.uc-lookup>summary>strong{font-size:18px}.uc-lookup>summary>small{min-width:0;color:#6b7d76;overflow:hidden;text-align:right;text-overflow:ellipsis;white-space:nowrap}.uc-lookup-chevron{width:10px;height:10px;border-right:2px solid #60736b;border-bottom:2px solid #60736b;transform:rotate(45deg) translate(-2px,-2px);transition:transform .18s ease}.uc-lookup[open] .uc-lookup-chevron{transform:rotate(225deg) translate(-2px,-2px)}.uc-lookup-body{padding:0 20px 18px}.uc-code-row{display:grid;grid-template-columns:minmax(0,1fr) 48px auto;gap:8px}.uc-picked{display:grid;gap:4px;margin-top:12px;padding:13px 15px;border:1px solid #b9d8cc;border-radius:13px;background:#edf8f4}.uc-picked strong{color:#005f41}.uc-picked span{font-weight:600}.uc-picked small{color:#60736b}.uc-two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.uc-cone-row{align-items:end}.uc-mode{width:max-content;max-width:100%;margin-top:8px}.uc-measured{margin-top:4px;padding:12px 14px;border:1px solid #dce7e3;border-radius:13px;background:#f8faf9}.uc-measured summary{color:#176248;font-weight:600;cursor:pointer}.uc-measured .uc-two{margin-top:12px}.uc-data-actions{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:10px;margin-top:18px;padding-top:16px;border-top:1px solid #e2ebe7}.uc-data-actions button{display:flex;align-items:center;gap:10px;min-height:60px;padding:10px 14px;border-radius:15px;font:inherit;text-align:left;cursor:pointer}.uc-data-actions button span:last-child{display:grid;gap:2px}.uc-data-actions button strong{font-size:16px}.uc-data-actions button small{font-size:12px;line-height:1.3}.uc-action-icon{display:grid;flex:none;place-items:center;width:34px;height:34px;border-radius:50%;font-size:22px;font-weight:700}.uc-next-action{border:1px solid #007754;background:#007754;color:#fff;box-shadow:0 5px 14px rgba(0,95,65,.16)}.uc-next-action .uc-action-icon{background:rgba(255,255,255,.16)}.uc-next-action small{color:rgba(255,255,255,.8)}.uc-reset-action{border:1px solid #e4d4d1;background:#fff;color:#7a332c}.uc-reset-action .uc-action-icon{background:#fff0ee}.uc-reset-action small{color:#8c6b67}
+      .uc-layout{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(340px,.8fr);gap:16px;align-items:start}.uc-inputs{display:grid;gap:16px}.uc-lookup{padding:0;overflow:hidden}.uc-lookup>summary{display:grid;grid-template-columns:30px auto minmax(0,1fr) 20px;align-items:center;gap:9px;min-height:68px;padding:14px 20px;cursor:pointer;list-style:none}.uc-lookup>summary::-webkit-details-marker{display:none}.uc-step-number{display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:#007754;color:#fff;font-weight:600}.uc-lookup>summary>strong{font-size:18px}.uc-lookup>summary>small{min-width:0;color:#6b7d76;overflow:hidden;text-align:right;text-overflow:ellipsis;white-space:nowrap}.uc-lookup-chevron{width:10px;height:10px;border-right:2px solid #60736b;border-bottom:2px solid #60736b;transform:rotate(45deg) translate(-2px,-2px);transition:transform .18s ease}.uc-lookup[open] .uc-lookup-chevron{transform:rotate(225deg) translate(-2px,-2px)}.uc-lookup-body{padding:0 20px 18px}.uc-code-row{display:grid;grid-template-columns:minmax(0,1fr) 48px auto;gap:8px}.uc-picked{display:grid;gap:4px;margin-top:12px;padding:13px 15px;border:1px solid #b9d8cc;border-radius:13px;background:#edf8f4}.uc-picked strong{color:#005f41}.uc-picked span{font-weight:600}.uc-picked small{color:#60736b}.uc-two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.uc-cone-row{align-items:end;grid-template-columns:repeat(3,minmax(0,1fr))}.uc-mode{width:max-content;max-width:100%;margin-top:8px}.uc-measured{margin-top:4px;padding:12px 14px;border:1px solid #dce7e3;border-radius:13px;background:#f8faf9}.uc-measured summary{color:#176248;font-weight:600;cursor:pointer}.uc-measured .uc-two{margin-top:12px}.uc-data-actions{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:10px;margin-top:18px;padding-top:16px;border-top:1px solid #e2ebe7}.uc-data-actions button{display:flex;align-items:center;gap:10px;min-height:60px;padding:10px 14px;border-radius:15px;font:inherit;text-align:left;cursor:pointer}.uc-data-actions button span:last-child{display:grid;gap:2px}.uc-data-actions button strong{font-size:16px}.uc-data-actions button small{font-size:12px;line-height:1.3}.uc-action-icon{display:grid;flex:none;place-items:center;width:34px;height:34px;border-radius:50%;font-size:22px;font-weight:700}.uc-next-action{border:1px solid #007754;background:#007754;color:#fff;box-shadow:0 5px 14px rgba(0,95,65,.16)}.uc-next-action .uc-action-icon{background:rgba(255,255,255,.16)}.uc-next-action small{color:rgba(255,255,255,.8)}.uc-reset-action{border:1px solid #e4d4d1;background:#fff;color:#7a332c}.uc-reset-action .uc-action-icon{background:#fff0ee}.uc-reset-action small{color:#8c6b67}
       .uc-result{position:sticky;top:16px}.uc-empty{padding:42px 20px;border:1px dashed #cbdad5;border-radius:14px;color:#72827d;text-align:center}.uc-result-main{display:grid;grid-template-columns:auto 1fr;align-items:baseline;padding:20px;border-left:5px solid #007754;border-radius:14px;background:#edf8f4}.uc-result-main strong{color:#005f41;font-size:28px;line-height:1;font-variant-numeric:tabular-nums}.uc-result-main>span{margin-left:7px;color:#526861;font-weight:600}.uc-result-main small{grid-column:1/-1;margin-top:7px;color:#526861;font-weight:600}.uc-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}.uc-metrics div{padding:12px;border:1px solid #dce7e3;border-radius:12px;background:#fff}.uc-metrics b,.uc-metrics span{display:block}.uc-metrics b{color:#173129;font-size:18px}.uc-metrics span{margin-top:3px;color:#6b7d76;font-size:12px}.uc-warning{margin-top:10px;padding:12px 14px;border-radius:12px;color:#a33b30;background:#fff0ee;font-size:13px;line-height:1.45}.uc-warning[data-tone="note"]{color:#76550c;background:#fff6dc}.uc-result-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:14px}.uc-result-actions button{min-height:48px}.uc-result .fsk-steps{margin-top:12px}.uc-result .fsk-step{grid-template-columns:30px minmax(0,1fr) auto}
       @media(max-width:800px){.uc-main{padding-bottom:96px}.uc-layout{grid-template-columns:1fr}.uc-code-row{grid-template-columns:minmax(0,1fr) 48px}.uc-code-row .cut-secondary{grid-column:1/-1}.uc-result{position:static}.uc-result-actions{position:sticky;bottom:0;z-index:3;display:grid;grid-template-columns:1fr;margin:14px -16px -16px;padding:12px 16px calc(12px + env(safe-area-inset-bottom));border-top:1px solid #dce7e3;background:rgba(255,255,255,.96);backdrop-filter:blur(8px)}.uc-result-actions button{width:100%}}
-      @media(max-width:520px){.uc-lookup>summary{grid-template-columns:30px minmax(0,1fr) 18px;min-height:62px;padding:12px 16px}.uc-lookup>summary>strong{font-size:16px}.uc-lookup>summary>small{grid-column:2;text-align:left}.uc-lookup-chevron{grid-column:3;grid-row:1/3}.uc-lookup-body{padding:0 16px 16px}.uc-two,.uc-metrics{grid-template-columns:1fr}.uc-cone-row{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.uc-data-actions button{min-height:52px}.uc-result-main strong{font-size:28px}.uc-mode{width:100%}.uc-mode button{flex:1}}
+      @media(max-width:520px){.uc-lookup>summary{grid-template-columns:30px minmax(0,1fr) 18px;min-height:62px;padding:12px 16px}.uc-lookup>summary>strong{font-size:16px}.uc-lookup>summary>small{grid-column:2;text-align:left}.uc-lookup-chevron{grid-column:3;grid-row:1/3}.uc-lookup-body{padding:0 16px 16px}.uc-two,.uc-metrics{grid-template-columns:1fr}.uc-cone-row{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.uc-cone-row .uc-tex-field{grid-column:1/-1}.uc-data-actions button{min-height:52px}.uc-result-main strong{font-size:28px}.uc-mode{width:100%}.uc-mode button{flex:1}}
       /* 10/10/2026 — điện thoại: "Thông số hàng" và "Cách tính" là popup (dialog.uc-sheet, tờ trượt dưới); từ 801 px dialog mở không-modal ngay trong trang như cũ (JS: matchMedia). */
       .uc-sheet{margin:0;padding:0;border:0;background:transparent;color:inherit}
       .uc-sheet[open]{position:static;display:block;width:auto;max-width:none;max-height:none;overflow:visible}
@@ -6766,9 +6766,11 @@ var FSK_CORE = (function () {
     var totalG = input.unit === "g" ? total : total * 1000;
     var hasScale = fullG > 0 && specMm > 0, hasTex = texInput > 0;
     var missing = [];
-    // Audit Factory luôn yêu cầu quy cách với chỉ: ngoài phép tính, số này còn dùng để kiểm tra
+    // Quy cách cuộn nguyên: bắt buộc khi tính bằng cân cuộn nguyên (nằm trong công thức). Có Tex thì không bắt buộc
+    // (người dùng 21/10/2026: nhập đủ thông số là ra mm, không cần SKU) — có quy cách thì dùng thêm để kiểm
     // trung bình mỗi cuộn thừa có vượt chiều dài một cuộn nguyên hay không.
-    if (!(specMm > 0)) missing.push("quy cách cuộn nguyên");
+    var hasSpec = specMm > 0;
+    if (!hasSpec && !hasTex) missing.push("quy cách cuộn nguyên");
     if (!(total > 0)) missing.push("tổng khối lượng");
     if (!(cones > 0)) missing.push("số cuộn");
     if (!(coreG >= 0) || !isFinite(coreG)) missing.push("khối lượng lõi");
@@ -6797,13 +6799,13 @@ var FSK_CORE = (function () {
     var mm = Math.round(threadG * mmPerG);
     var avgMm = mm / cones;
     var flag = null;
-    if (avgMm > specMm) flag = "impossible";
-    else if (avgMm / specMm >= 0.995) flag = "nearly_full";
+    if (hasSpec && avgMm > specMm) flag = "impossible";
+    else if (hasSpec && avgMm / specMm >= 0.995) flag = "nearly_full";
     var differencePct = hasScale && hasTex ? Math.abs(scaleGPerM - texGPerM) / texGPerM * 100 : NaN;
     return {
       ok: true, material: "thread", method: method, mm: mm, totalG: totalG, coreTotalG: coreTotalG,
       threadG: threadG, fullThreadG: fullThreadG, gPerM: gPerM, mmPerG: mmPerG,
-      equivalentCones: mm / specMm, avgMm: avgMm, avgPct: avgMm / specMm * 100,
+      equivalentCones: hasSpec ? mm / specMm : NaN, avgMm: avgMm, avgPct: hasSpec ? avgMm / specMm * 100 : NaN,
       tex: gPerM * 1000, texInput: hasTex ? texInput : NaN, differencePct: differencePct, flag: flag
     };
   }
@@ -7451,8 +7453,8 @@ var FSK_CORE = (function () {
           cdField.tiles.innerHTML =
             tile("to", `${fmt(r.mm)} <small>mm</small>`, "Tổng số lượng quy đổi", `${fmt(cones)} cuộn thừa · mật độ ${fmt(r.mmPerG)} mm/gr · ${r.method === "tex" ? `Tex ${fmt(r.texInput, 1)} theo tem` : `≈ Tex ${fmt(r.tex, 1)} theo cân`}`) +
             tile("", `${fmt(r.mm / 1000, 1)} <small>m</small>`, "Quy ra mét", `${fmt(r.mm / 1000000, 2)} km`) +
-            tile("", `${fmt(r.equivalentCones, 2)} <small>cuộn</small>`, "Tương đương cuộn nguyên", `${fmt(specMm)} mm mỗi cuộn`) +
-            tile("", `${fmt(r.avgMm)} <small>mm</small>`, "Trung bình 1 cuộn thừa", `${fmt(r.avgPct, 1)}% cuộn nguyên`);
+            (specMm > 0 ? tile("", `${fmt(r.equivalentCones, 2)} <small>cuộn</small>`, "Tương đương cuộn nguyên", `${fmt(specMm)} mm mỗi cuộn`) : "") +
+            tile("", `${fmt(r.avgMm)} <small>mm</small>`, "Trung bình 1 cuộn thừa", specMm > 0 ? `${fmt(r.avgPct, 1)}% cuộn nguyên` : "Chưa có quy cách cuộn nguyên");
           cdField.steps.innerHTML =
             step(1, `Cân cả lô${cd.unit === "kg" ? ` (${fmt(total, 3)} kg)` : ""}`, `${fmt(r.totalG, 1)} gr`) +
             step(2, `Trừ lõi — ${fmt(cones)} cuộn × ${fmt(coreG, 1)} gr`, `− ${fmt(r.coreTotalG, 1)} gr`) +
@@ -7864,7 +7866,7 @@ var FSK_CORE = (function () {
           if (state.kind === "thread") {
             // Khối lượng 1 lõi nằm ngay cạnh Số cuộn thừa nên không lặp lại trong dòng tóm tắt.
             const spec = num(fields.threadSpec), tex = num(fields.threadTex), full = num(fields.threadFull);
-            setSum("uc-thread-open", [pos(spec) && `${fmt(spec)} ${state.threadSpecUnit === "yard" ? "yard" : "m"}`, pos(tex) && `Tex ${fmt(tex, 1)}`, pos(full) && `cuộn ${fmt(full, 1)} g`].filter(Boolean));
+            setSum("uc-thread-open", [pos(spec) && `${fmt(spec)} ${state.threadSpecUnit === "yard" ? "yard" : "m"}`, pos(full) && `cuộn ${fmt(full, 1)} g`].filter(Boolean)); // Tex nằm ngoài (21/10/2026)
             syncSpecChoices();
           } else {
             const width = num(fields.fabricWidth), gsm = num(fields.fabricGsm), roll = num(fields.fabricRoll), full = num(fields.fabricFull);
@@ -7900,7 +7902,9 @@ var FSK_CORE = (function () {
         };
         const showInvalid = result => {
           state.result = null; $("uc-result").hidden = true; $("uc-empty").hidden = false;
-          $("uc-empty").innerHTML = result?.reason ? `<b>Không tính được:</b> ${esc(result.reason)}` : ""; $("uc-empty").hidden = !$("uc-empty").innerHTML;
+          // Thiếu ô: chỉ báo khi người dùng đã bắt đầu nhập số liệu (màn trống thì để trống)
+          const started = Object.values(fields).some(f => f && f.value && f.value.trim());
+          $("uc-empty").innerHTML = result?.reason ? `<b>Không tính được:</b> ${esc(result.reason)}` : result?.missing && started ? `Còn thiếu: <b>${result.missing.map(esc).join("</b> · <b>")}</b>` : ""; $("uc-empty").hidden = !$("uc-empty").innerHTML;
         };
         const renderResult = (result, input) => {
           state.result = result; $("uc-empty").hidden = true; $("uc-result").hidden = false;
