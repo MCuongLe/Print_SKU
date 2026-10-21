@@ -4,6 +4,11 @@ const SKU_PATTERN = /^[0-9A-Za-z._-]{1,40}$/;
 const LOCATION_PATTERN = /^[0-9A-Z][0-9A-Z._\/-]{0,39}$/;
 
 const MAX_CODE_LENGTH = 40;
+// Tem Group UID (0.10.0): số PO, RFID là mã định danh → chỉ cắt khoảng trắng hai đầu, sai mẫu hoặc quá dài thì từ chối cả lệnh
+// (không gộp khoảng trắng bên trong, không cắt bớt như Lot/Roll). Mẫu ký tự giới hạn để chữ luôn vừa ô PO (xem fitTextBlock).
+const PO_PATTERN = /^[0-9A-Za-z._\/ -]{1,20}$/;
+const RFID_PATTERN = /^[0-9A-Za-z]{1,20}$/;
+const RECEIVED_DATE_PATTERN = /^(\d{2})\/(\d{2})\/(\d{4})$/;
 
 function cleanText(value, maxLength) {
   return String(value ?? "").trim().replace(/\s+/g, " ").slice(0, maxLength);
@@ -17,6 +22,24 @@ function rawCode(value) {
 
 function validGroupUid(code) {
   return code.length >= 1 && code.length <= MAX_CODE_LENGTH && ASCII_BARCODE.test(code);
+}
+
+function validReceivedDate(value) {
+  const match = RECEIVED_DATE_PATTERN.exec(value);
+  if (!match) return false;
+  const day = Number(match[1]), month = Number(match[2]), year = Number(match[3]);
+  if (year < 2000 || year > 2099) return false; // gõ năm hai chữ số ra 0026 ở ô ngày của web thì bị từ chối ở đây
+  const date = new Date(Date.UTC(year, month - 1, day)); // ngày có thật trên lịch (31/02 không qua)
+  return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
+}
+
+// Các trường tuỳ chọn của tem Group UID: trống thì hợp lệ (template bỏ phần đó), có thì phải đúng dạng.
+function uidExtraErrors(item, where) {
+  const errors = [];
+  if (item.po && !PO_PATTERN.test(item.po)) errors.push(`Số PO${where} chỉ gồm chữ, số, . _ / - và khoảng trắng, tối đa 20 ký tự`);
+  if (item.rfid && !RFID_PATTERN.test(item.rfid)) errors.push(`RFID${where} chỉ gồm chữ và số, tối đa 20 ký tự`);
+  if (item.receivedDate && !validReceivedDate(item.receivedDate)) errors.push(`Ngày nhận${where} phải dạng dd/mm/yyyy`);
+  return errors;
 }
 
 function validCopies(value) {
@@ -73,6 +96,9 @@ export function normalizeJob(input) {
       productName: cleanText(item.productName ?? item.materialName, 180),
       lot: cleanText(item.lot, 20),
       roll: cleanText(item.roll, 20),
+      rfid: String(item.rfid ?? "").trim(),
+      po: String(item.po ?? "").trim(),
+      receivedDate: String(item.receivedDate ?? "").trim(),
       copies: validCopies(item.copies ?? 1) || 0
     });
     if (Array.isArray(payload.items)) {
@@ -82,6 +108,7 @@ export function normalizeJob(input) {
         if (!validGroupUid(item.groupUid)) errors.push(`Group UID dòng ${index + 1} không hợp lệ`);
         if (item.sku && !SKU_PATTERN.test(item.sku)) errors.push(`SKU dòng ${index + 1} không hợp lệ`);
         if (!item.productName) errors.push(`Thiếu tên sản phẩm dòng ${index + 1}`);
+        errors.push(...uidExtraErrors(item, ` dòng ${index + 1}`));
         if (!item.copies) errors.push(`Số bản dòng ${index + 1} không hợp lệ`);
       });
       const totalCopies = items.reduce((sum, item) => sum + item.copies, 0);
@@ -93,6 +120,7 @@ export function normalizeJob(input) {
       if (!validGroupUid(normalizedPayload.groupUid)) errors.push("Group UID không hợp lệ");
       if (normalizedPayload.sku && !SKU_PATTERN.test(normalizedPayload.sku)) errors.push("SKU không hợp lệ");
       if (!normalizedPayload.productName) errors.push("Thiếu tên sản phẩm");
+      errors.push(...uidExtraErrors(normalizedPayload, ""));
     }
   }
 

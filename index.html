@@ -85,11 +85,10 @@
         const jobStatus = id => deniedWatch(rpc("print_job_status", { p_access_token: accessToken(), p_job_id: id }));
         const queueStatus = () => deniedWatch(rpc("print_queue_status", { p_access_token: accessToken() }));
 
-        // Tem Group UID in LOT (trái, x=12) và ROLL (canh phải, x=308) cùng một hàng
-        // cỡ 24 ở đáy tem (workstation-agent/src/templates/group-uid-label.mjs). Đo
-        // chữ thật bằng canvas để cảnh báo trước khi in tem hai chuỗi có thể đè nhau.
-        const LOT_ROLL_SPAN = 296, LOT_ROLL_GAP = 10;
-        const LOT_ROLL_WARNING = "Tem in Lot và roll có thể trùng lên nhau, cần báo kiểm tra.";
+        // Tem Group UID từ agent 0.10.0: Số lô / Số cuộn / RFID mỗi giá trị một dòng chữ đậm riêng và tự thu nhỏ, nên Lot và Roll
+        // không còn đè nhau. Rủi ro còn lại: agent cắt Lot / Roll quá 20 ký tự (job-validator, cleanText) — tem in ra mã cụt —
+        // nên web hỏi trước khi in. (Agent ≤ 0.9.0 in LOT/ROLL cùng một hàng ở đáy tem; cảnh báo đè nhau của bản đó đã bỏ.)
+        const LOT_ROLL_MAX = 20;
         // Roll WMS hay là Lot + "-" + số cuộn (1.216 Group UID, vd 197/9-004, 08/10/2026) → tem chỉ in phần sau Lot ("004").
         // Chỉ cắt khi ngay sau Lot là dấu ngăn cách: Lot "1" + Roll "18" là trùng ngẫu nhiên, giữ nguyên; Roll trùng hẳn Lot cũng giữ.
         const labelRoll = (lot, roll) => {
@@ -97,34 +96,24 @@
           if (!l || r.slice(0, l.length).toLowerCase() !== l.toLowerCase() || !/^[-_/. ]/.test(r.slice(l.length))) return r;
           return r.slice(l.length).replace(/^[-_/. ]+/, "") || r;
         };
-        let lotRollContext;
-        // Agent 0.9.0 tự chọn bố cục đáy tem: một hàng cỡ 24→18, không vừa thì hai hàng cỡ 22 (ROLL vẫn canh phải),
-        // một chuỗi quá rộng thì thu tới cỡ 14. Web chỉ còn cảnh báo khi một chuỗi đơn lẻ ở cỡ 14 vẫn rộng hơn khung —
-        // lúc đó tem in ra chắc chắn mất chữ. (Trước 0.9.0: cảnh báo khi hai chuỗi cỡ 24 không chung một hàng.)
-        const lotRollOverlaps = items => {
-          lotRollContext = lotRollContext || document.createElement("canvas").getContext("2d");
-          if (!lotRollContext) return [];
-          lotRollContext.font = "14px Arial, Helvetica, sans-serif";
-          const width = text => lotRollContext.measureText(text).width;
-          return items.filter(item => {
-            const lot = String(item.lot || "").trim(), roll = labelRoll(lot, item.roll);
-            return (lot && width(`LOT: ${lot}`) > LOT_ROLL_SPAN) || (roll && width(`ROLL: ${roll}`) > LOT_ROLL_SPAN);
-          });
-        };
+        const lotRollTooLong = items => items.filter(item => {
+          const lot = String(item.lot || "").trim(), roll = labelRoll(lot, item.roll);
+          return lot.length > LOT_ROLL_MAX || roll.length > LOT_ROLL_MAX;
+        });
         const confirmLotRoll = async items => {
-          const overlaps = lotRollOverlaps(items);
-          if (!overlaps.length) return true;
+          const tooLong = lotRollTooLong(items);
+          if (!tooLong.length) return true;
           return window.WhDialog.confirm({
             tone: "warning",
-            title: "Lot và Roll có thể đè nhau trên tem",
-            facts: [`${overlaps.length} Group UID`],
-            list: overlaps.map(item => `${item.groupUid} · LOT ${item.lot} · ROLL ${labelRoll(item.lot, item.roll)}`),
+            title: "Lot hoặc Roll quá 20 ký tự, tem sẽ bị cắt",
+            facts: [`${tooLong.length} Group UID`],
+            list: tooLong.map(item => `${item.groupUid} · LOT ${item.lot} · ROLL ${labelRoll(item.lot, item.roll)}`),
             confirmText: "Vẫn in",
             cancelText: "Dừng kiểm tra"
           });
         };
 
-        window.PrintSkuQueue = { enqueue, jobStatus, queueStatus, accessToken, deviceKey, supabaseUrl: SUPABASE_URL, publishableKey: SUPABASE_KEY, lotRollOverlaps, confirmLotRoll, labelRoll };
+        window.PrintSkuQueue = { enqueue, jobStatus, queueStatus, accessToken, deviceKey, supabaseUrl: SUPABASE_URL, publishableKey: SUPABASE_KEY, lotRollTooLong, confirmLotRoll, labelRoll };
 
         // Hỏi lại tiện ích trước mỗi lệnh gửi qua cầu nối extension (Đồng bộ SKU, Group UID, Kiểm kê, Đối chiếu ADJ).
         // Extension vừa Reload/cập nhật mà trang chưa tải lại thì cầu nối trong tab này mồ côi: lệnh im lặng tới hết hạn chờ
@@ -1789,6 +1778,12 @@ Error generating stack: `+y.message+`
       .uid-optional { color: var(--wms-success, #16845b); font-size: 12px; letter-spacing: 0; text-transform: none; }
       .uid-map__apply { width: 100%; min-height: 48px; margin-top: 9px; border: 0; border-radius: 999px; color: #fff; background: #087b58; font-size: 13px; font-weight: 600; cursor: pointer; }
       .uid-map__apply:disabled { opacity: .4; cursor: default; }
+      .uid-print-meta { margin: 12px 0; }
+      .uid-print-meta label, .uid-print-meta input { min-width: 0; }
+      .uid-auto__po { grid-column: 1 / -1; margin-top: -2px; color: var(--wms-muted, #60736b); font-size: 12px; font-weight: 600; }
+      .uid-print-meta b { color: var(--wms-brand, #005f41); font-weight: 700; }
+      #uid-screen .uid-map__grid.uid-print-meta { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+      #uid-screen .uid-map__grid.uid-print-meta > label:nth-child(-n + 2) { grid-column: auto; }
       .uid-summary { margin-top: auto; padding: 13px; border: 1px solid rgba(0,95,65,.2); border-radius: 16px; background: rgba(0,95,65,.05); }
       .uid-summary__numbers { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 10px; color: var(--wms-muted, #60736b); font-size: 12px; }
       .uid-summary__numbers strong { color: var(--wms-text, #17251f); font-size: 16px; }
@@ -2079,6 +2074,10 @@ Error generating stack: `+y.message+`
                 <span class="uid-badge uid-badge--ready" id="uid-ready-count">0</span>
               </div>
               <div class="uid-panel__list" id="uid-ready"></div>
+              <div class="uid-map__grid uid-print-meta">
+                <label>Số PO<input id="uid-print-po" autocomplete="off" placeholder="Tùy chọn"></label>
+                <label><span>Ngày nhận <b id="uid-print-date-echo"></b></span><input id="uid-print-date" type="date" min="2020-01-01"></label>
+              </div>
               <div class="uid-summary">
                 <div class="uid-summary__numbers"><span>Tem sẽ in: <strong id="uid-total-copies">0</strong></span><span>Ghép 2 tem mỗi hàng giấy</span></div>
                 <button class="pbtn pbtn--block act-icon act-icon--print" id="uid-print-all" type="button">Xác nhận in</button>
@@ -2352,6 +2351,7 @@ Error generating stack: `+y.message+`
               </div>
               <button class="uid-row__icon uid-row__icon--remove" type="button" data-action="remove-row" aria-label="Xóa SKU ${esc(row.sku)}">×</button>
               <input class="uid-auto__name" data-field="name" readonly aria-label="Tên SP" value="${esc(row.name)}">
+              ${row.po ? `<span class="uid-auto__po">PO ${esc(row.po)}</span>` : ""}
             </div>`).join("");
           meter();
         };
@@ -2405,25 +2405,29 @@ Error generating stack: `+y.message+`
             // Một dòng Packing List là một cuộn (cây vải) nên số UID = số dòng, kể cả dòng số lượng 1 mã "1"
             const approved = all.filter(row => !row.status || /^approved$/i.test(row.status)), others = all.length - approved.length;
             const missing = orders.filter(order => !all.some(row => row.purchase_order === order));
-            const bySku = new Map(), names = new Map();
-            approved.forEach(row => { bySku.set(row.sku, (bySku.get(row.sku) || 0) + 1); if (row.product_name && !names.has(row.sku)) names.set(row.sku, row.product_name); });
+            const bySku = new Map(), names = new Map(), poBySku = new Map();
+            approved.forEach(row => { bySku.set(row.sku, (bySku.get(row.sku) || 0) + 1); if (row.product_name && !names.has(row.sku)) names.set(row.sku, row.product_name); if (!poBySku.has(row.sku)) poBySku.set(row.sku, new Set()); poBySku.get(row.sku).add(row.purchase_order); });
             const resolved = await Promise.all([...bySku.keys()].map(async sku => ({ sku, links: await comboLinks(sku) })));
             const merged = new Map(), multi = [];
             resolved.forEach(({ sku, links }) => {
               if (links.length > 1) { multi.push(sku); return; }
-              const normal = links[0]?.normal_sku || sku, name = links[0]?.product_name || names.get(sku) || "", entry = merged.get(normal) || { sku: normal, qty: 0, name };
-              entry.qty += bySku.get(sku); merged.set(normal, entry);
+              const normal = links[0]?.normal_sku || sku, name = links[0]?.product_name || names.get(sku) || "", entry = merged.get(normal) || { sku: normal, qty: 0, name, pos: new Set() };
+              entry.qty += bySku.get(sku); poBySku.get(sku).forEach(po => entry.pos.add(po)); merged.set(normal, entry);
             });
-            const found = [...merged.values()], capped = found.filter(entry => entry.qty > MAX_UID).length;
+            // PO lên tem: chỉ khi mọi cuộn của SKU thuộc đúng một PO và vừa tem (≤ 20 ký tự); không thì để trống (nhập tay ở khung Sẵn sàng in)
+            const poOf = entry => entry.pos.size === 1 && [...entry.pos][0].length <= 20 ? [...entry.pos][0] : "";
+            const found = [...merged.values()], capped = found.filter(entry => entry.qty > MAX_UID).length, noPo = found.filter(entry => !poOf(entry)).length;
             const total = found.reduce((sum, entry) => sum + Math.min(MAX_UID, entry.qty), 0);
             const notes = [
               missing.length ? `Chưa có Packing List: ${missing.join(", ")}` : "",
               multi.length ? `Combo nhiều thành phần: ${multi.join(", ")}` : "",
               others ? `${num(others)} dòng chưa Approved` : "",
               capped ? `${num(capped)} SKU quá ${MAX_UID} UID, đã giới hạn` : "",
+              noPo ? `${num(noPo)} SKU chưa gắn PO` : "",
             ].filter(Boolean);
             if (!found.length) { help(notes.length ? notes.join(" · ") : "Packing List chưa có dòng nào.", "warn"); return; }
-            rows = found.map(entry => ({ id: nextRow++, sku: entry.sku, name: entry.name, qty: Math.min(MAX_UID, entry.qty), selected: true }));
+            rows = found.map(entry => ({ id: nextRow++, sku: entry.sku, name: entry.name, qty: Math.min(MAX_UID, entry.qty), selected: true,
+              po: poOf(entry) }));
             render();
             help([`${orders.length > 1 ? `${orders.length} PO` : `PO ${orders[0]}`} · ${num(total)} UID · ${num(found.length)} SKU Normal`, ...notes].join(" · "), notes.length ? "warn" : "ok");
           } catch (error) { help(`Không đọc được Packing List: ${error.message || "lỗi WMS"}`, "warn"); }
@@ -2434,13 +2438,13 @@ Error generating stack: `+y.message+`
         // Chỉ dòng đã tick được gán; thiếu UID chờ gán thì báo lỗi và không gán gì
         apply.addEventListener("click", async () => {
           const chosen = picked();
-          if (!chosen.length || applying) return;
+          if (!chosen.length || applying || busy) return;
           if (chosen.some(row => row.qty < 1 || row.qty > MAX_UID)) { help(`Mỗi dòng cần số UID từ 1 đến ${MAX_UID}.`, "warn"); return; }
           const required = need(), have = pendingCount();
           if (required > have) { help(`Thiếu ${num(required - have)} UID chờ gán: cần ${num(required)}, đang chờ ${num(have)}`, "error"); return; }
           applying = true; meter(); help("Đang gán…");
           try {
-            const result = await window.PrintSkuUid.assign(chosen.map(row => ({ sku: row.sku, qty: row.qty, name: row.name })));
+            const result = await window.PrintSkuUid.assign(chosen.map(row => ({ sku: row.sku, qty: row.qty, name: row.name, po: row.po })));
             if (!result.ok) { help(result.error, "error"); return; }
             rows = rows.filter(row => !row.selected); render();
             help(`Đã gán ${num(result.total)} UID theo ${num(chosen.length)} dòng SKU`, "ok");
@@ -2461,6 +2465,13 @@ Error generating stack: `+y.message+`
         const form = document.getElementById("uid-form");
         const add = document.getElementById("uid-add");
         const printAll = document.getElementById("uid-print-all");
+        const printPo = document.getElementById("uid-print-po");
+        const printDate = document.getElementById("uid-print-date");
+        // Ô ngày hiển thị theo ngôn ngữ trình duyệt (có thể tháng/ngày); dòng cạnh nhãn nhắc đúng chuỗi dd/mm/yyyy sẽ in lên tem.
+        const receivedDateText = () => /^\d{4}-\d{2}-\d{2}$/.test(printDate.value) ? printDate.value.split("-").reverse().join("/") : "";
+        const echoReceivedDate = () => { document.getElementById("uid-print-date-echo").textContent = receivedDateText() ? `· ${receivedDateText()}` : ""; };
+        printDate.max = `${new Date().getFullYear() + 1}-12-31`; // gõ năm hai chữ số (15/06/26) ra năm 0026: ngoài khoảng min/max thì validity.valid = false
+        printDate.addEventListener("input", echoReceivedDate);
         const pendingElement = document.getElementById("uid-pending");
         const readyElement = document.getElementById("uid-ready");
         const pendingCount = document.getElementById("uid-pending-count");
@@ -2672,7 +2683,7 @@ Error generating stack: `+y.message+`
             for (const row of rows) {
               for (let copy = 0; copy < row.qty; copy += 1) {
                 const item = pending.shift();
-                mapped.push({ ...item, sku: row.sku, productName: row.name });
+                mapped.push({ ...item, sku: row.sku, productName: row.name, ...(row.po ? { po: row.po } : {}) });
               }
             }
             renderAll();
@@ -2911,7 +2922,7 @@ Error generating stack: `+y.message+`
             <article class="uid-row uid-row--rich${more ? " uid-row--more" : ""}${drag ? " has-drag" : ""}" data-id="${item.id}" data-selected="${Boolean(item.selected)}">
               ${drag ? `<button class="uid-row__drag" type="button" data-drag aria-label="Đổi thứ tự UID ${index + 1}"></button>` : ""}
               ${pick ? `<label class="uid-select" aria-label="Chọn UID ${index + 1}"><input type="checkbox" data-field="selected" ${item.selected ? "checked" : ""}></label>` : '<span class="uid-row__done" aria-hidden="true"></span>'}
-              <div class="uid-row__body"><code class="uid-row__code" title="${escapeHtml(item.groupUid)}">${escapeHtml(item.groupUid)}</code>${lotRoll ? `<span class="uid-row__lot">${lotRoll}</span>` : ""}${!pick && (item.sku || item.productName) ? `<span class="uid-row__lot">${escapeHtml([item.sku, item.productName].filter(Boolean).join(" · "))}</span>` : ""}${item.addedAt ? `<span class="uid-row__time">${addedText(item.addedAt)}</span>` : ""}</div>
+              <div class="uid-row__body"><code class="uid-row__code" title="${escapeHtml(item.groupUid)}">${escapeHtml(item.groupUid)}</code>${lotRoll ? `<span class="uid-row__lot">${lotRoll}</span>` : ""}${!pick && (item.sku || item.productName) ? `<span class="uid-row__lot">${escapeHtml([item.sku, item.productName, item.po ? `PO ${item.po}` : ""].filter(Boolean).join(" · "))}</span>` : ""}${item.addedAt ? `<span class="uid-row__time">${addedText(item.addedAt)}</span>` : ""}</div>
               <div class="uid-row__tools">
                 <button class="uid-row__icon uid-row__icon--copy" type="button" data-action="copy" aria-label="Chép UID ${index + 1}" title="Chép"></button>
                 <button class="uid-row__icon uid-row__icon--remove" type="button" data-action="remove" aria-label="Xóa UID ${index + 1}" title="Xóa">×</button>
@@ -2975,7 +2986,7 @@ Error generating stack: `+y.message+`
             ? mapped.map((item, index) => `
             <article class="uid-row uid-row--ready" data-id="${item.id}">
               <code class="uid-row__code" title="${escapeHtml(item.groupUid)}">${escapeHtml(item.groupUid)}</code>
-              <div class="uid-row__mapping" title="${escapeHtml([item.sku, item.productName, item.lot ? `Lot ${item.lot}` : "", item.roll ? `Roll ${item.roll}` : ""].filter(Boolean).join(" · "))}"><span>${escapeHtml([item.sku || "Không SKU", item.lot ? `Lot ${item.lot}` : "", item.roll ? `Roll ${item.roll}` : ""].filter(Boolean).join(" · "))}</span><strong>${escapeHtml(item.productName)}</strong></div>
+              <div class="uid-row__mapping" title="${escapeHtml([item.sku, item.productName, item.lot ? `Lot ${item.lot}` : "", item.roll ? `Roll ${item.roll}` : ""].filter(Boolean).join(" · "))}"><span>${escapeHtml([item.sku || "Không SKU", item.lot ? `Lot ${item.lot}` : "", item.roll ? `Roll ${item.roll}` : "", item.po ? `PO ${item.po}` : ""].filter(Boolean).join(" · "))}</span><strong>${escapeHtml(item.productName)}</strong></div>
               <div class="uid-row__tools">
                 <button class="uid-row__icon" type="button" data-action="unmap" aria-label="Bỏ gán UID ${index + 1}" title="Bỏ gán, trả về khung chờ">↩</button>
                 <button class="uid-row__icon uid-row__icon--remove" type="button" data-action="remove" aria-label="Xóa UID ${index + 1}" title="Xóa">×</button>
@@ -3014,7 +3025,7 @@ Error generating stack: `+y.message+`
           const index = mapped.findIndex(item => item.id === Number(row.dataset.id));
           if (index < 0) return;
           if (action === "unmap") {
-            const item = mapped.splice(index, 1)[0];
+            const { po, ...item } = mapped.splice(index, 1)[0]; // PO của lần gán WMS không theo UID về khung chờ
             pending.push({ ...item, selected: false });
             setStatus(`Đã trả ${item.groupUid} về khung chờ gán.`);
           } else if (action === "remove") {
@@ -3201,12 +3212,20 @@ Error generating stack: `+y.message+`
 
         printAll.addEventListener("click", async () => {
           if (!mapped.length || lookingUp.size || printing) return;
+          const manualPo = printPo.value.trim();
+          const receivedDate = receivedDateText();
+          // PO là mã định danh: sai mẫu hoặc quá 20 ký tự thì dừng và báo, không cắt (agent cũng từ chối). Ngày nhập dở không bị coi là trống.
+          if (manualPo && !/^[0-9A-Za-z._\/ -]{1,20}$/.test(manualPo)) { setStatus("Số PO chỉ gồm chữ, số và . _ / -, tối đa 20 ký tự.", "error"); printPo.focus(); return; }
+          if (!printDate.validity.valid || (printDate.value && !receivedDate)) { setStatus("Ngày nhận chưa hợp lệ.", "error"); printDate.focus(); return; }
           const items = mapped.map(item => ({
             groupUid: item.groupUid,
             sku: item.sku,
             productName: item.productName,
             lot: item.lot || "",
             roll: window.PrintSkuQueue.labelRoll(item.lot, item.roll),
+            // Số PO: UID gán từ Packing List WMS mang PO riêng; còn lại lấy ô nhập tay (tùy chọn). Ngày nhận chung cho cả lệnh.
+            po: item.po || manualPo,
+            receivedDate,
             copies: 1
           }));
           const labelCount = items.length;
@@ -3220,12 +3239,14 @@ Error generating stack: `+y.message+`
           printing = true;
           importButton.disabled = true;
           add.disabled = true;
+          printPo.disabled = true; // PO / ngày khóa trong lúc gửi: lệnh đang gửi dở không đổi nội dung giữa hai lần thử
+          printDate.disabled = true;
           let sentUids = 0;
           const jobIds = [];
           setStatus(`Đang gửi 0/${labelCount} tem đến máy trạm…`);
           try {
             for (const batch of batches) {
-              const batchKey = batch.map(item => item.groupUid).join(",");
+              const batchKey = batch.map(item => [item.groupUid, item.sku, item.lot, item.roll, item.po, item.receivedDate].join("|")).join(","); // gồm cả PO/ngày: sửa PO rồi gửi lại là lệnh mới, không nhận lại lệnh cũ cùng nonce
               if (!pendingUidNonce || pendingUidNonce.key !== batchKey) pendingUidNonce = { key: batchKey, nonce: `uid-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}` };
               const result = await window.PrintSkuQueue.enqueue({
                 type: "group_uid",
@@ -3242,6 +3263,9 @@ Error generating stack: `+y.message+`
               WmsPrint.progress(printAll, `Đang gửi ${sentUids}/${labelCount}…`);
             }
             mapped.splice(0, mapped.length);
+            printPo.value = "";
+            printDate.value = "";
+            echoReceivedDate();
             setStatus(`Đã gửi ${labelCount} Group UID — máy trạm ghép 2 tem mỗi hàng giấy.`, "ok");
             WmsPrint.sent(printAll, jobIds);
           } catch (error) {
@@ -3253,6 +3277,8 @@ Error generating stack: `+y.message+`
             printing = false;
             importButton.disabled = false;
             add.disabled = false;
+            printPo.disabled = false;
+            printDate.disabled = false;
             WmsPrint.settle(printAll);
             renderAll();
           }

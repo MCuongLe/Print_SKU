@@ -93,31 +93,31 @@ test("template SKU thu nhỏ font số lượng khi nhiều ký tự", () => {
   assert.ok(longFont < 40, `font dài phải nhỏ hơn 40, đang là ${longFont}`);
 });
 
-test("tem Group UID in Lot va Roll o day tem", () => {
+test("tem Group UID in So lo va So cuon thanh khoi chu dam duoi ten, tren o PO", () => {
   const svg = renderGroupUidLabel({
     groupUid: "1028260000000001", sku: "900000001",
     productName: "Vai Pique/SK9115_Shaoxing Sukun/88% Nylon 12% Spandex",
     lot: "B", roll: "56"
   });
-  assert.match(svg, /LOT: B/);
-  assert.match(svg, /ROLL: 56/);
-  // phai nam duoi barcode SKU (ket thuc y=418) va trong long tem (cao 480)
-  const y = Number(svg.match(/y="(\d+)"[^>]*>LOT: B/)?.[1] ?? svg.match(/<text x="12" y="(\d+)"[^>]*>LOT/)?.[1]);
-  assert.ok(y > 418 && y < 480, `LOT phai o day tem, dang o y=${y}`);
+  assert.match(svg, /<text x="12" y="274" font-size="20" font-weight="700">Số lô: B<\/text>/);
+  assert.match(svg, /<text x="12" y="297" font-size="20" font-weight="700">Số cuộn: 56<\/text>/);
+  assert.ok(!/LOT:|ROLL:/.test(svg), "dòng LOT:/ROLL: ở đáy tem đã bỏ từ 0.10.0");
 });
 
-test("tem Group UID bo trong Lot/Roll thi khong ve gi them", () => {
+test("tem Group UID bo trong Lot/Roll/RFID/PO/ngay thi khong ve gi them", () => {
   const svg = renderGroupUidLabel({
     groupUid: "1028260000000001", sku: "900000001", productName: "Vai Pique"
   });
-  assert.ok(!svg.includes("LOT:"), "khong duoc ve LOT khi bo trong");
-  assert.ok(!svg.includes("ROLL:"), "khong duoc ve ROLL khi bo trong");
+  assert.ok(!svg.includes("Số lô"), "khong duoc ve So lo khi bo trong");
+  assert.ok(!svg.includes("Số cuộn"), "khong duoc ve So cuon khi bo trong");
+  assert.ok(!svg.includes("RFID"), "khong duoc ve RFID khi bo trong");
+  assert.ok(!svg.includes("SỐ PO") && !svg.includes("NGÀY NHẬN"), "khong duoc ve o PO / ngay nhan khi ca hai trong");
 });
 
 test("tem Group UID chi co Lot, khong co Roll", () => {
   const svg = renderGroupUidLabel({
     groupUid: "1028260000000001", productName: "Vai Pique", lot: "B"
   });
-  assert.match(svg, /LOT: B/);
-  assert.ok(!svg.includes("ROLL:"));
+  assert.match(svg, /Số lô: B/);
+  assert.ok(!svg.includes("Số cuộn"));
 });

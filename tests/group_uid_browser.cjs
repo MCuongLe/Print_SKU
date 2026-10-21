@@ -46,7 +46,7 @@ const BASE = process.env.BASE || 'http://127.0.0.1:8000/';
       // Chỉ cắt khi Roll = Lot + dấu ngăn cách + phần sau; trùng ký tự ngẫu nhiên hoặc Roll trùng hẳn Lot thì giữ nguyên.
       assert.deepEqual(await page.evaluate(() => [['197/9', '197/9-004'], ['N03-64HXL/5/26DT', 'N03-64HXL/5/26DT-007'], ['abc', 'ABC_12'], ['1', '18'], ['3', '23'], ['1147/8', '1147/8'], ['', '007'], ['LOT-01', '007']]
         .map(([lot, roll]) => window.PrintSkuQueue.labelRoll(lot, roll))), ['004', '007', '12', '18', '23', '1147/8', '007', '007']);
-      assert.deepEqual(await page.evaluate(() => window.PrintSkuQueue.lotRollOverlaps([{ groupUid: 'a', lot: '197/9', roll: '197/9-004' }, { groupUid: 'b', lot: '1147/8', roll: '1147/8-001' }])), []);
+      assert.deepEqual(await page.evaluate(() => window.PrintSkuQueue.lotRollTooLong([{ groupUid: 'a', lot: '197/9', roll: '197/9-004' }, { groupUid: 'b', lot: '1147/8', roll: '1147/8-001' }])), []);
       await add('TEST-UNKNOWN');
       await add('TEST-EMPTY');
       await add('TEST-ERROR');
@@ -55,9 +55,9 @@ const BASE = process.env.BASE || 'http://127.0.0.1:8000/';
       await page.locator('#uid-print-all').click();
       const jobs = await page.evaluate(() => window.testJobs);
       assert.equal(jobs.length, 1);
-      assert.deepEqual(jobs[0].payload.items[0], { groupUid: 'TEST-FOUND', sku: '000123456', productName: 'Vải thử nghiệm & kiểm tra', lot: 'LOT-01', roll: '007', copies: 1 });
+      assert.deepEqual(jobs[0].payload.items[0], { groupUid: 'TEST-FOUND', sku: '000123456', productName: 'Vải thử nghiệm & kiểm tra', lot: 'LOT-01', roll: '007', po: '', receivedDate: '', copies: 1 });
       assert.equal(jobs[0].payload.items[1].sku, '');
-      assert.deepEqual(jobs[0].payload.items[2], { groupUid: 'TEST-LOTROLL', sku: '000123456', productName: 'Vải thử nghiệm & kiểm tra', lot: '197/9', roll: '004', copies: 1 });
+      assert.deepEqual(jobs[0].payload.items[2], { groupUid: 'TEST-LOTROLL', sku: '000123456', productName: 'Vải thử nghiệm & kiểm tra', lot: '197/9', roll: '004', po: '', receivedDate: '', copies: 1 });
       assert.equal(await page.locator('#uid-ready-count').textContent(), '0');
       assert.equal(await page.locator('#uid-pending-count').textContent(), '3');
       const empty = page.locator('#uid-pending .uid-row').filter({ hasText: 'TEST-EMPTY' });

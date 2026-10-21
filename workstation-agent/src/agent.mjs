@@ -14,7 +14,7 @@ import { createPowerShellHost, setPowerShellHost } from "./ps-host.mjs";
 import { LABEL_FONT_FAMILY } from "./templates/common.mjs";
 import { createLoopWatchdog, LOOP_STALL_EXIT_CODE } from "./process-guard.mjs";
 
-export const AGENT_VERSION = "0.9.0";
+export const AGENT_VERSION = "0.10.0";
 
 // Báo "hoàn tất" SAU khi tem đã ra giấy thì không được bỏ cuộc vì mạng: thử
 // lại giãn dần tới 30 giây/lần, khoảng 10 phút. Quá nữa thì để sổ tay lo — hết

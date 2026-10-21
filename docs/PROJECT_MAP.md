@@ -19,7 +19,7 @@ Trang chủ: nhóm `section.barcode-home__group[data-tone]` (print / ops / check
 | Module (ô trang chủ) | Hash | Khối chính | Ghi chú |
 |---|---|---|---|
 | IN TEM SKU `#barcode-print-sku` | `#worker` | bundle React (dòng minified duy nhất chứa `window.PrintSkuWorker`), `sku-queue-ui-script`, `sku-it-script` (nút Phiếu IT + cổng `window.HasakiSkuIt`), `sku-combo-picker`, `print-sku-scan-ui`, `wms-print-button` | Chỉ sửa bundle bằng neo ngắn |
-| IN TEM GROUP UID `#barcode-print-uid` | `#group-uid` | `uid-wms-script` (nút Đọc WMS `#uid-wms-open`), `uid-po-script` (tab Gán WMS), `#uid-screen` | Extension `GET_GROUP_UID_NEW_PAGE`, `GET_PACKING_LIST_PAGE` |
+| IN TEM GROUP UID `#barcode-print-uid` | `#group-uid` | `uid-wms-script` (nút Đọc WMS `#uid-wms-open`), `uid-po-script` (tab Gán WMS), `#uid-screen` | Extension `GET_GROUP_UID_NEW_PAGE`, `GET_PACKING_LIST_PAGE`. Từ 21/10/2026: ô Số PO + Ngày nhận (tùy chọn) ở khung Sẵn sàng in (`#uid-print-po`, `#uid-print-date`); UID gán ở tab Gán WMS mang PO riêng (`item.po`, thắng ô nhập tay). Tem do agent 0.10.0 (`workstation-agent/src/templates/group-uid-label.mjs`, bản vẽ `docs/label-design/`); payload `po`, `receivedDate` (dd/mm/yyyy), `rfid` (web chưa gửi) |
 | MÃ VỊ TRÍ `#barcode-location` | `#location` | `#location-screen`, `location-theme` | enqueue type `location` |
 | TRỢ LÝ IN `#home-assistant` (ẩn ≤ 800px) | `#assistant` | `print-assistant-style/-script`, `#assistant-screen` (id `pa-*`) | Edge `print-assistant`; dùng `window.HasakiSkuIt` |
 | CẮT GROUP UID `#barcode-cut-uid` | `#cut-group-uid` | `#cut-group-uid-screen`, `cut-sample-core`, `cut-sample-script` (Theo PO, pop-up `cs-pop`), `cut-adj-reconcile` (tab Đối chiếu ADJ, STATES gồm `qc`) | RPC `cut_group_uid_*`, `cut_group_uid_reconcile` |

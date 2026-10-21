@@ -27,29 +27,28 @@ function fakeMeasureText(lineFactor = 1) {
   return fn;
 }
 
-test("khung ten Group UID o co 22 giu dung bo cuc cu: 6 dong khi co SKU, 7 dong khi khong", () => {
-  assert.equal(groupUidMaxLines(22, true), 6);
-  assert.equal(groupUidMaxLines(22, false), 7);
-  assert.equal(groupUidNameBaseline(22, 0), 145, "chân dòng đầu ở y=145 như cũ");
-  assert.equal(groupUidNameBaseline(22, 5), 270, "dòng thứ 6 ở y=270, vẫn trên vùng SKU (y=332)");
+test("khung ten Group UID (0.10.0) o co 22: 6 dong, chan dong dau y=122, dong cuoi y=247, tren khoi So lo (y=274)", () => {
+  assert.equal(groupUidMaxLines(22), 6);
+  assert.equal(groupUidNameBaseline(22, 0), 122);
+  assert.equal(groupUidNameBaseline(22, 5), 247, "dòng thứ 6 ở y=247, vẫn trên khối Số lô / Số cuộn / RFID (dòng đầu chân y=274)");
   for (const size of [20, 18, 16]) {
-    assert.ok(groupUidMaxLines(size, true) >= groupUidMaxLines(22, true), `cỡ ${size} không được chứa ít dòng hơn cỡ 22`);
-    const last = groupUidNameBaseline(size, groupUidMaxLines(size, true) - 1);
-    assert.ok(last <= 270, `cỡ ${size}: dòng cuối y=${last} lấn xuống vùng SKU`);
+    assert.ok(groupUidMaxLines(size) >= groupUidMaxLines(22), `cỡ ${size} không được chứa ít dòng hơn cỡ 22`);
+    const last = groupUidNameBaseline(size, groupUidMaxLines(size) - 1);
+    assert.ok(last <= 247, `cỡ ${size}: dòng cuối y=${last} lấn xuống khối Số lô`);
   }
 });
 
 test("tem Group UID ve dung dong va co chu da do that", () => {
   const svg = renderGroupUidLabel({ groupUid: "TEST-UID-0001", sku: "100000001", productName: "bỏ qua", productNameLines: ["Dòng một", "Dòng hai"], productNameFontSize: 18 });
-  assert.match(svg, /<text x="12" y="141" font-size="18">Dòng một<\/text>/);
-  assert.match(svg, /<text x="12" y="162" font-size="18">Dòng hai<\/text>/);
+  assert.match(svg, /<text x="12" y="118" font-size="18">Dòng một<\/text>/);
+  assert.match(svg, /<text x="12" y="139" font-size="18">Dòng hai<\/text>/);
   assert.doesNotMatch(svg, /bỏ qua/, "đã có dòng đo thật thì không tự chia lại tên");
 });
 
 test("khong do duoc chu thi tem Group UID giu nguyen cach cu (26 ky tu/dong, co 22)", () => {
   const svg = renderGroupUidLabel({ groupUid: "TEST-UID-0001", sku: "100000001", productName: LONG_NAME });
   const lines = [...svg.matchAll(/<text x="12" y="(\d+)" font-size="22">/g)].map((match) => Number(match[1]));
-  assert.deepEqual(lines, [145, 170, 195, 220, 245, 270]);
+  assert.deepEqual(lines, [122, 147, 172, 197, 222, 247]);
 });
 
 test("ten Group UID dai (co SKU) duoc thu nho chu de in DU ten thay vi cat", async () => {
@@ -59,7 +58,7 @@ test("ten Group UID dai (co SKU) duoc thu nho chu de in DU ten thay vi cat", asy
   const [planned] = await planProductNames(entries, {}, fakeMeasureText(), null);
   const { productNameLines: lines, productNameFontSize: size } = planned.payload;
   assert.ok(size < 22, `tên dài phải thu nhỏ, đang cỡ ${size}`);
-  assert.ok(lines.length <= groupUidMaxLines(size, true));
+  assert.ok(lines.length <= groupUidMaxLines(size));
   assert.deepEqual(words(lines.join(" ")), words(name), "phải in đủ mọi chữ của tên");
   for (const line of lines) assert.ok(line.length * 10 * (size / 22) <= GROUP_UID_NAME_MAX_WIDTH_PX, `dòng tràn khung: ${line}`);
 });

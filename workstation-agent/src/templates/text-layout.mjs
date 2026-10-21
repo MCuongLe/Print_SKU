@@ -226,48 +226,24 @@ export function productNameCandidates(value, { measureAt, maxWidthPx, fontSizes,
   return all.slice(first === -1 ? all.length - 1 : first);
 }
 
-// ---- LOT / ROLL ở đáy tem Group UID (0.9.0) ----
-// Trước 0.9.0 hai chuỗi in cố định cỡ 24 trên một hàng (LOT trái x=12, ROLL phải x=308) nên Lot dài
-// đè lên Roll (RULES 08/10/2026). Nay chọn bố cục theo bề rộng chữ thật, cùng cách tem SKU chọn cỡ
-// số lượng/ngày: một hàng ở cỡ 24 → 18; không vừa thì hai hàng cỡ 22 (LOT trên, ROLL dưới vẫn canh phải);
-// một chuỗi đơn lẻ vẫn rộng hơn khung thì thu theo tỷ lệ, tối thiểu 14.
-export const LOT_ROLL_SPAN_PX = 296; // x=12 → x=308, bằng bề rộng barcode
-export const LOT_ROLL_GAP_PX = 10;
-export const LOT_ROLL_ONE_ROW_SIZES = [24, 22, 20, 18];
-export const LOT_ROLL_TWO_ROW_SIZE = 22;
-export const LOT_ROLL_MIN_SIZE = 14;
-export const LOT_ROLL_FONT_SIZES = [24, 22, 20, 18, 14]; // các cỡ cần đo sẵn (cỡ khác suy theo tỷ lệ)
-export const lotRollTexts = (lot, roll) => ({
-  lot: String(lot ?? "").trim() ? `LOT: ${String(lot).trim()}` : "",
-  roll: String(roll ?? "").trim() ? `ROLL: ${String(roll).trim()}` : ""
-});
+// ---- Khối Số lô / Số cuộn / RFID và ô SỐ PO / NGÀY NHẬN trên tem Group UID (0.10.0) ----
+// Trước 0.10.0 LOT/ROLL in ở đáy tem, chọn một hay hai hàng theo bề rộng đo thật (fitLotRoll). Nay mỗi chuỗi một dòng
+// riêng, chữ đậm, nên chỉ cần một cỡ chung cho cả khối: lớn nhất mà mọi dòng còn vừa khung. Không đo bằng GDI+ (chỉ đo
+// chữ thường): estimateTextWidth ước dư với chữ cái, chữ số rộng đúng bằng chữ số đậm, nên dùng thẳng cho chữ đậm.
+export const GROUP_UID_INFO_FONT_SIZES = [20, 19, 18, 17, 16, 15, 14, 13, 12];
+export const GROUP_UID_INFO_MIN_SIZE = 6; // sàn thấp để PO 20 ký tự rộng nhất (mẫu ở job-validator) vẫn vừa cột 150 chấm
 
 /**
- * `measureAt(text, size)` đồng bộ (bảng đã đo hoặc estimateTextWidth).
- * @returns {{ rows: 1|2, fontSize: number }}
+ * Cỡ chữ lớn nhất trong `sizes` (giảm dần) khiến MỌI chuỗi vẫn vừa `maxWidthPx`. Không cỡ nào vừa thì thu theo tỷ lệ từ cỡ
+ * nhỏ nhất, không dưới GROUP_UID_INFO_MIN_SIZE — chữ luôn in đủ, không bị cắt (chuỗi hợp lệ theo validator luôn vừa trước khi chạm sàn).
  */
-export function fitLotRoll(lot, roll, { measureAt }) {
-  const texts = lotRollTexts(lot, roll);
-  const measure = (text, size) => (text ? measureAt(text, size) : 0);
-  // Cỡ không có trong bảng đo: bề rộng tỷ lệ thuận cỡ chữ (đã đo, xem fitFooter).
-  const widthAt = (text, size) => (LOT_ROLL_FONT_SIZES.includes(size)
-    ? measure(text, size)
-    : (measure(text, LOT_ROLL_TWO_ROW_SIZE) * size) / LOT_ROLL_TWO_ROW_SIZE);
-  if (!texts.lot || !texts.roll) {
-    const only = texts.lot || texts.roll;
-    if (!only) return { rows: 1, fontSize: LOT_ROLL_ONE_ROW_SIZES[0] };
-    const size = LOT_ROLL_ONE_ROW_SIZES.find((s) => widthAt(only, s) <= LOT_ROLL_SPAN_PX);
-    if (size) return { rows: 1, fontSize: size };
-    const scaled = Math.floor((LOT_ROLL_TWO_ROW_SIZE * LOT_ROLL_SPAN_PX) / Math.max(1, widthAt(only, LOT_ROLL_TWO_ROW_SIZE)));
-    return { rows: 1, fontSize: Math.max(LOT_ROLL_MIN_SIZE, Math.min(LOT_ROLL_ONE_ROW_SIZES[0], scaled)) };
-  }
-  for (const size of LOT_ROLL_ONE_ROW_SIZES) {
-    if (widthAt(texts.lot, size) + LOT_ROLL_GAP_PX + widthAt(texts.roll, size) <= LOT_ROLL_SPAN_PX) return { rows: 1, fontSize: size };
-  }
-  const widest = (size) => Math.max(widthAt(texts.lot, size), widthAt(texts.roll, size));
-  for (const size of [LOT_ROLL_TWO_ROW_SIZE, 20, 18]) {
-    if (widest(size) <= LOT_ROLL_SPAN_PX) return { rows: 2, fontSize: size };
-  }
-  const scaled = Math.floor((LOT_ROLL_TWO_ROW_SIZE * LOT_ROLL_SPAN_PX) / Math.max(1, widest(LOT_ROLL_TWO_ROW_SIZE)));
-  return { rows: 2, fontSize: Math.max(LOT_ROLL_MIN_SIZE, Math.min(LOT_ROLL_TWO_ROW_SIZE, scaled)) };
+export function fitTextBlock(texts, maxWidthPx, { sizes = GROUP_UID_INFO_FONT_SIZES, measureAt = estimateTextWidth } = {}) {
+  const list = texts.filter(Boolean);
+  if (!list.length) return sizes[0];
+  const widest = (size) => Math.max(...list.map((text) => measureAt(text, size)));
+  const fit = sizes.find((size) => widest(size) <= maxWidthPx);
+  if (fit) return fit;
+  const smallest = sizes[sizes.length - 1];
+  const scaled = Math.floor((smallest * maxWidthPx) / Math.max(1, widest(smallest)));
+  return Math.max(GROUP_UID_INFO_MIN_SIZE, Math.min(smallest, scaled));
 }

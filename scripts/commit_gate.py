@@ -11,7 +11,8 @@ Mục kiểm (chỉ trên DÒNG THÊM MỚI của diff, trừ mục 4–5):
  3. Mã hoá: mojibake (Ã©, Ä‘, á»…), và `git diff --check` (khoảng trắng cuối dòng, xung đột).
  4. Xuống dòng: tệp bị đổi CRLF↔LF cả tệp (diff thường lớn hơn nhiều so với diff --ignore-cr-at-eol).
  5. Phiên bản Extension: manifest.json = mọi test khẳng định số phiên bản = ghi chú mới nhất trong README Extension.
- 6. Phụ thuộc: thẻ <script src=http…>/<link href=http…> mới trong index.html/extension, package.json/node_modules mới.
+ 6. Phụ thuộc: thẻ <script src=http…>/<link href=http…> mới trong index.html/extension, package.json/node_modules mới
+    (package.json chỉ đổi dòng "version" thì không tính: nâng phiên bản agent không thêm phụ thuộc).
  7. Bản đồ (cảnh báo): diff thêm migration, Edge, tệp Extension hoặc khối <script id=/<style id= mới mà docs/PROJECT_MAP.md không đổi.
 
 Thoát mã 1 khi có mục KHÔNG ĐẠT; cảnh báo không chặn. Không sửa gì.
@@ -176,9 +177,15 @@ def main() -> int:
             for no, text in lines:
                 if CDN.search(text):
                     fails.append(f"[6 phụ thuộc] thẻ nạp ngoài mới: {path}:{no}: {text.strip()[:100]}")
+    version_only = re.compile(r'''^\s*"version"\s*:\s*"[^"]+"\s*,?\s*$''')
     for n in names:
-        if Path(n).name == "package.json" or "/node_modules/" in n:
+        if "/node_modules/" in n:
             fails.append(f"[6 phụ thuộc] tệp gói npm trong diff: {n}")
+        elif Path(n).name == "package.json":
+            # Chỉ bỏ qua khi tệp đã có từ trước và mọi dòng thêm vào chỉ là dòng "version" (tệp mới hoặc dòng khác đổi thì vẫn chặn).
+            changed = added.get(n, [])
+            if not changed or any(not version_only.match(text) for _no, text in changed):
+                fails.append(f"[6 phụ thuộc] tệp gói npm trong diff: {n}")
 
     # 7. Bản đồ dự án (cảnh báo)
     touches_map = "docs/PROJECT_MAP.md" in names

@@ -6,9 +6,9 @@ import { renderLabelSvg } from "./templates/index.mjs";
 import { planLocationLabels } from "./location-plan.mjs";
 import { formatDate, formatQuantity, LABEL_FONT_FAMILY } from "./templates/common.mjs";
 import { SKU_LABEL_LAYOUT, SKU_LABEL_MAX_WIDTH_PX } from "./templates/sku-label.mjs";
-import { GROUP_UID_NAME_MAX_WIDTH_PX, groupUidMaxLines, hasGroupUidSku } from "./templates/group-uid-label.mjs";
+import { GROUP_UID_NAME_MAX_WIDTH_PX, groupUidMaxLines } from "./templates/group-uid-label.mjs";
 import {
-  DATE_FONT_SIZES, estimateTextWidth, fitFooter, fitLotRoll, LOT_ROLL_FONT_SIZES, lotRollTexts, maxLinesForSize, productNameCandidates, QUANTITY_FONT_SIZES, tokenize, verifyLineWidths,
+  DATE_FONT_SIZES, estimateTextWidth, fitFooter, maxLinesForSize, productNameCandidates, QUANTITY_FONT_SIZES, tokenize, verifyLineWidths,
   WRAP_SAFETY_FACTOR
 } from "./templates/text-layout.mjs";
 
@@ -24,7 +24,7 @@ const AVG_CHAR_WIDTH_AT_22 = 11;
 // Khung tên của từng loại tem có tên sản phẩm (tem vị trí có bước đo riêng).
 const NAME_LAYOUTS = {
   sku: { maxWidthPx: SKU_LABEL_MAX_WIDTH_PX, maxLinesFor: () => (size) => maxLinesForSize(size, SKU_LABEL_LAYOUT) },
-  group_uid: { maxWidthPx: GROUP_UID_NAME_MAX_WIDTH_PX, maxLinesFor: (payload) => (size) => groupUidMaxLines(size, hasGroupUidSku(payload)) }
+  group_uid: { maxWidthPx: GROUP_UID_NAME_MAX_WIDTH_PX, maxLinesFor: () => (size) => groupUidMaxLines(size) }
 };
 
 /**
@@ -71,17 +71,12 @@ export async function planProductNames(entries, config, measureText, logger) {
     quantity: formatQuantity(entry.payload.quantity),
     date: String(entry.payload.printedDate || formatDate())
   }]));
-  // 0.9.0: LOT/ROLL ở đáy tem Group UID cũng đo trong lần gọi này (nhóm extra thứ ba) để chọn một hay hai hàng.
-  const lotRollMap = new Map(nameEntries.filter((entry) => entry.type === "group_uid").map((entry) => [entry, lotRollTexts(entry.payload.lot, entry.payload.roll)]));
-  const lotRollAll = [...lotRollMap.values()].flatMap((t) => [t.lot, t.roll]).filter(Boolean);
-
   let tokenWidths;
   try {
     tokenWidths = await measureText(config, [...allTokens], PRODUCT_NAME_FONT_SIZES, {
       extra: [
         { texts: [...footerTexts.values()].map((footer) => footer.quantity), sizes: QUANTITY_FONT_SIZES },
-        { texts: [...footerTexts.values()].map((footer) => footer.date), sizes: DATE_FONT_SIZES },
-        { texts: lotRollAll, sizes: LOT_ROLL_FONT_SIZES }
+        { texts: [...footerTexts.values()].map((footer) => footer.date), sizes: DATE_FONT_SIZES }
       ]
     });
   } catch (error) {
@@ -90,7 +85,7 @@ export async function planProductNames(entries, config, measureText, logger) {
   }
   const measureAt = (text, size) =>
     tokenWidths.get(text)?.get(size) ?? text.length * AVG_CHAR_WIDTH_AT_22 * (size / 22);
-  const [quantityWidths, dateWidths, lotRollWidths] = tokenWidths.extra ?? [];
+  const [quantityWidths, dateWidths] = tokenWidths.extra ?? [];
   const measureFooter = (widths) => (text, size) => widths?.get(text)?.get(size) ?? estimateTextWidth(text, size);
 
   const plans = new Map(nameEntries.map((entry) => {
@@ -109,15 +104,12 @@ export async function planProductNames(entries, config, measureText, logger) {
       footerFit: footer && fitFooter(footer.quantity, footer.date, {
         measureQuantity: measureFooter(quantityWidths),
         measureDate: measureFooter(dateWidths)
-      }),
-      lotRollFit: lotRollMap.has(entry) && (lotRollMap.get(entry).lot || lotRollMap.get(entry).roll)
-        ? fitLotRoll(entry.payload.lot, entry.payload.roll, { measureAt: measureFooter(lotRollWidths) })
-        : null
+      })
     }];
   }));
   const withPlan = (entry, lines, fontSize, plan) => ({
     ...entry,
-    payload: { ...entry.payload, productNameLines: lines, productNameFontSize: fontSize, ...(plan.footerFit ? { footerFit: plan.footerFit } : {}), ...(plan.lotRollFit ? { lotRollFit: plan.lotRollFit } : {}) }
+    payload: { ...entry.payload, productNameLines: lines, productNameFontSize: fontSize, ...(plan.footerFit ? { footerFit: plan.footerFit } : {}) }
   });
 
   // Vong 2: do nguyen tung dong cua moi phuong an con lai, o DUNG co chu cua phuong an do.

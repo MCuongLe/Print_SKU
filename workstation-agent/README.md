@@ -1,6 +1,14 @@
 # Print SKU UID Agent
 
-Agent Windows độc lập phục vụ ứng dụng Print SKU. Bản 0.9.0 in tem SKU, Group UID và mã vị trí (tem Fabric Relaxation đã bỏ) tem.
+Agent Windows độc lập phục vụ ứng dụng Print SKU. Bản 0.10.0 in tem SKU, Group UID và mã vị trí (tem Fabric Relaxation đã bỏ) tem.
+
+## Cập nhật 0.10.0 — tem Group UID có số PO, ngày nhận
+
+- **Bố cục tem Group UID mới**: sau tên sản phẩm là khối chữ đậm `Số lô` / `Số cuộn` / `RFID`, rồi ô hai cột
+  **SỐ PO | NGÀY NHẬN**, rồi barcode SKU; dòng LOT/ROLL ở đáy tem bỏ. PO, ngày nhận, RFID không bắt buộc: trống
+  thì không vẽ (ô chỉ vẽ khi có PO hoặc ngày). `po` tối đa 20 ký tự, `receivedDate` dạng `dd/mm/yyyy`.
+- Không cần migration Supabase. Agent cũ nhận lệnh có `po`/`receivedDate` vẫn in được (bỏ qua hai trường). Cài ZIP
+  bằng `install-agent.ps1` như các bản trước, rồi in thử một tem đủ PO + ngày nhận.
 
 ## Cập nhật 0.9.0 — Lot dài không đè Roll, bỏ tem Fabric Relaxation
 
