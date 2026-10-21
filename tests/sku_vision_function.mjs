@@ -90,7 +90,8 @@ test("ảnh không hợp lệ bị chặn trước khi trừ lượt", async () 
 });
 
 test("hết lượt trong ngày thì trả 429 và nhắc gõ mã, không gọi Gemini", async () => {
-  const { call, calls } = await load({}, { sku_vision_take: { body: { ok: false, code: "DEVICE_LIMIT", deviceUsed: 60, deviceLimit: 60 } } });
+  // Giới hạn theo máy chỉ còn khi đặt Secret SKU_VISION_DEVICE_DAILY (21/10/2026 bỏ mặc định 60).
+  const { call, calls } = await load({ SKU_VISION_DEVICE_DAILY: "60" }, { sku_vision_take: { body: { ok: false, code: "DEVICE_LIMIT", deviceUsed: 60, deviceLimit: 60 } } });
   const response = await call({ image: IMAGE, device: "may-test" });
   const body = await response.json();
   assert.equal(response.status, 429);
@@ -108,12 +109,20 @@ test("đọc tem thành công: gửi ảnh + khuôn JSON cho Gemini, trả chữ
   assert.deepEqual(body.tokens.item_codes, ["QZ3966"]);
   assert.match(body.text, /Tex 27/);
   const quota = calls.find(c => c.url.includes("sku_vision_take"));
-  assert.deepEqual(quota.body, { p_device: "may-test", p_device_limit: 60, p_global_limit: 450 });
+  // 21/10/2026: bỏ giới hạn tìm SKU theo máy — mặc định gửi null (sku_vision_take: v_mine >= null không chặn); trần tổng 450 giữ.
+  assert.deepEqual(quota.body, { p_device: "may-test", p_device_limit: null, p_global_limit: 450 });
   const gemini = calls.find(c => c.url.includes("generativelanguage"));
   assert.match(gemini.url, /models\/model-a:generateContent$/);
   assert.equal(gemini.init.headers["x-goog-api-key"], "test-gemini-key");
   assert.equal(gemini.body.contents[0].parts[0].inline_data.data, IMAGE, "phải bỏ tiền tố data: trước khi gửi");
   assert.equal(gemini.body.generationConfig.responseMimeType, "application/json");
+});
+
+test("đặt Secret SKU_VISION_DEVICE_DAILY thì bật lại giới hạn theo máy", async () => {
+  const { call, calls } = await load({ SKU_VISION_DEVICE_DAILY: "80" }, { sku_vision_take: quotaOk, generativelanguage: geminiOk });
+  const response = await call({ image: IMAGE, mime: "image/jpeg", device: "may-test" });
+  assert.equal(response.status, 200);
+  assert.equal(calls.find(c => c.url.includes("sku_vision_take")).body.p_device_limit, 80);
 });
 
 test("ưu tiên khoá mới SUPABASE_SECRET_KEYS (JSON dictionary) khi gọi bộ đếm lượt", async () => {

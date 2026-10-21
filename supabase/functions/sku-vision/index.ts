@@ -14,7 +14,8 @@
 //                            (đo 30/09/2026 trên 2 tem thật: cả ba đọc đúng 5/5 mã và thông số; 3.1-flash-lite
 //                            nhanh nhất ~3 giây và luôn trả được, còn 3.8-flash liên tục 503 quá tải ở gói miễn phí;
 //                            gemini-3.5-flash cũng 503, gemini-2.5-flash-lite đã bị Google ngừng — 404)
-//   SKU_VISION_DEVICE_DAILY  tuỳ chọn, số lượt mỗi máy mỗi ngày, mặc định 60
+//   SKU_VISION_DEVICE_DAILY  tuỳ chọn, số lượt mỗi máy mỗi ngày; mặc định KHÔNG giới hạn theo máy (21/10/2026,
+//                            người dùng: "bỏ giới hạn tìm SKU ở các máy"; trước đó 60). Đặt số dương để bật lại.
 //   SKU_VISION_GLOBAL_DAILY  tuỳ chọn, tổng lượt mỗi ngày (giờ Pacific), mặc định 450
 //   SKU_VISION_HEDGE_MS      tuỳ chọn, model đang chạy quá chừng này mili giây chưa trả thì gọi thêm model
 //                            kế tiếp chạy song song, mặc định 6000
@@ -24,7 +25,8 @@
 const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY") ?? "";
 const MODELS = (Deno.env.get("GEMINI_MODELS") ?? "gemini-3.1-flash-lite,gemini-3.8-flash,gemini-3.5-flash-lite")
   .split(",").map((model) => model.trim()).filter(Boolean);
-const DEVICE_DAILY = positiveInt(Deno.env.get("SKU_VISION_DEVICE_DAILY"), 60);
+// null = không giới hạn theo máy: sku_vision_take so v_mine >= null ra null nên không chặn (không cần migration).
+const DEVICE_DAILY: number | null = positiveInt(Deno.env.get("SKU_VISION_DEVICE_DAILY"), 0) || null;
 const GLOBAL_DAILY = positiveInt(Deno.env.get("SKU_VISION_GLOBAL_DAILY"), 450);
 const SUPABASE_URL = (Deno.env.get("SUPABASE_URL") ?? "").replace(/\/$/, "");
 // Khoá mới (SUPABASE_SECRET_KEYS, JSON dictionary) trước; khoá JWT cũ đã bị Supabase đánh dấu
