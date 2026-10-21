@@ -99,7 +99,9 @@ const ready = page => page.waitForFunction(() => document.getElementById("ub-tot
       const { context, page, errors } = await open(browser, srv, { width, height });
       // 1) Ô trang chủ → màn
       await page.goto(BASE + "#home");
-      await page.locator("#barcode-uid-block").click();
+      // 21/10: ô chung TÌM GROUP UID (lần đầu mở Cấp vải) → công tắc "UID blocked"
+      await page.locator("#barcode-find-uid").click();
+      await page.locator('#cap-vai-screen .fu-switch [data-fu="uid-block"]').click();
       await page.locator("#uid-block-screen").waitFor({ state: "visible" });
       assert.equal(await page.evaluate(() => location.hash), "#uid-block");
       assert.equal(await page.evaluate(() => document.getElementById("root")?.inert), true, "màn phủ khoá cây #root phía sau");

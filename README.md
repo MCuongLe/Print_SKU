@@ -426,6 +426,13 @@ web đi qua RPC `fabric_issue_*`).
 - **Số mét**: tiến độ tính theo Packing List; từng cuộn hiện số mét WMS (đổi từ mm khi tên SKU kết thúc `/mm`) và "PL …"
   khi khác Packing List.
 
+## Tìm Group UID (gộp Cấp vải + UID blocked)
+
+Từ 21/10/2026 trang chủ (nhóm Vận hành kho) chỉ còn ô **TÌM GROUP UID** thay cho hai ô CẤP VẢI và LỰA UID BLOCKED. Bấm ô → mở phần dùng
+gần nhất (lần đầu: Cấp vải); công tắc đầu màn **Cấp vải | UID blocked** đổi qua lại. Hai phần độc lập như cũ (màn, dữ liệu, quét, quyền riêng),
+đường dẫn cũ `#cap-vai`, `#uid-block` vẫn mở thẳng; thanh bên một mục "Tìm Group UID". Khối `find-uid-style` / `find-uid-script`.
+Test: `tests/find_uid_browser.cjs`.
+
 ## Lựa UID blocked
 
 Ô **LỰA UID BLOCKED** (`#uid-block`, nhóm Vận hành kho): người kho bắn máy scan vào khung quét chuẩn (có camera, gõ tay);

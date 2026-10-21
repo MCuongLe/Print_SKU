@@ -27,8 +27,9 @@ Trang chủ: nhóm `section.barcode-home__group[data-tone]` (print / ops / check
 | TÌM SKU `#barcode-find-sku` | `#find-sku` | `#find-sku-screen` (neo `web-find-sku`), Edge `sku-vision` (Gemini đọc tem) | |
 | CHUYỂN ĐỔI ĐƠN VỊ | `#unit-converter` | `unit-converter-app` | |
 | THEO DÕI XẢ VẢI `#barcode-xa-vai` | `#xa-vai` | `#xa-vai-screen` | bảng `xa_vai_log` |
-| CẤP VẢI `#barcode-cap-vai` | `#cap-vai` | `cap-vai-script`, `#cap-vai-screen` | migration `fabric_issue_*` |
-| LỰA UID BLOCKED `#barcode-uid-block` | `#uid-block` | `uid-block-style`, `#uid-block-screen`, `uid-block-script` | migration `uid_block_v1`; lượt quét lưu Supabase dùng chung (khoá máy), hàng chờ trên máy `uid-block-cho-gui` |
+| TÌM GROUP UID `#barcode-find-uid` (21/10/2026) | → `#cap-vai` / `#uid-block` (phần dùng gần nhất, `localStorage` `tim-group-uid-phan`) | `find-uid-style`, `find-uid-script` (công tắc `.fu-switch` Cấp vải \| UID blocked chèn đầu 2 màn; thanh bên 1 mục) | 2 ô cũ `#barcode-cap-vai`, `#barcode-uid-block` còn trong DOM nhưng `hidden`; hai phần độc lập |
+| ↳ Cấp vải (ô cũ `#barcode-cap-vai`, ẩn) | `#cap-vai` | `cap-vai-script`, `#cap-vai-screen` | migration `fabric_issue_*` |
+| ↳ UID blocked (ô cũ `#barcode-uid-block`, ẩn) | `#uid-block` | `uid-block-style`, `#uid-block-screen`, `uid-block-script` | migration `uid_block_v1`; lượt quét lưu Supabase dùng chung (khoá máy), hàng chờ trên máy `uid-block-cho-gui` |
 | KIỂM TRA ĐẦU VÀO `#barcode-inspection` | `#inspection` | `#ins-screen` | |
 | RỦI RO LƯU TRỮ `#barcode-storage-risk` | `#storage-risk` | `storage-risk-script` (Hàng chưa lên kệ), `storage-risk-temp-script` (UID tạm, `window.HasakiStorageRiskTemp`) | Hai nút `sr-run` / `srt-run`, một luồng đọc (sr-run = Kiểm kê + UID tạm); UID tạm lưu Supabase `uid_temp_snapshot_v1` (`uid_temp_save` Admin, `uid_temp_overview` anon) |
 | KIỂM KÊ SKU `#barcode-inventory-audit` | `#inventory-audit` | `inventory-audit-script`, `#inventory-audit-screen` | migration `sku_count_v1` |
