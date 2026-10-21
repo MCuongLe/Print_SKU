@@ -90,7 +90,7 @@ const FLOOR_TOKEN = 'pd_' + 'ab'.repeat(24);
       await page.waitForFunction(() => ['idle', 'disabled'].includes(document.querySelector('#cut-print').dataset.printState));
       const jobs = await page.evaluate(() => window.testJobs);
       assert.equal(jobs.length, 1);
-      assert.deepEqual(jobs[0].payload.items[0], { groupUid: 'UID-0001', sku: 'SKU-001', productName: 'Vải thử nghiệm', lot: 'LOT-7', roll: 'ROLL-2', copies: 1 });
+      assert.deepEqual(jobs[0].payload.items[0], { groupUid: 'UID-0001', sku: 'SKU-001', productName: 'Vải thử nghiệm', lot: 'LOT-7', roll: 'ROLL-2', po: '', receivedDate: '', copies: 1 });
       for (let number = 2; number <= 80; number++) records.push({
         groupUid: `UID-${String(number).padStart(4, '0')}`, sku: 'SKU-001',
         productName: 'Vải thử nghiệm có tên dài để kiểm tra tự xuống dòng trong packing list',
