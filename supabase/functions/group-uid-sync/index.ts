@@ -98,6 +98,16 @@ function rfidCode(value: unknown): string | null | undefined {
   if (!code) return null;
   return /^[A-Za-z0-9]{1,40}$/.test(code) ? code.toUpperCase() : undefined;
 }
+// Số PO nguồn của UID (WMS processing_source_code khi processing_source_type = PURCHASE_ORDER; Extension tự lọc): chuỗi 6–40
+// chữ số như cut_sample_sessions.po; null / rỗng → null (UID không nhận theo PO); có giá trị nhưng sai dạng (ký tự lạ, ngắn/dài,
+// không phải chuỗi — không cắt bớt) → undefined = "không biết" (known = false, giữ PO đang lưu).
+function purchaseOrderCode(value: unknown): string | null | undefined {
+  if (value === undefined || value === null) return null;
+  if (typeof value !== "string") return undefined;
+  const code = value.trim();
+  if (!code) return null;
+  return /^[0-9]{6,40}$/.test(code) ? code : undefined;
+}
 function normalizedRows(value: unknown): Json[] {
   if (!Array.isArray(value) || value.length > MAX_PAGE_SIZE) throw new Error("INVALID_PAGE:Mỗi trang tối đa 500 Group UID");
   const seen = new Set<string>();
@@ -111,6 +121,8 @@ function normalizedRows(value: unknown): Json[] {
     }) : [];
     if (!/^\d{6,40}$/.test(code) || seen.has(code)) throw new Error(`INVALID_ROW:Dòng ${index + 1} có Group UID rỗng, sai hoặc trùng`);
     const rfid = rfidCode(row.group_rfid_mapping);
+    const po = purchaseOrderCode(row.purchase_order);
+    const poKnown = Object.prototype.hasOwnProperty.call(row, "purchase_order") && po !== undefined && row.purchase_order_known !== false;
     if (!Number.isFinite(qty) || qty < 0 || !status) throw new Error(`INVALID_ROW:Group UID ${code} thiếu số lượng hoặc trạng thái`);
     seen.add(code);
     return {
@@ -125,6 +137,11 @@ function normalizedRows(value: unknown): Json[] {
       // preview/apply bỏ qua RFID và giữ giá trị đang lưu.
       group_rfid_mapping: rfid ?? null,
       group_rfid_known: Object.prototype.hasOwnProperty.call(row, "group_rfid_mapping") && rfid !== undefined,
+      // Số PO nguồn (cut_group_uid_po_v1.sql, phải chạy migration trước khi deploy bản này). Như RFID: có khoá purchase_order
+      // (Extension mới luôn gửi, null khi nguồn không phải PO) → known = true, apply ghi đúng nguồn; Extension cũ không có khoá,
+      // giá trị sai dạng, hoặc Extension gửi rõ purchase_order_known = false → known = false, preview/apply giữ PO đang lưu.
+      purchase_order: poKnown ? po ?? null : null,
+      purchase_order_known: poKnown,
     };
   });
 }

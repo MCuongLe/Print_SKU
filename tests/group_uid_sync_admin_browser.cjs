@@ -8,7 +8,7 @@ const changes = [
 ];
 const counts = { added: 1, updated: 1, unchanged: 0, missing: 0, issues: 0, totalChanges: 2 };
 const warnCounts = { ...counts, missing: 3, issues: 1, skippedCanceled: 7 };
-let scenario = "normal", cancelCalls = 0, ingestBodies = [], autoEnabled = true, autoBodies = [];
+let scenario = "normal", cancelCalls = 0, ingestBodies = [], autoEnabled = true, autoBodies = [], prepareCount = 0;
 // Giữ phản hồi prepare của Edge để chặn được pha "đang đọc" (nút đổi nhãn, icon vòng xoay); đặt lại null để thả.
 let hold = null;
 // Giữ phản hồi apply (ghi Supabase) để chặn được pha "đang cập nhật": nút Cập nhật mang data-busy + vạch load dưới nút; đặt lại null để thả.
@@ -142,6 +142,9 @@ const WHS = ["WH - MATERIAL - MTG", "WH - MATERIAL - GARMENT", "WH - SEMI PRODUC
 const MANY = Array.from({ length: 120 }, (_, i) => ({ groupUidCode: `1028260000${String(i).padStart(6, "0")}`, changeType: "updated", before: { qty: 1000 + i, status: "Available", location: `A-${i}`, warehouse: WHS[i % 3] }, after: { qty: 1180 + i, status: "Allocated", location: `B-${i}`, warehouse: WHS[i % 3] }, changedFields: i % 2 ? ["qty", "status"] : ["qty", "location"], sourceUpdatedAt: new Date(Date.UTC(2026, 9, 8, 1, 0, i)).toISOString() }));
 // Một dòng (i = 7) đổi cả QC: before null -> after "Passed" (trường qc_status của Group UID).
 MANY[7].before.qc_status = null; MANY[7].after.qc_status = "Passed"; MANY[7].changedFields = ["qty", "status", "qc_status"];
+// Số PO nguồn (21/10/2026, cut_group_uid_po_v1): dòng 8 có PO mới (known) → hiện "PO"; dòng 9 Extension cũ (known false) → không hiện.
+MANY[8].before.purchase_order = null; MANY[8].after.purchase_order = "100000001"; MANY[8].after.purchase_order_known = true; MANY[8].changedFields = [...MANY[8].changedFields, "purchase_order"];
+MANY[9].before.purchase_order = "100000002"; MANY[9].after.purchase_order = null; MANY[9].after.purchase_order_known = false; MANY[9].changedFields = [...MANY[9].changedFields, "purchase_order"];
 const manyCounts = { added: 0, updated: 120, unchanged: 1880, missing: 0, issues: 0, totalChanges: 120 };
 
 // WMS thật (đo 16/10/2026): danh sách xếp theo id giảm dần; to_updated_at chỉ có hiệu lực khi có cả from_updated_at; api-clinic tạo 1 UID/phút.
@@ -168,7 +171,7 @@ const fakeExtension = () => addEventListener("message", async event => {
     return payload.page === 1 ? { page: 1, size: 500, total: 3, totalPages: 2, rows: [r(3), r(2)] } : { page: 2, size: 500, total: leaving ? 2 : 3, totalPages: 2, rows: [r(1)] };
   };
   if (window.__guHold2 && request.type === "GET_GROUP_UID_PAGE" && (request.payload || {}).page === 2) await window.__guHold2; // giữ trang 2 để đo tiến độ sau trang 1
-  const data = request.type === "PING" || request.type === "PING_WMS" ? { version: "0.4.2" } : request.type === "GET_GROUP_UID_PAGE" ? pageData(request.payload || {}) : null;
+  const data = request.type === "PING" || request.type === "PING_WMS" ? { version: window.__guExtVersion || "0.10.4" } : request.type === "GET_GROUP_UID_PAGE" ? pageData(request.payload || {}) : null;
   postMessage({ source: "HASAKI_INSIDE_CONNECTOR", requestId: request.requestId, ok: Boolean(data), data, error: data ? null : { message: "Loại yêu cầu chưa giả lập" } }, location.origin);
 });
 
@@ -184,6 +187,7 @@ async function mock(page) {
       const body = JSON.parse(route.request().postData() || "{}"), ok = data => json({ ok: true, data });
       if (body.action === "history") return ok({ state: { last_successful_incremental_at: "2026-10-08T00:00:00Z", last_successful_full_at: guFullAt }, runs: [{ id: "44444444-4444-4444-8444-444444444444", mode: "full", status: "failed", error_message: "Admin hủy bản xem trước", created_at: "2026-10-08T01:00:00Z", source_count: 2, change_counts: {}, range_to: "2026-10-08T01:00:00Z" }, { id: "55555555-5555-4555-8555-555555555555", mode: "incremental", status: "previewed", created_at: "2026-10-08T01:30:00Z", source: "auto", device: "may-test", autoHold: "Giữ lại: 3.512 thay đổi vượt ngưỡng 3.000", source_count: 3512, change_counts: { added: 3000, updated: 512 }, range_from: "2026-10-08T00:00:00Z", range_to: "2026-10-08T01:30:00Z" }] });
       if (body.action === "auto-config") { if (body.set && typeof body.set.enabled === "boolean") autoEnabled = body.set.enabled; autoBodies.push(body); return ok({ enabled: autoEnabled, intervalMinutes: 30, fullWindow: { start: "00:00", end: "05:00" }, thresholds: {}, updatedAt: "2026-10-08T01:00:00Z" }); }
+      if (body.action === "prepare") prepareCount++;
       if (body.action === "prepare" && hold) await hold;
       if (body.action === "prepare") return ok({ runId: RUN, mode: body.mode, status: "running", rangeFrom: body.mode === "incremental" ? "2026-10-07T23:30:00Z" : null, rangeTo: "2026-10-08T02:00:00Z" });
       if (body.action === "ingest") { ingestBodies.push(body); return ok({ runId: RUN, page: body.page, pageCount: 1, totalPages: body.totalPages }); }
@@ -224,6 +228,12 @@ async function mock(page) {
       await toggle.click();await page.waitForFunction(()=>document.getElementById("gu-strip-auto").dataset.stale==="true");assert.deepEqual(autoBodies.at(-1),{action:"auto-config",set:{enabled:false}});assert.equal((await page.locator("#gu-auto-note").innerText()).trim(),"Admin đã tạm dừng");assert.equal(await toggle.getAttribute("aria-label"),"Tiếp tục tự động");assert.equal(await toggle.getAttribute("title"),"Tiếp tục tự động");
       assert.equal(await cell.evaluate(c=>getComputedStyle(c).backgroundColor),"rgb(255, 250, 235)","tạm dừng: ô tự động vàng");assert.equal(await page.locator("#gu-strip").getAttribute("data-stale"),null,"chỉ ô Tự động vàng, không phải cả dải");assert.deepEqual(await autoCellAudit(page,"gu-strip","gu-strip-auto"),[],"ô Tự động (đã tạm dừng): nút trong ô, không che chữ");
       await toggle.click();await page.waitForFunction(()=>document.getElementById("gu-strip-auto").dataset.stale==="false");assert.deepEqual(autoBodies.at(-1),{action:"auto-config",set:{enabled:true}});assert.equal(await toggle.getAttribute("aria-label"),"Tạm dừng tự động");
+      // Extension cũ (≤ 0.10.3) không gửi số PO (cut_group_uid_po_v1): đồng bộ tay dừng trước khi chuẩn bị lượt, nhắc Reload (review 21/10).
+      {const before=prepareCount;await page.evaluate(()=>{window.__guExtVersion="0.10.3"});await page.locator("#gu-run-full").click();
+       await page.waitForFunction(()=>/0\.10\.4/.test(document.getElementById("gu-status").textContent));
+       assert.match(await page.locator("#gu-status").innerText(),/v0\.10\.3/);assert.match(await page.locator("#gu-status").innerText(),/Reload/);
+       assert.equal(prepareCount,before,"Extension cũ: không gọi prepare");assert.equal(await page.locator("#gu-apply").isDisabled(),true);
+       await page.evaluate(()=>{window.__guExtVersion=undefined});await page.waitForFunction(()=>!document.getElementById("gu-run-full").disabled);}
       // Đang đọc: nút vừa bấm có data-busy="true", nhãn "Đang đọc…", icon đổi sang mũi tên vòng xoay; nút kia chỉ khoá, giữ nhãn
       const idleMask=await page.locator("#gu-run-full").evaluate(b=>getComputedStyle(b,"::before").maskImage);assert.equal((await barInfo(page,"gu-run-full")).content,"none","rảnh: không có vạch load dưới nút");assert.equal(await page.locator("#gu-progress").evaluate(n=>n.getClientRects().length),0,"rảnh: thanh tiến độ rời không hiện");let release;hold=new Promise(resolve=>{release=resolve});
       await page.locator("#gu-run-full").click();await page.waitForFunction(()=>document.getElementById("gu-run-full").dataset.busy==="true");
@@ -281,6 +291,9 @@ async function mock(page) {
       assert.equal(await page.locator('[data-as-tag="qc"]').count(),1,"có tag QC");await page.locator('[data-as-tag="qc"]').click();assert.equal((await page.locator("#gu-pager").innerText()).includes("/ 1"),true,"lọc QC còn 1 dòng");
       {const qcRow=await page.locator("#gu-change-body tr").first().innerText();assert.equal(qcRow.includes("QC"),true,"dòng hiện nhãn QC");assert.equal(qcRow.includes("Passed"),true,"dòng hiện chip Passed");assert.equal(await page.locator('#gu-change-body tr .as-chip[data-tone="new"]').count()>=1,true,"Passed là chip tone new")}
       await page.locator('[data-as-tag="qc"]').click();assert.equal((await page.locator("#gu-pager").innerText()).includes("/ 120"),true,"bỏ tag QC trả về đủ 120");
+      {const rowOf=async code=>(await page.locator(`#gu-change-body tr:has-text("${code}")`).first().innerText());
+       const po=await rowOf("1028260000000008");assert.match(po,/\bPO\b/,"dòng đổi PO hiện nhãn PO");assert.equal(po.includes("100000001"),true,"dòng đổi PO hiện số PO mới");
+       assert.doesNotMatch(await rowOf("1028260000000009"),/\bPO\b/,"Extension cũ (purchase_order_known false) không hiện dòng PO");}
       // Cột Kho + bộ lọc Kho (chọn nhiều, có số đếm), chip cũ đổi tên "Đổi kho"
       assert.deepEqual(await page.locator("#gu-change-head th").allInnerTexts(),["Group UID","Kho","Thay đổi","Cập nhật WMS"]);
       assert.equal((await page.locator("#gu-change-body tr").first().locator("td").nth(1).innerText()).includes("WH - "),true,"mỗi dòng hiện kho");

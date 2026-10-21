@@ -88,4 +88,24 @@ for (const bad of ["A-0001", "A0000 0000001", "Ã00000000001", "A".repeat(41), [
   assert.equal(sentKeys(bad).includes("group_rfid_mapping"), false, `RFID sai dạng ${JSON.stringify(bad)} → bỏ khoá khi gửi (không xoá nhầm)`);
 }
 assert.equal(rfidOf("A".repeat(40)), "A".repeat(40), "đúng 40 ký tự vẫn nhận");
+// Số PO nguồn (21/10/2026, lọc theo PO ở CẮT GROUP UID): WMS processing_source_type = PURCHASE_ORDER (không phân biệt hoa thường)
+// thì processing_source_code là số PO (đo 21/10: 14 chữ số). Có loại nguồn khác (kiểm kê, phiếu IT) → null (gửi khoá, Edge ghi
+// là không có PO). Không chắc → bỏ khoá khi gửi → Edge "không biết", giữ PO đang lưu (review 21/10): thiếu khoá loại nguồn,
+// loại nguồn rỗng, PURCHASE_ORDER mà mã trống / sai dạng / số không an toàn.
+const poRow = (type, code) => JSON.parse(JSON.stringify(core.normalizeRow({ ...raw, processing_source_type: type, processing_source_code: code })));
+assert.equal(poRow("PURCHASE_ORDER", " 100000001 ").purchase_order, "100000001");
+assert.equal(poRow("PURCHASE_ORDER", 100000001).purchase_order, "100000001", "WMS trả số vẫn nhận");
+assert.equal(poRow(" purchase_order ", "100000001").purchase_order, "100000001", "loại nguồn không phân biệt hoa thường");
+assert.equal("purchase_order" in JSON.parse(JSON.stringify(core.normalizeRow(raw))), false, "thiếu khoá loại nguồn → không biết (bỏ khoá)");
+for (const [type, code] of [[undefined, undefined], [null, null], ["", "100000001"], ["PURCHASE_ORDER", ""], ["PURCHASE_ORDER", null], ["PURCHASE_ORDER", undefined]]) {
+  assert.equal("purchase_order" in poRow(type, code), false, `nguồn ${type}/${code} chưa chắc → bỏ khoá (giữ PO cũ)`);
+}
+for (const [type, code] of [["WMS_COUNTING_PLAN", "100001"], ["INTERNAL_TRANSFER", "100000002"], ["INTERNAL_TRANSFER", null]]) {
+  const sent = poRow(type, code);
+  assert.ok("purchase_order" in sent, `nguồn ${type}/${code} vẫn gửi khoá`);
+  assert.equal(sent.purchase_order, null, `nguồn ${type}/${code} → không có PO`);
+}
+for (const bad of ["PO-1", "12345", "1".repeat(41), "10001 2345678", ["100000001"], 10012608011632991, -100000001, 1000000.5]) {
+  assert.equal("purchase_order" in poRow("PURCHASE_ORDER", bad), false, `PO sai dạng ${JSON.stringify(bad)} → bỏ khoá (không xoá nhầm)`);
+}
 console.log("group_uid_sync_extension: ok");

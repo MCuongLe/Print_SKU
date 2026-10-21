@@ -22,6 +22,23 @@
     if (!code) return null;
     return /^[A-Za-z0-9]{1,40}$/.test(code) ? code.toUpperCase() : undefined;
   };
+  // Số PO nguồn của Group UID (21/10/2026, lọc theo PO ở CẮT GROUP UID): WMS processing_source_type = PURCHASE_ORDER thì
+  // processing_source_code là số PO (đo 21/10: 14 chữ số). Có loại nguồn khác (WMS_COUNTING_PLAN, INTERNAL_TRANSFER) → null
+  // (= không có PO, Edge ghi theo). Không chắc → undefined: bỏ khoá khi gửi, Edge "không biết", giữ PO cũ (review 21/10) —
+  // thiếu khoá / loại nguồn rỗng (UID không nguồn, hoặc WMS đổi dạng phản hồi), PURCHASE_ORDER mà mã trống / sai dạng.
+  const purchaseOrderCode = raw => {
+    const type = typeof raw?.processing_source_type === "string" ? raw.processing_source_type.trim().toUpperCase() : "";
+    if (!type) return undefined;
+    if (type !== "PURCHASE_ORDER") return null;
+    const value = raw?.processing_source_code;
+    if (value === undefined || value === null) return undefined;
+    if (typeof value !== "string" && typeof value !== "number") return undefined;
+    // Số JSON vượt số nguyên an toàn có thể đã bị làm tròn khi JSON.parse (Codex 21/10) → coi là không biết, giữ PO cũ.
+    if (typeof value === "number" && !(Number.isSafeInteger(value) && value >= 0)) return undefined;
+    const code = String(value).trim();
+    if (!code) return undefined;
+    return /^\d{6,40}$/.test(code) ? code : undefined;
+  };
   const CUT_NOTE = /^Cut\s+([\d.,]+)\s+out of group\s+(\S+)\s+\(remaining\s+([\d.,]+)\)\s*$/i;
 
   function responseRows(payload) {
@@ -81,6 +98,7 @@
       status,
       qc_status: clean(raw?.quality_control_status_name, 60) || null,
       group_rfid_mapping: rfidCode(raw?.group_rfid_mapping),
+      purchase_order: purchaseOrderCode(raw),
       products,
     };
   }

@@ -13,6 +13,7 @@ const FLOOR_TOKEN = 'pd_' + 'ab'.repeat(24);
       const errors = [];
       const records = [];
       const comboLookups = [];
+      const searchBodies = [];
       const adminDeletes = [];
       page.on('pageerror', error => errors.push(error.message));
       await page.route('**/*', async route => {
@@ -29,7 +30,7 @@ const FLOOR_TOKEN = 'pd_' + 'ab'.repeat(24);
             records.push(row); result = { ok: true, data: row };
           }
         } else if (rpc === 'cut_group_uid_list') result = { ok: true, data: { items: records.filter(x => ['pending', 'queued', 'failed'].includes(x.printStatus)) } };
-        else if (rpc === 'cut_group_uid_search') result = { ok: true, data: { items: records.filter(x => !body.p_sku || x.sku.includes(body.p_sku)) } };
+        else if (rpc === 'cut_group_uid_search') { searchBodies.push(body); result = { ok: true, data: { items: records.filter(x => (!body.p_sku || x.sku.includes(body.p_sku)) && (!body.p_po || x.po === body.p_po)) } }; }
         else if (rpc === 'cut_group_uid_mark_queued') { records.filter(x => body.p_codes.includes(x.groupUid)).forEach(x => { x.printStatus = 'queued'; x.printJobId = body.p_job_id; }); result = { ok: true, data: { count: body.p_codes.length } }; }
         else if (rpc === 'cut_group_uid_mark_result') { records.filter(x => x.printJobId === body.p_job_id).forEach(x => x.printStatus = body.p_status); result = { ok: true, data: { count: 1 } }; }
         else if (rpc === 'cut_group_uid_remove') { const i = records.findIndex(x => x.groupUid === body.p_group_uid); if (i >= 0) records.splice(i, 1); result = { ok: true, data: {} }; }
@@ -129,8 +130,22 @@ const FLOOR_TOKEN = 'pd_' + 'ab'.repeat(24);
       assert.equal(xlsx.includes(Buffer.from('rgb="FF1F4E78"')), true);
       assert.equal(xlsx.includes(Buffer.from('<left style="thin">')), true);
       assert.equal(xlsx.includes(Buffer.from('<c r="A2" s="2"')), true);
-      assert.equal(xlsx.includes(Buffer.from('ref="A1:E81"')), true);
-      for (const header of ['SKU', 'UID', 'Lot', 'Roll', 'Tên SP']) assert.equal(xlsx.includes(Buffer.from(header)), true);
+      assert.equal(xlsx.includes(Buffer.from('ref="A1:F81"')), true, 'Excel thêm cột PO (21/10/2026)');
+      for (const header of ['SKU', 'UID', 'Lot', 'Roll', 'PO', 'Tên SP']) assert.equal(xlsx.includes(Buffer.from(header)), true);
+      // Lọc theo PO (21/10/2026): ô #cut-po khớp đúng, chỉ gửi p_po khi có; bảng có cột PO (UID chưa có PO hiện —).
+      records.filter(x => ['UID-0002', 'UID-0003', 'UID-0004'].includes(x.groupUid)).forEach(x => { x.po = '100000001'; });
+      assert.deepEqual(await page.locator('#cut-search-all').evaluate(el => [...el.closest('tr').children].map(th => th.textContent.trim())).then(h => h.slice(4, 6)), ['Roll', 'PO']);
+      await page.locator('#cut-po').fill(' 100000001 ');
+      await page.locator('#cut-search').evaluate(form => form.requestSubmit());
+      await page.waitForFunction(() => document.querySelector('#cut-found').textContent === '3');
+      assert.equal(searchBodies.at(-1).p_po, '100000001');
+      assert.match(await page.locator('#cut-message').textContent(), /PO 100000001/);
+      assert.equal(await page.locator('#cut-results tr[data-code="UID-0002"] td').nth(5).textContent(), '100000001');
+      await page.locator('#cut-po').fill('');
+      await page.locator('#cut-search').evaluate(form => form.requestSubmit());
+      await page.waitForFunction(() => document.querySelector('#cut-found').textContent === '80');
+      assert.equal('p_po' in searchBodies.at(-1), false, 'ô PO trống thì không gửi p_po (chạy được với hàm tra cứu cũ)');
+      assert.equal(await page.locator('#cut-results tr[data-code="UID-0005"] td').nth(5).textContent(), '—');
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
       // Quét UID bằng camera điện thoại: giả lập camera + bộ đọc mã. Mã 9 số (SKU trên cùng tem) bị hỏi lại, mã 16 số được lưu.
       await page.locator('#cut-tab-scan').click();

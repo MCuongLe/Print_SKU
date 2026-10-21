@@ -129,6 +129,46 @@ test("ingest: group_rfid_mapping vào staging viết hoa, rác → null; group_r
   assert.ok(staged.every(row => row.run_id === RUN_A && "group_rfid_mapping" in row), "mọi dòng staging có run_id + khoá group_rfid_mapping");
 });
 
+test("ingest: purchase_order (số PO nguồn, cut_group_uid_po_v1) vào staging; sai dạng / Extension cũ không gửi khoá → purchase_order_known = false (giữ PO đang lưu)", async () => {
+  runs.push(makeRun({ status: "running", expected_pages: null }));
+  const base = { qty: 5, status: "Available", updated_date: "2026-10-21T01:00:00.000Z", products: [] };
+  const rows = [
+    { ...base, group_uid_code: "1028260000000801", purchase_order: " 100000001 ", purchase_order_known: true },
+    { ...base, group_uid_code: "1028260000000802" },
+    { ...base, group_uid_code: "1028260000000803", purchase_order: "PO-100000001", purchase_order_known: true },
+    { ...base, group_uid_code: "1028260000000804", purchase_order: "12345", purchase_order_known: true },
+    { ...base, group_uid_code: "1028260000000805", purchase_order: "1".repeat(41), purchase_order_known: true },
+    { ...base, group_uid_code: "1028260000000806", purchase_order: 100000001, purchase_order_known: true },
+    { ...base, group_uid_code: "1028260000000807", purchase_order: "", purchase_order_known: true },
+    { ...base, group_uid_code: "1028260000000808", purchase_order: null, purchase_order_known: true },
+    { ...base, group_uid_code: "1028260000000809", purchase_order: "1".repeat(40) },
+    { ...base, group_uid_code: "1028260000000810", purchase_order: "100000002", purchase_order_known: false },
+    { ...base, group_uid_code: "1028260000000811", purchase_order: null },
+    { ...base, group_uid_code: "1028260000000812", purchase_order: "100000003", group_rfid_mapping: "a00000000005" },
+  ];
+  const result = await call({ action: "ingest", runId: RUN_A, page: 1, totalPages: 1, total: rows.length, rows });
+  assert.equal(result.status, 200, JSON.stringify(result.body));
+  const staged = posts.find(item => item.table === "group_uid_sync_staging")?.body;
+  assert.ok(Array.isArray(staged), "phải lưu trang vào staging");
+  assert.deepEqual(staged.map(row => [row.group_uid_code, row.purchase_order, row.purchase_order_known]), [
+    ["1028260000000801", "100000001", true],
+    // Extension cũ (≤ 0.10.3) không gửi khoá → không biết, apply giữ PO đang lưu
+    ["1028260000000802", null, false],
+    // Có giá trị nhưng sai dạng (ký tự lạ, < 6 hoặc > 40 chữ số, không phải chuỗi) → không biết, không xoá nhầm
+    ["1028260000000803", null, false], ["1028260000000804", null, false], ["1028260000000805", null, false],
+    ["1028260000000806", null, false],
+    // Có khoá, rỗng / null = UID không nhận theo PO (kiểm kê, chuyển kho, tạo tay) → biết, PO null
+    ["1028260000000807", null, true], ["1028260000000808", null, true],
+    ["1028260000000809", "1".repeat(40), true],
+    // Extension báo rõ không biết → không ghi
+    ["1028260000000810", null, false],
+    ["1028260000000811", null, true],
+    ["1028260000000812", "100000003", true],
+  ]);
+  assert.deepEqual([staged[11].group_rfid_mapping, staged[11].group_rfid_known], ["A00000000005", true], "PO không làm hỏng RFID cùng dòng");
+  assert.ok(staged.every(row => "purchase_order" in row && typeof row.purchase_order_known === "boolean"), "mọi dòng staging có khoá purchase_order + cờ boolean");
+});
+
 test("prepare: lượt tự động truyền source auto + tên máy; thiếu trường thì manual/null như cũ", async () => {
   const auto = await call({ action: "prepare", mode: "incremental", source: "auto", device: " may-test-01 " });
   assert.equal(auto.status, 200, JSON.stringify(auto.body));

@@ -380,6 +380,13 @@ const srcReadAudit = (page, specs, width) => page.evaluate(async ({ specs, width
       assert.equal(lastBody.p_sku, 'SKU-G');
       assert.equal(lastBody.p_date_from, '2026-10-01');
       assert.equal('p_date_to' in lastBody, false);
+      assert.equal('p_po' in lastBody, false, 'ô PO trống thì không gửi p_po');
+      // Lọc theo PO (21/10/2026): ô #cut-adj-po khớp đúng, bỏ khoảng trắng hai đầu.
+      await page.locator('#cut-adj-po').fill(' 100000001 ');
+      await page.locator('#cut-adj-form').evaluate(form => form.requestSubmit());
+      await page.waitForTimeout(300);
+      assert.equal(store.reconcileBodies.at(-1).p_po, '100000001');
+      await page.locator('#cut-adj-po').fill('');
       await upload('GROUP_UID_HISTORY_TEST.zip', buildHistoryZip(HISTORY));
       await page.waitForFunction(() => /0 mới/.test(document.querySelector('#cut-message').textContent));
       assert.match(await message(), new RegExp(`${CUT_ROWS} giữ nguyên`));

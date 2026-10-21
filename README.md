@@ -490,6 +490,7 @@ cần ở file có `drop function` (tạo lại hàm tra cứu với chữ ký m
 | `v7_admin_delete.sql` | Admin xóa UID + bảng nhật ký | |
 | `v8_adj_resolved.sql` | **Đã xử lý** cho UID lệch | |
 | `v9_mark_result_missing_job.sql` | UID `queued` mà lệnh in đã bị dọn thì chuyển `failed` được | |
+| `po_v1.sql` (21/10/2026) | Lọc theo **PO** ở Tra cứu + Đối chiếu ADJ, cột PO; số PO đồng bộ từ WMS (Extension 0.10.4, Edge `group-uid-sync`) | `--allow-destructive` |
 
 ```powershell
 python scripts/apply_supabase_sql.py supabase/cut_group_uid_v1.sql
@@ -503,9 +504,9 @@ chọn lại ở Tra cứu). UID đang `queued` thì sau khi tải lại app v�
 dùng đúng nonce cũ nên không in trùng. Lệnh in cũ bị dọn khỏi hàng đợi sau vài ngày: UID còn `queued` mà lệnh đã mất
 thì web đánh dấu `failed` để in lại được (migration v9); không bao giờ tự đánh dấu `printed` khi không còn lệnh để chứng minh.
 
-Phần tra cứu lọc theo SKU, Lot và **ngày cắt** (từ ngày → đến ngày, giờ Việt Nam; để
-trống là không lọc) và xuất `.xlsx` có thiết lập giấy A4 ngang, gồm SKU, UID, Lot, Roll và
-Tên SP. Bộ lọc ngày cần hàm tra cứu bản v4 (đã áp dụng 30/09/2026):
+Phần tra cứu lọc theo SKU, Lot, **PO** (khớp đúng số PO; từ 21/10/2026) và **ngày cắt** (từ ngày → đến ngày, giờ Việt Nam; để
+trống là không lọc) và xuất `.xlsx` có thiết lập giấy A4 ngang, gồm SKU, UID, Lot, Roll, PO và
+Tên SP. PO chỉ có ở UID nhận hàng theo PO trên WMS (nguồn PURCHASE_ORDER); UID từ kiểm kê, phiếu IT hoặc tạo tay để trống "—". Bộ lọc ngày cần hàm tra cứu bản v4 (đã áp dụng 30/09/2026):
 
 ```powershell
 python scripts/apply_supabase_sql.py supabase/cut_group_uid_v4_search_date_filter.sql --allow-destructive
