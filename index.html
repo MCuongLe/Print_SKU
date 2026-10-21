@@ -3278,7 +3278,7 @@ Error generating stack: `+y.message+`
               <label for="ins-po-lookup">Mã PO</label>
               <div class="ins-po-lookup__row">
                 <input id="ins-po-lookup" autocomplete="off" inputmode="text" placeholder="Mã PO">
-                <button class="uid-add__btn" id="ins-fetch-po" type="button">Lấy từ Inside</button>
+                <button class="src-read" id="ins-fetch-po" type="button" title="Lấy PO phụ liệu từ Inside"><span class="src-read__t">Đọc Inside</span></button>
               </div>
             </div>
             <div class="ins-import-fallback" aria-hidden="true"></div>
@@ -3863,7 +3863,8 @@ Error generating stack: `+y.message+`
             return setStatus("Nhập mã PO hợp lệ trước khi lấy dữ liệu.", "error");
           }
           fetchPoButton.disabled = true;
-          fetchPoButton.textContent = "Đang lấy…";
+          fetchPoButton.dataset.busy = "true";
+          fetchPoButton.querySelector(".src-read__t").textContent = "Đang đọc…";
           setStatus(`Đang lấy PO ${poCode} từ Inside…`);
           try {
             // Luôn hỏi lại trước khi lấy PO: sau khi extension Reload/cập nhật, cầu nối trong tab này mồ côi nhưng huy hiệu cũ vẫn xanh.
@@ -3880,7 +3881,8 @@ Error generating stack: `+y.message+`
             setStatus(`${message}. Bạn vẫn có thể chọn file PO bên dưới.`, "error");
           } finally {
             fetchPoButton.disabled = false;
-            fetchPoButton.textContent = "Lấy từ Inside";
+            fetchPoButton.dataset.busy = "false";
+            fetchPoButton.querySelector(".src-read__t").textContent = "Đọc Inside";
           }
         };
 
@@ -12487,6 +12489,8 @@ async function rpc(name,args,retry=true){
       #uid-block-screen .ub-pending { margin-left: auto; padding: 4px 10px; border-radius: 999px; background: #fff4dc; color: #8a5b00; font-size: 13px; font-weight: 700; white-space: nowrap; }
       #uid-block-screen .ub-pending[data-tone="error"] { background: #fbeceb; color: #a53730; }
       #uid-block-screen .ub-pending[hidden] { display: none; }
+      #uid-block-screen .src-read[hidden] { display: none; }
+      #uid-block-screen .ub-head > .ub-actions .ub-btn { min-height: var(--ui-ctl, 52px); }
       #uid-block-screen .ub-head h2 { display: flex; align-items: center; gap: 8px; margin: 0; color: #12352a; font-size: 18px; font-weight: 600; }
       #uid-block-screen .ub-icon-btn { display: inline-grid; place-items: center; width: 44px; height: 44px; border: 1px solid #cfe0d8; border-radius: 12px; background: #fff; color: #0b5c43; cursor: pointer; }
       #uid-block-screen .ub-icon-btn svg { width: 20px; height: 20px; }
@@ -12602,7 +12606,7 @@ async function rpc(name,args,retry=true){
           <div class="as-pager" id="ub-pager" hidden></div>
         </section>
         <section class="ub-panel" data-ub-panel="list" aria-label="Danh sách blocked" hidden>
-          <div class="ub-head"><h2>Danh sách blocked</h2><div class="ub-actions"><input id="ub-file-input" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden><button class="ub-btn ub-btn--primary" id="ub-wms" type="button" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 15 21.84"/><path d="M21 5V8"/><path d="M21 12L18 17H22L19 22"/><path d="M3 12A9 3 0 0 0 14.59 14.87"/></svg>Lấy từ WMS</button><button class="ub-btn" id="ub-import" type="button" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m17 8-5-5-5 5"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/></svg>Nạp Excel</button><button class="ub-btn" id="ub-compare" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/></svg>Đối chiếu WMS</button></div></div>
+          <div class="ub-head"><h2>Danh sách blocked</h2><div class="ub-actions"><input id="ub-file-input" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden><button class="src-read" id="ub-wms" type="button" hidden title="Lấy UID Blocked của kho MTG + Garment từ dữ liệu WMS"><span class="src-read__t">Đọc WMS</span></button><button class="ub-btn" id="ub-import" type="button" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m17 8-5-5-5 5"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/></svg>Nạp Excel</button><button class="src-read src-read--all" id="ub-compare" type="button" title="Đối chiếu danh sách với dữ liệu WMS"><span class="src-read__t">Đối chiếu</span></button></div></div>
           <dl class="ub-kv" id="ub-info"></dl>
           <div id="ub-compare-out"></div>
           <div class="ub-preview" id="ub-preview" hidden></div>
@@ -12735,7 +12739,7 @@ async function rpc(name,args,retry=true){
           if(S.list&&fromServer&&S.listId!==S.list.id){
             const had=S.listId!==null;
             S.scans=new Map([...S.scans].filter(([c])=>S.byCode.has(c)));S.scanCount=null;S.listId=S.list.id;persist();
-            if(had)tell(`Danh sách mới: ${S.list.fileName||'Excel'}`,'warn');
+            if(had&&!S.busy)tell(`Danh sách mới: ${S.list.fileName||'Excel'}`,'warn');
           }
           renderAll();
         };
@@ -12874,11 +12878,14 @@ async function rpc(name,args,retry=true){
             +(missing.length?`<h3 class="ub-sub">Không có trên WMS</h3>${codeList(missing)}`:'')
             +(outside.length?`<h3 class="ub-sub">Blocked WMS ngoài danh sách</h3>${codeList(outside.map(r=>({groupUid:r.groupUid,note:r.warehouse})))}`:'');
         };
+        // Nút đọc nguồn chuẩn (.src-read, khối #hero-standard): đang đọc → data-busy + "Đang đọc…" (vạch load, không đổi bề rộng)
+        const readBusy=(id,on,label)=>{const b=$(id);b.dataset.busy=String(on);b.querySelector('.src-read__t').textContent=on?'Đang đọc…':label};
         const renderInfo=()=>{
           const l=S.list,byWh=l?.byWarehouse&&typeof l.byWarehouse==='object'?Object.entries(l.byWarehouse):[];
           $('ub-info').innerHTML=l?kv('Tệp',esc(l.fileName||'—'),'',true)+kv('Nạp lúc',esc(fmtAt(l.importedAt)))+kv('Sheet',esc((l.sheets||[]).join(', ')||'—'),'',true)+byWh.map(([w,n])=>kv(w,num(n))).join(''):kv('Danh sách','Chưa có');
           $('ub-compare-out').innerHTML=S.compare&&S.compare.listId===l?.id?compareHtml(S.compare,S.items.length):'';
           $('ub-import').hidden=!S.admin;$('ub-wms').hidden=!S.admin;$('ub-wms').disabled=S.busy;$('ub-import').disabled=S.busy;$('ub-compare').disabled=!S.items.length||S.busy||S.compare?.state==='pending';
+          readBusy('ub-wms',S.busy==='wms','Đọc WMS');readBusy('ub-compare',S.compare?.state==='pending'&&S.compare?.listId===S.list?.id,'Đối chiếu');
         };
         $('ub-compare').addEventListener('click',async()=>{
           if(!S.items.length||S.busy||S.compare?.state==='pending')return;
@@ -12940,7 +12947,7 @@ async function rpc(name,args,retry=true){
         $('ub-wms').addEventListener('click',async()=>{
           if(S.busy)return;
           if(!await window.WhDialog?.confirm?.({icon:'check',title:'Lấy UID Blocked từ WMS?',facts:WMS_WH,confirmText:'Lấy',cancelText:'Huỷ'}))return;
-          S.busy=true;S.pid++;renderInfo();tell('Đang lấy UID Blocked từ WMS…');
+          S.busy='wms';S.pid++;renderInfo();tell('Đang lấy UID Blocked từ WMS…');
           try{
             const d=await adminRpc('uid_block_import_wms',{p_warehouses:WMS_WH});
             S.preview=null;renderPreview();

@@ -1,4 +1,4 @@
-// Nút đọc dữ liệu nguồn (Inside / WMS) MỘT KIỂU: 12 nút `.src-read` thường (không `--all`, không `--icon`) ở 12 màn / hộp khác nhau phải có cùng nền, màu chữ,
+// Nút đọc dữ liệu nguồn (Inside / WMS) MỘT KIỂU: 14 nút `.src-read` thường (không `--all`, không `--icon`) ở 12 màn / hộp khác nhau phải có cùng nền, màu chữ,
 // viền, bo, cỡ + đậm chữ, icon mask ::before và cùng độ cao (= --ui-ctl, và bằng ô nhập / nút cùng hàng). Khuôn ở khối <style id="hero-standard"> (17/10/2026).
 // Chạy với python -m http.server 8000 (hoặc cổng khác + BASE=http://127.0.0.1:<cổng>/); Admin, Extension và Supabase đều giả lập, không đụng dữ liệu thật.
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
@@ -21,6 +21,9 @@ const SCREENS = [
   { name: "CẮT GROUP UID · Đối chiếu ADJ", hash: "#cut-group-uid", wait: "#cut-group-uid-screen:not([hidden])", prep: async page => { await page.locator("#cut-tab-adj").click(); }, id: "cut-adj-wms", mate: "cut-adj-upload" },
   { name: "CẮT GROUP UID · Theo PO", hash: "#cut-group-uid", wait: "#cut-group-uid-screen:not([hidden])", admin: "stub", id: "cs-po-go", mate: "cs-po",
     prep: async page => { await page.locator("#cs-mode-po").click(); await page.locator("#cs-manage").waitFor({ state: "visible" }); await page.locator("#cs-manage").click(); await page.waitForSelector("#cs-plans-dialog[open]"); } },
+  // 21/10/2026 (người dùng: "các nút lấy dữ liệu từ WMS hoặc Inside cần chuẩn hoá giống như các trang")
+  { name: "LỰA UID BLOCKED · Danh sách", hash: "#uid-block", wait: "#uid-block-screen:not([hidden])", prep: async page => { await page.locator('[data-ub-tab="list"]').click(); await page.locator("#ub-wms").waitFor({ state: "visible" }); }, id: "ub-wms" },
+  { name: "KIỂM TRA ĐẦU VÀO · Mã PO", hash: "#inspection", wait: "#ins-screen:not([hidden])", id: "ins-fetch-po", mate: "ins-po-lookup" },
 ];
 
 // Nút nằm trong dải mốc giờ / hàng tab (18/10/2026, khối #strip-read): cùng màu / viền / icon / vạch load, nhưng cỡ gọn 36, chữ 14 — so cỡ với nhau, không so với nút 52 của màn đồng bộ.
@@ -187,7 +190,7 @@ const readStyle = (page, id, mate) => page.evaluate(async ({ id, mate }) => {
       if (s[key] !== base[key]) bad.push(`#${s.id} (${s.screen}) ${key} = ${short(s[key])} ≠ #${base.id} (${base.screen}) ${short(base[key])}`);
     }
   }
-  assert.equal(styles.length, 12, "đủ 12 nút");
+  assert.equal(styles.length, SCREENS.length, `đủ ${SCREENS.length} nút`);
   assert.equal(styles.filter(s => s.idleWidth !== null).length >= 2, true, "ít nhất hai nút có nhãn bận để đo bề rộng");
   assert.equal(bad.length, 0, `nút đọc nguồn chưa một kiểu (${bad.length} điểm lệch):\n  ${bad.join("\n  ")}`);
   console.log(`src_read_style_browser: đạt (12 nút đọc cùng một kiểu ở 1280 px: nền ${ref.backgroundColor}, chữ ${ref.color} ${ref.fontSize}/${ref.fontWeight}, viền ${ref.borderColor.split(") ")[0]}), cao ${ref.height}px)`);

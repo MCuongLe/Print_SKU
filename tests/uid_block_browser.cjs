@@ -234,7 +234,7 @@ const ready = page => page.waitForFunction(() => document.getElementById("ub-tot
       await page.waitForFunction(() => document.getElementById("ub-total")?.textContent?.trim() === "4" && /WMS Blocked/.test(document.getElementById("ub-file").textContent), null, { timeout: 10000 });
       assert.deepEqual(srv.wms.p_warehouses, ["WH - MATERIAL - MTG", "WH - MATERIAL - GARMENT"]);
       assert.equal(srv.calls.find(c => c.rpc === "uid_block_import_wms").admin, true, "lấy từ WMS bằng token Admin");
-      assert.match(await page.locator("#ub-message").innerText(), /Đã lấy 4 UID Blocked từ WMS\./);
+      await page.waitForFunction(() => /Đã lấy 4 UID Blocked từ WMS\./.test(document.getElementById("ub-message").textContent), null, { timeout: 10000 });
       // Codex 21/10: lấy xong nhưng tải lại danh sách lỗi → không báo thành công trọn vẹn
       srv.offline = true;
       await page.locator("#ub-wms").click();
