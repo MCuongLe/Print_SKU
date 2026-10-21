@@ -8308,7 +8308,7 @@ var FSK_CORE = (function () {
       // QUY TẮC BẮT BUỘC (người dùng chốt 16/10/2026): cắt + QC phải đạt TỐI THIỂU 30% số cây của lot, làm tròn lên
       // (ceil(30% × n)), và khi lot có từ 2 cây thì mỗi bên có ít nhất 1 cây. Tổng mẫu chia cho cắt : QC theo tỷ lệ 20 : 10
       // (làm tròn gần nhất, 0,5 lên) nên lot 10 cây = 2 cắt + 1 QC; lot 7 cây = 3 mẫu (2 cắt + 1 QC) chứ không phải 2.
-      // Lot 1 cây chỉ có cây cắt (QC báo thiếu). Hai nhóm không trùng nhau (cắt chọn trước). Số lượng là khối lượng (g)
+      // Lot 1 cây chỉ có cây cắt — đem cắt test, không báo thiếu QC (người dùng 21/10/2026). Hai nhóm không trùng nhau (cắt chọn trước). Số lượng là khối lượng (g)
       // hoặc số mét (mm) theo đơn vị của SKU nên so sánh được trong cùng một nhóm. Tính bằng số nguyên, không dùng số thực.
       var CUT_SAMPLE_CORE = (function () {
         const byCode = (a, b) => (a.groupUid < b.groupUid ? -1 : a.groupUid > b.groupUid ? 1 : 0);
@@ -8353,7 +8353,7 @@ var FSK_CORE = (function () {
             const { sku, lot } = list[0];
             if ((cut.length + qc.length) * 100 < share * total) errors.push(`${sku} · lot ${lot || "—"}: mẫu cắt + QC chưa đạt ${share}% số cây`);
             [["cut", cut], ["qc", qc], ["store", store]].forEach(([role, part]) => part.forEach(row => items.push({ ...row, role })));
-            groups.push({ sku, lot, total, cut: cut.length, qc: qc.length, store: store.length, sample: cut.length + qc.length, qcShort: qc.length === 0 });
+            groups.push({ sku, lot, total, cut: cut.length, qc: qc.length, store: store.length, sample: cut.length + qc.length, qcShort: total > 1 && qc.length === 0 });
             const sum = skuTotals.get(sku) || { sku, total: 0, cut: 0, qc: 0, store: 0 };
             sum.total += total; sum.cut += cut.length; sum.qc += qc.length; sum.store += store.length;
             skuTotals.set(sku, sum);

@@ -93,10 +93,10 @@ test('nhiều lot cỡ ngẫu nhiên trong một phiên: lot nào cũng đạt 3
   assert.ok(result.items.filter(i => i.role !== 'store').length * 10 >= 3 * result.items.length);
 });
 
-test('lot 1 cây: chỉ cắt, QC báo thiếu; lot 2 cây: nhỏ → cắt, lớn → QC', () => {
+test('lot 1 cây: chỉ cắt test, KHÔNG báo thiếu QC (người dùng 21/10: lot ít cây đem cắt test); lot 2 cây: nhỏ → cắt, lớn → QC', () => {
   const one = CORE.plan(lot('S1', 'L1', 1));
   assert.deepEqual([rolesOf(one, 'cut'), rolesOf(one, 'qc')], [['S1L1001'], []]);
-  assert.deepEqual(one.groups[0], { sku: 'S1', lot: 'L1', total: 1, cut: 1, qc: 0, store: 0, sample: 1, qcShort: true });
+  assert.deepEqual(one.groups[0], { sku: 'S1', lot: 'L1', total: 1, cut: 1, qc: 0, store: 0, sample: 1, qcShort: false });
   assert.deepEqual(one.errors, [], 'lot 1 cây lấy cả cây (100%) nên vẫn đạt 30%');
   const two = CORE.plan(lot('S1', 'L1', 2));
   assert.deepEqual([rolesOf(two, 'cut'), rolesOf(two, 'qc'), rolesOf(two, 'store')], [['S1L1001'], ['S1L1002'], []]);
