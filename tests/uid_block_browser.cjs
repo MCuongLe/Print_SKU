@@ -71,6 +71,13 @@ const open = async (browser, srv, { width = 1280, height = 900, admin = false } 
       const codes = body.p_codes || [];
       return json({ ok: true, data: { rows: codes.filter(c => c !== "1028260000000199").map(c => ({ groupUid: c, status: c.endsWith("103") ? "Available" : "Blocked", qcStatus: null, warehouse: "WH - MATERIAL - MTG", location: "F0-A0-00-00-00-01" })), missing: codes.filter(c => c === "1028260000000199"), blockedOutside: [{ groupUid: "1028260000000188", warehouse: "WH - MATERIAL - MTG", sku: "900000088" }], blockedOutsideTotal: 1 } });
     }
+    if (rpc === "uid_block_import_wms") {
+      srv.wms = body;
+      const items = [item(1), item(2), item(3), item(7, { warehouse: "WH - MATERIAL - GARMENT", location: "G1-A0-00-00-00-07" })];
+      srv.wmsN = (srv.wmsN || 0) + 1;
+      srv.list = { list: { ...LIST_A.list, id: `55555555-5555-4555-8555-55555555555${srv.wmsN}`, fileName: "WMS Blocked · WH - MATERIAL - GARMENT + WH - MATERIAL - MTG · 21/10 08:00", itemCount: items.length }, items };
+      return json({ ok: true, data: { listId: srv.list.list.id, itemCount: items.length, byWarehouse: {}, carriedScans: 0 } });
+    }
     if (rpc === "uid_block_import") { srv.imported = body; srv.list = { list: { ...LIST_A.list, id: "33333333-3333-4333-8333-333333333333", fileName: body.p_list.fileName, itemCount: body.p_items.length }, items: body.p_items.map(i => ({ ...i, fileStatus: "Blocked" })) }; return json({ ok: true, data: { listId: srv.list.list.id, itemCount: body.p_items.length, byWarehouse: {} } }); }
     if (url.includes("/rest/v1/") && !rpc) return json([]);
     return json({ ok: true, data: { agents: [], jobs: [], items: [] } });
@@ -221,6 +228,19 @@ const ready = page => page.waitForFunction(() => document.getElementById("ub-tot
       assert.equal(srv.imported.p_list.fileName, "danh-sach-gia-moi.xlsx");
       assert.deepEqual(srv.imported.p_list.sheets, ["blocked-QC fail", "toan-kho"]);
       assert.equal(srv.calls.find(c => c.rpc === "uid_block_import").admin, true, "lưu bằng token Admin");
+      // 21/10: "Lấy từ WMS" — danh sách = UID Blocked đã đồng bộ WMS của 2 kho MTG + Garment (bỏ tệp Excel)
+      await page.locator("#ub-wms").click();
+      await page.locator("dialog.whd .whd-ok").click();
+      await page.waitForFunction(() => document.getElementById("ub-total")?.textContent?.trim() === "4" && /WMS Blocked/.test(document.getElementById("ub-file").textContent), null, { timeout: 10000 });
+      assert.deepEqual(srv.wms.p_warehouses, ["WH - MATERIAL - MTG", "WH - MATERIAL - GARMENT"]);
+      assert.equal(srv.calls.find(c => c.rpc === "uid_block_import_wms").admin, true, "lấy từ WMS bằng token Admin");
+      assert.match(await page.locator("#ub-message").innerText(), /Đã lấy 4 UID Blocked từ WMS\./);
+      // Codex 21/10: lấy xong nhưng tải lại danh sách lỗi → không báo thành công trọn vẹn
+      srv.offline = true;
+      await page.locator("#ub-wms").click();
+      await page.locator("dialog.whd .whd-ok").click();
+      await page.waitForFunction(() => /chưa tải lại được danh sách/.test(document.getElementById("ub-message").textContent), null, { timeout: 15000 });
+      srv.offline = false;
       // Đối chiếu lỗi → báo lỗi riêng, không dựng bảng số 0 như đã khớp
       srv.compareFail = true; srv.compareDelay = 0;
       await page.locator("#ub-compare").click();
@@ -342,6 +362,7 @@ const ready = page => page.waitForFunction(() => document.getElementById("ub-tot
       await page.goto(BASE + "#uid-block"); await ready(page);
       await page.locator('[data-ub-tab="list"]').click();
       assert.equal(await page.locator("#ub-import").isVisible(), false);
+      assert.equal(await page.locator("#ub-wms").isVisible(), false, "người thường không thấy Lấy từ WMS");
       assert.deepEqual(errors, []);
       await context.close();
     }

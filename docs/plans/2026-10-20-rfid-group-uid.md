@@ -21,8 +21,8 @@
 ### Việc 2 — Web: quét RFID ở LỰA UID BLOCKED + nhãn Admin · lead · [x]
 - [x] Test đỏ trước trong uid_block_browser (RFID trong danh sách / tra máy chủ / chưa liên kết / mất mạng)
 ### Việc 3 — Review · Codex + reviewer A · [x]
-### Việc 4 — Xác minh + lên · lead · [ ]
-- [ ] Cả bộ test + cổng; PROJECT_MAP + README; commit (chưa push) → migration → deploy Edge → Reload Extension → push → Đối chiếu toàn bộ → kiểm chỉ đọc số UID có RFID
+### Việc 4 — Xác minh + lên · lead · [x]
+- [x] Cả bộ test + cổng; PROJECT_MAP + README; commit (chưa push) → migration → deploy Edge → Reload Extension → push → Đối chiếu toàn bộ → kiểm chỉ đọc số UID có RFID
 
 ## Phát sinh
 
@@ -32,3 +32,4 @@
 ## Nhật ký
 - 20/10 Việc 2: uid_block_browser khối 14 (RFID có trên máy / tra máy chủ / chưa liên kết, chữ thường) đỏ trên bản cũ → xanh 2 lần liền; nhãn UF "RFID" màn đồng bộ Admin. Kèm sửa 2 chỗ chờ racy trong test cũ (thẻ đỏ báo ngay rồi nâng cấp ĐÃ SCAN).
 - 20/10 Việc 1 (thuc-thi-logic, 2 lượt ~400k token, ~26 phút): 42/42 rồi 53/53 đột biến SQL đỏ, dry-run 25 câu. Sau review: test node 9 + Edge 13/13 + trình duyệt 6 (uid_block, group_uid_sync_admin, extension_options, sku_it_gateway, snapshot_cache_edge, src_read_style) PASS; commit_gate ĐẠT.
+- 21/10 07:09 Đối chiếu toàn bộ (Extension 0.10.2) completed → 5.728 UID có RFID (MTG 1.441 — tệp xuất 19/10 ghi 1.933, chênh do UID đổi/cắt/Canceled từ đó), 0 sai dạng, 0 trùng; danh sách blocked 1/727 UID có RFID.

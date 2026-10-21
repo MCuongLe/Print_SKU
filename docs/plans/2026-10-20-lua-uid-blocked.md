@@ -52,6 +52,8 @@ Người dùng 20/10: "dữ liệu này cần lưu trên supabase, 3 người d�
 - 20/10 người dùng (giữa việc 2): "cần gom theo vị trí để người dùng dễ tìm kiếm" → tab Còn thiếu gom UID theo vị trí (xếp theo mã vị trí, số cuộn mỗi vị trí) — làm ngay, cùng module.
 - 20/10 người dùng: "group blocked đã scan thì ghi nhận lại, scan trùng thì báo đã scan" → đã có (phiên trên máy); đổi chữ thẻ thành "ĐÃ SCAN" + "Đã scan lúc …". Ghi nhận theo TỪNG MÁY (người dùng đã chọn "danh sách phiên trên máy"); nhiều máy cùng lựa cần lưu Supabase — đã báo người dùng, chờ trả lời.
 
+- 21/10 người dùng: "Cập nhật lại dữ liệu group UID bị blocked của 2 kho WH-Material-MTG và Garment, dữ liệu file excel bỏ qua" (tệp Excel chỉ có MTG, sót 24 UID Garment) → hàm `uid_block_import_wms` + nút "Lấy từ WMS" (Admin); nguồn = `group_uid_details` Blocked 2 kho (751 UID lúc 21/10 sáng).
+
 ## Lệch kế hoạch
 - 20/10 người dùng bảo "commit và push" giữa Việc 3: commit ngay bản đang có (test đạt); push GIỮ LẠI tới khi chạy migration `uid_block_v1` (luật migration trước push). Lỗi review còn lại sửa ở commit sau, trước push.
 

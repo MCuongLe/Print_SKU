@@ -12602,7 +12602,7 @@ async function rpc(name,args,retry=true){
           <div class="as-pager" id="ub-pager" hidden></div>
         </section>
         <section class="ub-panel" data-ub-panel="list" aria-label="Danh sách blocked" hidden>
-          <div class="ub-head"><h2>Danh sách blocked</h2><div class="ub-actions"><input id="ub-file-input" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden><button class="ub-btn ub-btn--primary" id="ub-import" type="button" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m17 8-5-5-5 5"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/></svg>Nạp Excel</button><button class="ub-btn" id="ub-compare" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/></svg>Đối chiếu WMS</button></div></div>
+          <div class="ub-head"><h2>Danh sách blocked</h2><div class="ub-actions"><input id="ub-file-input" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden><button class="ub-btn ub-btn--primary" id="ub-wms" type="button" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 15 21.84"/><path d="M21 5V8"/><path d="M21 12L18 17H22L19 22"/><path d="M3 12A9 3 0 0 0 14.59 14.87"/></svg>Lấy từ WMS</button><button class="ub-btn" id="ub-import" type="button" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m17 8-5-5-5 5"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/></svg>Nạp Excel</button><button class="ub-btn" id="ub-compare" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/></svg>Đối chiếu WMS</button></div></div>
           <dl class="ub-kv" id="ub-info"></dl>
           <div id="ub-compare-out"></div>
           <div class="ub-preview" id="ub-preview" hidden></div>
@@ -12878,7 +12878,7 @@ async function rpc(name,args,retry=true){
           const l=S.list,byWh=l?.byWarehouse&&typeof l.byWarehouse==='object'?Object.entries(l.byWarehouse):[];
           $('ub-info').innerHTML=l?kv('Tệp',esc(l.fileName||'—'),'',true)+kv('Nạp lúc',esc(fmtAt(l.importedAt)))+kv('Sheet',esc((l.sheets||[]).join(', ')||'—'),'',true)+byWh.map(([w,n])=>kv(w,num(n))).join(''):kv('Danh sách','Chưa có');
           $('ub-compare-out').innerHTML=S.compare&&S.compare.listId===l?.id?compareHtml(S.compare,S.items.length):'';
-          $('ub-import').hidden=!S.admin;$('ub-compare').disabled=!S.items.length||S.busy||S.compare?.state==='pending';
+          $('ub-import').hidden=!S.admin;$('ub-wms').hidden=!S.admin;$('ub-wms').disabled=S.busy;$('ub-import').disabled=S.busy;$('ub-compare').disabled=!S.items.length||S.busy||S.compare?.state==='pending';
         };
         $('ub-compare').addEventListener('click',async()=>{
           if(!S.items.length||S.busy||S.compare?.state==='pending')return;
@@ -12935,9 +12935,24 @@ async function rpc(name,args,retry=true){
           box.innerHTML=`<h3 class="ub-sub" style="margin-top:0">${esc(p.fileName)} · ${num(p.items.length)} UID blocked</h3><dl class="ub-kv">${p.stat.map(s=>kv(`Sheet ${s.name}`,`${num(s.taken)} dòng${s.skipped?` · bỏ ${num(s.skipped)}`:''}${s.bad?` · ${num(s.bad)} mã lỗi`:''}${s.note?` · ${esc(s.note)}`:''}`,s.bad?'bad':s.note?'warn':'',true)).join('')}${Object.entries(byWh).map(([w,n])=>kv(w,num(n))).join('')}</dl>${compareHtml(p.compare,p.items.length)}<div class="ub-actions" style="margin-top:14px"><button class="ub-btn ub-btn--primary" id="ub-save" type="button"${p.items.length&&!S.busy&&!pending?'':' disabled'}>${svg('<path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/><path d="M7 3v4a1 1 0 0 0 1 1h7"/>',18)}Lưu danh sách</button><button class="ub-btn" id="ub-cancel" type="button">Huỷ</button></div>`;
           $('ub-save').addEventListener('click',save);$('ub-cancel').addEventListener('click',()=>{S.preview=null;renderPreview()});
         };
-        $('ub-import').addEventListener('click',()=>{$('ub-file-input').value='';$('ub-file-input').click()});
+        // Lấy từ WMS (uid_block_wms_v1, người dùng 21/10): danh sách = UID đang Blocked trong dữ liệu Group UID đã đồng bộ WMS của 2 kho
+        const WMS_WH=['WH - MATERIAL - MTG','WH - MATERIAL - GARMENT'];
+        $('ub-wms').addEventListener('click',async()=>{
+          if(S.busy)return;
+          if(!await window.WhDialog?.confirm?.({icon:'check',title:'Lấy UID Blocked từ WMS?',facts:WMS_WH,confirmText:'Lấy',cancelText:'Huỷ'}))return;
+          S.busy=true;S.pid++;renderInfo();tell('Đang lấy UID Blocked từ WMS…');
+          try{
+            const d=await adminRpc('uid_block_import_wms',{p_warehouses:WMS_WH});
+            S.preview=null;renderPreview();
+            try{await loadP;await window.PrintSkuSnapshotCache?.drop?.('uid_block');await load()}catch(_){}
+            const ok=S.list?.id===d?.listId,msg=`Đã lấy ${num(d?.itemCount)} UID Blocked từ WMS${d?.carriedScans?` · giữ ${num(d.carriedScans)} lượt đã scan`:''}`;
+            tell(ok?`${msg}.`:`${msg} — chưa tải lại được danh sách.`,ok?'ok':'warn');
+          }catch(e){tell(e.code==='FORBIDDEN'?'Chỉ Admin được nạp danh sách.':e.code==='NO_ROWS'?'Không có UID Blocked ở 2 kho.':MISSING.test(e.message)?'Supabase chưa có chức năng Lấy từ WMS.':`Chưa lấy được: ${e.message}`,'error')}
+          finally{S.busy=false;renderInfo()}
+        });
+        $('ub-import').addEventListener('click',()=>{if(S.busy)return;$('ub-file-input').value='';$('ub-file-input').click()});
         $('ub-file-input').addEventListener('change',async e=>{
-          const file=e.target.files?.[0];if(!file)return;
+          const file=e.target.files?.[0];if(!file||S.busy)return;
           const id=++S.pid;
           try{
             tell(`Đang đọc ${file.name}…`);

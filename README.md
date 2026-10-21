@@ -434,7 +434,10 @@ ghi vào *Đã lựa*; quét lại UID đã lựa (trên bất kỳ máy nào) �
 Tab *Còn thiếu* gom UID theo vị trí (số cuộn mỗi vị trí) để đi tìm; *Đã lựa* / *Còn thiếu* xuất Excel. Nạp schema một lần:
 `python scripts/apply_supabase_sql.py supabase/uid_block_v1.sql`.
 
-- **Nạp danh sách (chỉ Admin)**: tab *Danh sách* → *Nạp Excel*. Tệp đọc trên trình duyệt (mọi sheet), lấy dòng có cột
+- **Lấy từ WMS (chỉ Admin, từ 21/10/2026, nguồn chính)**: tab *Danh sách* → *Lấy từ WMS* → danh sách = mọi Group UID đang
+  **Blocked** ở WH - MATERIAL - MTG và WH - MATERIAL - GARMENT trong dữ liệu đồng bộ WMS (`uid_block_import_wms`, migration
+  `supabase/uid_block_wms_v1.sql`); số liệu mới tới lượt đồng bộ Group UID gần nhất. Giữ lượt đã scan của UID còn trong danh sách.
+- **Nạp danh sách từ Excel (chỉ Admin, cách cũ)**: tab *Danh sách* → *Nạp Excel*. Tệp đọc trên trình duyệt (mọi sheet), lấy dòng có cột
   `Status` = Blocked (không phân biệt hoa thường; không có cột Status → mọi dòng có Group UID, xem trước báo vàng), bỏ UID trùng,
   áp mọi kho. Tên cột theo bản xuất WMS (Group UID Code, Batch Code, Roll Code, Warehouse, Location, SKU, Product Name, Status),
   dòng tiêu đề không cần ở dòng 1; ô Group UID không đúng 16 số được đếm là "mã lỗi" (báo đỏ).
