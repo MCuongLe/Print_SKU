@@ -81,7 +81,7 @@ const BASE = process.env.BASE || 'http://127.0.0.1:8000/';
         await page.locator('#uc-thread-spec').fill('5000');
       });
       assert.equal(await page.locator('#uc-mm').innerText(), '365.185.185', 'quy cách không đổi số theo Tex');
-      assert.equal((await page.locator('#uc-thread-open span').innerText()).trim(), '5.000 m', 'dòng tóm tắt thông số hàng (không lặp lõi, Tex)');
+      assert.equal((await page.locator('#uc-thread-open span').innerText()).trim(), 'Thông số hàng · 5.000 m', 'dòng tóm tắt thông số hàng: giữ nhãn + quy cách (không lặp lõi, Tex)');
       assert.match(await page.locator('#uc-sub').innerText(), /^365\.185[,.]2 m · Tex 27$/, 'dòng phụ dưới kết quả: mét + thước đang dùng');
       assert.equal(await page.locator('.uc-steps-open').isVisible(), modal);
       if (modal) {
@@ -105,7 +105,7 @@ const BASE = process.env.BASE || 'http://127.0.0.1:8000/';
       assert.deepEqual(await page.locator('#uc-spec-choices button').allInnerTexts(), ['5.000 m']);
       assert.equal(await page.locator('#uc-spec-choices button').getAttribute('aria-pressed'), 'true');
       assert.equal(await page.locator('#uc-spec-choices button').getAttribute('title'), 'Theo Combo 900000311');
-      assert.equal((await page.locator('#uc-thread-open span').innerText()).trim(), '5.000 m', 'Tex tự điền ở ô ngoài, tóm tắt chỉ còn quy cách');
+      assert.equal((await page.locator('#uc-thread-open span').innerText()).trim(), 'Thông số hàng · 5.000 m', 'Tex tự điền ở ô ngoài, tóm tắt chỉ còn quy cách');
       await page.locator('#uc-clear').click();
       assert.equal(await page.locator('#uc-spec-choices').isVisible(), false, 'Nhập lại từ đầu thì bỏ chip quy cách');
       await page.locator('#uc-code').fill('900000302'); await page.locator('#uc-code-form').press('Enter');

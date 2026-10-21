@@ -4509,7 +4509,7 @@ Error generating stack: `+y.message+`
             <details class="cut-card uc-lookup" id="uc-lookup-details" open>
               <summary><span class="uc-step-number">1</span><strong>Nhận diện hàng</strong><small id="uc-lookup-summary"></small><span class="uc-lookup-chevron" aria-hidden="true"></span></summary>
               <div class="uc-lookup-body">
-                <form class="uc-code-row" id="uc-code-form"><div class="scan-field"><input class="cut-input" id="uc-code" autocomplete="off" inputmode="none" placeholder="SKU hoặc Group UID" aria-label="SKU hoặc Group UID"><span class="scan-field__tools"><button class="act-icon act-icon--camera" id="uc-camera" type="button" aria-label="Quét bằng camera" title="Quét bằng camera" hidden></button><button class="act-icon act-icon--keyboard" id="uc-keyboard" type="button" aria-controls="uc-code" aria-label="Hiện bàn phím" title="Hiện bàn phím" aria-pressed="true" data-kb-key="uc-ban-phim"></button></span></div><button class="cut-secondary act-icon act-icon--search" type="submit">Tra thông số</button></form>
+                <form class="uc-code-row" id="uc-code-form"><div class="scan-field"><input class="cut-input" id="uc-code" autocomplete="off" inputmode="none" placeholder="SKU / UID" aria-label="SKU hoặc Group UID"><span class="scan-field__tools"><button class="act-icon act-icon--camera" id="uc-camera" type="button" aria-label="Quét bằng camera" title="Quét bằng camera" hidden></button><button class="act-icon act-icon--keyboard" id="uc-keyboard" type="button" aria-controls="uc-code" aria-label="Hiện bàn phím" title="Hiện bàn phím" aria-pressed="true" data-kb-key="uc-ban-phim"></button></span></div><button class="cut-secondary act-icon act-icon--search" type="submit" aria-label="Tra thông số" title="Tra thông số">Tra thông số</button></form>
                 <div class="uc-picked" id="uc-picked" hidden><strong id="uc-picked-code"></strong><span id="uc-picked-name"></span><small id="uc-picked-spec"></small></div>
               </div>
             </details>
@@ -4519,8 +4519,8 @@ Error generating stack: `+y.message+`
 
               <div id="uc-thread-fields">
                 <div class="uc-two uc-cone-row">
-                  <div class="fsk-field"><label for="uc-thread-cones">Số cuộn thừa</label><div class="fsk-inrow"><input class="cut-input" id="uc-thread-cones" inputmode="numeric" autocomplete="off"><span class="fsk-unit">cuộn</span></div></div>
-                  <div class="fsk-field"><label for="uc-thread-core">Khối lượng 1 lõi</label><div class="fsk-inrow"><input class="cut-input" id="uc-thread-core" inputmode="decimal" autocomplete="off"><span class="fsk-unit">gr</span></div></div>
+                  <div class="fsk-field"><label for="uc-thread-cones">Cuộn thừa</label><div class="fsk-inrow"><input class="cut-input" id="uc-thread-cones" inputmode="numeric" autocomplete="off"><span class="fsk-unit">cuộn</span></div></div>
+                  <div class="fsk-field"><label for="uc-thread-core">Lõi 1 cuộn</label><div class="fsk-inrow"><input class="cut-input" id="uc-thread-core" inputmode="decimal" autocomplete="off"><span class="fsk-unit">gr</span></div></div>
                   <div class="fsk-field uc-tex-field"><label for="uc-thread-tex">Chỉ số Tex</label><div class="fsk-inrow"><input class="cut-input" id="uc-thread-tex" inputmode="decimal" autocomplete="off"><span class="fsk-unit">Tex</span></div></div>
                 </div>
                 <div class="uc-spec-choices" id="uc-spec-choices" role="group" aria-label="Quy cách theo Combo" hidden></div>
@@ -4530,9 +4530,7 @@ Error generating stack: `+y.message+`
                   <div class="uc-sheet-body">
                     <div class="uc-two">
                       <div class="fsk-field"><label for="uc-thread-spec">Quy cách cuộn nguyên</label><div class="fsk-inrow"><input class="cut-input" id="uc-thread-spec" inputmode="decimal" autocomplete="off"><span class="fsk-seg" id="uc-thread-spec-unit" role="group" aria-label="Đơn vị quy cách"><button type="button" data-unit="m" aria-pressed="true">m</button><button type="button" data-unit="yard" aria-pressed="false">yard</button></span></div></div>
-                    </div>
-                    <div class="uc-two">
-                      <div class="fsk-field"><label for="uc-thread-full">Khối lượng 1 cuộn nguyên</label><div class="fsk-inrow"><input class="cut-input" id="uc-thread-full" inputmode="decimal" autocomplete="off"><span class="fsk-unit">gr</span></div><div class="fsk-seg uc-mode" id="uc-thread-full-mode" role="group" aria-label="Cách hiểu khối lượng cuộn nguyên"><button type="button" data-mode="all" aria-pressed="true">cân cả lõi</button><button type="button" data-mode="thread" aria-pressed="false">chỉ riêng chỉ</button></div></div>
+                      <div class="fsk-field"><label for="uc-thread-full">Cân 1 cuộn nguyên</label><div class="fsk-inrow"><input class="cut-input" id="uc-thread-full" inputmode="decimal" autocomplete="off"><span class="fsk-unit">gr</span></div><div class="fsk-seg uc-mode" id="uc-thread-full-mode" role="group" aria-label="Cách hiểu khối lượng cuộn nguyên"><button type="button" data-mode="all" aria-pressed="true">cân cả lõi</button><button type="button" data-mode="thread" aria-pressed="false">chỉ riêng chỉ</button></div></div>
                     </div>
                   </div>
                   <div class="uc-sheet-foot"><button class="cut-primary act-icon act-icon--check" type="button" data-sheet-close>Xong</button></div>
@@ -7860,7 +7858,7 @@ var FSK_CORE = (function () {
           box.innerHTML = state.specChoices.map(choice => `<button type="button" class="uc-spec-chip" data-mm="${choice.mm}" aria-pressed="false" title="Theo Combo ${esc(choice.combo)}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>${esc(fmt(choice.mm / 1000))} m</button>`).join("");
           syncSpecChoices();
         };
-        const setSum = (id, parts) => { const button = $(id); button.querySelector("span").textContent = parts.join(" · ") || "Thông số hàng"; button.dataset.empty = String(!parts.length); };
+        const setSum = (id, parts) => { const button = $(id); button.querySelector("span").textContent = ["Thông số hàng", ...parts].join(" · "); button.dataset.empty = String(!parts.length); }; // giữ nhãn để vẫn nhận ra chỗ sửa (21/10/2026)
         const updateSummary = () => {
           const pos = value => isFinite(value) && value > 0;
           if (state.kind === "thread") {
@@ -16285,6 +16283,52 @@ async function rpc(name,args,retry=true){
       }
       @media (max-width: 760px) {
         #uidhist-screen .uh-fields > .scan-field { grid-column: 1 / -1; }
+      }
+    </style>
+    <style id="uc-compact">
+      /* CHUYỂN ĐỔI ĐƠN VỊ — giao diện gọn (21/10/2026, người dùng: "thiết kế lại giao diện tính chỉ gọn lại"). Chỉ CSS + nhãn ngắn, logic không đổi.
+         Máy tính: đơn vị nằm trong ô như bản điện thoại, ít khoảng trống; Quy cách + Cân cuộn nguyên một hàng.
+         Điện thoại: nút Tra = icon cạnh ô quét; 3 ô Cuộn thừa · Lõi · Tex một hàng; Kết quả thành thanh dính đáy (số mm + Cách tính + Copy). */
+      #unit-converter-screen .uc-inputs { gap: 12px; }
+      #unit-converter-screen .uc-data { display: grid; gap: 12px; }
+      #unit-converter-screen .uc-data > h2 { margin: 0; }
+      #unit-converter-screen .uc-data .fsk-field { margin: 0; }
+      #unit-converter-screen .uc-two { margin-top: 0; gap: 10px; }
+      #unit-converter-screen .uc-data .fsk-field > label { display: block; margin: 0 0 5px; font-size: 13px; font-weight: 600; }
+      #unit-converter-screen .fsk-inrow:has(> .cut-input) { gap: 6px; min-height: var(--ui-ctl, 52px); padding-right: 6px; border: 1px solid #cfdcd7; border-radius: 13px; background: #fff; }
+      #unit-converter-screen .fsk-inrow:has(> .cut-input):focus-within { border-color: #0b7a55; box-shadow: 0 0 0 3px rgba(0,119,84,.15); }
+      #unit-converter-screen .fsk-inrow:has(> .cut-input) > .cut-input { min-height: calc(var(--ui-ctl, 52px) - 2px); border: 0; background: transparent; box-shadow: none; outline: 0; }
+      #unit-converter-screen .fsk-inrow:has(> .cut-input) > .fsk-unit { flex: none; min-width: 0; padding-right: 6px; color: #60736b; font-size: 13px; font-weight: 600; }
+      #unit-converter-screen .fsk-inrow:has(> .cut-input) > .fsk-seg { flex: none; padding: 2px; border: 0; border-radius: 8px; background: #edf3f0; }
+      #unit-converter-screen .fsk-inrow:has(> .cut-input) > .fsk-seg button { min-height: 34px; padding: 0 11px; border-radius: 7px; font-size: 13px; font-weight: 600; }
+      #unit-converter-screen .uc-mode { margin-top: 6px; }
+      #unit-converter-screen .uc-mode { display: grid; grid-template-columns: 1fr 1fr; }
+      #unit-converter-screen .uc-mode button { min-height: 40px; padding: 0 10px; font-size: 13px; font-weight: 600; }
+      #unit-converter-screen .fsk-doc { margin-top: 4px; font-size: 12px; }
+      #unit-converter-screen #uc-thread-params .uc-sheet-body { display: grid; gap: 10px; }
+      @media (max-width: 800px) {
+        #unit-converter-screen .fsk-inrow:has(> .cut-input) { min-height: 46px; border-radius: 10px; }
+        #unit-converter-screen .fsk-inrow:has(> .cut-input) > .cut-input { min-height: 44px; }
+        /* Nhận diện: nút Tra = icon 48 px cạnh ô quét (bỏ hàng riêng) */
+        #unit-converter-screen .uc-code-row { grid-template-columns: minmax(0, 1fr) 48px; }
+        #unit-converter-screen #uc-code-form .cut-secondary { grid-column: auto; width: 48px; min-width: 48px; padding: 0; font-size: 0; gap: 0; justify-content: center; overflow: hidden; }
+        #unit-converter-screen #uc-code-form .cut-secondary::before { margin: 0; }
+        /* Cuộn thừa · Lõi · Tex một hàng */
+        #unit-converter-screen .uc-cone-row { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+        #unit-converter-screen .uc-cone-row .uc-tex-field { grid-column: auto; }
+        #unit-converter-screen .uc-cone-row .cut-input { padding-left: 10px; padding-right: 2px; }
+        /* Kết quả: thanh dính đáy, luôn thấy khi đang nhập */
+        #unit-converter-screen .uc-main { padding-bottom: 132px; }
+        #unit-converter-screen .uc-result { position: fixed; top: auto; left: 0; right: 0; bottom: 0; z-index: 30; margin: 0; padding: 10px 14px calc(10px + env(safe-area-inset-bottom)); border: 0; border-top: 1px solid #dce7e3; border-radius: 0; background: rgba(255,255,255,.97); box-shadow: 0 -6px 16px rgba(23,37,31,.08); }
+        #unit-converter-screen .uc-result:has(> #uc-result[hidden]):has(> #uc-empty[hidden]) { display: none; }
+        #unit-converter-screen .uc-result > h2 { display: none; }
+        #unit-converter-screen #uc-result:not([hidden]) { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 6px 10px; }
+        #unit-converter-screen .uc-result .uc-result-main { min-width: 0; margin: 0; padding: 0; border: 0; background: none; box-shadow: none; }
+        #unit-converter-screen .uc-result .uc-result-main strong { font-size: 26px; }
+        #unit-converter-screen .uc-result .uc-warning { grid-column: 1 / -1; order: -1; margin: 0; font-size: 12px; }
+        #unit-converter-screen .uc-result .uc-result-actions { position: static; align-self: start; display: flex; gap: 8px; margin: 0; padding: 0; border: 0; background: none; box-shadow: none; }
+        #unit-converter-screen .uc-result .uc-result-actions #uc-use { flex-basis: 100%; }
+        #unit-converter-screen .uc-result .uc-empty { margin: 0; padding: 2px 0; border: 0; color: #5d7068; font-size: 13px; text-align: left; }
       }
     </style>
     <script id="scan-field-std-script">

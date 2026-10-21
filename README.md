@@ -854,6 +854,9 @@ Mở **CHUYỂN ĐỔI ĐƠN VỊ** ở WH-MATERIAL hoặc `#unit-converter`:
 - Có thể nhập tay, quét/nhập SKU hoặc Group UID (ô là khung quét chuẩn: bàn phím ảo ẩn mặc định, nút camera · bàn phím trong ô, nhớ ở khoá `uc-ban-phim`). Tên hàng được đọc để tự điền Tex, quy cách cuộn,
   khổ vải và GSM. Chỉ SKU có đơn vị chiều dài mới được đưa kết quả mm sang TÌM SKU để in, tránh
   gắn nhầm số mm vào SKU đơn vị gram/cuộn.
+- **Giao diện gọn (21/10/2026, khối `uc-compact`).** Máy tính: đơn vị nằm trong ô (cao 52, bo 13), Cuộn thừa · Lõi 1 cuộn · Chỉ số Tex một hàng,
+  Quy cách + Cân 1 cuộn nguyên một hàng. Điện thoại: nút Tra là icon cạnh ô quét, 3 ô số một hàng, kết quả là thanh dính đáy (số mm · Cách tính · Copy),
+  nút Thông số hàng giữ nhãn kèm giá trị ("Thông số hàng · 5.000 m").
 - **Không cần SKU, Tex ở ngoài (21/10/2026).** Ô **Chỉ số Tex** nằm ngay trên màn (cạnh Số cuộn thừa / Khối lượng 1 lõi), không còn trong
   "Thông số hàng". Có Tex thì **quy cách cuộn nguyên không bắt buộc**: nhập đủ tổng khối lượng, số cuộn, lõi, Tex là ra mm, không cần SKU
   (quy cách chỉ để cảnh báo cuộn thừa dài hơn cuộn nguyên; tính bằng cân cuộn nguyên vẫn cần quy cách). Nhập dở → dòng "Còn thiếu: …".
@@ -884,7 +887,7 @@ quản trị tự nhập ở Supabase Dashboard → Edge Functions → Secrets v
 bao giờ nằm trong `index.html`). Tuỳ chọn: `GEMINI_MODELS` (thứ tự model thử, mặc định
 `gemini-3.1-flash-lite,gemini-3.8-flash,gemini-3.5-flash-lite` — đo 30/09/2026: bản lite đọc đúng
 2 tem thật trong ~3 giây và luôn trả được, còn 3.8-flash hay báo quá tải ở gói miễn phí; model
-lỗi/quá tải thì tự chuyển model kế tiếp), `SKU_VISION_DEVICE_DAILY` (mặc định 60 lượt/máy/ngày),
+lỗi/quá tải thì tự chuyển model kế tiếp), `SKU_VISION_DEVICE_DAILY` (mặc định không giới hạn theo máy từ 21/10/2026 — trước là 60 lượt/máy/ngày; đặt số dương để bật lại),
 `SKU_VISION_GLOBAL_DAILY` (mặc định 450 lượt/ngày cho cả kho — dưới hạn mức miễn phí của Gemini),
 `SKU_VISION_HEDGE_MS` (mặc định 6000: model đang chạy quá 6 giây chưa trả thì gọi thêm model kế tiếp
 song song, model nào trả trước thì dùng; lỗi tạm thời 429/404/5xx thì gọi ngay; mỗi model chờ tối đa 40 giây).
