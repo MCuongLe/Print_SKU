@@ -6,8 +6,9 @@ const assert = require("node:assert/strict");
 const BASE = process.env.BASE || "http://127.0.0.1:8000/";
 
 // --- Packing List giả (mỗi dòng một cuộn) ---
-const pl = (po, sku, i, extra = {}) => ({ purchase_order: po, shipment: "1001260803118522", sku, product_name: `(Combo) Vải ${sku}/kg`, quantity: 18 + (i % 5) / 10, code: `1148/8-${String(i + 1).padStart(3, "0")}`, batch_code: "1148/8", status: "Approved", delivery: "PARTIAL", ...extra });
+const pl = (po, sku, i, extra = {}) => ({ purchase_order: po, shipment: "1001260803118522", sku, product_name: `(Combo) Vải ${sku}/kg`, quantity: 18 + (i % 5) / 10, code: `1148/8-${String(i + 1).padStart(3, "0")}`, batch_code: "1148/8", status: "Approved", delivery: "PARTIAL", group_uid: null, ...extra });
 const PO1 = "10012608011632", PO2 = "10012606143838", PO_BIG = "10012600000500", PO_NONE = "10012699999999";
+const PO_PART = "10012600000601", PO_DONE = "10012600000602", PO_OLD = "10012600000603";
 const data = {
   [PO1]: [
     ...Array.from({ length: 53 }, (_, i) => pl(PO1, "422513455", i)),
@@ -18,10 +19,16 @@ const data = {
   ],
   [PO2]: Array.from({ length: 140 }, (_, i) => pl(PO2, "422494699", i, { code: String(i + 1), batch_code: "187/9" })),
   [PO_BIG]: Array.from({ length: 520 }, (_, i) => pl(PO_BIG, "422513455", i)),
+  // Cuộn đã tạo Group UID trên WMS (cột Group UID của Packing List PO) thì không gán tem nữa
+  [PO_PART]: Array.from({ length: 5 }, (_, i) => pl(PO_PART, "900000455", i, { group_uid: i < 2 ? String(1028260000000751 + i) : null })),
+  [PO_DONE]: Array.from({ length: 3 }, (_, i) => pl(PO_DONE, "900000455", i, { group_uid: String(1028260000000760 + i) })),
+  // Extension cũ (≤ 0.10.2) không trả khoá group_uid
+  [PO_OLD]: Array.from({ length: 4 }, (_, i) => { const r = pl(PO_OLD, "900000455", i); delete r.group_uid; return r; }),
 };
 const COMBOS = { "422513455": [{ normal_sku: "422513459", product_name: "Vải Single Normal 422513459", category_name: "Vải", quantity: 1000, available: true }],
   "422494699": [{ normal_sku: "422494704", product_name: "Vải Jersey Normal 422494704", category_name: "Vải", quantity: 1000, available: true }],
   "422427353": ["422500001", "422500002", "422500003"].map(n => ({ normal_sku: n, product_name: `Normal ${n}`, category_name: "Vải", quantity: 1, available: true })) };
+COMBOS["900000455"] = [{ normal_sku: "900000459", product_name: "Vải giả Normal 900000459", category_name: "Vải", quantity: 1000, available: true }]; // dữ liệu giả cho các PO Group UID
 
 const fakeExtension = packing => {
   window.__extCalls = []; window.__fail = false; window.__packing = packing;
@@ -241,6 +248,21 @@ async function desktop(browser) {
   await run(page, PO_NONE);
   assert.match(await poHelp(page), new RegExp(`Chưa có Packing List: ${PO_NONE}`));
   assert.deepEqual((await poRows(page)).map(r => r.sku), ["422513459"], "không có dòng nào thì giữ nguyên");
+
+  // Chỉ lấy cuộn chưa có Group UID: 5 cuộn, 2 cuộn đã có UID → gán 3; báo số cuộn bỏ qua (không phải cảnh báo)
+  await run(page, PO_PART);
+  assert.deepEqual((await poRows(page)).map(r => [r.sku, r.qty]), [["900000459", 3]], "bỏ cuộn đã có Group UID");
+  assert.equal(await poHelp(page), `PO ${PO_PART} · 3 UID · 1 SKU Normal · 2 cuộn đã có Group UID`);
+  assert.equal(await page.locator("#uid-po-help").getAttribute("data-tone"), "ok");
+  // Mọi cuộn đã có Group UID: không có dòng để gán, giữ danh sách đang có
+  await run(page, PO_DONE);
+  assert.equal(await poHelp(page), `PO ${PO_DONE}: cả 3 cuộn đã có Group UID`);
+  assert.deepEqual((await poRows(page)).map(r => [r.sku, r.qty]), [["900000459", 3]], "không có dòng mới thì giữ nguyên");
+  // Extension cũ: vẫn đếm mọi cuộn như trước nhưng báo cần cập nhật
+  await run(page, PO_OLD);
+  assert.deepEqual((await poRows(page)).map(r => [r.sku, r.qty]), [["900000459", 4]]);
+  assert.match(await poHelp(page), /Extension chưa lọc cuộn đã có Group UID, cập nhật 0\.10\.3/);
+  assert.equal(await page.locator("#uid-po-help").getAttribute("data-tone"), "warn");
 
   // Lỗi Extension
   await page.evaluate(() => { window.__fail = true; });

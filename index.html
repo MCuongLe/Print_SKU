@@ -2425,8 +2425,11 @@ Error generating stack: `+y.message+`
             // Một dòng Packing List là một cuộn (cây vải) nên số UID = số dòng, kể cả dòng số lượng 1 mã "1"
             const approved = all.filter(row => !row.status || /^approved$/i.test(row.status)), others = all.length - approved.length;
             const missing = orders.filter(order => !all.some(row => row.purchase_order === order));
+            // Cuộn đã có Group UID trên WMS (Extension 0.10.3+ trả group_uid) thì không gán tem nữa; Extension cũ không có khoá → đếm mọi cuộn như trước
+            const knowsUid = all.some(row => "group_uid" in row), done = approved.filter(row => row.group_uid).length, todo = approved.filter(row => !row.group_uid);
+            const label = orders.length > 1 ? `${orders.length} PO` : `PO ${orders[0]}`;
             const bySku = new Map(), names = new Map(), poBySku = new Map();
-            approved.forEach(row => { bySku.set(row.sku, (bySku.get(row.sku) || 0) + 1); if (row.product_name && !names.has(row.sku)) names.set(row.sku, row.product_name); if (!poBySku.has(row.sku)) poBySku.set(row.sku, new Set()); poBySku.get(row.sku).add(row.purchase_order); });
+            todo.forEach(row => { bySku.set(row.sku, (bySku.get(row.sku) || 0) + 1); if (row.product_name && !names.has(row.sku)) names.set(row.sku, row.product_name); if (!poBySku.has(row.sku)) poBySku.set(row.sku, new Set()); poBySku.get(row.sku).add(row.purchase_order); });
             const resolved = await Promise.all([...bySku.keys()].map(async sku => ({ sku, links: await comboLinks(sku) })));
             const merged = new Map(), multi = [];
             resolved.forEach(({ sku, links }) => {
@@ -2444,12 +2447,14 @@ Error generating stack: `+y.message+`
               others ? `${num(others)} dòng chưa Approved` : "",
               capped ? `${num(capped)} SKU quá ${MAX_UID} UID, đã giới hạn` : "",
               noPo ? `${num(noPo)} SKU chưa gắn PO` : "",
+              all.length && !knowsUid ? "Extension chưa lọc cuộn đã có Group UID, cập nhật 0.10.3" : "",
             ].filter(Boolean);
+            if (!found.length && done && !todo.length) { help([`${label}: cả ${num(done)} cuộn đã có Group UID`, ...notes].join(" · "), notes.length ? "warn" : "ok"); return; }
             if (!found.length) { help(notes.length ? notes.join(" · ") : "Packing List chưa có dòng nào.", "warn"); return; }
             rows = found.map(entry => ({ id: nextRow++, sku: entry.sku, name: entry.name, qty: Math.min(MAX_UID, entry.qty), selected: true,
               po: poOf(entry) }));
             render();
-            help([`${orders.length > 1 ? `${orders.length} PO` : `PO ${orders[0]}`} · ${num(total)} UID · ${num(found.length)} SKU Normal`, ...notes].join(" · "), notes.length ? "warn" : "ok");
+            help([`${label} · ${num(total)} UID · ${num(found.length)} SKU Normal`, done ? `${num(done)} cuộn đã có Group UID` : "", ...notes].filter(Boolean).join(" · "), notes.length ? "warn" : "ok");
           } catch (error) { help(`Không đọc được Packing List: ${error.message || "lỗi WMS"}`, "warn"); }
           finally { setBusy(false); }
         });

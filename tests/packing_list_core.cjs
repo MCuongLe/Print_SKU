@@ -22,14 +22,19 @@ assert.equal(typeof core.normalizePackingListPage, "function");
 const page = core.normalizePackingListPage({ page: 1, size: 500, count: 53, records: [
   row("1148/8-025"), row("1148/8-024", { quantity: 19.88 }), row("1", { quantity: 1, batch_code: "N03-693/9/26DT", delivery_method: "FULL_PO", sku: "422480938" }),
   row("14", { status_name: undefined, product_name: undefined, batch_code: undefined, inbound_shmt_number: undefined, delivery_method: undefined }),
+  row("12", { group_uid_code: 1028260000000146 }), row("13", { group_uid_code: " 1028260000000147 " }), row("15", { group_uid_code: "" }),
 ] });
 assert.equal(page.total, 53, "tổng lấy từ count của WMS");
-assert.equal(page.sourceRows, 4); assert.equal(page.rows.length, 4, "giữ nguyên từng dòng (từng cuộn), việc đếm UID do trang làm");
+assert.equal(page.sourceRows, 7); assert.equal(page.rows.length, 7, "giữ nguyên từng dòng (từng cuộn), việc đếm UID do trang làm");
 assert.deepEqual(JSON.parse(JSON.stringify(page.rows[0])), {
   purchase_order: "10012608011632", shipment: "1001261014067061", sku: "422513455", product_name: "(Combo) Vải Single/HP SV18/190gsm/Đen/kg",
-  quantity: 19.76, code: "1148/8-025", batch_code: "1148/8", status: "Approved", delivery: "PARTIAL",
+  quantity: 19.76, code: "1148/8-025", batch_code: "1148/8", status: "Approved", delivery: "PARTIAL", group_uid: null,
 });
-assert.equal(page.rows[2].quantity, 1); assert.equal(page.rows[2].code, "1", "dòng chưa chia cuộn vẫn trả về để trang loại ra");
+// Cuộn đã tạo Group UID (WMS trả số; mã giả): giữ dạng chuỗi để trang bỏ dòng này khi gán tem; khoá luôn có (kể cả null) để trang biết Extension đã đủ mới
+assert.equal(page.rows[4].group_uid, "1028260000000146"); assert.equal(page.rows[5].group_uid, "1028260000000147"); assert.equal(page.rows[6].group_uid, null);
+assert.ok(page.rows.every(r => "group_uid" in r));
+assert.equal(page.rows[2].quantity, 1); assert.equal(page.rows[2].code, "1", "dòng quantity 1 / code 1 vẫn là một cuộn, trả về để trang đếm");
+assert.equal(page.rows[0].group_uid, null, "WMS bỏ khoá group_uid_code khi cuộn chưa có UID → null");
 const bare = page.rows[3];
 assert.equal(bare.status, null); assert.equal(bare.product_name, null); assert.equal(bare.batch_code, null); assert.equal(bare.shipment, null); assert.equal(bare.delivery, null);
 assert.equal(core.normalizePackingListPage({ records: [] }).rows.length, 0);

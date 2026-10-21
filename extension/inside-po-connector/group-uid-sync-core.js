@@ -197,7 +197,7 @@
   }
 
   // Packing List PO của WMS (inbound-packing-lists): mỗi dòng là một cuộn của PO. SKU thường là Combo (kg), mã cuộn `code`, Lot `batch_code`.
-  // Dòng chưa chia cuộn có quantity 1 và code "1" (một dòng cho cả Lot); việc loại dòng đó và đếm UID do trang làm.
+  // Mỗi dòng Approved là một cuộn, kể cả dòng quantity 1 / code "1" (chốt 14/10/2026); việc đếm UID do trang làm.
   function normalizePackingListPage(payload) {
     const source = responseRows(payload);
     const rows = source.map((raw, index) => {
@@ -215,6 +215,10 @@
         batch_code: clean(raw?.batch_code, 120) || null,
         status: clean(raw?.status_name, 60) || null,
         delivery: clean(raw?.delivery_method, 30) || null,
+        // 0.10.3: cuộn đã tạo Group UID (WMS trả số) — trang IN TEM GROUP UID bỏ cuộn này khi gán tem. WMS BỎ HẲN khoá group_uid_code khi cuộn
+        // chưa có UID (đo 21/10/2026: PO 79 dòng = 26 có khoá + 53 không khoá), nên thiếu khoá = chưa có UID. Khoá group_uid luôn có (null khi chưa có UID)
+        // để trang phân biệt với Extension cũ không trả khoá.
+        group_uid: raw?.group_uid_code == null ? null : clean(String(raw.group_uid_code), 40) || null,
       };
     });
     return { rows, total: responseTotal(payload, source.length), sourceRows: source.length };
