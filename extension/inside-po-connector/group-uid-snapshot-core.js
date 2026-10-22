@@ -21,24 +21,39 @@
     now = () => new Date().toISOString(), sleep = ms => new Promise(resolve => setTimeout(resolve, ms)),
   } = {}) {
     if (typeof readPage !== "function") throw new Error("Thiếu hàm đọc trang WMS");
-    const rows = new Map(), records = new Set();
+    const rows = new Map(), records = new Set(), winner = new Map(), recordCode = new Map();
     let byId = true;
+    // 0.10.6 (review Codex 22/10): cùng mã → updated_date mới hơn thắng; bằng nhau thì id bản ghi lớn hơn (rowIds của trang); thiếu id
+    // thì bản đọc sau thắng như cũ. Giống newerRecord của group-uid-sync-core.js.
+    const newer = (row, id, before, beforeId) => {
+      const ta = new Date(row.updated_date).getTime(), tb = new Date(before.updated_date).getTime();
+      if (ta !== tb) return ta > tb;
+      return Number.isSafeInteger(id) && Number.isSafeInteger(beforeId) ? id > beforeId : true;
+    };
     const read = async (params, page) => checkPage(await readPage({ ...params, page }), page);
     // 22/10/2026: WMS đếm tổng theo bản ghi, có mã mang 2 bản ghi (id khác) → có id bản ghi ở mọi trang thì đối chiếu theo id,
     // dòng vẫn gộp theo mã (bản mới nhất). Trang thiếu id (Extension cũ) → đối chiếu theo số mã như trước.
     const merge = items => items.forEach(item => {
-      if (Array.isArray(item.ids)) item.ids.forEach(id => records.add(id)); else byId = false;
-      item.rows.forEach(row => {
-        const before = rows.get(row.group_uid_code);
-        if (!before || Date.parse(row.updated_date) >= Date.parse(before.updated_date)) rows.set(row.group_uid_code, row);
+      if (Array.isArray(item.ids)) item.ids.forEach((id, index) => { records.add(id); if (Array.isArray(item.codes)) recordCode.set(id, item.codes[index]); }); else byId = false;
+      const rowIds = Array.isArray(item.rowIds) && item.rowIds.length === item.rows.length ? item.rowIds : null;
+      item.rows.forEach((row, index) => {
+        const before = rows.get(row.group_uid_code), id = rowIds ? rowIds[index] : null;
+        if (!before || newer(row, id, before, winner.get(row.group_uid_code))) { rows.set(row.group_uid_code, row); winner.set(row.group_uid_code, id); }
       });
     });
     const count = () => (byId ? records.size : rows.size);
     const seen = item => (byId && Array.isArray(item.ids) ? item.ids.length : item.rows.length);
-    const done = pages => ({ rows: [...rows.values()], total: rows.size, pages, ...(byId && records.size > rows.size ? { duplicateCodes: records.size - rows.size } : {}) });
+    // duplicateCodes = số MÃ có từ 2 bản ghi (đếm từ codes của trang); trang thiếu codes thì không báo.
+    const duplicates = () => {
+      if (!byId || recordCode.size !== records.size) return 0;
+      const perCode = new Map();
+      recordCode.forEach(code => perCode.set(code, (perCode.get(code) || 0) + 1));
+      return [...perCode.values()].filter(n => n > 1).length;
+    };
+    const done = pages => { const dup = duplicates(); return { rows: [...rows.values()], total: rows.size, pages, ...(dup ? { duplicateCodes: dup } : {}) }; };
     let drift = "";
     for (let attempt = 1; attempt <= tries; attempt += 1) {
-      rows.clear(); records.clear(); byId = true;
+      rows.clear(); records.clear(); winner.clear(); recordCode.clear(); byId = true;
       // Đọc lại: cận trên không được thấp hơn rangeTo do Edge cấp (đồng hồ máy chậm sẽ làm sót UID sửa trong khoảng đó
       // mà mốc gia tăng vẫn tiến tới rangeTo).
       const params = full ? { size } : { size, from: rangeFrom, to: attempt === 1 ? rangeTo : new Date(Math.max(Date.parse(rangeTo), Date.parse(now()))).toISOString() };

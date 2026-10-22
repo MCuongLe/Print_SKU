@@ -47,6 +47,17 @@ const twoRecords = core.normalizePage({ count: 3, records: [{ ...raw, id: 39740 
 assert.equal(twoRecords.rows.length, 2, "gộp theo mã");
 assert.deepEqual(JSON.parse(JSON.stringify(twoRecords.ids)), [39740, 39735, 39001], "id bản ghi WMS theo thứ tự trang");
 assert.equal(core.normalizePage({ count: 1, records: [raw] }).ids, null, "WMS không trả id → null (bộ đọc dùng số mã như cũ)");
+// 0.10.6 (review Codex 22/10): id bản ghi gắn với từng dòng (rowIds cùng thứ tự rows) và mã của từng id (codes cùng thứ tự ids);
+// cùng mã cùng updated_at thì giữ bản ghi id LỚN hơn (WMS xếp id giảm dần nên bản id nhỏ đến sau không được đè).
+assert.deepEqual(JSON.parse(JSON.stringify(twoRecords.rowIds)), [39740, 39001], "rowIds = id của dòng được giữ");
+assert.deepEqual(JSON.parse(JSON.stringify(twoRecords.codes)), ["1028260000000050", "1028260000000050", "1028260000000051"]);
+const tie = core.normalizePage({ count: 2, records: [{ ...raw, id: 39740, status_name: "Canceled" }, { ...raw, id: 39735, status_name: "Available" }] });
+assert.equal(tie.rows[0].status, "Canceled", "cùng giờ: giữ id lớn hơn");
+assert.deepEqual(JSON.parse(JSON.stringify(tie.rowIds)), [39740]);
+const tieUp = core.normalizePage({ count: 2, records: [{ ...raw, id: 39735, status_name: "Available" }, { ...raw, id: 39740, status_name: "Canceled" }] });
+assert.equal(tieUp.rows[0].status, "Canceled", "cùng giờ, id lớn đến sau: vẫn giữ id lớn");
+assert.ok(!("rowIds" in tie.rows[0]) && !("id" in tie.rows[0]), "dòng gửi Edge không thêm khoá");
+assert.equal(core.normalizePage({ count: 1, records: [raw] }).rowIds, null);
 assert.equal(actualWmsShape.rows.length, 2);
 assert.deepEqual(JSON.parse(JSON.stringify(actualWmsShape.rows[1])), {
   group_uid_code: "1028260000000140",

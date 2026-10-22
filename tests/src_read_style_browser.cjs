@@ -32,7 +32,7 @@ const STRIP = new Set(SCREENS.filter(x => x.strip).map(x => x.id));
 const fakeExtension = () => addEventListener("message", event => {
   const request = event.data;
   if (!request || request.source !== "PRINT_SKU_APP") return;
-  postMessage({ source: "HASAKI_INSIDE_CONNECTOR", requestId: request.requestId, ok: true, data: { version: "0.10.5" } }, location.origin);
+  postMessage({ source: "HASAKI_INSIDE_CONNECTOR", requestId: request.requestId, ok: true, data: { version: "0.10.6" } }, location.origin);
 });
 
 // Supabase / Edge giả tối thiểu: đủ để màn dựng xong và hiện công cụ Admin, không cần dữ liệu thật.

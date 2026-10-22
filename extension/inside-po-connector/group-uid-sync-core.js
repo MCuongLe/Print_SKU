@@ -103,18 +103,30 @@
     };
   }
 
+  // Bản ghi a (id aId) mới hơn b? So updated_date trước; bằng nhau thì id lớn hơn thắng; thiếu id thì bản đến sau thắng (như cũ).
+  function newerRecord(a, aId, b, bId) {
+    const ta = new Date(a.updated_date).getTime(), tb = new Date(b.updated_date).getTime();
+    if (ta !== tb) return ta > tb;
+    return Number.isSafeInteger(aId) && Number.isSafeInteger(bId) ? aId > bId : true;
+  }
+
   function normalizePage(payload) {
     const rows = responseRows(payload);
-    const unique = new Map();
-    rows.forEach((raw, index) => {
-      const row = normalizeRow(raw, index);
-      const before = unique.get(row.group_uid_code);
-      if (!before || new Date(row.updated_date) >= new Date(before.updated_date)) unique.set(row.group_uid_code, row);
-    });
     // 0.10.5 (22/10/2026): WMS có mã Group UID mang 2 bản ghi (id khác nhau) và đếm tổng theo BẢN GHI. Trả id bản ghi để bộ đọc ảnh
     // chụp đối chiếu tổng theo id; thiếu id (WMS đổi dạng) → null, bộ đọc đối chiếu theo số mã như cũ.
-    const ids = rows.map(raw => raw?.id);
-    return { rows: [...unique.values()], total: responseTotal(payload, rows.length), ids: ids.every(id => Number.isSafeInteger(id)) ? ids : null };
+    // 0.10.6 (review Codex 22/10): id gắn với dòng — rowIds (cùng thứ tự rows) và codes (mã của từng id, cùng thứ tự ids); cùng mã
+    // cùng updated_date thì giữ bản ghi id lớn hơn. Dòng gửi Edge không thêm khoá.
+    const ids = rows.map(raw => raw?.id), idsOk = ids.every(id => Number.isSafeInteger(id));
+    const unique = new Map(), codes = [];
+    rows.forEach((raw, index) => {
+      const row = normalizeRow(raw, index), id = idsOk ? ids[index] : null;
+      codes.push(row.group_uid_code);
+      const before = unique.get(row.group_uid_code);
+      if (!before || newerRecord(row, id, before.row, before.id)) unique.set(row.group_uid_code, { row, id });
+    });
+    const kept = [...unique.values()];
+    return { rows: kept.map(entry => entry.row), total: responseTotal(payload, rows.length),
+      ids: idsOk ? ids : null, rowIds: idsOk ? kept.map(entry => entry.id) : null, codes: idsOk ? codes : null };
   }
 
   function normalizeHistoryPage(payload) {
@@ -311,5 +323,5 @@
     };
   }
 
-  globalThis.HasakiGroupUidSyncCore = Object.freeze({ clean, normalizeRow, normalizePage, normalizeHistoryPage, normalizeMovesPage, normalizeNewUidPage, normalizePackingListPage, normalizeInternalTransfer, responseRows, responseTotal, normalizePoGroupUidPage, normalizePoAsnPage });
+  globalThis.HasakiGroupUidSyncCore = Object.freeze({ clean, normalizeRow, normalizePage, newerRecord, normalizeHistoryPage, normalizeMovesPage, normalizeNewUidPage, normalizePackingListPage, normalizeInternalTransfer, responseRows, responseTotal, normalizePoGroupUidPage, normalizePoAsnPage });
 })();

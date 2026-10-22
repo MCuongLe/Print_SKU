@@ -99,7 +99,7 @@ const noSleep = { sleep: async () => {} };
     records.sort((a, b) => b.id - a.id);
     const readPage = async params => {
       const slice = records.slice((params.page - 1) * params.size, params.page * params.size);
-      return { page: params.page, size: params.size, total: records.length, totalPages: Math.ceil(records.length / params.size), rows: slice.map(x => x.row), ids: slice.map(x => x.id) };
+      return { page: params.page, size: params.size, total: records.length, totalPages: Math.ceil(records.length / params.size), rows: slice.map(x => x.row), ids: slice.map(x => x.id), codes: slice.map(x => x.row.group_uid_code) };
     };
     for (const full of [true, false]) {
       const result = await readGroupUidSnapshot({ full, rangeFrom: "2026-10-17T00:00:00.000Z", rangeTo: "2026-10-17T03:00:00.000Z", readPage, ...noSleep });
@@ -107,6 +107,25 @@ const noSleep = { sleep: async () => {} };
       assert.equal(result.rows.length, 600);
       assert.equal(result.rows.find(row => row.group_uid_code === uid(1).group_uid_code).status, "Canceled", "giữ bản ghi mới nhất");
       assert.equal(result.duplicateCodes, 8, "báo số mã có nhiều bản ghi");
+    }
+    // 0.10.6: một mã 3 bản ghi → duplicateCodes đếm MÃ (1), không đếm bản ghi dư (2)
+    {
+      const three = [{ id: 3, row: uid(1) }, { id: 2, row: uid(1) }, { id: 1, row: uid(1) }, { id: 0, row: uid(2) }];
+      const rp = async params => ({ page: 1, size: params.size, total: 4, totalPages: 1, rows: [three[0].row, three[3].row], ids: three.map(x => x.id), codes: three.map(x => x.row.group_uid_code), rowIds: [3, 0] });
+      const r3 = await readGroupUidSnapshot({ full: true, readPage: rp, ...noSleep });
+      assert.equal(r3.total, 2); assert.equal(r3.duplicateCodes, 1, "1 mã có nhiều bản ghi");
+    }
+    // 0.10.6: cùng mã cùng updated_date ở hai trang → giữ bản ghi id lớn hơn, bất kể trang nào đọc sau
+    {
+      const a = { ...uid(7), status: "Canceled" }, b = { ...uid(7), status: "Available" };
+      // WMS xếp id giảm dần: id 75 (Canceled) ở trang 1, id 70 (Available) ở trang 2 đọc sau — bản cũ để trang sau đè
+      const pages = { 1: { rows: [uid(9), a], ids: [90, 75], codes: [uid(9).group_uid_code, a.group_uid_code], rowIds: [90, 75] },
+        2: { rows: [b], ids: [70], codes: [b.group_uid_code], rowIds: [70] } };
+      const rp = async params => ({ page: params.page, size: 2, total: 3, totalPages: 2, ...pages[params.page] });
+      for (const full of [true, false]) {
+        const r = await readGroupUidSnapshot({ full, size: 2, rangeFrom: "2026-10-17T00:00:00.000Z", rangeTo: "2026-10-17T03:00:00.000Z", readPage: rp, ...noSleep });
+        assert.equal(r.rows.find(row => row.group_uid_code === a.group_uid_code).status, "Canceled", "cùng giờ: id 75 thắng id 70");
+      }
     }
     // Cùng một bản ghi đọc hai lần (trang dịch) vẫn bị bắt ở gia tăng
     const shifted = async params => { const r = await readPage(params); if (params.page === 2) { r.rows = [records[499].row, ...r.rows]; r.ids = [records[499].id, ...r.ids]; } return r; };
