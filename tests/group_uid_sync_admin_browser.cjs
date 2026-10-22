@@ -166,12 +166,14 @@ const fakeExtension = () => addEventListener("message", async event => {
     if (payload.page === 1) window.__guP1 = (window.__guP1 || 0) + 1;
     if (mode === "insert") return payload.page === 2 ? { page: 2, size: 500, total: 4, totalPages: 2, rows: [r(2), r(1)] }
       : window.__guP1 === 1 ? { page: 1, size: 500, total: 3, totalPages: 2, rows: [r(3), r(2)] } : { page: 1, size: 500, total: 4, totalPages: 1, rows: [r(4), r(3)] };
+    // 22/10/2026: mã 1028260000000002 có 2 bản ghi WMS (id khác nhau): tổng 3 = số bản ghi, Extension đã gộp còn 2 dòng + ids
+    if (mode === "dup-record") return { page: 1, size: 500, total: 3, totalPages: 1, rows: [r(3), r(2)], ids: [39740, 39735, 39730] };
     if (mode === "full-drift") return payload.page === 2 ? { page: 2, size: 500, total: 4, totalPages: 2, rows: [r(2), r(1)] } : { page: 1, size: 500, total: 5, totalPages: 2, rows: [r(3), r(2)] };
     const leaving = mode === "inc-always" || window.__guP1 === 1;
     return payload.page === 1 ? { page: 1, size: 500, total: 3, totalPages: 2, rows: [r(3), r(2)] } : { page: 2, size: 500, total: leaving ? 2 : 3, totalPages: 2, rows: [r(1)] };
   };
   if (window.__guHold2 && request.type === "GET_GROUP_UID_PAGE" && (request.payload || {}).page === 2) await window.__guHold2; // giữ trang 2 để đo tiến độ sau trang 1
-  const data = request.type === "PING" || request.type === "PING_WMS" ? { version: window.__guExtVersion || "0.10.4" } : request.type === "GET_GROUP_UID_PAGE" ? pageData(request.payload || {}) : null;
+  const data = request.type === "PING" || request.type === "PING_WMS" ? { version: window.__guExtVersion || "0.10.5" } : request.type === "GET_GROUP_UID_PAGE" ? pageData(request.payload || {}) : null;
   postMessage({ source: "HASAKI_INSIDE_CONNECTOR", requestId: request.requestId, ok: Boolean(data), data, error: data ? null : { message: "Loại yêu cầu chưa giả lập" } }, location.origin);
 });
 
@@ -321,6 +323,10 @@ async function mock(page) {
       scenario="normal";
       await scenarioRun("insert","#gu-run-full");await done();
       assert.deepEqual(ingestBodies.map(b=>[b.page,b.totalPages,b.total,b.rows.length]),[[1,1,4,4]],"4 UID duy nhất (lặp bị gộp, UID mới ở đầu danh sách được thêm), tổng 4");assert.deepEqual((await reads()).map(x=>x.page),[1,2,1],"đọc trang 1, 2 rồi đọc lại đầu danh sách");assert.equal(cancelCalls,0);await cancelPreview();
+      await scenarioRun("dup-record","#gu-run-full");await done();
+      assert.deepEqual(ingestBodies.map(b=>[b.page,b.total,b.rows.length]),[[1,2,2]],"mã có 2 bản ghi WMS: đủ theo id bản ghi, đưa lên mỗi mã một dòng");await cancelPreview();
+      await scenarioRun("dup-record","#gu-run-incremental");await done();
+      assert.deepEqual(ingestBodies.map(b=>[b.page,b.total,b.rows.length]),[[1,2,2]],"gia tăng: tổng gửi lên = số mã");await cancelPreview();
       await scenarioRun("full-drift","#gu-run-full");await stopped();
       assert.match(await page.locator("#gu-status").innerText(),/WMS đổi dữ liệu trong lúc đọc [(]tổng 5 → 4 · 3 UID duy nhất[)]; phiên đã dừng để tránh thiếu UID/);assert.equal(ingestBodies.length,0,"không khớp thì không gửi gì lên Supabase");assert.equal(cancelCalls,1,"phiên bị hủy");assert.equal((await reads()).length,21,"3 lượt x (2 trang + 5 lần đọc lại đầu danh sách)");assert.equal(await page.locator("#gu-apply").isDisabled(),true);
       // Lấy thay đổi: khung from–to (đóng băng UID mới), kiểm tổng mọi trang, lệch thì đọc lại với mốc to mới

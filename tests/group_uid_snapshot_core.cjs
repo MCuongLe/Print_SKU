@@ -90,6 +90,29 @@ const noSleep = { sleep: async () => {} };
     );
   }
 
+  // 7. (22/10/2026) WMS có 8 mã mang 2 bản ghi: tổng WMS đếm bản ghi. Có id bản ghi thì đối chiếu theo id → đủ, trả mỗi mã một dòng
+  //    (bản mới nhất), total = số mã. Toàn bộ và gia tăng đều qua.
+  {
+    const records = [];
+    for (let i = 1; i <= 600; i += 1) records.push({ id: 100000 + i, row: uid(i) });
+    for (let i = 1; i <= 8; i += 1) records.push({ id: 200000 + i, row: { ...uid(i), updated_date: "2026-10-17T02:00:00.000Z", status: "Canceled" } });
+    records.sort((a, b) => b.id - a.id);
+    const readPage = async params => {
+      const slice = records.slice((params.page - 1) * params.size, params.page * params.size);
+      return { page: params.page, size: params.size, total: records.length, totalPages: Math.ceil(records.length / params.size), rows: slice.map(x => x.row), ids: slice.map(x => x.id) };
+    };
+    for (const full of [true, false]) {
+      const result = await readGroupUidSnapshot({ full, rangeFrom: "2026-10-17T00:00:00.000Z", rangeTo: "2026-10-17T03:00:00.000Z", readPage, ...noSleep });
+      assert.equal(result.total, 600, `${full ? "toàn bộ" : "gia tăng"}: total = số mã`);
+      assert.equal(result.rows.length, 600);
+      assert.equal(result.rows.find(row => row.group_uid_code === uid(1).group_uid_code).status, "Canceled", "giữ bản ghi mới nhất");
+      assert.equal(result.duplicateCodes, 8, "báo số mã có nhiều bản ghi");
+    }
+    // Cùng một bản ghi đọc hai lần (trang dịch) vẫn bị bắt ở gia tăng
+    const shifted = async params => { const r = await readPage(params); if (params.page === 2) { r.rows = [records[499].row, ...r.rows]; r.ids = [records[499].id, ...r.ids]; } return r; };
+    await assert.rejects(readGroupUidSnapshot({ full: false, rangeFrom: "2026-10-17T00:00:00.000Z", rangeTo: "2026-10-17T03:00:00.000Z", readPage: shifted, ...noSleep }), /WMS đổi dữ liệu trong lúc đọc/);
+  }
+
   // 6. Trang sai kiểu (Extension/WMS trả rác) → lỗi rõ ràng, không đưa lên Supabase.
   await assert.rejects(readGroupUidSnapshot({ full: true, readPage: async () => ({ rows: null, total: 1, totalPages: 1 }), ...noSleep }), /trang Group UID 1 không hợp lệ/);
   await assert.rejects(readGroupUidSnapshot({ full: true }), /Thiếu hàm đọc trang WMS/);

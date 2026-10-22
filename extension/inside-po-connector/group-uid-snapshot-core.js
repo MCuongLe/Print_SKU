@@ -21,15 +21,24 @@
     now = () => new Date().toISOString(), sleep = ms => new Promise(resolve => setTimeout(resolve, ms)),
   } = {}) {
     if (typeof readPage !== "function") throw new Error("Thiếu hàm đọc trang WMS");
-    const rows = new Map();
+    const rows = new Map(), records = new Set();
+    let byId = true;
     const read = async (params, page) => checkPage(await readPage({ ...params, page }), page);
-    const merge = items => items.forEach(item => item.rows.forEach(row => {
-      const before = rows.get(row.group_uid_code);
-      if (!before || Date.parse(row.updated_date) >= Date.parse(before.updated_date)) rows.set(row.group_uid_code, row);
-    }));
+    // 22/10/2026: WMS đếm tổng theo bản ghi, có mã mang 2 bản ghi (id khác) → có id bản ghi ở mọi trang thì đối chiếu theo id,
+    // dòng vẫn gộp theo mã (bản mới nhất). Trang thiếu id (Extension cũ) → đối chiếu theo số mã như trước.
+    const merge = items => items.forEach(item => {
+      if (Array.isArray(item.ids)) item.ids.forEach(id => records.add(id)); else byId = false;
+      item.rows.forEach(row => {
+        const before = rows.get(row.group_uid_code);
+        if (!before || Date.parse(row.updated_date) >= Date.parse(before.updated_date)) rows.set(row.group_uid_code, row);
+      });
+    });
+    const count = () => (byId ? records.size : rows.size);
+    const seen = item => (byId && Array.isArray(item.ids) ? item.ids.length : item.rows.length);
+    const done = pages => ({ rows: [...rows.values()], total: rows.size, pages, ...(byId && records.size > rows.size ? { duplicateCodes: records.size - rows.size } : {}) });
     let drift = "";
     for (let attempt = 1; attempt <= tries; attempt += 1) {
-      rows.clear();
+      rows.clear(); records.clear(); byId = true;
       // Đọc lại: cận trên không được thấp hơn rangeTo do Edge cấp (đồng hồ máy chậm sẽ làm sót UID sửa trong khoảng đó
       // mà mốc gia tăng vẫn tiến tới rangeTo).
       const params = full ? { size } : { size, from: rangeFrom, to: attempt === 1 ? rangeTo : new Date(Math.max(Date.parse(rangeTo), Date.parse(now()))).toISOString() };
@@ -49,12 +58,12 @@
           const extra = Array.from({ length: Math.max(0, Math.ceil((head.total - first.total) / size) - 1) }, (_, index) => index + 2);
           merge([head, ...await Promise.all(extra.map(page => read(params, page)))]);
           if (!totals.includes(head.total)) totals.push(head.total);
-          if (head.total === rows.size) return { rows: [...rows.values()], total: rows.size, pages: totalPages };
-          if (head.total < rows.size) break;
+          if (head.total === count()) return done(totalPages);
+          if (head.total < count()) break;
         }
-      } else if (items.every(item => item.totalPages === totalPages) && totals.length === 1 && rows.size === first.total
-        && items.reduce((sum, item) => sum + item.rows.length, 0) === rows.size) {
-        return { rows: [...rows.values()], total: first.total, pages: totalPages };
+      } else if (items.every(item => item.totalPages === totalPages) && totals.length === 1 && count() === first.total
+        && items.reduce((sum, item) => sum + seen(item), 0) === count()) {
+        return done(totalPages);
       }
       drift = `tổng ${totals.map(num).join(" → ")} · ${num(rows.size)} UID duy nhất`;
       if (attempt < tries) await sleep(sleepMs);

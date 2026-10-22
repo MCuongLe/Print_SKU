@@ -111,7 +111,10 @@
       const before = unique.get(row.group_uid_code);
       if (!before || new Date(row.updated_date) >= new Date(before.updated_date)) unique.set(row.group_uid_code, row);
     });
-    return { rows: [...unique.values()], total: responseTotal(payload, rows.length) };
+    // 0.10.5 (22/10/2026): WMS có mã Group UID mang 2 bản ghi (id khác nhau) và đếm tổng theo BẢN GHI. Trả id bản ghi để bộ đọc ảnh
+    // chụp đối chiếu tổng theo id; thiếu id (WMS đổi dạng) → null, bộ đọc đối chiếu theo số mã như cũ.
+    const ids = rows.map(raw => raw?.id);
+    return { rows: [...unique.values()], total: responseTotal(payload, rows.length), ids: ids.every(id => Number.isSafeInteger(id)) ? ids : null };
   }
 
   function normalizeHistoryPage(payload) {

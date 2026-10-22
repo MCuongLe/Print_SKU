@@ -10173,11 +10173,14 @@ var FSK_CORE = (function () {
         // băng UID mới, nhưng UID vừa sửa rơi khỏi khung làm trang dịch lên (sót mà tổng vẫn khớp) nên kiểm tổng mọi trang rồi đọc lại. Đọc hết vào bộ nhớ,
         // kiểm tra xong mới đưa lên Supabase.
         async function readWmsSnapshot(prepared){
-          const full=!prepared.rangeFrom,TRIES=3,rows=new Map(),readPage=(params,page)=>extensionRequest("GET_GROUP_UID_PAGE",{...params,page});
-          const merge=items=>items.forEach(item=>item.rows.forEach(row=>{const before=rows.get(row.group_uid_code);if(!before||Date.parse(row.updated_date)>=Date.parse(before.updated_date))rows.set(row.group_uid_code,row)}));
+          const full=!prepared.rangeFrom,TRIES=3,rows=new Map(),records=new Set(),readPage=(params,page)=>extensionRequest("GET_GROUP_UID_PAGE",{...params,page});
+          // 22/10/2026: WMS đếm tổng theo bản ghi, có mã mang 2 bản ghi (id khác) → Extension 0.10.5+ trả ids thì đối chiếu theo id, dòng gộp theo mã (giống group-uid-snapshot-core.js)
+          let byId=true;
+          const merge=items=>items.forEach(item=>{if(Array.isArray(item.ids))item.ids.forEach(id=>records.add(id));else byId=false;item.rows.forEach(row=>{const before=rows.get(row.group_uid_code);if(!before||Date.parse(row.updated_date)>=Date.parse(before.updated_date))rows.set(row.group_uid_code,row)})});
+          const count=()=>byId?records.size:rows.size,seen=item=>byId&&Array.isArray(item.ids)?item.ids.length:item.rows.length;
           let drift="";
           for(let attempt=1;attempt<=TRIES;attempt+=1){
-            rows.clear();
+            rows.clear();records.clear();byId=true;
             const params=full?{size:500}:{size:500,from:prepared.rangeFrom,to:attempt===1?prepared.rangeTo:new Date(Math.max(Date.parse(prepared.rangeTo),Date.now())).toISOString()},tag=attempt>1?` (lần ${attempt}/${TRIES})`:"",first=await readPage(params,1),totalPages=first.totalPages,items=[first],totals=[first.total];
             const show=item=>{status.textContent=`Đang đọc WMS${tag}: trang ${item.page}/${totalPages}`;pages.textContent=`${num(item.page)}/${num(totalPages)} trang · ${num(item.total)} UID`;setP(item.page/totalPages)};
             show(first);
@@ -10187,10 +10190,10 @@ var FSK_CORE = (function () {
               for(let round=0;round<5;round+=1){
                 const head=await readPage(params,1),extra=Array.from({length:Math.max(0,Math.ceil((head.total-first.total)/500)-1)},(_,i)=>i+2);
                 merge([head,...await Promise.all(extra.map(page=>readPage(params,page)))]);if(!totals.includes(head.total))totals.push(head.total);
-                if(head.total===rows.size)return{rows:[...rows.values()],total:rows.size};
-                if(head.total<rows.size)break
+                if(head.total===count())return{rows:[...rows.values()],total:rows.size};
+                if(head.total<count())break
               }
-            }else if(items.every(item=>item.totalPages===totalPages)&&totals.length===1&&rows.size===first.total&&items.reduce((n,item)=>n+item.rows.length,0)===rows.size)return{rows:[...rows.values()],total:first.total};
+            }else if(items.every(item=>item.totalPages===totalPages)&&totals.length===1&&count()===first.total&&items.reduce((n,item)=>n+seen(item),0)===count())return{rows:[...rows.values()],total:rows.size};
             drift=`tổng ${totals.map(num).join(" → ")} · ${num(rows.size)} UID duy nhất`;
             if(attempt<TRIES)await new Promise(resolve=>setTimeout(resolve,1500))
           }

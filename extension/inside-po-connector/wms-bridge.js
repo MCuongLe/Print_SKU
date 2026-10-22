@@ -75,6 +75,7 @@
       page, size, total: normalized.total,
       totalPages: Math.max(1, Math.ceil(normalized.total / size)),
       rows: normalized.rows,
+      ids: normalized.ids,
       generatedAt: new Date().toISOString(),
     };
   }

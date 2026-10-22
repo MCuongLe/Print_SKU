@@ -41,6 +41,12 @@ const actualWmsShape = core.normalizePage({
   }],
 });
 assert.equal(actualWmsShape.total, 28608);
+// 22/10/2026: WMS có mã Group UID mang 2 bản ghi (id khác nhau, cùng Canceled) và đếm tổng theo bản ghi → trang trả id bản ghi
+// để bộ đọc ảnh chụp đối chiếu tổng theo bản ghi; dòng vẫn gộp theo mã (giữ bản mới nhất).
+const twoRecords = core.normalizePage({ count: 3, records: [{ ...raw, id: 39740 }, { ...raw, id: 39735, updated_at_tz: "2026-10-07T08:00:00+07:00" }, { ...raw, id: 39001, group_uid_code: "1028260000000051" }] });
+assert.equal(twoRecords.rows.length, 2, "gộp theo mã");
+assert.deepEqual(JSON.parse(JSON.stringify(twoRecords.ids)), [39740, 39735, 39001], "id bản ghi WMS theo thứ tự trang");
+assert.equal(core.normalizePage({ count: 1, records: [raw] }).ids, null, "WMS không trả id → null (bộ đọc dùng số mã như cũ)");
 assert.equal(actualWmsShape.rows.length, 2);
 assert.deepEqual(JSON.parse(JSON.stringify(actualWmsShape.rows[1])), {
   group_uid_code: "1028260000000140",
