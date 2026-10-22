@@ -23,7 +23,7 @@ Review chất lượng độc lập bằng mô hình khác họ (bước 3 của
    - `python scripts/codex_review.py --working-tree --brief <tệp.md>`
    - `python scripts/codex_review.py --images <thư mục ảnh> --brief <tệp.md>` (ảnh chụp bằng Playwright với dữ liệu giả, đặt tên theo thứ tự muốn Codex đọc).
    Kết quả ghi ở `outputs/codex-review/review-<ngày giờ>.md` (thư mục outputs không vào git) hoặc tệp chỉ định bằng `--out`, và in ra màn hình. Mỗi lượt khoảng 2–15 phút.
-4. Lọc: với từng phát hiện, đối chiếu mã thật và RULES.md; xếp vào ba nhóm: sửa ngay, ghi nhận làm sau, trái quyết định đã chốt (bỏ qua, ghi lý do). Ghi kết quả lọc vào RULES.md theo mẫu "Review … bằng Codex (ngày)".
+4. Lọc: với từng phát hiện, đối chiếu mã thật và RULES.md; xếp vào ba nhóm: sửa ngay, ghi nhận làm sau, trái quyết định đã chốt (bỏ qua, ghi lý do). **Tham vấn Fable** (22/10/2026): lượt review mã chạy cùng `/review-claude` thì Fable xếp nhóm chung ở bước 5 của `/review-claude`; lượt Codex chạy một mình (`--commit`, `--working-tree` không kèm Claude) thì gọi `co-van` với báo cáo Codex + bản brief, cùng yêu cầu (gộp, mở mã xác nhận, xếp ba nhóm). Vòng ảnh giao diện (`--images`) không cần. Ghi kết quả lọc vào RULES.md theo mẫu "Review … bằng Codex (ngày)", kèm "Fable: …" khi Fable khác lead.
 5. Lead tự sửa nhóm "sửa ngay" (test đỏ trước nếu là logic); chỉ hỏi người dùng khi bản sửa đổi một quyết định đã chốt hoặc đổi hành vi người dùng thấy. Báo người dùng bảng ba nhóm trong phần bàn giao.
 
 ## Giới hạn đã biết

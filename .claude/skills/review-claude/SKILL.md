@@ -23,10 +23,11 @@ Theo cách của plugin `code-review` của Anthropic (nhiều agent độc lậ
 3. **Chấm độ tin** — một agent `model: haiku` nhận toàn bộ JSON của A/B/C + đường dẫn PROMPT, đọc mã thật ở từng vị trí, chấm mỗi nhóm 0–100 theo thang (đưa nguyên văn):
    0 = báo nhầm hoặc lỗi có sẵn trước thay đổi; 25 = có thể đúng nhưng không kiểm được; 50 = đúng nhưng hiếm/nhỏ; 75 = đã kiểm lại, rất có thể gặp thật, ảnh hưởng chức năng hoặc trái luật ghi rõ trong RULES/AGENTS; 100 = chắc chắn, bằng chứng trực tiếp, gặp thường xuyên. Lỗi "trái luật" phải trích đúng câu luật, không có thì ≤ 25.
 4. **Gộp** (lead): giữ nhóm ≥ 80; gộp nhóm trùng giữa A/B/C; so với báo cáo Codex cùng vòng (`outputs/codex-review/review-*.md` mới nhất) và đánh dấu **[cả hai]** cho lỗi Codex cũng báo. Ghi `REPORT` (tiếng Việt, theo mẫu nhóm của Codex + cột điểm) rồi lọc ba nhóm như `/review-codex` bước 4: sửa ngay / làm sau / trái quyết định đã chốt.
-5. **Sửa:** lỗi logic giữ lại (nhất là [cả hai]) → lead đọc mã xác nhận, viết test đỏ tái hiện, rồi sửa cả nhóm (người dùng 18/10/2026: có hai review thì không dùng agent tái hiện riêng).
+5. **Tham vấn Fable** (người dùng yêu cầu 22/10/2026; mọi vòng, sau khi cả Codex và A/B/C xong): gọi agent `co-van` (Fable, chỉ đọc, chạy nền) với tệp phát hiện thô của cả hai bên (JSON A/B/C sau chấm điểm — kèm nhóm < 80 đánh dấu "điểm thấp" — + đường dẫn báo cáo Codex) và tệp PROMPT. Fable: gộp trùng thành vấn đề gốc (ghi nguồn, đánh dấu [cả hai]), **mở mã thật** xác nhận từng vấn đề (đúng / sai / phóng đại), xếp **nên sửa / làm sau / bỏ qua có lý do**, phân xử chỗ Codex và Claude mâu thuẫn, và nêu chỗ cần người dùng quyết. Đưa phát hiện thô, KHÔNG đưa kết luận của lead (để Fable không bị neo). Lead đối chiếu với bản lọc của mình: khớp → dùng; lệch → lead đọc lại mã ở chỗ lệch rồi quyết, ghi "Fable: …" trong REPORT/RULES. Lead là Fable thì lead tự làm bước này.
+6. **Sửa:** lỗi logic giữ lại (nhất là [cả hai]) → lead đọc mã xác nhận, viết test đỏ tái hiện, rồi sửa cả nhóm (người dùng 18/10/2026: có hai review thì không dùng agent tái hiện riêng).
 
 ## Giới hạn
 - Agent chỉ đọc mã: không chạy Inside/WMS/máy in/Supabase thật; bằng chứng chạy thật là test đỏ lead viết khi sửa.
 - `index.html` quá lớn: agent đọc diff trong PROMPT rồi Read đúng đoạn quanh vị trí, không đọc cả tệp.
 - Không đưa `.env`, token, mã SKU thật vào prompt.
-- Chi phí: 1 Opus + 2 Sonnet + 1 Haiku mỗi vòng — chỉ dùng cho loại thay đổi ở mục "Khi nào".
+- Chi phí: 1 Opus + 2 Sonnet + 1 Haiku + 1 Fable (`co-van`) mỗi vòng — chỉ dùng cho loại thay đổi ở mục "Khi nào".
