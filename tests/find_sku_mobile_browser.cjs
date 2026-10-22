@@ -52,9 +52,13 @@ const NAME = 'Chỉ Irisa/FS9286_Phong Việt/100% Polyester/none/Black Marle-Me
       assert.equal((await page.locator('#fsk-results .fsk-pick').first().innerText()).trim(), 'Chọn');
       if (mobile) {
         // Giao diện điện thoại: font hệ thống, gợi ý dạng danh sách (% bên trái, nút chọn tròn 40 px), đơn vị nằm trong khung ô nhập
-        const look = await page.evaluate(() => { const screen = document.getElementById('find-sku-screen'), card = document.querySelector('#fsk-results .fsk-card'), pick = card.querySelector('.fsk-pick').getBoundingClientRect(), pct = card.querySelector('.fsk-pct').getBoundingClientRect(), tabs = getComputedStyle(document.querySelector('#find-sku-screen .cut-tab[aria-selected="true"]')); return { font: getComputedStyle(screen).fontFamily, grid: getComputedStyle(card).display, pick: Math.round(pick.width), pctLeft: pct.right <= card.querySelector('.fsk-card__id').getBoundingClientRect().left, tabBorder: tabs.borderTopWidth }; });
+        const look = await page.evaluate(() => { const screen = document.getElementById('find-sku-screen'), card = document.querySelector('#fsk-results .fsk-card'), pick = card.querySelector('.fsk-pick').getBoundingClientRect(), pct = card.querySelector('.fsk-pct').getBoundingClientRect(), tabs = getComputedStyle(document.querySelector('#find-sku-screen .cut-tab[aria-selected="true"]')); return { font: getComputedStyle(screen).fontFamily, grid: getComputedStyle(card).display, pick: Math.round(pick.width), pickH: Math.round(pick.height), pickShape: (s => [s.borderTopLeftRadius, s.fontSize])(getComputedStyle(card.querySelector('.fsk-pick'))), pickTextHidden: (b => b.scrollWidth <= b.clientWidth + 1)(card.querySelector('.fsk-pick')), pctLeft: pct.right <= card.querySelector('.fsk-card__id').getBoundingClientRect().left, tabBorder: tabs.borderTopWidth }; });
         assert.match(look.font, /system-ui/, 'điện thoại dùng font hệ thống');
-        assert.equal(look.grid, 'grid'); assert.equal(look.pick, 40, 'nút chọn tròn 40 px'); assert.equal(look.pctLeft, true, '% nằm bên trái SKU');
+        assert.equal(look.grid, 'grid'); assert.equal(look.pick, 40, 'nút chọn tròn 40 px');
+        // 22/10/2026: khối ui-standard (11/10) ép .cut-primary cao 48, bo 12, chữ 16 nên nút thành khối 40×48 lộ chữ "Chọ" bị cắt
+        assert.equal(look.pickH, 40, 'nút chọn cao 40 px (tròn, không phải 40×48)');
+        assert.deepEqual(look.pickShape, ['50%', '0px'], 'nút chọn bo tròn, chỉ icon (chữ ẩn)');
+        assert.equal(look.pickTextHidden, true, 'chữ "Chọn" không tràn khỏi nút'); assert.equal(look.pctLeft, true, '% nằm bên trái SKU');
         assert.equal(look.tabBorder, '0px', 'tab bước là nút chọn liền khối, không viền riêng');
       }
       // Chi tiết xử lý là popup mở bằng nút icon (có số từ khoá), Esc đóng

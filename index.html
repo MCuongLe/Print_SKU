@@ -1545,7 +1545,7 @@ Error generating stack: `+y.message+`
       #root .border-slate-100,
       #root .border-slate-200,
       #root .border-slate-300 { border-color: var(--wms-border, #d9e2de) !important; }
-      #root input,
+      #root input:where(:not([type="checkbox"])),
       #root select,
       #root textarea {
         border-color: var(--wms-border, #d9e2de) !important;
@@ -1555,7 +1555,7 @@ Error generating stack: `+y.message+`
       }
       #root input::placeholder,
       #root textarea::placeholder { color: var(--wms-muted, #60736b); }
-      #root input:focus,
+      #root input:where(:not([type="checkbox"])):focus,
       #root select:focus,
       #root textarea:focus {
         border-color: var(--wms-brand, #005f41) !important;
@@ -4908,7 +4908,8 @@ Error generating stack: `+y.message+`
         #find-sku-screen .fsk-card .fsk-pct small { font-size: 12px; font-weight: 600; }
         #find-sku-screen .fsk-card .fsk-name { display: -webkit-box; grid-area: name; margin: 0; overflow: hidden; color: var(--pro-muted); font-size: 13px; line-height: 1.4; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
         #find-sku-screen .fsk-card .fsk-via { grid-area: via; margin: 2px 0 0; }
-        #find-sku-screen .fsk-card .fsk-pick { grid-area: pick; width: 40px; min-width: 40px; height: 40px; min-height: 40px; margin: 0; padding: 0; border-radius: 50%; font-size: 0; }
+        /* #fsk-results: thắng :is(…) :is(.cut-primary, .cut-secondary) của ui-standard (1,3,0) đang ép 48 px / bo 12 / chữ 16 (22/10/2026) */
+        #find-sku-screen #fsk-results .fsk-card .fsk-pick { grid-area: pick; width: 40px; min-width: 40px; height: 40px; min-height: 40px; margin: 0; padding: 0; border-radius: 50%; font-size: 0; }
         #find-sku-screen .fsk-card[data-best="true"] { border-color: #00a873; box-shadow: inset 0 0 0 1px #00a873; }
         #find-sku-screen .fsk-card[data-alert="true"] { border-color: #d4483f; box-shadow: inset 0 0 0 1px #d4483f; }
         #find-sku-screen .fsk-warn { border-radius: 10px; font-size: 13px; }
@@ -16464,6 +16465,26 @@ async function rpc(name,args,retry=true){
         /* Lịch sử UID: dải 3 cột hẹp, ô đầu có 2 nút → ô đầu chiếm trọn hàng */
         #uh-strip > .as-strip__lead:not(#sr-a) { grid-column: 1 / -1; border-left: 0; }
         #uh-strip > .as-strip__lead + div:not(#sr-a) { border-left: 0; }
+      }
+    </style>
+    <style id="tick-standard">
+      /* Ô tick chọn một kiểu cho toàn app (22/10/2026, người dùng chọn "ô vuông tự vẽ 22 px"): trước đó 16/18/19/20/22/24 px và 5 màu
+         accent khác nhau. Ô vuông bo 6, viền #6f8f83 nền trắng (~3,5:1, Codex 22/10: #9fb6ad chỉ ~2,2:1); đã tick = nền #005F41 + dấu tích trắng (Lucide check); một phần
+         (indeterminate) = nền #005F41 + gạch; tắt = mờ. 22 px máy tính, 24 px điện thoại. Đặt cuối tệp + :is(#root, body) để thắng
+         quy tắc ô tick riêng của từng màn; hasaki-slate-theme bỏ ô tick khỏi "#root input" (viền/nền !important). Test: tests/tick_standard_browser.cjs. */
+      :is(#root, body) input[type="checkbox"]:not([role="switch"]) {
+        -webkit-appearance: none; appearance: none; box-sizing: border-box; flex: none; vertical-align: middle;
+        width: 22px; height: 22px; min-width: 22px; min-height: 22px; margin: 0; padding: 0;
+        border: 2px solid #6f8f83; border-radius: 6px; background: #fff no-repeat center / 16px 16px; accent-color: #005f41;
+        cursor: pointer;
+      }
+      :is(#root, body) input[type="checkbox"]:not([role="switch"]):hover:not(:disabled) { border-color: #5fae92; }
+      :is(#root, body) input[type="checkbox"]:not([role="switch"]):checked { border-color: #005f41; background-color: #005f41; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E"); }
+      :is(#root, body) input[type="checkbox"]:not([role="switch"]):indeterminate { border-color: #005f41; background-color: #005f41; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round'%3E%3Cpath d='M6 12h12'/%3E%3C/svg%3E"); }
+      :is(#root, body) input[type="checkbox"]:not([role="switch"]):focus-visible { outline: 2px solid #1aa774; outline-offset: 2px; }
+      :is(#root, body) input[type="checkbox"]:not([role="switch"]):disabled { opacity: .4; cursor: not-allowed; }
+      @media (max-width: 800px) {
+        :is(#root, body) input[type="checkbox"]:not([role="switch"]) { width: 24px; height: 24px; min-width: 24px; min-height: 24px; background-size: 18px 18px; }
       }
     </style>
   </body>
