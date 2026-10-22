@@ -9,14 +9,25 @@
 // trong khoảng đó → server từ chối (COOLDOWN), bỏ qua lặng lẽ. Lượt hoàn tất / giữ lại nhả khoá với finished:true để ghi mốc đó.
 // Nhịp đã xác minh lưu ở auto.interval để background.js tạo lại alarm đúng nhịp khi Chrome làm mất alarm.
 (function (root) {
-  const KINDS = ["group_uid", "sku"];
+  // 0.10.7: thêm cut_adj (lịch sử Cut WMS cho Đối chiếu ADJ, mỗi nhịp) và storage_risk (Rủi ro lưu trữ = Kiểm kê + UID tạm, mỗi 2 giờ
+  // 07:00–19:30 giờ VN). Hai loại mới chỉ bật khi service worker đã nạp lõi đọc tương ứng (cut-adj-core.js / storage-risk-core.js).
+  const BASE_KINDS = ["group_uid", "sku"];
+  const KINDS = ["group_uid", "sku", "cut_adj", "storage_risk"];
+  const NEEDS_WMS = new Set(["group_uid", "cut_adj", "storage_risk"]);
+  const STORAGE_EVERY_MS = 120 * 60 * 1000;
+  const STORAGE_WINDOW = { start: 7 * 60, end: 19 * 60 + 30 };
+  const STORAGE_STALE_WORK_MINUTES = 2 * 120 + 10;
+  // Giãn cách gửi server (cooldown) = nhịp − 10 phút (review 22/10, R2): last_finished_at là giờ XONG lượt; trừ 2 phút như trước thì
+  // lượt dài hơn 2 phút làm lượt kế bị COOLDOWN → nhịp thật gấp đôi. Mỗi máy đã tự giữ nhịp bằng decide (mốc = giờ BẮT ĐẦU lượt).
+  const COOLDOWN_SLACK_S = 10 * 60;
   const FULL_STALE_MS = 20 * 60 * 60 * 1000;
   const INTERVAL_SLACK_MS = 2 * 60 * 1000;
   const VN_OFFSET_MS = 7 * 60 * 60 * 1000;
   const LOG_LIMIT = 50;
-  const KEYS = { device: "auto.device", enabled: "auto.enabled", last: "auto.last", log: "auto.log", interval: "auto.interval" };
-  const FN = { group_uid: "group-uid-sync", sku: "sku-sync" };
-  const TAB_NAME = { group_uid: "WMS", sku: "Inside" };
+  const KEYS = { device: "auto.device", enabled: "auto.enabled", last: "auto.last", log: "auto.log", interval: "auto.interval", active: "auto.active", health: "auto.health", paused: "auto.paused" };
+  // cut_adj / storage_risk chỉ dùng Edge sku-sync cho khoá thuê (lease/release); dữ liệu ghi bằng RPC Admin (PostgREST).
+  const FN = { group_uid: "group-uid-sync", sku: "sku-sync", cut_adj: "sku-sync", storage_risk: "sku-sync" };
+  const TAB_NAME = { group_uid: "WMS", sku: "Inside", cut_adj: "WMS", storage_risk: "WMS" };
   const WMS_PAGE_TIMEOUT_MS = 90 * 1000;
   const INSIDE_TIMEOUT_MS = { full: 900 * 1000, incremental: 210 * 1000 };
   const KEEPALIVE = "auto-keepalive";
@@ -25,6 +36,13 @@
   const LEASE_RENEW_MIN_GAP_MS = 2 * 60 * 1000;
   // Không gia hạn được (lỗi mạng) quá 14 phút kể từ lần gia hạn được gần nhất = coi như mất khoá (hạn thuê 15 phút).
   const LEASE_SAFE_MS = 14 * 60 * 1000;
+  // 0.10.7: hết giờ chờ Edge (trước đây fetch treo giữ "đang chạy" mãi). Ghi/xem trước Group UID toàn bộ đo được tới ~3 phút.
+  const EDGE_TIMEOUT_MS = { ingest: 120 * 1000, preview: 300 * 1000, apply: 300 * 1000 };
+  const EDGE_DEFAULT_TIMEOUT_MS = 60 * 1000;
+  // Cảnh báo "ngừng" (người dùng chốt 22/10/2026): quá 2 nhịp + 10 phút không có lượt nào chạy được (máy này hoặc máy khác).
+  const STALE_SLACK_MS = 10 * 60 * 1000;
+  const LABEL = { group_uid: "Group UID", sku: "SKU", cut_adj: "Đối chiếu ADJ", storage_risk: "Rủi ro lưu trữ" };
+  const RPC_TIMEOUT_MS = 120 * 1000;
 
   function clean(value, max = 300) { return String(value ?? "").replace(/\s+/g, " ").trim().slice(0, max); }
   function num(value) { return Number(value || 0).toLocaleString("vi-VN"); }
@@ -43,6 +61,15 @@
     const minute = vnMinutes(at);
     return `${String(Math.floor(minute / 60)).padStart(2, "0")}:${String(minute % 60).padStart(2, "0")}`;
   }
+  function inStorageWindow(now) { const minute = vnMinutes(now); return minute >= STORAGE_WINDOW.start && minute < STORAGE_WINDOW.end; }
+  // Số phút trong khung tự động Rủi ro lưu trữ giữa hai mốc (đêm không chạy thì không tính là ngừng); cùng cách tính với web (PrintSkuAutoStale).
+  function storageWorkMinutes(from, to) {
+    if (!Number.isFinite(from) || !Number.isFinite(to) || to <= from) return 0;
+    if (to - from > 14 * 86400000) return Infinity;
+    let minutes = 0;
+    for (let t = from; t < to; t += 15 * 60000) if (inStorageWindow(t)) minutes += 15;
+    return minutes;
+  }
   function inFullWindow(now, fullWindow) {
     const start = minutesOf(fullWindow?.start, 0), end = minutesOf(fullWindow?.end, 300), minute = vnMinutes(now);
     if (start === end) return false;
@@ -53,7 +80,7 @@
   // last[kind] = {at, status, fullAt, autoFullAt, fullHeldAt}: at = lần chạy thật gần nhất; fullAt = lượt toàn bộ hoàn tất gần nhất (Edge history);
   // autoFullAt = lượt toàn bộ tự động gần nhất đã hoàn tất hoặc bị giữ, của BẤT KỲ máy nào (Edge history lastAutoFullAt) — không đọc lại
   // toàn bộ trong 20 giờ để khỏi dồn WMS/Inside; fullHeldAt chỉ để hiển thị trên trang Tùy chọn.
-  function decide({ now = Date.now(), config, last, hasWms, hasInside, enabledLocal, signedIn, device } = {}) {
+  function decide({ now = Date.now(), config, last, hasWms, hasInside, enabledLocal, signedIn, device, kinds = BASE_KINDS } = {}) {
     const stop = reason => ({ jobs: [], skipped: [], reason });
     if (!signedIn) return stop("Chưa đăng nhập Admin trong Extension");
     if (device !== undefined && !clean(device, 60)) return stop("Chưa đặt tên máy");
@@ -63,17 +90,25 @@
     const intervalMs = intervalOf(config.intervalMinutes) * 60000;
     const windowOpen = inFullWindow(now, config.fullWindow);
     const jobs = [], skipped = [];
-    for (const kind of KINDS) {
-      const hasTab = kind === "group_uid" ? hasWms : hasInside;
+    for (const kind of kinds) {
+      // Rủi ro lưu trữ ngoài khung 07:00–19:30: không chạy, không ghi nhật ký.
+      if (kind === "storage_risk" && !inStorageWindow(now)) continue;
+      const hasTab = NEEDS_WMS.has(kind) ? hasWms : hasInside;
       if (!hasTab) { skipped.push({ kind, reason: `Không có tab ${TAB_NAME[kind]}`, log: true }); continue; }
       const info = last?.[kind] || {};
       const fullAt = Date.parse(info.fullAt), autoFullAt = Date.parse(info.autoFullAt), lastAt = Date.parse(info.at);
+      if (kind === "cut_adj" || kind === "storage_risk") {
+        const every = kind === "storage_risk" ? STORAGE_EVERY_MS : intervalMs;
+        if (lastAt && now - lastAt < every - INTERVAL_SLACK_MS) { skipped.push({ kind, reason: "Chưa tới lượt", log: false }); continue; }
+        jobs.push({ kind, mode: "incremental" });
+        continue;
+      }
       const fullDue = windowOpen && !(fullAt && now - fullAt <= FULL_STALE_MS) && !(autoFullAt && now - autoFullAt <= FULL_STALE_MS);
       if (fullDue) { jobs.push({ kind, mode: "full" }); continue; }
       if (lastAt && now - lastAt < intervalMs - INTERVAL_SLACK_MS) { skipped.push({ kind, reason: "Chưa tới lượt", log: false }); continue; }
       jobs.push({ kind, mode: "incremental" });
     }
-    return { jobs, skipped, reason: jobs.length ? "" : skipped.map(item => item.reason).join("; ") };
+    return { jobs, skipped, reason: jobs.length ? "" : [...new Set(skipped.map(item => item.reason))].join("; ") };
   }
 
   function withTimeout(promise, ms, message) {
@@ -81,11 +116,32 @@
     return Promise.race([promise, new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(message)), ms); })]).finally(() => clearTimeout(timer));
   }
   function edgeError(code, message) { const error = new Error(message); error.code = code; return error; }
-  // Lỗi do tab (không có tab, hết phiên WMS/Inside, cầu nối chưa nạp) → bỏ qua lặng lẽ, không phải lỗi đồng bộ.
+  // Lỗi do tab (không có tab, hết phiên WMS/Inside, cầu nối chưa nạp) → bỏ qua (ghi nhật ký "Bỏ qua", quá ngưỡng thì cảnh báo ngừng).
   // Chỉ xét lỗi phát sinh khi gửi lệnh tới tab (fromTab); tab phản hồi quá lâu vẫn là lỗi.
+  // 0.10.7 (soát 22/10, G6): xét theo mã + reason do cầu nối gửi ("session" = hết phiên / chưa đăng nhập), không theo câu chữ —
+  // trước đây lỗi mạng "…hãy tải lại tab WMS…" và 403 mất quyền "Phiên WMS không còn quyền…" bị tính là bỏ qua.
   function tabUnavailable(error) {
     if (!error?.fromTab || error.code === "TAB_TIMEOUT") return false;
-    return /_TAB_MISSING$|_BRIDGE_ERROR$/.test(String(error.code || "")) || /Phiên (WMS|Inside)|tab (WMS|Inside)/i.test(String(error.message || ""));
+    return /_TAB_MISSING$|_BRIDGE_ERROR$/.test(String(error.code || "")) || error.reason === "session";
+  }
+  // Danh sách lý do cảnh báo (rỗng = ổn). Máy tắt tự động hoặc Admin tạm dừng là chủ ý → không cảnh báo.
+  function assessHealth({ now = Date.now(), signedIn, device, enabledLocal, paused, intervalMinutes, health, kinds = BASE_KINDS } = {}) {
+    if (!signedIn) return ["Chưa đăng nhập Admin trong Extension"];
+    if (!clean(device, 60)) return ["Chưa đặt tên máy"];
+    if (enabledLocal === false || paused === true) return [];
+    const limit = 2 * intervalOf(intervalMinutes) * 60000 + STALE_SLACK_MS;
+    const since = Date.parse(health?.since || "");
+    const problems = [];
+    for (const kind of kinds) {
+      const info = health?.kinds?.[kind] || {};
+      const alive = Date.parse(info.aliveAt || "") || since;
+      if (!Number.isFinite(alive)) continue;
+      if (kind === "storage_risk" ? storageWorkMinutes(alive, now) <= STORAGE_STALE_WORK_MINUTES : now - alive <= limit) continue;
+      const hours = (now - alive) / 3600000;
+      const age = hours < 1 ? `${Math.round(hours * 60)} phút` : `${Math.round(hours * 10) / 10} giờ`.replace(".", ",");
+      problems.push(`${LABEL[kind]} ngừng ${age}${info.reason ? `: ${clean(info.reason, 120)}` : ""}`);
+    }
+    return problems;
   }
 
   function createAutoSync(deps = {}) {
@@ -102,25 +158,84 @@
     const timers = deps.timers || { set: (fn, ms) => setInterval(fn, ms), clear: id => clearInterval(id) };
     let running = null;
     let guard = null;
+    // 0.10.7 (G4): tab WMS/Inside chọn một lần đầu lượt và dùng cho cả lượt (trước đây chọn lại mỗi trang → mở thêm tab giữa lượt là hỏng lượt).
+    let pinned = {};
+    // 0.10.7 (G2): dọn lượt dở khi service worker khởi động lại; tick/runNow chờ xong mới chạy.
+    let startup = null;
+    const badge = deps.badge || (typeof chrome !== "undefined" && chrome.action ? problems => {
+      try {
+        chrome.action.setBadgeText({ text: problems.length ? "!" : "" });
+        chrome.action.setBadgeBackgroundColor({ color: "#d4483f" });
+        chrome.action.setTitle({ title: problems.length ? `Đồng bộ tự động ngừng\n${problems.join("\n")}` : chrome.runtime.getManifest().name });
+      } catch { /* không có icon thì thôi */ }
+    } : null);
 
     async function edge(kind, action, payload = {}, retried = false) {
       const target = config();
       if (!target?.url || !target?.key) throw edgeError("NO_CONFIG", "Extension thiếu cấu hình Supabase");
       const token = await session.getAccessToken({ force: retried });
-      let response;
+      const controller = typeof AbortController === "function" ? new AbortController() : null;
+      const timer = controller ? setTimeout(() => controller.abort(), deps.edgeTimeoutMs ?? (EDGE_TIMEOUT_MS[action] || EDGE_DEFAULT_TIMEOUT_MS)) : null;
+      let response, result;
       try {
-        response = await fetchImpl(`${target.url.replace(/\/$/, "")}/functions/v1/${FN[kind]}`, {
-          method: "POST", headers: { apikey: target.key, Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ action, ...payload }),
-        });
-      } catch {
-        throw edgeError("NETWORK", "Không kết nối được Supabase");
+        try {
+          response = await fetchImpl(`${target.url.replace(/\/$/, "")}/functions/v1/${FN[kind]}`, {
+            method: "POST", headers: { apikey: target.key, Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ action, ...payload }),
+            ...(controller ? { signal: controller.signal } : {}),
+          });
+        } catch {
+          if (controller?.signal.aborted) throw edgeError("EDGE_TIMEOUT", `Supabase phản hồi quá lâu (${action})`);
+          throw edgeError("NETWORK", "Không kết nối được Supabase");
+        }
+        result = await response.json().catch(() => ({}));
+        if (controller?.signal.aborted) throw edgeError("EDGE_TIMEOUT", `Supabase phản hồi quá lâu (${action})`);
+      } finally {
+        if (timer) clearTimeout(timer);
       }
-      const result = await response.json().catch(() => ({}));
       // 401 = token bị từ chối dù chưa tới hạn theo đồng hồ máy: gia hạn một lần rồi gọi lại (xác thực chạy trước mọi thao tác nên gọi lại an toàn).
       if (response.status === 401 && !retried) return edge(kind, action, payload, true);
       if (!response.ok || !result?.ok) throw edgeError(result?.error?.code || "EDGE_ERROR", clean(result?.error?.message, 300) || `Edge Function trả HTTP ${response.status}`);
       return result.data;
     }
+
+    // RPC Admin qua PostgREST bằng phiên Admin của Extension (cùng hàm web gọi: wms_group_uid_cut_import, sku_count_save_*, uid_temp_save…).
+    // Trả nguyên JSON của RPC; HTTP lỗi → ném lỗi kèm câu của PostgREST. 401 → gia hạn phiên một lần rồi gọi lại.
+    async function rpc(name, args = {}, retried = false) {
+      const target = config();
+      if (!target?.url || !target?.key) throw edgeError("NO_CONFIG", "Extension thiếu cấu hình Supabase");
+      if (!/^[a-z0-9_]{1,63}$/.test(String(name))) throw edgeError("RPC_ERROR", "Tên hàm Supabase không hợp lệ");
+      const token = await session.getAccessToken({ force: retried });
+      const controller = typeof AbortController === "function" ? new AbortController() : null;
+      const timer = controller ? setTimeout(() => controller.abort(), deps.edgeTimeoutMs ?? RPC_TIMEOUT_MS) : null;
+      let response, data;
+      try {
+        try {
+          response = await fetchImpl(`${target.url.replace(/\/$/, "")}/rest/v1/rpc/${name}`, {
+            method: "POST", headers: { apikey: target.key, Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify(args),
+            ...(controller ? { signal: controller.signal } : {}),
+          });
+        } catch {
+          if (controller?.signal.aborted) throw edgeError("EDGE_TIMEOUT", `Supabase phản hồi quá lâu (${name})`);
+          throw edgeError("NETWORK", "Không kết nối được Supabase");
+        }
+        data = await response.json().catch(() => null);
+        if (controller?.signal.aborted) throw edgeError("EDGE_TIMEOUT", `Supabase phản hồi quá lâu (${name})`);
+      } finally {
+        if (timer) clearTimeout(timer);
+      }
+      if (response.status === 401 && !retried) return rpc(name, args, true);
+      if (!response.ok || data === null) throw edgeError("RPC_ERROR", clean(data?.message || data?.error?.message, 300) || `Supabase HTTP ${response.status}`);
+      // Hàm Admin trả {ok, data | error} (như adminRpc của web): ok:false → ném câu lỗi của hàm; ok:true → trả data.
+      if (data && typeof data === "object" && !Array.isArray(data) && "ok" in data) {
+        if (!data.ok) throw edgeError(data.error?.code || "RPC_ERROR", clean(data.error?.message, 300) || `Supabase từ chối (${name})`);
+        return data.data;
+      }
+      return data;
+    }
+
+    const cores = { cut_adj: () => deps.cutAdjCore || root.CutAdjCore, storage_risk: () => deps.storageRiskCore || root.StorageRiskCore };
+    // Loại đang bật: 2 loại gốc luôn có; loại mới chỉ khi lõi đọc đã nạp (Extension đủ tệp).
+    const activeKinds = () => KINDS.filter(kind => BASE_KINDS.includes(kind) || typeof cores[kind]?.()?.run === "function");
 
     async function readState() {
       const [current, device, enabled, last, log] = await Promise.all([
@@ -167,18 +282,28 @@
       catch (error) { error.fromTab = true; throw error; }
     }
     async function sendTabRaw(kind, type, payload, timeoutMs) {
-      const tab = kind === "group_uid" ? await deps.findWmsTab() : await deps.findInsideTab();
-      if (!tab) throw edgeError(kind === "group_uid" ? "WMS_TAB_MISSING" : "INSIDE_TAB_MISSING", `Không có tab ${TAB_NAME[kind]}`);
+      const side = kind === "sku" ? "inside" : "wms";
+      let tab = pinned[side];
+      if (!tab) {
+        tab = side === "wms" ? await deps.findWmsTab() : await deps.findInsideTab();
+        if (tab) { pinned[side] = tab; try { await deps.protectTab?.(tab); } catch { /* chỉ để Chrome không cho tab ngủ */ } }
+      }
+      if (!tab) throw edgeError(side === "wms" ? "WMS_TAB_MISSING" : "INSIDE_TAB_MISSING", `Không có tab ${TAB_NAME[kind]}`);
       let result;
       try {
-        const send = kind === "group_uid" ? deps.sendToWms : deps.sendToInside;
+        const send = side === "wms" ? deps.sendToWms : deps.sendToInside;
         result = await withTimeout(send(tab, { type, payload }), timeoutMs, `Tab ${TAB_NAME[kind]} phản hồi quá lâu`);
       } catch (error) {
         if (/quá lâu/.test(error?.message || "")) throw edgeError("TAB_TIMEOUT", error.message);
-        throw edgeError(kind === "group_uid" ? "WMS_BRIDGE_ERROR" : "INSIDE_BRIDGE_ERROR", `Tab ${TAB_NAME[kind]} chưa sẵn sàng; hãy tải lại tab`);
+        const cause = clean(error?.message, 100);
+        throw edgeError(side === "wms" ? "WMS_BRIDGE_ERROR" : "INSIDE_BRIDGE_ERROR", `Tab ${TAB_NAME[kind]} chưa sẵn sàng; hãy tải lại tab${cause ? ` (${cause})` : ""}`);
       }
       if (!result || typeof result !== "object") throw edgeError("TAB_ERROR", `Tab ${TAB_NAME[kind]} không trả dữ liệu`);
-      if (!result.ok) throw edgeError(result.error?.code || "TAB_ERROR", clean(result.error?.message, 300) || `Tab ${TAB_NAME[kind]} không trả dữ liệu`);
+      if (!result.ok) {
+        const error = edgeError(result.error?.code || "TAB_ERROR", clean(result.error?.message, 300) || `Tab ${TAB_NAME[kind]} không trả dữ liệu`);
+        if (result.error?.reason) error.reason = String(result.error.reason);
+        throw error;
+      }
       if (!result.data || typeof result.data !== "object") throw edgeError("TAB_ERROR", `Tab ${TAB_NAME[kind]} trả dữ liệu không hợp lệ`);
       return result.data;
     }
@@ -252,11 +377,36 @@
       } catch { /* giữ alarm cũ */ }
     }
 
-    async function finish(kind, mode, outcome) {
+    // Nhịp sống từng loại cho cảnh báo ngừng: aliveAt = lần gần nhất loại này được đồng bộ (máy này chạy xong, hoặc máy khác đang /
+    // vừa chạy); reason = lý do bỏ qua / lỗi gần nhất để hiện trên icon và trang Tùy chọn.
+    async function noteHealth(kind, patch) {
+      const stored = (await storage.get(KEYS.health)) || {};
+      const next = { since: stored.since || new Date(now()).toISOString(), kinds: { ...(stored.kinds || {}) } };
+      if (kind) next.kinds[kind] = { ...(next.kinds[kind] || {}), ...patch };
+      await storage.set(KEYS.health, next);
+    }
+
+    // Bật lại tự động / đăng nhập lại / Admin bỏ tạm dừng: tính "sống" từ lúc này (không báo ngừng ngay vì quãng đã tắt).
+    async function resetHealth() { await storage.set(KEYS.health, { since: new Date(now()).toISOString(), kinds: {} }); }
+    // Mốc lượt tự động kết thúc gần nhất theo loại của MỌI máy (Edge auto-config lastFinishedAt, review R3): máy thiếu tab vẫn biết
+    // máy khác đang đồng bộ, không báo ngừng nhầm.
+    async function noteServerAlive(lastFinishedAt) {
+      if (!lastFinishedAt || typeof lastFinishedAt !== "object") return;
+      const health = (await storage.get(KEYS.health)) || {};
+      for (const kind of activeKinds()) {
+        const server = Date.parse(lastFinishedAt[kind] || ""), local = Date.parse(health.kinds?.[kind]?.aliveAt || "");
+        if (Number.isFinite(server) && server <= now() + 60000 && !(local >= server)) await noteHealth(kind, { aliveAt: new Date(server).toISOString() });
+      }
+    }
+
+    // startedAt: giờ bắt đầu lượt → last.at (decide so nhịp với mốc này; lượt dài không đẩy lượt kế sang nhịp sau).
+    async function finish(kind, mode, outcome, startedAt = null) {
       const at = new Date(now()).toISOString();
       await addLog({ kind, mode, ...outcome });
+      if (["ok", "held"].includes(outcome.status) || outcome.covered) await noteHealth(kind, { aliveAt: at, reason: outcome.covered ? clean(outcome.message, 120) : "" });
+      else await noteHealth(kind, { reason: clean(outcome.message, 120) });
       if (outcome.status === "skipped") return outcome;
-      const patch = { at, status: outcome.status, runId: outcome.runId || null, message: clean(outcome.message, 300), mode };
+      const patch = { at: startedAt || at, status: outcome.status, runId: outcome.runId || null, message: clean(outcome.message, 300), mode };
       if (mode === "full" && outcome.status === "ok") patch.fullAt = at;
       if (mode === "full" && outcome.status === "held") patch.fullHeldAt = at;
       // Bản sao cục bộ của mốc server (history lastAutoFullAt) cho tới lần đọc history kế tiếp.
@@ -273,16 +423,17 @@
         throw error;
       }
       const busy = await lease("group_uid", device, cooldownSeconds);
-      if (busy) return { status: "skipped", message: busy };
+      if (busy) return { status: "skipped", message: busy, covered: true };
       const g = startGuard("group_uid", device), holder = await holderOf(device);
       let prepared = null, previewed = false, finished = false;
       try {
         try { prepared = await edge("group_uid", "prepare", { mode, source: "auto", device }); }
         catch (error) {
-          if (error.code === "ACTIVE_RUN") return { status: "skipped", message: "Đang có lượt khác (Admin đang xem trước)" };
+          if (error.code === "ACTIVE_RUN") return { status: "skipped", message: "Đang có lượt khác (Admin đang xem trước)", covered: true };
           if (error.code === "FULL_REQUIRED") return { status: "skipped", message: "Cần đối chiếu toàn bộ lần đầu" };
           throw error;
         }
+        await markActive({ runId: prepared.runId });
         const snapshot = await snapshotCore().readGroupUidSnapshot({
           full: !prepared.rangeFrom, rangeFrom: prepared.rangeFrom, rangeTo: prepared.rangeTo,
           readPage: params => { checkLease(g); return sendTab("group_uid", "GET_GROUP_UID_PAGE", params, WMS_PAGE_TIMEOUT_MS); },
@@ -318,7 +469,7 @@
 
     async function runSku(mode, device, cooldownSeconds = 0) {
       const busy = await lease("sku", device, cooldownSeconds);
-      if (busy) return { status: "skipped", message: busy };
+      if (busy) return { status: "skipped", message: busy, covered: true };
       const g = startGuard("sku", device), holder = await holderOf(device);
       let runId = null, finished = false;
       try {
@@ -355,21 +506,92 @@
       }
     }
 
+    // Đối chiếu ADJ / Rủi ro lưu trữ: thuê khoá → lõi đọc WMS qua tab đã ghim rồi ghi bằng RPC Admin (cùng luồng nút trên web) → nhả khoá.
+    function summaryOf(kind, result) {
+      if (kind === "cut_adj") return `Nạp ${num(result?.cutRows)} dòng Cut: ${num(result?.newRows)} mới, ${num(result?.changedRows)} đổi · ${num(result?.total)} dòng lịch sử đã đọc`;
+      return `Kiểm kê ${num(result?.skuCount?.rows)} SKU · UID tạm ${num(result?.uidTemp?.rows)} dòng`;
+    }
+    async function runCore(kind, device, cooldownSeconds = 0) {
+      const core = cores[kind]?.();
+      if (typeof core?.run !== "function") return { status: "error", message: `Extension thiếu bộ đọc ${LABEL[kind]}; hãy Reload Extension` };
+      const busy = await lease(kind, device, cooldownSeconds);
+      if (busy) return { status: "skipped", message: busy, covered: true };
+      const g = startGuard(kind, device);
+      let finished = false;
+      try {
+        const result = await core.run({
+          // Thời gian chờ mỗi lệnh như web: lịch sử Cut 90 giây/trang, Kiểm kê / UID tạm 180 giây.
+          sendTab: (type, payload) => { checkLease(g); return sendTab(kind, type, payload, kind === "storage_risk" ? 180 * 1000 : WMS_PAGE_TIMEOUT_MS); },
+          rpc: async (name, args) => { checkLease(g); return rpc(name, args); },
+          device, now: () => now(),
+        });
+        await confirmLease(g);
+        finished = true;
+        return { status: "ok", message: summaryOf(kind, result) };
+      } catch (error) {
+        if (tabUnavailable(error)) return { status: "skipped", message: error.message };
+        return { status: "error", message: error.message || `Không đồng bộ được ${LABEL[kind]}` };
+      } finally {
+        stopGuard(g);
+        await releaseLease(kind, device, finished);
+      }
+    }
+
     // cooldownSeconds > 0 chỉ cho lượt theo lịch (tick); "Chạy ngay" gửi 0.
+    // Dấu lượt đang chạy trong storage (G2): service worker bị Chrome tắt giữa lượt thì lần khởi động sau (recover) hủy lượt Group UID
+    // dở, nhả khoá thuê, tắt alarm giữ thức và ghi nhật ký — thay vì để lượt mồ côi chặn tới 30 phút.
+    async function markActive(patch) {
+      const current = await storage.get(KEYS.active);
+      if (current && typeof current === "object") await storage.set(KEYS.active, { ...current, ...patch });
+    }
+
     async function runJob(kind, mode, device, cooldownSeconds = 0) {
-      // tick giữ running = {kind:null} suốt các việc; trả lại giá trị trước để lệnh "chạy ngay" không chen vào giữa hai việc.
+      // tick / runNow giữ chỗ running suốt các việc; trả lại giá trị trước để lệnh "chạy ngay" không chen vào giữa hai việc.
       const previous = running;
       running = { kind, mode };
+      pinned = {};
       await keepAlive(true);
+      const startedAt = new Date(now()).toISOString();
       try {
+        await storage.set(KEYS.active, { kind, mode, holder: await holderOf(device), startedAt });
         let outcome;
-        try { outcome = kind === "group_uid" ? await runGroupUid(mode, device, cooldownSeconds) : await runSku(mode, device, cooldownSeconds); }
+        try {
+          outcome = kind === "group_uid" ? await runGroupUid(mode, device, cooldownSeconds)
+            : kind === "sku" ? await runSku(mode, device, cooldownSeconds)
+              : await runCore(kind, device, cooldownSeconds);
+        }
         catch (error) { outcome = { status: "error", message: error.message || "Không đồng bộ được" }; }
-        return await finish(kind, mode, outcome);
+        return await finish(kind, mode, outcome, startedAt);
       } finally {
+        pinned = {};
         running = previous;
+        await storage.set(KEYS.active, null).catch(() => {});
         await keepAlive(false);
       }
+    }
+
+    async function recoverNow() {
+      await keepAlive(false);
+      const active = await storage.get(KEYS.active);
+      if (!active || typeof active !== "object" || !FN[active.kind]) return null;
+      await storage.set(KEYS.active, null);
+      if (active.kind === "group_uid" && active.runId) await edge("group_uid", "cancel", { runId: active.runId, message: "Lượt bị gián đoạn" }).catch(() => {});
+      if (active.holder) await edge(active.kind, "release", { kind: active.kind, holder: active.holder }).catch(() => {});
+      await finish(active.kind, active.mode, { status: "error", runId: active.runId || null, message: "Lượt bị gián đoạn: Chrome tắt Extension giữa chừng" }, active.startedAt || null);
+      return active;
+    }
+    // background.js gọi một lần ở đầu service worker (worker vừa khởi động chắc chắn không có lượt nào đang chạy).
+    function recover() {
+      startup = recoverNow().catch(() => null).finally(() => refreshBadge());
+      return startup;
+    }
+
+    async function healthNow() {
+      const [state, paused, interval, health] = await Promise.all([readState(), storage.get(KEYS.paused), storage.get(KEYS.interval), storage.get(KEYS.health)]);
+      return assessHealth({ now: now(), signedIn: Boolean(state.session), device: state.device, enabledLocal: state.enabled, paused: paused === true, intervalMinutes: interval, health, kinds: activeKinds() });
+    }
+    async function refreshBadge() {
+      try { const problems = await healthNow(); badge?.(problems); return problems; } catch { return []; }
     }
 
     // Mốc từ Edge: lượt toàn bộ hoàn tất gần nhất (Admin có thể đã chạy tay trên web) và lượt toàn bộ tự động gần nhất
@@ -384,41 +606,70 @@
 
     async function tick() {
       if (running) return { ok: false, reason: "Đang chạy" };
-      running = { kind: null, mode: null };
+      const mine = { kind: null, mode: null };
+      running = mine;
       try {
+        if (startup) await startup;
         const state = await readState();
         const base = { signedIn: Boolean(state.session), device: state.device, enabledLocal: state.enabled, now: now() };
         const early = decide({ ...base, config: { enabled: true } });
-        if (!early.jobs.length && !early.skipped.length) return { ok: true, reason: early.reason };
+        if (!early.jobs.length && !early.skipped.length) {
+          // 0.10.7: ghi lý do dừng (chưa đăng nhập / chưa đặt tên máy / máy tắt) — trước đây im lặng; dòng lặp được gộp.
+          await addLog({ status: "skipped", message: early.reason });
+          return { ok: true, reason: early.reason };
+        }
+        await noteHealth(null);
         let autoConfig;
         try { autoConfig = await edge("sku", "auto-config"); }
-        catch (error) { await addLog({ status: "error", message: `Không đọc được cấu hình: ${error.message}` }); return { ok: false, reason: error.message }; }
+        catch (error) {
+          await addLog({ status: "error", message: `Không đọc được cấu hình: ${error.message}` });
+          for (const kind of activeKinds()) await noteHealth(kind, { reason: clean(`Không đọc được cấu hình: ${error.message}`, 120) });
+          return { ok: false, reason: error.message };
+        }
         await syncAlarm(autoConfig?.intervalMinutes);
+        if ((await storage.get(KEYS.paused)) === true && autoConfig?.enabled !== false) await resetHealth();
+        await storage.set(KEYS.paused, autoConfig?.enabled === false);
+        await noteServerAlive(autoConfig?.lastFinishedAt);
         const hasWms = Boolean(await deps.findWmsTab()), hasInside = Boolean(await deps.findInsideTab());
         if (autoConfig?.enabled !== false && inFullWindow(now(), autoConfig?.fullWindow)) {
-          for (const kind of KINDS) if (kind === "group_uid" ? hasWms : hasInside) await refreshFullAt(kind).catch(() => {});
+          for (const kind of BASE_KINDS) if (kind === "group_uid" ? hasWms : hasInside) await refreshFullAt(kind).catch(() => {});
         }
-        const plan = decide({ ...base, config: autoConfig, last: (await storage.get(KEYS.last)) || {}, hasWms, hasInside });
+        const plan = decide({ ...base, config: autoConfig, last: (await storage.get(KEYS.last)) || {}, hasWms, hasInside, kinds: activeKinds() });
         if (autoConfig?.enabled === false) await addLog({ status: "skipped", message: plan.reason });
-        for (const item of plan.skipped) if (item.log) await addLog({ kind: item.kind, status: "skipped", message: item.reason });
+        for (const item of plan.skipped) if (item.log) { await addLog({ kind: item.kind, status: "skipped", message: item.reason }); await noteHealth(item.kind, { reason: item.reason }); }
         const results = [];
         // Nhịp − 2 phút (cùng độ lệch với decide): máy khác vừa chạy cùng loại trong chu kỳ này thì server từ chối khoá.
-        const cooldownSeconds = Math.max(0, intervalOf(autoConfig?.intervalMinutes) * 60 - INTERVAL_SLACK_MS / 1000);
-        for (const job of plan.jobs) results.push({ ...job, ...(await runJob(job.kind, job.mode, state.device, cooldownSeconds)) });
+        const cooldownSeconds = Math.max(0, intervalOf(autoConfig?.intervalMinutes) * 60 - COOLDOWN_SLACK_S);
+        const storageCooldown = Math.max(0, STORAGE_EVERY_MS / 1000 - COOLDOWN_SLACK_S);
+        for (const job of plan.jobs) results.push({ ...job, ...(await runJob(job.kind, job.mode, state.device, job.kind === "storage_risk" ? storageCooldown : cooldownSeconds)) });
         return { ok: true, reason: plan.reason, results };
+      } catch (error) {
+        // 0.10.7: lỗi bất ngờ của bộ điều phối ghi nhật ký (background.js trước đây nuốt bằng .catch(() => {})).
+        await addLog({ status: "error", message: `Lỗi bộ điều phối: ${clean(error?.message, 200) || "không rõ"}` }).catch(() => {});
+        return { ok: false, reason: error?.message || "Lỗi bộ điều phối" };
       } finally {
-        running = null;
+        if (running === mine) running = null;
+        await refreshBadge();
       }
     }
 
     async function runNow(kind, mode) {
-      if (!KINDS.includes(kind) || !["incremental", "full"].includes(mode)) return { ok: false, error: "Yêu cầu chạy không hợp lệ" };
+      if (!activeKinds().includes(kind) || !["incremental", "full"].includes(mode) || (!BASE_KINDS.includes(kind) && mode !== "incremental")) return { ok: false, error: "Yêu cầu chạy không hợp lệ" };
       if (running) return { ok: false, error: "Đang có lượt tự động chạy" };
-      const state = await readState();
-      if (!state.session) return { ok: false, error: "Chưa đăng nhập Admin" };
-      if (!state.device) return { ok: false, error: "Chưa đặt tên máy" };
-      const result = await runJob(kind, mode, state.device);
-      return { ok: result.status !== "error", result };
+      // 0.10.7 (G5): giữ chỗ trước mọi await — trước đây alarm tick chen vào khoảng readState() và hai lượt chạy chồng.
+      const mine = { kind: null, mode: null };
+      running = mine;
+      try {
+        if (startup) await startup;
+        const state = await readState();
+        if (!state.session) return { ok: false, error: "Chưa đăng nhập Admin" };
+        if (!state.device) return { ok: false, error: "Chưa đặt tên máy" };
+        const result = await runJob(kind, mode, state.device);
+        return { ok: result.status !== "error", result, ...(result.status === "error" ? { error: result.message } : {}) };
+      } finally {
+        if (running === mine) running = null;
+        await refreshBadge();
+      }
     }
 
     async function tabs() {
@@ -432,9 +683,11 @@
       if (state.session) autoConfig = await edge("sku", "auto-config").catch(() => null);
       let nextAlarmAt = null;
       try { nextAlarmAt = (await alarms?.get("auto-sync"))?.scheduledTime || null; } catch { /* không có alarm */ }
+      const problems = await refreshBadge();
       return {
         signedIn: Boolean(state.session), email: state.session?.user?.email || "", device: state.device, enabled: state.enabled,
         last: state.last, log: state.log, tabs: await tabs(), nextAlarmAt, config: autoConfig, running: running?.kind ? { kind: running.kind, mode: running.mode } : null,
+        problems, kinds: activeKinds(),
       };
     }
 
@@ -461,17 +714,21 @@
       const type = message?.type;
       try {
         if (type === "AUTO_STATUS") return { ok: true, ...(await status()) };
-        if (type === "AUTO_SIGN_IN") return await signIn(message.email, message.password);
-        if (type === "AUTO_SIGN_OUT") { await session.signOut(); return { ok: true }; }
+        if (type === "AUTO_SIGN_IN") { const result = await signIn(message.email, message.password); if (result.ok) await resetHealth(); await refreshBadge(); return result; }
+        if (type === "AUTO_SIGN_OUT") { await session.signOut(); await refreshBadge(); return { ok: true }; }
         if (type === "AUTO_SET_DEVICE") {
           const device = clean(message.device, 60);
           if (!device) return { ok: false, error: "Nhập tên máy" };
           await storage.set(KEYS.device, device);
+          await refreshBadge();
           return { ok: true };
         }
         if (type === "AUTO_SET_ENABLED") {
           if (typeof message.enabled !== "boolean") return { ok: false, error: "Giá trị bật/tắt không hợp lệ" };
+          const before = await storage.get(KEYS.enabled);
           await storage.set(KEYS.enabled, message.enabled);
+          if (message.enabled && before === false) await resetHealth();
+          await refreshBadge();
           return { ok: true };
         }
         if (type === "AUTO_RUN_NOW") return await runNow(message.kind, message.mode);
@@ -481,10 +738,10 @@
       }
     }
 
-    return { tick, runNow, status, handleMessage, edge, onKeepAlive, isRunning: () => Boolean(running) };
+    return { tick, runNow, status, handleMessage, edge, onKeepAlive, recover, refreshBadge, isRunning: () => Boolean(running) };
   }
 
-  const api = { createAutoSync, decide, inFullWindow, vnMinutes, tabUnavailable, MESSAGE_TYPES: ["AUTO_STATUS", "AUTO_SIGN_IN", "AUTO_SIGN_OUT", "AUTO_SET_DEVICE", "AUTO_SET_ENABLED", "AUTO_RUN_NOW"] };
+  const api = { createAutoSync, decide, inFullWindow, vnMinutes, tabUnavailable, assessHealth, storageWorkMinutes, MESSAGE_TYPES: ["AUTO_STATUS", "AUTO_SIGN_IN", "AUTO_SIGN_OUT", "AUTO_SET_DEVICE", "AUTO_SET_ENABLED", "AUTO_RUN_NOW"] };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.AutoSyncModule = api;
 })(typeof self !== "undefined" ? self : globalThis);

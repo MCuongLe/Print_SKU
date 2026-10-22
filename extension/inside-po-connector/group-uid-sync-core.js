@@ -51,6 +51,14 @@
     return candidates.find(Array.isArray) || [];
   }
 
+  function hasRowList(payload) {
+    return [
+      payload?.data?.items, payload?.data?.rows, payload?.data?.data,
+      payload?.data?.group_uid_infos, payload?.data?.records,
+      payload?.items, payload?.rows, payload?.records, payload?.data,
+    ].some(Array.isArray);
+  }
+
   function responseTotal(payload, fallback = 0) {
     const candidates = [
       payload?.data?.total, payload?.data?.pagination?.total, payload?.data?.meta?.total,
@@ -111,6 +119,9 @@
   }
 
   function normalizePage(payload) {
+    // 0.10.7 (soát 22/10, G13): không thấy khoá danh sách nào = WMS đổi dạng phản hồi. Trước đây ra 0 dòng + tổng 0 nên bộ đọc
+    // ảnh chụp coi là "đủ" và lượt gia tăng bỏ sót im lặng. 204 (getJson trả {count:0, records:[]}) vẫn hợp lệ.
+    if (!hasRowList(payload)) throw new Error("WMS đổi dạng dữ liệu Group UID (không thấy danh sách); hãy báo để cập nhật Extension");
     const rows = responseRows(payload);
     // 0.10.5 (22/10/2026): WMS có mã Group UID mang 2 bản ghi (id khác nhau) và đếm tổng theo BẢN GHI. Trả id bản ghi để bộ đọc ảnh
     // chụp đối chiếu tổng theo id; thiếu id (WMS đổi dạng) → null, bộ đọc đối chiếu theo số mã như cũ.

@@ -790,6 +790,24 @@ test("lease: máy khác đang giữ thì ok:false; cùng máy gia hạn được
   assert.deepEqual([noHolder.status, noHolder.body.error.code], [400, "INVALID_HOLDER"]);
 });
 
+test("lease: hai loại tự động mới cut_adj / storage_risk (sync_auto_v2.sql) thuê và nhả qua sku-sync, khoá riêng từng loại", async () => {
+  for (const kind of ["cut_adj", "storage_risk"]) {
+    const got = await call({ action: "lease", kind, holder: "may-test-01", cooldownSeconds: 600 });
+    assert.equal(got.status, 200, `${kind}: ${JSON.stringify(got.body)}`);
+    assert.equal(got.body.data.ok, true, `${kind} thuê được`);
+    assert.equal(leases.get(kind).holder, "may-test-01");
+    assert.equal((await call({ action: "lease", kind, holder: "may-test-02" })).body.data.ok, false, `${kind}: máy khác đang giữ`);
+    const done = await call({ action: "release", kind, holder: "may-test-01", finished: true });
+    assert.equal(done.body.data.released, true, `${kind} nhả được`);
+  }
+  assert.equal(leases.has("sku"), false, "không đụng khoá sku");
+  assert.equal(leases.has("group_uid"), false, "không đụng khoá group_uid");
+  const config = await call({ action: "auto-config" });
+  assert.deepEqual(Object.keys(config.body.data.thresholds).sort(), ["group_uid", "sku"], "ngưỡng chỉ cho 2 loại có xem trước");
+  const invalid = await call({ action: "release", kind: "cut-adj", holder: "may-test-01" });
+  assert.deepEqual([invalid.status, invalid.body.error.code], [400, "INVALID_KIND"]);
+});
+
 test("lease: giãn cách giữa các máy — lượt theo lịch bị từ chối (COOLDOWN) khi lượt cùng loại vừa kết thúc; chạy ngay / lỗi thì không", async () => {
   const LOOP = 30 * 60 - 120;
   assert.equal((await call({ action: "lease", kind: "sku", holder: "may-test-01", cooldownSeconds: LOOP })).body.data.ok, true, "chưa có mốc kết thúc");
@@ -832,4 +850,11 @@ test("auto-config: đọc mặc định khi chưa có dòng; Admin tắt đượ
   }
   assert.equal(settings[0].interval_minutes, 60);
   assert.equal(settings[0].thresholds.sku.maxUpdated, 500, "ngưỡng không đổi được qua Edge");
+  // 0.10.7: mốc lượt tự động kết thúc gần nhất theo loại (mọi máy) cho cảnh báo ngừng của Extension.
+  assert.deepEqual(empty.body.data.lastFinishedAt, {}, "chưa có khoá nào");
+  const finishedAt = iso(-5 * MIN);
+  leases.set("group_uid", { holder: null, leased_until: null, last_finished_at: finishedAt });
+  leases.set("cut_adj", { holder: "may-test-01#abc", leased_until: iso(10 * MIN), last_finished_at: null });
+  const withLeases = await call({ action: "auto-config" });
+  assert.deepEqual(withLeases.body.data.lastFinishedAt, { group_uid: finishedAt }, "chỉ loại đã có lượt kết thúc");
 });

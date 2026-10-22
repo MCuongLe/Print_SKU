@@ -29,7 +29,7 @@ const fakeChrome = initial => {
   window.chrome = {
     runtime: {
       id: 'test-extension',
-      getManifest: () => ({ version: '0.10.6' }),
+      getManifest: () => ({ version: '0.10.7' }),
       sendMessage: async message => {
         window.__msgs.push(JSON.parse(JSON.stringify(message)));
         if (window.__failSend) throw new Error('Could not establish connection');
@@ -41,7 +41,7 @@ const fakeChrome = initial => {
           case 'AUTO_SIGN_OUT': st.signedIn = false; st.email = ''; return { ok: true };
           case 'AUTO_SET_DEVICE': st.device = message.device; return { ok: true };
           case 'AUTO_SET_ENABLED': st.enabled = message.enabled; return { ok: true };
-          case 'AUTO_RUN_NOW': return { ok: true, result: { status: 'ok' } };
+          case 'AUTO_RUN_NOW': return window.__runFail ? { ok: false, error: window.__runFail } : { ok: true, result: { status: 'ok' } };
           default: return { ok: false, error: 'Không hỗ trợ' };
         }
       },
@@ -65,7 +65,7 @@ const fakeChrome = initial => {
       await page.goto(URL);
       await page.locator('#log tr').first().waitFor();
 
-      assert.equal((await page.locator('#ver').innerText()).trim(), 'v0.10.6');
+      assert.equal((await page.locator('#ver').innerText()).trim(), 'v0.10.7');
       assert.equal((await page.locator('h1').innerText()).trim(), 'Đồng bộ tự động');
       assert.equal(await page.locator('#signin').isVisible(), true, 'chưa đăng nhập hiện form');
       assert.equal(await page.locator('#signed').isVisible(), false);
@@ -174,6 +174,29 @@ const fakeChrome = initial => {
       assert.deepEqual(errors, []);
       await context.close();
       console.log('PASS options: Admin tạm dừng hiện dòng cam, đang chạy khóa nút và có spinner');
+    }
+
+    // 4) 0.10.7: thẻ đỏ lý do đồng bộ tự động ngừng; 4 loại (Đối chiếu ADJ, Rủi ro lưu trữ chạy thẳng, không menu); Chạy ngay lỗi hiện câu lỗi
+    {
+      const context = await browser.newContext({ viewport: { width: 760, height: 1100 } });
+      await context.addInitScript(fakeChrome, { signedIn: true, email: 'admin-test@example.com', device: 'may-test', kinds: ['sku', 'group_uid', 'cut_adj', 'storage_risk'], problems: ['Group UID ngừng 1,2 giờ: Không có tab WMS', 'Đối chiếu ADJ ngừng 2 giờ: Không có tab WMS'] });
+      const page = await context.newPage();
+      const errors = [];
+      page.on('pageerror', error => errors.push(error.message));
+      await page.goto(URL);
+      await page.locator('#problems').waitFor({ state: 'visible' });
+      assert.deepEqual(await page.locator('#problems-list li').allInnerTexts(), ['Group UID ngừng 1,2 giờ: Không có tab WMS', 'Đối chiếu ADJ ngừng 2 giờ: Không có tab WMS']);
+      assert.deepEqual(await page.locator('.last-row .head > span:first-child').allInnerTexts(), ['SKU', 'Group UID', 'Đối chiếu ADJ', 'Rủi ro lưu trữ']);
+      assert.equal(await page.locator('[data-run-toggle="cut_adj"]').count(), 0, 'Đối chiếu ADJ không có menu Gia tăng/Toàn bộ');
+      await page.evaluate(() => { window.__runFail = 'Đang có lượt tự động chạy'; });
+      await page.locator('button[data-run="storage_risk"]').click();
+      await page.locator('#run-err').waitFor({ state: 'visible' });
+      assert.equal((await page.locator('#run-err').innerText()).trim(), 'Đang có lượt tự động chạy');
+      if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/04-extension-tuy-chon-ngung.png`, fullPage: true });
+      assert.deepEqual(await page.evaluate(() => window.__msgs.filter(m => m.type === 'AUTO_RUN_NOW')), [{ type: 'AUTO_RUN_NOW', kind: 'storage_risk', mode: 'incremental' }]);
+      assert.deepEqual(errors, []);
+      await context.close();
+      console.log('PASS options: thẻ đỏ lý do ngừng, 4 loại, Chạy ngay lỗi hiện câu lỗi');
     }
 
     // 3) Service worker không trả lời: hiện dòng lỗi, không ném lỗi

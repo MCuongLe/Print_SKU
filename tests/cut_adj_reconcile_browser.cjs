@@ -125,7 +125,7 @@ const srcReadAudit = (page, specs, width) => page.evaluate(async ({ specs, width
     for (const width of [1280, 375]) {
       const page = await browser.newPage({ viewport: { width, height: 900 }, acceptDownloads: true });
       const errors = [], items = syntheticItems();
-      const store = { rows: [], imports: [], importCalls: [], tickCalls: [], reconcileBodies: [], resolveCalls: [] };
+      const store = { rows: [], imports: [], importCalls: [], tickCalls: [], reconcileBodies: [], resolveCalls: [], importedAgoMs: 0 };
       page.on('pageerror', error => errors.push(error.message));
       page.on('console', message => { if (message.type() === 'error' && !/Failed to load resource/.test(message.text())) errors.push(message.text()); });
       // 08/10/2026: xac nhan dung hop WhDialog trong trang; hop confirm() cua trinh duyet khong duoc hien nua.
@@ -144,7 +144,7 @@ const srcReadAudit = (page, specs, width) => page.evaluate(async ({ specs, width
           const imports = store.imports;
           result = { ok: true, data: {
             items: items.map(item => ({ ...item, wmsCuts: wmsCutsOf(item) })),
-            coverage: imports.length ? { from: imports.map(i => i.from).sort()[0], until: imports.map(i => i.until).sort().pop(), files: imports.length, importedAt: new Date().toISOString() } : null,
+            coverage: imports.length ? { from: imports.map(i => i.from).sort()[0], until: imports.map(i => i.until).sort().pop(), files: imports.length, importedAt: new Date(Date.now() - store.importedAgoMs).toISOString() } : null,
             lastImport: null } };
         } else if (rpc === 'wms_group_uid_cut_import') {
           store.importCalls.push({ authorization: request.headers().authorization, body });
@@ -363,6 +363,17 @@ const srcReadAudit = (page, specs, width) => page.evaluate(async ({ specs, width
       await page.waitForTimeout(200);
       assert.deepEqual([(await counts()).missing, (await counts()).done], [1, 0]);
       Object.assign(items.find(x => x.groupUid === 'UID-F'), { adjResolvedAt: null, adjResolvedState: null });
+      // 22/10/2026: lần nạp WMS gần nhất quá 70 phút (Extension 0.10.7 tự nạp mỗi 30 phút) → mốc phủ đỏ "Ngừng"; vừa nạp thì không.
+      assert.notEqual(await page.locator('#cut-adj-cov').getAttribute('data-tone'), 'alert');
+      store.importedAgoMs = 71 * 60000;
+      const reloads2 = store.reconcileBodies.length;
+      await page.locator('#cut-adj-reload').click();
+      while (store.reconcileBodies.length === reloads2) await page.waitForTimeout(50);
+      await page.waitForFunction(() => document.querySelector('#cut-adj-cov').dataset.tone === 'alert');
+      assert.match(await page.locator('#cut-adj-cov').innerText(), /· Ngừng$/);
+      assert.equal(await page.locator('#cut-adj-cov').evaluate(el => getComputedStyle(el).color), 'rgb(180, 35, 24)');
+      if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/02-doi-chieu-adj-ngung-${width}.png` });
+      store.importedAgoMs = 0;
 
       // Loc theo the + loc SKU/ngay gui dung tham so + nap lai cung file khong nhan doi.
       assert.equal(await page.locator('.cut-adj-kpi[data-st="forgot"]').getAttribute('data-zero'), 'true', 'ô 0 UID không mở popup');

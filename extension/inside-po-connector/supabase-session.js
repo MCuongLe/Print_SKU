@@ -48,15 +48,23 @@
       return { access_token: data.access_token, refresh_token: data.refresh_token, expires_at: expiresAt, user };
     }
 
+    // 0.10.7 (review R6): hết giờ 30 giây — gia hạn treo trước đây giữ lượt tự động "Đang chạy" mãi.
     async function postToken(grantType, body) {
       const target = endpoint(`/auth/v1/token?grant_type=${grantType}`);
-      let response;
+      const controller = typeof AbortController === "function" ? new AbortController() : null;
+      const timer = controller ? setTimeout(() => controller.abort(), options.timeoutMs ?? 30000) : null;
+      let response, data;
       try {
-        response = await fetchImpl(target.url, { method: "POST", headers: { apikey: target.key, "Content-Type": "application/json" }, body: JSON.stringify(body) });
-      } catch {
-        throw sessionError("NETWORK", "Không kết nối được Supabase");
+        try {
+          response = await fetchImpl(target.url, { method: "POST", headers: { apikey: target.key, "Content-Type": "application/json" }, body: JSON.stringify(body), ...(controller ? { signal: controller.signal } : {}) });
+        } catch {
+          throw sessionError("NETWORK", "Không kết nối được Supabase");
+        }
+        data = await response.json().catch(() => ({}));
+        if (controller?.signal.aborted) throw sessionError("NETWORK", "Không kết nối được Supabase");
+      } finally {
+        if (timer) clearTimeout(timer);
       }
-      const data = await response.json().catch(() => ({}));
       return { status: response.status, ok: response.ok, data };
     }
 

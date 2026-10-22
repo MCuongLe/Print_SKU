@@ -67,4 +67,9 @@ assert.equal(movements.rows[1].createdAt, "2026-10-13 12:48:03", "thiếu create
 assert.equal(movements.rows[1].reason, "Xuất sử dụng");
 assert.equal(movements.sourceRows, 6, "sourceRows là số dòng WMS trả về, không phải số dòng đã lọc");
 
+// 0.10.7 (review R8a): WMS đổi khoá danh sách → lỗi, không lưu bản chụp 0 dòng; 204 ({records: []}) vẫn hợp lệ.
+for (const fn of ["normalizeApprovedPage", "normalizeInventoryPage", "normalizeImportExportPage"]) {
+  assert.throws(() => core[fn]({ count: 3, items: [{ sku: "900000001" }] }), /WMS đổi dạng dữ liệu/, fn);
+  assert.equal(core[fn]({ count: 0, page: 1, size: 500, records: [] }).rows.length, 0, `${fn}: 204 vẫn hợp lệ`);
+}
 console.log("inventory_audit_core: company switch, qty>0, held stock kept and approved-only filter passed");

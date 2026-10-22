@@ -2,7 +2,8 @@
 // Token Admin nằm ở chrome.storage.local: chỉ trang của Extension (service worker, Tùy chọn) được đọc, content script trên
 // Print SKU / Inside / WMS / app xây dựng thì không (mặc định Chrome mở cho cả content script). Không content script nào dùng chrome.storage.
 try { chrome.storage.local.setAccessLevel?.({ accessLevel: "TRUSTED_CONTEXTS" })?.catch?.(() => {}); } catch { /* Chrome cũ: giữ mặc định */ }
-importScripts("supabase-config.js", "supabase-session.js", "group-uid-snapshot-core.js", "auto-sync.js");
+// 0.10.7: cut-adj-core.js / storage-risk-core.js = lõi đọc Đối chiếu ADJ và Rủi ro lưu trữ (chép luồng nút web) cho đồng bộ tự động.
+importScripts("supabase-config.js", "supabase-session.js", "group-uid-snapshot-core.js", "cut-adj-core.js", "storage-risk-core.js", "auto-sync.js");
 
 const APP_URL_PATTERN = /^(?:http:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?\/|https:\/\/mcuongle\.github\.io\/Print_SKU(?:\/|$))/i;
 const INSIDE_URL_PATTERN = /^https:\/\/inside\.mastige\.vn\//i;
@@ -14,11 +15,15 @@ function errorResponse(code, message) {
   return { ok: false, error: { code, message } };
 }
 
-async function findInsideTab() {
-  const tabs = await chrome.tabs.query({ url: "https://inside.mastige.vn/*" });
+// 0.10.7 (soát 22/10, G4): bỏ tab Chrome đã cho ngủ (discarded — gửi lệnh luôn lỗi), ưu tiên tab đã tải xong, rồi tab dùng gần nhất.
+function pickTab(tabs, pattern) {
   return tabs
-    .filter(tab => tab.id && INSIDE_URL_PATTERN.test(tab.url || ""))
-    .sort((a, b) => Number(b.lastAccessed || 0) - Number(a.lastAccessed || 0))[0] || null;
+    .filter(tab => tab.id && !tab.discarded && pattern.test(tab.url || ""))
+    .sort((a, b) => Number(b.status === "complete") - Number(a.status === "complete") || Number(b.lastAccessed || 0) - Number(a.lastAccessed || 0))[0] || null;
+}
+
+async function findInsideTab() {
+  return pickTab(await chrome.tabs.query({ url: "https://inside.mastige.vn/*" }), INSIDE_URL_PATTERN);
 }
 
 async function sendToInside(tab, message) {
@@ -31,9 +36,7 @@ async function sendToInside(tab, message) {
 }
 
 async function findWmsTab() {
-  const tabs = await chrome.tabs.query({ url: "https://wms.inshasaki.com/*" });
-  return tabs.filter(tab => tab.id && WMS_URL_PATTERN.test(tab.url || ""))
-    .sort((a, b) => Number(b.lastAccessed || 0) - Number(a.lastAccessed || 0))[0] || null;
+  return pickTab(await chrome.tabs.query({ url: "https://wms.inshasaki.com/*" }), WMS_URL_PATTERN);
 }
 
 async function sendToWms(tab, message) {
@@ -46,9 +49,7 @@ async function sendToWms(tab, message) {
 }
 
 async function findHcmTab() {
-  const tabs = await chrome.tabs.query({ url: "https://apps-mastige.inshasaki.com/*" });
-  return tabs.filter(tab => tab.id && HCM_URL_PATTERN.test(tab.url || ""))
-    .sort((a, b) => Number(b.lastAccessed || 0) - Number(a.lastAccessed || 0))[0] || null;
+  return pickTab(await chrome.tabs.query({ url: "https://apps-mastige.inshasaki.com/*" }), HCM_URL_PATTERN);
 }
 
 async function sendToHcm(tab, message) {
@@ -61,7 +62,16 @@ async function sendToHcm(tab, message) {
 }
 
 // Bộ điều phối dùng lại đúng các hàm tìm tab / gửi lệnh ở trên (token WMS/Inside vẫn không rời tab).
-const AutoSync = self.AutoSyncModule.createAutoSync({ findWmsTab, findInsideTab, sendToWms, sendToInside });
+// protectTab: tab dùng cho lượt tự động không bị Chrome cho ngủ (Memory Saver); không cần thêm quyền.
+const AutoSync = self.AutoSyncModule.createAutoSync({
+  findWmsTab, findInsideTab, sendToWms, sendToInside,
+  protectTab: tab => chrome.tabs.update(tab.id, { autoDiscardable: false }),
+});
+// Worker vừa khởi động chắc chắn không có lượt nào đang chạy: dọn lượt dở của lần trước (Chrome tắt worker giữa lượt),
+// tắt alarm giữ thức mồ côi, cập nhật dấu "!" trên icon. tick / Chạy ngay chờ bước này xong.
+AutoSync.recover();
+// Bấm icon Extension (có dấu "!" khi đồng bộ tự động ngừng) → mở trang Tùy chọn.
+chrome.action?.onClicked?.addListener(() => { chrome.runtime.openOptionsPage().catch?.(() => {}); });
 const AUTO_ALARM = "auto-sync";
 const AUTO_MESSAGE_TYPES = ["AUTO_STATUS", "AUTO_SIGN_IN", "AUTO_SIGN_OUT", "AUTO_SET_DEVICE", "AUTO_SET_ENABLED", "AUTO_RUN_NOW"];
 // Nhịp đã xác minh từ auto-config gần nhất (auto-sync.js lưu auto.interval); chưa có thì 30 phút, kẹp 15–180.

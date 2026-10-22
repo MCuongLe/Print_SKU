@@ -1,7 +1,7 @@
 // Bộ điều phối đồng bộ tự động (extension/inside-po-connector/auto-sync.js): hàm decide thuần + luồng chạy với tab/Edge giả.
 //   node tests/auto_sync_core.cjs
 const assert = require("node:assert/strict");
-const { createAutoSync, decide, inFullWindow, vnMinutes } = require("../extension/inside-po-connector/auto-sync.js");
+const { createAutoSync, decide, inFullWindow, vnMinutes, assessHealth } = require("../extension/inside-po-connector/auto-sync.js");
 const { readGroupUidSnapshot } = require("../extension/inside-po-connector/group-uid-snapshot-core.js");
 
 const HOUR = 3600 * 1000;
@@ -56,9 +56,9 @@ function memoryStorage(initial = {}) {
 const uid = index => ({ group_uid_code: String(1028260000000000 + index), updated_date: "2026-10-17T01:00:00.000Z", qty: 1, status: "New" });
 
 const HOLDER = "may-test-01#abc123";
-function harness({ now = DAY, wmsTab = true, insideTab = true, wmsError = null, insideError = null, edgeOverride = {}, applyHeld = null, storage: initial, onWmsPage = null, sessionOverride = {} } = {}) {
+function harness({ now = DAY, wmsTab = true, insideTab = true, wmsError = null, insideError = null, edgeOverride = {}, applyHeld = null, storage: initial, onWmsPage = null, sessionOverride = {}, findWms = null, fetchOverride = null, edgeTimeoutMs, cutAdjCore, storageRiskCore } = {}) {
   const storage = memoryStorage({ "auto.device": "may-test-01", "auto.enabled": true, "auto.instance": "abc123", ...initial });
-  const calls = [], alarms = [], timers = [], signOuts = [];
+  const calls = [], alarms = [], timers = [], signOuts = [], badges = [], protectedTabs = [];
   const clock = { now };
   const wmsRows = Array.from({ length: 3 }, (_, index) => uid(index + 1));
   const edge = {
@@ -74,6 +74,14 @@ function harness({ now = DAY, wmsTab = true, insideTab = true, wmsError = null, 
     ...edgeOverride,
   };
   const fetch = async (url, init) => {
+    if (fetchOverride) { const custom = await fetchOverride(url, init); if (custom) return custom; }
+    if (url.includes("/rest/v1/rpc/")) {
+      const name = url.split("/rest/v1/rpc/")[1];
+      calls.push({ rpc: name, args: JSON.parse(init.body), auth: init.headers.Authorization });
+      const handler = edge[`rpc:${name}`];
+      const body = handler ? handler(JSON.parse(init.body)) : { ok: true, data: null };
+      return { status: 200, ok: true, json: async () => body };
+    }
     const body = JSON.parse(init.body), fn = url.split("/functions/v1/")[1];
     calls.push({ fn, ...body });
     assert.equal(init.headers.Authorization, "Bearer token-test");
@@ -84,15 +92,16 @@ function harness({ now = DAY, wmsTab = true, insideTab = true, wmsError = null, 
     return { status: 200, ok: true, json: async () => ({ ok: true, data: result }) };
   };
   const sync = createAutoSync({
-    storage, fetch, now: () => clock.now, config: { url: "https://example.invalid", key: "test-key" },
+    storage, fetch, now: () => clock.now, config: { url: "https://example.invalid", key: "test-key" }, edgeTimeoutMs, cutAdjCore, storageRiskCore,
+    badge: problems => badges.push(problems), protectTab: async tab => { protectedTabs.push(tab.id); },
     session: { getAccessToken: async () => "token-test", getSession: async () => ({ user: { email: "admin-test@example.com" } }), signOut: async () => { signOuts.push(1); }, signIn: async () => ({}), ...sessionOverride },
     snapshotCore: { readGroupUidSnapshot },
     alarms: { create: async (name, info) => alarms.push(["create", name, info?.periodInMinutes]), clear: async name => alarms.push(["clear", name]), get: async name => ({ scheduledTime: now + 30 * 60000, periodInMinutes: name === "auto-sync" ? 30 : 0.5 }) },
     timers: { set: (fn, ms) => { timers.push({ fn, ms, cleared: false }); return timers.length; }, clear: id => { timers[id - 1].cleared = true; } },
-    findWmsTab: async () => (wmsTab ? { id: 1 } : null),
+    findWmsTab: async () => (findWms ? findWms() : wmsTab ? { id: 1 } : null),
     findInsideTab: async () => (insideTab ? { id: 2 } : null),
     sendToWms: async (tab, message) => {
-      calls.push({ tab: "wms", ...message });
+      calls.push({ tab: "wms", tabId: tab.id, ...message });
       if (onWmsPage) await onWmsPage(message, h);
       if (wmsError) return { ok: false, error: wmsError };
       const page = message.payload.page, size = message.payload.size;
@@ -104,7 +113,7 @@ function harness({ now = DAY, wmsTab = true, insideTab = true, wmsError = null, 
       return { ok: true, data: { generatedAt: "2026-10-17T03:00:00.000Z", normalRows: [{ sku: "900000001" }], comboRows: [], categories: [] } };
     },
   });
-  const h = { sync, storage, calls, alarms, timers, signOuts, clock };
+  const h = { sync, storage, calls, alarms, timers, signOuts, clock, badges, protectedTabs };
   return h;
 }
 const actions = (calls, fn) => calls.filter(call => call.fn === fn).map(call => call.action);
@@ -137,7 +146,7 @@ const actions = (calls, fn) => calls.filter(call => call.fn === fn).map(call => 
     // Giãn cách giữa các máy: thuê khoá lần đầu gửi nhịp − 2 phút; gia hạn trong lượt không gửi; xong lượt nhả khoá kèm finished.
     for (const fn of ["group-uid-sync", "sku-sync"]) {
       const leases = h.calls.filter(call => call.fn === fn && call.action === "lease");
-      assert.deepEqual(leases.map(call => call.cooldownSeconds), [30 * 60 - 120, undefined], fn);
+      assert.deepEqual(leases.map(call => call.cooldownSeconds), [30 * 60 - 600, undefined], fn);
       assert.equal(h.calls.find(call => call.fn === fn && call.action === "release").finished, true, fn);
     }
     assert.equal(h.calls.find(call => call.fn === "group-uid-sync" && call.action === "preview").holder, HOLDER, "preview Group UID gửi holder để Edge kiểm khoá");
@@ -240,7 +249,7 @@ const actions = (calls, fn) => calls.filter(call => call.fn === fn).map(call => 
     assert.equal(h.storage.data["auto.interval"], 60);
     const hourly = harness({ insideTab: false, edgeOverride: { "auto-config": () => ({ ...CONFIG, intervalMinutes: 60 }) } });
     await hourly.sync.tick();
-    assert.equal(hourly.calls.find(call => call.action === "lease").cooldownSeconds, 60 * 60 - 120, "giãn cách theo nhịp Admin");
+    assert.equal(hourly.calls.find(call => call.action === "lease").cooldownSeconds, 60 * 60 - 600, "giãn cách theo nhịp Admin");
     const low = harness({ wmsTab: false, insideTab: false, edgeOverride: { "auto-config": () => ({ ...CONFIG, intervalMinutes: 5 }) } });
     await low.sync.tick();
     assert.deepEqual(low.alarms.filter(item => item[1] === "auto-sync"), [["create", "auto-sync", 15]]);
@@ -273,7 +282,7 @@ const actions = (calls, fn) => calls.filter(call => call.fn === fn).map(call => 
 
   // Tab WMS đăng xuất / Inside hết phiên: bỏ qua, không tạo lượt.
   {
-    const h = harness({ wmsError: { code: "GROUP_UID_READ_FAILED", message: "Phiên WMS đã hết hạn; hãy đăng nhập lại" }, insideError: { code: "SKU_SYNC_READ_FAILED", message: "Phiên Inside đã hết hạn; hãy đăng nhập lại" } });
+    const h = harness({ wmsError: { code: "GROUP_UID_READ_FAILED", message: "Phiên WMS đã hết hạn; hãy đăng nhập lại", reason: "session" }, insideError: { code: "SKU_SYNC_READ_FAILED", message: "Phiên Inside đã hết hạn; hãy đăng nhập lại", reason: "session" } });
     const result = await h.sync.tick();
     assert.deepEqual(result.results.map(item => `${item.kind}:${item.status}`), ["group_uid:skipped", "sku:skipped"]);
     assert.deepEqual(actions(h.calls, "group-uid-sync"), [], "không lease, không prepare khi WMS đăng xuất");
@@ -329,6 +338,206 @@ const actions = (calls, fn) => calls.filter(call => call.fn === fn).map(call => 
     assert.equal(h.calls.find(call => call.action === "lease").cooldownSeconds, undefined, "chạy ngay không xét giãn cách");
     assert.equal(h.calls.find(call => call.action === "release").finished, true);
     assert.deepEqual(await h.sync.handleMessage({ type: "AUTO_RUN_NOW", kind: "khac", mode: "full" }), { ok: false, error: "Yêu cầu chạy không hợp lệ" });
+  }
+
+  // ---- 0.10.7 (soát Extension 22/10/2026) ----
+  // G6: lỗi mạng WMS / mất quyền 403 là LỖI (trước đây câu chữ "tab WMS" / "Phiên WMS" bị tính là bỏ qua).
+  {
+    const net = harness({ insideTab: false, wmsError: { code: "GROUP_UID_READ_FAILED", message: "WMS tạm ngắt kết nối; hãy tải lại tab WMS rồi thử lại", reason: "network" } });
+    assert.equal((await net.sync.tick()).results[0].status, "error");
+    const denied = harness({ insideTab: false, wmsError: { code: "GROUP_UID_READ_FAILED", message: "Phiên WMS không còn quyền đọc Group UID; hãy đăng nhập lại", reason: "denied" } });
+    assert.equal((await denied.sync.tick()).results[0].status, "error");
+    const noReason = harness({ insideTab: false, wmsError: { code: "GROUP_UID_READ_FAILED", message: "Phiên WMS đã hết hạn" } });
+    assert.equal((await noReason.sync.tick()).results[0].status, "error", "không có reason thì không đoán theo câu chữ");
+  }
+
+  // G4: một lượt dùng đúng một tab WMS (lượt đọc mở thêm tab không đổi tab giữa chừng) + giữ tab không bị Chrome cho ngủ.
+  {
+    let next = 0;
+    const h = harness({ insideTab: false, findWms: () => ({ id: 10 + (next++) }) });
+    const result = await h.sync.tick();
+    assert.equal(result.results[0].status, "ok");
+    const ids = [...new Set(h.calls.filter(call => call.tab === "wms").map(call => call.tabId))];
+    assert.equal(ids.length, 1, `mọi trang của lượt gửi cùng một tab: ${ids}`);
+    assert.deepEqual(h.protectedTabs, ids);
+    await h.sync.runNow("group_uid", "incremental");
+    const second = [...new Set(h.calls.filter(call => call.tab === "wms").map(call => call.tabId))];
+    assert.equal(second.length, 2, "lượt sau chọn lại tab");
+  }
+
+  // G5: Chạy ngay và alarm cùng lúc → chỉ một lượt chạy.
+  {
+    const h = harness({ wmsTab: false });
+    const [now1, tick1] = await Promise.all([h.sync.runNow("sku", "incremental"), h.sync.tick()]);
+    assert.equal(now1.ok, true);
+    assert.deepEqual(tick1, { ok: false, reason: "Đang chạy" });
+    assert.equal(h.calls.filter(call => call.fn === "sku-sync" && call.action === "preview").length, 1);
+    const [tick2, now2] = await Promise.all([h.sync.tick(), h.sync.runNow("sku", "incremental")]);
+    assert.deepEqual(now2, { ok: false, error: "Đang có lượt tự động chạy" });
+    assert.equal(tick2.ok, true);
+    assert.equal(h.sync.isRunning(), false, "xong thì nhả chỗ");
+    const failed = harness({ wmsTab: false, edgeOverride: { preview: () => ({ __error: { code: "SYNC_ERROR", message: "Edge lỗi" } }) } });
+    const run = await failed.sync.runNow("sku", "incremental");
+    assert.deepEqual([run.ok, run.error], [false, "Edge lỗi"], "Chạy ngay lỗi trả câu lỗi cho trang Tùy chọn");
+  }
+
+  // G2: dấu lượt đang chạy trong storage; worker khởi động lại → hủy lượt dở, nhả khoá, tắt keepalive, ghi nhật ký.
+  {
+    let seen = null;
+    const h = harness({ insideTab: false, onWmsPage: async (message, self) => { if (message.payload.size === 500) seen = await self.storage.get("auto.active"); } });
+    await h.sync.tick();
+    assert.deepEqual([seen.kind, seen.mode, seen.holder, seen.runId], ["group_uid", "incremental", HOLDER, "11111111-1111-4111-8111-111111111111"]);
+    assert.equal(h.storage.data["auto.active"], null, "xong lượt thì xoá dấu");
+    const crashed = harness({ storage: { "auto.active": { kind: "group_uid", mode: "full", holder: HOLDER, runId: "22222222-2222-4222-8222-222222222222", startedAt: "2026-10-17T02:00:00.000Z" } } });
+    const pendingTick = crashed.sync.recover().then(() => crashed.sync.tick());
+    await pendingTick;
+    const first = crashed.calls.filter(call => call.fn === "group-uid-sync").slice(0, 2);
+    assert.deepEqual(first.map(call => [call.action, call.runId || call.holder]), [["cancel", "22222222-2222-4222-8222-222222222222"], ["release", HOLDER]], "dọn trước khi lượt mới chạy");
+    assert.ok(crashed.alarms.some(item => item[0] === "clear" && item[1] === "auto-keepalive"));
+    assert.ok(crashed.storage.data["auto.log"].some(item => item.status === "error" && /Lượt bị gián đoạn/.test(item.message)));
+    const clean = harness();
+    assert.equal(await clean.sync.recover(), null, "không có dấu thì không gọi Edge");
+    assert.equal(clean.calls.length, 0);
+  }
+
+  // Edge treo → hết giờ, lượt kết thúc là lỗi (không giữ "đang chạy" mãi).
+  {
+    const h = harness({ wmsTab: false, edgeTimeoutMs: 20, fetchOverride: async (url, init) => (JSON.parse(init.body).action === "preview" ? new Promise((_, reject) => init.signal.addEventListener("abort", () => reject(new Error("aborted")))) : null) });
+    const result = await h.sync.tick();
+    assert.deepEqual([result.results[0].status, result.results[0].message], ["error", "Supabase phản hồi quá lâu (preview)"]);
+    assert.equal(h.sync.isRunning(), false);
+  }
+
+  // Cảnh báo ngừng: chưa đăng nhập / chưa tên máy → "!" ngay; thiếu tab quá 2 nhịp + 10 phút → "!" kèm lý do; máy khác đang lo → không.
+  {
+    assert.deepEqual(assessHealth({ signedIn: false }), ["Chưa đăng nhập Admin trong Extension"]);
+    const out = harness({ sessionOverride: { getSession: async () => null } });
+    await out.sync.tick();
+    assert.deepEqual(out.badges.at(-1), ["Chưa đăng nhập Admin trong Extension"]);
+    assert.equal(out.storage.data["auto.log"][0].message, "Chưa đăng nhập Admin trong Extension", "lý do dừng có trong nhật ký");
+    const h = harness({ wmsTab: false, insideTab: false });
+    await h.sync.tick();
+    assert.deepEqual(h.badges.at(-1), [], "chưa quá ngưỡng");
+    h.clock.now += 71 * 60000;
+    await h.sync.tick();
+    assert.deepEqual(h.badges.at(-1), ["Group UID ngừng 1,2 giờ: Không có tab WMS", "SKU ngừng 1,2 giờ: Không có tab Inside"]);
+    const status = await h.sync.handleMessage({ type: "AUTO_STATUS" });
+    assert.equal(status.problems.length, 2, "trang Tùy chọn nhận danh sách lý do");
+    const covered = harness({ insideTab: false, edgeOverride: { lease: () => ({ ok: false, reason: "COOLDOWN", lastFinishedAt: "2026-10-17T02:50:00.000Z" }) } });
+    for (let round = 0; round < 4; round += 1) { await covered.sync.tick(); covered.clock.now += 30 * 60000; }
+    assert.ok(!covered.badges.at(-1).some(item => item.startsWith("Group UID")), "máy khác vừa đồng bộ = vẫn sống");
+    const paused = harness({ wmsTab: false, insideTab: false, edgeOverride: { "auto-config": () => ({ ...CONFIG, enabled: false }) } });
+    await paused.sync.tick(); paused.clock.now += 3 * HOUR; await paused.sync.tick();
+    assert.deepEqual(paused.badges.at(-1), [], "Admin tạm dừng là chủ ý, không cảnh báo");
+    const ok = harness();
+    await ok.sync.tick(); ok.clock.now += 50 * 60000; await ok.sync.tick();
+    assert.deepEqual(ok.badges.at(-1), []);
+  }
+
+  // ---- 0.10.7: hai loại mới (Đối chiếu ADJ mỗi nhịp, Rủi ro lưu trữ mỗi 2 giờ 07:00–19:30) ----
+  {
+    const ALL = ["group_uid", "sku", "cut_adj", "storage_risk"];
+    assert.deepEqual(jobs(decide({ ...base, now: DAY, kinds: ALL })), ["group_uid:incremental", "sku:incremental", "cut_adj:incremental", "storage_risk:incremental"]);
+    assert.deepEqual(jobs(decide({ ...base, now: NIGHT, kinds: ALL })), ["group_uid:full", "sku:full", "cut_adj:incremental"], "đêm: Rủi ro lưu trữ không chạy");
+    assert.equal(decide({ ...base, now: NIGHT, kinds: ALL, hasWms: false }).skipped.some(item => item.kind === "storage_risk"), false, "ngoài khung: không ghi bỏ qua");
+    const ran = kind => ({ [kind]: { at: new Date(DAY - 61 * 60000).toISOString() } });
+    assert.deepEqual(jobs(decide({ ...base, now: DAY, kinds: ["storage_risk"], last: ran("storage_risk") })), [], "Rủi ro lưu trữ: chưa đủ 2 giờ");
+    assert.deepEqual(jobs(decide({ ...base, now: DAY, kinds: ["storage_risk"], last: { storage_risk: { at: new Date(DAY - 119 * 60000).toISOString() } } })), ["storage_risk:incremental"], "lệch alarm 2 phút vẫn chạy");
+    assert.deepEqual(jobs(decide({ ...base, now: DAY, kinds: ["cut_adj"], last: ran("cut_adj") })), ["cut_adj:incremental"], "Đối chiếu ADJ theo nhịp 30 phút");
+    assert.equal(decide({ ...base, now: DAY, kinds: ALL, hasWms: false, hasInside: false }).reason, "Không có tab WMS; Không có tab Inside", "lý do không lặp");
+    // Cảnh báo Rủi ro lưu trữ chỉ đếm phút trong khung (đêm không tính).
+    const at = (d, h) => Date.UTC(2026, 9, d, h - 7);
+    const sr = (now, alive) => assessHealth({ now, signedIn: true, device: "may", kinds: ["storage_risk"], intervalMinutes: 30, health: { since: new Date(alive).toISOString(), kinds: { storage_risk: { aliveAt: new Date(alive).toISOString() } } } });
+    assert.deepEqual(sr(at(22, 8), at(21, 19)), [], "19:00 hôm qua → 08:00: chưa ngừng");
+    assert.equal(sr(at(22, 12), at(22, 7)).length, 1, "07:00 → 12:00 không có lượt: ngừng");
+  }
+
+  // Lõi chưa nạp → không có loại mới (Extension cũ / test cũ); có lõi → chạy sau Group UID/SKU, khoá thuê qua sku-sync, ghi bằng RPC Admin.
+  {
+    const order = [];
+    const cutAdjCore = { run: async ({ sendTab, rpc, device }) => {
+      order.push("cut_adj");
+      const coverage = await rpc("wms_cut_coverage", {});
+      await sendTab("GET_GROUP_UID_HISTORY_PAGE", { page: 1, size: 500, from: coverage.until });
+      await rpc("wms_group_uid_cut_import", { p_file_name: `WMS_AUTO_${device}.json`, p_rows: [] });
+      return { total: 1234, cutRows: 12, newRows: 10, changedRows: 2 };
+    } };
+    const storageRiskCore = { run: async ({ sendTab }) => { order.push("storage_risk"); await sendTab("GET_SKU_COUNT_WAREHOUSES", {}); return { ok: true, skuCount: { rows: 641 }, uidTemp: { rows: 5 } }; } };
+    const h = harness({ insideTab: false, cutAdjCore, storageRiskCore, edgeOverride: { "rpc:wms_cut_coverage": () => ({ ok: true, data: { until: "2026-10-17T02:30:00.000Z" } }), "rpc:wms_group_uid_cut_import": () => ({ ok: true, data: { cutRows: 12 } }) } });
+    const result = await h.sync.tick();
+    assert.deepEqual(result.results.map(item => `${item.kind}:${item.status}`), ["group_uid:ok", "cut_adj:ok", "storage_risk:ok"]);
+    assert.deepEqual(result.results.slice(1).map(item => item.message), ["Nạp 12 dòng Cut: 10 mới, 2 đổi · 1.234 dòng lịch sử đã đọc", "Kiểm kê 641 SKU · UID tạm 5 dòng"]);
+    const leases = h.calls.filter(call => call.fn === "sku-sync" && call.action === "lease" && call.cooldownSeconds);
+    assert.deepEqual(leases.map(call => [call.kind, call.cooldownSeconds]), [["cut_adj", 30 * 60 - 600], ["storage_risk", 110 * 60]]);
+    assert.deepEqual(h.calls.filter(call => call.fn === "sku-sync" && call.action === "release").map(call => [call.kind, call.finished]), [["cut_adj", true], ["storage_risk", true]]);
+    assert.deepEqual(h.calls.filter(call => call.rpc).map(call => [call.rpc, call.auth]), [["wms_cut_coverage", "Bearer token-test"], ["wms_group_uid_cut_import", "Bearer token-test"]]);
+    assert.equal(h.calls.find(call => call.tab === "wms" && call.type === "GET_GROUP_UID_HISTORY_PAGE").payload.from, "2026-10-17T02:30:00.000Z", "RPC trả {ok,data} → lõi nhận data");
+    const status = await h.sync.handleMessage({ type: "AUTO_STATUS" });
+    assert.deepEqual(status.kinds, ["group_uid", "sku", "cut_adj", "storage_risk"]);
+    assert.deepEqual(await h.sync.handleMessage({ type: "AUTO_RUN_NOW", kind: "cut_adj", mode: "full" }), { ok: false, error: "Yêu cầu chạy không hợp lệ" }, "loại mới chỉ có một kiểu chạy");
+    const plain = harness();
+    assert.deepEqual((await plain.sync.handleMessage({ type: "AUTO_STATUS" })).kinds, ["group_uid", "sku"]);
+    // RPC từ chối ({ok:false}) → lượt lỗi với câu của hàm; tab hết phiên → bỏ qua.
+    const denied = harness({ insideTab: false, cutAdjCore, storageRiskCore, edgeOverride: { "rpc:wms_cut_coverage": () => ({ ok: false, error: { code: "FORBIDDEN", message: "Chỉ Admin được nạp file lịch sử WMS" } }) } });
+    const r2 = await denied.sync.tick();
+    assert.deepEqual([r2.results[1].kind, r2.results[1].status, r2.results[1].message], ["cut_adj", "error", "Chỉ Admin được nạp file lịch sử WMS"]);
+    const expired = harness({ insideTab: false, wmsError: { code: "SKU_COUNT_READ_FAILED", message: "Phiên WMS đã hết hạn; hãy đăng nhập lại", reason: "session" }, storageRiskCore });
+    const r3 = await expired.sync.tick();
+    assert.deepEqual(r3.results.map(item => `${item.kind}:${item.status}`), ["group_uid:skipped", "storage_risk:skipped"]);
+  }
+
+  // ---- review vòng 1 (22/10/2026) ----
+  // R2: mốc lượt = giờ BẮT ĐẦU → lượt dài 3 phút không đẩy lượt kế sang nhịp sau (trước đây nhịp thật 60 phút).
+  {
+    const h = harness({ insideTab: false, onWmsPage: async (message, self) => { if (message.payload.size === 500) self.clock.now += 3 * 60000; } });
+    const start = h.clock.now;
+    await h.sync.tick();
+    assert.equal(h.storage.data["auto.last"].group_uid.at, new Date(start).toISOString(), "last.at = giờ bắt đầu lượt");
+    h.clock.now = start + 30 * 60000;
+    const next = await h.sync.tick();
+    assert.deepEqual(next.results.map(item => `${item.kind}:${item.status}`), ["group_uid:ok"], "nhịp kế vẫn chạy");
+    const crashed = harness({ storage: { "auto.active": { kind: "group_uid", mode: "incremental", holder: HOLDER, runId: "33333333-3333-4333-8333-333333333333", startedAt: new Date(DAY - 40 * 60000).toISOString() } } });
+    await crashed.sync.recover();
+    assert.equal(crashed.storage.data["auto.last"].group_uid.at, new Date(DAY - 40 * 60000).toISOString(), "lượt bị gián đoạn: mốc = lúc lượt đó bắt đầu, không hoãn thêm nhịp");
+  }
+
+  // R3: máy thiếu tab nhưng máy khác vừa đồng bộ (auto-config lastFinishedAt) → không báo ngừng loại đó; bật lại sau 2 ngày → không '!' ngay;
+  // lỗi đọc cấu hình → lý do có trong cảnh báo.
+  {
+    let serverAt = null;
+    const h = harness({ wmsTab: false, insideTab: false, edgeOverride: { "auto-config": () => ({ ...CONFIG, lastFinishedAt: serverAt ? { group_uid: serverAt } : {} }) } });
+    await h.sync.tick();
+    h.clock.now += 71 * 60000;
+    serverAt = new Date(h.clock.now - 5 * 60000).toISOString();
+    await h.sync.tick();
+    assert.deepEqual(h.badges.at(-1), ["SKU ngừng 1,2 giờ: Không có tab Inside"], "Group UID do máy khác lo → không báo");
+    assert.deepEqual(await h.sync.handleMessage({ type: "AUTO_SET_ENABLED", enabled: false }), { ok: true });
+    h.clock.now += 2 * 24 * HOUR;
+    assert.deepEqual(await h.sync.handleMessage({ type: "AUTO_SET_ENABLED", enabled: true }), { ok: true });
+    assert.deepEqual(h.badges.at(-1), [], "vừa bật lại: chưa báo ngừng");
+    const down = harness({ edgeOverride: { "auto-config": () => ({ __error: { code: "SYNC_ERROR", message: "Edge lỗi" }, status: 503 }) } });
+    await down.sync.tick();
+    down.clock.now += 71 * 60000;
+    await down.sync.tick();
+    assert.ok(down.badges.at(-1).every(item => /Không đọc được cấu hình: Edge lỗi$/.test(item)) && down.badges.at(-1).length === 2, JSON.stringify(down.badges.at(-1)));
+  }
+
+  // R4: lõi Rủi ro lưu trữ thật + tab hết phiên (reason session) → "Bỏ qua" như Group UID / Đối chiếu ADJ.
+  {
+    const storageRiskCore = require("../extension/inside-po-connector/storage-risk-core.js");
+    const h = harness({ insideTab: false, storageRiskCore, wmsError: { code: "SKU_COUNT_READ_FAILED", message: "Phiên WMS đã hết hạn hoặc không có quyền đọc dữ liệu", reason: "session" } });
+    const result = await h.sync.tick();
+    assert.deepEqual(result.results.map(item => `${item.kind}:${item.status}`), ["group_uid:skipped", "storage_risk:skipped"]);
+    const denied = harness({ insideTab: false, storageRiskCore, wmsError: { code: "SKU_COUNT_READ_FAILED", message: "Phiên WMS không còn quyền", reason: "denied" } });
+    assert.equal((await denied.sync.tick()).results.find(item => item.kind === "storage_risk").status, "error", "mất quyền là lỗi");
+    // Lỗi hỗn hợp (Codex vòng 2): hết phiên ở một bước + mất quyền / mạng ở bước kia → không được thành "bỏ qua", theo cả hai thứ tự.
+    for (const order of [["session", "denied"], ["denied", "session"], ["session", "network"]]) {
+      let call = 0; // lần gọi đầu (bước Kiểm kê) lỗi order[0], các lần sau (bước UID tạm) lỗi order[1]
+      const sendTab = async () => { const reason = order[Math.min(call++, 1)]; throw Object.assign(new Error(`lỗi ${reason}`), { code: "SKU_COUNT_READ_FAILED", fromTab: true, reason }); };
+      await assert.rejects(storageRiskCore.run({ sendTab, rpc: async () => ({}) }), error => !error.fromTab && !error.reason, order.join("→"));
+    }
+    const bothSession = await storageRiskCore.run({ sendTab: async () => { throw Object.assign(new Error("Phiên WMS đã hết hạn"), { code: "SKU_COUNT_READ_FAILED", fromTab: true, reason: "session" }); }, rpc: async () => ({}) }).catch(error => error);
+    assert.deepEqual([bothSession.fromTab, bothSession.reason], [true, "session"], "mọi bước hết phiên → bỏ qua được");
   }
 
   console.log("auto_sync_core: decide + orchestration passed");

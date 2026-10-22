@@ -109,5 +109,11 @@ function reply(status, body) { return { status, ok: status >= 200 && status < 30
   assert.deepEqual(await session.signOut(), { ok: true });
   assert.equal(storage.data[SESSION_KEY], undefined);
 
+  // 0.10.7 (review R6): Supabase Auth treo → hết giờ, báo lỗi mạng (không treo lượt tự động mãi).
+  {
+    const hung = createSupabaseSession({ config: CONFIG, storage: memoryStorage(), timeoutMs: 20, fetch: (url, init) => new Promise((_, reject) => init.signal.addEventListener("abort", () => reject(new Error("aborted")))) });
+    await assert.rejects(hung.signIn("admin-test@example.com", "x"), error => error.code === "NETWORK");
+  }
+
   console.log("supabase_session: sign-in, refresh, sign-out and network-error handling passed");
 })().catch(error => { console.error(error); process.exit(1); });

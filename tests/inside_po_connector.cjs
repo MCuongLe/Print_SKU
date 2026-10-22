@@ -8,16 +8,34 @@ const manifest = JSON.parse(fs.readFileSync(path.join(extensionDir, "manifest.js
 const background = fs.readFileSync(path.join(extensionDir, "background.js"), "utf8");
 
 assert.equal(manifest.manifest_version, 3);
-assert.equal(manifest.version, "0.10.6");
+assert.equal(manifest.version, "0.10.7");
 // Đồng bộ tự động (0.10.0): alarm + storage cho phiên Admin riêng, gọi Edge Supabase, trang Tùy chọn.
 assert.ok(manifest.permissions.includes("alarms"));
 assert.ok(manifest.permissions.includes("storage"));
 assert.ok(manifest.host_permissions.includes("https://ikzhitdqkoatlmkrxuuh.supabase.co/*"));
 assert.equal(manifest.options_page, "options.html");
+// 0.10.7: icon Extension mang dấu "!" khi đồng bộ tự động ngừng; không có popup để bấm icon mở trang Tùy chọn (action.onClicked).
+assert.equal(manifest.action?.default_popup, undefined);
+assert.match(background, /chrome\.action\?\.onClicked\?\.addListener/);
+// 0.10.7 (G4): bỏ tab Chrome đã cho ngủ, ưu tiên tab tải xong rồi tab dùng gần nhất.
+{
+  const source = background.match(/^function pickTab[\s\S]*?\r?\n}\r?\n/m)?.[0];
+  assert.ok(source, "Không tìm thấy pickTab");
+  const box = { result: null };
+  vm.runInNewContext(`${source}\nresult = pickTab;`, box);
+  const tabs = [
+    { id: 1, url: "https://wms.inshasaki.com/a", lastAccessed: 30, discarded: true, status: "unloaded" },
+    { id: 2, url: "https://wms.inshasaki.com/b", lastAccessed: 20, status: "loading" },
+    { id: 3, url: "https://wms.inshasaki.com/c", lastAccessed: 10, status: "complete" },
+  ];
+  assert.equal(box.result(tabs, /^https:\/\/wms\.inshasaki\.com\//).id, 3);
+  assert.equal(box.result(tabs.slice(0, 2), /^https:\/\/wms\.inshasaki\.com\//).id, 2, "chỉ còn tab đang tải thì vẫn dùng");
+  assert.equal(box.result(tabs.slice(0, 1), /^https:\/\/wms\.inshasaki\.com\//), null, "chỉ có tab đang ngủ → coi như không có tab");
+}
 assert.equal(manifest.minimum_chrome_version, "120", "alarm keepalive 30 giây cần Chrome 120+");
 assert.match(background, /AUTO_STATUS/);
-assert.match(background, /importScripts\("supabase-config.js", "supabase-session.js", "group-uid-snapshot-core.js", "auto-sync.js"\)/);
-for (const file of ["supabase-config.js", "supabase-session.js", "group-uid-snapshot-core.js", "auto-sync.js"]) assert.ok(fs.existsSync(path.join(extensionDir, file)), file);
+assert.match(background, /importScripts\("supabase-config.js", "supabase-session.js", "group-uid-snapshot-core.js", "cut-adj-core.js", "storage-risk-core.js", "auto-sync.js"\)/);
+for (const file of ["supabase-config.js", "supabase-session.js", "group-uid-snapshot-core.js", "cut-adj-core.js", "storage-risk-core.js", "auto-sync.js"]) assert.ok(fs.existsSync(path.join(extensionDir, file)), file);
 const wmsBridge = fs.readFileSync(path.join(extensionDir, "wms-bridge.js"), "utf8");
 assert.match(wmsBridge, /stock-locations\/bins\/count\/v3/);
 assert.match(wmsBridge, /ignore_zero_total/);

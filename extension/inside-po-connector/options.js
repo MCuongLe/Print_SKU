@@ -28,7 +28,9 @@ const pad = n => String(n).padStart(2, "0");
 const toDate = value => { const d = value === null || value === undefined || value === "" ? null : new Date(value); return d && Number.isFinite(d.getTime()) ? d : null; };
 const hhmm = value => { const d = toDate(value); return d ? `${pad(d.getHours())}:${pad(d.getMinutes())}` : "—"; };
 const hhmmDate = value => { const d = toDate(value); return d ? `${hhmm(d)} ${pad(d.getDate())}/${pad(d.getMonth() + 1)}` : "—"; };
-const KIND = { sku: "SKU", group_uid: "Group UID" };
+const KIND = { sku: "SKU", group_uid: "Group UID", cut_adj: "Đối chiếu ADJ", storage_risk: "Rủi ro lưu trữ" };
+// Loại chỉ có một kiểu đọc (gia tăng theo mốc / bản chụp mới): nút Chạy ngay chạy thẳng, không có menu.
+const ONE_MODE = new Set(["cut_adj", "storage_risk"]);
 const MODE = { incremental: "Gia tăng", full: "Toàn bộ" };
 const STATUS = { ok: ["Đã áp dụng", "ok"], held: ["Chờ Admin", "pause"], skipped: ["Bỏ qua", "skipped"], error: ["Lỗi", "error"] };
 const TONE = { ok: "ok", held: "held", skipped: "skipped", error: "error" };
@@ -79,16 +81,26 @@ function renderStatus(s) {
   $("paused").hidden = s.config?.enabled !== false;
 }
 
+function renderProblems(s) {
+  const problems = Array.isArray(s.problems) ? s.problems : [];
+  $("problems").hidden = !problems.length;
+  $("problems-list").innerHTML = problems.map(item => `<li>${esc(item)}</li>`).join("");
+}
+
 function renderLast(s) {
   const last = s.last || {};
   const running = s.running?.kind || null;
-  $("last").innerHTML = ["sku", "group_uid"].map(kind => {
+  const kinds = Array.isArray(s.kinds) && s.kinds.length ? s.kinds : ["sku", "group_uid"];
+  $("last").innerHTML = kinds.map(kind => {
     const item = last[kind];
     const spinning = running === kind;
+    const button = ONE_MODE.has(kind)
+      ? `<button type="button" data-run="${kind}" data-mode="incremental"${running ? " disabled" : ""}>${spinning ? ico("loader", "spin") : ico("play")}Chạy ngay</button>`
+      : `<button type="button" data-run-toggle="${kind}" aria-haspopup="menu" aria-expanded="false"${running ? " disabled" : ""}>${spinning ? ico("loader", "spin") : ico("play")}Chạy ngay${ico("down")}</button>
+        <div class="menu" role="menu" data-menu="${kind}" hidden><button type="button" role="menuitem" data-run="${kind}" data-mode="incremental">Gia tăng</button><button type="button" role="menuitem" data-run="${kind}" data-mode="full">Toàn bộ</button></div>`;
     return `<div class="last-row" data-kind="${kind}">
-      <div class="head"><span>${KIND[kind]}</span>${item ? `<span class="sub">${esc(hhmmDate(item.at))}</span>${chip(item.status)}` : '<span class="sub">Chưa có lượt</span>'}</div>
-      <div class="runwrap"><button type="button" data-run-toggle="${kind}" aria-haspopup="menu" aria-expanded="false"${running ? " disabled" : ""}>${spinning ? ico("loader", "spin") : ico("play")}Chạy ngay${ico("down")}</button>
-        <div class="menu" role="menu" data-menu="${kind}" hidden><button type="button" role="menuitem" data-run="${kind}" data-mode="incremental">Gia tăng</button><button type="button" role="menuitem" data-run="${kind}" data-mode="full">Toàn bộ</button></div></div>
+      <div class="head"><span>${esc(KIND[kind] || kind)}</span>${item ? `<span class="sub">${esc(hhmmDate(item.at))}</span>${chip(item.status)}` : '<span class="sub">Chưa có lượt</span>'}</div>
+      <div class="runwrap">${button}</div>
       ${item?.message ? `<div class="msg">${esc(item.message)}</div>` : ""}
     </div>`;
   }).join("");
@@ -104,6 +116,7 @@ function renderLog(s) {
 
 function render(s) {
   state = s;
+  renderProblems(s);
   renderSession(s);
   renderDevice(s);
   renderStatus(s);
@@ -181,7 +194,11 @@ $("last").addEventListener("click", event => {
     const mode = run.dataset.mode;
     state = { ...state, running: { kind } };
     renderLast(state);
-    act({ type: "AUTO_RUN_NOW", kind, mode });
+    const err = $("run-err");
+    err.hidden = true;
+    send({ type: "AUTO_RUN_NOW", kind, mode }).then(response => {
+      if (response && response.ok === false) { err.textContent = response.error || response.result?.message || "Chưa chạy được"; err.hidden = false; }
+    }).finally(refresh);
   }
 });
 document.addEventListener("click", event => {

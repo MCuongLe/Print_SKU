@@ -1,0 +1,92 @@
+// Tự động Cắt Group UID · Đối chiếu ADJ (Extension 0.10.7, 22/10/2026): đọc lịch sử Cut kho WH - MATERIAL - MTG trên WMS rồi nạp
+// wms_group_uid_cut_import bằng phiên Admin của Extension. Chép ĐÚNG luồng nút "Đọc WMS" của web (syncFromWms trong
+// <script id="cut-adj-reconcile"> của index.html): cùng tham số trang, cùng phép kiểm, cùng gộp/sắp/chia phần, cùng payload RPC.
+// Khác web (cố ý): tên tệp WMS_AUTO_<máy>_<giờ>[_i].json (web: WMS_API_WH_MATERIAL_…); mốc phủ lấy bằng rpc wms_cut_coverage
+// (sync_auto_v2.sql, cùng biểu thức coverage với cut_group_uid_reconcile) thay vì bản đối chiếu đang mở trên màn; không PING_WMS
+// (auto-sync tự tìm/ghim tab); kiểm kiểu dữ liệu trang trước khi dùng. Test: tests/cut_adj_core.cjs so payload với chính mã web.
+//
+// Hợp đồng (người gọi = auto-sync.js):
+//   run({ sendTab, rpc, device, now, onProgress }) → Promise<{ total, cutRows, newRows, changedRows, unchangedRows,
+//                                                               from, until, readFrom, to, full, parts }>
+//   * sendTab(type, payload) → Promise<data>: gửi lệnh tới tab WMS (ở đây chỉ GET_GROUP_UID_HISTORY_PAGE), trả `data` của phản hồi
+//     {ok:true,data}; phản hồi lỗi / không có tab / quá giờ thì NÉM (giữ error.code để auto-sync phân loại).
+//   * rpc(name, args) → Promise<data>: POST `${url}/rest/v1/rpc/${name}` với apikey + Authorization: Bearer <JWT Admin của Extension>,
+//     body = JSON args; HTTP lỗi hoặc thân không phải JSON → ném `result.message || "Supabase HTTP <status>"`; thân {ok:false,error}
+//     → ném error.message; {ok:true,data} → trả `data` (giống adminRpc của web). Gọi: wms_cut_coverage {} → null | {from,until,…};
+//     wms_group_uid_cut_import {p_file_name,p_file_sha256,p_total_rows,p_data_from,p_data_until,p_rows} → {cutRows,newRows,…}.
+//   * device: tên máy (Tùy chọn Extension); now(): epoch ms (mặc định Date.now); onProgress({phase:"read",page,totalPages} |
+//     {phase:"save",part,parts,rows}) tuỳ chọn.
+//   Lỗi đọc (trang lặp, tổng đổi giữa trang, đọc thiếu dòng, ngoài kho 1177, quá 400 trang, tab lỗi) → ném TRƯỚC mọi lần nạp.
+//   Lỗi nạp ở phần i > 1 thì các phần trước đã nạp (như web; nạp lại chồng không nhân đôi: khoá UID + giờ Cut).
+(function (root) {
+  const WAREHOUSE_ID = "1177";
+  const PAGE_SIZE = 500;
+  const MAX_PAGES = 400;
+  const PART_ROWS = 5000;
+  const OVERLAP_MS = 30 * 60000;
+
+  function stampOf(to) { return to.replace(/[-:.TZ]/g, "").slice(0, 14); }
+  function fileName(device, stamp, index, parts) {
+    const tag = String(device ?? "").replace(/[^A-Za-z0-9_-]/g, "").slice(0, 30) || "EXT";
+    return `WMS_AUTO_${tag}_${stamp}${parts > 1 ? `_${index + 1}` : ""}.json`;
+  }
+  async function sha256(value) {
+    const digest = await root.crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+    return [...new Uint8Array(digest)].map(b => b.toString(16).padStart(2, "0")).join("");
+  }
+
+  async function run({ sendTab, rpc, device = "", now = () => Date.now(), onProgress } = {}) {
+    if (typeof sendTab !== "function" || typeof rpc !== "function") throw new Error("Thiếu hàm gửi lệnh tab WMS hoặc gọi Supabase");
+    const show = info => { if (onProgress) { try { onProgress(info); } catch { /* chỉ để hiển thị */ } } };
+    const cov = await rpc("wms_cut_coverage", {});
+    if (cov != null && (typeof cov !== "object" || (cov.until != null && !Number.isFinite(Date.parse(cov.until))))) {
+      throw new Error("Mốc phủ lịch sử WMS không hợp lệ");
+    }
+    const to = new Date(now()).toISOString(), from = cov?.until ? new Date(Date.parse(cov.until) - OVERLAP_MS).toISOString() : null;
+    const params = { size: PAGE_SIZE, to, ...(from ? { from } : {}) };
+    // Đọc tới khi gặp trang thiếu dòng, không chỉ tin tổng số trang (API không trả tổng thì extension lấy số dòng của trang làm
+    // tổng, totalPages = 1). Tổng > 1 trang là tổng thật: kiểm không đổi giữa các trang và khớp số dòng đã đọc.
+    const byKey = new Map();
+    let total = 0, totalPages = 1, read = 0, dataFrom = "", dataUntil = "", lastSig = "";
+    for (let page = 1; ; page += 1) {
+      if (page > MAX_PAGES) throw new Error(`Lịch sử WMS vượt ${MAX_PAGES} trang; hãy nạp ZIP/XLSX`);
+      show({ phase: "read", page, totalPages: page <= totalPages ? totalPages : null });
+      const result = await sendTab("GET_GROUP_UID_HISTORY_PAGE", { ...params, page });
+      if (!result || typeof result !== "object" || (result.rows != null && !Array.isArray(result.rows))) {
+        throw new Error(`WMS trả trang lịch sử ${page} không hợp lệ`);
+      }
+      if (String(result.warehouseId || "") !== WAREHOUSE_ID) throw new Error("Extension trả dữ liệu ngoài phạm vi kho WH - MATERIAL - MTG");
+      const size = Number(result.size) || params.size, count = Number(result.sourceRows) || 0, pageTotal = Number(result.total) || 0;
+      if (page === 1) { total = pageTotal; totalPages = Number(result.totalPages) || 1; }
+      else if (total > size && (pageTotal !== total || Number(result.totalPages) !== totalPages)) throw new Error("Phạm vi lịch sử WMS thay đổi trong lúc đọc; hãy chạy lại");
+      const rows = result.rows || [];
+      const keys = rows.map(row => `${row.group_uid_code}|${row.cut_at}`), sig = `${count}|${result.rangeFrom}|${result.rangeTo}|${keys.join(",")}`;
+      if (page > 1 && count && sig === lastSig) throw new Error("WMS trả lặp lại cùng một trang lịch sử; hãy nạp ZIP/XLSX");
+      lastSig = sig; read += count;
+      if (result.rangeFrom && (!dataFrom || result.rangeFrom < dataFrom)) dataFrom = result.rangeFrom;
+      if (result.rangeTo && (!dataUntil || result.rangeTo > dataUntil)) dataUntil = result.rangeTo;
+      rows.forEach((row, i) => byKey.set(keys[i], row));
+      if (page >= totalPages && count < size) break;
+    }
+    if (total > params.size && read !== total) throw new Error(`Đọc được ${read}/${total} dòng lịch sử WMS; hãy chạy lại`);
+    total = read;
+    const cuts = [...byKey.values()].sort((a, b) => String(a.cut_at).localeCompare(String(b.cut_at))), parts = [];
+    if (cuts.length) for (let i = 0; i < cuts.length; i += PART_ROWS) parts.push(cuts.slice(i, i + PART_ROWS)); else parts.push([]);
+    const out = { cutRows: 0, newRows: 0, changedRows: 0, unchangedRows: 0 };
+    const stamp = stampOf(to), sentFrom = dataFrom || from || to, sentUntil = dataUntil || to;
+    for (let i = 0; i < parts.length; i += 1) {
+      const part = parts[i];
+      show({ phase: "save", part: i + 1, parts: parts.length, rows: cuts.length });
+      const saved = await rpc("wms_group_uid_cut_import", {
+        p_file_name: fileName(device, stamp, i, parts.length), p_file_sha256: await sha256(JSON.stringify(part)), p_total_rows: total,
+        p_data_from: sentFrom, p_data_until: sentUntil, p_rows: part,
+      });
+      for (const key of Object.keys(out)) out[key] += Number(saved?.[key] || 0);
+    }
+    return { total, ...out, from: sentFrom, until: sentUntil, readFrom: from, to, full: !from, parts: parts.length };
+  }
+
+  const api = { run, fileName, WAREHOUSE_ID, MAX_PAGES, PART_ROWS };
+  if (typeof module !== "undefined" && module.exports) module.exports = api;
+  else root.CutAdjCore = api;
+})(typeof self !== "undefined" ? self : globalThis);

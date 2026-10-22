@@ -235,6 +235,22 @@ const expectBar = (info, tag) => {
       assert.match(warn, /Bản chụp đã cũ/);
       assert.match(warn, /Lệch \d+ dòng/, "số dòng đã lưu không khớp số dòng WMS đã đọc");
       assert.match(warn, /dòng chưa có ngày\b/, "dòng thiếu ngày được nêu số lượng");
+      // 22/10/2026: Extension 0.10.7 tự đọc mỗi 2 giờ 07:00–19:30 (giờ VN) → quá 250 phút trong khung đó = ô "Cập nhật lúc" đỏ.
+      assert.equal(await page.locator("#sr-read-at").evaluate(el => el.parentElement.dataset.alert), "true", "bản chụp 30 giờ trước: ngừng");
+      assert.match(await page.locator("#sr-read-rel").innerText(), /^Ngừng · /, "không chỉ báo bằng màu (góp ý Codex ảnh)");
+      if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/03-rui-ro-luu-tru-ngung-${page.viewportSize().width}.png` });
+      const stale = await page.evaluate(() => {
+        const f = window.PrintSkuAutoStale.storageRisk, real = Date.now, at = (d, h, m = 0) => Date.UTC(2026, 9, d, h - 7, m);
+        const check = (now, readAt) => { Date.now = () => now; try { return f(readAt); } finally { Date.now = real; } };
+        return [
+          check(at(22, 12), at(22, 7)),      // 07:00 → 12:00 = 300 phút trong khung
+          check(at(22, 12), at(22, 9)),      // 180 phút
+          check(at(22, 8), at(21, 19)),      // 19:00 hôm qua → 08:00: 30 + 60 phút (đêm không tính)
+          check(at(22, 11, 30), at(21, 19)), // 30 + 270 phút
+          check(at(22, 12), NaN),
+        ];
+      });
+      assert.deepEqual(stale, [true, false, false, true, false], "chỉ đếm phút trong khung tự động 07:00–19:30");
       assert.deepEqual(errors, []);
       await context.close();
     }

@@ -17,6 +17,10 @@
   const CUT_WAREHOUSE_ID = "1177"; // WH - MATERIAL - MTG
   const MOVE_ACTION = "4"; // Transfer location trong Group UID History
 
+  // 0.10.7: lý do lỗi cho đồng bộ tự động (auto-sync.js xét theo reason, không theo câu chữ): session = hết phiên / chưa đăng nhập
+  // (bỏ qua), denied = mất quyền, network = mạng/máy chủ WMS (lỗi).
+  function withReason(error, reason) { error.reason = reason; return error; }
+
   function auth() {
     let store = {};
     try { store = JSON.parse(localStorage.getItem("auth_store") || "{}"); } catch { /* báo lỗi bên dưới */ }
@@ -26,7 +30,7 @@
     try { company = JSON.parse(company); } catch { /* giữ chuỗi gốc */ }
     if (Array.isArray(company)) company = company.map(value => value?.id ?? value?.value ?? value).filter(Boolean).join(",");
     else if (company && typeof company === "object") company = company.id ?? company.value ?? company.company_id ?? "";
-    if (!token) throw new Error("Phiên WMS đã hết hạn; hãy đăng nhập lại");
+    if (!token) throw withReason(new Error("Phiên WMS đã hết hạn; hãy đăng nhập lại"), "session");
     return { token: String(token), company: String(company || "") };
   }
 
@@ -46,18 +50,18 @@
         response = await fetch(url, { headers, credentials: "omit" });
       } catch {
         if (attempt < 2) { await new Promise(resolve => setTimeout(resolve, 350 * (attempt + 1))); continue; }
-        throw new Error("WMS tạm ngắt kết nối; hãy tải lại tab WMS rồi thử lại");
+        throw withReason(new Error("WMS tạm ngắt kết nối; hãy tải lại tab WMS rồi thử lại"), "network");
       }
-      if (response.status === 401 || response.status === 403) throw new Error(deniedMessage || "Phiên WMS đã hết hạn hoặc không có quyền đọc dữ liệu");
+      if (response.status === 401 || response.status === 403) throw withReason(new Error(deniedMessage || "Phiên WMS đã hết hạn hoặc không có quyền đọc dữ liệu"), response.status === 401 ? "session" : "denied");
       if (response.status === 204) return { count: 0, page: 1, size: 500, records: [] };
       if ((response.status === 429 || response.status >= 500) && attempt < 2) {
         await new Promise(resolve => setTimeout(resolve, 350 * (attempt + 1)));
         continue;
       }
-      if (!response.ok) throw new Error(`WMS trả mã ${response.status}`);
+      if (!response.ok) throw withReason(new Error(`WMS trả mã ${response.status}`), "network");
       return response.json();
     }
-    throw new Error("WMS tạm ngắt kết nối; hãy thử lại");
+    throw withReason(new Error("WMS tạm ngắt kết nối; hãy thử lại"), "network");
   }
 
   async function readPage(payload) {
@@ -368,7 +372,7 @@
     const failure = message.type === "GET_STOCK_IMPORT_EXPORT_PAGE" ? "IMPORT_EXPORT_READ_FAILED" : message.type === "GET_INTERNAL_TRANSFER" ? "INTERNAL_TRANSFER_READ_FAILED" : message.type.startsWith("GET_SKU_COUNT_") ? "SKU_COUNT_READ_FAILED" : "GROUP_UID_READ_FAILED";
     readers[message.type](message.payload || {})
       .then(data => sendResponse({ ok: true, data }))
-      .catch(error => sendResponse({ ok: false, error: { code: failure, message: (auditCore || core)?.clean(error?.message || error, 300) || "Không đọc được dữ liệu WMS" } }));
+      .catch(error => sendResponse({ ok: false, error: { code: failure, message: (auditCore || core)?.clean(error?.message || error, 300) || "Không đọc được dữ liệu WMS", ...(error?.reason ? { reason: error.reason } : {}) } }));
     return true;
   });
 })();

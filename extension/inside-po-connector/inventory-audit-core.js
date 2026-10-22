@@ -4,6 +4,11 @@
   const clean = (value, limit = 500) => String(value ?? "").replace(/\s+/g, " ").trim().slice(0, limit);
   const fold = value => clean(value).toLowerCase().normalize("NFD").replace(/\p{M}/gu, "").replace(/[^a-z0-9]+/g, " ").trim();
   const recordsOf = payload => Array.isArray(payload?.records) ? payload.records : Array.isArray(payload?.data) ? payload.data : [];
+  // 0.10.7 (review R8a, cùng mẫu G13): không thấy khoá danh sách = WMS đổi dạng phản hồi → lỗi, không lưu bản chụp 0 dòng.
+  // 204 của WMS đã được wms-bridge đổi thành {records: []} nên vẫn hợp lệ.
+  const requireList = (payload, label) => {
+    if (!Array.isArray(payload?.records) && !Array.isArray(payload?.data)) throw new Error(`WMS đổi dạng dữ liệu ${label} (không thấy danh sách); hãy báo để cập nhật Extension`);
+  };
   const finite = value => Number.isFinite(Number(value)) ? Number(value) : 0;
 
   function selectWarehouses(payload, requestedNames = DEFAULT_WAREHOUSES) {
@@ -27,6 +32,7 @@
   }
 
   function normalizeApprovedPage(payload) {
+    requireList(payload, "kiểm kê");
     const rows = recordsOf(payload).filter(row => clean(row.status_name, 40).toUpperCase() === "APPROVED").map(row => ({
       checklistId: Number(row.checklist_id) || null,
       planId: Number(row.plan_id) || null,
@@ -42,6 +48,7 @@
   }
 
   function normalizeInventoryPage(payload) {
+    requireList(payload, "tồn kho");
     const sourceRows = recordsOf(payload);
     const rows = sourceRows.map(row => {
       // Stock Location đã gộp theo SKU/vị trí. count_inbin là tồn trạng thái In-BIN;
@@ -71,6 +78,7 @@
   // Báo cáo Import/Export của WMS: type 1 = nhập, 2 = xuất. current_quantity là tồn của SKU ngay sau dòng đó (có thể trống).
   // Giờ lấy từ created_at_tz (có múi giờ); created_at của WMS là giờ địa phương không kèm múi giờ.
   function normalizeImportExportPage(payload) {
+    requireList(payload, "nhập xuất");
     const sourceRows = recordsOf(payload);
     const rows = sourceRows.map(row => {
       const type = Number(row.type);

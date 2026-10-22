@@ -30,7 +30,9 @@ const DEFAULT_THRESHOLDS: Record<string, Record<string, number>> = {
   group_uid: { maxChanges: 3000, maxMissing: 0, maxIssues: 0 },
   sku: { maxUpdated: 500, maxAdded: 500, maxMissing: 20, maxOrphaned: 0 },
 };
-const AUTO_KINDS = new Set(["sku", "group_uid"]);
+// cut_adj (lịch sử Cut WMS cho Đối chiếu ADJ) và storage_risk (Kiểm kê 2 kho + UID tạm) từ sync_auto_v2.sql / Extension 0.10.7:
+// chỉ dùng lease/release ở đây (dữ liệu ghi thẳng qua RPC Admin), không có xem trước / ngưỡng.
+const AUTO_KINDS = new Set(["sku", "group_uid", "cut_adj", "storage_risk"]);
 const LEASE_TTL_SECONDS = 900;
 // holder = tên máy (≤ 60) + "#" + mã máy (Extension 0.10.0) → tối đa 80 ký tự, khớp sync_auto_lease.
 const HOLDER_MAX = 80;
@@ -512,6 +514,16 @@ function configView(row: Json | null): Json {
     thresholds, updatedAt: row?.updated_at ?? null, updatedBy: row?.updated_by ?? null,
   };
 }
+// Mốc lượt tự động gần nhất kết thúc (hoàn tất / giữ lại) của từng loại, mọi máy: Extension 0.10.7 dùng làm "còn sống" cho cảnh báo
+// ngừng (máy thiếu tab vẫn biết máy khác đang đồng bộ). Đọc lỗi thì trả {} để cấu hình vẫn dùng được.
+async function lastFinishedByKind(): Promise<Json> {
+  try {
+    const rows = await fetchAll("sync_auto_leases?select=kind,last_finished_at");
+    return Object.fromEntries(rows.filter(row => row.last_finished_at).map(row => [String(row.kind), row.last_finished_at]));
+  } catch {
+    return {};
+  }
+}
 // Cấu hình chung đồng bộ tự động. set chỉ nhận enabled (boolean) và intervalMinutes (15–180).
 async function autoConfig(request: Request, user: { id: string }, body: Json): Promise<Response> {
   if (body.set !== undefined) {
@@ -534,7 +546,7 @@ async function autoConfig(request: Request, user: { id: string }, body: Json): P
     const response = await db("sync_auto_settings?on_conflict=singleton", { method: "POST", headers: { Prefer: "resolution=merge-duplicates,return=minimal" }, body: JSON.stringify({ singleton: true, ...patch }) });
     await jsonResponse(response, "Lưu cấu hình tự động");
   }
-  return reply(request, 200, { ok: true, data: configView(await autoSettings()), meta: { updatedAt: new Date().toISOString(), schemaVersion: 1 } });
+  return reply(request, 200, { ok: true, data: { ...configView(await autoSettings()), lastFinishedAt: await lastFinishedByKind() }, meta: { updatedAt: new Date().toISOString(), schemaVersion: 1 } });
 }
 // Giãn cách giữa các máy: lượt theo lịch gửi cooldownSeconds (nhịp − 2 phút); thiếu / sai → 0 (như cũ). Tối đa 180 phút.
 function cooldownOf(value: unknown): number { const seconds = Math.floor(Number(value)); return Number.isFinite(seconds) ? Math.min(Math.max(seconds, 0), 10800) : 0; }

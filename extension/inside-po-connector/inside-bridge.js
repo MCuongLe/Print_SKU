@@ -27,13 +27,18 @@
     { id: "964", name: "Nguyên liệu nhận Gia công" }
   ];
 
+  // 0.10.7: reason cho đồng bộ tự động (session = hết phiên → bỏ qua; network → lỗi), xem wms-bridge.js.
+  const withReason = (error, reason) => { error.reason = reason; return error; };
+
   async function fetchDocument(url) {
-    const response = await fetch(url, { credentials: "include" });
-    if (!response.ok) throw new Error(`Inside trả mã ${response.status}`);
+    let response;
+    try { response = await fetch(url, { credentials: "include" }); }
+    catch (error) { throw withReason(new Error(`Không kết nối được Inside (${clean(error?.message || error)})`), "network"); }
+    if (!response.ok) throw withReason(new Error(`Inside trả mã ${response.status}`), response.status === 401 ? "session" : "network");
     const html = await response.text();
     const doc = new DOMParser().parseFromString(html, "text/html");
     const loginForm = doc.querySelector('input[type="password"], form[action*="login"], #login-form');
-    if (loginForm || /login|sign in/i.test(doc.title || "")) throw new Error("Phiên Inside đã hết hạn; hãy đăng nhập lại");
+    if (loginForm || /login|sign in/i.test(doc.title || "")) throw withReason(new Error("Phiên Inside đã hết hạn; hãy đăng nhập lại"), "session");
     return doc;
   }
 
@@ -213,8 +218,14 @@
     const comboCutoff = full ? "" : skuCore.comboCutoffKey(payload?.cutoff);
     // Toàn bộ: từng nhóm hàng tuần tự (mỗi nhóm 6 trang song song) để không dồn hơn 40 yêu cầu lên Inside cùng lúc.
     const groups = [];
-    if (full) for (const category of SKU_CATEGORIES) groups.push(await fetchAllProducts(category));
-    else groups.push(...await Promise.all(SKU_CATEGORIES.map(category => fetchChangedProducts(category, cutoff))));
+    if (full) {
+      // 0.10.7 (soát 22/10, G1): danh sách xếp Modified giảm dần — SKU sửa trong lúc đọc nhảy lên trang đầu đã đọc rồi và bị thiếu
+      // (Edge sẽ coi là rời nhóm, tự lưu trữ). Ghi mốc trước khi đọc (lùi 15 phút phòng đồng hồ máy lệch Inside), đọc xong đọc lại
+      // phần đổi từ mốc và gộp sau cùng (bản đọc lại thắng).
+      const since = skuCore.cutoffKey(new Date(Date.now() - 15 * 60 * 1000).toISOString());
+      for (const category of SKU_CATEGORIES) groups.push(await fetchAllProducts(category));
+      groups.push(...await Promise.all(SKU_CATEGORIES.map(category => fetchChangedProducts(category, since))));
+    } else groups.push(...await Promise.all(SKU_CATEGORIES.map(category => fetchChangedProducts(category, cutoff))));
     const normalBySku = new Map();
     groups.flat().forEach(row => normalBySku.set(row.sku, row));
     const comboData = full ? await fetchAllComboLinks() : await fetchChangedComboLinks(comboCutoff);
@@ -291,7 +302,7 @@
     if (message.type === "GET_SKU_SYNC_DATA") {
       getSkuSyncData(message.payload || {})
         .then(data => sendResponse({ ok: true, data }))
-        .catch(error => sendResponse({ ok: false, error: { code: "SKU_SYNC_READ_FAILED", message: clean(error?.message || error) } }));
+        .catch(error => sendResponse({ ok: false, error: { code: "SKU_SYNC_READ_FAILED", message: clean(error?.message || error), ...(error?.reason ? { reason: error.reason } : {}) } }));
       return true;
     }
     const poCode = clean(message.payload?.poCode);

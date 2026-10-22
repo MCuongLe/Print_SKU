@@ -82,11 +82,15 @@ const ROW = {
   assert.equal(result.ok, false);
   assert.match(result.error.message, /Admin/);
   assert.equal(fetchImpl.calls.length, 1, "401 không được thử lại");
+  assert.equal(result.error.reason, "session", "0.10.7: 401 = hết phiên (đồng bộ tự động bỏ qua)");
   fetchImpl = sequence(reply(403, {}));
   result = await ask(load({ fetchImpl }), "GET_GROUP_UID_PAGE");
   assert.equal(result.ok, false);
   assert.match(result.error.message, /Group UID/);
   assert.equal(fetchImpl.calls.length, 1);
+  assert.equal(result.error.reason, "denied", "0.10.7: 403 = mất quyền (đồng bộ tự động báo lỗi)");
+  result = await ask(load({ fetchImpl: sequence(reply(503, {}), reply(503, {}), reply(503, {})) }), "GET_GROUP_UID_PAGE");
+  assert.deepEqual([result.ok, result.error.reason], [false, "network"], "0.10.7: hết lượt thử lại 5xx = lỗi mạng/máy chủ");
 
   // Hết phiên WMS: báo "đăng nhập lại" ngay, không gọi fetch và không bị nhầm thành lỗi mạng
   for (const type of ["GET_GROUP_UID_PAGE", "GET_GROUP_UID_HISTORY_PAGE", "GET_GROUP_UID_MOVES_PAGE"]) {

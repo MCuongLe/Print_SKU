@@ -270,8 +270,12 @@ const expectBar = (info, tag, ratio) => {
       assert.deepEqual(await page.locator('#ss-strip').evaluate(strip => [...strip.children].map(c => c.id || c.className)), ['ss-strip-done', '', 'ss-strip-full', 'ss-strip-auto', 'as-histcell'], 'dải 5 ô, ô Tự động đứng ngay trước ô Lịch sử');
       assert.equal((await cell.locator(':scope > span').innerText()).trim(), 'Tự động');
       assert.match(await page.locator('#ss-auto-text').innerText(), /^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}$/);
-      assert.match(await page.locator('#ss-auto-note').innerText(), /^may-test · \d+ (phút|giờ|ngày) trước$/);
+      // 22/10/2026: lượt tự động gần nhất 200 phút trước > 2 nhịp + 10 phút (70) → ô đỏ "Ngừng".
+      assert.match(await page.locator('#ss-auto-note').innerText(), /^Ngừng · may-test · \d+ (phút|giờ|ngày) trước$/);
       assert.equal(await cell.getAttribute('data-stale'), 'false');
+      assert.equal(await cell.getAttribute('data-alert'), 'true');
+      assert.equal(await cell.evaluate(c => getComputedStyle(c).backgroundColor), 'rgb(255, 244, 242)', 'ngừng: ô Tự động đỏ nhạt');
+      if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/01-sku-sync-ngung-${page.viewportSize().width}.png` });
       const toggle = page.locator('#ss-auto-toggle');
       assert.equal((await toggle.innerText()).trim(), '', 'nút chỉ icon, không chữ');
       assert.equal(await toggle.getAttribute('aria-label'), 'Tạm dừng tự động');
@@ -283,6 +287,7 @@ const expectBar = (info, tag, ratio) => {
       await page.waitForFunction(() => document.getElementById('ss-strip-auto').dataset.stale === 'true');
       assert.deepEqual(autoBodies.at(-1), { action: 'auto-config', set: { enabled: false } });
       assert.equal((await page.locator('#ss-auto-note').innerText()).trim(), 'Admin đã tạm dừng');
+      assert.equal(await cell.getAttribute('data-alert'), 'false', 'Admin tạm dừng là chủ ý: không báo ngừng');
       assert.equal(await toggle.getAttribute('aria-label'), 'Tiếp tục tự động');
       assert.equal(await toggle.getAttribute('title'), 'Tiếp tục tự động');
       assert.equal(await cell.evaluate(c => getComputedStyle(c).backgroundColor), 'rgb(255, 250, 235)', 'tạm dừng: ô tự động vàng');

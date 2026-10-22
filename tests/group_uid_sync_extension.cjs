@@ -125,4 +125,9 @@ for (const [type, code] of [["WMS_COUNTING_PLAN", "100001"], ["INTERNAL_TRANSFER
 for (const bad of ["PO-1", "12345", "1".repeat(41), "10001 2345678", ["100000001"], 10012608011632991, -100000001, 1000000.5]) {
   assert.equal("purchase_order" in poRow("PURCHASE_ORDER", bad), false, `PO sai dạng ${JSON.stringify(bad)} → bỏ khoá (không xoá nhầm)`);
 }
+// 0.10.7 (soát 22/10, G13): WMS đổi khoá danh sách → trước đây ra 0 dòng + tổng 0 mà vẫn "đủ" (gia tăng bỏ sót im lặng). Nay ném lỗi.
+assert.throws(() => core.normalizePage({ data: { list: [raw] }, total: 1 }), /WMS đổi dạng dữ liệu Group UID/);
+assert.throws(() => core.normalizePage({ count: 0 }), /WMS đổi dạng dữ liệu Group UID/);
+assert.equal(core.normalizePage({ count: 0, page: 1, size: 500, records: [] }).rows.length, 0, "204 (WMS không có dòng) vẫn hợp lệ");
+assert.equal(core.normalizePage({ data: { items: [], total: 0 } }).total, 0, "danh sách rỗng đúng khoá vẫn hợp lệ");
 console.log("group_uid_sync_extension: ok");
