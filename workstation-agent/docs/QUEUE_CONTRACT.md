@@ -50,10 +50,12 @@ Backend chuẩn nằm ở `supabase/print_queue_v1.sql`. Agent gọi Supabase RP
 
 ```json
 {
-  "version": "0.7.0",
-  "capabilities": ["sku:v1", "group_uid:v1", "location:v1", "location:name-optional"]
+  "version": "0.10.1",
+  "capabilities": ["sku:v1", "sku:v2", "group_uid:v1", "location:v1", "location:name-optional"]
 }
 ```
+
+`sku:v2` (0.10.1, 22/10/2026): tem Phụ liệu in ở KIỂM TRA ĐẦU VÀO — lệnh `type: "sku"`, `templateVersion: 2`, mỗi item thêm `po` (≤ 20 ký tự chữ, số, `. _ / -`, khoảng trắng) và `receivedDate` (`dd/mm/yyyy`), cả hai được để trống (khung để ghi bút); không in `quantity`. Sai mẫu thì từ chối cả lệnh. Hàng đợi chỉ giao lệnh v2 cho agent khai `sku:v2` (migration `print_sku_po_v1`), agent cũ để lệnh nằm chờ.
 
 
 ## Fabric Relaxation (đã bỏ từ agent 0.9.0)

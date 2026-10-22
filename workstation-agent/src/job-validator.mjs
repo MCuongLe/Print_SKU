@@ -61,19 +61,24 @@ export function normalizeJob(input) {
 
   let normalizedPayload = {};
   if (type === "sku") {
+    if (templateVersion !== 1 && templateVersion !== 2) errors.push("Phiên bản tem SKU không được hỗ trợ");
+    // v2 (0.10.1, tem Phụ liệu): giữ PO + ngày nhận, kiểm như tem Group UID; v1 giữ nguyên (bỏ trường lạ).
     const normalizeSku = (item) => ({
       sku: rawCode(item.sku),
       productName: cleanText(item.productName, 180),
       quantity: cleanText(item.quantity, 40),
       printedDate: cleanText(item.printedDate, 20),
+      ...(templateVersion === 2 ? { po: String(item.po ?? "").trim(), receivedDate: String(item.receivedDate ?? "").trim() } : {}),
       copies: validCopies(item.copies ?? 1) || 0
     });
+    const skuExtraErrors = (item, where) => (templateVersion === 2 ? uidExtraErrors(item, where) : []);
     if (Array.isArray(payload.items)) {
       const items = payload.items.slice(0, 100).map(normalizeSku);
       if (!items.length) errors.push("Danh sách SKU đang trống");
       items.forEach((item, index) => {
         if (!SKU_PATTERN.test(item.sku)) errors.push(`SKU dòng ${index + 1} không hợp lệ`);
         if (!item.productName) errors.push(`Thiếu tên sản phẩm dòng ${index + 1}`);
+        errors.push(...skuExtraErrors(item, ` dòng ${index + 1}`));
         if (!item.copies) errors.push(`Số bản dòng ${index + 1} không hợp lệ`);
       });
       const totalCopies = items.reduce((sum, item) => sum + item.copies, 0);
@@ -84,6 +89,7 @@ export function normalizeJob(input) {
       delete normalizedPayload.copies;
       if (!SKU_PATTERN.test(normalizedPayload.sku)) errors.push("SKU không hợp lệ");
       if (!normalizedPayload.productName) errors.push("Thiếu tên sản phẩm");
+      errors.push(...skuExtraErrors(normalizedPayload, ""));
     }
   }
 

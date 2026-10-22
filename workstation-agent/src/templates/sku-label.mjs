@@ -1,6 +1,6 @@
 import { qrRects } from "./qr.mjs";
 import { escapeXml, formatDate, formatQuantity, LABEL_WIDTH, svgDocument, wrapText } from "./common.mjs";
-import { estimateTextWidth, fitFooter } from "./text-layout.mjs";
+import { estimateTextWidth, fitFooter, fitTextBlock, maxLinesForSize } from "./text-layout.mjs";
 
 // Hằng số bố cục dùng chung với `maxLinesForSize` trong text-layout.mjs — MỘT
 // nguồn sự thật duy nhất. Đổi khoảng đệm ở đây thì phải đổi luôn layout truyền
@@ -22,7 +22,34 @@ export const SKU_LABEL_MAX_WIDTH_PX = 296; // vùng chữ: x=12 → x≈308
 // 40 có đỉnh ở y≈435, vẫn cách mép dưới vạch kẻ 3 dot — có test giữ bất biến này.
 export const QUANTITY_TOP_RATIO = 0.75;
 
-export function renderSkuLabel(payload) {
+// Tem SKU phiên bản 2 (0.10.1, 22/10/2026) — tem Phụ liệu in ở KIỂM TRA ĐẦU VÀO: giữa SKU và vạch kẻ có khung hai hàng
+// "PO: …" / "Ngày nhận: …" (nhãn thường, giá trị đậm), không in số lượng (chỉ ngày in góc phải). Khung cố định
+// y=357→421 nên tên còn tối đa 5 dòng cỡ 22/20, 6 dòng cỡ 18/16 (v1: 8). PO/ngày trống thì vẫn vẽ khung + nhãn để ghi bút.
+export const SKU_V2_BOX_LAYOUT = {
+  left: 12, right: 308, top: 357, bottom: 421, divider: 389, // viền 2 chấm trong khung x=12→308
+  padding: 10, labelSize: 16, labelGap: 8, rowBaselines: [382, 414],
+  valueSizes: [26, 24, 22, 20, 18, 16, 14, 12]
+};
+// Giới hạn dòng tên của v2: tính như v1 nhưng "vạch" là mép trên khung (maxLinesForSize trong text-layout.mjs).
+export const SKU_V2_NAME_LAYOUT = { ...SKU_LABEL_LAYOUT, lineY: SKU_V2_BOX_LAYOUT.top, lineOffset: 10 };
+
+function poDateRows(payload) {
+  const b = SKU_V2_BOX_LAYOUT;
+  const rows = [["PO:", String(payload.po ?? "").trim()], ["Ngày nhận:", String(payload.receivedDate ?? "").trim()]];
+  const labelX = b.left + b.padding;
+  return `<rect x="${b.left + 1}" y="${b.top + 1}" width="${b.right - b.left - 2}" height="${b.bottom - b.top - 2}" rx="5" fill="none" stroke="#000" stroke-width="2"/>` +
+    `<line x1="${b.left + 1}" y1="${b.divider}" x2="${b.right - 1}" y2="${b.divider}" stroke="#000" stroke-width="2"/>` +
+    rows.map(([label, value], index) => {
+      const y = b.rowBaselines[index];
+      const valueX = Math.ceil(labelX + estimateTextWidth(label, b.labelSize) + b.labelGap);
+      const size = fitTextBlock([value], b.right - b.padding / 2 - valueX, { sizes: b.valueSizes });
+      return `<text x="${labelX}" y="${y}" font-size="${b.labelSize}">${label}</text>` +
+        (value ? `<text x="${valueX}" y="${y}" font-size="${size}" font-weight="700">${escapeXml(value)}</text>` : "");
+    }).join("");
+}
+
+export function renderSkuLabel(payload, { version = 1 } = {}) {
+  const v2 = Number(version) === 2;
   const sku = escapeXml(payload.sku);
   // Ưu tiên dùng kết quả đã đo bề rộng THẬT qua GDI+ (payload.productNameLines
   // + productNameFontSize, tính sẵn ở render.mjs bằng text-metrics.mjs — xem
@@ -31,7 +58,8 @@ export function renderSkuLabel(payload) {
   // định 22, tối đa 8 dòng — giữ nguyên byte-for-byte hành vi trước đây.
   const hasMeasuredLines = Array.isArray(payload.productNameLines) && payload.productNameLines.length > 0;
   const fontSize = hasMeasuredLines ? Number(payload.productNameFontSize) || 22 : 22;
-  const productLines = hasMeasuredLines ? payload.productNameLines : wrapText(payload.productName, 22, 8);
+  // v2 có khung PO/ngày: cách đếm ký tự dự phòng cũng chỉ lấy số dòng v2 (5 ở cỡ 22), không 8 như v1 (review Codex 22/10)
+  const productLines = hasMeasuredLines ? payload.productNameLines : wrapText(payload.productName, 22, v2 ? maxLinesForSize(22, SKU_V2_NAME_LAYOUT) : 8);
   const lineHeight = fontSize + 3;
   const product = productLines.map((line, index) =>
     `<text x="12" y="${34 + index * lineHeight}" font-size="${fontSize}">${escapeXml(line)}</text>`
@@ -42,7 +70,7 @@ export function renderSkuLabel(payload) {
   const qrTop = Math.max(170, 34 + productLines.length * lineHeight + pad);
   const qr = qrRects(payload.sku, { centerX: LABEL_WIDTH / 2, top: qrTop, box: 154 });
   const skuY = qrTop + qr.size + skuOffset;
-  const quantityText = formatQuantity(payload.quantity);
+  const quantityText = v2 ? "" : formatQuantity(payload.quantity);
   const dateText = String(payload.printedDate || formatDate());
   // Cỡ chữ đã đo thật (payload.footerFit, tính ở render.mjs) — không có thì ước lượng.
   const footer = payload.footerFit ?? fitFooter(quantityText, dateText, { measureQuantity: estimateTextWidth, measureDate: estimateTextWidth });
@@ -50,6 +78,7 @@ export function renderSkuLabel(payload) {
     product +
     qr.rects +
     `<text x="160" y="${skuY}" font-size="32" font-weight="700" text-anchor="middle">${sku}</text>` +
+    (v2 ? poDateRows(payload) : "") +
     `<line x1="20" y1="${lineY}" x2="300" y2="${lineY}" stroke="#000" stroke-width="2"/>` +
     (quantityText ? `<text x="20" y="${footerY}" font-size="${footer.quantityFontSize}">${escapeXml(quantityText)}</text>` : "") +
     `<text x="300" y="${footerY}" font-size="${footer.dateFontSize}" text-anchor="end">${escapeXml(dateText)}</text>`

@@ -8,6 +8,17 @@ Màn `#inspection` có thể lấy PO/SKU trực tiếp từ một tab Inside đ
 
 Chrome không cho website tự cài extension. Với bản nội bộ, mỗi người dùng cài một lần bằng **Load unpacked**; khi triển khai rộng nên phát hành bản **Chrome Web Store Unlisted** hoặc để IT cài tập trung bằng **Chrome Enterprise Policy**. Import PO bằng `.xls/.xlsx` vẫn hoạt động khi chưa cài extension.
 
+### In tem Phụ liệu có PO + ngày nhận (22/10/2026)
+
+Thẻ 3 (Danh sách phụ liệu) có nút **In tem** cạnh Xuất biên bản → tấm **In tem phụ liệu** (`#ins-tem`, khối `ins-print-style` / `ins-print-script`):
+mỗi dòng là một **SKU Normal** (Combo đổi sang Normal, Normal ngừng hoạt động bị bỏ, SKU trùng gộp; Combo chưa có Normal thì hỏi lại trước khi in thiếu),
+mặc định 1 tem/SKU (1–200), PO = ô P/O, ngày nhận = ô Rcvd date. Lệnh `type sku`, `templateVersion 2` qua `HasakiSkuIt.enqueue` (≤ 100 SKU, ≤ 500 tem
+một lệnh, cần máy đã kích hoạt). Tem: tên → QR SKU → SKU → khung "PO:" / "Ngày nhận:" → vạch → ngày in, không in số lượng.
+Lỗi khi gửi thì danh sách khoá, nút **Gửi lại** gửi đúng các lệnh cũ (cùng nonce, không in trùng); **Bỏ lần gửi** chỉ hiện khi chắc chắn chưa lệnh nào tới máy chủ.
+Cần **agent 0.10.1** (khai `sku:v2`) và migration `supabase/print_sku_po_v1.sql`; agent cũ thì web báo và không gửi.
+Thứ tự lên: commit → migration → cài agent 0.10.1 → in thử → push. Test: `tests/inspection_print_browser.cjs`, `tests/print_sku_po_sql.cjs`,
+`workstation-agent/tests/sku-po-0101.test.mjs`.
+
 ## Database SKU
 
 Xuất danh sách sản phẩm từ Mastige Inside bằng menu **Download → File**, sau đó nhập file XLSX vào SQLite:

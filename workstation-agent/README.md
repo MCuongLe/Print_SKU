@@ -1,6 +1,15 @@
 # Print SKU UID Agent
 
-Agent Windows độc lập phục vụ ứng dụng Print SKU. Bản 0.10.0 in tem SKU, Group UID và mã vị trí (tem Fabric Relaxation đã bỏ) tem.
+Agent Windows độc lập phục vụ ứng dụng Print SKU. Bản 0.10.1 in tem SKU (kể cả tem Phụ liệu có PO + ngày nhận, `sku:v2`), Group UID và mã vị trí (tem Fabric Relaxation đã bỏ) tem.
+
+## Cập nhật 0.10.1 — tem Phụ liệu có PO + ngày nhận (tem SKU phiên bản 2)
+
+- Capability mới `sku:v2`: lệnh `type sku`, `templateVersion 2` (web gửi từ KIỂM TRA ĐẦU VÀO). Tem: tên → QR SKU → SKU đậm →
+  **khung hai hàng "PO:" / "Ngày nhận:"** (nhãn thường, giá trị đậm, PO dài tự thu cỡ) → vạch → ngày in góc phải; **không in số
+  lượng**. Khung cố định y=357→421 nên tên tối đa 5 dòng cỡ 22/20, 6 dòng cỡ 18/16 (tem v1 vẫn 8 dòng).
+- Kiểm `po` / `receivedDate` dùng chung với tem Group UID (sai mẫu → từ chối cả lệnh). Tem SKU v1 không đổi byte nào.
+- **Cần migration `supabase/print_sku_po_v1.sql`** (hàng đợi giao lệnh v2 theo capability). Cài ZIP như 0.10.0 bằng
+  `install-agent.ps1`, rồi in thử một lệnh v2. Test: `tests/sku-po-0101.test.mjs`.
 
 ## Cập nhật 0.10.0 — tem Group UID có số PO, ngày nhận
 
