@@ -9,7 +9,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const CEILING = { color: 429, fontSize: 20, radius: 45, shadow: 83, zIndex: 23 };
+const CEILING = { color: 429, fontSize: 20, radius: 37, shadow: 83, zIndex: 23 };
 const STANDARD = ['type-standard', 'ui-standard', 'app-nav-theme', 'hero-standard', 'tick-standard'];
 const TOKEN_SIZES = [12, 13, 14, 16, 18, 22, 28];
 
@@ -29,8 +29,9 @@ for (const [prop, raw] of all) {
   const val = norm(raw);
   for (const c of val.match(COLOR) || []) got.color.add(c.replace(/\s+/g, ''));
   for (const fsz of fontSizesOf(prop, val)) got.fontSize.add(fsz);
-  if (/^border(-[a-z]+)*-radius$/.test(prop)) got.radius.add(val);
-  if (prop === 'box-shadow') got.shadow.add(val);
+  const token = /^var\(--[a-z0-9-]+\)$/.test(val); // chỉ dùng token (vd. var(--shadow-overlay)) thì không tính là giá trị viết cứng
+  if (/^border(-[a-z]+)*-radius$/.test(prop) && !token) got.radius.add(val);
+  if (prop === 'box-shadow' && !token) got.shadow.add(val);
   if (prop === 'z-index' && /^-?\d+$/.test(val)) got.zIndex.add(val);
 }
 const over = Object.entries(CEILING).filter(([k, max]) => got[k].size > max).map(([k, max]) => `${k}: ${got[k].size} > trần ${max}`);

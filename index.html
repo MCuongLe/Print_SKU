@@ -14990,6 +14990,14 @@ async function rpc(name,args,retry=true){
       #app-nav .an-foot .an-ico { background: #e7eeeb; color: var(--wms-text-2); }
       #app-nav .an-foot .an-item { padding-left: 8px; }
       #app-nav[data-mode="admin"] .an-back + .an-group { padding-top: 16px; border-top: 1px solid #dde7e2; }
+      /* Mở tạm (23/10/2026): thanh đang thu, máy tính có chuột — rê sát mép trái (#app-nav-edge 6 px, chỉ chuột) thì thanh trượt ra ĐÈ lên nội
+         dung (không đẩy: --app-nav-w vẫn 0). z 90: trên màn nội dung (75), dưới hộp mã vạch (95) / camera / khung quét. Rời chuột / Esc thì ẩn.
+         Ngăn kéo (< 1024 px) có nút X; máy tính không cần. */
+      #app-nav-edge, #app-nav .an-close { display: none; }
+      @media screen and (min-width: 1024px) and (hover: hover) and (pointer: fine) {
+        html.app-nav-collapsed #app-nav-edge { display: block; position: fixed; inset: 0 auto 0 0; z-index: 90; width: 6px; }
+        html.app-nav-collapsed.app-nav-peek #app-nav { z-index: 90; visibility: visible; transform: none; box-shadow: var(--shadow-overlay); transition: transform .16s ease, visibility .16s; }
+      }
       @media screen and (min-width: 1024px) and (prefers-reduced-motion: reduce) {
         html.app-nav-anim :is(#app-nav, #barcode-home, #uid-screen, #ins-screen, #storage-risk-screen, .cut-screen, #root, #root .fixed.inset-x-0.bottom-0, .ss-screen) { transition: none; }
       }
@@ -15023,7 +15031,7 @@ async function rpc(name,args,retry=true){
         const nav = document.createElement("nav");
         nav.id = "app-nav";
         nav.setAttribute("aria-label", "Chức năng");
-        nav.innerHTML = `<div class="an-scroll"></div><div class="an-foot" hidden>${item("data-admin-logout", "Đăng xuất", ICON.logout)}</div>`;
+        nav.innerHTML = `<button type="button" class="an-close" aria-label="Đóng menu">${SV('<path d="M18 6 6 18"/><path d="m6 6 12 12"/>')}</button><div class="an-scroll"></div><div class="an-foot" hidden>${item("data-admin-logout", "Đăng xuất", ICON.logout)}</div>`;
         document.body.prepend(nav);
         const backdrop = document.createElement("button");
         backdrop.type = "button";
@@ -15107,6 +15115,7 @@ async function rpc(name,args,retry=true){
         let animTimer = 0;
         const setCollapsed = (value, save) => {
           if (save) { clearTimeout(animTimer); document.documentElement.classList.add("app-nav-anim"); animTimer = setTimeout(() => document.documentElement.classList.remove("app-nav-anim"), 260); }
+          document.documentElement.classList.remove("app-nav-peek"); // mở tạm chỉ là tạm: thu / mở hẳn thì bỏ
           document.documentElement.classList.toggle("app-nav-collapsed", value);
           document.querySelectorAll(".an-toggle").forEach(paintToggle);
           if (save) try { localStorage.setItem(KEY, value ? "1" : "0"); } catch (_) {}
@@ -15115,17 +15124,92 @@ async function rpc(name,args,retry=true){
         try { saved = localStorage.getItem(KEY) === "1"; } catch (_) {}
         setCollapsed(saved, false);
 
+        // Mép trái cho "mở tạm" (bên dưới) — tạo trước để các hàm dưới đây dùng
+        const edge = document.createElement("div");
+        edge.id = "app-nav-edge";
+        edge.setAttribute("aria-hidden", "true");
+        document.body.insertBefore(edge, nav);
+        // Nút thu gọn đang nằm trên cùng (bỏ qua thanh / nền / mép đang phủ) — chỗ trả focus khi nút mở cũ đã bị React vẽ lại
+        const visibleToggle = () => {
+          const skip = [nav, backdrop, edge];
+          skip.forEach(el => { el.style.pointerEvents = "none"; });
+          try { return [...document.querySelectorAll(".an-toggle")].find(b => { const r = b.getBoundingClientRect(); return r.width && document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)?.closest(".an-toggle") === b; }) || null; }
+          finally { skip.forEach(el => { el.style.pointerEvents = ""; }); }
+        };
+        // Ngăn kéo (< 1024 px) là hộp thoại: mở thì nền inert, focus vào mục đang mở, Tab quay vòng; Esc / nền / nút X đóng và trả focus về
+        // nút ☰ (23/10/2026). Ctrl + \ thu / mở thanh (máy tính) hoặc ngăn kéo.
+        let opener = null, inerted = [];
+        const setMobileOpen = (on, from = null, restore = true) => {
+          const was = mobileOpen();
+          document.documentElement.classList.toggle("app-nav-mobile-open", on);
+          if (on) { nav.setAttribute("role", "dialog"); nav.setAttribute("aria-modal", "true"); } else { nav.removeAttribute("role"); nav.removeAttribute("aria-modal"); }
+          if (on && !was) {
+            inerted = [...document.body.children].filter(el => el !== nav && el !== backdrop && el !== edge && !el.inert && !/^(SCRIPT|STYLE|TEMPLATE|LINK)$/.test(el.tagName));
+            inerted.forEach(el => { el.inert = true; });
+          }
+          if (!on && was) { inerted.forEach(el => { el.inert = false; }); inerted = []; }
+          document.querySelectorAll(".an-toggle").forEach(paintToggle);
+          if (on && !was) {
+            opener = from;
+            // cuộn danh sách tới mục đang mở (màn thấp: mục ở cuối nằm ngoài vùng thấy) rồi mới focus
+            const current = nav.querySelector('.an-item[aria-current="page"]') || nav.querySelector(".an-item");
+            if (current) {
+              const box = current.getBoundingClientRect(), view = scroll.getBoundingClientRect();
+              if (box.top < view.top || box.bottom > view.bottom) scroll.scrollTop += box.top + box.height / 2 - (view.top + view.height / 2);
+              current.focus({ preventScroll: true });
+            }
+          }
+          if (!on && was) {
+            if (restore) (opener?.isConnected && !opener.closest("[inert]") ? opener : visibleToggle())?.focus({ preventScroll: true });
+            else if (nav.contains(document.activeElement)) document.activeElement.blur(); // đóng vì chuyển màn: không để focus ở menu sắp ẩn
+            opener = null;
+          }
+        };
+        // Thanh đang thu (máy tính, CHUỘT): rê sát mép trái thì "mở tạm" — thanh trượt ra ĐÈ lên nội dung; rời chuột / Esc / rời cửa sổ thì ẩn.
+        // Không đổi trạng thái đã nhớ: thu gọn vẫn là ẩn hẳn (quyết định 11/10). Chạm (pointerType khác mouse) không mở tạm.
+        let peekTimer = 0;
+        const peeking = () => document.documentElement.classList.contains("app-nav-peek");
+        const setPeek = on => {
+          clearTimeout(peekTimer);
+          const show = on && collapsed() && !mobileNav();
+          // thanh sắp ẩn: không để focus kẹt trong phần tử bị giấu — trả về nút thu gọn đang hiện, không có thì bỏ focus
+          if (!show && nav.contains(document.activeElement)) { const t = visibleToggle(); if (t) t.focus({ preventScroll: true }); else document.activeElement.blur(); }
+          document.documentElement.classList.toggle("app-nav-peek", show);
+        };
+        edge.addEventListener("pointerenter", event => { if (event.pointerType !== "mouse") return; clearTimeout(peekTimer); peekTimer = setTimeout(() => setPeek(true), 120); });
+        edge.addEventListener("pointerleave", () => { if (!peeking()) clearTimeout(peekTimer); });
+        nav.addEventListener("mouseenter", () => clearTimeout(peekTimer));
+        nav.addEventListener("mouseleave", () => { if (!peeking()) return; clearTimeout(peekTimer); peekTimer = setTimeout(() => setPeek(false), 250); });
+        // Hộp thoại CHẶN đang mở (vd. hộp chọn Combo): Esc là của nó. <dialog open> không chặn (sheet ẩn của Chuyển đổi đơn vị) không tính.
+        const modalOpen = () => { try { return !!document.querySelector("dialog:modal"); } catch (_) { return [...document.querySelectorAll("dialog[open]")].some(d => d.getBoundingClientRect().width > 0); } };
+        addEventListener("blur", () => setPeek(false));
+        document.addEventListener("visibilitychange", () => { if (document.hidden) setPeek(false); });
+        document.addEventListener("keydown", event => {
+          if (event.key === "Escape") {
+            if (event.defaultPrevented || modalOpen()) return; // lớp trên (hộp thoại chặn, camera) đã nhận Esc
+            if (mobileOpen()) { event.preventDefault(); setMobileOpen(false); } else if (peeking()) setPeek(false);
+            return;
+          }
+          if (event.ctrlKey && !event.altKey && !event.metaKey && (event.key === "\\" || event.code === "Backslash")) {
+            event.preventDefault();
+            if (mobileNav()) setMobileOpen(!mobileOpen(), document.activeElement); else setCollapsed(!collapsed(), true);
+            return;
+          }
+          if (event.key === "Tab" && mobileOpen()) {
+            const items = [...nav.querySelectorAll("button:not([disabled])")].filter(button => button.offsetParent !== null);
+            if (!items.length) return;
+            const first = items[0], last = items[items.length - 1];
+            if (!nav.contains(document.activeElement)) { event.preventDefault(); first.focus(); }
+            else if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+            else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+          }
+        });
         document.addEventListener("click", event => {
           if (!event.target.closest(".an-toggle")) return;
-          if (mobileNav()) {
-            document.documentElement.classList.toggle("app-nav-mobile-open");
-            document.querySelectorAll(".an-toggle").forEach(paintToggle);
-          } else setCollapsed(!collapsed(), true);
+          if (mobileNav()) setMobileOpen(!mobileOpen(), event.target.closest(".an-toggle"));
+          else setCollapsed(!collapsed(), true);
         });
-        backdrop.addEventListener("click", () => {
-          document.documentElement.classList.remove("app-nav-mobile-open");
-          document.querySelectorAll(".an-toggle").forEach(paintToggle);
-        });
+        backdrop.addEventListener("click", () => setMobileOpen(false));
         // Bấm vào khoảng trống của trang thì thu thanh trái (máy tính, thanh đang mở) — không cần bấm nút thu gọn
         const INTERACTIVE = 'button, a[href], input, select, textarea, label, summary, video, canvas, [role="button"], [role="tab"], [role="checkbox"], [role="switch"], [contenteditable=""], [contenteditable="true"], [tabindex]:not([tabindex="-1"])';
         const SCREENS = "#barcode-home, .cut-screen, .uid-screen, .storage-risk, .ss-screen, #root";
@@ -15150,10 +15234,12 @@ async function rpc(name,args,retry=true){
         nav.addEventListener("click", event => {
           const button = event.target.closest("button");
           if (!button) return;
+          if (button.classList.contains("an-close")) { setMobileOpen(false); return; }
           if (button.dataset.anTile) document.getElementById(button.dataset.anTile)?.click();
           else if (button.dataset.anHash) location.hash = button.dataset.anHash;
           else if (button.dataset.anRoute === "home") location.hash = "#home";
-          if (mobileNav()) document.documentElement.classList.remove("app-nav-mobile-open");
+          if (mobileNav()) setMobileOpen(false, null, false);
+          else setPeek(false);
         });
 
         Object.entries(TITLE).forEach(([id, tileId]) => {
@@ -15171,8 +15257,9 @@ async function rpc(name,args,retry=true){
         // Hộp đăng nhập Admin che toàn màn: thanh bên không nhận phím Tab phía sau
         new MutationObserver(() => { nav.inert = document.documentElement.classList.contains("admin-auth-lock"); })
           .observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
-        addEventListener("hashchange", () => { document.documentElement.classList.remove("app-nav-mobile-open"); build(); setTimeout(markCurrent, 300); });
-        addEventListener("resize", () => { document.documentElement.classList.remove("app-nav-mobile-open"); document.querySelectorAll(".an-toggle").forEach(paintToggle); });
+        addEventListener("hashchange", () => { setMobileOpen(false, null, false); build(); setTimeout(markCurrent, 300); });
+        let wasMobile = mobileNav();
+        addEventListener("resize", () => { const m = mobileNav(); if (m !== wasMobile) { wasMobile = m; setMobileOpen(false, null, false); setPeek(false); } document.querySelectorAll(".an-toggle").forEach(paintToggle); });
         addEventListener("print-sku-admin-ready", () => { adminReady = true; build(); });
         addEventListener("print-sku-admin-logout", () => { adminReady = false; build(); });
         build();
@@ -15231,15 +15318,25 @@ async function rpc(name,args,retry=true){
         #app-nav-backdrop { position: fixed; inset: 0; z-index: 998; visibility: hidden; border: 0; background: rgba(7, 27, 21, .38); opacity: 0; transition: opacity .18s ease, visibility .18s; }
         html.app-nav-mobile-open #app-nav-backdrop { visibility: visible; opacity: 1; }
         #app-nav { position: fixed; inset: 0 auto 0 0; z-index: 999; display: flex; width: min(84vw, 320px); border-right: 1px solid #dce7e3; background: #edf3f0; transform: translateX(-105%); transition: transform .2s ease; }
+        /* 23/10/2026: màu chữ riêng (trước thừa hưởng chữ sáng của trang → tiêu đề nhóm gần như vô hình) + màu nhóm như máy tính; nút X đóng */
+        #app-nav { color: var(--wms-text); }
+        #app-nav .an-group[data-tone="ops"] { --tone: #1f63b5; --ink: #174c8c; }
+        #app-nav .an-group[data-tone="check"] { --tone: #d9861f; --ink: #8a5b00; }
+        #app-nav .an-group[data-tone="admin"] { --tone: #5b3fb8; --ink: #4a2f9e; }
+        #app-nav .an-close { display: grid; position: absolute; top: 8px; right: 8px; z-index: 1; place-items: center; width: var(--target-min); height: var(--target-min); padding: 0; border: 0; border-radius: var(--radius-control); background: transparent; color: var(--wms-text-2); cursor: pointer; }
+        #app-nav .an-close svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+        #app-nav :is(.an-item, .an-close):focus-visible { outline: 2px solid var(--tone, #005f41); outline-offset: 2px; }
+        /* Đóng = ẩn hẳn SAU khi trượt ra (không còn nhận focus / Tab — Codex vòng 2); mở thì hiện ngay */
+        html:not(.app-nav-mobile-open) #app-nav { visibility: hidden; transition: transform .2s ease, visibility 0s .2s; }
         html.app-nav-mobile-open #app-nav { transform: translateX(0); }
         #app-nav .an-scroll { display: flex; flex: 1; flex-direction: column; gap: 18px; min-height: 0; overflow-y: auto; padding: 24px 14px 16px; }
-        #app-nav .an-head { display: flex; align-items: center; gap: 9px; margin: 0 0 6px 4px; font-size: 14px; font-weight: 800; }
+        #app-nav .an-head { display: flex; align-items: center; gap: 9px; margin: 0 0 6px 4px; font-size: 14px; font-weight: var(--fw-bold); }
         #app-nav .an-head::before { content: ""; width: 14px; height: 14px; border-radius: 4px; background: var(--tone, #087a5b); }
         #app-nav .an-list { display: grid; gap: 2px; margin-left: 10px; padding-left: 12px; border-left: 2px solid #d9e4df; }
         #app-nav .an-item { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 0 12px; border: 0; border-radius: 12px; background: transparent; color: #4f625b; font: 600 14px/1.2 var(--wms-font); text-align: left; }
         #app-nav .an-item::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: #9db2a9; }
-        #app-nav .an-item[aria-current="page"] { background: #fff; color: #075f44; box-shadow: 0 4px 14px rgba(23, 37, 31, .08); }
-        #app-nav .an-item[aria-current="page"]::before { background: #087a5b; }
+        #app-nav .an-item[aria-current="page"] { background: #fff; color: var(--ink, #075f44); box-shadow: 0 4px 14px rgba(23, 37, 31, .08); }
+        #app-nav .an-item[aria-current="page"]::before { background: var(--tone, #087a5b); }
         #app-nav .an-foot { display: block; padding: 10px 14px 20px; border-top: 1px solid #dce7e3; }
         #app-nav .an-foot[hidden] { display: none; }
         #app-nav .an-foot .an-item::before { display: none; }
