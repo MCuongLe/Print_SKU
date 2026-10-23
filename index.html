@@ -10908,6 +10908,9 @@ async function rpc(name,args,retry=true){
           return { data, source: "server" };
         }
         window.PrintSkuSnapshotCache = Object.freeze({ get, put, drop, load, label });
+        // Đợt B (23/10/2026): UID tạm đổi khoá sang "uid_temp:v2" — bản cũ lưu trước khi che email (khoá "uid_temp" / "uid_temp:admin")
+        // xoá một lần khi trang mở (không xoá trong mỗi lượt tải: thêm thao tác IndexedDB làm lệch thứ tự lượt tải).
+        drop("uid_temp"); drop("uid_temp:admin");
       })();
     </script>
     <script id="inventory-audit-script">
@@ -11370,8 +11373,7 @@ async function rpc(name,args,retry=true){
           // bản lưu trước khi che email (khoá "uid_temp") còn email đầy đủ mà máy chủ vẫn xác nhận "unchanged" theo run id): hiện ngay bản trên máy, máy chủ xác nhận / gửi bản mới.
           const live=()=>gen===loadGen&&!state.busy&&(!state.loaded||fromCache||fromSaved);
           try{
-            const snap=window.PrintSkuSnapshotCache,viewer=await window.PrintSkuAdminAccess?.viewerToken?.()||"";
-            snap?.drop?.("uid_temp");snap?.drop?.("uid_temp:admin");
+            const snap=window.PrintSkuSnapshotCache,viewer=window.PrintSkuAdminAccess?.peekToken?.()?await window.PrintSkuAdminAccess.viewerToken()||"":"";
             const got=snap?await snap.load({key:viewer?"uid_temp:v2:admin":"uid_temp:v2",rpc:"uid_temp_snapshot",fallback:"uid_temp_overview",call:(name,args)=>rpcCall(name,args,viewer),onCached:shown?null:data=>{if(live()&&applySaved(data)){fromCache=true;fromSaved=true}}}):{data:await rpcCall("uid_temp_overview",{},viewer),source:"server"};
             if(!live())return;
             const same=state.loaded&&state.runId&&got.data?.run?.id===state.runId;

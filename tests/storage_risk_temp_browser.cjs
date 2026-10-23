@@ -310,6 +310,8 @@ const expectBar = (info, tag) => {
     // ---- 2c) Nạp bản lưu lỗi một lần: mở lại tab thì tự thử lại (không kẹt ở câu lỗi) ----
     {
       const { context, page, errors, ctrl } = await open(browser, { view: "temp" });
+      // Chờ lượt tải đầu xong rồi mới cho lần đọc sau lỗi (không thì lượt đầu — chậm hơn vì dọn cache cũ — nhận lỗi thay lượt sau tải lại).
+      await page.waitForFunction(() => /Chưa có bản đọc UID tạm/.test(document.getElementById("srt-status").innerText));
       ctrl.overviewFail = 1;
       await page.reload();
       await page.waitForFunction(() => document.getElementById("srt-status").dataset.tone === "error");

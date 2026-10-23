@@ -20,7 +20,7 @@ assert.ok(html.includes("rpc('cut_group_uid_reconcile',args,await window.PrintSk
 assert.match(html, /const viewer = await window\.PrintSkuAdminAccess\?\.viewerToken\?\.\(\) \|\| "";\s+const data = await anonRpc\("group_uid_moves_lookup", \{[^}]*\}, viewer\);/, 'Lịch sử Group UID gửi phiên Admin');
 assert.ok(html.includes('key:viewer?"uid_temp:v2:admin":"uid_temp:v2"') && html.includes('call:(name,args)=>rpcCall(name,args,viewer)') && html.includes('rpcCall("uid_temp_overview",{},viewer)'), 'UID tạm: phiên Admin + khoá cache riêng');
 // Review vòng 1 (Fable #2): bản cache trước khi che email (khoá "uid_temp" / "uid_temp:admin") bị xoá, khoá mới v2
-assert.ok(html.includes('snap?.drop?.("uid_temp");snap?.drop?.("uid_temp:admin");'), 'UID tạm: xoá khoá cache cũ');
+assert.ok(html.includes('drop("uid_temp"); drop("uid_temp:admin");'), 'UID tạm: xoá khoá cache cũ một lần khi mở trang');
 // Review vòng 1 (Fable #4): lệnh bị Admin huỷ → cầu nối IN TEM SKU báo "loi" (không "dang_in" mãi); câu NOT_QUEUED theo trạng thái
 assert.ok(html.includes('job.status === "failed" || job.status === "cancelled" ? "loi"'), 'pr_trangthai: cancelled → loi');
 // Vòng 2 (A1): mark_queued trả JOB_CLOSED → Cắt UID bỏ nonce đang giữ (bấm In lại thành lệnh mới); lỗi khác giữ nonce
