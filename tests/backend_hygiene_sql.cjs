@@ -87,7 +87,10 @@ assert.ok(sql.indexOf("revoke all on function public.print_job_cancel(uuid)") < 
   assert.equal(expire.length, 2, "claim: hai nhánh hết lease");
   const early = expire.find(s => /where status in \('claimed','rendering'\) and lease_expires_at<now\(\)/.test(s));
   const sent = expire.find(s => /where status in \('sending','spooling'\) and lease_expires_at<now\(\)/.test(s));
-  assert.ok(early && /agent_id=null/.test(early) && /error_code='LEASE_EXPIRED'/.test(early), "claimed/rendering → queued, agent_id = null như cũ");
+  assert.ok(early && /error_code='LEASE_EXPIRED'/.test(early), "claimed/rendering → queued");
+  // Review vòng 1 (Fable G3): lệnh từng gửi byte (print_events sending/spooling) rồi được chính agent đó nhận lại, lại hết lease
+  // ở claimed/rendering → vẫn GIỮ agent_id (máy khác không có sổ tay sẽ in trùng); chưa từng gửi → null như cũ.
+  assert.ok(/agent_id=case when exists \(select 1 from public\.print_events e where e\.job_id=print_jobs\.id and e\.event_type in \('sending','spooling'\)\) then agent_id else null end/.test(early), "claimed/rendering: giữ agent_id nếu từng gửi byte");
   assert.ok(sent && !/agent_id\s*=/.test(sent) && /lease_expires_at=null/.test(sent), "sending/spooling → queued, GIỮ agent_id");
   assert.ok(!/'claimed','rendering','sending','spooling'\) and lease_expires_at<now\(\)/.test(b), "không còn nhánh hết lease gộp bốn trạng thái");
   assert.match(b, /select \* into v_job from public\.print_jobs where status='queued' and \(agent_id is null or agent_id=p_agent_id\) and \(/, "chỉ nhận lệnh chưa gắn agent hoặc gắn chính agent này");
@@ -134,7 +137,7 @@ assert.ok(!/revoke[^;]*on all (tables|functions)/i.test(sql), "không thu hồi 
 // ---------- (d) mark_queued: p_job_id phải là lệnh group_uid có thật ----------
 {
   const b = fn._cut_group_uid_mark_queued_body.body;
-  assert.match(b, /if not exists \(select 1 from public\.print_jobs j where j\.id=p_job_id and j\.type='group_uid'\) then/);
+  assert.match(b, /where j\.id=p_job_id and j\.type='group_uid' and j\.status not in/);
   assert.ok(b.indexOf("j.type='group_uid'") < b.indexOf("update public.cut_group_uids"), "kiểm trước khi đặt queued");
 }
 
@@ -181,6 +184,20 @@ assert.match(read("supabase/snapshot_cache_v1.sql"), /return jsonb_set\(public\.
 
 // ---------- (j) C3: print_job_cancel chỉ Admin, chỉ lệnh queued ----------
 {
+  // Review vòng 1 (Codex 1 / Fable G1): huỷ lệnh Group UID trả UID đang chờ về 'failed' trong cùng giao dịch (không chờ màn Cắt UID mở).
+  assert.match(fn.print_job_cancel.body, /if v_job\.type = 'group_uid' then\s+update public\.cut_group_uids set print_status = 'failed', updated_at = now\(\) where print_job_id = v_job\.id and print_status = 'queued';\s+end if;/, "huỷ lệnh UID: trả UID về failed");
+  // (d) review vòng 1–2 (Codex 5 / Fable G7 / Codex Đợt 6): tập p_codes BẰNG tập UID trong payload (hai chiều), không NULL/rỗng, lệnh chưa failed/cancelled
+  {
+    const m = fn._cut_group_uid_mark_queued_body.body;
+    assert.match(m, /exists \(select 1 from unnest\(p_codes\) c where nullif\(btrim\(c\),''\) is null\)/, "mark_queued: chặn mã rỗng/NULL");
+    assert.match(m, /j\.status not in \('failed','cancelled'\)/, "mark_queued: không gắn vào lệnh lỗi/đã huỷ");
+    assert.match(m, /not exists \(select 1 from unnest\(x\.uids\) u where nullif\(u,''\) is null\)/, "mark_queued: payload không có UID rỗng");
+    assert.match(m, /not exists \(select 1 from unnest\(p_codes\) c where not \(btrim\(c\) = any \(x\.uids\)\)\)/, "mark_queued: p_codes ⊆ payload");
+    assert.match(m, /not exists \(select 1 from unnest\(x\.uids\) u where not \(u = any \(p_codes\)\)\)/, "mark_queued: payload ⊆ p_codes");
+    assert.ok(!/<> all/.test(m), "không dùng <> all (NULL ba giá trị)");
+  }
+  // (b) chú thích nói đúng giới hạn: per-schema revoke không gỡ EXECUTE mặc định toàn cục của PUBLIC
+  assert.ok(raw.includes("không gỡ EXECUTE mặc định toàn cục của PUBLIC"), "chú thích (b) đúng giới hạn");
   const f = fn.print_job_cancel;
   assert.match(squash(f.head), /^create or replace function public\.print_job_cancel\(p_job_id uuid\) returns jsonb language plpgsql volatile security definer set search_path = '' as$/);
   const b = f.body;

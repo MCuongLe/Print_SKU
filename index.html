@@ -227,7 +227,7 @@
               const result = await jobStatus(command.id);
               if (!result.ok) return legacyResponse({ status: "error", canKhoa: result.error?.code === "ACCESS_DENIED", message: result.error?.message });
               const job = result.data || {};
-              const mapped = job.status === "completed" ? "xong" : job.status === "failed" ? "loi" : job.status === "queued" ? "cho" : "dang_in";
+              const mapped = job.status === "completed" ? "xong" : job.status === "failed" || job.status === "cancelled" ? "loi" : job.status === "queued" ? "cho" : "dang_in";
               return legacyResponse({ status: "success", trangThai: mapped, ghiChu: job.errorMessage || "", truoc: 0 });
             }
             return legacyResponse({ status: "error", message: "Thao tác hàng đợi không được hỗ trợ" });
@@ -10586,7 +10586,7 @@ async function rpc(name,args,retry=true){
           if(response.status===401&&retry){await window.PrintSkuAdminAuth.accessToken();return rpc(name,args,false)}
           const body=await response.json().catch(()=>null);
           if(!response.ok)throw new Error(body?.message||`Supabase HTTP ${response.status}`);
-          if(!body?.ok)throw Object.assign(new Error(body?.error?.message||"Supabase từ chối yêu cầu"),{code:body?.error?.code});
+          if(!body?.ok)throw Object.assign(new Error(body?.error?.message||"Supabase từ chối yêu cầu"),{code:body?.error?.code,status:body?.error?.status});
           return body.data;
         }
         const busy=on=>{$("pj-progress").dataset.busy=String(on);$("pj-refresh").disabled=on;$("pj-top-refresh").disabled=on};
@@ -10690,7 +10690,7 @@ async function rpc(name,args,retry=true){
           cancelling=true;renderFoot();
           let done=false,message="";
           try{await rpc("print_job_cancel",{p_job_id:id});done=true}
-          catch(error){message=error.code==="NOT_QUEUED"?"Lệnh đã được máy in nhận, không huỷ được":error.message||"Không huỷ được lệnh"}
+          catch(error){message=error.code==="NOT_QUEUED"?({completed:"Lệnh đã in xong",failed:"Lệnh đã lỗi",cancelled:"Lệnh đã được huỷ trước đó"})[error.status]||"Máy in đã nhận lệnh, không huỷ được":error.message||"Không huỷ được lệnh"}
           cancelling=false;
           await openJob(id);
           const note=$("pj-d-note");note.dataset.tone=done?"ok":"bad";note.textContent=done?"Đã huỷ lệnh":message;
@@ -11366,11 +11366,13 @@ async function rpc(name,args,retry=true){
         async function load(){
           if(fetched||state.busy||(state.loaded&&!fromSaved)||screen.dataset.view!=="temp"||readFailed||location.hash.replace(/^#/,"").split("&")[0]!==ROUTE)return;
           fetched=true;const gen=++loadGen,shown=state.loaded;let fromCache=false;
-          // Cache trên máy + kiểm phiên bản (snapshot-cache-script, khoá "uid_temp"): hiện ngay bản trên máy, máy chủ xác nhận / gửi bản mới.
+          // Cache trên máy + kiểm phiên bản (snapshot-cache-script, khoá "uid_temp:v2" / Admin "uid_temp:v2:admin" — 23/10/2026 đổi khoá vì
+          // bản lưu trước khi che email (khoá "uid_temp") còn email đầy đủ mà máy chủ vẫn xác nhận "unchanged" theo run id): hiện ngay bản trên máy, máy chủ xác nhận / gửi bản mới.
           const live=()=>gen===loadGen&&!state.busy&&(!state.loaded||fromCache||fromSaved);
           try{
             const snap=window.PrintSkuSnapshotCache,viewer=await window.PrintSkuAdminAccess?.viewerToken?.()||"";
-            const got=snap?await snap.load({key:viewer?"uid_temp:admin":"uid_temp",rpc:"uid_temp_snapshot",fallback:"uid_temp_overview",call:(name,args)=>rpcCall(name,args,viewer),onCached:shown?null:data=>{if(live()&&applySaved(data)){fromCache=true;fromSaved=true}}}):{data:await rpcCall("uid_temp_overview",{},viewer),source:"server"};
+            snap?.drop?.("uid_temp");snap?.drop?.("uid_temp:admin");
+            const got=snap?await snap.load({key:viewer?"uid_temp:v2:admin":"uid_temp:v2",rpc:"uid_temp_snapshot",fallback:"uid_temp_overview",call:(name,args)=>rpcCall(name,args,viewer),onCached:shown?null:data=>{if(live()&&applySaved(data)){fromCache=true;fromSaved=true}}}):{data:await rpcCall("uid_temp_overview",{},viewer),source:"server"};
             if(!live())return;
             const same=state.loaded&&state.runId&&got.data?.run?.id===state.runId;
             // Mất mạng mà màn đã có dữ liệu (vd. Admin vừa lưu lượt mới, hoặc vừa vẽ từ cache): giữ màn, luôn báo chưa nối được máy chủ.

@@ -4,7 +4,7 @@
 -- Vì sao: soát quyền hàm + luồng in + luồng đồng bộ 23/10/2026 tìm ra một loạt lỗ nhỏ gom được vào một migration không phá:
 --   (a) P2  Lệnh in hết lease ở bước sending/spooling (đã gửi byte xuống máy in) về hàng đợi cho agent BẤT KỲ: khi có agent thứ
 --           hai (may-kho-02) sẽ in trùng. BẮT BUỘC chạy trước khi cài may-kho-02.
---   (b) Q2  Quyền mặc định schema public tự cấp EXECUTE / ALL cho anon, authenticated: migration nào quên revoke là lộ hàm.
+--   (b) Q2  Quyền mặc định schema public tự cấp EXECUTE / ALL cho anon, authenticated (grant riêng theo schema của Supabase).
 --   (c) Q4/P3c/P4  print_enqueue_unchecked không giới hạn số dòng / tổng số tem / phiên bản tem cho sku, group_uid (agent mới
 --           từ chối, trigger PO đã ghi lúc INSERT); chặn SKU ngừng so mã chưa btrim.
 --   (d) Q8  cut_group_uid_mark_queued nhận p_job_id tuỳ ý.
@@ -28,8 +28,9 @@
 --   * (a) Lệnh sending/spooling hết lease: về 'queued' nhưng GIỮ agent_id, chỉ agent đó nhận lại (đối chiếu sổ tay, không in
 --     lại); claimed/rendering như cũ. print_jobs_purge (mỗi lần cron gọi, kể cả khi lượt dọn 3 ngày bị bỏ qua) đóng lệnh
 --     'queued' còn agent_id quá 30 phút thành 'failed' SENT_UNCONFIRMED + ghi print_events. Agent in không cần cập nhật.
---   * (b) Hàm / bảng / sequence tạo SAU migration này (bởi postgres) không còn tự cấp cho anon, authenticated: hàm mới cần
---     grant rõ. Thu hồi quyền sequence còn sót của anon, authenticated (web chỉ đọc SKU_Name / user_roles, không ghi bảng trực
+--   * (b) Hàm / bảng / sequence tạo SAU migration này (bởi postgres) không còn nhận grant RIÊNG của anon, authenticated. Lưu ý:
+--     revoke theo schema không gỡ EXECUTE mặc định toàn cục của PUBLIC (tài liệu PostgreSQL, ALTER DEFAULT PRIVILEGES) — hàm mới
+--     VẪN phải `revoke … from public, anon, authenticated` rồi grant rõ (không revoke toàn cục: ảnh hưởng mọi schema, đã chốt). Thu hồi quyền sequence còn sót của anon, authenticated (web chỉ đọc SKU_Name / user_roles, không ghi bảng trực
 --     tiếp; mọi INSERT dùng sequence chạy trong hàm SECURITY DEFINER của postgres). Không đụng service_role.
 --   * (c) Lệnh sku / group_uid sai luật agent bị từ chối INVALID_JOB ngay ở máy chủ (không ghi lệnh, không ghi PO).
 --   * (h) Lưu trữ SKU giữ thêm SKU còn UID Blocked và SKU thành phần (group_uid_products) của UID Available/New/Processing/Blocked.
@@ -58,8 +59,9 @@ declare v_job public.print_jobs; v_cap text[];
 begin
   if not public.print_agent_allowed(p_agent_id,p_agent_token) then return jsonb_build_object('ok',false,'error',jsonb_build_object('code','AGENT_DENIED','message','Agent token không hợp lệ')); end if;
   update public.print_agents set state=coalesce(p_state,'{}'::jsonb),capabilities=coalesce(array(select jsonb_array_elements_text(coalesce(p_state->'capabilities','[]'::jsonb))),'{}'),last_seen_at=now(),updated_at=now() where id=p_agent_id returning capabilities into v_cap;
-  -- Chưa gửi byte xuống máy in (claimed/rendering): về hàng đợi chung như cũ, agent nào cũng nhận lại được.
-  update public.print_jobs set status='queued',agent_id=null,lease_expires_at=null,updated_at=now(),error_code='LEASE_EXPIRED',error_message='Agent trước không hoàn tất trong thời hạn lease' where status in ('claimed','rendering') and lease_expires_at<now();
+  -- Chưa gửi byte xuống máy in (claimed/rendering): về hàng đợi chung như cũ, agent nào cũng nhận lại được — TRỪ lệnh từng gửi
+  -- byte (print_events sending/spooling) rồi được chính agent đó nhận lại để đối chiếu sổ tay: vẫn giữ agent_id (review vòng 1).
+  update public.print_jobs set status='queued',agent_id=case when exists (select 1 from public.print_events e where e.job_id=print_jobs.id and e.event_type in ('sending','spooling')) then agent_id else null end,lease_expires_at=null,updated_at=now(),error_code='LEASE_EXPIRED',error_message='Agent trước không hoàn tất trong thời hạn lease' where status in ('claimed','rendering') and lease_expires_at<now();
   -- Đã gửi byte (sending/spooling): về hàng đợi nhưng GIỮ agent_id, chỉ agent đó nhận lại (đối chiếu sổ tay, không in lại);
   -- agent khác không có sổ tay sẽ in trùng. Quá 30 phút không ai nhận: print_jobs_purge đóng failed SENT_UNCONFIRMED.
   update public.print_jobs set status='queued',lease_expires_at=null,updated_at=now(),error_code='LEASE_EXPIRED',error_message='Agent đã gửi tem nhưng chưa báo hoàn tất trong thời hạn lease, chỉ agent đó được nhận lại' where status in ('sending','spooling') and lease_expires_at<now();
@@ -259,8 +261,16 @@ begin
   if p_job_id is null or coalesce(cardinality(p_codes),0) not between 1 and 100 then
     return jsonb_build_object('ok',false,'error',jsonb_build_object('code','INVALID_PRINT_JOB','message','Lệnh in không hợp lệ'));
   end if;
-  -- p_job_id phải là lệnh in Group UID có thật (web gọi ngay sau print_enqueue), không cho đặt UID "đang in" theo id giả.
-  if not exists (select 1 from public.print_jobs j where j.id=p_job_id and j.type='group_uid') then
+  -- p_job_id phải là lệnh in Group UID có thật (web gọi ngay sau print_enqueue), chưa lỗi / chưa huỷ, và tập mã p_codes BẰNG
+  -- tập UID trong payload (cả hai chiều, không NULL/rỗng) — không gắn UID khác hoặc thiếu UID vào lệnh. Lệnh completed vẫn nhận:
+  -- web gửi lại cùng nonce sau lỗi mạng có thể nhận về lệnh đã in xong, đánh dấu là đúng.
+  if exists (select 1 from unnest(p_codes) c where nullif(btrim(c),'') is null) or not exists (
+       select 1 from public.print_jobs j
+        cross join lateral (select coalesce(array_agg(btrim(i.v->>'groupUid')),'{}') as uids from jsonb_array_elements(public.print_job_items('group_uid', j.payload, j.copies)) i(v)) x
+        where j.id=p_job_id and j.type='group_uid' and j.status not in ('failed','cancelled')
+          and not exists (select 1 from unnest(x.uids) u where nullif(u,'') is null)
+          and not exists (select 1 from unnest(p_codes) c where not (btrim(c) = any (x.uids)))
+          and not exists (select 1 from unnest(x.uids) u where not (u = any (p_codes)))) then
     return jsonb_build_object('ok',false,'error',jsonb_build_object('code','INVALID_PRINT_JOB','message','Lệnh in không hợp lệ'));
   end if;
   select count(*) into v_count from public.cut_group_uids where group_uid_code=any(p_codes) and print_status in ('pending','failed','printed');
@@ -657,6 +667,10 @@ begin
       return jsonb_build_object('ok', false, 'error', jsonb_build_object('code', 'NOT_FOUND', 'message', 'Không tìm thấy lệnh in (có thể đã được dọn)'));
     end if;
     return jsonb_build_object('ok', false, 'error', jsonb_build_object('code', 'NOT_QUEUED', 'message', 'Chỉ huỷ được lệnh đang chờ in', 'status', v_status));
+  end if;
+  -- Lệnh Group UID: trả UID đang chờ in về 'failed' ngay (chọn in lại được), không chờ màn Cắt UID mở để thăm dò.
+  if v_job.type = 'group_uid' then
+    update public.cut_group_uids set print_status = 'failed', updated_at = now() where print_job_id = v_job.id and print_status = 'queued';
   end if;
   insert into public.print_events(job_id, agent_id, event_type, details)
   values (v_job.id, v_job.agent_id, 'cancelled', jsonb_build_object(
