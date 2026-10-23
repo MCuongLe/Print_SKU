@@ -814,6 +814,41 @@
       @media(prefers-reduced-motion:reduce){.pss-spin{animation-duration:2.4s}.pss-guide i{transition:none}}
       @media print{.pss{display:none!important}}
     </style>
+    <script id="scan-cue-script">
+      // Âm báo + rung dùng chung khi quét (23/10/2026, Đợt 4 theo skill UI UX Pro Max): trước đó camera IN TEM SKU, UID blocked, Cấp vải,
+      // Cắt UID mỗi màn một bản sao (tiếng, âm lượng, rung khác nhau; Cắt không rung, UID blocked báo lỗi bằng tiếng cảnh báo). Cùng nghĩa
+      // = cùng tiếng. Gọi PrintSkuScanCue.play("ok" | "warn" | "error" | "blocked" | "qc" | "store", { sound }) — sound=false (nút loa từng
+      // màn tắt): chỉ rung. Không có AudioContext / không rung (iPhone) thì im, không ném lỗi. Test: tests/scan_cue_browser.cjs.
+      (() => {
+        const TONES = {
+          ok: { notes: [[1040, 130]], vibrate: 40 },
+          warn: { notes: [[660, 120], [660, 120, .2]], vibrate: [70, 50, 70] },
+          error: { notes: [[180, 380, 0, .2]], vibrate: [70, 50, 70] },
+          blocked: { notes: [[220, 420, 0, .25], [180, 520, .5, .25]], vibrate: [220, 90, 220, 90, 220] },
+          qc: { notes: [[880, 110], [1320, 110, .16]], vibrate: 40 },
+          store: { notes: [[520, 150]], vibrate: 40 }
+        };
+        // Tên riêng của từng màn → tiếng chung: Cắt UID "cut" = đạt; UID blocked "dup" (quét lại) = cảnh báo, "bad" = lỗi
+        const ALIAS = { cut: "ok", dup: "warn", bad: "error" };
+        let audio = null;
+        const beep = (freq, ms, at = 0, gain = .14) => {
+          audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+          if (audio.state === "suspended") audio.resume(); // Chrome / iOS treo âm tới khi người dùng chạm
+          const o = audio.createOscillator(), g = audio.createGain(), t = audio.currentTime + at;
+          o.frequency.value = freq;
+          g.gain.setValueAtTime(gain, t);
+          g.gain.exponentialRampToValueAtTime(.0001, t + ms / 1000); // tắt dần, không có tiếng "tách"
+          o.connect(g).connect(audio.destination);
+          o.start(t); o.stop(t + ms / 1000 + .02);
+        };
+        const play = (tone, { sound = true } = {}) => {
+          const t = TONES[ALIAS[tone] || tone] || TONES.error;
+          if (sound) try { t.notes.forEach(n => beep(...n)); } catch (_) { /* trình duyệt không cho phát âm */ }
+          try { navigator.vibrate?.(t.vibrate); } catch (_) { /* iPhone không rung */ }
+        };
+        window.PrintSkuScanCue = { play, tones: [...Object.keys(TONES), ...Object.keys(ALIAS)] };
+      })();
+    </script>
     <script id="print-sku-scan-ui">
       (() => {
         // Lớp quét mã SKU dùng chung (01/10/2026). Màn PRINT SKU mở qua component React `ry` trong bundle —
@@ -871,16 +906,6 @@
           if (!response.ok) throw new Error(`HTTP ${response.status}`);
           const rows = await response.json();
           return Array.isArray(rows) && rows[0] ? { sku: String(rows[0].sku), ten: String(rows[0].product_name || "") } : null;
-        };
-        let audio = null;
-        const beep = () => {
-          try {
-            audio = audio || new (window.AudioContext || window.webkitAudioContext)();
-            const osc = audio.createOscillator(), gain = audio.createGain();
-            osc.frequency.value = 1760; gain.gain.value = 0.06;
-            osc.connect(gain).connect(audio.destination);
-            osc.start(); osc.stop(audio.currentTime + 0.09);
-          } catch (_) { /* không có âm thanh thì vẫn còn khung xanh + rung */ }
         };
 
         // check (tuỳ chọn): kiểm tra mã riêng thay cho tra SKU_Name, trả { sku: mã, ten } hoặc null → hỏi
@@ -961,8 +986,7 @@
           const accept = (code, name) => {
             paused = true; state("ok");
             status(name ? `${code} · ${name}` : code, "ok");
-            beep();
-            try { navigator.vibrate?.(60); } catch (_) { /* iPhone không rung */ }
+            window.PrintSkuScanCue.play("ok");
             setTimeout(() => finish(code), 450);
           };
           const reject = (code, offline) => {
@@ -9445,6 +9469,14 @@ var FSK_CORE = (function () {
         --wms-text: #17251f;
         --wms-muted: #60736b;
         --wms-border: #d9e2de;
+        /* 23/10/2026 (Đợt 3 UI UX Pro Max): token chung còn thiếu của các khối chuẩn — chữ phụ đậm (chữ nhỏ trên nền nhạt), chữ/icon
+           trên nền thương hiệu, viền ô tick (≥ 3:1), viền xanh nhạt, vòng focus sáng. CSS mới dùng token, không viết cứng mã màu/cỡ chữ/
+           bo góc (tests/design_tokens_ratchet.cjs chặn tăng số giá trị khác nhau). */
+        --wms-text-2: #4f625b;
+        --wms-on-brand: #ffffff;
+        --wms-control-border: #6f8f83;
+        --wms-border-accent: #5fae92;
+        --wms-focus-ring: #1aa774;
         /* 23/10/2026: ba màu trạng thái chủ yếu làm màu chữ trên nền nhạt cùng tông → tối hơn cho ≥ 4,5:1 (trước 3,0–4,3:1) */
         --wms-success: #0f6e49;
         --wms-warning: #8a5a00;
@@ -13027,9 +13059,7 @@ async function rpc(name,args,retry=true){
         })().finally(()=>{loadP=null}));
 
         // ---- Âm báo: blocked = 2 tiếng trầm dài + rung dài; đã scan = 2 tiếng giữa; ngoài danh sách = 1 tiếng cao ngắn ----
-        let audio=null;
-        const beep=(f,ms,at=0,g=.18)=>{try{audio=audio||new(window.AudioContext||window.webkitAudioContext)();if(audio.state==='suspended')audio.resume();const o=audio.createOscillator(),gn=audio.createGain(),t=audio.currentTime+at;o.frequency.value=f;gn.gain.setValueAtTime(g,t);gn.gain.exponentialRampToValueAtTime(.0001,t+ms/1000);o.connect(gn).connect(audio.destination);o.start(t);o.stop(t+ms/1000+.02)}catch(_){}};
-        const cue=tone=>{if(S.sound){if(tone==='blocked'){beep(220,420,0,.25);beep(180,520,.5,.25)}else if(tone==='ok')beep(1040,110);else{beep(660,120);beep(660,120,.2)}}try{navigator.vibrate?.(tone==='blocked'?[220,90,220,90,220]:tone==='ok'?25:[70,50,70])}catch(_){}};
+        const cue=tone=>window.PrintSkuScanCue.play(tone,{sound:S.sound}); // bộ chung (scan-cue-script): dup = cảnh báo, bad = lỗi
         const paintSound=()=>{const b=$('ub-sound');b.innerHTML=svg(S.sound?ICON.soundOn:ICON.soundOff);const l=S.sound?'Tắt âm báo':'Bật âm báo';b.setAttribute('aria-pressed',String(S.sound));b.setAttribute('aria-label',l);b.title=l};
         $('ub-sound').addEventListener('click',()=>{S.sound=!S.sound;store.set(K.sound,S.sound?'bat':'tat');paintSound();if(S.sound)cue('ok');$('ub-code').focus()});
 
@@ -13593,9 +13623,7 @@ async function rpc(name,args,retry=true){
         const scannerName=()=>deviceName()||myId;
 
         // ---- Âm báo: tiếng cao = cấp, 2 tiếng giữa = cảnh báo, tiếng trầm = không cấp ----
-        let audio=null;
-        const beep=(freq,ms,at=0,gain=.14)=>{try{audio=audio||new(window.AudioContext||window.webkitAudioContext)();const o=audio.createOscillator(),g=audio.createGain(),t=audio.currentTime+at;o.frequency.value=freq;g.gain.setValueAtTime(gain,t);g.gain.exponentialRampToValueAtTime(.001,t+ms/1000);o.connect(g);g.connect(audio.destination);o.start(t);o.stop(t+ms/1000)}catch(_){}};
-        const cue=tone=>{if(S.sound){if(tone==='ok')beep(1040,130);else if(tone==='warn'){beep(660,120);beep(660,120,.2)}else beep(180,380,0,.2)}try{navigator.vibrate?.(tone==='ok'?25:[70,50,70])}catch(_){}};
+        const cue=tone=>window.PrintSkuScanCue.play(tone,{sound:S.sound}); // bộ chung (scan-cue-script)
         const paintSound=()=>{soundBtn.innerHTML=svg(S.sound?ICON.soundOn:ICON.soundOff,20);const label=S.sound?'Tắt âm báo':'Bật âm báo';soundBtn.setAttribute('aria-pressed',String(S.sound));soundBtn.setAttribute('aria-label',label);soundBtn.title=label};
         soundBtn.addEventListener('click',()=>{S.sound=!S.sound;store.set(K.sound,S.sound?'bat':'tat');paintSound();if(S.sound)cue('ok');code.focus()});
         paintSound();
@@ -14229,9 +14257,7 @@ async function rpc(name,args,retry=true){
         };
 
         // ---- Âm báo: cắt 1 tiếng cao, QC 2 tiếng, lưu trữ 1 tiếng trầm, đã quét 2 tiếng giữa, lỗi tiếng dài ----
-        let audio = null;
-        const beep = (freq, ms, at = 0, gain = .14) => { try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); const o = audio.createOscillator(), g = audio.createGain(); o.frequency.value = freq; g.gain.value = gain; o.connect(g).connect(audio.destination); o.start(audio.currentTime + at); o.stop(audio.currentTime + at + ms / 1000) } catch (_) { /* không có âm thanh thì vẫn có màu + pop-up */ } };
-        const cue = tone => { if (!S.sound) return; if (tone === 'cut') beep(1040, 130); else if (tone === 'qc') { beep(880, 110); beep(1320, 110, .16) } else if (tone === 'store') beep(520, 150); else if (tone === 'warn') { beep(660, 120); beep(660, 120, .2) } else beep(180, 380, 0, .2) };
+        const cue = tone => window.PrintSkuScanCue.play(tone, { sound: S.sound }); // bộ chung (scan-cue-script): cut = đạt, qc, store
         const paintSound = () => { soundBtn.innerHTML = svg(S.sound ? ICON.soundOn : ICON.soundOff, 20); const label = S.sound ? 'Tắt âm báo' : 'Bật âm báo'; soundBtn.setAttribute('aria-pressed', String(S.sound)); soundBtn.setAttribute('aria-label', label); soundBtn.title = label };
         soundBtn.addEventListener('click', () => { S.sound = !S.sound; store.set(K.sound, S.sound ? 'bat' : 'tat'); paintSound(); if (S.sound) cue('cut'); code.focus() });
         paintSound();
@@ -14780,18 +14806,18 @@ async function rpc(name,args,retry=true){
          chữ hoa chỉ ở tiêu đề nhóm trang chủ, đầu bảng và ô mã vị trí. Tem in không đổi: tem là SVG tự ghi Arial,
          chỗ đo chữ cho tem (canvas) vẫn Arial, và khối dưới đây chỉ áp cho màn hình. */
       button, input, select, textarea { font-family: inherit; }
-      b, strong { font-weight: 700; } /* mặc định "bolder" trong chữ đậm sẽ thành 900 */
+      b, strong { font-weight: var(--fw-bold); } /* mặc định "bolder" trong chữ đậm sẽ thành 900 */
       @media screen {
         body { font-variant-numeric: tabular-nums; }
         /* IN TEM SKU + Cấu hình Admin (React/Tailwind sinh sẵn) */
-        #root :is(.text-\[10px\], .text-\[10\.5px\], .text-\[11px\], .text-\[11\.5px\]) { font-size: 12px; }
-        #root .text-\[12\.5px\] { font-size: 13px; }
-        #root .text-\[13\.5px\] { font-size: 14px; }
-        #root .text-\[15px\] { font-size: 16px; }
-        #root :is(.text-\[17px\], .text-xl) { font-size: 18px; }
-        #root .text-2xl { font-size: 22px; }
-        #root :is(.font-bold, .font-extrabold, .font-black) { font-weight: 600; }
-        #root :is(header h1, aside > div:first-child h2):is(.font-bold, .font-extrabold, .font-black) { font-weight: 700; }
+        #root :is(.text-\[10px\], .text-\[10\.5px\], .text-\[11px\], .text-\[11\.5px\]) { font-size: var(--fs-12); }
+        #root .text-\[12\.5px\] { font-size: var(--fs-13); }
+        #root .text-\[13\.5px\] { font-size: var(--fs-14); }
+        #root .text-\[15px\] { font-size: var(--fs-16); }
+        #root :is(.text-\[17px\], .text-xl) { font-size: var(--fs-18); }
+        #root .text-2xl { font-size: var(--fs-22); }
+        #root :is(.font-bold, .font-extrabold, .font-black) { font-weight: var(--fw-semibold); }
+        #root :is(header h1, aside > div:first-child h2):is(.font-bold, .font-extrabold, .font-black) { font-weight: var(--fw-bold); }
         #root .uppercase { text-transform: none; }
         #root [class*="tracking-"] { letter-spacing: 0; }
       }
@@ -14839,38 +14865,38 @@ async function rpc(name,args,retry=true){
         :is(#uid-screen, #ins-screen) .uid-panel__num,
         :is(#ins-screen, #location-screen, #cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen, #find-sku-screen, #unit-converter-screen) .cut-card h2 > span,
         #unit-converter-screen .uc-lookup > summary > span:first-child,
-        #root > main > section > p.items-baseline > b { display: inline-grid; flex: none; place-items: center; width: var(--ui-num); height: var(--ui-num); margin: 0; border-radius: 50%; background: var(--wms-brand, #005f41); color: #fff !important; font-size: var(--ui-num-fs); font-weight: 600; letter-spacing: 0; }
+        #root > main > section > p.items-baseline > b { display: inline-grid; flex: none; place-items: center; width: var(--ui-num); height: var(--ui-num); margin: 0; border-radius: 50%; background: var(--wms-brand, #005f41); color: var(--wms-on-brand) !important; font-size: var(--ui-num-fs); font-weight: var(--fw-semibold); letter-spacing: 0; }
         :is(#find-sku-screen, #unit-converter-screen) .cut-card h2, #unit-converter-screen :is(.uc-data, .uc-result) > h2 { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; }
         :is(#uid-screen, #ins-screen) .uid-panel__head h2, :is(#ins-screen, #location-screen, #cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen, #find-sku-screen, #unit-converter-screen) .cut-card h2,
-        #unit-converter-screen .uc-lookup > summary > strong, #root > main > section > p.items-baseline > span { font-size: 18px; font-weight: 600; }
+        #unit-converter-screen .uc-lookup > summary > strong, #root > main > section > p.items-baseline > span { font-size: var(--fs-18); font-weight: var(--fw-semibold); }
         #root > main > section > p.items-baseline { align-items: center; }
-        .ss-screen .ss-hero h2, #uidhist-screen .ss-hero h2, #inventory-audit-screen .ss-hero h2, #storage-risk-screen .ss-hero h2, #site-control-screen .ss-hero h2 { font-weight: 600; }
+        .ss-screen .ss-hero h2, #uidhist-screen .ss-hero h2, #inventory-audit-screen .ss-hero h2, #storage-risk-screen .ss-hero h2, #site-control-screen .ss-hero h2 { font-weight: var(--fw-semibold); }
         /* Tương phản (axe, WCAG AA ≥ 4,5:1): chữ nhạt của bundle React và thẻ số liệu đang 0 dùng xám #5C6F68 / #60736B thay vì làm mờ */
         button.ss-metric[data-zero=true] { opacity: 1; }
-        button.ss-metric[data-zero=true] :is(span, strong, small) { color: #60736b; }
+        button.ss-metric[data-zero=true] :is(span, strong, small) { color: var(--wms-muted); }
         /* Điều khiển thường: ô nhập */
         :is(#uid-screen, #ins-screen, #location-screen, #cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen, #uid-block-screen, #find-sku-screen, #unit-converter-screen, #storage-risk-screen) .cut-input:not(.fsk-inrow > .cut-input):not(.fsk-stepper > .cut-input),
         #uid-screen :is(#uid-code, .uid-map__grid input, .uid-auto__row input:not([type=number]), .uid-select),
         #ins-screen :is(#ins-po-lookup, .ins-fields input),
         :is(#find-sku-screen, #unit-converter-screen) .fsk-inrow:has(> .cut-input),
-        #root > main > section input.rounded-xl, #root select.rounded-xl { box-sizing: border-box; height: var(--ui-ctl); min-height: 0; border-radius: var(--ui-in-r); font-size: 16px; }
+        #root > main > section input.rounded-xl, #root select.rounded-xl { box-sizing: border-box; height: var(--ui-ctl); min-height: 0; border-radius: var(--ui-in-r); font-size: var(--fs-16); }
         :is(#find-sku-screen, #unit-converter-screen) .fsk-inrow:has(> .cut-input) > .cut-input { height: 100%; min-height: 0; }
-        #root > main > section input.rounded-xl { font-weight: 400; }
+        #root > main > section input.rounded-xl { font-weight: var(--fw-regular); }
         #uidhist-screen .uh-field { min-height: var(--ui-ctl); border-radius: var(--ui-in-r); }
         /* Điều khiển thường: nút hành động */
         :is(#uid-screen, #ins-screen, #location-screen, #cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen, #find-sku-screen, #unit-converter-screen) :is(.cut-primary, .cut-secondary):not(.act-icon--keyboard):not(.cut-tab),
         :is(#uid-screen, #ins-screen) :is(.uid-add__btn, .uid-import, .uid-submit, .uid-map__apply),
         #unit-converter-screen :is(.uc-next-action, .uc-reset-action),
-        #root > main > section button.rounded-full.bg-brand, #uidhist-screen :is(.uh-btn, .uh-run), #inventory-audit-screen :is(.ss-primary, .ss-secondary):not(.as-icon-btn), #site-control-screen :is(.ss-primary, .ss-secondary):not(.as-icon-btn), #storage-risk-screen :is(.ss-primary, .ss-secondary):not(.as-icon-btn), .ss-screen :is(.ss-primary, .ss-secondary):not(.as-icon-btn) { min-height: var(--ui-ctl); border-radius: var(--ui-btn-r); font-size: 16px; font-weight: 600; }
+        #root > main > section button.rounded-full.bg-brand, #uidhist-screen :is(.uh-btn, .uh-run), #inventory-audit-screen :is(.ss-primary, .ss-secondary):not(.as-icon-btn), #site-control-screen :is(.ss-primary, .ss-secondary):not(.as-icon-btn), #storage-risk-screen :is(.ss-primary, .ss-secondary):not(.as-icon-btn), .ss-screen :is(.ss-primary, .ss-secondary):not(.as-icon-btn) { min-height: var(--ui-ctl); border-radius: var(--ui-btn-r); font-size: var(--fs-16); font-weight: var(--fw-semibold); }
         #unit-converter-screen :is(.uc-next-action, .uc-reset-action) small { display: none; }
         #unit-converter-screen #uc-next, #unit-converter-screen #uc-clear { box-sizing: border-box; height: var(--ui-ctl); min-height: 0; padding-block: 0; }
         #unit-converter-screen :is(#uc-next, #uc-clear) .uc-action-icon { width: 24px; height: 24px; }
         /* Điều khiển gọn */
         :is(#cut-group-uid-screen, #xa-vai-screen, #cap-vai-screen, #find-sku-screen) .cut-tab, .as-tab, .ss-screen :is(.pj-type, .pj-day, .pj-search, .as-search),
         #root aside ~ div button:is(.min-h-\[42px\], .min-h-\[38px\]) { min-height: var(--ui-compact); }
-        .as-tab, #root aside ~ div button:is(.min-h-\[42px\], .min-h-\[38px\]) { border-radius: 999px; }
-        .as-tab, .ss-screen .pj-type, #root aside ~ div button:is(.min-h-\[42px\], .min-h-\[38px\]) { font-size: 14px; font-weight: 600; }
-        #root .adm-group { font-size: 18px; font-weight: 600; }
+        .as-tab, #root aside ~ div button:is(.min-h-\[42px\], .min-h-\[38px\]) { border-radius: var(--radius-pill); }
+        .as-tab, .ss-screen .pj-type, #root aside ~ div button:is(.min-h-\[42px\], .min-h-\[38px\]) { font-size: var(--fs-14); font-weight: var(--fw-semibold); }
+        #root .adm-group { font-size: var(--fs-18); font-weight: var(--fw-semibold); }
         /* Nút chỉ có icon: cạnh ô nhập / nút hành động thì vuông bằng điều khiển thường; nằm trong ô thì 44 / 40; thanh công cụ Admin 44 */
         #uid-screen #uid-camera, #cut-group-uid-screen :is(#cut-camera, #cut-keyboard), #unit-converter-screen #uc-camera, #find-sku-screen #fsk-more-open, #xa-vai-screen #xa-vai-keyboard,
         #xa-vai-screen .cut-card[data-panel="scan"] > #xa-vai-keyboard, #root #f-sku-kb, .ss-screen .as-icon-btn, #uidhist-screen .as-icon-btn, #inventory-audit-screen .as-icon-btn, #storage-risk-screen .as-icon-btn, #site-control-screen .as-icon-btn { box-sizing: border-box; width: var(--ui-ctl); min-width: var(--ui-ctl); height: var(--ui-ctl); min-height: 0; padding: 0; }
@@ -14890,7 +14916,7 @@ async function rpc(name,args,retry=true){
       @media screen and (min-width: 1024px) {
         html { --app-nav-w: 264px; }
         html.app-nav-collapsed { --app-nav-w: 0px; }
-        #app-nav { --tone: #005f41; --ink: #005f41; position: fixed; inset: 0 auto 0 0; z-index: 60; display: flex; flex-direction: column; width: 264px; box-sizing: border-box; border-right: 1px solid #dde7e2; background: #edf3f0; color: #17251f; font-family: var(--wms-font); }
+        #app-nav { --tone: var(--wms-brand); --ink: var(--wms-brand); position: fixed; inset: 0 auto 0 0; z-index: 60; display: flex; flex-direction: column; width: 264px; box-sizing: border-box; border-right: 1px solid #dde7e2; background: #edf3f0; color: var(--wms-text); font-family: var(--wms-font); }
         html.app-nav-collapsed #app-nav { visibility: hidden; transform: translateX(-100%); }
         #app-nav svg, .an-toggle svg { flex: none; width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
         #app-nav .an-scroll { display: flex; flex: 1; flex-direction: column; gap: 20px; min-height: 0; overflow-y: auto; padding: 24px 14px 16px; scrollbar-width: thin; scrollbar-color: transparent transparent; }
@@ -14898,22 +14924,22 @@ async function rpc(name,args,retry=true){
         #app-nav .an-group[data-tone="ops"] { --tone: #1f63b5; --ink: #174c8c; }
         #app-nav .an-group[data-tone="check"] { --tone: #d9861f; --ink: #8a5b00; }
         #app-nav .an-group[data-tone="admin"] { --tone: #5b3fb8; --ink: #4a2f9e; }
-        #app-nav .an-head { display: flex; align-items: center; gap: 10px; margin: 0 0 6px 4px; font-size: 14px; font-weight: 700; line-height: 1.2; white-space: nowrap; }
+        #app-nav .an-head { display: flex; align-items: center; gap: 10px; margin: 0 0 6px 4px; font-size: var(--fs-14); font-weight: var(--fw-bold); line-height: 1.2; white-space: nowrap; }
         #app-nav .an-head::before { content: ""; flex: none; width: 14px; height: 14px; border-radius: 4px; background: var(--tone); }
         #app-nav .an-list { display: grid; gap: 2px; margin: 0 0 0 10px; padding: 2px 0 2px 12px; border-left: 2px solid #d9e4df; }
-        #app-nav .an-item { position: relative; display: flex; align-items: center; gap: 12px; width: 100%; min-height: 40px; padding: 0 12px; border: 0; border-radius: 12px; background: transparent; color: #4f625b; font: 400 16px/1.2 var(--wms-font); text-align: left; white-space: nowrap; cursor: pointer; }
+        #app-nav .an-item { position: relative; display: flex; align-items: center; gap: 12px; width: 100%; min-height: 40px; padding: 0 12px; border: 0; border-radius: var(--radius-control); background: transparent; color: var(--wms-text-2); font: var(--fw-regular) var(--fs-16)/1.2 var(--wms-font); text-align: left; white-space: nowrap; cursor: pointer; }
         #app-nav .an-item::before { content: ""; flex: none; width: 6px; height: 6px; border-radius: 50%; background: #9db2a9; }
-        #app-nav .an-item:hover { background: rgba(255, 255, 255, .7); color: #17251f; }
+        #app-nav .an-item:hover { background: rgba(255, 255, 255, .7); color: var(--wms-text); }
         #app-nav .an-item:focus-visible, .an-toggle:focus-visible { outline: 2px solid var(--tone, #005f41); outline-offset: 2px; }
-        #app-nav .an-item[aria-current="page"] { background: #fff; box-shadow: 0 4px 14px rgba(23, 37, 31, .08); color: var(--ink); font-weight: 600; }
+        #app-nav .an-item[aria-current="page"] { background: var(--wms-surface); box-shadow: 0 4px 14px rgba(23, 37, 31, .08); color: var(--ink); font-weight: var(--fw-semibold); }
         #app-nav .an-item[aria-current="page"]::before { background: var(--tone); }
         #app-nav .an-item[aria-current="page"]::after { content: ""; position: absolute; top: 9px; bottom: 9px; left: -14px; width: 3px; border-radius: 3px; background: var(--tone); }
         #app-nav .an-foot { padding: 10px 14px 16px; border-top: 1px solid #dde7e2; }
-        #app-nav .an-foot .an-item { padding-left: 10px; color: #17251f; }
+        #app-nav .an-foot .an-item { padding-left: 10px; color: var(--wms-text); }
         #app-nav .an-foot .an-item::before { display: none; }
         /* Nút thu gọn / mở thanh: đầu thanh trên của từng màn */
         /* :is(#root, body) + !important: thanh trên React có "#root > header button { background … !important }" đè lên */
-        :is(#root, body) .an-toggle { display: grid; flex: none; place-items: center; width: 40px !important; height: 40px !important; min-height: 0 !important; margin: 0; padding: 0 !important; border: 0 !important; border-radius: 12px !important; background: #005f41 !important; box-shadow: 0 4px 12px rgba(0, 95, 65, .22) !important; color: #fff !important; cursor: pointer; }
+        :is(#root, body) .an-toggle { display: grid; flex: none; place-items: center; width: 40px !important; height: 40px !important; min-height: 0 !important; margin: 0; padding: 0 !important; border: 0 !important; border-radius: var(--radius-control) !important; background: var(--wms-brand) !important; box-shadow: 0 4px 12px rgba(0, 95, 65, .22) !important; color: var(--wms-on-brand) !important; cursor: pointer; }
         :is(#root, body) .an-toggle:hover { background: #004d35 !important; }
         #barcode-home .barcode-home__header .an-toggle { position: relative; z-index: 1; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .3), 0 4px 12px rgba(0, 40, 26, .25) !important; }
         /* Nội dung lùi sang phải bằng bề rộng thanh */
@@ -14926,7 +14952,7 @@ async function rpc(name,args,retry=true){
         /* Chỉ chuyển động khi bấm thu gọn/mở (lúc tải trang CSS cuối body tới sau lần vẽ đầu — không để nội dung trượt) */
         html.app-nav-anim :is(#app-nav, #barcode-home, #uid-screen, #ins-screen, #storage-risk-screen, .cut-screen, #root, #root .fixed.inset-x-0.bottom-0, .ss-screen) { transition: transform .18s ease, visibility .18s, left .18s ease, padding-left .18s ease, margin-left .18s ease; }
         /* Tên nhóm dưới tên module (theo màu nhóm) */
-        :is(.uid-topbar, #root header) h1[data-nav-group]::after { content: attr(data-nav-group); display: block; margin-top: 2px; color: #005f41; font-size: 12px; font-weight: 600; letter-spacing: .18em; line-height: 1.2; text-transform: uppercase; }
+        :is(.uid-topbar, #root header) h1[data-nav-group]::after { content: attr(data-nav-group); display: block; margin-top: 2px; color: var(--wms-brand); font-size: var(--fs-12); font-weight: var(--fw-semibold); letter-spacing: .18em; line-height: 1.2; text-transform: uppercase; }
         :is(.uid-topbar, #root header) h1[data-nav-tone="ops"]::after { color: #174c8c; }
         :is(.uid-topbar, #root header) h1[data-nav-tone="check"]::after { color: #8a5b00; }
       }
@@ -14936,10 +14962,10 @@ async function rpc(name,args,retry=true){
       #app-nav[data-mode="admin"] .an-item::before, #app-nav[data-mode="admin"] .an-item[aria-current="page"]::after { display: none; }
       #app-nav .an-ico { display: grid; flex: none; place-items: center; width: 36px; height: 36px; border-radius: 11px; background: #efeafb; color: #5b3fb8; }
       #app-nav .an-ico svg { display: block; width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-      #app-nav[data-mode="admin"] .an-item[aria-current="page"] .an-ico { background: #5b3fb8; color: #fff; }
-      #app-nav .an-back { margin-bottom: 4px; color: #17251f; }
-      #app-nav .an-back .an-ico { background: #e6f3ef; color: #005f41; }
-      #app-nav .an-foot .an-ico { background: #e7eeeb; color: #4f625b; }
+      #app-nav[data-mode="admin"] .an-item[aria-current="page"] .an-ico { background: #5b3fb8; color: var(--wms-on-brand); }
+      #app-nav .an-back { margin-bottom: 4px; color: var(--wms-text); }
+      #app-nav .an-back .an-ico { background: #e6f3ef; color: var(--wms-brand); }
+      #app-nav .an-foot .an-ico { background: #e7eeeb; color: var(--wms-text-2); }
       #app-nav .an-foot .an-item { padding-left: 8px; }
       #app-nav[data-mode="admin"] .an-back + .an-group { padding-top: 16px; border-top: 1px solid #dde7e2; }
       @media screen and (min-width: 1024px) and (prefers-reduced-motion: reduce) {
@@ -16592,18 +16618,18 @@ async function rpc(name,args,retry=true){
         .ss-hero > .pa-chips { flex: 1 1 auto; justify-content: flex-start; }
       }
       /* Nút đọc dữ liệu nguồn: một kiểu */
-      :is(#root, body) .src-read { --bar-in: -1px; position: relative; display: inline-flex; align-items: center; justify-content: center; flex: none; gap: 8px; box-sizing: border-box; height: var(--ui-ctl); min-height: var(--ui-ctl); margin: 0; padding: 0 20px; border: 1px solid #5fae92; border-radius: var(--ui-btn-r); background: #e6f3ee; color: #005f41; font-family: inherit; font-size: 16px; font-weight: 600; line-height: 1.25; white-space: nowrap; text-decoration: none; cursor: pointer; transition: background-color .15s, border-color .15s; }
+      :is(#root, body) .src-read { --bar-in: -1px; position: relative; display: inline-flex; align-items: center; justify-content: center; flex: none; gap: 8px; box-sizing: border-box; height: var(--ui-ctl); min-height: var(--ui-ctl); margin: 0; padding: 0 20px; border: 1px solid var(--wms-border-accent); border-radius: var(--ui-btn-r); background: #e6f3ee; color: var(--wms-brand); font-family: inherit; font-size: var(--fs-16); font-weight: var(--fw-semibold); line-height: 1.25; white-space: nowrap; text-decoration: none; cursor: pointer; transition: background-color .15s, border-color .15s; }
       :is(#root, body) .src-read::before { content: ""; flex: none; width: 20px; height: 20px; background-color: currentColor; -webkit-mask: var(--i-cloud-download) center / contain no-repeat; mask: var(--i-cloud-download) center / contain no-repeat; }
       :is(#root, body) .src-read:not(:disabled):hover { border-color: #1f8a68; background: #d6ebe2; }
-      :is(#root, body) .src-read:focus-visible { outline: 2px solid #1aa774; outline-offset: 2px; }
-      :is(#root, body) .src-read--all { background: #fff; }
+      :is(#root, body) .src-read:focus-visible { outline: 2px solid var(--wms-focus-ring); outline-offset: 2px; }
+      :is(#root, body) .src-read--all { background: var(--wms-surface); }
       :is(#root, body) .src-read--all::before { -webkit-mask-image: var(--i-layers); mask-image: var(--i-layers); }
       :is(#root, body) .src-read--all:not(:disabled):hover { background: #f0faf6; }
       :is(#root, body) .src-read--icon { width: var(--ui-ctl); padding: 0; }
       :is(#root, body) .src-read:disabled { border-color: #d3dfda; background: #f2f6f4; color: #6b7d76; cursor: not-allowed; }
-      :is(#root, body) .src-read--all:disabled { background: #fff; }
-      :is(#root, body) .src-read[data-busy="true"]:disabled { border-color: #5fae92; background: #e6f3ee; color: #005f41; cursor: progress; }
-      :is(#root, body) .src-read--all[data-busy="true"]:disabled { background: #fff; }
+      :is(#root, body) .src-read--all:disabled { background: var(--wms-surface); }
+      :is(#root, body) .src-read[data-busy="true"]:disabled { border-color: var(--wms-border-accent); background: #e6f3ee; color: var(--wms-brand); cursor: progress; }
+      :is(#root, body) .src-read--all[data-busy="true"]:disabled { background: var(--wms-surface); }
       :is(#root, body) .src-read[data-busy="true"]::before { -webkit-mask-image: var(--i-refresh); mask-image: var(--i-refresh); animation: src-read-spin 1s linear infinite; }
       @keyframes src-read-spin { to { transform: rotate(360deg); } }
       @media (prefers-reduced-motion: reduce) { :is(#root, body) .src-read[data-busy="true"]::before { animation: none; } }
@@ -16623,7 +16649,7 @@ async function rpc(name,args,retry=true){
       #ss-apply, #gu-apply, #gu-cancel { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
       #ss-apply::before, #gu-apply::before, #gu-cancel::before { content: ""; flex: none; width: 20px; height: 20px; background-color: currentColor; -webkit-mask: var(--i-upload) center / contain no-repeat; mask: var(--i-upload) center / contain no-repeat; }
       #gu-cancel::before { -webkit-mask-image: var(--i-circle-x); mask-image: var(--i-circle-x); }
-      #ss-apply:not(:disabled)[data-count]:not([data-count="0"])::after, #gu-apply:not(:disabled)[data-count]:not([data-count="0"])::after { margin-left: 0; min-width: 22px; padding: 1px 8px; background: #fff; color: #005f41; line-height: 1.4; text-align: center; }
+      #ss-apply:not(:disabled)[data-count]:not([data-count="0"])::after, #gu-apply:not(:disabled)[data-count]:not([data-count="0"])::after { margin-left: 0; min-width: 22px; padding: 1px 8px; background: var(--wms-surface); color: var(--wms-brand); line-height: 1.4; text-align: center; }
       /* Giữ chỗ nhãn bận (18/10/2026): span.src-read__t luôn rộng bằng chữ dài hơn trong hai nhãn — "Đang đọc…" nằm trong ::after ẩn cao 0 (innerText không tính) nên đổi
          "Đọc WMS" / "Đọc Inside" / "Toàn bộ" ↔ "Đang đọc…" không làm nút nhảy rộng, ô nhập và nút cạnh nó không co giãn theo. */
       .src-read__t { display: inline-block; text-align: center; }
@@ -16640,7 +16666,7 @@ async function rpc(name,args,retry=true){
       :is(#sku-sync-screen, #group-uid-sync-screen) button.ss-metric[data-zero="false"]:not([data-alert="true"]) { border-color: #9fd3bd; background: #f0faf6; }
       :is(#sku-sync-screen, #group-uid-sync-screen) button.ss-metric[data-zero="false"]:not([data-alert="true"]):hover { border-color: #42a282; background: #e3f4ec; }
       :is(#sku-sync-screen, #group-uid-sync-screen) button.ss-metric[data-zero="false"]:not([data-alert="true"]) span { color: #3f5a50; }
-      :is(#sku-sync-screen, #group-uid-sync-screen) button.ss-metric[data-zero="false"]:not([data-alert="true"]) strong { color: #005f41; }
+      :is(#sku-sync-screen, #group-uid-sync-screen) button.ss-metric[data-zero="false"]:not([data-alert="true"]) strong { color: var(--wms-brand); }
       @media (min-width: 1024px) and (max-width: 1199px) {
         #sku-sync-screen .as-groups { grid-template-columns: minmax(0, 1fr); }
         #sku-sync-screen .as-cards { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
@@ -16667,7 +16693,7 @@ async function rpc(name,args,retry=true){
          Nút đọc .src-read và nút ghi #ss-apply / #gu-apply khi data-busy="true": ::after của NÚT (không phải của span nhãn — span.src-read__t đã dùng ::after giữ bề rộng) = vạch 3 px bo tròn ngay dưới nút, rộng bằng nút
          (--bar-in = -1px bù viền 1 px của .src-read; nền #dceae5, vạch #00a878). Chưa có tiến độ thật → đoạn 38 % trượt qua lại; JS đặt --p (0–1: trang x/y, lô ghi) lên nút → vạch tô theo % bề rộng nút. prefers-reduced-motion: không trượt (animation đã tắt chung), vạch đặc tĩnh. */
       :is(#root, body) :is(#sku-sync-progress, #gu-progress, #ia-progress, #sc-progress, #uh-progress) { display: none; }
-      :is(#root, body) :is(.src-read, #ss-apply, #gu-apply)[data-busy="true"]::after { content: ""; position: absolute; left: var(--bar-in, 0px); right: var(--bar-in, 0px); top: calc(100% + 5px); width: auto; height: 3px; min-width: 0; margin: 0; padding: 0; border: 0; border-radius: 999px; background: linear-gradient(#00a878, #00a878) 0 0 / calc(var(--p, .38) * 100%) 100% no-repeat, #dceae5; animation: src-read-bar 1.2s ease-in-out infinite alternate; }
+      :is(#root, body) :is(.src-read, #ss-apply, #gu-apply)[data-busy="true"]::after { content: ""; position: absolute; left: var(--bar-in, 0px); right: var(--bar-in, 0px); top: calc(100% + 5px); width: auto; height: 3px; min-width: 0; margin: 0; padding: 0; border: 0; border-radius: var(--radius-pill); background: linear-gradient(#00a878, #00a878) 0 0 / calc(var(--p, .38) * 100%) 100% no-repeat, #dceae5; animation: src-read-bar 1.2s ease-in-out infinite alternate; }
       :is(#root, body) :is(.src-read, #ss-apply, #gu-apply)[data-busy="true"][style*="--p:"]::after { animation: none; transition: background-size .25s linear; }
       :is(#root, body) :is(#ss-apply, #gu-apply)[data-busy="true"]:disabled { opacity: 1; cursor: progress; }
       @keyframes src-read-bar { from { background-position: 0 0, 0 0; } to { background-position: 100% 0, 0 0; } }
@@ -16880,13 +16906,13 @@ async function rpc(name,args,retry=true){
       :is(#root, body) input[type="checkbox"]:not([role="switch"]) {
         -webkit-appearance: none; appearance: none; box-sizing: border-box; flex: none; vertical-align: middle;
         width: 22px; height: 22px; min-width: 22px; min-height: 22px; margin: 0; padding: 0;
-        border: 2px solid #6f8f83; border-radius: 6px; background: #fff no-repeat center / 16px 16px; accent-color: #005f41;
+        border: 2px solid var(--wms-control-border); border-radius: 6px; background: var(--wms-surface) no-repeat center / 16px 16px; accent-color: var(--wms-brand);
         cursor: pointer;
       }
-      :is(#root, body) input[type="checkbox"]:not([role="switch"]):hover:not(:disabled) { border-color: #5fae92; }
-      :is(#root, body) input[type="checkbox"]:not([role="switch"]):checked { border-color: #005f41; background-color: #005f41; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E"); }
-      :is(#root, body) input[type="checkbox"]:not([role="switch"]):indeterminate { border-color: #005f41; background-color: #005f41; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round'%3E%3Cpath d='M6 12h12'/%3E%3C/svg%3E"); }
-      :is(#root, body) input[type="checkbox"]:not([role="switch"]):focus-visible { outline: 2px solid #1aa774; outline-offset: 2px; }
+      :is(#root, body) input[type="checkbox"]:not([role="switch"]):hover:not(:disabled) { border-color: var(--wms-border-accent); }
+      :is(#root, body) input[type="checkbox"]:not([role="switch"]):checked { border-color: var(--wms-brand); background-color: var(--wms-brand); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E"); }
+      :is(#root, body) input[type="checkbox"]:not([role="switch"]):indeterminate { border-color: var(--wms-brand); background-color: var(--wms-brand); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round'%3E%3Cpath d='M6 12h12'/%3E%3C/svg%3E"); }
+      :is(#root, body) input[type="checkbox"]:not([role="switch"]):focus-visible { outline: 2px solid var(--wms-focus-ring); outline-offset: 2px; }
       :is(#root, body) input[type="checkbox"]:not([role="switch"]):disabled { opacity: .4; cursor: not-allowed; }
       @media (max-width: 800px) {
         :is(#root, body) input[type="checkbox"]:not([role="switch"]) { width: 24px; height: 24px; min-width: 24px; min-height: 24px; background-size: 18px 18px; }
