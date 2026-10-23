@@ -29,7 +29,7 @@ const fakeGate = ({ slip, rows, it404, itExt }) => {
       return { slip: { ...slip, number }, rows: rows.map(row => ({ ...row })) };
     },
     buildItems: list => { window.__calls.build.push(list.map(row => ({ sku: row.sku, copies: row.copies }))); return list.filter(row => row.known && row.copies >= 1).map(row => ({ sku: row.sku, productName: row.name, quantity: String(row.quantity), printedDate: "2026-10-17", copies: row.copies })); },
-    enqueue: async (items, options) => { window.__calls.enqueue.push({ items, options }); if (window.__enqueueFail) throw Object.assign(new Error(window.__enqueueFail.message), { jobIds: window.__enqueueFail.jobIds, labels: window.__enqueueFail.labels }); return { jobIds: ["job0001a-aaaa-4000-8000-000000000001"], labels: items.reduce((sum, item) => sum + item.copies, 0) }; },
+    enqueue: async (items, options) => { window.__calls.enqueue.push({ items, options }); if (window.__enqueueGate) await window.__enqueueGate; if (window.__enqueueFail) throw Object.assign(new Error(window.__enqueueFail.message), { jobIds: window.__enqueueFail.jobIds, labels: window.__enqueueFail.labels, uncertain: window.__enqueueFail.uncertain }); return { jobIds: ["job0001a-aaaa-4000-8000-000000000001"], labels: items.reduce((sum, item) => sum + item.copies, 0) }; },
   };
 };
 const fakeSpeech = () => {
@@ -62,7 +62,7 @@ async function open(browser, width, { admin = true, speech = true, edge = { mode
   await page.locator("#home-assistant").waitFor({ state: "attached" });
   await page.evaluate(({ admin, email, gate }) => {
     window.__admin = admin; window.__getTokenCalls = 0;
-    window.PrintSkuAdminAuth = { accessToken: async () => { if (!window.__admin) throw new Error("Phiên Admin đã hết hạn. Hãy đăng nhập lại."); return "t"; }, user: () => ({ email }) };
+    window.PrintSkuAdminAuth = { accessToken: async () => { if (window.__tokenGate) await window.__tokenGate; if (!window.__admin) throw new Error("Phiên Admin đã hết hạn. Hãy đăng nhập lại."); return "t"; }, user: () => ({ email }) };
     window.PrintSkuAdminAccess = { ...window.PrintSkuAdminAccess, peekToken: () => window.__admin ? "t" : "", isAuthorized: () => window.__admin, getToken: async () => { window.__getTokenCalls++; return window.__admin ? "t" : ""; } };
     localStorage.removeItem("tb-khoa");
   }, { admin, email: EMAIL });
@@ -461,9 +461,15 @@ async function printFlows(browser) {
   await pressPrint();
   await page.waitForFunction(() => [...document.querySelectorAll("#pa-thread .pa-msg")].some(el => el.textContent === "Mất kết nối hàng đợi"));
   assert.equal(await page.locator("#pa-confirm").count(), 1, "chưa có lệnh nào được gửi: giữ thẻ để thử lại");
-  assert.equal((await lastBot(page)).tone, "bad");
-  await pressPrint();
+  assert.equal(await page.locator("#pa-copies-inc").isDisabled(), false, "lỗi chắc chắn: mở lại ô sửa");
+  // Đang lấy phiên Admin (trước khi gửi): thẻ đã khoá — không để ô hiển thị lệch danh sách sẽ gửi (review Codex đợt A vòng 2)
+  await page.evaluate(() => { window.__tokenGate = new Promise(resolve => { window.__tokenOpen = resolve; }); });
+  await page.locator("#pa-print").click();
+  for (const sel of ["#pa-copies", "#pa-copies-inc", "#pa-cancel", "#pa-confirm [data-pa-on]", "#pa-confirm [data-pa-n]"]) assert.equal(await page.locator(sel).first().isDisabled(), true, `đang lấy phiên: khoá ${sel}`);
+  await page.evaluate(() => { window.__tokenGate = null; window.__tokenOpen(); });
   await page.waitForFunction(() => window.__calls.enqueue.length === 2);
+  await page.waitForFunction(() => document.getElementById("pa-copies-inc")?.disabled === false);
+  assert.equal((await lastBot(page)).tone, "bad");
   let sent = (await calls(page)).enqueue;
   assert.match(sent[0].options.nonceBase, UUID);
   assert.equal(sent[1].options.nonceBase, sent[0].options.nonceBase, "bấm In lại cùng thẻ: cùng nonceBase");
@@ -474,24 +480,62 @@ async function printFlows(browser) {
   assert.notEqual(sent[2].options.nonceBase, sent[0].options.nonceBase, "đổi số bản: lô mới, nonceBase mới");
   assert.match(sent[2].options.nonceBase, UUID);
 
-  // Gửi một phần rồi lỗi: bong bóng nêu số đã gửi + lỗi, ĐÓNG thẻ (không in lại phần đã gửi), gợi ý đọc lại phiếu
-  await page.evaluate(() => { window.__enqueueFail = { message: "Khoá máy không hợp lệ", jobIds: ["job0001a-aaaa-4000-8000-000000000001"], labels: 30 }; });
+  // Gửi một phần rồi lỗi (review backend 23/10, P1): GIỮ thẻ + nonceBase và khoá sửa — đổi SKU/số bản hay đọc lại phiếu sẽ ra nonce mới
+  // và in lần hai phần đã gửi. Bấm In gửi nốt cùng nonceBase (máy chủ trả lại lệnh đã có, chỉ tạo lệnh còn thiếu).
+  // Đang gửi (lệnh treo): mọi ô sửa + Huỷ khoá — sửa giữa chừng làm lần gửi nốt lệch danh sách đã gửi (review Codex đợt A)
+  await page.evaluate(() => { window.__enqueueFail = { message: "Khoá máy không hợp lệ", jobIds: ["job0001a-aaaa-4000-8000-000000000001"], labels: 30 }; window.__enqueueGate = new Promise(resolve => { window.__enqueueOpen = resolve; }); });
   await pressPrint();
-  await page.waitForFunction(() => !document.getElementById("pa-confirm"));
+  for (const sel of ["#pa-copies", "#pa-copies-inc", "#pa-copies-dec", "#pa-cancel", "#pa-confirm [data-pa-on]", "#pa-confirm [data-pa-n]"]) assert.equal(await page.locator(sel).first().isDisabled(), true, `đang gửi: khoá ${sel}`);
+  await page.evaluate(() => { window.__enqueueGate = null; window.__enqueueOpen(); });
+  await page.waitForFunction(() => [...document.querySelectorAll("#pa-thread .pa-msg")].some(el => el.textContent.startsWith("Đã gửi 30 tem")));
   const partial = await lastBot(page);
-  assert.equal(partial.text, `Đã gửi 30 tem, 1 lệnh; lệnh còn lại lỗi: Khoá máy không hợp lệ Đọc lại phiếu IT ${IT} để in phần còn lại.`);
+  assert.equal(partial.text, "Đã gửi 30 tem, 1 lệnh; lệnh còn lại lỗi: Khoá máy không hợp lệ Bấm In để gửi nốt phần còn lại.");
   assert.equal(partial.tone, "bad");
-  assert.equal(await page.locator("#pa-thread .pa-sum").count(), 1, "gửi một phần rồi lỗi: vẫn để lại thẻ tóm tắt");
+  assert.equal(await page.locator("#pa-confirm").count(), 1, "gửi một phần: giữ thẻ để gửi nốt");
+  assert.equal(await page.locator("#pa-confirm").getAttribute("data-locked"), "true");
+  for (const sel of ["#pa-copies", "#pa-copies-inc", "#pa-copies-dec", "#pa-confirm [data-pa-on]", "#pa-confirm [data-pa-n]"]) assert.equal(await page.locator(sel).first().isDisabled(), true, `lô dở: khoá ${sel}`);
+  assert.equal(await page.locator("#pa-cancel").isDisabled(), false, "lô dở: Huỷ vẫn bấm được");
+  // Đọc phiếu khác / In lại phiếu / xoá hội thoại khi còn lô dở: chặn, không đọc WMS, giữ thẻ
+  const readsLocked = (await calls(page)).read.length;
+  await send(page, `IT ${IT} 2 bản`);
+  await page.waitForFunction(() => /chưa gửi xong/.test([...document.querySelectorAll("#pa-thread .pa-msg")].pop()?.textContent || ""));
+  assert.equal((await lastBot(page)).text, `Phiếu IT ${IT} chưa gửi xong: bấm In để gửi nốt hoặc Huỷ.`);
+  await page.locator("#pa-clear").click();
+  assert.equal(await page.locator("#pa-confirm").count(), 1, "lô dở: không xoá hội thoại");
+  assert.equal((await calls(page)).read.length, readsLocked, "lô dở: không đọc lại phiếu");
+  // Gửi nốt mà vẫn lỗi mơ hồ (không rõ máy chủ đã nhận chưa): vẫn cùng nonceBase, vẫn khoá
+  await page.evaluate(() => { window.__enqueueFail = { message: "Hết thời gian chờ", jobIds: [], labels: 0, uncertain: true }; });
+  await pressPrint();
+  sent = (await calls(page)).enqueue;
+  assert.equal(sent[4].options.nonceBase, sent[3].options.nonceBase, "gửi nốt: cùng nonceBase");
+  await page.waitForFunction(() => [...document.querySelectorAll("#pa-thread .pa-msg")].pop()?.textContent === "Hết thời gian chờ Bấm In để gửi nốt phần còn lại.");
+  assert.equal(await page.locator("#pa-confirm").getAttribute("data-locked"), "true", "lỗi mơ hồ: vẫn khoá");
+  await page.evaluate(() => { window.__enqueueFail = null; });
+  await pressPrint();
+  await page.locator("#pa-thread .pa-result").waitFor({ state: "visible" });
+  sent = (await calls(page)).enqueue;
+  assert.equal(sent[5].options.nonceBase, sent[3].options.nonceBase, "gửi nốt thành công: cùng nonceBase");
+  assert.deepEqual(sent[5].items, sent[3].items, "gửi nốt: đúng danh sách cũ");
+  assert.equal(await page.locator("#pa-confirm").count(), 0);
+  assert.equal(await page.locator("#pa-thread .pa-sum").count(), 1, "gửi xong: thẻ tóm tắt");
+  // Lỗi mơ hồ ngay lệnh đầu (chưa có jobId) cũng khoá: máy chủ có thể đã nhận
+  await send(page, `IT ${IT}`); await waitCard(page);
+  await page.evaluate(() => { window.__enqueueFail = { message: "Hết thời gian chờ", jobIds: [], labels: 0, uncertain: true }; });
+  await pressPrint();
+  await page.waitForFunction(() => document.getElementById("pa-confirm")?.dataset.locked === "true");
+  await page.locator("#pa-cancel").click();
+  assert.equal(await page.locator("#pa-confirm").count(), 0, "Huỷ vẫn đóng được thẻ dở");
+  assert.equal((await lastBot(page)).text, "Đã huỷ.");
   await page.evaluate(() => { window.__enqueueFail = null; });
 
   // Lệnh in lỗi: chip "Lỗi" đỏ kèm thông điệp từ máy in
   await page.evaluate(() => { window.PrintSkuQueue.jobStatus = async () => ({ ok: true, data: { status: "failed", errorMessage: "Hết giấy giả lập" } }); });
   await send(page, `IT ${IT}`); await waitCard(page);
   await pressPrint();
-  await page.locator("#pa-thread .pa-result").waitFor({ state: "visible" });
-  await page.waitForFunction(() => document.querySelector("#pa-thread .pa-result .pa-st").textContent === "Lỗi", null, { timeout: 15000 });
+  await page.waitForFunction(() => document.querySelectorAll("#pa-thread .pa-result").length === 2, null, { timeout: 15000 });
+  await page.waitForFunction(() => [...document.querySelectorAll("#pa-thread .pa-result")].pop().querySelector(".pa-st").textContent === "Lỗi", null, { timeout: 15000 });
   assert.equal(await jobChip(page).getAttribute("data-tone"), "bad");
-  assert.equal((await page.locator("#pa-thread .pa-result .pa-job-err").innerText()).trim(), "Hết giấy giả lập");
+  assert.equal((await page.locator("#pa-thread .pa-result").last().locator(".pa-job-err").innerText()).trim(), "Hết giấy giả lập");
   const failedCard = page.locator("#pa-thread .pa-result").last();
   assert.equal(await failedCard.getAttribute("data-state"), "error");
   assert.equal((await failedCard.locator(".pa-r-head").innerText()).trim(), "Lỗi 1 lệnh");
