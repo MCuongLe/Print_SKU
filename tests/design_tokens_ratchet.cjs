@@ -10,7 +10,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const CEILING = { color: 429, fontSize: 20, radius: 37, shadow: 83, zIndex: 23 };
-const STANDARD = ['type-standard', 'ui-standard', 'app-nav-theme', 'hero-standard', 'tick-standard'];
+const STANDARD = ['type-standard', 'ui-standard', 'app-nav-theme', 'hero-standard', 'tick-standard', 'notice-standard'];
 const TOKEN_SIZES = [12, 13, 14, 16, 18, 22, 28];
 
 const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
