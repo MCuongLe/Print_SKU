@@ -44,7 +44,10 @@
       approvedBy: clean(row.approved_by_name, 160),
       countedAt: clean(row.checklist_at_tz ?? row.checklist_at, 80),
     })).filter(row => Number.isInteger(row.warehouseId) && row.sku && row.approvedAt);
-    return { rows, total: Math.max(rows.length, finite(payload?.count)), page: Math.max(1, finite(payload?.page) || 1), size: Math.max(1, finite(payload?.size) || 500) };
+    // 0.10.8 (D2): sourceRows = số dòng WMS trả (trước khi lọc) để Kiểm kê so tổng các trang với total; total tính trên số dòng WMS
+    // (như normalizeInventoryPage), không trên số dòng đã lọc — thiếu count mà có dòng bị lọc thì không thành lệch giả.
+    const sourceRows = recordsOf(payload).length;
+    return { rows, sourceRows, total: Math.max(sourceRows, finite(payload?.count)), page: Math.max(1, finite(payload?.page) || 1), size: Math.max(1, finite(payload?.size) || 500) };
   }
 
   function normalizeInventoryPage(payload) {

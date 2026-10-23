@@ -62,10 +62,14 @@
         product_name: text(productCell?.querySelector("a"), text(productCell)),
         category_id: category.id,
         category_name: category.name,
-        status: skuCore.statusCode(text(cells[indexes.status])),
+        status: text(cells[indexes.status]),
         modified: text(cells[indexes.modified])
       };
-    }).filter(row => row.sku && row.product_name && row.modified);
+    }).filter(row => row.sku && row.product_name && row.modified).map(row => {
+      // 0.10.8 (D7): đổi nhãn trạng thái SAU khi lọc (dòng thông báo trống không có SKU không bị xét); nhãn lạ → lỗi đọc kèm mã SKU.
+      try { return { ...row, status: skuCore.statusCode(row.status) }; }
+      catch (error) { throw new Error(`SKU ${row.sku}: ${error.message}`); }
+    });
   }
 
   async function fetchProductPage(category, page) {

@@ -51,6 +51,7 @@ assert.deepEqual(approved.rows.map(row => row.sku), ["A", "B"], "chỉ giữ che
 assert.equal(approved.rows[0].approvedAt, "2026-09-10T12:00:00+07:00");
 assert.equal(approved.rows[0].approvedBy, "manager-a");
 assert.equal(approved.total, 3, "total lấy từ count của WMS, không phải số dòng đã lọc");
+assert.equal(approved.sourceRows, 3, "0.10.8 (D2): sourceRows = số dòng WMS trả (trước khi lọc) để Kiểm kê so với total");
 
 // Báo cáo Import/Export: type 1 = nhập, 2 = xuất; giờ lấy từ created_at_tz; dòng thiếu SKU/kho/loại bị bỏ.
 const movements = core.normalizeImportExportPage({ page: 1, size: 500, records: [

@@ -75,7 +75,7 @@ async function runWeb(source, opts, cov) {
     AbortSignal, crypto: globalThis.crypto, TextEncoder, Date: FixedDate, console,
     tell: (text, tone) => told.push({ text, tone }), fmt: value => String(value), syncTick: () => {}, load: async () => {},
     adminToken: async () => "test-admin-token",
-    extensionRequest: async (type, payload) => (type === "PING_WMS" ? { version: "0.10.7" } : wms.send(type, payload)),
+    extensionRequest: async (type, payload) => (type === "PING_WMS" ? { version: "0.10.8" } : wms.send(type, payload)),
     __cov: cov,
   });
   const fn = vm.runInContext(`let uploading=false,pendingWms=false,cov=__cov;
@@ -106,6 +106,53 @@ const withoutName = list => imports(list).map(r => { const { p_file_name, ...res
 (async () => {
   let cases = 0;
   const cov = { from: "2026-10-01T00:00:00.000Z", until: "2026-10-20T05:00:00.000Z", files: 3, importedAt: "2026-10-20T05:01:00.000Z" };
+
+  // ---- D8 + R7 (Extension 0.10.8, review 23/10/2026): chỉ lõi Extension. Ca so khớp web "chia phần" bên dưới chờ chép sang syncFromWms ----
+  {
+    // D8: khung đọc không có dòng → p_data_until = min(to, giờ server). Máy chạy nhanh 40 phút → dùng giờ server (lượt sau không sót Cut).
+    const quiet = makeHistory(5, Date.UTC(2026, 8, 1)), serverAt = FIXED - 40 * 60000;
+    const fast = await runCore(quiet, {}, cov, { serverNow: () => serverAt });
+    assert.equal(fast.error, null, fast.error);
+    assert.equal(imports(fast.rpcs)[0].args.p_data_until, iso(serverAt), "D8: máy nhanh → mốc phủ = giờ server");
+    assert.equal(fast.result.until, iso(serverAt));
+    // Giờ server sau to (máy chậm) → giữ to; không có / lỗi giờ server → to như cũ.
+    const slow = await runCore(quiet, {}, cov, { serverNow: () => FIXED + 10 * 60000 });
+    assert.equal(imports(slow.rpcs)[0].args.p_data_until, iso(FIXED), "D8: máy chậm → giữ to");
+    for (const serverNow of [() => NaN, () => undefined, () => { throw new Error("không có giờ server"); }, "không phải hàm"]) {
+      const none = await runCore(quiet, {}, cov, { serverNow });
+      assert.equal(none.error, null, none.error);
+      assert.equal(imports(none.rpcs)[0].args.p_data_until, iso(FIXED), "D8: không có giờ server → to (giờ máy)");
+    }
+    // Mốc phủ cũ đã ở tương lai (máy từng chạy nhanh) và giờ server trước from: from kẹp về until (SQL chặn until < from).
+    const ahead = await runCore(quiet, {}, { ...cov, until: iso(FIXED + 60 * 60000) }, { serverNow: () => serverAt });
+    assert.equal(ahead.error, null, ahead.error);
+    assert.deepEqual([imports(ahead.rpcs)[0].args.p_data_from, imports(ahead.rpcs)[0].args.p_data_until], [iso(serverAt), iso(serverAt)]);
+    // Có dòng → mốc phủ theo giờ dữ liệu WMS; giờ server không đổi gì.
+    const rowsStart = Date.UTC(2026, 9, 20, 4, 40);
+    const withRows = await runCore(makeHistory(40, rowsStart), {}, cov, { serverNow: () => serverAt });
+    assert.equal(imports(withRows.rpcs)[0].args.p_data_until, iso(rowsStart + 39 * 60000), "D8: có dòng → until = giờ dòng cuối");
+    // R7: nhiều phần → phần i < cuối phủ tới cut_at dòng cuối của phần đó; phần cuối giữ mốc cả lượt.
+    const many = makeHistory(6200, Date.UTC(2026, 9, 15)).reverse();
+    const split = await runCore(many, {}, null);
+    assert.equal(split.error, null, split.error);
+    const ps = imports(split.rpcs);
+    assert.equal(ps.length, 2);
+    assert.equal(ps[0].args.p_data_until, ps[0].args.p_rows.at(-1).cut_at, "R7: phần 1 phủ tới Cut cuối của phần");
+    assert.ok(ps[0].args.p_data_until < split.result.until, "R7: phần 1 không phủ qua dữ liệu phần 2");
+    assert.ok(ps[0].args.p_data_until <= ps[1].args.p_rows[0].cut_at, "R7: phần 2 bắt đầu sau mốc phần 1");
+    assert.equal(ps[1].args.p_data_until, split.result.until, "R7: phần cuối giữ mốc cả lượt");
+    assert.ok(ps.every(p => p.args.p_data_from === split.result.from && p.args.p_data_from <= p.args.p_data_until));
+    // Phần 2 nạp lỗi → mốc phủ đã ghi chỉ tới phần 1 → lượt sau đọc lại từ đó (trước đây nhảy qua cả phần 2).
+    const sent = [];
+    await assert.rejects(core.run({ sendTab: makeWms(many).send, device: "may-test-01", now: () => FIXED, rpc: async (name, args) => {
+      if (name === "wms_cut_coverage") return null;
+      sent.push(args);
+      if (sent.length === 2) throw new Error("Supabase HTTP 500");
+      return importResult(args);
+    } }), /Supabase HTTP 500/);
+    assert.equal(sent[0].p_data_until, sent[0].p_rows.at(-1).cut_at, "R7: phần đã nạp không phủ qua phần lỗi");
+    console.log("cut_adj_core D8 + R7 (lõi Extension): PASS");
+  }
   const same = async (label, source, opts, coverage) => {
     const web = await runWeb(source, opts, coverage), mine = await runCore(source, opts, coverage);
     assert.equal(web.error, null, `${label}: web không lỗi (${web.error})`);
@@ -120,7 +167,8 @@ const withoutName = list => imports(list).map(r => { const { p_file_name, ...res
     assert.deepEqual({ cutRows: mine.result.cutRows, newRows: mine.result.newRows, changedRows: mine.result.changedRows, unchangedRows: mine.result.unchangedRows },
       { cutRows: sum("cutRows"), newRows: sum("newRows"), changedRows: sum("changedRows"), unchangedRows: sum("unchangedRows") }, `${label}: cộng kết quả các phần`);
     assert.equal(mine.result.total, imports(web.imports)[0].args.p_total_rows, `${label}: total = số dòng lịch sử đã đọc`);
-    assert.deepEqual([mine.result.from, mine.result.until], [imports(web.imports)[0].args.p_data_from, imports(web.imports)[0].args.p_data_until], `${label}: from/until = mốc dữ liệu đã nạp`);
+    // R7 (0.10.8): until của cả lượt = until của phần CUỐI (phần trước chỉ phủ tới Cut cuối của phần).
+    assert.deepEqual([mine.result.from, mine.result.until], [imports(web.imports)[0].args.p_data_from, imports(web.imports).at(-1).args.p_data_until], `${label}: from/until = mốc dữ liệu đã nạp`);
     assert.match(web.told.at(-1).text, new RegExp(`^Đã đọc ${mine.result.total.toLocaleString("vi-VN")} dòng`), `${label}: web báo cùng tổng`);
     cases += 1;
     return { web, mine };
@@ -156,6 +204,8 @@ const withoutName = list => imports(list).map(r => { const { p_file_name, ...res
   assert.match(parts[1].args.p_file_name, /^WMS_AUTO_may-test-01_20261022031530_2\.json$/);
   const allRows = parts.flatMap(p => p.args.p_rows);
   assert.deepEqual(allRows.map(r => r.cut_at), [...allRows.map(r => r.cut_at)].sort(), "sắp theo cut_at");
+
+  assert.equal(parts[0].args.p_data_until, parts[0].args.p_rows.at(-1).cut_at, "R7: web phần 1 cũng phủ tới Cut cuối của phần");
 
   // 5. Dòng trùng khoá UID|giờ giữa hai trang → giữ bản đọc sau như web
   const dup = await same("trùng khoá", makeHistory(900), { duplicate: true }, null);

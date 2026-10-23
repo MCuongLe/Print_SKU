@@ -93,29 +93,46 @@
       return data;
     };
     // readPages của web: trang 1 rồi từng lô 4 trang song song; mọi trang phải cùng totalPages; quá 2.000 trang thì dừng.
-    async function readPages(step, type, payload, label) {
+    // exact (chỉ Kiểm kê, 0.10.8 D2): thêm mọi trang cùng total với trang 1 và tổng số dòng WMS trả (sourceRows của từng trang,
+    // trước khi lọc) phải bằng total. Danh sách tồn kho đổi giữa lúc đọc song song (nhận/xuất hàng trong giờ làm) làm dòng ở ranh trang
+    // bị đọc 2 lần (cộng đôi tồn) hoặc bị sót mà totalPages không đổi. Trang thiếu sourceRows (Extension cũ) thì bỏ phép so số dòng.
+    const drift = (label, detail) => Object.assign(new Error(`${label} thay đổi trong lúc đọc${detail ? ` (${detail})` : ""}; hãy chạy lại để tránh thiếu dữ liệu`), { drift: true, detail });
+    async function readPages(step, type, payload, label, exact = false) {
       const first = await ask(type, { ...payload, page: 1, size: PAGE_SIZE }, label), pages = Math.max(1, Number(first.totalPages) || 1);
       if (pages > MAX_PAGES) throw new Error(`${label} có ${num(pages)} trang; dừng để tránh tải thiếu dữ liệu`);
-      const rows = [...(first.rows || [])];
-      let done = 1;
+      const rows = [...(first.rows || [])], total = Number(first.total), counted = item => Number.isInteger(item.sourceRows);
+      let done = 1, seen = counted(first) ? first.sourceRows : NaN;
       show({ step, label, page: 1, pages });
       for (let start = 2; start <= pages; start += 4) {
         const pageNos = Array.from({ length: Math.min(4, pages - start + 1) }, (_, i) => start + i);
         const batch = await Promise.all(pageNos.map(page => ask(type, { ...payload, page, size: PAGE_SIZE }, label)));
         for (const item of batch) {
-          if (Number(item.totalPages) !== pages) throw new Error(`${label} thay đổi trong lúc đọc; hãy chạy lại để tránh thiếu dữ liệu`);
+          if (Number(item.totalPages) !== pages) throw drift(label, "");
+          if (exact && Number.isFinite(total) && Number(item.total) !== total) throw drift(label, `WMS báo ${num(total)} → ${num(item.total)} dòng`);
           rows.push(...(item.rows || []));
+          seen = counted(item) ? seen + item.sourceRows : NaN;
           done++;
           show({ step, label, page: done, pages });
         }
       }
-      return { rows, pages, total: Number(first.total) || rows.length };
+      if (exact && Number.isFinite(total) && Number.isFinite(seen) && seen !== total) throw drift(label, `WMS báo ${num(total)} dòng, đọc được ${num(seen)}`);
+      return { rows, pages, total: total || rows.length };
+    }
+    // Kiểm kê (0.10.8 D2): lệch thì đọc lại cả danh sách đó, tối đa 2 lần (như readGroupUidSnapshot), vẫn lệch thì ném — không lưu bản sai.
+    const RETRIES = 2;
+    async function readExact(step, type, payload, label) {
+      for (let attempt = 0; ; attempt += 1) {
+        try { return await readPages(step, type, payload, label, true); } catch (error) {
+          if (!error?.drift) throw error;
+          if (attempt >= RETRIES) throw drift(label, `${error.detail ? `${error.detail}; ` : ""}đã đọc lại ${RETRIES} lần`);
+        }
+      }
     }
     async function readAcrossCompanies(type, warehouses, extra, label) {
       const out = { rows: [], pages: 0, total: 0 };
       for (const warehouse of warehouses) {
         const company = warehouse.companyName ? ` · ${warehouse.companyName}` : "";
-        const part = await readPages("skuCount", type, { ...extra, warehouseIds: [warehouse.warehouseId], companyId: warehouse.companyId }, `${label} · ${warehouse.warehouseName}${company}`);
+        const part = await readExact("skuCount", type, { ...extra, warehouseIds: [warehouse.warehouseId], companyId: warehouse.companyId }, `${label} · ${warehouse.warehouseName}${company}`);
         out.rows.push(...part.rows); out.pages += part.pages; out.total += part.total;
       }
       return out;

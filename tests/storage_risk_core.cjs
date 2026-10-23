@@ -24,7 +24,8 @@ const IA = '<script id="inventory-audit-script">', SRT = '<script id="storage-ri
 const WEB_AUDIT = [
   slice(IA, "const requestedWarehouses=", "const TABS="),
   slice(IA, "function parseDate(value){", "function extensionRequest(type,payload={},timeout=180000){"),
-  slice(IA, "async function readPages(type,payload,label){", "const keyOf=r=>"),
+  // Neo không kèm ")" để nhận cả bản web có tham số exact (D2, 0.10.8).
+  slice(IA, "async function readPages(type,payload,label", "const keyOf=r=>"),
   slice(IA, "async function run(){", "// ---- Admin: đăng nhập bằng hộp dùng chung"),
 ].join("\n");
 const WEB_TEMP = [
@@ -84,22 +85,41 @@ function movesOf(wh) {
     { ...base, id: 8, warehouseId: 1177, sku: "900000022", productName: "Không có giờ", qty: 1, sourceCode: "1001260000000022", mappingId: "1001260000000006", createdAt: "" },
   ];
 }
-// opts: noGarment, fail {TYPE: message}, failAll, driftType (TYPE: trang 2 đổi totalPages), emptyInventory, shortTotal {id: total}
+// opts: noGarment, fail {TYPE: message}, failAll, driftType (TYPE: trang 2 đổi totalPages), emptyInventory, shortTotal {id: total},
+//   insert {type, times} (D2: sau khi đọc trang 1 kho MTG, có dòng mới chen đầu danh sách — `times` lượt đọc đầu; dòng đã chen thì ở lại),
+//   dropRow TYPE (D2: trang 2 kho MTG thiếu 1 dòng dù total không đổi), filtered TYPE (D2: mỗi trang có 1 dòng WMS bị bộ chuẩn hoá lọc bỏ:
+//   sourceRows = rows + 1, total = số dòng WMS — không được coi là lệch), manyApproved (APPROVED kho MTG có 2 trang).
 function makeWms(opts = {}) {
-  const calls = [];
+  const calls = [], live = new Map();
   const pageOf = (rows, page, perPage) => rows.slice((page - 1) * perPage, page * perPage);
+  const extraRow = (type, n) => type === "GET_SKU_COUNT_APPROVED_PAGE"
+    ? { warehouseId: 1177, warehouseName: MTG.warehouseName, sku: `90000095${n}`, productName: `Vải duyệt mới ${n}`, approvedAt: wmsAgo(0), approvedBy: "moi@example.test" }
+    : { warehouseId: 1177, warehouseName: MTG.warehouseName, sku: `90000095${n}`, productName: `Vải nhận mới ${n}/Cuộn`, location: "F0-C1-01-01-01-01", qty: 3, total: 3, modified: wmsAgo(0), created: wmsAgo(0), uom: "m" };
   const send = async (type, payload) => {
     calls.push({ type, payload: JSON.parse(JSON.stringify(payload)) });
     if (opts.failAll || opts.fail?.[type]) { const e = new Error(opts.fail?.[type] || "Không có tab WMS"); e.code = opts.failAll ? "WMS_TAB_MISSING" : "MOCK"; throw e; }
     if (type === "GET_SKU_COUNT_WAREHOUSES") return { warehouses: opts.noGarment ? [MTG] : [MTG, GAR], missingNames: opts.noGarment ? ["WH - MATERIAL - GARMENT"] : [] };
     const wh = [MTG, GAR].find(w => w.warehouseId === payload.warehouseIds[0]);
-    const source = type === "GET_SKU_COUNT_INVENTORY_PAGE" ? (opts.emptyInventory ? [] : inventoryOf(wh)) : type === "GET_SKU_COUNT_APPROVED_PAGE" ? approvedOf(wh) : movesOf(wh);
+    let source = type === "GET_SKU_COUNT_INVENTORY_PAGE" ? (opts.emptyInventory ? [] : inventoryOf(wh)) : type === "GET_SKU_COUNT_APPROVED_PAGE" ? approvedOf(wh) : movesOf(wh);
+    // manyApproved: thêm 400 lần duyệt cũ ở MTG để APPROVED có 2 trang (ca D2).
+    if (opts.manyApproved && type === "GET_SKU_COUNT_APPROVED_PAGE" && wh === MTG) source = [...source, ...Array.from({ length: 400 }, (_, i) => ({ warehouseId: 1177, warehouseName: MTG.warehouseName, sku: String(900000200 + i), productName: `Vải mẫu ${100 + i}/Cuộn`, approvedAt: wmsAgo(60 + (i % 30)), approvedBy: "cu@example.test" }))];
+    if (opts.insert?.type === type && wh === MTG) {
+      const st = live.get(type) || { rows: source, reads: 0, pending: false };
+      live.set(type, st);
+      if (payload.page === 1) { st.reads += 1; st.pending = st.reads <= opts.insert.times; }
+      else if (st.pending) { st.pending = false; st.rows = [extraRow(type, st.reads), ...st.rows]; }
+      source = st.rows;
+    }
     // Chia trang nhỏ (300 / 4 dòng) để có nhiều trang và lô song song; WMS thật 500 dòng/trang.
     const perPage = type === "GET_STOCK_IMPORT_EXPORT_PAGE" ? 4 : 300;
     let totalPages = Math.max(1, Math.ceil(source.length / perPage));
     if (opts.driftType === type && payload.page === 2) totalPages += 1;
-    const total = opts.shortTotal?.[wh.warehouseId] && type === "GET_STOCK_IMPORT_EXPORT_PAGE" ? opts.shortTotal[wh.warehouseId] : source.length;
-    return { page: payload.page, size: payload.size, total, totalPages, rows: pageOf(source, payload.page, perPage) };
+    let total = opts.shortTotal?.[wh.warehouseId] && type === "GET_STOCK_IMPORT_EXPORT_PAGE" ? opts.shortTotal[wh.warehouseId] : source.length;
+    let rows = pageOf(source, payload.page, perPage), sourceRows = rows.length;
+    if (opts.dropRow === type && wh === MTG && payload.page === 2) { rows = rows.slice(1); sourceRows = rows.length; }
+    if (opts.filtered === type) { total += totalPages; sourceRows += 1; }
+    // sourceRows = số dòng WMS trả ở trang (trước khi lọc), như inventory-audit-core.js 0.10.8.
+    return { page: payload.page, size: payload.size, total, totalPages, rows, sourceRows };
   };
   return { send, calls };
 }
@@ -115,7 +135,7 @@ async function runWeb(opts = {}) {
     if (opts.rpcFail?.[name]) throw new Error(opts.rpcFail[name]);
     return rpcResult(name, args);
   };
-  const ext = (type, payload) => (type === "PING_WMS" ? Promise.resolve({ version: "0.10.7" }) : wms.send(type, payload));
+  const ext = (type, payload) => (type === "PING_WMS" ? Promise.resolve({ version: "0.10.8" }) : wms.send(type, payload));
   const num = v => Number(v || 0).toLocaleString("vi-VN");
   const audit = vm.runInContext(`const DAY=86400000;const state={busy:false,admin:true};
     ${WEB_AUDIT}; run`, vm.createContext({
@@ -187,11 +207,58 @@ const names = list => list.map(r => r.name);
   assert.deepEqual(r.uidTemp, { ok: true, runId: "tmp-1", rows: 5, scanned: 9, pages: 3, warn: [], readAt: new Date(FIXED).toISOString() });
   assert.ok(ok.mine.progress.some(p => p.step === "skuCount") && ok.mine.progress.some(p => p.step === "uidTemp"), "báo tiến độ hai bước");
 
+  // ---- D2 (Extension 0.10.8, review 23/10/2026): Kiểm kê đọc trang song song phải khớp total; lệch thì đọc lại ≤ 2 lần rồi ném ----
+  // Phần này chỉ chạy lõi Extension; các ca so khớp web tương ứng ở danh sách lỗi bên dưới.
+  const MTG_INV = "Tồn kho theo vị trí · WH - MATERIAL - MTG · Cty Mastige";
+  const firstPages = (run, type) => run.calls.filter(c => c.type === type && c.payload.page === 1 && c.payload.warehouseIds[0] === 1177).length;
+  const savedOf = run => run.rpcs.filter(r => r.name === "sku_count_save_chunk").flatMap(r => r.args.p_rows);
+  {
+    // Nhận hàng giữa lúc đọc: dòng mới chen đầu danh sách sau trang 1 → dòng ở ranh trang bị đọc 2 lần (cộng đôi tồn), dòng mới bị sót.
+    // Lần đọc lại thấy danh sách đã ổn định → lưu đúng: đủ SKU cũ (không SKU nào bị cộng đôi) + SKU mới đúng một lần.
+    const ins = await runCore({ insert: { type: "GET_SKU_COUNT_INVENTORY_PAGE", times: 1 } });
+    assert.equal(ins.error, null, ins.error && ins.error.message);
+    const want = savedOf(ok.mine), got = savedOf(ins);
+    assert.deepEqual(got.filter(r => r.sku !== "900000951"), want, "D2: không SKU nào bị cộng đôi tồn / mất vị trí");
+    assert.equal(got.filter(r => r.sku === "900000951").length, 1, "D2: SKU mới chen vào có đúng một lần");
+    assert.equal(firstPages(ins, "GET_SKU_COUNT_INVENTORY_PAGE"), 2, "D2: tồn kho lệch total ở lượt 1 → đọc lại 1 lần");
+    assert.equal(ins.rpcs[0].args.p_source_counts.stockRows, 708, "MTG 705 + 1 dòng mới + Garment 2");
+    // Lịch sử APPROVED cũng phải khớp total.
+    const app = await runCore({ insert: { type: "GET_SKU_COUNT_APPROVED_PAGE", times: 1 }, manyApproved: true });
+    assert.equal(app.error, null, app.error && app.error.message);
+    assert.equal(firstPages(app, "GET_SKU_COUNT_APPROVED_PAGE"), 2, "D2: APPROVED lệch total → đọc lại");
+    assert.equal(app.rpcs[0].args.p_source_counts.approvedRows, 404, "APPROVED: 3 + 400 + 1 dòng mới, không trùng");
+    // Lệch mãi (kho nhận hàng liên tục): đọc 3 lần (lần đầu + 2 lần đọc lại) rồi ném, không ghi Kiểm kê; UID tạm vẫn chạy.
+    const busy = await runCore({ insert: { type: "GET_SKU_COUNT_INVENTORY_PAGE", times: 99 } });
+    assert.ok(busy.error, "D2: lệch mãi phải ném");
+    assert.equal(firstPages(busy, "GET_SKU_COUNT_INVENTORY_PAGE"), 3, "D2: tối đa 2 lần đọc lại");
+    assert.equal(busy.result.skuCount.ok, false);
+    assert.ok(busy.result.skuCount.error.startsWith(`${MTG_INV} thay đổi trong lúc đọc (`), busy.result.skuCount.error);
+    assert.ok(busy.result.skuCount.error.endsWith("đã đọc lại 2 lần); hãy chạy lại để tránh thiếu dữ liệu"), busy.result.skuCount.error);
+    assert.deepEqual(names(busy.rpcs), ["uid_temp_save"], "D2: không lưu bản Kiểm kê lệch");
+    // total không đổi nhưng một trang thiếu dòng (đọc được < WMS báo): cũng lệch → đọc lại → ném, câu lỗi nêu hai con số.
+    const short = await runCore({ dropRow: "GET_SKU_COUNT_INVENTORY_PAGE" });
+    assert.equal(firstPages(short, "GET_SKU_COUNT_INVENTORY_PAGE"), 3);
+    assert.equal(short.result.skuCount.error, `${MTG_INV} thay đổi trong lúc đọc (WMS báo 705 dòng, đọc được 704; đã đọc lại 2 lần); hãy chạy lại để tránh thiếu dữ liệu`);
+    assert.deepEqual(names(short.rpcs), ["uid_temp_save"]);
+    // Dòng bị bộ chuẩn hoá lọc bỏ (sourceRows > rows) không phải lệch: so bằng sourceRows, không đọc lại.
+    const filt = await runCore({ filtered: "GET_SKU_COUNT_INVENTORY_PAGE" });
+    assert.equal(filt.error, null, filt.error && filt.error.message);
+    assert.equal(firstPages(filt, "GET_SKU_COUNT_INVENTORY_PAGE"), 1, "D2: so bằng sourceRows, không đọc lại thừa");
+    // UID tạm giữ hành vi cũ (chỉ cảnh báo thiếu dòng, không đọc lại).
+    assert.equal(busy.calls.filter(c => c.type === "GET_STOCK_IMPORT_EXPORT_PAGE" && c.payload.page === 1).length, 2, "UID tạm: mỗi kho đọc 1 lần");
+    console.log("storage_risk_core D2 (lõi Extension): PASS — lệch total đọc lại ≤ 2 lần rồi ném, không cộng đôi tồn");
+  }
+
   // 2. Thiếu kho Garment: vẫn đồng bộ MTG, cảnh báo như web
   const one = await compare("thiếu Garment", { noGarment: true });
   assert.equal(one.mine.error, null);
   assert.deepEqual(one.mine.result.skuCount.missing, ["WH - MATERIAL - GARMENT"]);
   assert.deepEqual(one.mine.result.uidTemp.warn, ["Chưa đọc được kho: WH - MATERIAL - GARMENT"]);
+
+  // D2: lệch total một lần rồi ổn định → web cũng đọc lại và lưu cùng payload; dòng bị lọc (sourceRows > rows) không phải lệch
+  await compare("D2 tồn kho lệch một lần", { insert: { type: "GET_SKU_COUNT_INVENTORY_PAGE", times: 1 } });
+  await compare("D2 APPROVED lệch một lần", { insert: { type: "GET_SKU_COUNT_APPROVED_PAGE", times: 1 }, manyApproved: true });
+  await compare("D2 dòng bị lọc", { filtered: "GET_SKU_COUNT_INVENTORY_PAGE" });
 
   // 3. WMS báo nhiều dòng nhập xuất hơn số đọc được → cảnh báo trong bản lưu, như web
   const gap = await compare("WMS báo thiếu dòng", { shortTotal: { 1339: 5 } });
@@ -205,6 +272,9 @@ const names = list => list.map(r => r.name);
     ["tồn kho đổi giữa trang", { driftType: "GET_SKU_COUNT_INVENTORY_PAGE" }, /Tồn kho theo vị trí · WH - MATERIAL - MTG · Cty Mastige thay đổi trong lúc đọc/, null, ["uid_temp_save"]],
     // Kiểm kê không có SKU nào: giữ bản cũ
     ["không có tồn", { emptyInventory: true }, /WMS không trả SKU nào có tồn kho; giữ nguyên bản đồng bộ cũ/, null, ["uid_temp_save"]],
+    // D2: tồn kho lệch total mãi / thiếu dòng → đọc lại 2 lần rồi dừng, không ghi Kiểm kê (web sr-run phải giống)
+    ["D2 tồn kho lệch total mãi", { insert: { type: "GET_SKU_COUNT_INVENTORY_PAGE", times: 99 } }, /Tồn kho theo vị trí · WH - MATERIAL - MTG · Cty Mastige thay đổi trong lúc đọc \(.*đã đọc lại 2 lần\)/, null, ["uid_temp_save"]],
+    ["D2 tồn kho thiếu dòng", { dropRow: "GET_SKU_COUNT_INVENTORY_PAGE" }, /WMS báo 705 dòng, đọc được 704; đã đọc lại 2 lần/, null, ["uid_temp_save"]],
     // đọc nhập xuất lỗi: Kiểm kê đã lưu, UID tạm không lưu
     ["nhập xuất lỗi", { fail: { GET_STOCK_IMPORT_EXPORT_PAGE: "Phiên WMS hết hạn" } }, null, /Phiên WMS hết hạn/, ["sku_count_save_start", "sku_count_save_chunk", "sku_count_save_chunk", "sku_count_save_finish"]],
     // nhập xuất đổi giữa trang

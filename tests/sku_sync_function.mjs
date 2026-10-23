@@ -325,6 +325,30 @@ test("preview: bảng đúng 1000 dòng, database trả 416 ở trang kế thì 
   assert.equal(result.status, 200, JSON.stringify(result.body));
 });
 
+// D4 (review 23/10/2026): đọc sku_combo_links nhiều trang Range phải có order theo khoá chính, nếu không Postgres có thể trả
+// lặp / sót dòng giữa các trang (nhất là ngay sau upsert) → Combo thừa sai ở xem trước, "chưa khớp" giả ở xác minh.
+test("D4: mọi lần đọc sku_combo_links (xem trước + xác minh khi áp dụng) có order=combo_sku.asc,normal_sku.asc", async () => {
+  links.push(remoteLink("C0", "N0"), remoteLink("GONE", "N5"));
+  const reads = [];
+  const inner = globalThis.fetch;
+  globalThis.fetch = async (url, init = {}) => {
+    const target = new URL(String(url));
+    if (target.pathname === "/rest/v1/sku_combo_links" && (init.method ?? "GET") === "GET") reads.push(target.searchParams.get("order"));
+    return inner(url, init);
+  };
+  const preview = await call({ action: "preview", snapshot: snapshot(iso(-1 * MIN)) });
+  assert.equal(preview.status, 200, JSON.stringify(preview.body));
+  runs.length = 0;
+  runs.push(makeRun({ staged_combo_links: [{
+    ...remoteLink("C9", "N9"), normal_name: "SKU N9", combo_category_id: "954", combo_category_name: "x", normal_category_id: "954", normal_category_name: "x",
+    combo_product_status: "1", normal_product_status: "1", combo_status: "Active", source_modified_at: "2026-10-07T03:00:00.000Z", source_component_count: 1, combo_scope_complete: true,
+  }] }));
+  const applied = await call({ action: "apply", runId: RUN_A });
+  assert.equal(applied.status, 200, JSON.stringify(applied.body));
+  assert.ok(reads.length >= 2, `phải đọc sku_combo_links ở cả xem trước và áp dụng (đếm ${reads.length})`);
+  assert.deepEqual([...new Set(reads)], ["combo_sku.asc,normal_sku.asc"]);
+});
+
 test("auth: token sai hoặc hết hạn trả 401 AUTH, không phải 500", async () => {
   const inner = globalThis.fetch;
   globalThis.fetch = async (url, init = {}) => new URL(String(url)).pathname === "/auth/v1/user" ? json({ message: "invalid JWT" }, 401) : inner(url, init);

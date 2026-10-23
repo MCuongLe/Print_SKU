@@ -3,8 +3,14 @@
 
   const clean = value => String(value ?? "").replace(/\s+/g, " ").trim();
 
+  // D7 (0.10.8, review 23/10/2026): chỉ nhận hai nhãn Inside đang dùng, "Active" → "1", "In-Active" (hoặc "Inactive") → "0",
+  // không phân biệt hoa thường. Nhãn lạ hoặc ô trống thì NÉM lỗi đọc: cả lượt dừng, không ghi. Trước đây mọi giá trị lạ thành "0"
+  // nên Inside đổi nhãn là SKU bị ẩn + chặn in hàng loạt ở lượt gia tăng (≤ 500 dòng nên không bị giữ lại).
   function statusCode(value) {
-    return clean(value).toLowerCase() === "active" ? "1" : "0";
+    const label = clean(value).toLowerCase();
+    if (label === "active") return "1";
+    if (label === "in-active" || label === "inactive") return "0";
+    throw new Error(`Inside đổi nhãn Trạng thái sản phẩm ("${clean(value).slice(0, 40) || "trống"}"); dừng đồng bộ để không ẩn nhầm SKU, hãy báo để cập nhật Extension`);
   }
 
   // matched=false: không có dạng "Combo A=..."; rejected: thành phần không đọc được (bị bỏ khỏi relations).

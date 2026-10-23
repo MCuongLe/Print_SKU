@@ -269,7 +269,7 @@ async function preview(request: Request, user: { id: string; username: string },
   const products = full ? remoteSkus : await fetchBySkus(allCodes);
   const productByCode = new Map(products.map(row => [String(row.sku), row]));
   skus.forEach(row => { if (!skippedInactive.has(String(row.sku))) productByCode.set(String(row.sku), row); });
-  const remoteLinks = await fetchAll("sku_combo_links?select=*");
+  const remoteLinks = await fetchAll("sku_combo_links?select=*&order=combo_sku.asc,normal_sku.asc");
   const remoteLinkByPair = new Map(remoteLinks.map(row => [`${row.combo_sku}\u0000${row.normal_sku}`, row]));
   const componentCounts = new Map<string, number>();
   combos.forEach(row => componentCounts.set(String(row.combo_sku), (componentCounts.get(String(row.combo_sku)) ?? 0) + 1));
@@ -437,7 +437,7 @@ async function apply(request: Request, body: Json): Promise<Response> {
       ? await fetchAll("SKU_Name?select=sku,product_name,category_id,category_name,status&order=sku.asc")
       : await fetchBySkus(stagedSkus.map(row => String(row.sku)));
     const actualSkuByCode = new Map(actualSkus.map(row => [String(row.sku), row]));
-    const allLinks = stagedLinks.length ? await fetchAll("sku_combo_links?select=*") : [];
+    const allLinks = stagedLinks.length ? await fetchAll("sku_combo_links?select=*&order=combo_sku.asc,normal_sku.asc") : [];
     const actualLinkByPair = new Map(allLinks.map(row => [`${row.combo_sku}\u0000${row.normal_sku}`, row]));
     const errors: string[] = [];
     stagedSkus.forEach(expected => {

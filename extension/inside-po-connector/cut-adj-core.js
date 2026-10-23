@@ -16,8 +16,11 @@
 //     wms_group_uid_cut_import {p_file_name,p_file_sha256,p_total_rows,p_data_from,p_data_until,p_rows} → {cutRows,newRows,…}.
 //   * device: tên máy (Tùy chọn Extension); now(): epoch ms (mặc định Date.now); onProgress({phase:"read",page,totalPages} |
 //     {phase:"save",part,parts,rows}) tuỳ chọn.
+//   * serverNow() (0.10.8, tuỳ chọn): epoch ms giờ server Supabase đã biết (auto-sync lấy từ meta.updatedAt / header Date của RPC);
+//     khung đọc không có dòng thì p_data_until = min(to, serverNow) (D8). Thiếu / lỗi → to như cũ.
 //   Lỗi đọc (trang lặp, tổng đổi giữa trang, đọc thiếu dòng, ngoài kho 1177, quá 400 trang, tab lỗi) → ném TRƯỚC mọi lần nạp.
-//   Lỗi nạp ở phần i > 1 thì các phần trước đã nạp (như web; nạp lại chồng không nhân đôi: khoá UID + giờ Cut).
+//   Lỗi nạp ở phần i > 1 thì các phần trước đã nạp (như web; nạp lại chồng không nhân đôi: khoá UID + giờ Cut); từ 0.10.8 (R7) phần
+//   i < cuối gửi p_data_until = cut_at dòng cuối của phần nên mốc phủ không nhảy qua phần chưa nạp.
 (function (root) {
   const WAREHOUSE_ID = "1177";
   const PAGE_SIZE = 500;
@@ -35,7 +38,17 @@
     return [...new Uint8Array(digest)].map(b => b.toString(16).padStart(2, "0")).join("");
   }
 
-  async function run({ sendTab, rpc, device = "", now = () => Date.now(), onProgress } = {}) {
+  // Giờ server (epoch ms) hoặc NaN khi không có / lỗi; mốc nhỏ hơn của hai chuỗi ISO (bỏ qua giá trị không phải ngày).
+  function safeNow(serverNow) {
+    if (typeof serverNow !== "function") return NaN;
+    try { const at = Number(serverNow()); return Number.isFinite(at) ? at : NaN; } catch { return NaN; }
+  }
+  function minIso(iso, other) {
+    const a = Date.parse(iso), b = typeof other === "number" ? other : Date.parse(other);
+    return Number.isFinite(b) && (!Number.isFinite(a) || b < a) ? new Date(b).toISOString() : iso;
+  }
+
+  async function run({ sendTab, rpc, device = "", now = () => Date.now(), serverNow, onProgress } = {}) {
     if (typeof sendTab !== "function" || typeof rpc !== "function") throw new Error("Thiếu hàm gửi lệnh tab WMS hoặc gọi Supabase");
     const show = info => { if (onProgress) { try { onProgress(info); } catch { /* chỉ để hiển thị */ } } };
     const cov = await rpc("wms_cut_coverage", {});
@@ -73,13 +86,19 @@
     const cuts = [...byKey.values()].sort((a, b) => String(a.cut_at).localeCompare(String(b.cut_at))), parts = [];
     if (cuts.length) for (let i = 0; i < cuts.length; i += PART_ROWS) parts.push(cuts.slice(i, i + PART_ROWS)); else parts.push([]);
     const out = { cutRows: 0, newRows: 0, changedRows: 0, unchangedRows: 0 };
-    const stamp = stampOf(to), sentFrom = dataFrom || from || to, sentUntil = dataUntil || to;
+    // D8 (0.10.8): khung đọc không có dòng thì mốc phủ = min(to, giờ server) — to là đồng hồ máy; máy chạy nhanh hơn OVERLAP_MS mà
+    // ghi to thì wms_cut_coverage().until nằm ở tương lai và lượt sau sót Cut vĩnh viễn. Giờ server do người gọi đưa (serverNow,
+    // lấy từ phản hồi RPC wms_cut_coverage); không có thì giữ to như cũ. from kẹp ≤ until (SQL chặn until < from).
+    const stamp = stampOf(to), sentUntil = dataUntil || minIso(to, safeNow(serverNow)), sentFrom = minIso(dataFrom || from || to, sentUntil);
     for (let i = 0; i < parts.length; i += 1) {
       const part = parts[i];
       show({ phase: "save", part: i + 1, parts: parts.length, rows: cuts.length });
+      // R7 (0.10.8): phần i < cuối chỉ phủ tới cut_at dòng cuối của phần (cuts đã sắp theo cut_at); phần sau nạp lỗi thì lượt kế
+      // đọc lại từ đó, không bị mốc phủ của cả lượt nhảy qua. Phần cuối giữ mốc cả lượt.
+      const partUntil = i < parts.length - 1 ? String(part[part.length - 1].cut_at) : sentUntil;
       const saved = await rpc("wms_group_uid_cut_import", {
         p_file_name: fileName(device, stamp, i, parts.length), p_file_sha256: await sha256(JSON.stringify(part)), p_total_rows: total,
-        p_data_from: sentFrom, p_data_until: sentUntil, p_rows: part,
+        p_data_from: sentFrom, p_data_until: partUntil, p_rows: part,
       });
       for (const key of Object.keys(out)) out[key] += Number(saved?.[key] || 0);
     }

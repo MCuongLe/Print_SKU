@@ -176,7 +176,7 @@ const fakeExtension = () => addEventListener("message", async event => {
     return payload.page === 1 ? { page: 1, size: 500, total: 3, totalPages: 2, rows: [r(3), r(2)] } : { page: 2, size: 500, total: leaving ? 2 : 3, totalPages: 2, rows: [r(1)] };
   };
   if (window.__guHold2 && request.type === "GET_GROUP_UID_PAGE" && (request.payload || {}).page === 2) await window.__guHold2; // giữ trang 2 để đo tiến độ sau trang 1
-  const data = request.type === "PING" || request.type === "PING_WMS" ? { version: window.__guExtVersion || "0.10.7" } : request.type === "GET_GROUP_UID_PAGE" ? pageData(request.payload || {}) : null;
+  const data = request.type === "PING" || request.type === "PING_WMS" ? { version: window.__guExtVersion || "0.10.8" } : request.type === "GET_GROUP_UID_PAGE" ? pageData(request.payload || {}) : null;
   postMessage({ source: "HASAKI_INSIDE_CONNECTOR", requestId: request.requestId, ok: Boolean(data), data, error: data ? null : { message: "Loại yêu cầu chưa giả lập" } }, location.origin);
 });
 

@@ -13,7 +13,7 @@ const bridgeSource = fs.readFileSync(path.join(dir, "inside-bridge.js"), "utf8")
 const OLD = "26-01-01 00:00:00";
 const PAGE = 200;
 
-function runFull({ total = 1300, moveAt = 1250, mutateOnPage = 7 } = {}) {
+function runFull({ total = 1300, moveAt = 1250, mutateOnPage = 7, statusOf = () => "Active", filler = false } = {}) {
   const context = { URL, Date, Intl, Map, Set, Array, Number, String, Object, Math, Promise, Error, RegExp, JSON, setTimeout, clearTimeout };
   context.globalThis = context;
   vm.runInNewContext(coreSource, context);
@@ -27,7 +27,8 @@ function runFull({ total = 1300, moveAt = 1250, mutateOnPage = 7 } = {}) {
     querySelector: () => null,
     querySelectorAll: sel => {
       if (sel === "table thead th") return ["SKU", "Product Name", "Status", "Modified"].map(cell);
-      if (sel === "table tbody tr") return rows.map(row => ({ cells: [cell(row.sku), cell(`Vải mẫu ${row.sku}`), cell("Active"), cell(row.modified)] }));
+      // filler: dòng "không có dữ liệu" (1 ô, không SKU) ở cuối mỗi trang — phải bị bỏ qua, không bị coi là trạng thái lạ.
+      if (sel === "table tbody tr") return [...rows.map(row => ({ cells: [cell(row.sku), cell(`Vải mẫu ${row.sku}`), cell(statusOf(row)), cell(row.modified)] })), ...(filler ? [{ cells: [cell("Không có dữ liệu")] }] : [])];
       return [];
     },
   });
@@ -73,5 +74,17 @@ function runFull({ total = 1300, moveAt = 1250, mutateOnPage = 7 } = {}) {
   // Không ai sửa giữa lượt: kết quả như cũ.
   const quiet = await runFull({ mutateOnPage: 999 });
   assert.equal(new Set(quiet.result.data.normalRows.map(row => row.sku)).size, 1300);
-  console.log("inside_sku_sync_full: SKU sửa giữa lượt toàn bộ vẫn có trong ảnh chụp");
+  // D7 (0.10.8): một SKU có nhãn Trạng thái lạ → cả lượt đọc lỗi (không gửi ảnh chụp để ghi), lỗi nêu mã SKU và nhãn.
+  const odd = await runFull({ mutateOnPage: 999, statusOf: row => (row.sku === "900000042" ? "Hoạt động" : "Active") });
+  assert.equal(odd.result.ok, false, "nhãn lạ phải làm lượt đọc lỗi");
+  assert.equal(odd.result.error.code, "SKU_SYNC_READ_FAILED");
+  assert.match(odd.result.error.message, /900000042.*Inside đổi nhãn Trạng thái sản phẩm \("Hoạt động"\)/);
+  const blank = await runFull({ mutateOnPage: 999, statusOf: row => (row.sku === "900000043" ? "" : "Active") });
+  assert.equal(blank.result.ok, false, "ô trạng thái trống cũng là lỗi đọc, không phải ngừng hoạt động");
+  // In-Active vẫn là ngừng ("0"); dòng không có SKU (thông báo trống) không bị xét trạng thái.
+  const mixed = await runFull({ mutateOnPage: 999, filler: true, statusOf: row => (row.sku === "900000044" ? "In-Active" : "Active") });
+  assert.equal(mixed.result.ok, true, JSON.stringify(mixed.result.error));
+  assert.equal(mixed.result.data.normalRows.find(row => row.sku === "900000044").status, "0");
+  assert.equal(new Set(mixed.result.data.normalRows.map(row => row.sku)).size, 1300);
+  console.log("inside_sku_sync_full: SKU sửa giữa lượt toàn bộ vẫn có trong ảnh chụp; nhãn trạng thái lạ → lỗi đọc");
 })().catch(error => { console.error(error); process.exit(1); });

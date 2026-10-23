@@ -486,6 +486,36 @@ const actions = (calls, fn) => calls.filter(call => call.fn === fn).map(call => 
     assert.deepEqual(r3.results.map(item => `${item.kind}:${item.status}`), ["group_uid:skipped", "storage_risk:skipped"]);
   }
 
+  // 0.10.8 (D8): auto-sync đưa giờ server (meta.updatedAt của RPC; thiếu thì header Date) cho lõi Cắt/ADJ qua serverNow.
+  {
+    const seen = [];
+    const cutAdjCore = { run: async ({ rpc, serverNow }) => {
+      seen.push(typeof serverNow === "function" ? serverNow() : "thiếu serverNow");
+      await rpc("wms_cut_coverage", {});
+      seen.push(serverNow());
+      await rpc("wms_group_uid_cut_import", { p_rows: [] });
+      seen.push(serverNow());
+      return { total: 0, cutRows: 0, newRows: 0, changedRows: 0 };
+    } };
+    const h = harness({ insideTab: false, cutAdjCore, edgeOverride: {
+      "rpc:wms_cut_coverage": () => ({ ok: true, data: null, meta: { updatedAt: "2026-10-17T03:00:00.123Z", schemaVersion: 1 } }),
+      "rpc:wms_group_uid_cut_import": () => ({ ok: true, data: { cutRows: 0 } }),
+    } });
+    const result = await h.sync.tick();
+    assert.equal(result.results.find(item => item.kind === "cut_adj").status, "ok");
+    assert.equal(Number.isNaN(seen[0]), true, "chưa gọi RPC → chưa có giờ server");
+    assert.equal(seen[1], Date.parse("2026-10-17T03:00:00.123Z"), "giờ server = meta.updatedAt của wms_cut_coverage");
+    assert.equal(seen[2], Date.parse("2026-10-17T03:00:00.123Z"), "RPC không có meta / header thì giữ giờ server đã biết");
+    // Không có meta → header Date của phản hồi.
+    const seen2 = [];
+    const core2 = { run: async ({ rpc, serverNow }) => { await rpc("wms_cut_coverage", {}); seen2.push(serverNow()); return { total: 0 }; } };
+    const h2 = harness({ insideTab: false, cutAdjCore: core2, fetchOverride: async url => (url.includes("/rpc/wms_cut_coverage")
+      ? { status: 200, ok: true, headers: { get: name => (String(name).toLowerCase() === "date" ? "Fri, 17 Oct 2026 03:05:00 GMT" : null) }, json: async () => ({ ok: true, data: null }) }
+      : null) });
+    await h2.sync.tick();
+    assert.equal(seen2[0], Date.parse("2026-10-17T03:05:00.000Z"), "thiếu meta → header Date");
+  }
+
   // ---- review vòng 1 (22/10/2026) ----
   // R2: mốc lượt = giờ BẮT ĐẦU → lượt dài 3 phút không đẩy lượt kế sang nhịp sau (trước đây nhịp thật 60 phút).
   {

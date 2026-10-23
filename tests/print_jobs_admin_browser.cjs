@@ -30,6 +30,7 @@ const kind = job => (job.type === 'sku' || job.type === 'group_uid' ? job.type :
 const text = job => [job.id, job.source, ...job.items.flatMap(it => [it.sku, it.groupUid, it.productName, it.code, it.name])].join(' ').toLowerCase();
 
 function mock(page, calls) {
+  const cancelled = new Set();   // lệnh Admin đã huỷ trong phiên trang này (đợt B 23/10)
   return page.route('**/*', async route => {
     const url = route.request().url();
     const json = body => route.fulfill({ contentType: 'application/json', body: JSON.stringify(body) });
@@ -54,7 +55,8 @@ function mock(page, calls) {
       } });
     }
     if (rpc === 'print_admin_job') {
-      const job = JOBS.find(j => j.id === args.p_job_id) || { id: args.p_job_id, type: 'sku', status: 'queued', copies: 2, source: 'x', items: [], createdAt: new Date().toISOString() };
+      const found = JOBS.find(j => j.id === args.p_job_id) || { id: args.p_job_id, type: 'sku', status: 'queued', copies: 2, source: 'x', items: [], createdAt: new Date().toISOString() };
+      const job = cancelled.has(found.id) ? { ...found, status: 'cancelled' } : found;
       const final = ['completed', 'failed', 'cancelled'].includes(job.status);
       return json({ ok: true, data: { ...job, items: job.items.map((it, index) => ({ ...it, index })), reprints: job.id === JOBS[0].id ? [{ id: JOBS[3].id, status: 'queued', copies: 2, createdAt: JOBS[3].createdAt }] : [],
         reprint: { allowed: ['sku', 'group_uid'].includes(job.type) && final && job.items.length > 0, partial: job.type === 'group_uid', reason: !['sku', 'group_uid'].includes(job.type) ? 'NOT_SUPPORTED' : final ? null : 'JOB_ACTIVE' } } });
@@ -64,6 +66,7 @@ function mock(page, calls) {
       const items = args.p_items ? args.p_items.map(i => job.items[i]) : job.items;
       return json({ ok: true, data: { id: 'ffff6666-0000-4000-8000-000000000006', status: 'queued', duplicate: false, copies: items.reduce((n, it) => n + it.copies, 0), itemCount: items.length, reprintOf: job.id } });
     }
+    if (rpc === 'print_job_cancel') { cancelled.add(args.p_job_id); return json({ ok: true, data: { id: args.p_job_id, status: 'cancelled' } }); }
     if (url.includes('/rest/v1/') && !rpc) return json([]);
     return json({ ok: true, data: { agents: [], jobs: [], items: [] } });
   });
@@ -212,6 +215,7 @@ const lastCall = (calls, name) => [...calls].reverse().find(call => call.rpc ===
       await page.locator('#pj-d-all').check();
       assert.equal((await page.locator('#pj-d-sum').innerText()).trim(), '3/3 dòng · 3 tem');
       await page.locator('#pj-d-tbody input[data-pick="1"]').uncheck();
+      assert.equal(await page.locator('#pj-d-cancel').isVisible(), false, 'lệnh đã in xong: không có nút Huỷ lệnh');
       await page.locator('#pj-d-reprint').click();
       await whd(page).waitFor({ state: 'visible' });
       assert.equal((await whd(page).locator('.whd-title').textContent()).trim(), 'In lại 2 UID');
@@ -251,6 +255,20 @@ const lastCall = (calls, name) => [...calls].reverse().find(call => call.rpc ===
       await rows(page).filter({ hasText: 'Nút mẫu E' }).click();
       await page.waitForFunction(() => /đang chờ hoặc đang in/.test(document.getElementById('pj-d-note').textContent));
       assert.equal(await page.locator('#pj-d-reprint').isVisible(), false);
+      // Huỷ lệnh đang chờ (đợt B 23/10): nút "Huỷ lệnh" → hộp xác nhận; Esc không gọi; đồng ý → print_job_cancel, popup đọc lại trạng thái
+      assert.equal(await page.locator('#pj-d-cancel').isVisible(), true, 'lệnh queued: có nút Huỷ lệnh');
+      assert.equal((await page.locator('#pj-d-cancel').innerText()).trim(), 'Huỷ lệnh');
+      await page.locator('#pj-d-cancel').click();
+      await whd(page).waitFor({ state: 'visible' });
+      assert.equal((await whd(page).locator('.whd-title').textContent()).trim(), 'Huỷ lệnh in');
+      await page.keyboard.press('Escape');
+      await whd(page).waitFor({ state: 'hidden' });
+      assert.equal(calls.some(call => call.rpc === 'print_job_cancel'), false, 'Esc: không huỷ');
+      await page.locator('#pj-d-cancel').click();
+      await answer(page, true);
+      await page.waitForFunction(() => document.getElementById('pj-d-status').dataset.status === 'cancelled');
+      assert.equal(lastCall(calls, 'print_job_cancel').args.p_job_id, JOBS[3].id);
+      assert.equal(await page.locator('#pj-d-cancel').isVisible(), false, 'đã huỷ: ẩn nút');
       await page.locator('#pj-d-meta button[data-open-job]').click();   // "In lại từ aaaa1111"
       await page.waitForFunction(() => /aaaa1111/.test(document.getElementById('pj-d-title').textContent));
       await page.locator('#pj-d-close').click();

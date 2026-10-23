@@ -200,7 +200,8 @@
 
     // RPC Admin qua PostgREST bằng phiên Admin của Extension (cùng hàm web gọi: wms_group_uid_cut_import, sku_count_save_*, uid_temp_save…).
     // Trả nguyên JSON của RPC; HTTP lỗi → ném lỗi kèm câu của PostgREST. 401 → gia hạn phiên một lần rồi gọi lại.
-    async function rpc(name, args = {}, retried = false) {
+    // onServerTime(epochMs) (0.10.8, D8): giờ server của phản hồi — meta.updatedAt của hàm Admin (now() trong SQL), thiếu thì header Date.
+    async function rpc(name, args = {}, retried = false, onServerTime = null) {
       const target = config();
       if (!target?.url || !target?.key) throw edgeError("NO_CONFIG", "Extension thiếu cấu hình Supabase");
       if (!/^[a-z0-9_]{1,63}$/.test(String(name))) throw edgeError("RPC_ERROR", "Tên hàm Supabase không hợp lệ");
@@ -223,7 +224,13 @@
       } finally {
         if (timer) clearTimeout(timer);
       }
-      if (response.status === 401 && !retried) return rpc(name, args, true);
+      if (response.status === 401 && !retried) return rpc(name, args, true, onServerTime);
+      if (typeof onServerTime === "function" && response.ok) {
+        let header = "";
+        try { header = response.headers?.get?.("date") || ""; } catch { /* không có header Date */ }
+        const metaAt = Date.parse(data?.meta?.updatedAt ?? ""), at = Number.isFinite(metaAt) ? metaAt : Date.parse(header);
+        if (Number.isFinite(at)) onServerTime(at);
+      }
       if (!response.ok || data === null) throw edgeError("RPC_ERROR", clean(data?.message || data?.error?.message, 300) || `Supabase HTTP ${response.status}`);
       // Hàm Admin trả {ok, data | error} (như adminRpc của web): ok:false → ném câu lỗi của hàm; ok:true → trả data.
       if (data && typeof data === "object" && !Array.isArray(data) && "ok" in data) {
@@ -517,13 +524,14 @@
       const busy = await lease(kind, device, cooldownSeconds);
       if (busy) return { status: "skipped", message: busy, covered: true };
       const g = startGuard(kind, device);
-      let finished = false;
+      let finished = false, serverAt = NaN;
       try {
         const result = await core.run({
           // Thời gian chờ mỗi lệnh như web: lịch sử Cut 90 giây/trang, Kiểm kê / UID tạm 180 giây.
           sendTab: (type, payload) => { checkLease(g); return sendTab(kind, type, payload, kind === "storage_risk" ? 180 * 1000 : WMS_PAGE_TIMEOUT_MS); },
-          rpc: async (name, args) => { checkLease(g); return rpc(name, args); },
-          device, now: () => now(),
+          rpc: async (name, args) => { checkLease(g); return rpc(name, args, false, at => { serverAt = at; }); },
+          // 0.10.8 (D8): giờ server của lần RPC gần nhất (Cắt/ADJ gọi wms_cut_coverage đầu lượt) để lõi không ghi mốc phủ theo đồng hồ máy.
+          device, now: () => now(), serverNow: () => serverAt,
         });
         await confirmLease(g);
         finished = true;
