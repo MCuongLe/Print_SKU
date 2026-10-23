@@ -33,6 +33,20 @@ export const SKU_V2_BOX_LAYOUT = {
 // Giới hạn dòng tên của v2: tính như v1 nhưng "vạch" là mép trên khung (maxLinesForSize trong text-layout.mjs).
 export const SKU_V2_NAME_LAYOUT = { ...SKU_LABEL_LAYOUT, lineY: SKU_V2_BOX_LAYOUT.top, lineOffset: 10 };
 
+// Tem SKU phiên bản 3 (0.10.2, 23/10/2026) — gộp v1 + v2, quyết định theo TỪNG tem trong lệnh: có PO hoặc ngày nhận
+// (khác rỗng sau trim) thì vẽ khung PO / Ngày nhận như v2, không có thì giống từng byte v1. Số lượng in như v1 (có thì in,
+// kể cả tem có khung). v1, v2 giữ nguyên để lệnh cũ còn trong hàng đợi in được. render.mjs dùng chung hai hàm này.
+export function skuHasPoBox(payload, version) {
+  const v = Number(version);
+  if (v === 2) return true;
+  if (v === 3) return Boolean(String(payload?.po ?? "").trim() || String(payload?.receivedDate ?? "").trim());
+  return false;
+}
+// Chỉ v2 bỏ số lượng ở chân tem; v1, v3 in nếu có.
+export function skuShowsQuantity(version) {
+  return Number(version) !== 2;
+}
+
 function poDateRows(payload) {
   const b = SKU_V2_BOX_LAYOUT;
   const rows = [["PO:", String(payload.po ?? "").trim()], ["Ngày nhận:", String(payload.receivedDate ?? "").trim()]];
@@ -49,7 +63,7 @@ function poDateRows(payload) {
 }
 
 export function renderSkuLabel(payload, { version = 1 } = {}) {
-  const v2 = Number(version) === 2;
+  const box = skuHasPoBox(payload, version);
   const sku = escapeXml(payload.sku);
   // Ưu tiên dùng kết quả đã đo bề rộng THẬT qua GDI+ (payload.productNameLines
   // + productNameFontSize, tính sẵn ở render.mjs bằng text-metrics.mjs — xem
@@ -58,8 +72,8 @@ export function renderSkuLabel(payload, { version = 1 } = {}) {
   // định 22, tối đa 8 dòng — giữ nguyên byte-for-byte hành vi trước đây.
   const hasMeasuredLines = Array.isArray(payload.productNameLines) && payload.productNameLines.length > 0;
   const fontSize = hasMeasuredLines ? Number(payload.productNameFontSize) || 22 : 22;
-  // v2 có khung PO/ngày: cách đếm ký tự dự phòng cũng chỉ lấy số dòng v2 (5 ở cỡ 22), không 8 như v1 (review Codex 22/10)
-  const productLines = hasMeasuredLines ? payload.productNameLines : wrapText(payload.productName, 22, v2 ? maxLinesForSize(22, SKU_V2_NAME_LAYOUT) : 8);
+  // Tem có khung PO/ngày (v2, v3 có PO): cách đếm ký tự dự phòng cũng chỉ lấy số dòng v2 (5 ở cỡ 22), không 8 như v1 (review Codex 22/10)
+  const productLines = hasMeasuredLines ? payload.productNameLines : wrapText(payload.productName, 22, box ? maxLinesForSize(22, SKU_V2_NAME_LAYOUT) : 8);
   const lineHeight = fontSize + 3;
   const product = productLines.map((line, index) =>
     `<text x="12" y="${34 + index * lineHeight}" font-size="${fontSize}">${escapeXml(line)}</text>`
@@ -70,7 +84,7 @@ export function renderSkuLabel(payload, { version = 1 } = {}) {
   const qrTop = Math.max(170, 34 + productLines.length * lineHeight + pad);
   const qr = qrRects(payload.sku, { centerX: LABEL_WIDTH / 2, top: qrTop, box: 154 });
   const skuY = qrTop + qr.size + skuOffset;
-  const quantityText = v2 ? "" : formatQuantity(payload.quantity);
+  const quantityText = skuShowsQuantity(version) ? formatQuantity(payload.quantity) : "";
   const dateText = String(payload.printedDate || formatDate());
   // Cỡ chữ đã đo thật (payload.footerFit, tính ở render.mjs) — không có thì ước lượng.
   const footer = payload.footerFit ?? fitFooter(quantityText, dateText, { measureQuantity: estimateTextWidth, measureDate: estimateTextWidth });
@@ -78,7 +92,7 @@ export function renderSkuLabel(payload, { version = 1 } = {}) {
     product +
     qr.rects +
     `<text x="160" y="${skuY}" font-size="32" font-weight="700" text-anchor="middle">${sku}</text>` +
-    (v2 ? poDateRows(payload) : "") +
+    (box ? poDateRows(payload) : "") +
     `<line x1="20" y1="${lineY}" x2="300" y2="${lineY}" stroke="#000" stroke-width="2"/>` +
     (quantityText ? `<text x="20" y="${footerY}" font-size="${footer.quantityFontSize}">${escapeXml(quantityText)}</text>` : "") +
     `<text x="300" y="${footerY}" font-size="${footer.dateFontSize}" text-anchor="end">${escapeXml(dateText)}</text>`

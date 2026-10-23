@@ -32,7 +32,7 @@ test("0.8.9: LOOP_STALL_MS mặc định 10 phút khi .env không có dòng đó
 test("0.8.9: VERSION, package.json và AGENT_VERSION cùng một số", () => {
   const version = fs.readFileSync(path.join(ROOT, "VERSION"), "utf8").trim();
   const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, "package.json"), "utf8"));
-  assert.equal(version, "0.10.1");
+  assert.equal(version, "0.10.2");
   assert.equal(pkg.version, version);
   assert.equal(AGENT_VERSION, version);
 });

@@ -1,6 +1,17 @@
 # Print SKU UID Agent
 
-Agent Windows độc lập phục vụ ứng dụng Print SKU. Bản 0.10.1 in tem SKU (kể cả tem Phụ liệu có PO + ngày nhận, `sku:v2`), Group UID và mã vị trí (tem Fabric Relaxation đã bỏ) tem.
+Agent Windows độc lập phục vụ ứng dụng Print SKU. Bản 0.10.2 in tem SKU (mẫu gộp `sku:v3`: tem có PO + ngày nhận và tem thường trong cùng một lệnh; vẫn in `sku:v1`, `sku:v2`), Group UID và mã vị trí (tem Fabric Relaxation đã bỏ) tem.
+
+## Cập nhật 0.10.2 — gộp tem SKU thường và tem Phụ liệu (tem SKU phiên bản 3)
+
+- Capability mới `sku:v3`: lệnh `type sku`, `templateVersion 3`. Agent quyết định **theo từng tem** trong lệnh: tem có
+  `po` hoặc `receivedDate` (khác rỗng) → khung PO / Ngày nhận như v2 (tên tối đa 5 dòng cỡ 22/20, 6 dòng cỡ 18/16); tem
+  không có cả hai → **giống từng byte tem v1** (tên 8 dòng, không khung). Chân tem in số lượng nếu có (cả tem có khung),
+  trống thì chỉ ngày in góc phải. Một lệnh có thể lẫn tem có PO và tem không PO.
+- Kiểm `po` / `receivedDate` như v2 (sai mẫu → từ chối cả lệnh). Tem v1, v2 không đổi, lệnh cũ trong hàng đợi vẫn in được.
+- **Thứ tự lên:** chạy migration `supabase/print_sku_v3_v1.sql` (hàng đợi giao lệnh v3 theo capability) + `supabase/sku_po_receipts_v1.sql`
+  TRƯỚC → cài ZIP như 0.10.1 bằng `install-agent.ps1` (log khởi động có `sku:v3`) → in thử 3 tem: không PO / có PO / có PO + số lượng
+  → mới push web. Web chỉ gửi v3 khi tem có PO / ngày nhận hoặc tem Phụ liệu có số lượng; tem khác vẫn v1/v2. Test: `tests/sku-v3-0102.test.mjs`.
 
 ## Cập nhật 0.10.1 — tem Phụ liệu có PO + ngày nhận (tem SKU phiên bản 2)
 

@@ -5,7 +5,7 @@ import { LABEL_GAP_MM, LABEL_HEIGHT, LABEL_HEIGHT_MM, LABEL_WIDTH, ROW_GAP_MM, R
 import { renderLabelSvg } from "./templates/index.mjs";
 import { planLocationLabels } from "./location-plan.mjs";
 import { formatDate, formatQuantity, LABEL_FONT_FAMILY } from "./templates/common.mjs";
-import { SKU_LABEL_LAYOUT, SKU_LABEL_MAX_WIDTH_PX, SKU_V2_NAME_LAYOUT } from "./templates/sku-label.mjs";
+import { SKU_LABEL_LAYOUT, SKU_LABEL_MAX_WIDTH_PX, SKU_V2_NAME_LAYOUT, skuHasPoBox, skuShowsQuantity } from "./templates/sku-label.mjs";
 import { GROUP_UID_NAME_MAX_WIDTH_PX, groupUidMaxLines } from "./templates/group-uid-label.mjs";
 import {
   DATE_FONT_SIZES, estimateTextWidth, fitFooter, maxLinesForSize, productNameCandidates, QUANTITY_FONT_SIZES, tokenize, verifyLineWidths,
@@ -23,8 +23,8 @@ const AVG_CHAR_WIDTH_AT_22 = 11;
 
 // Khung tên của từng loại tem có tên sản phẩm (tem vị trí có bước đo riêng).
 const NAME_LAYOUTS = {
-  // tem SKU v2 (Phụ liệu, 0.10.1) có khung PO/ngày nên ít dòng tên hơn
-  sku: { maxWidthPx: SKU_LABEL_MAX_WIDTH_PX, maxLinesFor: (entry) => (size) => maxLinesForSize(size, Number(entry.templateVersion) === 2 ? SKU_V2_NAME_LAYOUT : SKU_LABEL_LAYOUT) },
+  // tem SKU có khung PO/ngày (v2 Phụ liệu 0.10.1; v3 0.10.2 khi tem đó có PO hoặc ngày nhận) nên ít dòng tên hơn
+  sku: { maxWidthPx: SKU_LABEL_MAX_WIDTH_PX, maxLinesFor: (entry) => (size) => maxLinesForSize(size, skuHasPoBox(entry.payload, entry.templateVersion) ? SKU_V2_NAME_LAYOUT : SKU_LABEL_LAYOUT) },
   group_uid: { maxWidthPx: GROUP_UID_NAME_MAX_WIDTH_PX, maxLinesFor: () => (size) => groupUidMaxLines(size) }
 };
 
@@ -69,7 +69,7 @@ export async function planProductNames(entries, config, measureText, logger) {
   // Số lượng và ngày ở đáy tem SKU đo luôn trong lần gọi vòng 1 (cỡ chữ riêng),
   // không thêm lần gọi PowerShell nào.
   const footerTexts = new Map(skuEntries.map((entry) => [entry, {
-    quantity: Number(entry.templateVersion) === 2 ? "" : formatQuantity(entry.payload.quantity),
+    quantity: skuShowsQuantity(entry.templateVersion) ? formatQuantity(entry.payload.quantity) : "",
     date: String(entry.payload.printedDate || formatDate())
   }]));
   let tokenWidths;

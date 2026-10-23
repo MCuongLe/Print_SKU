@@ -61,17 +61,19 @@ export function normalizeJob(input) {
 
   let normalizedPayload = {};
   if (type === "sku") {
-    if (templateVersion !== 1 && templateVersion !== 2) errors.push("Phiên bản tem SKU không được hỗ trợ");
-    // v2 (0.10.1, tem Phụ liệu): giữ PO + ngày nhận, kiểm như tem Group UID; v1 giữ nguyên (bỏ trường lạ).
+    if (![1, 2, 3].includes(templateVersion)) errors.push("Phiên bản tem SKU không được hỗ trợ");
+    // v2 (0.10.1, tem Phụ liệu) và v3 (0.10.2, mẫu gộp): giữ PO + ngày nhận (tuỳ chọn), kiểm như tem Group UID;
+    // v1 giữ nguyên (bỏ trường lạ). Số lượng giữ ở mọi phiên bản (v2 không in, xem sku-label.mjs).
+    const keepsPoDate = templateVersion === 2 || templateVersion === 3;
     const normalizeSku = (item) => ({
       sku: rawCode(item.sku),
       productName: cleanText(item.productName, 180),
       quantity: cleanText(item.quantity, 40),
       printedDate: cleanText(item.printedDate, 20),
-      ...(templateVersion === 2 ? { po: String(item.po ?? "").trim(), receivedDate: String(item.receivedDate ?? "").trim() } : {}),
+      ...(keepsPoDate ? { po: String(item.po ?? "").trim(), receivedDate: String(item.receivedDate ?? "").trim() } : {}),
       copies: validCopies(item.copies ?? 1) || 0
     });
-    const skuExtraErrors = (item, where) => (templateVersion === 2 ? uidExtraErrors(item, where) : []);
+    const skuExtraErrors = (item, where) => (keepsPoDate ? uidExtraErrors(item, where) : []);
     if (Array.isArray(payload.items)) {
       const items = payload.items.slice(0, 100).map(normalizeSku);
       if (!items.length) errors.push("Danh sách SKU đang trống");

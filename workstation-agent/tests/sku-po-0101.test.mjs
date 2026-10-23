@@ -31,7 +31,7 @@ test("validator: v2 giữ PO + ngày nhận; PO/ngày sai mẫu thì từ chối
   const v1 = normalizeJob(job({ items: [item] }, { templateVersion: 1 }));
   assert.equal(v1.ok, true);
   assert.ok(!("po" in v1.job.payload.items[0]) && !("receivedDate" in v1.job.payload.items[0]), "v1 không đổi");
-  assert.equal(normalizeJob(job({ items: [item] }, { templateVersion: 3 })).ok, false, "phiên bản lạ bị từ chối");
+  assert.equal(normalizeJob(job({ items: [item] }, { templateVersion: 4 })).ok, false, "phiên bản lạ bị từ chối (v3 có từ 0.10.2)");
 });
 
 test("tem v2: khung hai hàng PO / Ngày nhận, không số lượng, ngày in phải, SKU đậm", () => {

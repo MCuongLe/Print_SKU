@@ -198,6 +198,29 @@ async function run(browser, width) {
     finally { queue.enqueue = original; }
   });
   assert.deepEqual([timeout.thrown, timeout.uncertain, timeout.jobIds, timeout.labels], [true, true, ["id-1"], 400], `lỗi hết giờ vẫn có phần đã gửi: ${JSON.stringify(timeout)}`);
+
+  // 23/10/2026 mẫu tem SKU gộp v3: ô Số lượng từng dòng; agent cũ (chỉ sku:v2) + có số lượng → chặn; có sku:v3 → template 3 kèm số lượng
+  await page.locator("#ins-print").click();
+  await page.waitForFunction(() => document.getElementById("ins-tem")?.open && document.querySelectorAll("#ins-tem .skit__item").length > 0);
+  assert.equal(await page.locator('#ins-tem .skit__item input[data-field="qty"]').count(), await page.locator("#ins-tem .skit__item").count(), "mỗi dòng có ô Số lượng");
+  await page.locator('#ins-tem .skit__item').first().locator('input[data-field="qty"]').fill("1200");
+  if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/ins-tem-so-luong-${width}.png` });
+  const sent = enqueued.length;
+  caps = ["sku:v1", "sku:v2"];
+  await page.locator("#ins-tem-ok").click();
+  await page.locator(".whd-ok").click(); // còn dòng Combo chưa có SKU Normal → đồng ý in thiếu
+  await page.waitForFunction(() => /cần agent 0\.10\.2/.test(document.getElementById("ins-tem-status").innerText));
+  assert.equal(enqueued.length, sent, "agent cũ không in được số lượng → không gửi");
+  caps = ["sku:v1", "sku:v2", "sku:v3"];
+  await page.locator("#ins-tem-ok").click();
+  await page.locator(".whd-ok").click();
+  await page.waitForFunction(() => !document.getElementById("ins-tem").open);
+  const v3 = enqueued.slice(sent);
+  assert.ok(v3.length >= 1 && v3.every(job => job.p_template_version === 3), `có sku:v3 → template 3: ${v3.map(j => j.p_template_version)}`);
+  const v3Items = v3.flatMap(job => job.p_payload.items);
+  assert.equal(v3Items[0].quantity, "1200", "số lượng nhập lên tem");
+  assert.ok(v3Items.slice(1).every(item => item.quantity === ""), "dòng không nhập số lượng → trống");
+  assert.ok(v3Items.every(item => item.po === "10000000000001" && item.receivedDate === "15/06/2026"));
   assert.deepEqual(errors, []);
   await context.close();
 }

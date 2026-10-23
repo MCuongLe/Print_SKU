@@ -23,6 +23,7 @@ const mock = (page, enqueued) => page.route('**/*', async route => {
   if (rpc === 'print_queue_status') return json({ ok: true, data: { queued: 0, queuedCopies: 0, active: 0, agents: [] } });
   // Bộ chọn SKU Combo dùng chung: mảng rỗng = không có SKU Normal liên kết, thêm thẳng vào danh sách.
   if (rpc === 'sku_combo_lookup') return json([]);
+  if (rpc === 'sku_po_lookup') return json({ ok: true, data: { items: [] } }); // 23/10/2026: SKU chưa có PO → tem thường
   if (url.includes('/rest/v1/') && !rpc) return json([]);
   return json({ ok: true, data: {} });
 });

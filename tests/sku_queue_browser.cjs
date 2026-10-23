@@ -41,6 +41,7 @@ const state = page => page.evaluate(() => {
         if (url.startsWith(BASE)) return route.continue();
         const rpc = url.match(/\/rest\/v1\/rpc\/([a-z_]+)/)?.[1];
         if (rpc === 'sku_combo_lookup') return json([]);
+        if (rpc === 'sku_po_lookup') return json({ ok: true, data: { items: [] } }); // 23/10/2026: SKU chưa có PO → tem thường
         if (rpc === 'print_enqueue') { enqueued.push(JSON.parse(route.request().postData() || '{}')); return json({ ok: true, data: { id: '99999999-0000-4000-8000-000000000001', status: 'queued', duplicate: false } }); }
         if (rpc === 'print_job_status') return json({ ok: true, data: { id: '99999999-0000-4000-8000-000000000001', status: 'completed', copies: 4 } });
         if (rpc === 'print_queue_status') return json({ ok: true, data: { queued: 0, queuedCopies: 0, active: 0, agents: [] } });
