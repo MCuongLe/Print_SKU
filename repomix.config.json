@@ -1,0 +1,59 @@
+{
+  "$schema": "https://repomix.com/schemas/latest/schema.json",
+  "output": {
+    "filePath": "outputs/repomix/print-sku-context.xml",
+    "style": "xml",
+    "headerText": "Print_SKU — gói ngữ cảnh lõi (tài liệu, Extension, Edge, agent in, script, hồ sơ agent). Không có index.html, test, migration SQL, RULES.md: xem docs/CONTEXT_MAP.md.",
+    "instructionFilePath": "docs/repomix-instruction.md",
+    "includeFullDirectoryStructure": true,
+    "topFilesLength": 10,
+    "git": {
+      "sortByChanges": true,
+      "includeLogs": true,
+      "includeLogsCount": 40,
+      "includeDiffs": false
+    },
+    "compress": true,
+    "tokenBudget": 150000,
+    "patterns": [
+      {
+        "pattern": "docs/plans/README.md"
+      },
+      {
+        "pattern": "docs/plans/**",
+        "directoryStructureOnly": true
+      }
+    ]
+  },
+  "include": [
+    "AGENTS.md",
+    "package.json",
+    "docs/**/*.md",
+    "extension/**/*.{js,json,html,md}",
+    "supabase/functions/**/*.ts",
+    "workstation-agent/src/**",
+    "workstation-agent/docs/**",
+    "workstation-agent/README.md",
+    "workstation-agent/VERSION",
+    "workstation-agent/package.json",
+    "scripts/*.py",
+    "scripts/*.json",
+    ".claude/agents/**",
+    ".claude/skills/**"
+  ],
+  "ignore": {
+    "useGitignore": true,
+    "useDefaultPatterns": true,
+    "customPatterns": [
+      "index.html",
+      "outputs/**",
+      "data/**",
+      "workstation-agent/release/**",
+      "**/*.png",
+      "**/*.svg"
+    ]
+  },
+  "security": {
+    "enableSecurityCheck": true
+  }
+}

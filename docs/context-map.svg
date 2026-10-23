@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 900" width="720" height="900" role="img" aria-labelledby="t d">
+  <title id="t">Print SKU — bản đồ ngữ cảnh cho agent</title>
+  <desc id="d">Sáu nguồn ngữ cảnh của dự án Print SKU: Source Code, Database, Business Logic, Dependencies, Documentation, Git History. Chi tiết ở docs/CONTEXT_MAP.md.</desc>
+  <defs>
+    <style>
+      .frame { fill: #000; stroke: #2e2e2e; stroke-width: 2; }
+      .card { fill: #262626; }
+      .ic { fill: none; stroke: #f5f5f5; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+      .h1 { font: 600 26px "Segoe UI", system-ui, sans-serif; fill: #fafafa; }
+      .h2 { font: 600 21px "Segoe UI", system-ui, sans-serif; fill: #fafafa; }
+      .sub { font: 400 15px "Segoe UI", system-ui, sans-serif; fill: #a3a3a3; }
+      .txt { font: 400 14px "Segoe UI", system-ui, sans-serif; fill: #a3a3a3; }
+    </style>
+  </defs>
+  <rect class="frame" x="8" y="8" width="704" height="884" rx="28"/>
+
+  <!-- Agent / phiên mới -->
+  <rect class="card" x="40" y="40" width="640" height="150" rx="22"/>
+  <g class="ic" transform="translate(344 58) scale(1.35)"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></g>
+  <text class="h1" x="360" y="128" text-anchor="middle">Print SKU · AI Coding Assistant</text>
+  <text class="sub" x="360" y="160" text-anchor="middle">AGENTS.md → CONTEXT_MAP → PROJECT_MAP → RULES.md</text>
+
+  <g class="ic" transform="translate(348 202)"><path d="m21 16-4 4-4-4"/><path d="M17 20V4"/><path d="m3 8 4-4 4 4"/><path d="M7 4v16"/></g>
+
+  <!-- Hàng 1 -->
+  <rect class="card" x="40" y="250" width="310" height="180" rx="20"/>
+  <g class="ic" transform="translate(64 274)"><path d="m18 16 4-4-4-4"/><path d="m6 8-4 4 4 4"/><path d="m14.5 4-5 16"/></g>
+  <text class="h2" x="64" y="342">Source Code</text>
+  <text class="txt" x="64" y="372">index.html: khối style/section/script id</text>
+  <text class="txt" x="64" y="396">Extension · agent in · 4 Edge Function</text>
+
+  <rect class="card" x="370" y="250" width="310" height="180" rx="20"/>
+  <g class="ic" transform="translate(394 274)"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/></g>
+  <text class="h2" x="394" y="342">Database</text>
+  <text class="txt" x="394" y="372">Supabase: 47 bảng · 145 hàm · 7 cron</text>
+  <text class="txt" x="394" y="396">Chỉ qua RPC, RLS khoá bảng</text>
+
+  <!-- Hàng 2 -->
+  <rect class="card" x="40" y="450" width="310" height="180" rx="20"/>
+  <g class="ic" transform="translate(64 474)"><rect width="8" height="8" x="3" y="3" rx="2"/><path d="M7 11v4a2 2 0 0 0 2 2h4"/><rect width="8" height="8" x="13" y="13" rx="2"/></g>
+  <text class="h2" x="64" y="542">Business Logic</text>
+  <text class="txt" x="64" y="572">In tem SKU · Group UID · vị trí</text>
+  <text class="txt" x="64" y="596">Cắt UID · kiểm kê · đồng bộ Inside/WMS</text>
+
+  <rect class="card" x="370" y="450" width="310" height="180" rx="20"/>
+  <g class="ic" transform="translate(394 474)"><rect x="16" y="16" width="6" height="6" rx="1"/><rect x="2" y="16" width="6" height="6" rx="1"/><rect x="9" y="2" width="6" height="6" rx="1"/><path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3"/><path d="M12 12V8"/></g>
+  <text class="h2" x="394" y="542">Dependencies</text>
+  <text class="txt" x="394" y="572">Inside · WMS · máy in TSC qua agent</text>
+  <text class="txt" x="394" y="596">Gemini/Claude · GitHub Pages</text>
+
+  <!-- Hàng 3 -->
+  <rect class="card" x="40" y="650" width="310" height="180" rx="20"/>
+  <g class="ic" transform="translate(64 674)"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></g>
+  <text class="h2" x="64" y="742">Documentation</text>
+  <text class="txt" x="64" y="772">PROJECT_MAP · RULES.md · docs/plans</text>
+  <text class="txt" x="64" y="796">DOI_AGENT · README từng phần</text>
+
+  <rect class="card" x="370" y="650" width="310" height="180" rx="20"/>
+  <g class="ic" transform="translate(394 674)"><line x1="6" x2="6" y1="3" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></g>
+  <text class="h2" x="394" y="742">Git History</text>
+  <text class="txt" x="394" y="772">Từ 31/08/2026 · commit theo đợt</text>
+  <text class="txt" x="394" y="796">Migration → Edge → Extension → push</text>
+</svg>
