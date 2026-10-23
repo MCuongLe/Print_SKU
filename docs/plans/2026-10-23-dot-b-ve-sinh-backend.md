@@ -10,7 +10,7 @@ Trạng thái: ĐÃ BUILD + review vòng 1 đã sửa (23/10/2026), chưa push �
 
 ## Việc
 ### 1. Migration `supabase/backend_hygiene_v1.sql` (một tệp, không DROP, không `--allow-destructive`)
-- [x] P2 `print_agent_claim` (bản sau `print_sku_v3_v1`): hết lease ở `claimed/rendering` → `queued`, `agent_id = null` như cũ; ở `sending/spooling` → `queued` nhưng GIỮ `agent_id`, và chọn lệnh `(agent_id is null or agent_id = p_agent_id)`. `print_jobs_purge`: lệnh `queued` còn `agent_id` quá 30 phút → `failed` `SENT_UNCONFIRMED`. **Bắt buộc trước khi cài may-kho-02.**
+- [x] P2 `print_agent_claim` (bản sau `print_sku_v3_v1`): hết lease ở `claimed/rendering` → `queued`, `agent_id = null` như cũ — TRỪ lệnh từng có sự kiện sending/spooling (`print_events`) thì giữ `agent_id` (review vòng 1); ở `sending/spooling` → `queued` nhưng GIỮ `agent_id`, và chọn lệnh `(agent_id is null or agent_id = p_agent_id)`. `print_jobs_purge`: lệnh `queued` còn `agent_id` quá 30 phút → `failed` `SENT_UNCONFIRMED`. **Bắt buộc trước khi cài may-kho-02.**
 - [x] Q2/Q6 `alter default privileges for role postgres in schema public revoke … from public, anon, authenticated` (functions / tables / sequences; giữ service_role) + revoke quyền sequence còn lại của anon/authenticated.
 - [x] Q4/P3c/P4 `print_enqueue_unchecked` (bản sau `print_name_from_db_v1`): `sku` / `group_uid` items 1–100 và tổng `copies` item = `p_copies`; `template_version` ngoài {1,2,3} (sku) / ≠ 1 (group_uid) → từ chối; chặn SKU ngừng dùng `btrim`.
 - [x] Q8 `cut_group_uid_mark_queued`: `p_job_id` phải là lệnh `group_uid` có thật.
