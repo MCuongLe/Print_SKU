@@ -1,10 +1,10 @@
 // Màn #admin/lenh-in (08/10/2026): gộp "Tổng quan" + "Đợt đã gửi" thành danh sách lệnh in theo ngày của cả kho,
 // lọc SKU/UID, tìm kiếm, popup chi tiết; in lại SKU = nguyên lệnh, UID = toàn bộ hoặc một phần dòng.
-// Run against python -m http.server 8000. Supabase được giả lập (dữ liệu tổng hợp); không ghi dữ liệu thật.
+// Run against python -m http.server 8000 (đổi bằng BASE). Supabase được giả lập (dữ liệu tổng hợp); không ghi dữ liệu thật.
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const assert = require('node:assert/strict');
 
-const BASE = 'http://127.0.0.1:8000/';
+const BASE = process.env.BASE || 'http://127.0.0.1:8000/';
 const SESSION_KEY = 'print-sku-admin-session-v1';
 const TODAY = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 const at = (hh, mm) => new Date(`${TODAY}T${hh}:${mm}:00+07:00`).toISOString();

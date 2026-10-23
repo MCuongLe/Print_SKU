@@ -1,10 +1,10 @@
 // TÌM SKU luôn gợi ý SKU Normal (10/10/2026): dòng Combo trong kết quả được thay bằng SKU Normal theo quan hệ Combo → Normal
 // (RPC sku_combo_lookup). Tên Combo khớp cao mà tên Normal khớp thấp thì thẻ đỏ. Dữ liệu giả, không gọi Supabase thật.
-// Chạy với python -m http.server 8000.
+// Chạy với python -m http.server 8000 (đổi bằng BASE).
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const assert = require('node:assert/strict');
 
-const BASE = 'http://127.0.0.1:8000/';
+const BASE = process.env.BASE || 'http://127.0.0.1:8000/';
 const CATALOG = [
   { sku: '900000401', product_name: 'Chỉ Mẫu/F1698 Xám/Tex 27/mm', status: '1' },
   { sku: '900000411', product_name: '(Combo) Chỉ Mẫu/SBD17 Xám lông chuột/Tex 27/cuộn 5000m', status: '1' },

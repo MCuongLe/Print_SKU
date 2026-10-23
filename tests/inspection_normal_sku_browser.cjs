@@ -1,9 +1,9 @@
 // Local check: Combo lines of a PO show their Normal SKU on screen and in the exported report.
 // Synthetic PO; the sku_combo_lookup RPC is mocked and all other external traffic is blocked.
-// Needs the app served at APP_URL (default http://localhost:8000/).
+// Needs the app served at APP_URL or BASE (default http://localhost:8000/).
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const assert = require('node:assert/strict');
-const APP_URL = process.env.APP_URL || 'http://localhost:8000/';
+const APP_URL = process.env.APP_URL || process.env.BASE || 'http://localhost:8000/';
 
 // sku, tên, số lượng
 const ITEMS = [

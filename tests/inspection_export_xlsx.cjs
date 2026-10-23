@@ -1,8 +1,8 @@
 // Local check of the "KIỂM TRA ĐẦU VÀO" Excel export: Arial only, A4 landscape print setup, no clipped rows.
-// Synthetic PO only; all external traffic is blocked. Needs the app served at APP_URL (default http://localhost:8000/).
+// Synthetic PO only; all external traffic is blocked. Needs the app served at APP_URL or BASE (default http://localhost:8000/).
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const assert = require('node:assert/strict');
-const APP_URL = process.env.APP_URL || 'http://localhost:8000/';
+const APP_URL = process.env.APP_URL || process.env.BASE || 'http://localhost:8000/';
 
 const ITEMS = [
   ['422000001', 'Dây kéo mẫu A/ZIP-0001_NCC Alpha/100% Polyester/none/Đen-580-AA/M,L:41cm/none/pcs', 480],

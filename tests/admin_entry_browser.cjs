@@ -1,11 +1,11 @@
 // Lối vào Admin nằm ở trang chủ (ô QUẢN TRỊ), không còn trong IN TEM SKU.
 // Thanh admin nổi (tên + Dữ liệu UID/Đồng bộ SKU/Đăng xuất) đã bỏ; Đăng xuất nằm ở chân thanh trái chung (máy tính ≥ 1024 px, 11/10/2026 thay thanh bên
 // riêng của Admin) và hàng tiêu đề (điện thoại).
-// Run against python -m http.server 8000. Supabase/auth được giả lập; không ghi dữ liệu.
+// Run against python -m http.server 8000 (đổi bằng BASE). Supabase/auth được giả lập; không ghi dữ liệu.
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const assert = require('node:assert/strict');
 
-const BASE = 'http://127.0.0.1:8000/';
+const BASE = process.env.BASE || 'http://127.0.0.1:8000/';
 // Trang chủ điện thoại (17/10/2026): nhóm Quản trị là danh sách thả, mặc định đóng; mở trước khi bấm ô (đã mở thì để nguyên)
 const openAdminFold = async page => { const t = page.locator('#barcode-home [data-tone="admin"] .home-fold__toggle'); if (await t.isVisible() && await t.getAttribute('aria-expanded') !== 'true') await t.click(); };
 const SESSION_KEY = 'print-sku-admin-session-v1';

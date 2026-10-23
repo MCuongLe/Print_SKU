@@ -1,9 +1,9 @@
 // Local check: Trim Supplier = vendor (legal company name) of the PO, with the supplier written in the SKU name as fallback.
 // The Inside extension is simulated through the page bridge; synthetic data only; all external traffic is blocked.
-// Needs the app served at APP_URL (default http://localhost:8000/).
+// Needs the app served at APP_URL or BASE (default http://localhost:8000/).
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const assert = require('node:assert/strict');
-const APP_URL = process.env.APP_URL || 'http://localhost:8000/';
+const APP_URL = process.env.APP_URL || process.env.BASE || 'http://localhost:8000/';
 
 const NAME_SPICA = 'Thun dệt mẫu/JV52575A1-35_Spica/61% Nylon, 31% Poly, 8% Spandex/none/Trắng/30mm/none/m';
 const NAME_SONG = 'Vải mẫu/Double face 5MT_Song Thủy/100% Cotton/none/Trắng/166cm/none/m';

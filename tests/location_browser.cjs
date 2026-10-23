@@ -1,7 +1,8 @@
 // MÃ VỊ TRÍ (#location): kiểm tra giao diện local. Mọi kết nối ra ngoài bị giả lập — không
 // ghi Supabase thật, không in thật. File Excel tạo ngay trong test bằng dữ liệu giả.
-// Chạy khi có server: python -m http.server 8000
+// Chạy khi có server: python -m http.server 8000 (đổi bằng BASE)
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
+const BASE = process.env.BASE || 'http://127.0.0.1:8000/';
 const assert = require('node:assert/strict');
 const zlib = require('node:zlib');
 
@@ -65,7 +66,7 @@ const XLSX_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.s
       page.on('dialog', dialog => dialog.accept());
       await page.route('**/*', async route => {
         const request = route.request(), url = request.url();
-        if (url.startsWith('http://127.0.0.1:8000/')) return route.continue();
+        if (url.startsWith(BASE)) return route.continue();
         const rpc = url.split('/rpc/')[1] || '';
         const body = request.postDataJSON?.() || {};
         let result = { ok: true, data: {} };
@@ -85,7 +86,7 @@ const XLSX_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.s
       const rows = () => page.locator('#loc-list .loc-row');
       const codes = () => page.locator('#loc-list .loc-row strong').allTextContents();
 
-      await page.goto('http://127.0.0.1:8000/#home');
+      await page.goto(BASE + '#home');
       await page.locator('#barcode-location').click();
       await page.locator('#location-screen').waitFor({ state: 'visible' });
       await page.waitForFunction(() => document.activeElement.id === 'loc-code');
