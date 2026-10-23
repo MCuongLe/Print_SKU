@@ -21,7 +21,8 @@ Trạng thái: ĐÃ BUILD + review vòng 1 đã sửa (23/10/2026), chưa push �
 - [x] C1 hai hàm lưu trữ SKU giữ thêm Blocked + SKU thành phần.
 - [x] C2 che email cho anon ở 3 nhóm hàm (Admin = `group_uid_admin_allowed()` thấy đầy đủ).
 - [x] C3 RPC Admin `print_job_cancel(p_job_id)`: chỉ lệnh `queued` → `cancelled` (ghi `print_events`); `print_jobs_purge` đã dọn `cancelled`.
-- [x] Test tĩnh SQL (`tests/backend_hygiene_sql.cjs`). - [x] So danh sách hàm anon gọi được trên DB thật + `pg_default_acl` (Supabase MCP chỉ đọc) — SAU KHI chạy migration.
+- [x] Test tĩnh SQL (`tests/backend_hygiene_sql.cjs`).
+- [ ] So danh sách hàm anon gọi được trên DB thật + `pg_default_acl` (Supabase MCP chỉ đọc) — SAU KHI chạy migration.
 
 ### 2. Edge `sku-sync`
 - [x] D4 `fetchAll("sku_combo_links…")` thêm `order=combo_sku.asc,normal_sku.asc` (2 chỗ).
@@ -38,7 +39,7 @@ Trạng thái: ĐÃ BUILD + review vòng 1 đã sửa (23/10/2026), chưa push �
 
 ### 5. Kiểm + review
 - [x] Test đỏ trước cho mỗi sửa logic; cả bộ `run_tests.py`; agent `node --test` nếu đụng.
-- [x] Codex + /review-claude + Fable lọc (tối đa 3 vòng).
+- [x] Codex + /review-claude + Fable lọc (tối đa 3 vòng) — vòng 1 sửa ở 3632482, vòng 2 sửa ở commit kế tiếp.
 - [x] PROJECT_MAP (chuỗi `print_agent_claim`, `print_enqueue_unchecked`, purge, Extension 0.10.8), RULES (cả nhật ký + mục lục: C2 thay quyết định 10/10).
 
 ## Thứ tự lên

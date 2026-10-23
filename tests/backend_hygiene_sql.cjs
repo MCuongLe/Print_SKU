@@ -195,6 +195,10 @@ assert.match(read("supabase/snapshot_cache_v1.sql"), /return jsonb_set\(public\.
     assert.match(m, /not exists \(select 1 from unnest\(p_codes\) c where not \(btrim\(c\) = any \(x\.uids\)\)\)/, "mark_queued: p_codes ⊆ payload");
     assert.match(m, /not exists \(select 1 from unnest\(x\.uids\) u where not \(u = any \(p_codes\)\)\)/, "mark_queued: payload ⊆ p_codes");
     assert.ok(!/<> all/.test(m), "không dùng <> all (NULL ba giá trị)");
+    // Vòng 2 (Codex + A2): khoá dòng lệnh trước khi kiểm (huỷ lệnh chờ mark_queued xong → UID về failed đúng)
+    assert.ok(m.indexOf("perform 1 from public.print_jobs where id=p_job_id for update;") > -1 && m.indexOf("for update;") < m.indexOf("j.status not in"), "mark_queued: khoá dòng lệnh trước khi kiểm");
+    // Vòng 2 (A1, Fable chọn b): lệnh đã lỗi/huỷ → JOB_CLOSED (web bỏ nonce đang giữ), trước kiểm tập UID
+    assert.ok(m.indexOf("'JOB_CLOSED'") > -1 && m.indexOf("'JOB_CLOSED'") < m.indexOf("j.status not in"), "mark_queued: lệnh lỗi/huỷ trả JOB_CLOSED");
   }
   // (b) chú thích nói đúng giới hạn: per-schema revoke không gỡ EXECUTE mặc định toàn cục của PUBLIC
   assert.ok(raw.includes("không gỡ EXECUTE mặc định toàn cục của PUBLIC"), "chú thích (b) đúng giới hạn");

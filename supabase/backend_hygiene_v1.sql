@@ -26,8 +26,11 @@
 --       uid_temp_overview (uid_temp_snapshot_v1.sql; uid_temp_snapshot gọi lại hàm này nên không cần thay),
 --       wms_group_uid_cut_import (cut_group_uid_v6_wms_reconcile.sql).
 --   * (a) Lệnh sending/spooling hết lease: về 'queued' nhưng GIỮ agent_id, chỉ agent đó nhận lại (đối chiếu sổ tay, không in
---     lại); claimed/rendering như cũ. print_jobs_purge (mỗi lần cron gọi, kể cả khi lượt dọn 3 ngày bị bỏ qua) đóng lệnh
---     'queued' còn agent_id quá 30 phút thành 'failed' SENT_UNCONFIRMED + ghi print_events. Agent in không cần cập nhật.
+--     lại); claimed/rendering về hàng đợi chung, TRỪ lệnh từng có sự kiện sending/spooling (print_events) thì vẫn giữ agent_id.
+--     print_jobs_purge (mỗi lần cron gọi, kể cả khi lượt dọn 3 ngày bị bỏ qua) đóng lệnh 'queued' còn agent_id quá 30 phút thành
+--     'failed' SENT_UNCONFIRMED + ghi print_events. Agent in không cần cập nhật.
+--   * (d) cut_group_uid_mark_queued: khoá dòng lệnh; lệnh failed/cancelled → JOB_CLOSED; tập p_codes phải BẰNG tập UID trong
+--     payload (hai chiều, không NULL/rỗng). print_job_cancel trả UID 'queued' của lệnh Group UID về 'failed'.
 --   * (b) Hàm / bảng / sequence tạo SAU migration này (bởi postgres) không còn nhận grant RIÊNG của anon, authenticated. Lưu ý:
 --     revoke theo schema không gỡ EXECUTE mặc định toàn cục của PUBLIC (tài liệu PostgreSQL, ALTER DEFAULT PRIVILEGES) — hàm mới
 --     VẪN phải `revoke … from public, anon, authenticated` rồi grant rõ (không revoke toàn cục: ảnh hưởng mọi schema, đã chốt). Thu hồi quyền sequence còn sót của anon, authenticated (web chỉ đọc SKU_Name / user_roles, không ghi bảng trực
@@ -260,6 +263,14 @@ declare v_count integer;
 begin
   if p_job_id is null or coalesce(cardinality(p_codes),0) not between 1 and 100 then
     return jsonb_build_object('ok',false,'error',jsonb_build_object('code','INVALID_PRINT_JOB','message','Lệnh in không hợp lệ'));
+  end if;
+  -- Khoá dòng lệnh trước khi kiểm (review vòng 2): print_job_cancel cùng thứ tự khoá print_jobs → cut_group_uids, nên huỷ chờ hàm
+  -- này xong rồi trả UID về failed; huỷ trước thì hàm này thấy 'cancelled'.
+  perform 1 from public.print_jobs where id=p_job_id for update;
+  -- Lệnh đã lỗi / đã huỷ (Admin huỷ, hoặc web gửi lại cùng nonce sau lỗi mạng và nhận về lệnh đã lỗi): mã riêng để web bỏ nonce
+  -- đang giữ, bấm In lại thành lệnh mới (review vòng 2).
+  if exists (select 1 from public.print_jobs j where j.id=p_job_id and j.type='group_uid' and j.status in ('failed','cancelled')) then
+    return jsonb_build_object('ok',false,'error',jsonb_build_object('code','JOB_CLOSED','message','Lệnh in này đã lỗi hoặc đã bị huỷ, hãy bấm In lại'));
   end if;
   -- p_job_id phải là lệnh in Group UID có thật (web gọi ngay sau print_enqueue), chưa lỗi / chưa huỷ, và tập mã p_codes BẰNG
   -- tập UID trong payload (cả hai chiều, không NULL/rỗng) — không gắn UID khác hoặc thiếu UID vào lệnh. Lệnh completed vẫn nhận:

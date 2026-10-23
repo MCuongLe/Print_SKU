@@ -23,6 +23,10 @@ assert.ok(html.includes('key:viewer?"uid_temp:v2:admin":"uid_temp:v2"') && html.
 assert.ok(html.includes('snap?.drop?.("uid_temp");snap?.drop?.("uid_temp:admin");'), 'UID tạm: xoá khoá cache cũ');
 // Review vòng 1 (Fable #4): lệnh bị Admin huỷ → cầu nối IN TEM SKU báo "loi" (không "dang_in" mãi); câu NOT_QUEUED theo trạng thái
 assert.ok(html.includes('job.status === "failed" || job.status === "cancelled" ? "loi"'), 'pr_trangthai: cancelled → loi');
+// Vòng 2 (A1): mark_queued trả JOB_CLOSED → Cắt UID bỏ nonce đang giữ (bấm In lại thành lệnh mới); lỗi khác giữ nonce
+assert.ok(html.includes("if(!saved.ok){if(saved.error?.code==='JOB_CLOSED')pendingNonce=null;throw new Error(saved.error?.message)}"), 'Cắt UID: JOB_CLOSED bỏ nonce');
+// Vòng 2 (BC4): màn Thiết bị in phân biệt lệnh đã huỷ / đang chờ
+assert.ok(html.includes('j.status==="cancelled"?"Huỷ":j.status==="queued"?"Chờ":"Đang in"'), 'Thiết bị in: nhãn Huỷ / Chờ');
 assert.ok(html.includes('{code:body?.error?.code,status:body?.error?.status}') && html.includes('cancelled:"Lệnh đã được huỷ trước đó"'), 'Huỷ lệnh: câu theo trạng thái máy chủ');
 
 (async () => {
