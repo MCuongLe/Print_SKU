@@ -125,7 +125,7 @@ const srcReadAudit = (page, specs, width) => page.evaluate(async ({ specs, width
     for (const width of [1280, 375]) {
       const page = await browser.newPage({ viewport: { width, height: 900 }, acceptDownloads: true });
       const errors = [], items = syntheticItems();
-      const store = { rows: [], imports: [], importCalls: [], tickCalls: [], reconcileBodies: [], resolveCalls: [], importedAgoMs: 0 };
+      const store = { rows: [], imports: [], importCalls: [], tickCalls: [], reconcileBodies: [], resolveCalls: [], importedAgoMs: 0, lastFileName: null };
       page.on('pageerror', error => errors.push(error.message));
       page.on('console', message => { if (message.type() === 'error' && !/Failed to load resource/.test(message.text())) errors.push(message.text()); });
       // 08/10/2026: xac nhan dung hop WhDialog trong trang; hop confirm() cua trinh duyet khong duoc hien nua.
@@ -145,14 +145,14 @@ const srcReadAudit = (page, specs, width) => page.evaluate(async ({ specs, width
           result = { ok: true, data: {
             items: items.map(item => ({ ...item, wmsCuts: wmsCutsOf(item) })),
             coverage: imports.length ? { from: imports.map(i => i.from).sort()[0], until: imports.map(i => i.until).sort().pop(), files: imports.length, importedAt: new Date(Date.now() - store.importedAgoMs).toISOString() } : null,
-            lastImport: null } };
+            lastImport: imports.length ? { fileName: store.lastFileName || imports.at(-1).fileName, createdAt: new Date(Date.now() - store.importedAgoMs).toISOString(), cutRows: 0, newRows: 0, changedRows: 0, dataUntil: imports.at(-1).until } : null } };
         } else if (rpc === 'wms_group_uid_cut_import') {
           store.importCalls.push({ authorization: request.headers().authorization, body });
           const rowKey = r => `${r.group_uid_code}|${new Date(r.cut_at).toISOString()}`;
           const have = new Set(store.rows.map(rowKey));
           let added = 0;
           for (const row of body.p_rows) if (!have.has(rowKey(row))) { store.rows.push(row); have.add(rowKey(row)); added += 1; }
-          store.imports.push({ from: body.p_data_from, until: body.p_data_until });
+          store.imports.push({ from: body.p_data_from, until: body.p_data_until, fileName: body.p_file_name });
           result = { ok: true, data: { importId: 'x', cutRows: body.p_rows.length, newRows: added, changedRows: 0, unchangedRows: body.p_rows.length - added, previousImports: 0 } };
         } else if (rpc === 'cut_group_uid_adj_from_wms') {
           store.tickCalls.push(body.p_codes);
@@ -293,6 +293,8 @@ const srcReadAudit = (page, specs, width) => page.evaluate(async ({ specs, width
       const order = rows.map(([, state]) => STATE_ORDER.indexOf(state));
       assert.deepEqual(order, [...order].sort((a, b) => a - b), 'dong lech nang phai nam tren cung');
       assert.match(await page.locator('#cut-adj-cov').innerText(), /WMS .*14:03/);
+      // 23/10/2026: ô Cập nhật = lần nạp gần nhất (giờ + bao lâu trước + nguồn), tách khỏi khoảng dữ liệu WMS.
+      assert.match(await page.locator('#cut-adj-upd').innerText(), /^Cập nhật \d{2}:\d{2} \d{2}\/\d{2} · vừa xong · Đọc WMS$/);
       const wrongRow = await page.locator('#cut-adj-rows tr[data-code="UID-C"]').innerText();
       assert.match(wrongRow, /306 g/);
       assert.match(wrongRow, /100 g/);
@@ -363,15 +365,20 @@ const srcReadAudit = (page, specs, width) => page.evaluate(async ({ specs, width
       await page.waitForTimeout(200);
       assert.deepEqual([(await counts()).missing, (await counts()).done], [1, 0]);
       Object.assign(items.find(x => x.groupUid === 'UID-F'), { adjResolvedAt: null, adjResolvedState: null });
-      // 22/10/2026: lần nạp WMS gần nhất quá 70 phút (Extension 0.10.7 tự nạp mỗi 30 phút) → mốc phủ đỏ "Ngừng"; vừa nạp thì không.
-      assert.notEqual(await page.locator('#cut-adj-cov').getAttribute('data-tone'), 'alert');
+      // 22/10/2026: lần nạp WMS gần nhất quá 70 phút (Extension 0.10.7 tự nạp mỗi 30 phút) → ô Cập nhật đỏ "Ngừng"; vừa nạp thì không.
+      assert.notEqual(await page.locator('#cut-adj-upd').getAttribute('data-tone'), 'alert');
+      assert.equal(await page.locator('#cut-adj-upd .cut-adj-stop').count(), 0, 'vừa nạp: không có nhãn Ngừng');
       store.importedAgoMs = 71 * 60000;
+      store.lastFileName = 'WMS_AUTO_may-test-01_20261023012600.json';
       const reloads2 = store.reconcileBodies.length;
       await page.locator('#cut-adj-reload').click();
       while (store.reconcileBodies.length === reloads2) await page.waitForTimeout(50);
-      await page.waitForFunction(() => document.querySelector('#cut-adj-cov').dataset.tone === 'alert');
-      assert.match(await page.locator('#cut-adj-cov').innerText(), /· Ngừng$/);
-      assert.equal(await page.locator('#cut-adj-cov').evaluate(el => getComputedStyle(el).color), 'rgb(180, 35, 24)');
+      await page.waitForFunction(() => document.querySelector('#cut-adj-upd').dataset.tone === 'alert');
+      assert.equal((await page.locator('#cut-adj-upd .cut-adj-stop').innerText()).trim(), 'Ngừng', 'nhãn Ngừng tách riêng (góp ý Codex ảnh)');
+      assert.match(await page.locator('#cut-adj-upd > span').innerText(), /^Cập nhật \d{2}:\d{2} \d{2}\/\d{2} · 1 giờ trước · Tự động may-test-01$/);
+      assert.equal(await page.locator('#cut-adj-upd').evaluate(el => getComputedStyle(el).color), 'rgb(180, 35, 24)');
+      assert.doesNotMatch(await page.locator('#cut-adj-cov').innerText(), /Ngừng/, "khoảng dữ liệu WMS không mang chữ Ngừng");
+      store.lastFileName = null;
       if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/02-doi-chieu-adj-ngung-${width}.png` });
       store.importedAgoMs = 0;
 

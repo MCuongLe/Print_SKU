@@ -4471,7 +4471,7 @@ Error generating stack: `+y.message+`
         <section class="cut-card" data-panel="data"><h2><span>2</span>Tra cứu UID đã cắt</h2><form class="cut-searchbar" id="cut-search"><input class="cut-input" id="cut-sku" placeholder="Lọc theo SKU…" autocomplete="off"><input class="cut-input" id="cut-lot" style="max-width:150px" placeholder="Lọc theo Lot…" autocomplete="off"><input class="cut-input" id="cut-po" style="max-width:190px" placeholder="Lọc theo PO…" autocomplete="off" inputmode="numeric" aria-label="Lọc theo PO"><div class="cut-daterange"><input class="cut-input" id="cut-date-from" type="date" aria-label="Cắt từ ngày" title="Cắt từ ngày"><span aria-hidden="true">→</span><input class="cut-input" id="cut-date-to" type="date" aria-label="Cắt đến ngày" title="Cắt đến ngày"></div><div class="cut-searchbar__end"><select class="cut-input cut-adj-filter" id="cut-adj" aria-label="Lọc theo trạng thái xuất ADJ" title="Lọc theo trạng thái xuất ADJ"><option value="">ADJ: Tất cả</option><option value="pending">Chưa xuất ADJ</option><option value="done">Đã xuất ADJ</option></select><button class="cut-secondary act-icon act-icon--search" type="submit">Tìm kiếm</button></div></form><div class="cut-actions"><button class="cut-icon-btn" id="cut-export" type="button" disabled title="Xuất Excel A4 ngang" aria-label="Xuất Excel A4 ngang"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button><button class="cut-primary act-icon act-icon--add" id="cut-push" type="button" disabled>Đưa vào hàng chờ in</button><button class="cut-danger act-icon act-icon--trash" id="cut-delete" type="button" disabled hidden>Xóa</button></div><p class="cut-note" id="cut-search-total" style="margin-top:10px"></p><div class="cut-table-wrap" style="margin-top:10px"><table class="cut-table"><thead><tr><th class="cut-th-check"><input id="cut-search-all" type="checkbox" aria-label="Chọn tất cả tem có thể in trong bảng"></th><th>SKU</th><th>UID</th><th>Lot</th><th>Roll</th><th>PO</th><th>Số lượng cắt</th><th>Tên SP</th><th>Trạng thái</th><th>ADJ</th><th>Thời gian cắt</th></tr></thead><tbody id="cut-results"></tbody></table></div></section>
         <section class="cut-card" data-panel="print"><h2><span>3</span>Tem chờ in</h2><button class="cut-link cut-link--back" id="cut-goto-data-2" type="button">Chọn thêm ở Tra cứu</button><div class="cut-print-meta"><div class="fsk-field"><label for="cut-print-po">Số PO</label><input class="cut-input" id="cut-print-po" autocomplete="off" placeholder="Tùy chọn"></div><div class="fsk-field"><label for="cut-print-date">Ngày nhận <b id="cut-print-date-echo"></b></label><input class="cut-input" id="cut-print-date" type="date" min="2020-01-01"></div></div><div class="cut-actions"><label class="cut-selectall"><input id="cut-all" type="checkbox"><span>Chọn tất cả tem có thể in</span><em id="cut-selected-count">Đã chọn 0</em></label><button class="cut-secondary act-icon act-icon--load" id="cut-reload" type="button">Tải lại</button><button class="cut-primary act-icon act-icon--print" id="cut-print" type="button" disabled>In tem đã chọn</button></div><div class="cut-list" id="cut-list"></div></section>
         <section class="cut-card" data-panel="adj" id="cut-adj-panel"><h2><span>4</span>Đối chiếu ADJ</h2>
-          <div class="cut-adj-bar"><input id="cut-adj-file" type="file" accept=".zip,.xlsx,application/zip,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden><button class="cut-primary src-read" id="cut-adj-wms" type="button"><span class="src-read__t">Đọc WMS</span></button><button class="cut-secondary act-icon act-icon--import" id="cut-adj-upload" type="button">Nạp ZIP/XLSX</button><button class="cut-icon-btn act-icon act-icon--load" id="cut-adj-reload" type="button" aria-label="Tải lại" title="Tải lại"></button><span class="cut-adj-cov" id="cut-adj-cov"></span></div>
+          <div class="cut-adj-bar"><input id="cut-adj-file" type="file" accept=".zip,.xlsx,application/zip,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden><button class="cut-primary src-read" id="cut-adj-wms" type="button"><span class="src-read__t">Đọc WMS</span></button><button class="cut-secondary act-icon act-icon--import" id="cut-adj-upload" type="button">Nạp ZIP/XLSX</button><button class="cut-icon-btn act-icon act-icon--load" id="cut-adj-reload" type="button" aria-label="Tải lại" title="Tải lại"></button><span class="cut-adj-cov" id="cut-adj-cov"></span><span class="cut-adj-cov" id="cut-adj-upd" hidden></span></div>
           <div class="cut-adj-kpis" id="cut-adj-kpis" role="group" aria-label="Lọc theo trạng thái đối chiếu"></div>
           <form class="cut-searchbar" id="cut-adj-form"><input class="cut-input" id="cut-adj-sku" placeholder="Lọc theo SKU…" autocomplete="off"><input class="cut-input" id="cut-adj-lot" style="max-width:150px" placeholder="Lọc theo Lot…" autocomplete="off"><input class="cut-input" id="cut-adj-po" style="max-width:190px" placeholder="Lọc theo PO…" autocomplete="off" inputmode="numeric" aria-label="Lọc theo PO"><div class="cut-daterange"><input class="cut-input" id="cut-adj-date-from" type="date" aria-label="Cắt từ ngày" title="Cắt từ ngày"><span aria-hidden="true">→</span><input class="cut-input" id="cut-adj-date-to" type="date" aria-label="Cắt đến ngày" title="Cắt đến ngày"></div><div class="cut-searchbar__end"><button class="cut-secondary act-icon act-icon--search" type="submit">Tìm kiếm</button></div></form>
           </section>
@@ -8338,7 +8338,7 @@ var FSK_CORE = (function () {
       .cut-adj-bar{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:14px}
       .cut-adj-bar .cut-secondary{flex:none}
       .cut-adj-cov{display:inline-flex;align-items:center;gap:6px;flex:1 1 200px;min-width:0;color:var(--wms-muted,#60736b);font-size:13px;font-weight:600}
-      .cut-adj-cov svg{flex:none}
+      .cut-adj-cov svg{flex:none}.cut-adj-cov[hidden]{display:none}.cut-adj-stop{flex:none;padding:1px 8px;border:1px solid #b42318;border-radius:999px;color:#b42318;font-size:12px;font-weight:700}
       .cut-adj-cov[data-tone="warn"]{color:#8b6100}.cut-adj-cov[data-tone="alert"]{color:#b42318} /* vàng đậm: #b7791f chỉ 3,64:1 trên nền trắng (axe color-contrast) */
       .cut-adj-kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:14px}
       .cut-adj-kpi{display:flex;align-items:center;gap:10px;min-height:56px;padding:8px 12px;border:1px solid var(--wms-border,#d9e2de);border-radius:14px;background:var(--wms-surface,#fff);color:var(--wms-muted,#60736b);font:inherit;font-size:13px;font-weight:600;text-align:left;cursor:pointer}
@@ -8460,12 +8460,13 @@ var FSK_CORE = (function () {
         const ORDER=Object.keys(STATES),ISSUES=['wrong','missing','multi','forgot'],SELECTABLE=[...ISSUES,'done'];
         const ALL_ICON='<line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>';
         const CAL_ICON='<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/>';
+        const CLOCK_ICON='<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>';
         const QTY_TOLERANCE=1; // WMS làm tròn số lượng về số nguyên
         const MAX_AGE_MS=24*3600*1000,AUTO_STOP_MS=70*60000; // AUTO_STOP: Extension 0.10.7 tự nạp mỗi 30 phút; quá 2 nhịp + 10 phút = ngừng
         const nf=new Intl.NumberFormat('vi-VN',{maximumFractionDigits:2});
         const num=v=>nf.format(Number(v));
         const day=value=>{const d=new Date(value);return Number.isNaN(d.getTime())?'':new Intl.DateTimeFormat('vi-VN',{dateStyle:'short'}).format(d)};
-        let items=[],cov=null,rows=[],filter='',loading=false,uploading=false,pending=null,pendingWms=false;
+        let items=[],cov=null,lastImp=null,rows=[],filter='',loading=false,uploading=false,pending=null,pendingWms=false;
         const picked=new Set(),resolveBtn=$('cut-adj-resolve'),unresolveBtn=$('cut-adj-unresolve');
 
         // Trạng thái của một UID đã cắt, so với các dòng Cut của WMS.
@@ -8507,14 +8508,28 @@ var FSK_CORE = (function () {
           const show=(btn,states,label)=>{const n=count(states);btn.hidden=filter!==''&&!states.includes(filter);btn.disabled=!n||uploading;btn.textContent=n?`${label} ${n}`:label};
           show(tickBtn,['forgot'],'Tick giúp');show(resolveBtn,ISSUES,'Đã xử lý');show(unresolveBtn,['done'],'Bỏ xử lý');
         };
+        // Ô Cập nhật (23/10/2026): lần nạp gần nhất — giờ, bao lâu trước, nguồn (Extension tự động WMS_AUTO_<máy>_… / nút Đọc WMS / nạp file);
+        // quá 70 phút (2 nhịp tự động + 10 phút) thì đỏ "Ngừng". Tự làm mới chữ "… trước" mỗi phút.
+        const hm=t=>{const d=new Date(t),p=n=>String(n).padStart(2,'0');return `${p(d.getHours())}:${p(d.getMinutes())} ${p(d.getDate())}/${p(d.getMonth()+1)}`};
+        const ago=t=>{const m=Math.floor((Date.now()-t)/60000);if(m<1)return 'vừa xong';if(m<60)return `${m} phút trước`;const h=Math.floor(m/60);return h<24?`${h} giờ trước`:`${Math.floor(h/24)} ngày trước`};
+        const sourceOf=name=>{const s=String(name||''),m=s.match(/^WMS_AUTO_(.+)_\d{14}(?:_\d+)?\.json$/);return m?`Tự động ${m[1]}`:/^WMS_API_/.test(s)?'Đọc WMS':s?'Nạp file':''};
+        const renderUpd=()=>{
+          const el=$('cut-adj-upd');if(!el)return;
+          const at=Date.parse(lastImp?.createdAt||cov?.importedAt||'');
+          if(!Number.isFinite(at)){el.hidden=true;el.dataset.tone='';return}
+          const stop=Date.now()-at>AUTO_STOP_MS,src=sourceOf(lastImp?.fileName);
+          el.hidden=false;el.dataset.tone=stop?'alert':'';
+          el.innerHTML=`${svg(CLOCK_ICON,18)}${stop?'<b class="cut-adj-stop">Ngừng</b>':''}<span title="${esc(lastImp?.fileName||'')}">Cập nhật ${esc(hm(at))} · ${esc(ago(at))}${src?` · ${esc(src)}`:''}</span>`;
+        };
+        setInterval(renderUpd,60000);
         const render=()=>{
           const until=cov?Date.parse(cov.until):NaN,old=Number.isFinite(until)&&Date.now()-until>MAX_AGE_MS;
           rows=cov?items.map(x=>classify(x,until)).sort((a,b)=>ORDER.indexOf(a.state)-ORDER.indexOf(b.state)):[];
           const counts={};rows.forEach(r=>{counts[r.state]=(counts[r.state]||0)+1});
           issuesEl.textContent=ISSUES.reduce((sum,key)=>sum+(counts[key]||0),0);
-          const imported=cov?Date.parse(cov.importedAt):NaN,stop=Number.isFinite(imported)&&Date.now()-imported>AUTO_STOP_MS;
-          covEl.dataset.tone=stop?'alert':!cov||old?'warn':'';
-          covEl.innerHTML=cov?`${svg(CAL_ICON,18)}<span title="Nạp lúc ${esc(fmt(cov.importedAt))}">WMS ${esc(day(cov.from))} → ${esc(fmt(cov.until))}${stop?' · Ngừng':''}</span>`:`${svg(CAL_ICON,18)}<span>Chưa nạp dữ liệu WMS</span>`;
+          covEl.dataset.tone=!cov||old?'warn':'';
+          renderUpd();
+          covEl.innerHTML=cov?`${svg(CAL_ICON,18)}<span title="Khoảng dữ liệu lịch sử WMS đã nạp">WMS ${esc(day(cov.from))} → ${esc(fmt(cov.until))}</span>`:`${svg(CAL_ICON,18)}<span>Chưa nạp dữ liệu WMS</span>`;
           for(const code of [...picked])if(!rows.some(r=>r.item.groupUid===code&&SELECTABLE.includes(r.state)))picked.delete(code);
           renderKpis(counts);
           const shown=visible();
@@ -8532,7 +8547,7 @@ var FSK_CORE = (function () {
             if($('cut-adj-date-to').value)args.p_date_to=$('cut-adj-date-to').value;
             const r=await rpc('cut_group_uid_reconcile',args);
             if(!r.ok)throw new Error(r.error?.message||'Không đọc được dữ liệu');
-            items=r.data?.items||[];cov=r.data?.coverage||null;render();
+            items=r.data?.items||[];cov=r.data?.coverage||null;lastImp=r.data?.lastImport||null;render();
           }catch(e){tell(`Không tải được đối chiếu ADJ: ${e.message}`,'error')}
           finally{loading=false;reloadBtn.disabled=false}
         };
