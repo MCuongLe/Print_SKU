@@ -14,7 +14,7 @@ const mock = page => page.route("**/*", route => {
   return json({ ok: true, data: { plans: [], items: [], rows: [], list: null, unchanged: false, agents: [], jobs: [] } });
 });
 const switchState = page => page.evaluate(() => {
-  const screen = [...document.querySelectorAll("#cap-vai-screen, #uid-block-screen")].find(s => !s.hidden);
+  const screen = [...document.querySelectorAll("#cap-vai-screen, #uid-block-screen, #vendor-return-screen")].find(s => !s.hidden);
   const sw = screen?.querySelector(".fu-switch");
   return { hash: location.hash, screen: screen?.id || null, parts: sw ? [...sw.querySelectorAll("[data-fu]")].map(a => [a.dataset.fu, a.textContent.trim(), a.getAttribute("aria-current") === "page"]) : null };
 });
@@ -37,17 +37,26 @@ const switchState = page => page.evaluate(() => {
       await page.waitForFunction(() => !document.getElementById("cap-vai-screen").hidden);
       let st = await switchState(page);
       assert.equal(st.hash, "#cap-vai");
-      assert.deepEqual(st.parts, [["cap-vai", "Cấp vải", true], ["uid-block", "UID blocked", false]]);
+      assert.deepEqual(st.parts, [["cap-vai", "Cấp vải", true], ["uid-block", "UID blocked", false], ["tra-ncc", "Trả NCC", false]]);
       assert.match(await page.locator("#cap-vai-title").innerText(), /TÌM GROUP UID/);
       // Đổi sang UID blocked
       await page.locator('#cap-vai-screen .fu-switch [data-fu="uid-block"]').click();
       await page.waitForFunction(() => !document.getElementById("uid-block-screen").hidden);
       st = await switchState(page);
       assert.equal(st.hash, "#uid-block");
-      assert.deepEqual(st.parts, [["cap-vai", "Cấp vải", false], ["uid-block", "UID blocked", true]]);
+      assert.deepEqual(st.parts, [["cap-vai", "Cấp vải", false], ["uid-block", "UID blocked", true], ["tra-ncc", "Trả NCC", false]]);
       assert.match(await page.locator("#ub-title").innerText(), /TÌM GROUP UID/);
       assert.equal(await page.evaluate(() => document.getElementById("cap-vai-screen").hidden), true, "hai phần độc lập: chỉ một màn hiện");
       for (const id of ["uid-block-screen"]) assert.equal(await page.evaluate(id => { const s = document.getElementById(id); return s.scrollWidth <= s.clientWidth; }, id), true, `${width}: không tràn ngang`);
+      // Phần thứ 3 (24/10/2026): Trả NCC
+      await page.locator('#uid-block-screen .fu-switch [data-fu="tra-ncc"]').click();
+      await page.waitForFunction(() => !document.getElementById("vendor-return-screen").hidden);
+      st = await switchState(page);
+      assert.equal(st.hash, "#tra-ncc");
+      assert.deepEqual(st.parts, [["cap-vai", "Cấp vải", false], ["uid-block", "UID blocked", false], ["tra-ncc", "Trả NCC", true]]);
+      assert.equal(await page.evaluate(() => { const s = document.getElementById("vendor-return-screen"); return s.scrollWidth <= s.clientWidth; }), true, `${width}: Trả NCC không tràn ngang`);
+      await page.locator('#vendor-return-screen .fu-switch [data-fu="uid-block"]').click();
+      await page.waitForFunction(() => !document.getElementById("uid-block-screen").hidden);
       // Về trang chủ rồi bấm ô lại → mở phần dùng gần nhất (UID blocked)
       await page.goto(BASE + "#home");
       await page.locator("#barcode-find-uid").click();
