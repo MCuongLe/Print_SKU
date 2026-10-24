@@ -81,30 +81,48 @@ const open = async (browser, { width = 1280, admin = false } = {}) => {
   await page.route("**/*", backend(srv));
   await page.goto(BASE + "#tra-ncc");
   await page.locator("#vendor-return-screen").waitFor({ state: "visible" });
-  await page.waitForFunction(() => document.getElementById("vr-navy-total").textContent.trim() !== "—");
+  await page.waitForFunction(() => document.getElementById("vr-total").textContent.trim() !== "—");
   return { context, page, errors, srv };
 };
 const scan = async (page, code) => { await page.locator("#vr-code").fill(code); await page.locator("#vr-code").press("Enter"); };
 const result = page => page.evaluate(() => { const r = document.getElementById("vr-result"); return { tone: r.dataset.tone, title: r.querySelector(".vr-result__title")?.textContent || "", note: r.querySelector(".vr-result__note")?.textContent || "" }; });
 const shot = async (page, name) => { if (process.env.VR_SHOTS) await page.screenshot({ path: `${process.env.VR_SHOTS}/${name}.png`, fullPage: true }); };
-const counts = page => page.evaluate(() => ["navy", "black"].map(c => `${document.getElementById(`vr-${c}-done`).textContent}/${document.getElementById(`vr-${c}-total`).textContent}`));
+const counts = page => page.evaluate(() => ["navy", "black"].map(c => document.getElementById(`vr-${c}`).textContent));
+const locHeads = page => page.locator("#vr-locs .vr-loc__head").allInnerTexts().then(t => t.map(x => x.replace(/\s+/g, " ").trim()));
 
 (async () => {
   const browser = await chromium.launch({ channel: "chrome", headless: true });
   try {
     for (const width of [1280, 390]) {
       const { context, page, errors, srv } = await open(browser, { width });
-      // Thẻ đếm hai màu + tab Navy mặc định, dòng đã quét được đánh dấu
+      // Bố cục như UID blocked (24/10/2026): dải tiến độ Đã quét / tổng · Còn thiếu · Navy / Black · Về F0-VR
       assert.deepEqual(await counts(page), ["1/3", "0/2"]);
-      // Chia theo VỊ TRÍ HIỆN TẠI (24/10/2026): đầu mục vị trí · đã quét/tổng, dòng hàng nằm dưới vị trí đang ở
-      assert.deepEqual(await page.locator("#vr-body tr.vr-loc").allInnerTexts().then(t => t.map(x => x.replace(/\s+/g, " ").trim())), ["F0-KHO-000-00-00-01 1/2", "F0-KHO-000-00-00-09 0/1"]);
-      assert.equal(await page.locator("#vr-body tr:not(.vr-loc)").count(), 3, "tab Navy: 3 dòng");
-      assert.equal(await page.locator("#vr-body tr.vr-loc").nth(1).locator("xpath=following-sibling::tr[1]").locator(".vr-code").evaluate(el => el.firstChild.textContent), "1028260000000103", "dòng nằm dưới vị trí hiện tại");
-      assert.equal(await page.locator("#vr-body tr[data-scanned]").count(), 1);
-      assert.match(await page.locator("#vr-body tr[data-scanned]").innerText(), /Đã quét[\s\S]*Máy giả 1/);
+      assert.deepEqual(await page.evaluate(() => ["vr-done", "vr-total", "vr-left", "vr-vr", "vr-tab-left", "vr-tab-done"].map(id => document.getElementById(id).textContent)), ["1", "5", "4", "0/5", "4", "1"]);
+      // Còn thiếu: thẻ theo vị trí HIỆN TẠI (UID chưa quét), đóng sẵn; chạm mở → danh sách UID
+      assert.deepEqual(await locHeads(page), ["F0-KHO-000-00-00-01 3 cuộn", "F0-KHO-000-00-00-09 1 cuộn"]);
+      await page.locator('#vr-locs [data-vr-loc="F0-KHO-000-00-00-09"] summary').click();
+      assert.match(await page.locator('#vr-locs [data-vr-loc="F0-KHO-000-00-00-09"] li').innerText(), /1028260000000103[\s\S]*Navy · 900000496 · Lot L1 · Roll 1 · SL 1.000 · File F0-KHO-000-00-00-01/, "UID đã chuyển chỗ: nằm ở vị trí hiện tại, kèm vị trí trong file");
+      await page.locator('[data-vr-color="navy"]').click();
+      assert.deepEqual(await locHeads(page), ["F0-KHO-000-00-00-01 1 cuộn", "F0-KHO-000-00-00-09 1 cuộn"], "lọc màu Navy");
+      await page.locator('[data-vr-color="all"]').click();
+      await page.locator("#vr-loc-filter").fill("0202");
+      assert.deepEqual(await locHeads(page), ["F0-KHO-000-00-00-01 1 cuộn"], "lọc theo Group UID");
+      await page.locator("#vr-loc-filter").fill("");
+      // Đã quét: bảng dùng chung (tìm, lọc, Xuất Excel)
+      await page.locator('[data-vr-tab="done"]').click();
+      assert.equal(await page.locator("#vr-body tr").count(), 1);
+      assert.match(await page.locator("#vr-body tr").innerText(), /1028260000000101[\s\S]*Navy[\s\S]*1\.000[\s\S]*Máy giả 1/, "có SL (review Codex)");
+      await page.locator("#vr-tools input[type=search]").fill("24/10/2026");
+      assert.equal(await page.locator("#vr-body tr:has(code)").count(), 1, "tìm theo ngày quét đủ năm");
+      await page.locator("#vr-tools input[type=search]").fill("");
+      // Danh sách: ai cũng xem ô thông tin; Nạp Excel / Đối chiếu chỉ Admin
+      await page.locator('[data-vr-tab="list"]').click();
+      assert.match(await page.locator("#vr-info").innerText(), /Navy\s*3[\s\S]*Black\s*2[\s\S]*Về F0-VR\s*0\/5[\s\S]*Đối chiếu WMS\s*Chưa/);
+      assert.equal(await page.locator("#vr-file").innerText(), "tra-ncc-gia.xlsx");
       assert.equal(await page.locator("#vr-admin-panel").isVisible(), false, "không Admin: ẩn phần nạp Excel");
       assert.equal(await page.locator("#vr-reconcile").isVisible(), false, "không Admin: ẩn Đối chiếu");
-      assert.equal(await page.locator("#vr-navy-vr").innerText(), "0/3", "thẻ: mốc Về F0-VR");
+      await shot(page, `tra-ncc-list-${width}`);
+      await page.locator('[data-vr-tab="left"]').click();
       // Ngoài danh sách → đỏ, không gọi máy chủ
       const before = srv.calls.filter(c => c.rpc === "vendor_return_scan").length;
       await scan(page, "1028260000000999");
@@ -125,8 +143,7 @@ const counts = page => page.evaluate(() => ["navy", "black"].map(c => `${documen
       const call = srv.calls.filter(c => c.rpc === "vendor_return_scan").pop();
       assert.deepEqual([call.args.p_access_token, call.args.p_list_id, call.args.p_group_uid], ["khoa-may-gia", LIST.id, "1028260000000201"]);
       assert.deepEqual(await counts(page), ["1/3", "1/2"]);
-      assert.equal(await page.locator('.vr-card[data-color="black"]').getAttribute("aria-selected"), "true", "quét Black → mở tab Black");
-      assert.equal(await page.locator("#vr-body tr[data-scanned]").count(), 1);
+      assert.deepEqual(await locHeads(page), ["F0-KHO-000-00-00-01 2 cuộn", "F0-KHO-000-00-00-09 1 cuộn"], "quét xong → rời Còn thiếu");
       await shot(page, `tra-ncc-${width}`);
       // Máy chưa kích hoạt → không đánh dấu, báo lỗi
       srv.deny = true;
@@ -140,7 +157,7 @@ const counts = page => page.evaluate(() => ["navy", "black"].map(c => `${documen
       srv.scanDelay = 800;
       await scan(page, "1028260000000102");
       await scan(page, "1028260000000103");
-      await page.waitForFunction(() => document.getElementById("vr-navy-done").textContent.trim() === "3", null, { timeout: 10000 });
+      await page.waitForFunction(() => document.getElementById("vr-navy").textContent.trim() === "3/3", null, { timeout: 10000 });
       assert.deepEqual(srv.calls.filter(c => c.rpc === "vendor_return_scan").slice(-2).map(c => c.args.p_group_uid), ["1028260000000102", "1028260000000103"]);
       // Mã lạ khi tải lại danh sách lỗi (review vòng 2): không kết luận "ngoài danh sách" theo danh sách cũ
       await page.waitForTimeout(3200);
@@ -164,9 +181,9 @@ const counts = page => page.evaluate(() => ["navy", "black"].map(c => `${documen
       await page.locator("#vr-result .vr-result__close").click();
       assert.equal(await page.locator("#vr-pop").isVisible(), false, "Đóng → ẩn pop-up");
       await page.waitForFunction(() => document.activeElement?.id === "vr-code");
-      // Bấm thẻ Navy → bảng Navy
-      await page.locator('.vr-card[data-color="navy"]').click();
-      assert.equal(await page.locator("#vr-body tr:not(.vr-loc)").count(), 3);
+      // Navy đã quét đủ → lọc Navy không còn thẻ vị trí
+      await page.locator('[data-vr-color="navy"]').click();
+      assert.equal(await page.locator("#vr-locs .vr-loc").count(), 0);
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, `${width}: không tràn ngang`);
       assert.deepEqual(errors, []);
       await context.close();
@@ -175,10 +192,11 @@ const counts = page => page.evaluate(() => ["navy", "black"].map(c => `${documen
     // Admin nạp Excel: chỉ sheet tên chứa navy / black, bỏ dòng pivot (không phải mã), bỏ sheet khác
     {
       const { context, page, errors, srv } = await open(browser, { admin: true });
+      await page.locator('[data-vr-tab="list"]').click();
       await page.locator("#vr-admin-panel").waitFor({ state: "visible" });
       // Đối chiếu (Admin): đọc WMS qua Extension → chỉ gửi mã thuộc danh sách → vị trí hiện tại đổi, đếm "Về F0-VR", nhóm đích
       assert.equal(await page.locator("#vr-reconcile").isVisible(), true, "Admin: có nút Đối chiếu");
-      assert.equal(await page.locator("#vr-navy-vr").innerText(), "0/3");
+      assert.equal(await page.locator("#vr-vr").innerText(), "0/5");
       // WMS đổi dữ liệu trong lúc đọc (review vòng 1) → đọc lại tối đa 3 lần rồi báo đỏ, KHÔNG gọi vendor_return_reconcile (mốc không nâng)
       await page.evaluate(() => { window.__extDrift = true; });
       await page.locator("#vr-reconcile").click();
@@ -194,17 +212,20 @@ const counts = page => page.evaluate(() => ["navy", "black"].map(c => `${documen
       ], "chỉ mã thuộc danh sách; cùng giờ → id bản ghi lớn thắng; không vị trí vẫn gửi (rỗng)");
       assert.equal(srv.reconciled.p_list_id, LIST.id);
       assert.match(await page.locator("#vr-message").innerText(), /2 Group UID cập nhật · 1\/5 đã ở F0-VR-00-00-00-00 · 1 đã rời kho/, "số máy chủ cập nhật");
-      assert.equal(await page.locator("#vr-navy-vr").innerText(), "1/3");
-      assert.equal(await page.locator('#vr-body tr.vr-loc[data-target]').count(), 1, "nhóm vị trí đích F0-VR");
-      // Đã rời kho (người dùng chọn 24/10/2026): nhóm riêng cuối bảng, không tính Về F0-VR; STT liên tục qua các nhóm
-      assert.deepEqual(await page.locator("#vr-body tr.vr-loc").allInnerTexts().then(t => t.map(x => x.replace(/\s+/g, " ").trim())), ["F0-KHO-000-00-00-01 1/1", "F0-VR-00-00-00-00 0/1 Đích", "Đã rời kho 0/1"]);
-      assert.match(await page.locator("#vr-body tr.vr-loc[data-out] + tr").innerText(), /Đã đóng/, "trạng thái WMS tiếng Việt");
-      assert.deepEqual(await page.locator("#vr-body tr:not(.vr-loc) td:first-child").allInnerTexts(), ["1", "2", "3"]);
+      assert.equal(await page.locator("#vr-vr").innerText(), "1/5");
+      assert.match(await page.locator("#vr-info").innerText(), /Về F0-VR\s*1\/5[\s\S]*Đối chiếu WMS\s*\d{2}:\d{2}/);
+      // Còn thiếu: vị trí → F0-VR (Đích) → Đã rời kho (người dùng chọn 24/10/2026, không tính Về F0-VR)
+      await page.locator('[data-vr-tab="left"]').click();
+      assert.equal(await page.locator('#vr-locs .vr-loc[data-target]').count(), 1, "thẻ vị trí đích F0-VR");
+      assert.deepEqual(await locHeads(page), ["F0-KHO-000-00-00-01 2 cuộn", "F0-VR-00-00-00-00 Đích 1 cuộn", "Đã rời kho 1 cuộn"]);
+      await page.locator('#vr-locs .vr-loc[data-out] summary').click();
+      assert.match(await page.locator('#vr-locs .vr-loc[data-out] li').innerText(), /1028260000000103[\s\S]*Đã đóng/, "trạng thái WMS tiếng Việt");
       assert.match(await page.locator("#vr-listname").innerText(), /Đối chiếu/);
       await shot(page, "tra-ncc-doi-chieu-1280");
       const calls = await page.evaluate(() => window.__extCalls.filter(c => c.type === "GET_GROUP_UID_PAGE").map(c => c.payload));
       assert.equal(calls.length, 1);
       assert.equal(calls[0].from, new Date(Date.parse(LIST_CREATED) - 24 * 3600e3).toISOString(), "đọc từ 1 ngày trước lúc nạp danh sách");
+      await page.locator('[data-vr-tab="list"]').click();
       await page.evaluate(async () => {
         const enc = new TextEncoder(), x = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;");
         const row = (r, cells) => `<row r="${r}">${cells.map((v, i) => `<c r="${String.fromCharCode(65 + i)}${r}" t="inlineStr"><is><t>${x(v)}</t></is></c>`).join("")}</row>`;
@@ -236,7 +257,7 @@ const counts = page => page.evaluate(() => ["navy", "black"].map(c => `${documen
         ["1028260000000401", "black", "900000494", "L1", "1", "F0-KHO-000-00-00-01", 1000],
       ], "chỉ sheet navy / black, bỏ dòng pivot (kể cả nhãn toàn số), Qty trống → null, bỏ sheet khác");
       assert.equal(srv.calls.find(c => c.rpc === "vendor_return_import").auth, "Bearer test-admin-token", "nạp bằng phiên Admin");
-      await page.waitForFunction(() => document.getElementById("vr-navy-total").textContent.trim() === "2");
+      await page.waitForFunction(() => document.getElementById("vr-navy").textContent.trim() === "0/2");
       assert.deepEqual(await counts(page), ["0/2", "0/1"]);
       // Mã trùng giữa hai sheet → báo trùng, không có nút Lưu
       await page.evaluate(async () => {

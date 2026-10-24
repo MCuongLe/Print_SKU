@@ -13501,37 +13501,14 @@ async function rpc(name,args,retry=true){
       #vendor-return-screen .vr-recent i { width: 10px; height: 10px; border-radius: 50%; background: var(--wms-success); }
       #vendor-return-screen .vr-recent li[data-tone="dup"] i { background: var(--wms-warning); }
       #vendor-return-screen .vr-recent li[data-tone="bad"] i { background: var(--wms-danger); }
-      #vendor-return-screen .vr-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
-      #vendor-return-screen .vr-card { display: grid; gap: 6px; min-height: var(--target-primary); padding: var(--space-3) var(--space-4); border: 2px solid var(--wms-border); border-radius: var(--radius-card); background: var(--wms-surface); color: var(--wms-text); font: inherit; text-align: left; cursor: pointer; }
-      #vendor-return-screen .vr-card[aria-selected="true"] { border-color: var(--vr-color); box-shadow: var(--shadow-card); }
-      #vendor-return-screen .vr-card__name { display: flex; align-items: center; gap: 8px; font-size: var(--fs-16); font-weight: var(--fw-semibold); }
-      #vendor-return-screen .vr-card__name::before { content: ""; width: 14px; height: 14px; border-radius: 50%; background: var(--vr-color); }
-      #vendor-return-screen .vr-card strong { font-size: var(--fs-22); font-weight: var(--fw-bold); font-variant-numeric: tabular-nums; }
-      #vendor-return-screen .vr-card strong small { color: var(--wms-muted); font-size: var(--fs-16); font-weight: var(--fw-semibold); }
-      #vendor-return-screen .vr-card .vr-bar { height: 6px; border-radius: var(--radius-pill); background: var(--wms-bg); overflow: hidden; }
-      #vendor-return-screen .vr-card .vr-bar i { display: block; height: 100%; width: 0; background: var(--vr-color); }
       #vendor-return-screen [data-color="navy"] { --vr-color: var(--wms-info); }
       #vendor-return-screen [data-color="black"] { --vr-color: var(--wms-text); }
-      #vendor-return-screen .vr-listname { display: inline-flex; align-items: center; gap: 6px; min-width: 0; margin: 0; color: var(--wms-muted); font-size: var(--fs-13); font-weight: var(--fw-semibold); }
       #vendor-return-screen .vr-listname span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       #vendor-return-screen .vr-listname svg { flex: none; }
-      #vendor-return-screen .vr-meta { display: none; }
-      #vendor-return-screen .vr-card__vr { color: var(--wms-muted); font-size: var(--fs-13); font-weight: var(--fw-semibold); }
-      #vendor-return-screen .vr-card__vr b { color: var(--wms-text); font-variant-numeric: tabular-nums; }
-      #vendor-return-screen .vr-table tr.vr-loc th { padding-top: var(--space-3); background: var(--wms-bg); color: var(--wms-text); font-size: var(--fs-14); font-weight: var(--fw-semibold); text-align: left; }
-      #vendor-return-screen .vr-table tr.vr-loc b { margin-left: 8px; color: var(--wms-muted); font-variant-numeric: tabular-nums; }
-      #vendor-return-screen .vr-table tr.vr-loc[data-target] th { background: var(--wms-brand-subtle); color: var(--wms-success); }
-      #vendor-return-screen .vr-table tr.vr-loc[data-target] i { margin-left: 8px; font-style: normal; font-size: var(--fs-12); }
-      #vendor-return-screen .vr-table tr.vr-loc[data-out] th { color: var(--wms-warning); }
-      #vendor-return-screen .vr-table td small { display: block; color: var(--wms-warning); font-size: var(--fs-12); font-weight: var(--fw-semibold); }
       #vendor-return-screen .vr-msg { margin: 0; color: var(--wms-muted); font-size: var(--fs-14); }
       #vendor-return-screen .vr-msg:empty { display: none; }
       #vendor-return-screen .vr-msg[data-tone="error"] { color: var(--wms-danger); }
       #vendor-return-screen .vr-msg[data-tone="ok"] { color: var(--wms-success); }
-      #vendor-return-screen .vr-table td.vr-code { font: var(--fw-semibold) var(--fs-14) ui-monospace, SFMono-Regular, Consolas, monospace; }
-      #vendor-return-screen .vr-table tr[data-scanned] td { background: var(--wms-brand-subtle); }
-      #vendor-return-screen .vr-table .vr-done { display: inline-flex; align-items: center; gap: 6px; color: var(--wms-success); font-weight: var(--fw-semibold); white-space: nowrap; }
-      #vendor-return-screen .vr-table .vr-done small { color: var(--wms-muted); font-weight: var(--fw-regular); }
       #vendor-return-screen .vr-file { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
       #vendor-return-screen .vr-file p { margin: 0; color: var(--wms-muted); font-size: var(--fs-14); }
       #vendor-return-screen .vr-preview { margin-top: var(--space-3); color: var(--wms-text); font-size: var(--fs-14); }
@@ -13539,33 +13516,108 @@ async function rpc(name,args,retry=true){
       #vendor-return-screen .vr-preview > * + * { margin-top: var(--space-2); }
       #vendor-return-screen .vr-preview__bad { color: var(--wms-danger); font-weight: var(--fw-semibold); }
       #vendor-return-screen .vr-btn svg { flex: none; width: 20px; height: 20px; }
+      #vendor-return-screen .vr-listname { display: inline-flex; align-items: center; gap: 6px; min-width: 0; margin: 0; color: var(--wms-muted); font-size: var(--fs-13); }
+      #vendor-return-screen .vr-strip { display: grid; gap: 6px; padding: 10px 14px; border: 1px solid var(--wms-border); border-radius: var(--radius-card); background: var(--wms-surface); }
+      #vendor-return-screen .vr-strip__main { display: flex; align-items: center; gap: 10px; min-width: 0; }
+      #vendor-return-screen :is(.vr-strip__lab, .vr-strip__left, .vr-strip__sub) { color: var(--wms-muted); font-size: var(--fs-13); font-weight: var(--fw-semibold); white-space: nowrap; }
+      #vendor-return-screen .vr-strip strong { color: var(--wms-brand); font-size: var(--fs-22); font-weight: var(--fw-bold); white-space: nowrap; font-variant-numeric: tabular-nums; }
+      #vendor-return-screen .vr-strip strong small { color: var(--wms-text); font-size: var(--fs-16); font-weight: var(--fw-semibold); }
+      #vendor-return-screen .vr-strip .vr-bar { flex: 1; min-width: 40px; height: 6px; overflow: hidden; border-radius: var(--radius-pill); background: var(--wms-bg); }
+      #vendor-return-screen .vr-strip .vr-bar i { display: block; width: 0; height: 100%; border-radius: inherit; background: var(--wms-brand); transition: width .2s; }
+      #vendor-return-screen :is(.vr-strip__left, .vr-strip__sub) b { color: var(--wms-text); font-size: var(--fs-14); font-variant-numeric: tabular-nums; }
+      #vendor-return-screen .vr-strip__left b { font-size: var(--fs-16); }
+      #vendor-return-screen .vr-strip__sub { display: flex; flex-wrap: wrap; gap: 4px 16px; }
+      #vendor-return-screen :is(.vr-strip__sub [data-color], .vr-loc li[data-color] code, .vr-dot)::before { content: ""; display: inline-block; flex: none; width: 10px; height: 10px; margin-right: 6px; border-radius: 50%; background: var(--vr-color); }
+      #vendor-return-screen .vr-strip__vr { margin-left: auto; }
+      #vendor-return-screen .vr-tabs { margin-bottom: 0; }
+      #vendor-return-screen .vr-locpanel { display: grid; gap: 10px; }
+      #vendor-return-screen .vr-filterrow { display: flex; flex-wrap: wrap; gap: 8px; }
+      #vendor-return-screen .vr-filter { flex: 1 1 240px; }
+      #vendor-return-screen .vr-filter input { width: 100%; min-height: var(--target-min); padding: 0 14px; border: 1px solid var(--wms-border); border-radius: var(--radius-control); background: var(--wms-surface); color: var(--wms-text); font: var(--fw-medium) var(--fs-16) var(--wms-font); }
+      #vendor-return-screen .vr-filter input:focus { outline: 2px solid var(--wms-brand); outline-offset: 1px; }
+      #vendor-return-screen .vr-seg { display: inline-flex; gap: 2px; padding: 3px; border-radius: var(--radius-control); background: var(--wms-bg); }
+      #vendor-return-screen .vr-seg button { min-height: var(--target-min); padding: 0 12px; border: 0; border-radius: var(--radius-control); background: transparent; color: var(--wms-muted); font: var(--fw-semibold) var(--fs-14) var(--wms-font); cursor: pointer; }
+      #vendor-return-screen .vr-seg button[aria-pressed="true"] { background: var(--wms-surface); color: var(--wms-text); box-shadow: var(--shadow-card); }
+      #vendor-return-screen .vr-locs { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: 8px; align-items: start; }
+      #vendor-return-screen .vr-loc { min-width: 0; border: 1px solid var(--wms-border); border-radius: var(--radius-card); background: var(--wms-surface); }
+      #vendor-return-screen .vr-loc__head { display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 14px; cursor: pointer; list-style: none; color: var(--wms-text); }
+      #vendor-return-screen .vr-loc__head::-webkit-details-marker { display: none; }
+      #vendor-return-screen .vr-loc__head::after { content: ""; flex: none; width: 16px; height: 16px; margin-left: 4px; background-color: currentColor; opacity: .7; transition: transform .15s; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m9 18 6-6-6-6'/%3E%3C/svg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m9 18 6-6-6-6'/%3E%3C/svg%3E") center / contain no-repeat; }
+      #vendor-return-screen .vr-loc[open] > .vr-loc__head::after { transform: rotate(90deg); }
+      #vendor-return-screen .vr-loc__head svg { flex: none; color: var(--wms-brand); }
+      #vendor-return-screen .vr-loc__head b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: var(--fw-bold) var(--fs-16)/1.3 ui-monospace, SFMono-Regular, Consolas, monospace; }
+      #vendor-return-screen .vr-loc__head i { flex: none; padding: 1px 8px; border-radius: var(--radius-pill); background: var(--wms-brand-subtle); color: var(--wms-success); font-size: var(--fs-12); font-style: normal; font-weight: var(--fw-semibold); }
+      #vendor-return-screen .vr-loc__head span { margin-left: auto; flex: none; padding: 2px 10px; border-radius: var(--radius-pill); background: var(--ps-danger-bg, var(--wms-bg)); color: var(--wms-danger); font-size: var(--fs-13); font-weight: var(--fw-bold); }
+      #vendor-return-screen .vr-loc[data-target] { border-color: var(--wms-success); }
+      #vendor-return-screen .vr-loc[data-target] .vr-loc__head span { background: var(--wms-brand-subtle); color: var(--wms-success); }
+      #vendor-return-screen .vr-loc[data-out] .vr-loc__head :is(svg, b) { color: var(--wms-warning); }
+      #vendor-return-screen .vr-loc[data-out] .vr-loc__head b { font-family: var(--wms-font); }
+      #vendor-return-screen .vr-loc[data-out] .vr-loc__head span { background: color-mix(in srgb, var(--wms-warning) 14%, var(--wms-surface)); color: var(--wms-warning); }
+      #vendor-return-screen .vr-loc ul { display: grid; gap: 4px; margin: 0; padding: 0 10px 10px; list-style: none; }
+      #vendor-return-screen .vr-loc li { display: grid; gap: 2px; padding: 8px 10px; border-radius: var(--radius-control); background: var(--wms-bg); }
+      #vendor-return-screen .vr-loc li code { display: flex; align-items: center; font: var(--fw-semibold) var(--fs-13)/1.3 ui-monospace, SFMono-Regular, Consolas, monospace; overflow-wrap: anywhere; }
+      #vendor-return-screen .vr-loc li span { color: var(--wms-muted); font-size: var(--fs-12); }
+      #vendor-return-screen .vr-empty { margin: 0; padding: var(--space-4); color: var(--wms-muted); font-size: var(--fs-14); text-align: center; }
+      #vendor-return-screen .vr-table tr[data-target] td { background: var(--wms-brand-subtle); }
+      #vendor-return-screen .vr-dot { display: inline-flex; align-items: center; white-space: nowrap; }
+      #vendor-return-screen .vr-listinfo { display: grid; gap: 2px; min-width: 0; }
+      #vendor-return-screen .vr-filehead { display: flex; flex-wrap: wrap; gap: 4px 10px; margin: 0; color: var(--wms-muted); font-size: var(--fs-13); }
+      #vendor-return-screen .vr-filehead #vr-file { color: var(--wms-text); font-weight: var(--fw-semibold); overflow-wrap: anywhere; }
+      #vendor-return-screen .vr-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+      #vendor-return-screen .vr-actions[hidden] { display: none; }
+      #vendor-return-screen .vr-btn--wms { border-color: var(--wms-brand); background: var(--wms-brand-subtle); color: var(--wms-brand); }
+      #vendor-return-screen .vr-kv { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px; margin: 12px 0 0; }
+      #vendor-return-screen .vr-kv div { padding: 10px 12px; border-radius: var(--radius-control); background: var(--wms-bg); }
+      #vendor-return-screen .vr-kv dt { color: var(--wms-muted); font-size: var(--fs-12); font-weight: var(--fw-semibold); }
+      #vendor-return-screen .vr-kv dd { margin: 2px 0 0; overflow-wrap: anywhere; color: var(--wms-text); font-size: var(--fs-16); font-weight: var(--fw-bold); font-variant-numeric: tabular-nums; }
+      #vendor-return-screen .vr-kv div[data-tone="ok"] dd { color: var(--wms-success); }
+      #vendor-return-screen .vr-kv div[data-tone="warn"] dd { color: var(--wms-warning); }
       @media (max-width: 760px) {
+        #vendor-return-screen .vr-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; }
+        #vendor-return-screen .vr-tabs .as-tab { justify-content: center; min-width: 0; padding: 0 6px; }
+        #vendor-return-screen .vr-loc__head { gap: 6px; padding: 0 10px; }
+        #vendor-return-screen .vr-loc__head b { font-size: var(--fs-14); }
+        #vendor-return-screen .vr-strip__vr { margin-left: 0; }
+        #vendor-return-screen .vr-seg { width: 100%; }
+        #vendor-return-screen .vr-seg button { flex: 1; }
+        #vendor-return-screen .vr-listhead .vr-listinfo { flex: 1 0 100%; }
+        #vendor-return-screen .vr-actions { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); width: 100%; }
+        #vendor-return-screen .vr-kv { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        #vendor-return-screen .vr-kv dd { font-size: var(--fs-14); }
         #vendor-return-screen .vr-content { width: calc(100% - 32px); padding-top: 12px; }
-        #vendor-return-screen .vr-table :is(th, td):is(:nth-child(3), :nth-child(5), :nth-child(6)) { display: none; }
-        #vendor-return-screen .vr-listname { flex: 1 0 100%; }
-        #vendor-return-screen .vr-meta { display: block; margin-top: 2px; color: var(--wms-muted); font: var(--fw-regular) var(--fs-12) var(--wms-font); }
-        #vendor-return-screen .vr-table .vr-done { white-space: normal; }
       }
     </style>
     <section class="cut-screen" id="vendor-return-screen" aria-labelledby="vr-title" hidden>
       <header class="uid-topbar"><div class="uid-topbar__inner"><button class="uid-back" id="vr-back" type="button" aria-label="Quay lại trang chủ WH-MATERIAL">WH-MATERIAL</button><span class="uid-topbar__mark" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5 5.5 5.5 0 0 1-5.5 5.5H11"/></svg></span><div class="uid-topbar__name"><h1 id="vr-title">TÌM GROUP UID</h1><span>Quét Group UID · trả nhà cung cấp</span></div><button class="uid-topbar__admin" id="vr-admin" type="button" aria-pressed="false" aria-label="Đăng nhập Admin" title="Đăng nhập Admin"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path class="uid-topbar__admin-check" d="m9 12 2 2 4-4"/></svg></button></div></header>
       <div class="vr-content">
         <section class="vr-panel" aria-label="Quét Group UID">
-          <div class="vr-head"><h2>Quét Group UID</h2><button class="vr-btn" id="vr-reconcile" type="button" hidden><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="6" r="3"/><path d="M12 6h5a2 2 0 0 1 2 2v7"/><path d="m15 9-3-3 3-3"/><circle cx="19" cy="18" r="3"/><path d="M12 18H7a2 2 0 0 1-2-2V9"/><path d="m9 15 3 3-3 3"/></svg><span>Đối chiếu</span></button><p class="vr-listname" id="vr-listname"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M8 13h2"/><path d="M14 13h2"/><path d="M8 17h2"/><path d="M14 17h2"/></svg><span>—</span></p></div>
+          <div class="vr-head"><h2>Quét Group UID</h2><p class="vr-listname" id="vr-listname"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M8 13h2"/><path d="M14 13h2"/><path d="M8 17h2"/><path d="M14 17h2"/></svg><span>—</span></p></div>
           <form class="vr-scan" id="vr-form"><div class="scan-field"><input id="vr-code" autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="go" inputmode="none" maxlength="60" placeholder="Group UID" aria-label="Group UID"><span class="scan-field__tools"><button class="act-icon act-icon--camera" id="vr-camera" type="button" aria-label="Quét bằng camera" title="Quét bằng camera" hidden></button><button class="act-icon act-icon--keyboard" id="vr-keyboard" type="button" data-kb-key="tra-ncc-ban-phim" aria-controls="vr-code" aria-pressed="false" aria-label="Gõ tay" title="Gõ tay"></button></span></div><button class="vr-btn vr-btn--primary" type="submit">Kiểm</button></form>
           <ul class="vr-recent" id="vr-recent" aria-label="Vừa quét"></ul>
         </section>
-        <div class="vr-cards" role="tablist" aria-label="Màu">
-          <button class="vr-card" type="button" role="tab" data-color="navy" aria-selected="true"><span class="vr-card__name">Navy</span><strong><span id="vr-navy-done">0</span><small>/<span id="vr-navy-total">—</span></small></strong><span class="vr-bar" aria-hidden="true"><i id="vr-navy-bar"></i></span><span class="vr-card__vr">Về F0-VR <b id="vr-navy-vr">—</b></span></button>
-          <button class="vr-card" type="button" role="tab" data-color="black" aria-selected="false"><span class="vr-card__name">Black</span><strong><span id="vr-black-done">0</span><small>/<span id="vr-black-total">—</span></small></strong><span class="vr-bar" aria-hidden="true"><i id="vr-black-bar"></i></span><span class="vr-card__vr">Về F0-VR <b id="vr-black-vr">—</b></span></button>
-        </div>
-        <p class="vr-msg" id="vr-message" aria-live="polite"></p>
-        <section class="ss-panel vr-panel" aria-label="Danh sách trả">
-          <div class="ss-table-wrap"><table class="ss-table vr-table"><thead><tr><th>#</th><th>Group UID</th><th>Lot</th><th>Roll</th><th>Vị trí file</th><th>SL</th><th>Đã quét</th></tr></thead><tbody id="vr-body"><tr><td colspan="7" class="ss-empty">Chưa có danh sách.</td></tr></tbody></table></div>
+        <section class="vr-strip" aria-label="Tiến độ trả">
+          <div class="vr-strip__main"><span class="vr-strip__lab">Đã quét</span><strong><span id="vr-done">0</span><small>/<span id="vr-total">—</span></small></strong><div class="vr-bar" aria-hidden="true"><i id="vr-bar"></i></div><span class="vr-strip__left">Còn thiếu <b id="vr-left">—</b></span></div>
+          <div class="vr-strip__sub"><span data-color="navy">Navy <b id="vr-navy">—</b></span><span data-color="black">Black <b id="vr-black">—</b></span><span class="vr-strip__vr">Về F0-VR <b id="vr-vr">—</b></span></div>
         </section>
-        <section class="vr-panel" id="vr-admin-panel" aria-label="Danh sách trả nhà cung cấp" hidden>
-          <div class="vr-head"><h2>Danh sách</h2></div>
-          <div class="vr-file"><input id="vr-file-input" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden><button class="vr-btn" id="vr-pick" type="button"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/></svg>Nạp Excel</button><p id="vr-file">—</p></div>
+        <p class="vr-msg" id="vr-message" aria-live="polite"></p>
+        <div class="as-tabs vr-tabs" role="tablist" aria-label="Trả NCC">
+          <button class="as-tab" type="button" role="tab" aria-selected="true" data-vr-tab="left">Còn thiếu<b id="vr-tab-left">0</b></button>
+          <button class="as-tab" type="button" role="tab" aria-selected="false" data-vr-tab="done">Đã quét<b id="vr-tab-done">0</b></button>
+          <button class="as-tab" type="button" role="tab" aria-selected="false" data-vr-tab="list">Danh sách</button>
+        </div>
+        <section class="vr-panel vr-locpanel" data-vr-panel="left" aria-label="Vị trí còn thiếu">
+          <div class="vr-filterrow"><label class="vr-filter"><input id="vr-loc-filter" type="search" autocomplete="off" spellcheck="false" placeholder="Vị trí, Group UID, SKU" aria-label="Lọc vị trí còn thiếu"></label><div class="vr-seg" role="group" aria-label="Màu"><button type="button" data-vr-color="all" aria-pressed="true">Tất cả</button><button type="button" data-vr-color="navy" aria-pressed="false">Navy</button><button type="button" data-vr-color="black" aria-pressed="false">Black</button></div></div>
+          <div class="vr-locs" id="vr-locs"></div>
+        </section>
+        <section class="ss-panel vr-panel" data-vr-panel="done" aria-label="Đã quét" hidden>
+          <div class="ss-panel-head"><div><h2>Đã quét</h2><p id="vr-note"></p></div><div class="as-tools" id="vr-tools" hidden></div></div>
+          <div class="as-tags" id="vr-tags" hidden></div>
+          <div class="ss-table-wrap"><table class="ss-table vr-table"><thead><tr id="vr-head"></tr></thead><tbody id="vr-body"><tr><td colspan="9" class="ss-empty">Chưa có dữ liệu.</td></tr></tbody></table></div>
+          <div class="as-pager" id="vr-pager" hidden></div>
+        </section>
+        <section class="vr-panel" data-vr-panel="list" aria-label="Danh sách trả" hidden>
+          <div class="vr-head vr-listhead"><div class="vr-listinfo"><h2>Danh sách trả NCC</h2><p class="vr-filehead"><span id="vr-file">—</span><span id="vr-at"></span></p></div><div class="vr-actions" id="vr-admin-panel" hidden><input id="vr-file-input" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden><button class="vr-btn vr-btn--wms" id="vr-reconcile" type="button" hidden><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="6" r="3"/><path d="M12 6h5a2 2 0 0 1 2 2v7"/><path d="m15 9-3-3 3-3"/><circle cx="19" cy="18" r="3"/><path d="M12 18H7a2 2 0 0 1-2-2V9"/><path d="m9 15 3 3-3 3"/></svg><span>Đối chiếu</span></button><button class="vr-btn" id="vr-pick" type="button"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/></svg>Nạp Excel</button></div></div>
+          <dl class="vr-kv" id="vr-info"></dl>
           <div class="vr-preview" id="vr-preview" hidden></div>
         </section>
       </div>
@@ -13680,7 +13732,7 @@ async function rpc(name,args,retry=true){
         const fmtAt=v=>{const d=new Date(v);return Number.isNaN(d.getTime())?'':new Intl.DateTimeFormat('vi-VN',{timeZone:'Asia/Ho_Chi_Minh',hour:'2-digit',minute:'2-digit',day:'2-digit',month:'2-digit'}).format(d)};
         const fmtTime=v=>{const d=new Date(v);return Number.isNaN(d.getTime())?'':new Intl.DateTimeFormat('vi-VN',{timeZone:'Asia/Ho_Chi_Minh',hour:'2-digit',minute:'2-digit',second:'2-digit'}).format(d)};
         // local: lượt quét máy này vừa ghi (mã → {listId, scannedAt, device}) — gộp vào bản chụp chụp trước khi lượt quét kịp lưu
-        const S={list:null,items:[],byCode:new Map(),local:new Map(),tab:'navy',admin:false,saving:false,recent:[],preview:null,loadP:null,loadState:'idle',queue:Promise.resolve()};
+        const S={list:null,items:[],byCode:new Map(),local:new Map(),view:'left',color:'all',filter:'',openLocs:new Set(),admin:false,saving:false,recent:[],preview:null,loadP:null,loadState:'idle',queue:Promise.resolve()};
         const tell=(t,tone='',src='')=>{const m=$('vr-message');m.textContent=t||'';m.dataset.tone=tone;m.dataset.src=src};
         const cue=tone=>window.PrintSkuScanCue?.play?.(tone,{sound:true});
         const CODE=/^[0-9]{10,40}$/,TARGET='F0-VR-00-00-00-00';
@@ -13725,30 +13777,62 @@ async function rpc(name,args,retry=true){
         };
 
         // ---- Hiển thị ----
+        // ---- Hiển thị (24/10/2026, bố cục như UID blocked): dải tiến độ · tab Còn thiếu (thẻ vị trí) | Đã quét (bảng) | Danh sách ----
+        const svg=(b,s=20)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${b}</svg>`;
+        const PIN='<path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/>';
+        const EXIT='<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/>';
         const renderCounts=()=>{
-          for(const[c]of COLORS){
-            const all=S.items.filter(it=>it.color===c),done=all.filter(it=>it.scannedAt).length;
-            $(`vr-${c}-done`).textContent=num(done);$(`vr-${c}-total`).textContent=S.list?num(all.length):'—';
-            $(`vr-${c}-bar`).style.width=all.length?`${Math.round(done*100/all.length)}%`:'0';
-            $(`vr-${c}-vr`).textContent=S.list?`${num(all.filter(it=>where(it)===TARGET).length)}/${num(all.length)}`:'—';
+          const all=S.items,done=all.filter(it=>it.scannedAt).length,left=all.length-done;
+          $('vr-done').textContent=num(done);$('vr-total').textContent=S.list?num(all.length):'—';$('vr-left').textContent=S.list?num(left):'—';
+          $('vr-bar').style.width=all.length?`${Math.round(done*100/all.length)}%`:'0';
+          for(const[c]of COLORS){const g=all.filter(it=>it.color===c);$(`vr-${c}`).textContent=S.list?`${num(g.filter(it=>it.scannedAt).length)}/${num(g.length)}`:'—'}
+          $('vr-vr').textContent=S.list?`${num(all.filter(it=>where(it)===TARGET).length)}/${num(all.length)}`:'—';
+          $('vr-tab-left').textContent=num(left);$('vr-tab-done').textContent=num(done);
+        };
+        // Còn thiếu: Group UID chưa quét gom theo vị trí hiện tại (vị trí → F0-VR đích → Đã rời kho), thẻ đóng sẵn, nhớ mở/đóng; lọc chữ + màu
+        const renderLocs=()=>{
+          const q=S.filter.trim().toLowerCase(),by=new Map();
+          for(const it of S.items){
+            if(it.scannedAt||(S.color!=='all'&&it.color!==S.color))continue;
+            const k=where(it);
+            if(q&&![k,it.location,it.groupUid,it.sku,it.lot,it.roll].some(v=>String(v||'').toLowerCase().includes(q)))continue;
+            if(!by.has(k))by.set(k,[]);by.get(k).push(it);
           }
-          screen.querySelectorAll('.vr-card').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.color===S.tab)));
+          const rank=k=>k===OUT?2:k===TARGET?1:0,keys=[...by.keys()].sort((x,y)=>rank(x)-rank(y)||x.localeCompare(y,'vi',{numeric:true}));
+          $('vr-locs').innerHTML=keys.length?keys.map(k=>{
+            const g=by.get(k).sort((x,y)=>String(x.groupUid).localeCompare(String(y.groupUid))),t=k===TARGET,o=k===OUT,open=q||S.openLocs.has(k);
+            return `<details class="vr-loc" data-vr-loc="${esc(k)}"${t?' data-target':''}${o?' data-out':''}${open?' open':''}><summary class="vr-loc__head">${svg(o?EXIT:PIN,18)}<b>${esc(k)}</b>${t?'<i>Đích</i>':''}<span>${num(g.length)} cuộn</span></summary><ul>${g.map(it=>`<li data-color="${esc(it.color)}"><code>${esc(it.groupUid)}</code><span>${esc([colorName(it),it.sku,it.lot&&`Lot ${it.lot}`,it.roll&&`Roll ${it.roll}`,it.qty!=null?`SL ${num(it.qty)}`:'',o&&it.status?(ST[it.status]||it.status):'',it.location&&it.location!==k?`File ${it.location}`:''].filter(Boolean).join(' · '))}</span></li>`).join('')}</ul></details>`;
+          }).join(''):`<p class="vr-empty">${!S.list?(S.loadState==='error'?'Không tải được danh sách':S.loadState==='ok'?'Chưa có danh sách':'Đang tải…'):q||S.color!=='all'?'Không có vị trí khớp':'Đã quét đủ danh sách'}</p>`;
         };
-        const renderTable=()=>{
-          const rows=S.items.filter(it=>it.color===S.tab),groups=new Map();
-          for(const it of rows){const k=where(it);if(!groups.has(k))groups.set(k,[]);groups.get(k).push(it)}
-          const rank=k=>k===OUT?2:k===TARGET?1:0,keys=[...groups.keys()].sort((a,b)=>rank(a)-rank(b)||a.localeCompare(b));
-          let n=0;
-          const row=it=>`<tr${it.scannedAt?' data-scanned':''}><td>${++n}</td><td class="vr-code">${esc(it.groupUid)}<span class="vr-meta">${esc([it.lot&&`Lot ${it.lot}`,it.qty!=null&&`SL ${num(it.qty)}`].filter(Boolean).join(' · '))}</span></td><td>${esc(it.lot)}</td><td>${esc(it.roll)}</td><td>${it.location&&it.location!==where(it)?esc(it.location):''}${isOut(it)&&it.status?`<small title="${esc(it.status)}">${esc(ST[it.status]||it.status)}</small>`:''}</td><td>${it.qty==null?'':esc(num(it.qty))}</td><td>${it.scannedAt?`<span class="vr-done">Đã quét <small>${esc(fmtAt(it.scannedAt))}${it.device?` · ${esc(it.device)}`:''}</small></span>`:''}</td></tr>`;
-          $('vr-body').innerHTML=rows.length?keys.map(k=>{const g=groups.get(k);return `<tr class="vr-loc"${k===TARGET?' data-target':''}${k===OUT?' data-out':''}><th colspan="7">${esc(k)} <b>${num(g.filter(it=>it.scannedAt).length)}/${num(g.length)}</b>${k===TARGET?' <i>Đích</i>':''}</th></tr>`+g.map(row).join('')}).join(''):`<tr><td colspan="7" class="ss-empty">${S.list?'Không có Group UID màu này.':S.loadState==='error'?'Chưa tải được danh sách.':S.loadState==='ok'?'Chưa có danh sách.':'Đang tải danh sách…'}</td></tr>`;
+        $('vr-locs').addEventListener('toggle',e=>{const d=e.target.closest?.('[data-vr-loc]');if(!d||S.filter.trim())return;if(d.open)S.openLocs.add(d.dataset.vrLoc);else S.openLocs.delete(d.dataset.vrLoc)},true);
+        $('vr-loc-filter').addEventListener('input',e=>{S.filter=e.target.value;renderLocs()});
+        screen.querySelector('.vr-seg').addEventListener('click',e=>{const b=e.target.closest('[data-vr-color]');if(!b)return;S.color=b.dataset.vrColor;screen.querySelectorAll('[data-vr-color]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));renderLocs()});
+        // Đã quét: bảng dùng chung (tìm, lọc Màu / F0-VR, sắp, Xuất Excel) như UID blocked
+        const UI=window.AdminSyncUI,list=UI?.createList({tools:$('vr-tools'),tagsBox:$('vr-tags'),head:$('vr-head'),body:$('vr-body'),pager:$('vr-pager'),note:$('vr-note')});
+        const COLS=[{label:'Group UID'},{label:'Màu',sort:'color'},{label:'SKU',sort:'sku'},{label:'Lot'},{label:'Roll'},{label:'SL',sort:'qty'},{label:'Vị trí',sort:'loc'},{label:'Lúc quét',sort:'at',first:'desc'},{label:'Máy',sort:'dev'}];
+        const fmtFull=v=>{const d=new Date(v);if(Number.isNaN(d.getTime()))return'';const p=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Ho_Chi_Minh',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(d).map(x=>[x.type,x.value]));return`${p.day}/${p.month}/${p.year} ${p.hour}:${p.minute}`};
+        const renderDone=()=>{
+          if(!list)return;
+          const rows=S.items.filter(it=>it.scannedAt).sort((x,y)=>String(y.scannedAt).localeCompare(String(x.scannedAt)));
+          list.show({columns:COLS,rows:rows.map(it=>{const loc=where(it),at=Date.parse(it.scannedAt)||0,t=loc===TARGET;return{cells:[`<code>${esc(it.groupUid)}</code>`,`<span class="vr-dot" data-color="${esc(it.color)}">${esc(colorName(it))}</span>`,esc(it.sku),esc(it.lot),esc(it.roll),it.qty==null?'':esc(num(it.qty)),esc(loc),esc(fmtAt(it.scannedAt)),esc(it.device)],attrs:t?'data-target':'',text:[it.groupUid,colorName(it),it.sku,it.lot,it.roll,loc,fmtFull(it.scannedAt),it.device].join(' '),facets:{color:colorName(it),vr:t?'Đã về F0-VR':'Chưa về F0-VR'},sort:{color:it.color,sku:it.sku||'',qty:Number(it.qty)||0,loc,at,dev:it.device||''},csv:[it.groupUid,colorName(it),it.sku,it.lot,it.roll,it.qty??'',loc,fmtFull(it.scannedAt),it.device||'']}}),facets:[{id:'color',label:'Màu',icon:'layers'},{id:'vr',label:'F0-VR',icon:'pin'}],filename:'tra-ncc-da-quet',csvHead:['Group UID','Màu','SKU','Lot','Roll','SL','Vị trí','Lúc quét','Máy'],sheet:'Đã quét',empty:S.list?'Chưa quét Group UID nào.':'Chưa có danh sách.'},{keep:true});
         };
+        const renderView=()=>{if(S.view==='left')renderLocs();else if(S.view==='done')renderDone()};
         const renderInfo=()=>{
           $('vr-admin-panel').hidden=!S.admin;
-          $('vr-file').textContent=S.list?`${S.list.fileName||'—'} · ${fmtAt(S.list.createdAt)} · ${num(S.list.itemCount)} Group UID`:'Chưa có danh sách';
-          $('vr-listname').lastElementChild.textContent=S.list?`${S.list.fileName||'—'} · ${fmtAt(S.list.createdAt)}${S.list.reconciledAt?` · Đối chiếu ${fmtAt(S.list.reconciledAt)}`:''}`:'Chưa có danh sách';
-          $('vr-reconcile').hidden=!S.admin||!S.list;
+          const l=S.list,n=c=>S.items.filter(it=>it.color===c).length,kv=(k,v,tone='')=>`<div${tone?` data-tone="${tone}"`:''}><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`;
+          $('vr-file').textContent=l?.fileName||'Chưa có danh sách';$('vr-file').title=l?.fileName||'';
+          $('vr-at').textContent=l?`Nạp ${fmtAt(l.createdAt)}`:'';
+          $('vr-info').innerHTML=l?kv('Navy',num(n('navy')))+kv('Black',num(n('black')))+kv('Về F0-VR',`${num(S.items.filter(it=>where(it)===TARGET).length)}/${num(S.items.length)}`,'ok')+kv('Đối chiếu WMS',l.reconciledAt?fmtAt(l.reconciledAt):'Chưa',l.reconciledAt?'':'warn'):'';
+          $('vr-listname').lastElementChild.textContent=l?`${l.fileName||'—'} · ${fmtAt(l.createdAt)}${l.reconciledAt?` · Đối chiếu ${fmtAt(l.reconciledAt)}`:''}`:'Chưa có danh sách';
+          $('vr-reconcile').hidden=!S.admin||!l;
         };
-        const renderAll=()=>{renderCounts();renderTable();renderInfo()};
+        const renderAll=()=>{renderCounts();renderView();renderInfo()};
+        const setView=v=>{
+          S.view=v;screen.querySelectorAll('[data-vr-tab]').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.vrTab===v)));
+          screen.querySelectorAll('[data-vr-panel]').forEach(p=>{p.hidden=p.dataset.vrPanel!==v});
+          renderView();if(v==='list')renderInfo();
+        };
+        screen.querySelector('.vr-tabs').addEventListener('click',e=>{const b=e.target.closest('[data-vr-tab]');if(b)setView(b.dataset.vrTab)});
         // Pop-up kết quả quét (24/10/2026, giống Cấp vải): không phải <dialog> modal để ô quét giữ con trỏ (máy quét cầm tay bắn tiếp được);
         // Đúng tự đóng sau AUTO_MS, Đã quét / lỗi ở lại tới khi chạm, bấm Esc hoặc có kết quả quét mới.
         const pop=$('vr-pop'),AUTO_MS=1600;let popTimer=0;
@@ -13792,14 +13876,13 @@ async function rpc(name,args,retry=true){
             Object.assign(cur,{scannedAt:mark.scannedAt,device:mark.device});
             if(d.result==='dup'){paint({tone:'dup',title:`Đã quét · ${colorName(cur)}`,code,note:dupNote(cur)});cue('dup')}
             else{paint({tone:'ok',title:`Đúng · ${colorName(cur)}`,code,note:[where(cur),cur.lot&&`Lot ${cur.lot}`,cur.roll&&`Roll ${cur.roll}`].filter(Boolean).join(' · ')});cue('ok')}
-            S.tab=cur.color;renderCounts();renderTable();
+            renderCounts();renderView();
           }catch(e){paint({tone:'bad',title:'Chưa lưu được lượt quét',code,note:e.message});cue('bad')}
         };
         const check=raw=>{S.queue=S.queue.then(()=>checkOne(raw)).catch(()=>{})};
         $('vr-form').addEventListener('submit',e=>{e.preventDefault();const input=$('vr-code'),v=input.value;input.value='';if(v.trim())check(v);input.focus()});
         if(window.PrintSkuScanUI?.canOpen?.())$('vr-camera').hidden=false;
         $('vr-camera').addEventListener('click',()=>window.PrintSkuScanUI.openGroupUid({typeFocus:'#vr-code',onCode:c=>{$('vr-code').value=c;$('vr-form').requestSubmit()}}));
-        screen.querySelectorAll('.vr-card').forEach(b=>b.addEventListener('click',()=>{S.tab=b.dataset.color;renderCounts();renderTable()}));
 
         // ---- Admin: nạp Excel (sheet "navy" / "black…"), xem trước rồi lưu ----
         const FIELD={groupUid:/^group\s*uid(\s*code)?$/i,sku:/^sku$/i,productName:/^product\s*name$/i,lot:/^batch(\s*code)?$/i,roll:/^roll(\s*code)?$/i,location:/^location$/i,qty:/^qty$/i};
@@ -13900,7 +13983,7 @@ async function rpc(name,args,retry=true){
           const on=active();screen.hidden=!on;
           if(!on){wasOn=false;hidePop();return}
           const root=$('root');if(root)root.inert=true;
-          if(!wasOn){wasOn=true;syncAdmin();load();setTimeout(()=>$('vr-code').focus(),40)}
+          if(!wasOn){wasOn=true;syncAdmin();load();setView(S.view);setTimeout(()=>$('vr-code').focus(),40)}
         };
         $('vr-back').addEventListener('click',()=>{location.hash='#home'});
         document.addEventListener('visibilitychange',()=>{if(!document.hidden&&active())load()});
