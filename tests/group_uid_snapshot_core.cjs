@@ -136,5 +136,14 @@ const noSleep = { sleep: async () => {} };
   await assert.rejects(readGroupUidSnapshot({ full: true, readPage: async () => ({ rows: null, total: 1, totalPages: 1 }), ...noSleep }), /trang Group UID 1 không hợp lệ/);
   await assert.rejects(readGroupUidSnapshot({ full: true }), /Thiếu hàm đọc trang WMS/);
 
-  console.log("group_uid_snapshot_core: full/incremental drift rules passed");
+  // index.html (nút Đối chiếu của Trả NCC, 24/10/2026) chép NGUYÊN VĂN tệp này vào <script id="group-uid-snapshot-core"> — hai bản không được lệch
+  {
+    const fs = require("node:fs"), path = require("node:path"), nl = t => t.replace(/\r\n/g, "\n").trim();
+    const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
+    const block = html.match(/<script id="group-uid-snapshot-core">([\s\S]*?)<\/script>/);
+    assert.ok(block, "index.html thiếu khối group-uid-snapshot-core");
+    assert.equal(nl(block[1]), nl(fs.readFileSync(path.join(__dirname, "..", "extension", "inside-po-connector", "group-uid-snapshot-core.js"), "utf8")), "index.html: khối group-uid-snapshot-core lệch bản Extension — chép lại nguyên văn");
+  }
+
+  console.log("group_uid_snapshot_core: full/incremental drift rules passed; index.html giữ bản chép nguyên văn");
 })().catch(error => { console.error(error); process.exit(1); });

@@ -13478,14 +13478,22 @@ async function rpc(name,args,retry=true){
       #vendor-return-screen .vr-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: var(--target-min); padding: 0 var(--space-4); border: 1px solid var(--wms-control-border); border-radius: var(--radius-control); background: var(--wms-surface); color: var(--wms-brand); font: var(--fw-semibold) var(--fs-16) var(--wms-font); cursor: pointer; }
       #vendor-return-screen .vr-btn--primary { border-color: var(--wms-brand); background: var(--wms-brand); color: var(--wms-on-brand); }
       #vendor-return-screen .vr-btn:disabled { background: var(--wms-disabled-bg); border-color: var(--wms-border); color: var(--wms-disabled-text); cursor: not-allowed; }
-      #vendor-return-screen .vr-result { margin-top: var(--space-4); padding: var(--space-4); border: 2px solid var(--wms-border); border-radius: var(--radius-card); background: var(--wms-bg); }
-      #vendor-return-screen .vr-result[hidden] { display: none; }
+      #vendor-return-screen .vr-pop { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; padding: var(--space-4); background: color-mix(in srgb, var(--wms-text) 45%, transparent); -webkit-tap-highlight-color: transparent; }
+      #vendor-return-screen .vr-pop[hidden] { display: none; }
+      #vendor-return-screen .vr-result { position: relative; overflow: hidden auto; display: grid; justify-items: center; gap: 4px; width: min(420px, 100%); max-height: calc(100dvh - 32px); padding: 24px 20px 20px; border: 2px solid var(--wms-border); border-radius: var(--radius-xl); background: var(--wms-surface); box-shadow: var(--shadow-overlay); text-align: center; animation: vrpop-in .16s ease-out; }
+      #vendor-return-screen .vr-result__ico { display: grid; place-items: center; width: 64px; height: 64px; margin-bottom: 6px; border-radius: 50%; background: currentColor; }
+      #vendor-return-screen .vr-result__ico svg { width: 38px; height: 38px; color: var(--wms-surface); }
+      #vendor-return-screen .vr-result__close { width: 100%; min-height: var(--target-min); margin-top: var(--space-3); border: 1px solid currentColor; border-radius: var(--radius-control); background: var(--wms-surface); color: inherit; font: var(--fw-semibold) var(--fs-16)/1 var(--wms-font); cursor: pointer; }
+      #vendor-return-screen .vr-result__bar { position: absolute; left: 0; bottom: 0; width: 100%; height: 5px; background: currentColor; transform-origin: left; animation: vrpop-bar 1.6s linear forwards; }
+      @keyframes vrpop-in { from { opacity: 0; transform: scale(.94); } to { opacity: 1; transform: none; } }
+      @keyframes vrpop-bar { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+      @media (prefers-reduced-motion: reduce) { #vendor-return-screen .vr-result { animation: none; } #vendor-return-screen .vr-result__bar { display: none; } }
       #vendor-return-screen .vr-result__title { margin: 0; font-size: var(--fs-28); font-weight: var(--fw-bold); line-height: 1.15; }
       #vendor-return-screen .vr-result__code { margin: 6px 0 0; font: var(--fw-bold) var(--fs-18)/1.3 ui-monospace, SFMono-Regular, Consolas, monospace; word-break: break-all; }
       #vendor-return-screen .vr-result__note { margin: 6px 0 0; font-size: var(--fs-14); font-weight: var(--fw-semibold); }
       #vendor-return-screen .vr-result[data-tone="ok"] { border-color: var(--wms-success); color: var(--wms-success); }
       #vendor-return-screen .vr-result[data-tone="dup"] { border-color: var(--wms-warning); color: var(--wms-warning); }
-      #vendor-return-screen .vr-result[data-tone="bad"] { border-color: var(--ps-danger-line, var(--wms-danger)); background: var(--ps-danger-bg, var(--wms-bg)); color: var(--wms-danger); }
+      #vendor-return-screen .vr-result[data-tone="bad"] { border-color: var(--wms-danger); color: var(--wms-danger); }
       #vendor-return-screen .vr-recent { display: grid; gap: 6px; margin: var(--space-3) 0 0; padding: 0; list-style: none; }
       #vendor-return-screen .vr-recent li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; min-height: 40px; padding: 6px 10px; border-radius: var(--radius-control); background: var(--wms-bg); font-size: var(--fs-13); }
       #vendor-return-screen .vr-recent li b { font: var(--fw-semibold) var(--fs-13)/1.2 ui-monospace, SFMono-Regular, Consolas, monospace; overflow-wrap: anywhere; }
@@ -13508,6 +13516,14 @@ async function rpc(name,args,retry=true){
       #vendor-return-screen .vr-listname span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       #vendor-return-screen .vr-listname svg { flex: none; }
       #vendor-return-screen .vr-meta { display: none; }
+      #vendor-return-screen .vr-card__vr { color: var(--wms-muted); font-size: var(--fs-13); font-weight: var(--fw-semibold); }
+      #vendor-return-screen .vr-card__vr b { color: var(--wms-text); font-variant-numeric: tabular-nums; }
+      #vendor-return-screen .vr-table tr.vr-loc th { padding-top: var(--space-3); background: var(--wms-bg); color: var(--wms-text); font-size: var(--fs-14); font-weight: var(--fw-semibold); text-align: left; }
+      #vendor-return-screen .vr-table tr.vr-loc b { margin-left: 8px; color: var(--wms-muted); font-variant-numeric: tabular-nums; }
+      #vendor-return-screen .vr-table tr.vr-loc[data-target] th { background: var(--wms-brand-subtle); color: var(--wms-success); }
+      #vendor-return-screen .vr-table tr.vr-loc[data-target] i { margin-left: 8px; font-style: normal; font-size: var(--fs-12); }
+      #vendor-return-screen .vr-table tr.vr-loc[data-out] th { color: var(--wms-warning); }
+      #vendor-return-screen .vr-table td small { display: block; color: var(--wms-warning); font-size: var(--fs-12); font-weight: var(--fw-semibold); }
       #vendor-return-screen .vr-msg { margin: 0; color: var(--wms-muted); font-size: var(--fs-14); }
       #vendor-return-screen .vr-msg:empty { display: none; }
       #vendor-return-screen .vr-msg[data-tone="error"] { color: var(--wms-danger); }
@@ -13535,18 +13551,17 @@ async function rpc(name,args,retry=true){
       <header class="uid-topbar"><div class="uid-topbar__inner"><button class="uid-back" id="vr-back" type="button" aria-label="Quay lại trang chủ WH-MATERIAL">WH-MATERIAL</button><span class="uid-topbar__mark" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5 5.5 5.5 0 0 1-5.5 5.5H11"/></svg></span><div class="uid-topbar__name"><h1 id="vr-title">TÌM GROUP UID</h1><span>Quét Group UID · trả nhà cung cấp</span></div><button class="uid-topbar__admin" id="vr-admin" type="button" aria-pressed="false" aria-label="Đăng nhập Admin" title="Đăng nhập Admin"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path class="uid-topbar__admin-check" d="m9 12 2 2 4-4"/></svg></button></div></header>
       <div class="vr-content">
         <section class="vr-panel" aria-label="Quét Group UID">
-          <div class="vr-head"><h2>Quét Group UID</h2><p class="vr-listname" id="vr-listname"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M8 13h2"/><path d="M14 13h2"/><path d="M8 17h2"/><path d="M14 17h2"/></svg><span>—</span></p></div>
+          <div class="vr-head"><h2>Quét Group UID</h2><button class="vr-btn" id="vr-reconcile" type="button" hidden><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="6" r="3"/><path d="M12 6h5a2 2 0 0 1 2 2v7"/><path d="m15 9-3-3 3-3"/><circle cx="19" cy="18" r="3"/><path d="M12 18H7a2 2 0 0 1-2-2V9"/><path d="m9 15 3 3-3 3"/></svg><span>Đối chiếu</span></button><p class="vr-listname" id="vr-listname"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M8 13h2"/><path d="M14 13h2"/><path d="M8 17h2"/><path d="M14 17h2"/></svg><span>—</span></p></div>
           <form class="vr-scan" id="vr-form"><div class="scan-field"><input id="vr-code" autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="go" inputmode="none" maxlength="60" placeholder="Group UID" aria-label="Group UID"><span class="scan-field__tools"><button class="act-icon act-icon--camera" id="vr-camera" type="button" aria-label="Quét bằng camera" title="Quét bằng camera" hidden></button><button class="act-icon act-icon--keyboard" id="vr-keyboard" type="button" data-kb-key="tra-ncc-ban-phim" aria-controls="vr-code" aria-pressed="false" aria-label="Gõ tay" title="Gõ tay"></button></span></div><button class="vr-btn vr-btn--primary" type="submit">Kiểm</button></form>
-          <div class="vr-result" id="vr-result" role="status" aria-live="assertive" hidden></div>
           <ul class="vr-recent" id="vr-recent" aria-label="Vừa quét"></ul>
         </section>
         <div class="vr-cards" role="tablist" aria-label="Màu">
-          <button class="vr-card" type="button" role="tab" data-color="navy" aria-selected="true"><span class="vr-card__name">Navy</span><strong><span id="vr-navy-done">0</span><small>/<span id="vr-navy-total">—</span></small></strong><span class="vr-bar" aria-hidden="true"><i id="vr-navy-bar"></i></span></button>
-          <button class="vr-card" type="button" role="tab" data-color="black" aria-selected="false"><span class="vr-card__name">Black</span><strong><span id="vr-black-done">0</span><small>/<span id="vr-black-total">—</span></small></strong><span class="vr-bar" aria-hidden="true"><i id="vr-black-bar"></i></span></button>
+          <button class="vr-card" type="button" role="tab" data-color="navy" aria-selected="true"><span class="vr-card__name">Navy</span><strong><span id="vr-navy-done">0</span><small>/<span id="vr-navy-total">—</span></small></strong><span class="vr-bar" aria-hidden="true"><i id="vr-navy-bar"></i></span><span class="vr-card__vr">Về F0-VR <b id="vr-navy-vr">—</b></span></button>
+          <button class="vr-card" type="button" role="tab" data-color="black" aria-selected="false"><span class="vr-card__name">Black</span><strong><span id="vr-black-done">0</span><small>/<span id="vr-black-total">—</span></small></strong><span class="vr-bar" aria-hidden="true"><i id="vr-black-bar"></i></span><span class="vr-card__vr">Về F0-VR <b id="vr-black-vr">—</b></span></button>
         </div>
         <p class="vr-msg" id="vr-message" aria-live="polite"></p>
         <section class="ss-panel vr-panel" aria-label="Danh sách trả">
-          <div class="ss-table-wrap"><table class="ss-table vr-table"><thead><tr><th>#</th><th>Group UID</th><th>Lot</th><th>Roll</th><th>Vị trí</th><th>SL</th><th>Đã quét</th></tr></thead><tbody id="vr-body"><tr><td colspan="7" class="ss-empty">Chưa có danh sách.</td></tr></tbody></table></div>
+          <div class="ss-table-wrap"><table class="ss-table vr-table"><thead><tr><th>#</th><th>Group UID</th><th>Lot</th><th>Roll</th><th>Vị trí file</th><th>SL</th><th>Đã quét</th></tr></thead><tbody id="vr-body"><tr><td colspan="7" class="ss-empty">Chưa có danh sách.</td></tr></tbody></table></div>
         </section>
         <section class="vr-panel" id="vr-admin-panel" aria-label="Danh sách trả nhà cung cấp" hidden>
           <div class="vr-head"><h2>Danh sách</h2></div>
@@ -13554,7 +13569,102 @@ async function rpc(name,args,retry=true){
           <div class="vr-preview" id="vr-preview" hidden></div>
         </section>
       </div>
+      <div class="vr-pop" id="vr-pop" hidden><div class="vr-result" id="vr-result" role="alertdialog" aria-labelledby="vr-pop-title" aria-live="assertive"></div></div>
     </section>
+    <script id="group-uid-snapshot-core">
+// Đọc ảnh chụp Group UID từ WMS vào bộ nhớ rồi mới đưa lên Supabase: chép quy tắc readWmsSnapshot của index.html (16/10/2026)
+// thành hàm thuần để service worker (đồng bộ tự động) và test Node dùng chung.
+// WMS chỉ áp to_updated_at khi có cả from_updated_at, và danh sách xếp theo id giảm dần.
+// Toàn bộ: api-clinic tạo 1 UID/phút ở đầu danh sách nên trang bị đẩy xuống trong lúc đọc (lặp chứ không sót) → đọc xong, đọc lại
+// đầu danh sách (tối đa 5 vòng) tới khi tổng WMS khớp số UID duy nhất. Gia tăng: UID vừa sửa rơi khỏi khung from–to làm trang dịch lên
+// (sót mà tổng vẫn khớp) → mọi trang phải cùng totalPages/total và số UID duy nhất = total. Lệch 3 lần → ném lỗi.
+(function (root) {
+  function num(value) { return Number(value || 0).toLocaleString("vi-VN"); }
+
+  function checkPage(item, page) {
+    if (!item || typeof item !== "object" || !Array.isArray(item.rows)
+      || !Number.isFinite(Number(item.total)) || Number(item.total) < 0
+      || !Number.isInteger(Number(item.totalPages)) || Number(item.totalPages) < 1) {
+      throw new Error(`WMS trả trang Group UID ${page} không hợp lệ`);
+    }
+    return { ...item, page: Number(item.page) || page, total: Number(item.total), totalPages: Number(item.totalPages) };
+  }
+
+  async function readGroupUidSnapshot({
+    full, rangeFrom, rangeTo, size = 500, readPage, onProgress, tries = 3, sleepMs = 1500, parallel = 4,
+    now = () => new Date().toISOString(), sleep = ms => new Promise(resolve => setTimeout(resolve, ms)),
+  } = {}) {
+    if (typeof readPage !== "function") throw new Error("Thiếu hàm đọc trang WMS");
+    const rows = new Map(), records = new Set(), winner = new Map(), recordCode = new Map();
+    let byId = true;
+    // 0.10.6 (review Codex 22/10): cùng mã → updated_date mới hơn thắng; bằng nhau thì id bản ghi lớn hơn (rowIds của trang); thiếu id
+    // thì bản đọc sau thắng như cũ. Giống newerRecord của group-uid-sync-core.js.
+    const newer = (row, id, before, beforeId) => {
+      const ta = new Date(row.updated_date).getTime(), tb = new Date(before.updated_date).getTime();
+      if (ta !== tb) return ta > tb;
+      return Number.isSafeInteger(id) && Number.isSafeInteger(beforeId) ? id > beforeId : true;
+    };
+    const read = async (params, page) => checkPage(await readPage({ ...params, page }), page);
+    // 22/10/2026: WMS đếm tổng theo bản ghi, có mã mang 2 bản ghi (id khác) → có id bản ghi ở mọi trang thì đối chiếu theo id,
+    // dòng vẫn gộp theo mã (bản mới nhất). Trang thiếu id (Extension cũ) → đối chiếu theo số mã như trước.
+    const merge = items => items.forEach(item => {
+      if (Array.isArray(item.ids)) item.ids.forEach((id, index) => { records.add(id); if (Array.isArray(item.codes)) recordCode.set(id, item.codes[index]); }); else byId = false;
+      const rowIds = Array.isArray(item.rowIds) && item.rowIds.length === item.rows.length ? item.rowIds : null;
+      item.rows.forEach((row, index) => {
+        const before = rows.get(row.group_uid_code), id = rowIds ? rowIds[index] : null;
+        if (!before || newer(row, id, before, winner.get(row.group_uid_code))) { rows.set(row.group_uid_code, row); winner.set(row.group_uid_code, id); }
+      });
+    });
+    const count = () => (byId ? records.size : rows.size);
+    const seen = item => (byId && Array.isArray(item.ids) ? item.ids.length : item.rows.length);
+    // duplicateCodes = số MÃ có từ 2 bản ghi (đếm từ codes của trang); trang thiếu codes thì không báo.
+    const duplicates = () => {
+      if (!byId || recordCode.size !== records.size) return 0;
+      const perCode = new Map();
+      recordCode.forEach(code => perCode.set(code, (perCode.get(code) || 0) + 1));
+      return [...perCode.values()].filter(n => n > 1).length;
+    };
+    const done = pages => { const dup = duplicates(); return { rows: [...rows.values()], total: rows.size, pages, ...(dup ? { duplicateCodes: dup } : {}) }; };
+    let drift = "";
+    for (let attempt = 1; attempt <= tries; attempt += 1) {
+      rows.clear(); records.clear(); winner.clear(); recordCode.clear(); byId = true;
+      // Đọc lại: cận trên không được thấp hơn rangeTo do Edge cấp (đồng hồ máy chậm sẽ làm sót UID sửa trong khoảng đó
+      // mà mốc gia tăng vẫn tiến tới rangeTo).
+      const params = full ? { size } : { size, from: rangeFrom, to: attempt === 1 ? rangeTo : new Date(Math.max(Date.parse(rangeTo), Date.parse(now()))).toISOString() };
+      const first = await read(params, 1), totalPages = first.totalPages, items = [first], totals = [first.total];
+      const show = item => { if (onProgress) onProgress({ attempt, tries, page: item.page, totalPages, total: item.total }); };
+      show(first);
+      for (let start = 2; start <= totalPages; start += parallel) {
+        const batch = await Promise.all(Array.from({ length: Math.min(parallel, totalPages - start + 1) }, (_, index) => read(params, start + index)));
+        items.push(...batch);
+        show(batch[batch.length - 1]);
+      }
+      merge(items);
+      items.forEach(item => { if (!totals.includes(item.total)) totals.push(item.total); });
+      if (full) {
+        for (let round = 0; round < 5; round += 1) {
+          const head = await read(params, 1);
+          const extra = Array.from({ length: Math.max(0, Math.ceil((head.total - first.total) / size) - 1) }, (_, index) => index + 2);
+          merge([head, ...await Promise.all(extra.map(page => read(params, page)))]);
+          if (!totals.includes(head.total)) totals.push(head.total);
+          if (head.total === count()) return done(totalPages);
+          if (head.total < count()) break;
+        }
+      } else if (items.every(item => item.totalPages === totalPages) && totals.length === 1 && count() === first.total
+        && items.reduce((sum, item) => sum + seen(item), 0) === count()) {
+        return done(totalPages);
+      }
+      drift = `tổng ${totals.map(num).join(" → ")} · ${num(rows.size)} UID duy nhất`;
+      if (attempt < tries) await sleep(sleepMs);
+    }
+    throw new Error(`WMS đổi dữ liệu trong lúc đọc (${drift}); phiên đã dừng để tránh thiếu UID`);
+  }
+
+  const api = { readGroupUidSnapshot };
+  if (typeof module !== "undefined" && module.exports) module.exports = api;
+  else root.GroupUidSnapshotCore = api;
+})(typeof self !== "undefined" ? self : globalThis);
+    </script>
     <script id="vendor-return-script">
       // TRẢ NHÀ CUNG CẤP (24/10/2026, docs/plans/2026-10-24-tra-nha-cung-cap.md, supabase/vendor_return_v1.sql). Phần thứ 3 của TÌM GROUP UID.
       // Admin nạp Excel (sheet tên chứa "navy" / "black" → màu) → Supabase (danh sách tạm, người dùng báo thì dọn). Máy đã kích hoạt quét
@@ -13571,9 +13681,18 @@ async function rpc(name,args,retry=true){
         const fmtTime=v=>{const d=new Date(v);return Number.isNaN(d.getTime())?'':new Intl.DateTimeFormat('vi-VN',{timeZone:'Asia/Ho_Chi_Minh',hour:'2-digit',minute:'2-digit',second:'2-digit'}).format(d)};
         // local: lượt quét máy này vừa ghi (mã → {listId, scannedAt, device}) — gộp vào bản chụp chụp trước khi lượt quét kịp lưu
         const S={list:null,items:[],byCode:new Map(),local:new Map(),tab:'navy',admin:false,saving:false,recent:[],preview:null,loadP:null,loadState:'idle',queue:Promise.resolve()};
-        const tell=(t,tone='')=>{const m=$('vr-message');m.textContent=t||'';m.dataset.tone=tone};
+        const tell=(t,tone='',src='')=>{const m=$('vr-message');m.textContent=t||'';m.dataset.tone=tone;m.dataset.src=src};
         const cue=tone=>window.PrintSkuScanCue?.play?.(tone,{sound:true});
-        const CODE=/^[0-9]{10,40}$/;
+        const CODE=/^[0-9]{10,40}$/,TARGET='F0-VR-00-00-00-00';
+        const OUT='Đã rời kho',GONE=new Set(['Canceled','Closed','Transferred']),ST={Canceled:'Đã huỷ',Closed:'Đã đóng',Transferred:'Đã chuyển'};
+        const isOut=it=>GONE.has(it.status)||((it.locationSource==='wms'||it.locationSource==='sync')&&!it.currentLocation);
+        const where=it=>isOut(it)?OUT:(it.currentLocation||it.location||'—');
+        const extensionRequest=(type,payload={},timeout=120000)=>window.PrintSkuBridgeReady(type).then(()=>new Promise((resolve,reject)=>{
+          const requestId=`tra-ncc-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+          const timer=setTimeout(()=>{removeEventListener('message',listener);reject(new Error('Extension phản hồi quá lâu; kiểm tra tab WMS rồi thử lại'))},timeout);
+          const listener=event=>{const r=event.data;if(event.source!==window||event.origin!==location.origin||r?.source!=='HASAKI_INSIDE_CONNECTOR'||r.requestId!==requestId)return;clearTimeout(timer);removeEventListener('message',listener);r.ok?resolve(r.data):reject(new Error(r.error?.message||'Extension không đọc được WMS'))};
+          addEventListener('message',listener);postMessage({source:'PRINT_SKU_APP',requestId,type,payload},location.origin);
+        }));
 
         // ---- Supabase RPC: đọc công khai; ghi lượt quét kèm khoá máy; nạp danh sách cần token Admin ----
         const post=async(name,args,token,ms=20000)=>{const q=window.PrintSkuQueue,res=await fetch(`${q.supabaseUrl}/rest/v1/rpc/${name}`,{method:'POST',headers:{apikey:q.publishableKey,Authorization:`Bearer ${token||q.publishableKey}`,'Content-Type':'application/json'},body:JSON.stringify(args||{}),signal:AbortSignal.timeout(ms)});const body=await res.json().catch(()=>null);return{res,body}};
@@ -13593,8 +13712,8 @@ async function rpc(name,args,retry=true){
         // Một lượt tải dùng chung: gọi lại khi đang tải thì chờ lượt đó rồi tải tiếp một lần (await load() luôn có bản chụp sau lúc gọi)
         const fetchOnce=async()=>{
           window.PrintSkuNotice?.busy?.(screen,true);
-          try{const{res,body}=await post('vendor_return_snapshot',{});if(!res.ok||!body?.ok)throw fail(body,res);apply(body.data);S.loadState='ok';S.loadedAt=Date.now();if($('vr-message').dataset.tone==='error')tell('');return true}
-          catch(e){S.loadState='error';tell(MISSING.test(String(e?.message))?'Supabase chưa có chức năng Trả nhà cung cấp.':`Không tải được danh sách: ${e.message}`,'error');window.PrintSkuNotice?.retry?.(()=>load(),$('vr-message'));return false}
+          try{const{res,body}=await post('vendor_return_snapshot',{});if(!res.ok||!body?.ok)throw fail(body,res);apply(body.data);S.loadState='ok';S.loadedAt=Date.now();if($('vr-message').dataset.src==='load')tell('');return true}
+          catch(e){S.loadState='error';tell(MISSING.test(String(e?.message))?'Supabase chưa có chức năng Trả nhà cung cấp.':`Không tải được danh sách: ${e.message}`,'error','load');window.PrintSkuNotice?.retry?.(()=>load(),$('vr-message'));return false}
           finally{window.PrintSkuNotice?.busy?.(screen,false)}
         };
         const load=()=>{
@@ -13611,22 +13730,37 @@ async function rpc(name,args,retry=true){
             const all=S.items.filter(it=>it.color===c),done=all.filter(it=>it.scannedAt).length;
             $(`vr-${c}-done`).textContent=num(done);$(`vr-${c}-total`).textContent=S.list?num(all.length):'—';
             $(`vr-${c}-bar`).style.width=all.length?`${Math.round(done*100/all.length)}%`:'0';
+            $(`vr-${c}-vr`).textContent=S.list?`${num(all.filter(it=>where(it)===TARGET).length)}/${num(all.length)}`:'—';
           }
           screen.querySelectorAll('.vr-card').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.color===S.tab)));
         };
         const renderTable=()=>{
-          const rows=S.items.filter(it=>it.color===S.tab);
-          $('vr-body').innerHTML=rows.length?rows.map((it,i)=>`<tr${it.scannedAt?' data-scanned':''}><td>${i+1}</td><td class="vr-code">${esc(it.groupUid)}<span class="vr-meta">${esc([it.lot&&`Lot ${it.lot}`,it.qty!=null&&`SL ${num(it.qty)}`,it.location].filter(Boolean).join(' · '))}</span></td><td>${esc(it.lot)}</td><td>${esc(it.roll)}</td><td>${esc(it.location)}</td><td>${it.qty==null?'':esc(num(it.qty))}</td><td>${it.scannedAt?`<span class="vr-done">Đã quét <small>${esc(fmtAt(it.scannedAt))}${it.device?` · ${esc(it.device)}`:''}</small></span>`:''}</td></tr>`).join(''):`<tr><td colspan="7" class="ss-empty">${S.list?'Không có Group UID màu này.':S.loadState==='error'?'Chưa tải được danh sách.':S.loadState==='ok'?'Chưa có danh sách.':'Đang tải danh sách…'}</td></tr>`;
+          const rows=S.items.filter(it=>it.color===S.tab),groups=new Map();
+          for(const it of rows){const k=where(it);if(!groups.has(k))groups.set(k,[]);groups.get(k).push(it)}
+          const rank=k=>k===OUT?2:k===TARGET?1:0,keys=[...groups.keys()].sort((a,b)=>rank(a)-rank(b)||a.localeCompare(b));
+          let n=0;
+          const row=it=>`<tr${it.scannedAt?' data-scanned':''}><td>${++n}</td><td class="vr-code">${esc(it.groupUid)}<span class="vr-meta">${esc([it.lot&&`Lot ${it.lot}`,it.qty!=null&&`SL ${num(it.qty)}`].filter(Boolean).join(' · '))}</span></td><td>${esc(it.lot)}</td><td>${esc(it.roll)}</td><td>${it.location&&it.location!==where(it)?esc(it.location):''}${isOut(it)&&it.status?`<small title="${esc(it.status)}">${esc(ST[it.status]||it.status)}</small>`:''}</td><td>${it.qty==null?'':esc(num(it.qty))}</td><td>${it.scannedAt?`<span class="vr-done">Đã quét <small>${esc(fmtAt(it.scannedAt))}${it.device?` · ${esc(it.device)}`:''}</small></span>`:''}</td></tr>`;
+          $('vr-body').innerHTML=rows.length?keys.map(k=>{const g=groups.get(k);return `<tr class="vr-loc"${k===TARGET?' data-target':''}${k===OUT?' data-out':''}><th colspan="7">${esc(k)} <b>${num(g.filter(it=>it.scannedAt).length)}/${num(g.length)}</b>${k===TARGET?' <i>Đích</i>':''}</th></tr>`+g.map(row).join('')}).join(''):`<tr><td colspan="7" class="ss-empty">${S.list?'Không có Group UID màu này.':S.loadState==='error'?'Chưa tải được danh sách.':S.loadState==='ok'?'Chưa có danh sách.':'Đang tải danh sách…'}</td></tr>`;
         };
         const renderInfo=()=>{
           $('vr-admin-panel').hidden=!S.admin;
           $('vr-file').textContent=S.list?`${S.list.fileName||'—'} · ${fmtAt(S.list.createdAt)} · ${num(S.list.itemCount)} Group UID`:'Chưa có danh sách';
-          $('vr-listname').lastElementChild.textContent=S.list?`${S.list.fileName||'—'} · ${fmtAt(S.list.createdAt)}`:'Chưa có danh sách';
+          $('vr-listname').lastElementChild.textContent=S.list?`${S.list.fileName||'—'} · ${fmtAt(S.list.createdAt)}${S.list.reconciledAt?` · Đối chiếu ${fmtAt(S.list.reconciledAt)}`:''}`:'Chưa có danh sách';
+          $('vr-reconcile').hidden=!S.admin||!S.list;
         };
         const renderAll=()=>{renderCounts();renderTable();renderInfo()};
+        // Pop-up kết quả quét (24/10/2026, giống Cấp vải): không phải <dialog> modal để ô quét giữ con trỏ (máy quét cầm tay bắn tiếp được);
+        // Đúng tự đóng sau AUTO_MS, Đã quét / lỗi ở lại tới khi chạm, bấm Esc hoặc có kết quả quét mới.
+        const pop=$('vr-pop'),AUTO_MS=1600;let popTimer=0;
+        const ICON={ok:'<path d="M20 6 9 17l-5-5"/>',dup:'<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',bad:'<path d="M18 6 6 18"/><path d="m6 6 12 12"/>'};
+        const hidePop=()=>{clearTimeout(popTimer);if(pop.hidden)return;pop.hidden=true;if(active())setTimeout(()=>$('vr-code').focus(),0)};
+        pop.addEventListener('click',e=>{if(e.target===pop||e.target.closest('[data-pop-close]'))hidePop()});
+        document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!pop.hidden&&active()&&!document.querySelector('dialog[open]'))hidePop()});
         const paint=({tone,title,code,note})=>{
-          const r=$('vr-result');r.hidden=false;r.dataset.tone=tone;
-          r.innerHTML=`<p class="vr-result__title">${esc(title)}</p>${code?`<p class="vr-result__code">${esc(code)}</p>`:''}${note?`<p class="vr-result__note">${esc(note)}</p>`:''}`;
+          clearTimeout(popTimer);
+          const r=$('vr-result');r.dataset.tone=tone;
+          r.innerHTML=`<span class="vr-result__ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${ICON[tone]||ICON.bad}</svg></span><p class="vr-result__title" id="vr-pop-title">${esc(title)}</p>${code?`<p class="vr-result__code">${esc(code)}</p>`:''}${note?`<p class="vr-result__note">${esc(note)}</p>`:''}<button class="vr-result__close" type="button" data-pop-close>Đóng</button>${tone==='ok'?'<i class="vr-result__bar" aria-hidden="true"></i>':''}`;
+          pop.hidden=false;if(tone==='ok')popTimer=setTimeout(hidePop,AUTO_MS);
           S.recent.unshift({tone,code,label:title,at:Date.now()});S.recent=S.recent.slice(0,5);
           $('vr-recent').innerHTML=S.recent.map(x=>`<li data-tone="${x.tone}"><i aria-hidden="true"></i><b>${esc(x.code||'—')}</b><span>${esc(x.label)} · ${fmtTime(x.at)}</span></li>`).join('');
         };
@@ -13657,7 +13791,7 @@ async function rpc(name,args,retry=true){
             const cur=S.byCode.get(code)||it;   // bản chụp có thể vừa thay trong lúc chờ
             Object.assign(cur,{scannedAt:mark.scannedAt,device:mark.device});
             if(d.result==='dup'){paint({tone:'dup',title:`Đã quét · ${colorName(cur)}`,code,note:dupNote(cur)});cue('dup')}
-            else{paint({tone:'ok',title:`Đúng · ${colorName(cur)}`,code,note:[cur.location,cur.lot&&`Lot ${cur.lot}`,cur.roll&&`Roll ${cur.roll}`].filter(Boolean).join(' · ')});cue('ok')}
+            else{paint({tone:'ok',title:`Đúng · ${colorName(cur)}`,code,note:[where(cur),cur.lot&&`Lot ${cur.lot}`,cur.roll&&`Roll ${cur.roll}`].filter(Boolean).join(' · ')});cue('ok')}
             S.tab=cur.color;renderCounts();renderTable();
           }catch(e){paint({tone:'bad',title:'Chưa lưu được lượt quét',code,note:e.message});cue('bad')}
         };
@@ -13726,6 +13860,34 @@ async function rpc(name,args,retry=true){
           finally{S.saving=false}
         }
 
+        // ---- Đối chiếu (Admin): đọc trực tiếp WMS qua Extension các Group UID cập nhật từ 1 ngày trước lần đối chiếu trước (chưa có: lúc nạp danh sách) → mã thuộc
+        // danh sách → vendor_return_reconcile (lưu cho mọi máy). Vị trí hiện tại = bản mới hơn giữa đối chiếu và đồng bộ tự động (SQL).
+        const reconcile=async()=>{
+          const btn=$('vr-reconcile');if(!S.list||btn.disabled)return;
+          btn.disabled=true;const label=btn.querySelector('span'),old=label.textContent;
+          try{
+            if(!window.PrintSkuAdminAccess?.peekToken?.())throw new Error('Phiên Admin đã hết hạn, đăng nhập lại');
+            const core=window.GroupUidSnapshotCore;if(!core)throw new Error('Thiếu bộ đọc Group UID, tải lại trang');
+            const ping=await extensionRequest('PING_WMS',{},6000).catch(e=>{throw new Error(`Chưa kết nối WMS (${e.message})`)});
+            const ver=String(ping?.version||'').split('.').map(Number);
+            if(!(ver[0]>0||ver[1]>10||(ver[1]===10&&ver[2]>=6)))throw new Error(`Cần Extension 0.10.6 trở lên (máy đang ${ping?.version||'?'}), Reload Extension`);
+            const listId=S.list.id,from=new Date(Date.parse(S.list.reconciledAt||S.list.createdAt)-24*3600e3).toISOString(),to=new Date().toISOString(),want=new Set(S.items.map(it=>it.groupUid));
+            const snap=await core.readGroupUidSnapshot({full:false,rangeFrom:from,rangeTo:to,readPage:p=>extensionRequest('GET_GROUP_UID_PAGE',p),onProgress:x=>{label.textContent=`Đọc WMS ${x.page}/${x.totalPages}`}});
+            const rows=[];let skipped=0;
+            for(const row of snap.rows){const code=String(row.group_uid_code||'').trim();if(!want.has(code))continue;const t=Date.parse(row.updated_date);if(!Number.isFinite(t)||!('location' in row)||!('status' in row)){skipped++;continue}rows.push({groupUid:code,location:String(row.location||'').trim(),status:String(row.status||'').trim(),updatedAt:new Date(t).toISOString()})}
+            if(skipped)throw new Error(`WMS trả ${num(skipped)} Group UID thiếu vị trí / trạng thái / giờ cập nhật, chưa lưu`);
+            let token='';try{token=await window.PrintSkuAdminAuth.accessToken()}catch(_){/* hết phiên: báo bên dưới */}
+            if(!token)throw new Error('Phiên Admin đã hết hạn, đăng nhập lại');
+            const{res,body}=await post('vendor_return_reconcile',{p_list_id:listId,p_rows:rows},token);
+            if(!res.ok||!body?.ok)throw fail(body,res);
+            if(!await load())return;
+            const at=S.items.filter(it=>where(it)===TARGET).length,out=S.items.filter(isOut).length;
+            tell(`Đối chiếu xong: ${num(body.data?.updated)} Group UID cập nhật · ${num(at)}/${num(S.items.length)} đã ở ${TARGET}${out?` · ${num(out)} đã rời kho`:''}.`,'ok');
+          }catch(e){tell(`Chưa đối chiếu được: ${e.message}`,'error')}
+          finally{btn.disabled=false;label.textContent=old}
+        };
+        $('vr-reconcile').addEventListener('click',reconcile);
+
         // ---- Admin + route ----
         const syncAdmin=()=>{S.admin=!!window.PrintSkuAdminAccess?.peekToken?.();const b=$('vr-admin'),label=S.admin?'Đang là Admin · bấm để thoát':'Đăng nhập Admin';b.setAttribute('aria-pressed',String(S.admin));b.setAttribute('aria-label',label);b.title=label;renderInfo()};
         $('vr-admin').addEventListener('click',async()=>{
@@ -13736,7 +13898,7 @@ async function rpc(name,args,retry=true){
         let wasOn=false;
         const route=()=>{
           const on=active();screen.hidden=!on;
-          if(!on){wasOn=false;return}
+          if(!on){wasOn=false;hidePop();return}
           const root=$('root');if(root)root.inert=true;
           if(!wasOn){wasOn=true;syncAdmin();load();setTimeout(()=>$('vr-code').focus(),40)}
         };

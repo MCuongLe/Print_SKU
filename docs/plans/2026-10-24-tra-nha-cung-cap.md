@@ -13,6 +13,9 @@ File mẫu (KHÔNG vào git, dữ liệu thật): PKL return vendor — sheet `n
 - C3 UID ngoài danh sách → báo đỏ "Không thuộc danh sách trả"; quét trùng → báo "Đã quét" + máy + giờ, giữ lần đầu.
 - C4 Hiển thị: thẻ đếm đã quét / tổng mỗi màu (Navy x/118, Black y/116) + danh sách theo tab màu, dòng đã quét được đánh dấu.
 - Danh sách tạm, người dùng báo thì dọn (không cron dọn).
+- C5 (24/10 chiều) "cần phân theo vị trí hiện tại của group" + "nút đối chiếu… mục đích làm tất cả các group được chuyển về F0-VR-00-00-00-00": Đối chiếu = Admin đọc WMS TRỰC TIẾP qua Extension, lưu Supabase cho mọi máy; hai mốc riêng Đã quét + Về F0-VR.
+- C6 UID WMS báo đã rời kho (Canceled / Closed / Transferred, hoặc không còn vị trí) → nhóm riêng "Đã rời kho", không tính Về F0-VR.
+- C7 "các thông báo group UID khi scan dạng pop-up" → pop-up không modal như Cấp vải.
 
 ## Việc
 ### 1. Migration `supabase/vendor_return_v1.sql` (thuc-thi-logic)
@@ -32,8 +35,16 @@ File mẫu (KHÔNG vào git, dữ liệu thật): PKL return vendor — sheet `n
 
 ## Thứ tự lên
 Migration `vendor_return_v1.sql` → push web → Admin nạp Excel trên màn.
+v2: migration `vendor_return_v2.sql` (chỉ thêm cột + create or replace, không DROP) → push web → Admin bấm Đối chiếu (cần Extension + tab WMS).
 
 ## Kết quả (24/10/2026)
 - Test: `tests/vendor_return_sql.cjs`, `tests/vendor_return_browser.cjs` (1280 / 390: đếm, đánh dấu, ngoài danh sách, trùng, quét dồn, mã có tiền tố, tải lỗi, STALE_LIST, nạp Excel: pivot, thiếu cột SKU, Qty trống, mã trùng chặn Lưu), `tests/find_uid_browser.cjs` (công tắc 3 phần).
 - Review: vòng 1 (Codex + Claude cùng báo) quét dồn bỏ lượt, poll ghi đè dấu vừa quét, Excel tự bỏ trùng / Qty 0, thanh trên thiếu nền nhóm → đã sửa; vòng 2 tải lỗi vẫn kết luận ngoài danh sách, sheet thiếu SKU → đã sửa (SQL bắt buộc sku); vòng 3 refresh chờ lượt cũ / STALE_LIST khi tải lỗi → đã sửa + test.
 - Codex ảnh: thêm tên danh sách cho mọi người, dòng phụ Lot · SL · vị trí ở điện thoại; giữ khung như UID blocked cho các góp ý còn lại.
+
+## Kết quả v2 (24/10/2026 chiều)
+- `supabase/vendor_return_v2.sql`: cột `wms_location` / `wms_status` / `wms_updated_at`, `reconciled_at` / `reconciled_by`; snapshot trả `currentLocation`, `status`, `locationSource` (wms / sync / file), `warehouse`, `reconciledAt`; `vendor_return_reconcile` (Admin, STALE_LIST, ≤ 5.000, `updatedAt` kiểm bằng `pg_input_is_valid` và ≤ 1 ngày tương lai, giữ bản mới hơn, không đếm dòng y hệt).
+- Web: bảng chia nhóm vị trí (STT liên tục), thẻ Về F0-VR, nút Đối chiếu dùng `GroupUidSnapshotCore` (lệch → đọc lại ≤ 3 lần → báo đỏ, không lưu), pop-up kết quả quét.
+- Test: `tests/vendor_return_v2_sql.cjs`, `tests/vendor_return_browser.cjs` (nhóm vị trí, Đối chiếu: đọc lệch không lưu, id bản ghi lớn thắng, Đã rời kho, số máy chủ cập nhật; pop-up), `tests/group_uid_snapshot_core.cjs` (bản chép trong index.html khớp Extension).
+- Review vòng 1 (Codex + 3 Claude + Fable): bộ đọc WMS tự viết không kiểm lệch [cả hai] → dùng core; thông báo sai số [cả hai]; load lỗi bị che; lỗi PING mất gốc; `updatedAt` cast thô [cả hai]; vị trí rỗng lùi về cũ → người dùng chốt C6. Bỏ qua: nút hidden (tailwind-base đã có `[hidden]{display:none!important}`), `to` = now + 1 ngày.
+- Review vòng 2 (Codex mã + ảnh, 3 Claude, Fable): chặn Extension < 0.10.6 (0.10.5 trả ids thiếu rowIds), khoá chia sẻ với nạp + mốc `greatest`, SQL đòi đủ khoá location/status, dòng WMS thiếu dữ liệu → dừng không lưu, pop-up đóng khi rời màn, poll chỉ xoá lỗi tải của chính nó, trạng thái WMS tiếng Việt (Đã đóng / Đã huỷ / Đã chuyển). Làm sau: đối chiếu một phần (khi lỗi lệch lặp thật), cột Đã quét ở 390 px (có từ v1), nhãn số ở tiêu đề nhóm.
