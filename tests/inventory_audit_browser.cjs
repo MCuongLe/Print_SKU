@@ -26,8 +26,8 @@ const mockExtension = () => addEventListener("message", async event => {
     { warehouseId: 1339, warehouseName: "WH - MATERIAL - GARMENT", companyId: 1005, companyName: "Cty Garment" },
   ], missingNames: [] };
   else if (r.type === "GET_SKU_COUNT_APPROVED_PAGE") data = { page: more ? 2 : 1, size: 500, total: 2, totalPages: window.__two ? 2 : 1, rows: more ? [] : r.payload.warehouseIds[0] === 1177 ? [
-    { warehouseId: 1177, warehouseName: "WH - MATERIAL - MTG", sku: "SKU-RECENT", productName: "Vải gần đây", approvedAt: new Date(Date.now() - 10 * 86400000).toISOString(), approvedBy: "manager@hasaki.vn" },
-    { warehouseId: 1177, warehouseName: "WH - MATERIAL - MTG", sku: "SKU-OLD", productName: "Vải cũ", approvedAt: new Date(Date.now() - 45 * 86400000).toISOString(), approvedBy: "manager@hasaki.vn" },
+    { warehouseId: 1177, warehouseName: "WH - MATERIAL - MTG", sku: "SKU-RECENT", productName: "Vải gần đây", approvedAt: new Date(Date.now() - 10 * 86400000).toISOString(), approvedBy: "manager@example.com" },
+    { warehouseId: 1177, warehouseName: "WH - MATERIAL - MTG", sku: "SKU-OLD", productName: "Vải cũ", approvedAt: new Date(Date.now() - 45 * 86400000).toISOString(), approvedBy: "manager@example.com" },
   ] : [] };
   else if (r.type === "GET_SKU_COUNT_INVENTORY_PAGE") data = { page: more ? 2 : 1, size: 500, total: r.payload.warehouseIds[0] === 1177 ? 2 : 1, totalPages: window.__two ? 2 : 1, rows: more ? [] : r.payload.warehouseIds[0] === 1177 ? [
     { warehouseId: 1177, warehouseName: "WH - MATERIAL - MTG", sku: "SKU-RECENT", productName: "Vải gần đây", location: "A-01", qty: 5, uom: "m" },
@@ -42,8 +42,8 @@ const seededSnapshot = () => ({
   run: { id: "run-1", readAt: new Date(Date.now() - 3 * 3600000).toISOString(), thresholdDays: 30, rowCount: 3, missing: [], sourceCounts: {},
     warehouses: [{ warehouseId: 1177, warehouseName: "WH - MATERIAL - MTG", companyName: "Cty Mastige" }, { warehouseId: 1339, warehouseName: "WH - MATERIAL - GARMENT", companyName: "Cty Garment" }] },
   rows: [
-    { warehouseId: 1177, warehouseName: "WH - MATERIAL - MTG", sku: "SKU-RECENT", productName: "Vải gần đây", qty: 5, uom: "m", locations: [{ location: "A-01", qty: 5 }], lastApprovedAt: new Date(Date.now() - 10 * DAY).toISOString(), lastApprovedBy: "manager@hasaki.vn" },
-    { warehouseId: 1177, warehouseName: "WH - MATERIAL - MTG", sku: "SKU-OLD", productName: "Vải cũ", qty: 3, uom: "m", locations: [{ location: "A-02", qty: 3 }], lastApprovedAt: new Date(Date.now() - 45 * DAY).toISOString(), lastApprovedBy: "manager@hasaki.vn" },
+    { warehouseId: 1177, warehouseName: "WH - MATERIAL - MTG", sku: "SKU-RECENT", productName: "Vải gần đây", qty: 5, uom: "m", locations: [{ location: "A-01", qty: 5 }], lastApprovedAt: new Date(Date.now() - 10 * DAY).toISOString(), lastApprovedBy: "manager@example.com" },
+    { warehouseId: 1177, warehouseName: "WH - MATERIAL - MTG", sku: "SKU-OLD", productName: "Vải cũ", qty: 3, uom: "m", locations: [{ location: "A-02", qty: 3 }], lastApprovedAt: new Date(Date.now() - 45 * DAY).toISOString(), lastApprovedBy: "manager@example.com" },
     { warehouseId: 1339, warehouseName: "WH - MATERIAL - GARMENT", sku: "SKU-NEVER", productName: "Chỉ chưa kiểm", qty: 2, uom: "cuộn", locations: [{ location: "G-01", qty: 2 }], lastApprovedAt: null, lastApprovedBy: null },
   ],
 });

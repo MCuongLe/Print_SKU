@@ -6,7 +6,7 @@ const assert = require("node:assert/strict");
 const BASE = process.env.BASE || "http://127.0.0.1:8000/", DAY = 86400000, NOW = Date.now();
 
 // --- Dữ liệu WMS giả: 620 UID New (mỗi giờ một UID, 2 trang) + 2 UID cũ (40 và 90 ngày) ---
-const USERS = ["tuanlq5@hasaki.vn", "nhudty@hasaki.vn", "tamlc@hasaki.vn"];
+const USERS = ["nguoidung1@example.com", "nguoidung2@example.com", "nguoidung3@example.com"];
 const uidOf = i => `10282606${String(i).padStart(8, "0")}`;
 const mk = (i, at = NOW - i * 3600000) => ({
   group_uid_code: uidOf(i), warehouse_id: i % 3 === 0 ? 1177 : 1339, warehouse: i % 3 === 0 ? "WH - MATERIAL - MTG" : "WH - MATERIAL - GARMENT",

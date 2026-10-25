@@ -2545,7 +2545,7 @@ Error generating stack: `+y.message+`
         const covered = () => { const l = state.loaded, r = range(); return Boolean(l) && [...state.wh].every(id => l.wh.includes(id)) && (l.from === null || (r.from !== null && r.from >= l.from)); };
         const inRange = (row, r) => state.wh.has(row.warehouse_id) && (r.from === null || Date.parse(row.created_at) >= r.from) && (r.to === null || Date.parse(row.created_at) < r.to);
         const scoped = () => { const r = range(); return state.rows.filter(row => inRange(row, r)); };
-        // Đợt tạo = cùng phút + cùng người tạo, đúng như dòng "04/08/2026 15:59 · tuanlq5@hasaki.vn" hiện dưới mỗi UID (UID thường được tạo hàng loạt cho một lô cuộn)
+        // Đợt tạo = cùng phút + cùng người tạo, đúng như dòng "04/08/2026 15:59 · nguoidung1@example.com" hiện dưới mỗi UID (UID thường được tạo hàng loạt cho một lô cuộn)
         const batchKey = row => `${stamp(row.created_at)} · ${row.created_by || "—"}`;
         const visible = () => scoped().filter(row => (!state.by || row.created_by === state.by) && (!state.batch || batchKey(row) === state.batch)).sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at) || String(b.group_uid_code).localeCompare(String(a.group_uid_code)));
 

@@ -8,7 +8,7 @@ const fmt = n => n.toLocaleString("vi-VN");
 
 // --- Dữ liệu WMS giả: 620 lượt (2 trang) + 2 lượt cũ (60 và 200 ngày) ---
 const LOCS = ["F0-KHO-503-02-04-01", "F0-KHO-501-01-01-01", "F0-VR-00-00-00-00", "F0-KHO-HM-04-02-01"];
-const USERS = ["tuanlq5@hasaki.vn", "nhudty@hasaki.vn", "tamlc@hasaki.vn"];
+const USERS = ["nguoidung1@example.com", "nguoidung2@example.com", "nguoidung3@example.com"];
 const WHS = ["WH - MATERIAL - MTG", "WH - SEMI PRODUCT - MTG", "WH - MATERIAL - GARMENT"];
 const uidOf = i => `10282606${String(i % 200).padStart(8, "0")}`;
 const skuOf = uid => `4225${String(Number(uid.slice(-3)) % 40).padStart(5, "0")}`;
@@ -213,7 +213,7 @@ const expectBar = (info, tag, ratio) => {
       assert.equal(await rows.count(), 50, "50 dòng mỗi trang");
       assert.match(await page.locator("#uh-pager").innerText(), new RegExp(`Hiển thị 1–50 / ${fmt(within30).replace(".", "\\.")}`));
       const firstRow = await rows.first().innerText();
-      assert.match(firstRow, /10282606\d{8}/); assert.match(firstRow, /4225\d{5}/, "có SKU ghép từ Group UID"); assert.match(firstRow, /@hasaki\.vn/, "người cập nhật hiện đầy đủ email");
+      assert.match(firstRow, /10282606\d{8}/); assert.match(firstRow, /4225\d{5}/, "có SKU ghép từ Group UID"); assert.match(firstRow, /@example\.com/, "người cập nhật hiện đầy đủ email");
       assert.match(firstRow, /Còn ở đây/, "lượt mới nhất của UID: còn ở đây");
       await page.locator('#uh-pager [data-as-page="1"]').click();
       assert.match(await page.locator("#uh-pager").innerText(), /Hiển thị 51–100/);
@@ -436,7 +436,7 @@ const expectBar = (info, tag, ratio) => {
       calls = await page.evaluate(() => window.__extCalls.filter(c => c.type === "GET_GROUP_UID_MOVES_PAGE").map(c => c.payload));
       assert.ok(Math.abs(Date.parse(calls[0].from) - (Date.parse(adminCalls.find(c => c.name === "group_uid_moves_mark_read").args.p_to) - 30 * 60000)) < 1000, "lần sau lùi 30 phút từ mốc đã đọc");
       assert.equal(db.size, wms.length, "đọc chồng không nhân đôi");
-      await page.evaluate(id => window.__wms.unshift({ history_id: id, group_uid_code: "1028260600009999", warehouse_id: 1177, warehouse: "WH - MATERIAL - MTG", action_code: 4, action_name: "Transfer location", from_location: "F0-KHO-501-01-01-01", to_location: "F0-KHO-HM-04-02-01", moved_by: "tamlc@hasaki.vn", moved_at: new Date().toISOString() }), 109999999);
+      await page.evaluate(id => window.__wms.unshift({ history_id: id, group_uid_code: "1028260000000999", warehouse_id: 1177, warehouse: "WH - MATERIAL - MTG", action_code: 4, action_name: "Transfer location", from_location: "F0-KHO-501-01-01-01", to_location: "F0-KHO-HM-04-02-01", moved_by: "nguoidung3@example.com", moved_at: new Date().toISOString() }), 109999999);
       await page.locator("#uh-run").click();
       await page.waitForFunction(() => /1 mới, 0 cập nhật/.test(document.getElementById("uh-message").textContent));
       assert.equal(db.size, wms.length + 1);

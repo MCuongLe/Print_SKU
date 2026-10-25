@@ -55,7 +55,7 @@ assert.equal(approved.sourceRows, 3, "0.10.8 (D2): sourceRows = số dòng WMS t
 
 // Báo cáo Import/Export: type 1 = nhập, 2 = xuất; giờ lấy từ created_at_tz; dòng thiếu SKU/kho/loại bị bỏ.
 const movements = core.normalizeImportExportPage({ page: 1, size: 500, records: [
-  { id: 267157413, warehouse_id: 1151, warehouse_name: "OFFICE - 130 AP CHANH - MTG", sku: "322200644", product_name: "Backdrop", quantity: 1, current_quantity: 2, type: 1, source_type: "PURCHASE_ORDER", source_code: "1001261012030931", source_mapping_id: "10012610063063", created_at: "2026-10-15 07:41:14", created_at_tz: "2026-10-15T07:41:14+07:00", created_user_name: "a@hasaki.vn" },
+  { id: 267157413, warehouse_id: 1151, warehouse_name: "OFFICE - 130 AP CHANH - MTG", sku: "322200644", product_name: "Backdrop", quantity: 1, current_quantity: 2, type: 1, source_type: "PURCHASE_ORDER", source_code: "1001261012030931", source_mapping_id: "10012610063063", created_at: "2026-10-15 07:41:14", created_at_tz: "2026-10-15T07:41:14+07:00", created_user_name: "a@example.com" },
   { id: 266077815, warehouse_id: 1151, sku: "422415401", quantity: 50, type: 2, source_type: "ADJUSTMENT", reason_name: "Xuất sử dụng", created_at: "2026-10-13 12:48:03" },
   { id: 265657070, warehouse_id: 1151, sku: "422514540", quantity: 2, type: 2, source_type: "ADJUSTMENT" },
   { id: 1, warehouse_id: 1151, sku: "X", quantity: 5, type: 3 },

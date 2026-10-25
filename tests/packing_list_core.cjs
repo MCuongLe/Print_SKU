@@ -10,7 +10,7 @@ const bridgeSource = fs.readFileSync(dir + "wms-bridge.js", "utf8");
 // Dòng thật của WMS (rút gọn): mỗi dòng là một cuộn của PO; SKU là Combo (kg)
 const row = (code, extra = {}) => ({
   id: 10326, inbound_shmt_id: 42241906, inbound_shmt_number: "1001261014067061", purchase_order_number: "10012608011632", sku: "422513455",
-  quantity: 19.76, code, created_at: "2026-10-08 10:17:33", created_by: "duclh@hasaki.vn", product_name: "(Combo) Vải Single/HP SV18/190gsm/Đen/kg",
+  quantity: 19.76, code, created_at: "2026-10-08 10:17:33", created_by: "nguoidung5@example.com", product_name: "(Combo) Vải Single/HP SV18/190gsm/Đen/kg",
   purchase_order_status_name: "Open", batch_code: "1148/8", status_id: 2, status_name: "Approved", gross_quantity: 19.76, net_quantity: 19.76, delivery_method: "PARTIAL", ...extra,
 });
 

@@ -11,7 +11,7 @@ const bridgeSource = fs.readFileSync(dir + "wms-bridge.js", "utf8");
 const row = (code, extra = {}) => ({
   id: 28835, group_uid_code: code, group_uid_type: 2, warehouse_id: 1177, status_id: 1, created_by: 44480,
   created_at: "2026-10-14 11:13:37", updated_at: "2026-10-14 11:13:37", group_uid_type_name: "Fabric Roll",
-  warehouse_name: "WH - MATERIAL - MTG", created_by_name: "nhudty@hasaki.vn", status_name: "New",
+  warehouse_name: "WH - MATERIAL - MTG", created_by_name: "nguoidung2@example.com", status_name: "New",
   created_at_tz: "2026-10-14T11:13:37+07:00", updated_at_tz: "2026-10-14T11:13:37+07:00", ...extra,
 });
 
@@ -22,7 +22,7 @@ assert.equal(typeof core.normalizeNewUidPage, "function");
 
 const page = core.normalizeNewUidPage({ page: 1, size: 500, count: 5590, records: [
   row(1028261014000001),
-  row(1028261008000111, { warehouse_id: 1339, warehouse_name: "WH - MATERIAL - GARMENT", created_by_name: "cuongdlc@hasaki.vn", batch_code: "197/9", roll_code: "197/9-004", location_description: "F0-KHO-502-05-01-01", created_at_tz: "2026-10-08T08:02:01+07:00", updated_at_tz: "2026-10-09T10:00:00+07:00" }),
+  row(1028260000000111, { warehouse_id: 1339, warehouse_name: "WH - MATERIAL - GARMENT", created_by_name: "nguoidung4@example.com", batch_code: "197/9", roll_code: "197/9-004", location_description: "F0-KHO-502-05-01-01", created_at_tz: "2026-10-08T08:02:01+07:00", updated_at_tz: "2026-10-09T10:00:00+07:00" }),
   row(1028261008000112, { status_id: 2, status_name: "Available" }),
   row(1028261014000001, { created_by_name: "trùng@hasaki.vn" }),
   row(1028261014000003, { status_id: undefined, status_name: "NEW", created_by_name: undefined, created_by: 777, group_uid_type_name: "" }),
@@ -35,7 +35,7 @@ assert.deepEqual(JSON.parse(JSON.stringify(page.rows[0])), {
   created_by: "trùng@hasaki.vn", created_at: "2026-10-14T04:13:37.000Z", updated_at: "2026-10-14T04:13:37.000Z",
   location: null, batch_code: null, roll_code: null,
 });
-const garment = page.rows.find(r => r.group_uid_code === "1028261008000111");
+const garment = page.rows.find(r => r.group_uid_code === "1028260000000111");
 assert.equal(garment.warehouse_id, 1339);
 assert.equal(garment.batch_code, "197/9"); assert.equal(garment.roll_code, "197/9-004"); assert.equal(garment.location, "F0-KHO-502-05-01-01");
 assert.equal(garment.created_at, "2026-10-08T01:02:01.000Z");
