@@ -67,7 +67,12 @@ const mock = (srv, BASE) => route => {
       await page.locator("#sku-add-to-list").click();
       if (dialog) { await page.locator(".sku-po-dialog").waitFor({ state: "visible", timeout: 5000 }); await dialog(); }
     };
-    const waitRows = n => page.waitForFunction(count => document.querySelectorAll(".skq-list .skq-item").length === count, n, { timeout: 5000 });
+    // Đủ n dòng VÀ hết animation chibi in: lệnh vào hàng chờ thì danh sách xoá ngay, nhưng hộp modal còn bật tick ~0,7 s
+    // và khoá form (trang inert) — gõ ô SKU lúc đó sẽ mất, như người dùng phải chờ hộp đóng.
+    const waitRows = async n => {
+      await page.waitForFunction(count => document.querySelectorAll(".skq-list .skq-item").length === count, n, { timeout: 5000 });
+      await page.locator("#print-chibi-overlay").waitFor({ state: "hidden", timeout: 5000 });
+    };
     const chipOf = sku => page.locator(".skq-list .skq-item", { hasText: sku }).locator(".skq-po");
     const print = () => page.locator("#root button.act-icon--print.pbtn--compact").click();
 
