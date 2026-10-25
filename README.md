@@ -1,934 +1,357 @@
-# Print SKU
+# Print SKU — WH-MATERIAL
 
-Ứng dụng in tem SKU chạy trực tiếp từ `index.html`.
+Công cụ kho xưởng may Hasaki chạy trên trình duyệt: in tem SKU, Group UID, vị trí; cắt, cấp vải, lựa UID blocked, trả nhà cung cấp, xả vải; kiểm tra đầu vào, kiểm kê, rủi ro lưu trữ; đối chiếu với Inside và WMS.
 
-## Kiểm tra đầu vào — lấy PO từ Inside
+Thành phần: trang tĩnh `index.html` (GitHub Pages) · Chrome Extension `extension/inside-po-connector` đọc Inside / WMS trong tab đã đăng nhập · Supabase (RPC, RLS, cron, Edge Function) · agent in `workstation-agent` trên máy trạm. Sơ đồ: `docs/CONTEXT_MAP.md`.
 
-Màn `#inspection` có thể lấy PO/SKU trực tiếp từ một tab Inside đã đăng nhập qua Chrome extension chỉ đọc nằm tại [`extension/inside-po-connector`](extension/inside-po-connector/README.md).
+README mô tả hành vi hiện tại. Lịch sử thay đổi ở nhật ký `RULES.md` (chỉ trên máy) và lịch sử git.
 
-Chrome không cho website tự cài extension. Với bản nội bộ, mỗi người dùng cài một lần bằng **Load unpacked**; khi triển khai rộng nên phát hành bản **Chrome Web Store Unlisted** hoặc để IT cài tập trung bằng **Chrome Enterprise Policy**. Import PO bằng `.xls/.xlsx` vẫn hoạt động khi chưa cài extension.
+## Mục lục
 
-### In tem Phụ liệu có PO + ngày nhận (22/10/2026)
+- [Chạy, kiểm thử, lên bản](#chạy-kiểm-thử-lên-bản) · [Tài liệu](#tài-liệu)
+- In tem: [IN TEM SKU](#in-tem-sku-worker) · [IN TEM GROUP UID](#in-tem-group-uid-group-uid) · [MÃ VỊ TRÍ](#mã-vị-trí-location) · [TRỢ LÝ IN](#trợ-lý-in-assistant)
+- Vận hành kho: [CẮT GROUP UID](#cắt-group-uid-cut-group-uid) · [LỊCH SỬ GROUP UID](#lịch-sử-group-uid-uidhist) · [TÌM SKU](#tìm-sku-find-sku) · [CHUYỂN ĐỔI ĐƠN VỊ](#chuyển-đổi-đơn-vị-unit-converter) · [THEO DÕI XẢ VẢI](#theo-dõi-xả-vải-xa-vai) · [TÌM GROUP UID](#tìm-group-uid-cap-vai--uid-block--tra-ncc)
+- Kiểm tra: [KIỂM TRA ĐẦU VÀO](#kiểm-tra-đầu-vào-inspection) · [RỦI RO LƯU TRỮ](#rủi-ro-lưu-trữ-storage-risk) · [KIỂM KÊ SKU](#kiểm-kê-sku-inventory-audit) · [KIỂM SOÁT CÔNG TRÌNH](#kiểm-soát-công-trình-site-control)
+- Quản trị: [KÍCH HOẠT MÁY](#kích-hoạt-máy) · [QUẢN TRỊ](#quản-trị-admin)
+- Nền: [Dữ liệu và đồng bộ](#dữ-liệu-và-đồng-bộ) · [Agent máy trạm](#agent-máy-trạm) · [Chuẩn giao diện](#chuẩn-giao-diện)
 
-Thẻ 3 (Danh sách phụ liệu) có nút **In tem** cạnh Xuất biên bản → tấm **In tem phụ liệu** (`#ins-tem`, khối `ins-print-style` / `ins-print-script`):
-mỗi dòng là một **SKU Normal** (Combo đổi sang Normal, Normal ngừng hoạt động bị bỏ, SKU trùng gộp; Combo chưa có Normal thì hỏi lại trước khi in thiếu),
-mặc định 1 tem/SKU (1–200), PO = ô P/O, ngày nhận = ô Rcvd date. Lệnh `type sku`, `templateVersion 2` qua `HasakiSkuIt.enqueue` (≤ 100 SKU, ≤ 500 tem
-một lệnh, cần máy đã kích hoạt). Tem: tên → QR SKU → SKU → khung "PO:" / "Ngày nhận:" → vạch → ngày in, không in số lượng.
-Lỗi khi gửi thì danh sách khoá, nút **Gửi lại** gửi đúng các lệnh cũ (cùng nonce, không in trùng); **Bỏ lần gửi** chỉ hiện khi chắc chắn chưa lệnh nào tới máy chủ.
-Cần **agent 0.10.1** (khai `sku:v2`) và migration `supabase/print_sku_po_v1.sql`; agent cũ thì web báo và không gửi.
-Thứ tự lên: commit → migration → cài agent 0.10.1 → in thử → push. Test: `tests/inspection_print_browser.cjs`, `tests/print_sku_po_sql.cjs`,
-`workstation-agent/tests/sku-po-0101.test.mjs`.
+## Chạy, kiểm thử, lên bản
 
-## Database SKU
+**Chạy cục bộ**
 
-Xuất danh sách sản phẩm từ Mastige Inside bằng menu **Download → File**, sau đó nhập file XLSX vào SQLite:
+```powershell
+python -m http.server 8000
+```
+
+Mở `http://localhost:8000/`. Không mở thẳng tệp: camera cần `https://` hoặc localhost.
+
+**Kiểm thử**
+
+- Cả bộ: `python scripts/run_tests.py` (chạy nền, tự chạy lại test hỏng một lần). Một test: `--only <tên>`. Playwright nạp qua biến `PLAYWRIGHT_MODULE`.
+- `tests/a11y_axe_browser.cjs` cần `npm install` một lần ở gốc repo (axe-core chỉ dùng khi test; `node_modules/` không commit).
+- Agent máy trạm: `node --test` trong `workstation-agent`.
+- Cổng trước commit: `python scripts/commit_gate.py --cached`. Luật viết test và commit: `docs/chuan/KIEM_THU_GIT.md`.
+
+**Migration Supabase**
+
+```powershell
+python scripts/apply_supabase_sql.py supabase/<tệp>.sql --dry-run
+python scripts/apply_supabase_sql.py supabase/<tệp>.sql
+```
+
+- Cần personal access token `sbp_…` (tạo ở Supabase Dashboard → Account → Tokens) trong biến môi trường `SUPABASE_ACCESS_TOKEN` hoặc tệp `.env` ở gốc repo (`.env` không vào git). Script không in token.
+- Cầu dao: tệp có `DROP`, `TRUNCATE`, `DELETE FROM` ở cấp cao nhất phải thêm `--allow-destructive`; câu lệnh trong thân hàm `$$ … $$` không tính.
+- Chạy xong script liệt kê bảng và hàm trong schema `public` để đối chiếu. Hàm nào ở tệp nào: `docs/PROJECT_MAP.md` mục 4.
+
+**Edge Function**
+
+- Deploy: `python scripts/deploy_<tên>.py [--dry-run]` với `sku-sync`, `group-uid-sync`, `print-assistant`, `sku-vision` (token cần quyền Edge Functions: write).
+- Secrets nhập ở Supabase Dashboard → Edge Functions → Secrets, không bao giờ nằm trong `index.html` hay Extension:
+  - `GEMINI_API_KEY` — TÌM SKU đọc tem, Trợ lý in khi không có khoá Anthropic.
+  - `ANTHROPIC_API_KEY` — Trợ lý in (ưu tiên khi có); tuỳ chọn `ANTHROPIC_MODEL`, `GEMINI_ASSISTANT_MODEL`.
+  - Tuỳ chọn `sku-vision`: `GEMINI_MODELS` (thứ tự model), `SKU_VISION_GLOBAL_DAILY` (mặc định 450 lượt/ngày cả kho), `SKU_VISION_DEVICE_DAILY` (mặc định không giới hạn theo máy), `SKU_VISION_HEDGE_MS` (mặc định 6000).
+- Gói miễn phí Gemini: Google được dùng ảnh gửi lên để cải thiện sản phẩm; hạn mức tính theo ngày giờ Pacific.
+
+**Chrome Extension**
+
+- Chrome không cho trang web tự cài Extension. Bản nội bộ: mỗi máy cài một lần bằng **Load unpacked** thư mục `extension/inside-po-connector`; triển khai rộng: Chrome Web Store Unlisted hoặc IT cài bằng Chrome Enterprise Policy.
+- Đổi bản: Reload ở `chrome://extensions`, rồi tải lại tab Inside / WMS. Đăng nhập Admin, tên máy và đồng bộ tự động ở trang Options của Extension. Chi tiết: `extension/inside-po-connector/README.md`.
+
+**Lên bản**
+
+- Push `main` là web lên ngay (GitHub Pages).
+- Web cần hàm / cột / Edge mới: commit (chưa push) → migration → deploy Edge → Reload Extension → cài agent nếu đổi mẫu tem (in thử) → push.
+
+## Tài liệu
+
+| Tệp | Nội dung |
+|---|---|
+| `AGENTS.md` | Luật chung, thứ tự đọc, bốn luật cứng |
+| `docs/CONTEXT_MAP.md` | Bản đồ 6 nguồn ngữ cảnh, gói repomix |
+| `docs/PROJECT_MAP.md` | Module ↔ khối `index.html` ↔ Extension ↔ Edge ↔ SQL ↔ test |
+| `docs/QUYET_DINH.md` | Quyết định đang hiệu lực, trạng thái lên thật |
+| `docs/chuan/` | Chuẩn tài liệu, giao diện, mã web, dữ liệu, kiểm thử / git |
+| `docs/DOI_AGENT.md` | Quy trình làm việc của đội agent |
+| `docs/plans/` | Kế hoạch việc nhiều bước |
+| `workstation-agent/README.md` | Cài và vận hành agent in |
+| `extension/inside-po-connector/README.md` | Cài và vận hành Extension |
+
+## IN TEM SKU (`#worker`)
+
+- Dùng để: in tem SKU (tên, QR, SKU) cho phụ liệu, chỉ, vải.
+- Ai dùng: Worker · điện thoại và máy tính; Phiếu IT chỉ Admin trên máy tính.
+- Màn: bundle React `worker-bundle`, `sku-queue-ui-script`, `sku-it-script`, `sku-po-pick-script`.
+- Dữ liệu: `SKU_Name` (danh mục trên máy `PrintSkuCatalog`), `print_enqueue`, `sku_po_lookup`; Extension `GET_INTERNAL_TRANSFER`.
+- Test: `sku_queue_browser`, `sku_it_browser`, `sku_po_reprint_browser`, `scanner_states_browser`, `print_renamed_browser`.
+
+Nhập hoặc quét SKU (camera, máy quét cầm tay; bàn phím ảo ẩn mặc định), tên tự điền từ danh mục, nhập số lượng in lên tem và số bản rồi **Thêm vào danh sách**. SKU Combo hỏi chọn SKU Normal. Danh sách có ô chọn để xoá nhiều, **Sửa**, **Xoá**; **In tem** in cả danh sách (≤ 100 SKU, ≤ 500 tem một lệnh).
+
+Tên trên tem luôn theo database: SKU có trong danh mục thì máy chủ thay tên khác và báo "Tên đã cập nhật". SKU ngừng hoạt động không được gợi ý và bị máy chủ chặn khi in (`SKU_INACTIVE`).
+
+**Phiếu IT** (icon phiếu, Admin, cần tab WMS): nhập số phiếu chuyển kho nội bộ → đọc các dòng, số lượng đúng theo phiếu, số bản mặc định 1 → thêm vào danh sách. SKU ngoài danh mục bị bỏ tick.
+
+**In lại tem có PO**: quét SKU đã từng in tem Phụ liệu có PO → chọn PO (nhiều PO thì pop-up, một PO chọn sẵn) → tem mẫu v3 có khung PO + ngày nhận. Cùng SKU khác PO trong danh sách bị chặn. Cần agent khai `sku:v3`.
+
+## IN TEM GROUP UID (`#group-uid`)
+
+- Dùng để: in tem cuộn vải theo Group UID (SKU, tên, Lot, Roll, PO, ngày nhận).
+- Ai dùng: Worker; Lấy từ WMS và Gán WMS chỉ Admin trên máy tính.
+- Màn: `#uid-screen`, `uid-wms-script`, `uid-po-script`.
+- Dữ liệu: RPC `group_uid_lookup` (≤ 100 mã), `print_enqueue` loại `group_uid`; Extension `GET_GROUP_UID_NEW_PAGE`, `GET_PACKING_LIST_PAGE`.
+- Test: `group_uid_browser`, `group_uid_mockup_browser`, `group_uid_wms_picker_browser`, `group_uid_po_browser`, `group_uid_po_date_browser`, `group_uid_new_core`, `packing_list_core`.
+
+Quét, gõ hoặc Nhập Excel Group UID → tra `group_uid_lookup`: UID đủ SKU và tên sang **Sẵn sàng in**, còn lại vào **Chưa gán SKU**. Mỗi UID một tem; Lot = Batch Code, Roll = Roll Code (phần Roll lặp Lot được cắt khi in). Tay kéo ⋮⋮ đổi thứ tự UID chờ gán.
+
+**Gán SKU** có ba tab: theo tick chọn; **Gán tự động** (SKU + số UID nhập tay); **Gán WMS** (Admin) đọc Packing List của PO — mỗi dòng Approved là một cuộn, Combo đổi sang Normal, gán UID chờ theo thứ tự, không gán Lot / Roll (WMS gán khi nhận hàng).
+
+**Lấy từ WMS** (Admin): đọc UID trạng thái New của kho WH - MATERIAL - MTG và WH - MATERIAL - GARMENT, lọc kho / ngày tạo / người tạo / đợt tạo trên trình duyệt (WMS không lọc được ngày tạo, người tạo), rồi thêm theo đường nhập tay.
+
+**Sẵn sàng in** có ô Số PO và Ngày nhận (tuỳ chọn): tem vẽ ô SỐ PO | NGÀY NHẬN. PO lấy từ Gán WMS được ưu tiên; PO ≤ 20 ký tự gồm chữ, số, `. _ / -`. Cần agent ≥ 0.10.0.
+
+## MÃ VỊ TRÍ (`#location`)
+
+- Dùng để: in tem QR dán kệ (mã + tên vị trí).
+- Ai dùng: Worker.
+- Màn: `#location-screen`, `location-theme`.
+- Dữ liệu: `print_enqueue` loại `location` (không có bảng vị trí); hàng đợi trên máy `location-queue-v1`.
+- Test: `location_browser`; agent `node --test` trong `workstation-agent`.
+
+Nhập **Mã vị trí** (chữ hoa không dấu, số, `. _ / -`, ≤ 40 ký tự), **Tên vị trí** (≤ 60, tuỳ chọn), **Số tem** (1–500) → **Thêm vào hàng đợi**. Hoặc **Nhập file Excel**: template import vị trí của WMS (cột Code, hoặc ghép 6 cột Floor…Bin; tên ở Bin Location Description) hoặc bảng Location / Description. Mã trùng và dòng sai bị bỏ, có báo số dòng.
+
+Hàng đợi lưu trên máy (≤ 500 vị trí): tick chọn, sửa số tem, **In N tem**; tự chia lệnh ≤ 100 vị trí / ≤ 500 tem; in xong rời hàng đợi, lỗi thì giữ lại; gửi lại dùng cùng nonce. Tem 40 × 60 mm: QR + mã Arial đậm + tên; chữ được đo thật, không cắt ký tự. Không có xem trước. Cần agent ≥ 0.8.7 (`location:v1`); tem không tên cần ≥ 0.8.8.
+
+## TRỢ LÝ IN (`#assistant`)
+
+- Dùng để: in tem SKU theo phiếu IT bằng câu nói; dựng Packing List cấp vải từ danh sách Group UID.
+- Ai dùng: Admin · máy tính ≥ 801 px, cần tab WMS.
+- Màn: `print-assistant-style` / `-script`, `assistant-pl-style` / `-script`, `#assistant-screen`.
+- Dữ liệu: cổng `window.HasakiSkuIt`; Edge `print-assistant`; RPC `fabric_issue_lookup_uids`, `fabric_issue_import`.
+- Test: `print_assistant_browser`, `print_assistant_function`, `assistant_pl_browser`, `fabric_issue_lookup_sql`.
+
+Gõ hoặc nói (nút mic, `vi-VN`) câu như `IT 100000001, 2 bản` → đọc phiếu trên WMS → thẻ xác nhận (dòng, số bản, tổng tem) → **In**. Không bao giờ in thẳng từ câu nói. Câu có số phiếu đi thẳng bộ phân tích trên máy; câu tự do mới gọi Edge `print-assistant` (Anthropic nếu có khoá, không thì Gemini). Edge lỗi vẫn gõ được `IT <số phiếu> [N bản]`.
+
+**Packing List cấp vải**: dán, gõ, kéo thả hoặc đính kèm (.xlsx, .csv, .txt) danh sách Group UID (16 số bắt đầu `1028`, từ 2 UID) → tra dữ liệu đồng bộ → thẻ Packing List: tên đợt gợi ý, mỗi cuộn một hàng, số mét đổi theo đuôi tên SKU (`/mm`, `/cm`, `/m`) → **Tạo đợt** cấp vải hoặc **Tải PL** (.xlsx nhập lại được ở Cấp vải). Ô Excel kiểu số ≥ 10^15 không dùng làm UID (Excel chỉ giữ 15 chữ số).
+
+Tạo đợt bị rớt mạng hay quá giờ: thẻ báo "chưa rõ" và khoá, chờ 20 giây rồi tìm đợt theo mã thao tác; thấy thì coi như đã tạo, không thấy mới cho gửi lại.
+
+## CẮT GROUP UID (`#cut-group-uid`)
+
+- Dùng để: ghi nhận cuộn đã cắt, in tem lại, đối chiếu lệnh ADJ trên WMS; lấy mẫu cắt / QC theo PO.
+- Ai dùng: Worker trên máy đã kích hoạt; xoá UID đã cắt và quản lý phiên PO chỉ Admin.
+- Màn: `#cut-group-uid-screen`, `cut-sample-core`, `cut-sample-script`.
+- Dữ liệu: bảng `cut_group_uids`, `cut_sample_*`; RPC `cut_group_uid_*`, `cut_sample_*`; Extension đọc lịch sử Group UID và UID theo PO.
+- Test: `cut_group_uid_browser`, `cut_sample_browser`, `cut_sample_core`, `cut_adj_reconcile_browser`, `cut_adj_core`, `cut_group_uid_po_date_browser`, `cut_group_uid_po_sql`.
+
+Bốn tab: **Quét** · **Tra cứu** · **Tem chờ in** · **Đối chiếu**. Quét UID → lưu SKU, UID, Lot, Roll, tên (trạng thái in `pending`); UID không có dữ liệu, thiếu SKU / tên hoặc đã cắt bị chặn. Trạng thái in lưu Supabase; Tem chờ in là rổ tạm trong trình duyệt (chọn ở Tra cứu). Mỗi lệnh ≤ 100 tem, in lại được UID đã in, gửi lại dùng cùng nonce.
+
+Tra cứu lọc SKU, Lot, PO (khớp đúng), ngày cắt; xuất Excel A4 ngang. Bấm UID mở barcode để quét vào phiếu ADJ rồi tick **Đã xuất ADJ**. Admin (nút khiên) xoá UID đã cắt; mỗi lần xoá được ghi nhật ký. Tab Tem chờ in có ô Số PO + Ngày nhận như IN TEM GROUP UID.
+
+**Đối chiếu** (kho WH - MATERIAL - MTG): đọc lịch sử WMS (lệnh Cut) qua Extension hoặc nạp ZIP / XLSX. Nhóm: Khớp, Quên tick, Sai số lượng, Tick mà WMS không có, Cut nhiều lần, Chưa ADJ, Chờ dữ liệu WMS. Có **Tick giúp** và **Đã xử lý**; nhóm Cắt mẫu QC chỉ để xem.
+
+**Theo PO** (công tắc ở tab Quét): Admin đọc UID của PO từ WMS → tạo phiên; quét báo Cắt / QC / Chuyển kho lưu trữ; mỗi lot cắt + QC ≥ 30% (máy chủ ép); **Chuyển sang Cắt UID** đẩy UID cắt đã quét vào luồng thường. UID ngoài phiên báo đỏ, không tự rơi sang Cắt tự do.
+
+## LỊCH SỬ GROUP UID (`#uidhist`)
+
+- Dùng để: tra Group UID đã chuyển đến / đi từ một vị trí và ai cập nhật.
+- Ai dùng: mọi người xem; **Đọc WMS** chỉ Admin trên máy tính (Chrome, Extension, tab WMS).
+- Màn: `uidhist-script`, `#uidhist-screen`.
+- Dữ liệu: bảng `group_uid_moves`; RPC `group_uid_moves_overview` / `group_uid_moves_lookup` (đọc công khai), ghi bằng RPC Admin; Extension đọc lịch sử Transfer location.
+- Test: `group_uid_moves_core`, `group_uid_moves_browser`.
+
+Nhập SKU và / hoặc mã vị trí (khung quét; SKU Combo hỏi chọn Normal) → bốn thẻ **Lượt chuyển · Còn ở đây · Đã chuyển tiếp · Trả NCC** → popup bảng (lọc kho, người cập nhật; xuất Excel). Mỗi lần tìm lấy ≤ 1.000 lượt mới nhất. `F0-VR-00-00-00-00` hiện là Trả NCC. Người chưa đăng nhập Admin chỉ thấy phần trước @ của email. Đọc WMS lần đầu 365 ngày, các lần sau lùi 30 phút.
+
+## TÌM SKU (`#find-sku`)
+
+- Dùng để: tìm SKU từ tem nhà cung cấp (ảnh, mã vạch, gõ mã), tính số lượng rồi in.
+- Ai dùng: Worker · chủ yếu điện thoại.
+- Màn: `#find-sku-screen` (neo `web-find-sku`), bộ đối chiếu `NDS_ENGINE`, quy đổi `FSK_CORE`.
+- Dữ liệu: Edge `sku-vision` (Gemini, trừ lượt qua `sku_vision_take`), danh mục `PrintSkuCatalog`, `sku_combo_lookup`, `print_enqueue`.
+- Test: `find_sku_engine`, `find_sku_core`, `find_sku_combo_normal_browser`, `find_sku_print_guard_browser`, `find_sku_mobile_browser`, `sku_vision_function`.
+
+**Quét nhận diện**: camera toàn màn tự chụp khi ảnh nét → Edge đọc chữ trên tem (≤ 3 lần mỗi lần mở camera, mỗi lần 1 lượt AI); QR / mã vạch đọc trực tiếp không tốn lượt; hoặc chọn ảnh, gõ mã in trên tem. Lúc AI đọc hiện lớp phủ chibi. Gợi ý SKU tính trên máy, luôn đổi Combo sang Normal; thẻ đỏ khi chỉ tên Combo khớp.
+
+**Tính số lượng**: SKU đơn vị chiều dài mở CHUYỂN ĐỔI ĐƠN VỊ; đơn vị khác gõ số thẳng. **Chờ in**: danh sách trên máy, **In tem đã chọn** (≤ 100 SKU, ≤ 500 tem); trước khi gửi đọc lại tên từ database, SKU không còn trong danh mục thì không gửi. Hết lượt AI hoặc mất mạng vẫn tìm được bằng mã gõ.
+
+## CHUYỂN ĐỔI ĐƠN VỊ (`#unit-converter`)
+
+- Dùng để: đổi khối lượng chỉ / vải sang mm để in tem.
+- Ai dùng: Worker · điện thoại và máy tính.
+- Màn: `unit-converter-app`.
+- Dữ liệu: danh mục SKU; RPC `sku_combo_by_normal` (quy cách cuộn lấy từ Combo).
+- Test: `unit_converter_browser`.
+
+**Chỉ**: trừ lõi (số cuộn × khối lượng lõi), quy đổi theo `Tex / 1.000` g/m hoặc theo cân cuộn nguyên (cân thắng; lệch > 5% so với Tex thì cảnh báo). Ví dụ 10.000 g, 10 lõi × 14 g, Tex 27 → `365.185.185 mm`. Có Tex thì không cần SKU.
+
+**Vải**: `GSM × khổ(cm) / 100` g/m; có cân cuộn nguyên thì ưu tiên cân; chỉ theo GSM có cảnh báo sai số ±5–8%.
+
+Quét / nhập SKU hoặc Group UID để tự điền Tex, quy cách cuộn, khổ, GSM; quy cách cuộn tự lấy từ Combo một thành phần (500–100.000 m), nhiều quy cách thì hiện chip để chọn. Chỉ SKU đơn vị chiều dài mới đưa kết quả mm sang TÌM SKU để in. **Lô tiếp theo** giữ thông số, **Nhập lại** xoá hết.
+
+## THEO DÕI XẢ VẢI (`#xa-vai`)
+
+- Dùng để: ghi thời gian bắt đầu / kết thúc xả từng cuộn vải (thay phiếu theo dõi giấy).
+- Ai dùng: Worker trên máy đã kích hoạt.
+- Màn: `#xa-vai-screen`.
+- Dữ liệu: bảng `xa_vai_log`, RPC `xa_vai_*`.
+- Test: chưa có test riêng (bố cục điện thoại trong `mobile_modules_browser`).
+
+Quét UID là bắt đầu xả ngay; mỗi UID xả một lần, toàn hệ thống chỉ một UID đang xả. Tab **Đang xả** và **Đã xả xong** (lọc theo ngày kết thúc, mặc định hôm nay); màn tự làm mới 15 giây.
+
+## TÌM GROUP UID (`#cap-vai` · `#uid-block` · `#tra-ncc`)
+
+- Dùng để: một ô trang chủ cho ba việc tìm cuộn — Cấp vải, UID blocked, Trả NCC; công tắc đầu màn, mở phần dùng gần nhất.
+- Màn: `find-uid-style` / `find-uid-script`; đường dẫn riêng của từng phần vẫn mở thẳng.
+- Test: `find_uid_browser`.
+
+### Cấp vải (`#cap-vai`)
+
+- Dùng để: cấp vải theo Packing List — ghép Group UID theo SKU + Lot + Roll, quét đánh dấu đã cấp.
+- Ai dùng: nhập / đóng / xoá đợt chỉ Admin; quét trên máy đã kích hoạt; xem mọi người.
+- Màn: `cap-vai-script`, `#cap-vai-screen`.
+- Dữ liệu: bảng + RPC `fabric_issue_*` (`supabase/fabric_issue_v1.sql`, `fabric_issue_v2_no_double_issue.sql`).
+- Test: `find_uid_browser`; nhập PL từ Trợ lý in trong `assistant_pl_browser`.
+
+**Nhập Packing List** (.xlsx, đọc trên trình duyệt): sheet "Packing" hoặc cột ROLLS NO / LOT NO / QTY; dòng `COLOR: … (SKU 9 số)` đặt SKU cho các dòng dưới, dòng SUB TOTAL bị bỏ; sheet có cột "Mã NPL" + "Định mức cấp phát" cho số cần cấp theo SKU (chỉ hiển thị).
+Ghép UID `Available` cùng SKU, Lot / Roll chuẩn hoá; nhiều UID khớp thì không đoán, ghi lý do. Đồng bộ thêm Group UID xong thì bấm **Ghép lại**.
+
+**Quét**: pop-up không chiếm con trỏ (xanh tự đóng 1,6 giây; vàng / đỏ ở lại tới khi chạm hoặc quét mã khác). Tab **Vị trí** gom cuộn theo kệ, tab **Danh sách cuộn** lọc Chưa quét / Đã quét / Chưa ghép; tự làm mới 20 giây. UID đã cấp ở đợt khác báo đỏ, không cấp trùng. Số mét lấy từ WMS (mm đổi sang m theo tên SKU).
+
+### UID blocked (`#uid-block`)
+
+- Dùng để: lựa các cuộn đang Blocked trên WMS trong kho.
+- Ai dùng: quét trên máy đã kích hoạt; danh sách chỉ Admin.
+- Màn: `uid-block-style` / `uid-block-script`, `#uid-block-screen`.
+- Dữ liệu: `uid_block_*`; cron `uid-block-refresh-wms` 30 phút; danh sách trên máy (IndexedDB `print-sku-cache`); hàng chờ gửi `uid-block-cho-gui`.
+- Test: `uid_block_browser`, `uid_block_sql`, `uid_block_wms_sql`, `uid_block_auto_sql`.
+
+Danh sách là Group UID đang Blocked ở kho MTG và GARMENT trong dữ liệu đồng bộ (**Lấy từ WMS**, Admin), máy chủ tự cập nhật 30 phút: UID mới Blocked có nhãn Mới 24 giờ, UID hết Blocked giữ 7 ngày. Nạp Excel là cách cũ, vẫn dùng được.
+
+Quét: trong danh sách → thẻ đỏ **BLOCKED** (SKU, Lot, Roll, kho, vị trí, âm báo, rung) và vào Đã lựa; quét lại → thẻ vàng **ĐÃ SCAN** (giờ, máy); ngoài danh sách → thẻ xanh. Lượt quét lưu Supabase dùng chung nhiều máy; mất mạng thì vào hàng chờ và tự gửi lại. Quét được mã RFID (1 RFID = 1 UID). Tab Còn thiếu gom theo vị trí; xuất Excel.
+
+### Trả NCC (`#tra-ncc`)
+
+- Dùng để: theo dõi các cuộn trả nhà cung cấp theo danh sách tạm.
+- Ai dùng: nạp danh sách và Đối chiếu chỉ Admin; quét trên máy đã kích hoạt.
+- Màn: `vendor-return-style` / `vendor-return-script`, `#vendor-return-screen`.
+- Dữ liệu: `vendor_return_*`; Đối chiếu cần Extension ≥ 0.10.6.
+- Test: `vendor_return_browser`, `vendor_return_sql`, `vendor_return_v2_sql`.
+
+Bố cục như UID blocked: dải tiến độ, tab Còn thiếu (thẻ theo vị trí hiện tại) · Đã quét · Danh sách. Cuộn chia theo vị trí hiện tại → `F0-VR-00-00-00-00` (đích) → Đã rời kho. **Đối chiếu** đọc WMS trực tiếp qua Extension; đọc lệch thì báo đỏ và không lưu. Kết quả quét là pop-up không chiếm con trỏ như Cấp vải.
+
+## KIỂM TRA ĐẦU VÀO (`#inspection`)
+
+- Dùng để: biên bản kiểm phụ liệu nhận theo PO (AQL) và in tem Phụ liệu có PO + ngày nhận.
+- Ai dùng: QC kho · máy tính (Đọc Inside cần Extension).
+- Màn: `#ins-screen`, `inspection-script`, `ins-print-style` / `ins-print-script`.
+- Dữ liệu: Extension đọc PO trên Inside; `sku_combo_lookup`; `print_enqueue` (tem SKU v2).
+- Test: `inspection_print_browser`, `inspection_normal_sku_browser`, `inspection_vendor_browser`, `inspection_export_xlsx`, `inspection_name_parser`, `inside_po_connector`, `print_sku_po_sql`.
+
+Lấy PO bằng **Đọc Inside** (tab Inside đã đăng nhập, Extension chỉ đọc) hoặc nhập `.xls` / `.xlsx`. Màn hiện SKU Normal; số lượng và đơn vị giữ theo PO; NCC là pháp nhân trên PO; Rcvd date là ngày LastModified của PO; số lượng kiểm theo AQL 0.4; xuất biên bản theo template.
+
+**In tem**: mỗi SKU Normal một dòng (Combo đổi sang Normal, SKU ngừng bị bỏ), mặc định 1 tem, ô số lượng từng dòng (trống thì không in); PO = ô P/O, ngày nhận = Rcvd date. Lỗi khi gửi thì **Gửi lại** dùng cùng nonce. Cần agent khai `sku:v2` hoặc `sku:v3`.
+
+## RỦI RO LƯU TRỮ (`#storage-risk`)
+
+- Dùng để: tab **Hàng chưa lên kệ** (tồn ở vị trí ảo `F0-<vùng>-00-00-00-NN`) và tab **UID tạm** (dòng Create Temporary UID).
+- Ai dùng: mọi người xem; Đọc WMS chỉ Admin.
+- Màn: `storage-risk-script`, `storage-risk-temp-script`, `snapshot-cache-script`.
+- Dữ liệu: bản chụp Kiểm kê (`sku_count_*`, `sku_count_snapshot`), `uid_temp_*`; Extension `GET_STOCK_IMPORT_EXPORT_PAGE`; tự động mỗi 2 giờ 07:00–19:30.
+- Test: `storage_risk_browser`, `storage_risk_core`, `storage_risk_temp_browser`, `uid_temp_snapshot_sql`, `snapshot_cache_browser`.
+
+**Hàng chưa lên kệ** (kho MTG + GARMENT): mọi dòng tồn được phân loại kệ thật / vùng ảo / vị trí lạ, chỉ kệ thật bị loại. Mức theo Modified date: ≤ 7 ngày Theo dõi, 8–30 Cần xử lý, > 30 ngày hoặc vị trí lạ Rủi ro cao. Màn báo khi thiếu một kho, bản chụp quá 24 giờ hoặc số dòng lệch.
+
+**UID tạm**: dòng nhập ADJUSTMENT có lý do "uid temp" trong 90 ngày, mới nhất trước; tuổi ≤ 3 ngày là Mới. Lần đọc lưu Supabase (giữ 10 lượt) nên ai mở cũng thấy. Cả hai tab hiện ngay bản lưu trên máy rồi hỏi máy chủ một lần xem có lần đọc mới không.
+
+## KIỂM KÊ SKU (`#inventory-audit`)
+
+- Dùng để: đối chiếu kiểm kê theo kho — SKU chưa kiểm / kiểm trong 30 ngày / quá 30 ngày.
+- Ai dùng: mọi người xem (kể cả điện thoại); Đọc WMS chỉ Admin.
+- Màn: `inventory-audit-script`, `#inventory-audit-screen`.
+- Dữ liệu: `sku_count_runs`, `sku_count_rows`; RPC `sku_count_save_*`, `sku_count_overview`, `sku_count_snapshot`; Extension đọc Stock Location và lịch sử kiểm kê.
+- Test: `inventory_audit_browser`, `inventory_audit_core`.
+
+Tồn lấy từ Stock Location (In-BIN > 0), kiểm kê chỉ tính phiếu `APPROVED`; hai pháp nhân MTG / GARMENT. Kết quả lưu theo (kho, SKU), chỉ hiện khi lượt đọc hoàn tất; lượt rỗng bị từ chối; giữ 3 lượt. Nhóm 30 ngày tính lúc xem nên luôn đúng. Token WMS không rời tab. Đường dẫn cũ `#admin/kiem-ke` tự chuyển về đây.
+
+## KIỂM SOÁT CÔNG TRÌNH (`#site-control`)
+
+- Dùng để: đối chiếu app Hasaki Construction Management với kho WMS OFFICE - 130 AP CHANH - MTG theo SKU của app.
+- Ai dùng: Admin · máy tính, cần tab WMS và tab app xây dựng đã đăng nhập.
+- Màn: `site-control-script`.
+- Dữ liệu: chỉ trong trình duyệt, không lưu Supabase; app xây dựng đọc `/api/stock`, `/api/wms-imports` qua `hcm-bridge.js`.
+- Test: `site_control_browser`, `hcm_bridge_reads`, `wms_bridge_reads`.
+
+Bốn ô **SKU theo dõi · Lệch tồn · Lệch nhập · Lệch xuất** mở popup ba tab Tồn kho / Nhập / Xuất; bấm một dòng mở chi tiết; xuất Excel từng tab. Kỳ tính bắt đầu từ ngày của dòng nhập đầu tiên trong app.
+
+## KÍCH HOẠT MÁY
+
+- Dùng để: cho phép một máy in tem và ghi dữ liệu ở xưởng.
+- Ai dùng: Worker nhập mã trên máy; Admin tạo mã.
+- Màn: ô **KÍCH HOẠT MÁY** (chỉ hiện khi máy chưa có khoá); tab **Thiết bị** trong Quản trị → Lệnh in.
+- Dữ liệu: `print_devices`, `print_activation_codes`; khoá máy `tb-khoa` trong localStorage; RPC `floor_access_check`.
+- Test: `print_devices_browser`, `floor_access_browser`, `floor_access_sql`.
+
+Admin vào Quản trị → Lệnh in → Thiết bị → **Tạo mã kích hoạt** (`XXXX-XXXX`, hiệu lực 30 phút, dùng cho nhiều máy, chỉ hiện rõ một lần). Trên từng máy bấm ô KÍCH HOẠT MÁY, nhập mã và tên máy; máy nhận khoá riêng. Mất khoá (xoá dữ liệu trình duyệt, đổi máy) thì kích hoạt lại bằng mã mới.
+
+Máy chưa kích hoạt bị từ chối in tem và ghi ở xưởng (cắt, lấy mẫu, cấp vải, xả vải, quét UID blocked); khi đó hộp kích hoạt tự mở, tra cứu vẫn dùng được. Nhập sai mã quá 30 lần trong một phút thì tạm khoá một phút. Admin tắt / đổi tên máy, thu hồi mã, xem máy lạ trong 7 ngày và chuyển khoá máy xưởng về chế độ Ghi nhận khi khẩn cấp.
+
+## QUẢN TRỊ (`#admin/…`)
+
+- Dùng để: Lệnh in, Đồng bộ SKU, Đồng bộ Group UID, Cấu hình.
+- Ai dùng: Admin · chỉ máy tính.
+- Màn: `admin-sync-shared`, `sku-sync-admin-script`, màn Đồng bộ Group UID, Cấu hình (React).
+- Dữ liệu: RPC `print_admin_*`, `print_job_cancel`; Edge `sku-sync`, `group-uid-sync`; `sync_auto_*`.
+- Test: `admin_entry_browser`, `admin_switch_browser`, `admin_web_sync_browser`, `print_jobs_admin_browser`, `sku_sync_admin_browser`, `group_uid_sync_admin_browser`, `sku_sync_function`, `group_uid_sync_function`.
+
+Vào từ ô QUẢN TRỊ; chưa có phiên thì đăng nhập Supabase bằng tài khoản có vai trò `admin`. Thanh trái ở chế độ Quản trị gồm ← Trang chủ, Lệnh in, Đồng bộ SKU, Đồng bộ UID, Kiểm kê, Cấu hình và **Đăng xuất** ở chân thanh.
+
+**Lệnh in**: `print_jobs` cả kho theo ngày (bảng chỉ giữ 3 ngày gần nhất), lọc SKU / UID, tìm theo SKU, UID, tên, mã lệnh. Bấm lệnh mở chi tiết; **In lại** SKU giống hệt lệnh gốc, UID chọn toàn bộ hoặc một phần (máy chủ dựng lệnh mới); **Huỷ lệnh** cho lệnh đang chờ. Tab Thiết bị: xem mục KÍCH HOẠT MÁY.
+
+**Đồng bộ SKU** (Inside → Supabase) và **Đồng bộ Group UID** (WMS → Supabase): **Đọc** (gia tăng) hoặc **Toàn bộ** (đối chiếu) → xem trước → **Cập nhật** (hỏi xác nhận). Ô số liệu mở popup danh sách thay đổi (tìm không dấu, lọc, xuất Excel); Lịch sử ở dải mốc giờ. Ô **Tự động** cho tạm dừng / tiếp tục lượt nền của Extension; lượt vượt ngưỡng chờ Admin chạy tay.
+
+**Cấu hình**: nhóm Thiết bị này (tên máy, quyền in, mẫu tem, sổ tay SKU) và Hệ thống (danh mục SKU, trần một lệnh in, chỉ đọc).
+
+## Dữ liệu và đồng bộ
+
+### Danh mục SKU (`SKU_Name`)
+
+- Nguồn là Inside, qua Extension + Edge `sku-sync`: gia tăng theo Modified; **Toàn bộ** mỗi sáng một lần để đối chiếu. Edge từ chối khi số SKU nguồn giảm ≥ 20% so với lần toàn bộ trước.
+- SKU rời 7 nhóm đồng bộ được tự lưu trữ sang `sku_archive` khi lượt toàn bộ cập nhật (giữ lại SKU còn UID sống, trong Combo Active, đang xả vải, cắt trong 90 ngày).
+- SKU ngừng (`status <> '1'`): ẩn khỏi tìm kiếm công khai, máy chủ chặn in tem SKU; tem Group UID và vị trí vẫn in. SKU mới đang ngừng không được nạp; ngừng quá 180 ngày thì lưu trữ (cron thứ Hai 03:45).
+- Danh mục trên máy (IndexedDB) hỏi phiên bản qua `sku_catalog_changes`, tải lại toàn bộ sau 12 giờ; Supabase luôn là bản đúng.
+
+Script cũ, chỉ chạy khi được yêu cầu (dữ liệu thật trong `data/` không vào git):
 
 ```powershell
 python scripts/import_sku_xlsx.py "C:\path\to\hasaki-product-all-sku-cate.xlsx"
+python scripts/merge_sku_category_xlsx.py "C:\path\to\product-list.xlsx" --category-id 957 --category-name "Thời Trang (NVL)" --backup data/sku.before-merge.db
+python scripts/sync_sku_to_supabase.py --database data/sku.db --dry-run
+python scripts/sync_sku_to_supabase.py --database data/sku.db [--include-inactive]
 ```
 
-Database được tạo tại `data/sku.db`. Mỗi lần chạy, bảng `products` được thay bằng dữ liệu từ bản xuất mới nhất. Bảng `column_map` lưu ánh xạ tên cột Excel sang tên cột SQLite và `import_runs` lưu lịch sử nhập.
+`import_sku_xlsx.py` tạo `data/sku.db` từ bản xuất Inside **Download → File**; `merge_sku_category_xlsx.py` ghép thêm một category (**Download → Category**) theo khoá SKU. `sync_sku_to_supabase.py` cần `SUPABASE_URL` và `SUPABASE_SECRET_KEY` trong biến môi trường, chỉ thêm / cập nhật theo `sku`, không xoá.
 
-Để bổ sung một category đã lọc trên Mastige mà không ghi đè dữ liệu hiện có, tải bằng **Download → Category** rồi chạy:
+### Group UID (`group_uid_details`)
 
-```powershell
-python scripts/merge_sku_category_xlsx.py "C:\path\to\product-list.xlsx" `
-  --category-id 957 `
-  --category-name "Thời Trang (NVL)" `
-  --backup data/sku.before-merge.db
-```
+- Khoá là Group UID Code (chữ, giữ số 0 đầu); lưu Batch, Roll, kho, vị trí, SKU, số lượng, người / giờ cập nhật, trạng thái WMS, `qc_status`, RFID, PO. Tên sản phẩm tra từ `SKU_Name`, không lưu lại. Bảng bật RLS; web chỉ qua RPC.
+- Đồng bộ qua Extension + Edge `group-uid-sync`: gia tăng lùi 30 phút hoặc Toàn bộ; đọc hết các trang vào bộ nhớ, kiểm tổng và trùng mã rồi mới ghi; luôn xem trước rồi mới cập nhật; không tự xoá UID thiếu trên WMS.
+- UID Canceled quá 180 ngày bị dọn (cron thứ Hai 03:15) và bị bỏ qua khi đồng bộ.
 
-Lệnh ghép dùng SKU làm khóa, bỏ qua SKU trùng và lưu category đang chọn trên Mastige vào `category_id`/`category_name`.
-
-Ví dụ tra cứu:
-
-```sql
-SELECT * FROM products WHERE sku = '100000001';
-```
-
-File database chứa dữ liệu nội bộ và được loại khỏi Git theo mặc định.
-
-## Agent máy trạm
-
-Source agent Windows độc lập dành cho ứng dụng này nằm trong [`workstation-agent`](workstation-agent/README.md). Agent mới có template riêng cho tem SKU và Group UID, không đọc hay sửa thư mục AuditFactory.
-
-Agent hỗ trợ preview PNG, dựng TSPL không in, kiểm tra dữ liệu, kiểm tra máy in và hàng đợi Supabase có lease. Web chuyển các lệnh SKU sang queue mới và có màn hình `#group-uid`; SKU trong tem Group UID là tùy chọn, tên sản phẩm có thể tra tự động từ Supabase hoặc nhập thủ công.
-
-## Nút In tem (animation khi đang in)
-
-Kiểu đơn giản: bấm in thì nút đổi icon máy in thành vòng quay và hiện một **đường load chạy ngay dưới nút**, chạy tới khi **lệnh in xong** (hàng đợi báo `completed`/`failed`/`cancelled`) thì dừng. Không còn dòng báo "mất N giây" / "(12s)" ở IN TEM SKU. Thiết kế: [`docs/THIET_KE_BUTTON_IN_TEM_CHUYEN_DONG.md`](docs/THIET_KE_BUTTON_IN_TEM_CHUYEN_DONG.md); prototype: `docs/button-design/print-button-prototype.html`.
-
-Mọi nút gửi lệnh in là một `.act-icon--print` (IN TEM SKU và Xác nhận in của UID thêm `.pbtn`), điều khiển bằng `data-print-state` = `idle | working | failed | disabled`; `working` gồm cả lúc đang gửi và lúc máy in đang in. Các màn chỉ bọc lời gọi gửi sẵn có bằng `window.WmsPrint` (không đổi hàng đợi hay nonce): `begin()` khi bấm, `progress()` cập nhật nhãn (UID hiện `Đang gửi 100/125…`), `sent(btn, [jobId…])` khi hàng đợi nhận lệnh — từ đây nút theo dõi job bằng `PrintSkuQueue.jobStatus` (1 giây/lần, sau đó 2,5 giây/lần, tối đa 5 phút) rồi dừng animation; `fail()` khi gửi lỗi (nút đỏ "Thử lại", giữ tới khi bấm lại hoặc danh sách đổi); `render()` thay cho việc ghi nhãn; `settle()` ở `finally` để nút không kẹt. IN TEM SKU (React) tự theo dõi bằng vòng `X` có sẵn nên không gọi `WmsPrint`.
-
-- Đang in mà vẫn còn tem để in thì nút giữ nhãn "In N tem" và bấm tiếp được; hết tem thì nút ghi "Đang in…" và khoá cho tới khi in xong.
-- Giảm chuyển động (`prefers-reduced-motion`): icon ba chấm đứng yên và đường load đứng yên (vẫn thấy "đang in").
-- Khi test tự động: IN TEM SKU (React) và Xác nhận in (UID) dùng `aria-disabled` thay cho `disabled`; các nút còn lại vẫn `disabled` thật khi không có gì để in. Nút giữ trạng thái `working` cho tới khi `PrintSkuQueue.jobStatus` báo xong — test cần mock `jobStatus` trả `completed` rồi đợi `data-print-state` về `idle`/`disabled` trước khi so nhãn.
-
-## Header các màn hình
-
-> Luật hiện hành: `docs/chuan/GIAO_DIEN.md` (từ 25/10/2026). Mục này mô tả lúc áp dụng.
-
-Mọi màn con dùng một kiểu header theo IN TEM SKU (`.uid-topbar`): nút Back dạng pill (nhãn "WH-MATERIAL"; riêng màn Nạp dữ liệu Group UID là "Tổng quan"),
-icon module 32 px (đúng icon ô trang chủ), tiêu đề đậm 16 px (không phụ đề mô tả — icon module đã cho biết màn) và — nếu màn có máy in — pill trạng thái máy in (hiện có ở IN TEM SKU và
-IN TEM GROUP UID). Cao 64 px + viền 1 px, dính đầu màn; từ 760 px trở xuống Back chỉ còn icon 44 px, ẩn icon module và phụ đề. Bề rộng header bám bề rộng nội dung
-của từng màn. Màn mới chỉ cần dùng markup `.uid-topbar` (Back là phần tử đầu để thứ tự Tab khớp thứ tự nhìn). Trang chủ (nền xanh), Quản trị (React) và lớp
-camera/scanner giữ kiểu riêng. Thiết kế: [`docs/THIET_KE_HEADER_UI.md`](docs/THIET_KE_HEADER_UI.md).
-
-**Hộp xác nhận dùng chung** (08/10/2026): mọi bước hỏi lại trước khi làm dùng `await WhDialog.confirm({ title, facts, list, tone, confirmText })`
-(module `wh-dialog-script` cuối `<head>`), không dùng `confirm()` của trình duyệt — hộp đó ghi "mcuongle.github.io cho biết", lệch màu chữ
-của app và chỉ có OK/Huỷ. Hộp gồm icon, tiêu đề ngắn, nhãn số (`facts`), danh sách mã (tối đa 5, còn lại "+n") và nút ghi rõ việc + con
-số ("In lại 6 tem", "Xoá 3 vị trí"). `tone`: `default` (Enter = đồng ý), `warning` (SKU Combo, Lot/Roll đè nhau — con trỏ đứng sẵn ở Huỷ),
-`danger` (xoá, bỏ đánh dấu — nút đỏ, con trỏ ở Huỷ). Esc / bấm ra ngoài = Huỷ; gọi liên tiếp thì hộp sau đợi hộp trước; điện thoại hiện
-dạng trượt từ đáy. Đang dùng ở 9 chỗ: IN TEM SKU (Combo, > 30 tem), PRINT UID (Combo, Lot/Roll, > 30 tem), Cắt UID (Lot/Roll, bỏ đánh
-dấu ADJ), Đối chiếu ADJ (tick giúp), Mã vị trí (xoá khỏi hàng đợi), Lệnh in (in lại). Test: `tests/wh_dialog_browser.cjs`.
-
-## Chuẩn giao diện chung
-
-> Luật hiện hành: `docs/chuan/GIAO_DIEN.md` (từ 25/10/2026). Mục này mô tả lúc áp dụng.
-
-Từ 11/10/2026 (khối `#ui-standard`, biến `--ui-*`, test `tests/ui_standard_browser.cjs`) mọi ô trang chủ và Admin (Admin chỉ máy tính)
-theo một chuẩn; màu thương hiệu duy nhất `--wms-brand` (#005F41):
-
-| Thành phần | Máy tính ≥ 801 px | Điện thoại ≤ 800 px |
-|---|---|---|
-| Thẻ khối, thẻ số liệu, dải thông tin, popup | bo 22 px, viền 1 px | bo 14 px, viền 1 px, không bóng |
-| Tiêu đề khối | chấm tròn số 30 px nền xanh + chữ 18 px/600 | chấm tròn 22 px + chữ 18 px/600 |
-| Ô nhập | cao 52 px, bo 13 px, chữ 16 px | cao 48 px, bo 10 px, chữ 16 px |
-| Nút hành động (chính / phụ) | cao 52 px, viên thuốc, chữ 16 px/600 | cao 48 px, bo 12 px, chữ 16 px/600 |
-| Nút chỉ có icon cạnh ô nhập | vuông 52 px | vuông 48 px |
-| Nút icon nằm trong ô | 44 px | 40 px |
-| Điều khiển gọn: tab, ô tìm/lọc trên thanh công cụ, chip lọc, nút trong dòng, nút icon thanh công cụ Admin | cao 44 px, chữ 14 px/600 | cao 44 px |
-
-Tiêu đề khối không bị ẩn ở khổ nào (TÌM SKU, CHUYỂN ĐỔI ĐƠN VỊ trên điện thoại nay cũng hiện "1 Quét nhận diện", "2 Số liệu cân"…).
-Tiêu đề trang Admin 22 px/600, tiêu đề nhóm Cấu hình 18 px/600. Lịch sử Group UID (khung kiểu Admin) và Rủi ro lưu trữ dùng cùng chuẩn
-thẻ/nút/ô nhập. CSS mới chỉ dùng các biến `--ui-*`. Mốc hiệu năng 11/10/2026 (localhost, trang chủ, trung vị 3 lần): máy tính FCP 100 ms,
-load 152 ms; điện thoại giả lập CPU ×4 FCP 372 ms, load 891 ms; tải 1.619 KB, heap 4,8 MB.
-
-## Khả năng tiếp cận (axe)
-
-`tests/a11y_axe_browser.cjs` quét bằng [axe-core](https://github.com/dequelabs/axe-core) (WCAG 2.0/2.1/2.2 mức A + AA và best-practice) 11 màn
-trang chủ ở 390 + 1280 px và 5 màn Admin ở 1280 px — yêu cầu 0 lỗi. axe-core chỉ dùng khi chạy test (khai báo trong `package.json` ở gốc repo,
-cài một lần bằng `npm install`, thư mục `node_modules/` không commit); app vẫn là một trang tĩnh, không tải thêm gì. Lần quét đầu 11/10/2026
-tìm và đã sửa: chữ xám `text-slate-400` của IN TEM SKU/Cấu hình chỉ đạt 3,4:1 (nay #5C6F68 ≥ 4,5:1), thẻ số liệu bằng 0 bị làm mờ bằng
-opacity (nay chữ xám đủ tương phản), hộp chọn "Mẫu tem" thiếu nhãn, nút "WH-MATERIAL" của Chuyển đổi đơn vị có tên đọc không chứa chữ
-đang hiện, và 14 thẻ `<main>` lồng trong vùng màn hình (đổi thành `<div>`, mỗi màn vẫn là một vùng có tên).
-
-## Source và tự động hóa (Đợt 6)
-
-Kết luận 11/10/2026: **giữ `index.html` một file, sửa trực tiếp** (người dùng chọn). Source gốc React/Vite của IN TEM SKU và Admin
-Cấu hình không còn — không có trong repo (từ commit đầu 31/08/2026 đã là bundle), không có source map, không có bản nào khác trên máy —
-nên không khôi phục source, không tách component, không thêm bước build. Phần tự động hóa đã có: bộ test Playwright trong `tests/`,
-quét axe (`tests/a11y_axe_browser.cjs`), mốc hiệu năng ở mục Chuẩn giao diện chung. Nếu sau này tìm lại được source gốc thì mới làm
-tiếp phần build/component (lộ trình UI/UX 02/10/2026 đã làm xong các đợt 1–4, tài liệu lộ trình đã bỏ ngày 18/10/2026).
-
-## Chuẩn icon
-
-> Luật hiện hành: `docs/chuan/GIAO_DIEN.md` (từ 25/10/2026). Mục này mô tả lúc áp dụng.
-
-Từ 11/10/2026 (khối `#icon-standard`, test `tests/icon_standard_browser.cjs`): icon Lucide nét 2 px, tô `currentColor`, chỉ 4 cỡ —
-**16** (trong chữ, nhãn, chip) · **20** (nút, ô nhập, menu, thanh trên) · **24** (ô trang chủ điện thoại) · **32** (ô trang chủ máy tính). CSS cũ
-được quy đổi tại chỗ; SVG chỉ có thuộc tính `width/height` (markup, chuỗi JS, lucide-react của IN TEM SKU) đưa về thang bằng `:where()` nên CSS riêng
-vẫn thắng. Không dùng ký tự làm icon (→ ← ×); nút chỉ có icon luôn có `aria-label`/`title`. Chỗ icon nói được thì không thêm chữ hướng dẫn: không phụ đề
-mô tả ở thanh trên, placeholder chỉ là danh từ ("Group UID", "SKU", "Mã PO" — ô đã có icon quét/bàn phím), nút nhập file cùng nhãn "Nhập Excel",
-liên kết chuyển tab là nhãn ngắn + icon mũi tên ("Tra cứu", "Đang xả", "Chi tiết"), nút bàn phím Xả vải chỉ còn icon. Tem in không dùng khối này.
-
-## Chuẩn chữ (font)
-
-> Luật hiện hành: `docs/chuan/GIAO_DIEN.md` (từ 25/10/2026). Mục này mô tả lúc áp dụng.
-
-Chuẩn từ 10/10/2026, áp cho mọi màn ở cả điện thoại và máy tính, kể cả IN TEM SKU và Admin:
-
-- **Font:** một font hệ thống `--wms-font` (`system-ui, "Segoe UI", Roboto, Arial…`): máy Windows ở kho hiện Segoe UI, Android hiện Roboto,
-  iPhone hiện SF. Không tải font ngoài. Số dùng chữ số đều nhau (`tabular-nums`) để dễ so mã.
-- **Cỡ:** chỉ 7 bậc `--fs-12 … --fs-28`: 12 (số đếm, badge, phụ đề) · 13 (nhãn ô, tab, đầu bảng) · 14 (bảng Admin, nút phụ, thông báo) ·
-  16 (chữ trong ô nhập, nút chính) · 18 (tiêu đề khối, tên module) · 22 (tiêu đề trang Admin, KPI vừa) · 28 (số lớn).
-- **Đậm:** 400 chữ thường · 600 nhãn, tab, nút, tiêu đề khối · 700 tên module, thương hiệu, số lớn.
-- **Chữ hoa:** chỉ tiêu đề nhóm trang chủ, đầu bảng Kiểm tra đầu vào và ô mã vị trí; còn lại viết thường, không giãn chữ.
-- **Tem in giữ Arial:** tem là SVG tự ghi `font-family="Arial…"`, chỗ đo chữ cho tem (canvas) vẫn Arial, mẫu tem trong agent không đổi.
-
-CSS cũ đã được quy đổi tại chỗ; khối `#type-standard` cuối trang phủ phần Tailwind sinh sẵn của IN TEM SKU/Admin (`text-[11px]`, `font-black`,
-`uppercase`…). CSS mới chỉ dùng các token trên. Test: `tests/typography_browser.cjs`, đo mọi chữ đang hiện trên 12 màn × 2 khổ + 5 màn Admin.
-
-## Quản trị (Admin)
-
-**Chuyển mục mượt (11/10/2026):** `PrintSkuAdminAccess.getToken()` trả token ngay khi trong phiên trang đã xác nhận Admin và token JWT còn hạn ≥ 1 phút
-(trước đây mỗi lần bấm menu đều chờ 2 lượt gọi `/auth/v1/user` + `user_roles`, màn cũ ẩn trước nên lộ nền đen 0,2–0,6 giây). Token hết hạn thì vẫn
-kiểm lại/refresh như cũ; mọi lời gọi dữ liệu vẫn qua `PrintSkuAdminAuth.accessToken()`. Quay lại Đồng bộ SKU / Group UID giữ nội dung cũ và tải
-lại ngầm (không khoá nút, không chạy thanh tải). Test: `tests/admin_switch_browser.cjs`.
-
-Giao diện Admin (`#admin/lenh-in`, `#admin/cauhinh`, `#admin/sku-sync`, `#admin/group-uid-sync`) vào từ ô **QUẢN TRỊ** (nhóm "Quản trị", cuối trang chủ) — không còn
-nút bánh răng trong header IN TEM SKU. Chưa có phiên thì hiện hộp thoại đăng nhập Supabase (tài khoản có vai trò `admin`); **Hủy**, **Về trang chủ** và **Đăng xuất**
-đều quay về `#home`. **Đăng xuất** nằm ở chân thanh trái chung (máy tính ≥ 1024 px), cuối thanh bên Admin (768–1023 px) hoặc là icon ở hàng tiêu đề (điện thoại); không còn thanh nổi hiện tên Admin. Thương hiệu trong Admin và hộp thoại đăng nhập là "WH-MATERIAL" (trước đây là "In tem SKU"). Test: `tests/admin_entry_browser.cjs`.
-
-**Khung chung của Admin (web).** Admin chỉ dùng trên máy tính (từ 768 px), không thiết kế cho điện thoại. Bốn màn dùng cùng một khung: thanh bên 276 px
-(từ 1024 px là thanh trái chung của cả app — xem "Thanh điều hướng trái"),
-thanh trên 80 px (từ 11/10/2026 theo chuẩn thanh trên chung, nền ảnh tím của nhóm Quản trị) **dính khi cuộn**, menu cùng thứ tự Lệnh in → Đồng bộ SKU → Đồng bộ Group UID → Cấu hình, tiêu đề thanh trên = tên mục. Cấu hình vẫn
-nằm trong khung React cũ nhưng được ép cùng kiểu bằng CSS (khối `#admin-web-sync`, vì bundle React đã minify); các mục Đồng bộ chèn vào menu React đứng
-trước Cấu hình và không còn lớp "đang chọn". Tiêu đề bảng của dashboard dính ngay dưới thanh trên. Chữ dùng màu `--wms-muted` (`#60736b`), cỡ ≥ 12 px.
-Lỗi (máy chủ, chưa kết nối Extension) hiện thành **dải đỏ có icon** ở dòng trạng thái (`data-tone="error"`, `aria-live="assertive"`); Đồng bộ SKU và
-Đồng bộ Group UID báo "Chưa kết nối Extension…" theo cùng một cách. Cấu hình chia hai nhóm **Thiết bị này** (Tên máy, Quyền in, Mẫu tem, Sổ tay SKU) và
-**Hệ thống** (Danh mục SKU, Trần một lệnh in · chỉ đọc), không còn câu hướng dẫn.
-**Thanh trên** của cả bốn màn có icon module (cùng icon với menu), tiêu đề đậm và dòng phụ ("Cả kho · cập nhật 17:19" ở Lệnh in, "Inside → Supabase" / "WMS → Supabase" ở hai màn Đồng bộ,
-"Thiết bị và hệ thống" ở Cấu hình). Lệnh in và hai màn Đồng bộ có thêm **chip tóm tắt** ngay trên thanh (Lệnh in: số lệnh hôm nay / đang chờ / lỗi; Đồng bộ: số thay đổi / cảnh báo,
-chỉ hiện sau khi đã kiểm tra hoặc mở một lượt) — thanh trên dính nên con số vẫn thấy khi cuộn; có nút làm mới (Lệnh in: tải lại danh sách; Đồng bộ: tải lại lịch sử). Dưới 1100 px chip và dòng phụ
-tự ẩn. Test: `tests/admin_web_sync_browser.cjs`.
-
-**Popup thay cho bảng nằm sẵn (08/10/2026).** Ở Đồng bộ SKU và Đồng bộ Group UID, bấm một ô số liệu (SKU mới, UID cập nhật, Combo thừa, Thiếu trên WMS…) mở **popup**
-danh sách (`#ss-dialog`, `#gu-dialog`: tìm không phân biệt dấu, lọc theo nhóm trường, sắp xếp, phân trang 50 dòng, xuất CSV; Group UID có 4 tab chuyển nhóm ngay trong popup).
-Xem trước xong thì **không** tự mở popup; ô có 0 dòng phẳng, chữ xám và không mở. **Lịch sử** thu thành một ô trong dải thông tin (kết quả lượt gần nhất + số lượt): bấm mở popup lịch sử
-(`#ss-hist-dialog`, `#gu-hist-dialog`; có nút tải lại và, ở Group UID, "Ẩn lượt lỗi"); bấm một dòng thì nạp lượt đó vào các ô và popup tự đóng. Nút **Cập nhật** (kèm số thay đổi trong huy hiệu)
-và **Hủy** (Group UID; `title` "Hủy xem trước") nằm ở đầu trang và đều **hỏi xác nhận** bằng `WhDialog` trước khi ghi/hủy (Huỷ = không gọi Edge Function). Popup dùng chung
-`AdminSyncUI.openDialog / bindDialogs / closeDialogs` (lớp `.as-dialog`; Esc hoặc bấm nền để đóng, rời màn thì tự đóng). Tab **4 · Đối chiếu** của Cắt UID làm tương tự: bấm ô trạng thái
-(Tất cả, Sai số lượng, Quên tick…) mở popup `#cut-adj-dialog` chứa bảng, nút xuất Excel và **Tick giúp** (chỉ nhóm Quên tick và Tất cả); trên điện thoại popup là tờ trượt từ dưới lên.
-Test: `tests/sku_sync_admin_browser.cjs`, `tests/group_uid_sync_admin_browser.cjs`, `tests/cut_adj_reconcile_browser.cjs`, `tests/admin_web_sync_browser.cjs`.
-Danh sách Group UID luôn ghi **người cập nhật** (email trong WMS) dưới giờ ở cột "Cập nhật WMS" (cả UID mới, cập nhật, thiếu, WMS cũ hơn; không có thì "—"), có trong tìm kiếm và cột "Người cập nhật" của CSV;
-dòng so sánh "Người cập nhật a → b" ở cột "Thay đổi" vẫn chỉ hiện khi người cập nhật đổi (WMS giữ nguyên người cập nhật khi chỉ đổi trạng thái/số lượng).
-
-**Lệnh in** (`#admin/lenh-in`, mục đầu tiên, 08/10/2026) thay hai mục React cũ "Tổng quan" và "Đợt đã gửi" — hai mục đó chỉ đếm lệnh gửi
-từ chính tab đang mở. `#admin/tongquan`, `#admin/hangdoi` và mọi hash Admin lạ tự chuyển về đây. Màn đọc `print_jobs` của cả kho:
-dải trạng thái (máy in, đang chờ, số lệnh/tem trong ngày, lỗi), chọn ngày (giờ VN), lọc **Tất cả / SKU / UID**, tìm theo SKU, UID, tên
-hoặc mã lệnh. Bấm một lệnh → popup từng dòng (SKU + tên; UID + SKU + tên + Lot + Roll). **In lại SKU = nguyên lệnh, giống hệt lệnh gốc**
-(cùng dòng, số tem, ngày in); **in lại UID cho tick toàn bộ hoặc một phần dòng**, mỗi dòng giữ số tem. Lệnh mới do máy chủ dựng từ lệnh
-gốc (trình duyệt chỉ gửi số thứ tự dòng), mang `reprint_of` và nhãn "In lại"; lệnh gốc còn chờ/đang in thì không cho in lại. Dữ liệu:
-`supabase/print_jobs_admin_v1.sql` (đã áp dụng 08/10/2026; RPC `print_admin_jobs`, `print_admin_job`, `print_admin_reprint`, chỉ Admin).
-Cùng migration: **pg_cron dọn `print_jobs` 3 ngày một lần lúc 03:00 VN, giữ lệnh của 3 ngày gần nhất** (chỉ xoá lệnh đã xong/lỗi/huỷ;
-`print_maintenance` ghi lần chạy cuối) — màn Lệnh in vì thế chỉ tìm lại được vài ngày gần nhất. Từ đợt B (23/10/2026, migration `backend_hygiene_v1`): popup lệnh **đang chờ** có nút **Huỷ lệnh** (Admin, hộp xác nhận; RPC `print_job_cancel`, chỉ lệnh `queued`; lệnh Group UID trả các UID về "in lỗi" để chọn in lại). Test: `tests/print_jobs_admin_browser.cjs`.
-
-Màn `#admin/sku-sync` có hai chế độ (14/10/2026, `supabase/sku_sync_full_v1.sql`, Extension 0.8.2): **Đọc Inside** chỉ đọc SKU có Modified mới hơn mốc lùi 24 giờ (cộng toàn bộ Combo) và **Toàn bộ** đọc hết Inside (từng nhóm hàng, 6 trang song song, vài phút) rồi so với cả bảng `SKU_Name`. Lượt toàn bộ bắt được SKU đổi mà Modified không đổi, lệch do nguồn ghi khác và liệt kê **Thiếu trên Inside** (SKU có trong Supabase nhưng Inside không còn trả về trong 7 nhóm đang đồng bộ). **Từ 17/10/2026 (`supabase/sku_missing_archive_v1.sql`) lượt toàn bộ, bấm tay lẫn tự động, khi cập nhật sẽ tự lưu trữ các SKU rời nhóm này** sang `sku_archive` (`archive_reason = 'left_sync_scope'`) với cùng 4 điều kiện bảo vệ như lưu trữ SKU ngừng (còn Group UID Available/New/Processing, trong Combo Active, đang xả vải, cắt trong 90 ngày thì giữ lại); câu Hoàn tất ghi "Đã lưu trữ N SKU rời nhóm, giữ lại M", lỗi lưu trữ không làm hỏng lượt và lượt toàn bộ sau thử lại. SKU quay lại 7 nhóm thì lượt sau thêm lại như SKU mới. Lần đầu còn nạp bù SKU ngừng hoạt động và các quan hệ Combo trước đây bị loại vì thiếu SKU, nên trần dòng chờ ghi của lượt toàn bộ là 30.000 (gia tăng vẫn 2.000); Edge Function từ chối khi số SKU nguồn ít hơn 20% so với lần toàn bộ trước (lần đầu: so với bảng hiện có) vì đó là dấu hiệu đọc thiếu trang, và ghi `fullDropPercent` vào lượt để màn cảnh báo từ 2%. Thẻ **Đối chiếu toàn bộ** trong dải thông tin đổi màu khi chưa chạy hoặc quá 36 giờ; lịch sử ghi nhãn "Toàn bộ". **SKU ngừng hoạt động mà database chưa có thì không nạp** (quyết định 14/10/2026, áp cho cả hai chế độ): chỉ đếm ở ô "Ngừng, bỏ qua"; SKU đã có mà Inside chuyển sang ngừng vẫn cập nhật trạng thái; quan hệ Combo tham chiếu SKU bị bỏ qua vẫn bị loại như SKU chưa có. **Combo đọc theo Modified ở lượt gia tăng** (16/10/2026, Extension 0.9.3): trang Combo của Inside liệt kê Modified giảm dần nên Extension dừng ở trang có dòng cũ hơn mốc (thường 1–2 lô 8 trang thay vì ~117 trang) và gửi `comboScope: "changed"`; thứ tự hoặc định dạng Modified khác kỳ vọng, hoặc có ô Modified trống, thì tự đọc toàn bộ (0.9.4 kiểm trên cả lô 8 trang đã tải trước khi dừng). Edge khi đó nhận dưới 1.000 dòng Combo và **không kết luận "Combo thừa"** (ô hiện "—"); lượt toàn bộ vẫn phải đọc hết Combo. Nhịp đã chọn (14/10/2026): **toàn bộ mỗi sáng một lần**, gia tăng chỉ dùng khi cần xem nhanh giữa ngày; không lọc Active ở nguồn vì SKU vừa ngừng sẽ biến mất khỏi nguồn và trạng thái trong Supabase không được cập nhật. Test: `tests/sku_sync_function.mjs`, `tests/sku_sync_admin_browser.cjs`.
-
-Màn `#admin/group-uid-sync` giữ hai chế độ: lấy thay đổi theo watermark lùi 30 phút và đối chiếu toàn bộ. **Dọn Group UID Canceled quá 180 ngày** (16/10/2026, `supabase/group_uid_canceled_purge_v1.sql`): pg_cron thứ Hai 03:15 giờ VN xoá UID trạng thái Canceled có `updated_date` quá 180 ngày khỏi `group_uid_details` (thành phần `group_uid_products` xoá theo; lịch sử Cắt UID, Cấp vải, chuyển vị trí chỉ lưu mã nên không mất), kết quả ghi `print_maintenance` (task `group_uid_canceled_purge`). **Ghi Group UID v6** (16/10/2026, `supabase/group_uid_sync_v6_apply_touched.sql`): cập nhật chỉ ghi và xác minh các UID thật sự khác (mới, hoặc khác một trường nghiệp vụ / thành phần sản phẩm; chỉ khác `updated_date` thì bỏ qua), thành phần sản phẩm gộp một lần thay vì truy vấn con từng dòng; trước đó mỗi lượt toàn bộ ghi đè ~29.000 dòng giống hệt và so cả bảng (24–178 giây). `verification.written` ghi số dòng đã ghi. v7 (`group_uid_sync_v7_apply_guard.sql`, cùng ngày, theo review độc lập bằng Codex) chuẩn hoá thành phần nguồn trong SQL trước khi so, kiểm lại mốc thời gian trên dòng hiện tại khi ghi thành phần và khoá các dòng sắp ghi. Để chúng không quay lại từ WMS, xem trước và cập nhật (v5) **bỏ qua UID Canceled quá hạn chưa có trong database** (đếm ở `change_counts.skippedCanceled`, câu trạng thái ghi "bỏ qua N UID Canceled quá 180 ngày"), không báo "thiếu trên WMS" cho UID Canceled quá hạn trong database; UID đang Available/Closed mà WMS chuyển sang Canceled vẫn cập nhật như trước. Nạp Excel qua script CLI không có bộ lọc này. WMS được đọc theo trang 500 dòng; Admin xem preview trước khi cập nhật. Áp dụng `supabase/group_uid_sync_v1.sql` và deploy Edge Function `group-uid-sync` trước khi sử dụng. Từ 16/10/2026 Admin đọc hết các trang vào bộ nhớ và chỉ đưa lên Supabase khi nhất quán (hàm `readWmsSnapshot`): đối chiếu toàn bộ gộp UID lặp do UID mới chen lên đầu danh sách giữa lúc đọc (WMS xếp theo id giảm dần; `api-clinic` tạo 1 UID/phút) rồi đọc lại đầu danh sách tới khi tổng WMS khớp số UID duy nhất; lấy thay đổi giữ khung `from`–`to` (WMS chỉ áp `to_updated_at` khi có cả `from_updated_at`) và đọc lại nếu tổng đổi giữa các trang. Không khớp sau 3 lượt thì phiên dừng, kiểm tra "Số UID duy nhất không khớp tổng WMS" của Edge Function giữ nguyên.
-
-Đồng bộ tự động (17/10/2026, Extension 0.10.0): hai màn `#admin/sku-sync` và `#admin/group-uid-sync` có thêm ô **Tự động** nằm trong dải mốc giờ (`#ss-strip-auto`, `#gu-strip-auto`, ngay trước ô Lịch sử; từ 18/10/2026 không còn khối dải riêng bên dưới). Ô ghi giờ lượt tự động gần nhất (`dd/mm/yyyy hh:mm`) và dòng nhỏ "<tên máy> · x giờ trước" lấy từ lượt tự động mới nhất trong lịch sử (chưa có thì "Chưa có lượt tự động"), kèm nút chỉ icon 36 × 36 **Tạm dừng tự động** / **Tiếp tục tự động** (icon pause / play, có `aria-label` và `title`) gọi action `auto-config` của Edge Function (`set.enabled`); đang tạm dừng thì ô nền vàng, ghi "Admin đã tạm dừng". Dải mốc giờ của Đồng bộ SKU có 5 ô (một hàng từ 1280 px, 1024–1279 px lưới 6 cột 3 + 2), của Group UID có 6 ô (một hàng từ 1360 px, 1024–1359 px lưới 3 cột × 2 hàng). Trong bảng Lịch sử, lượt do Extension chạy có chip **Tự động · <tên máy>**, lượt bị giữ lại vì vượt ngưỡng "Vừa" có trạng thái **Chờ Admin** (`held`, chip cam, rê chuột ra lý do): lượt này không chặn lượt sau, không hết hạn và không cập nhật được; mở lượt từ lịch sử thì dòng trạng thái ghi "Giữ lại (tự động): <lý do>" kèm gợi ý bấm Toàn bộ, Admin chạy lại tay (Đọc hoặc Toàn bộ) để có bản xem trước mới. SKU rời nhóm đồng bộ được tự lưu trữ (xem đoạn Đối chiếu toàn bộ), nên lượt toàn bộ tự động chỉ bị giữ lại khi một lượt có hơn 20 SKU **mới** rời nhóm (`sync_auto_settings.thresholds.sku.maxMissing = 20`, đếm `skuMissingNew` = SKU thiếu chưa có trong danh sách thiếu / giữ lại của lượt toàn bộ hoàn tất trước, để SKU bị giữ lại không dồn lên). Luồng bấm tay không đổi. Đăng nhập Admin, tên máy, công tắc từng máy và nhật ký nằm ở trang Options của Extension (`chrome-extension://…/options.html`, mở từ chrome://extensions → Chi tiết → Tùy chọn của tiện ích).
-
-**Khuôn hero chung + nút Đọc WMS (17–18/10/2026, khối `#hero-standard`, chỉ `index.html`: không đổi Extension, Edge, SQL).** Hero của 8 màn (`#sku-sync-screen`, `#group-uid-sync-screen`, `#storage-risk-screen` hai tab, `#inventory-audit-screen`, `#site-control-screen`, `#uidhist-screen`, `#assistant-screen`) là thanh lệnh gọn một hàng từ 1024 px: h2 vẫn trong DOM nhưng ẩn kiểu sr-only (tên màn đã ở thanh trên), trạng thái Extension (nếu có) bên trái, nút đọc kế đó, nhóm ghi (Hủy, Cập nhật) đẩy sang phải; người xem không phải Admin thì hero ẩn hẳn ở mọi khổ. 14 nút đọc dữ liệu nguồn dùng một kiểu `.src-read` (21/10/2026 thêm `#ub-wms` "Đọc WMS" ở LỰA UID BLOCKED và `#ins-fetch-po` "Đọc Inside" ở KIỂM TRA ĐẦU VÀO; `#ub-compare` "Đối chiếu" dùng `--all`): nền xanh nhạt, viền xanh, chữ #005F41 16/600, cao bằng ô nhập, icon đám mây bằng mask `::before` (`.src-read--all` nền trắng icon layers cho phạm vi lớn; phạm vi cụ thể ở `title`); đang đọc thì `data-busy="true"` đổi icon vòng xoay và chữ "Đang đọc…" mà nút không đổi bề rộng. Nút ghi ở hai màn đồng bộ có chữ cố định **Cập nhật** + icon upload + số thay đổi trong huy hiệu (`data-count`); hộp xác nhận vẫn ghi "Cập nhật N thay đổi vào Supabase". Dưới hero hai màn đồng bộ: dải mốc giờ (đã gồm ô Tự động) phẳng, ô số 0 phẳng chữ xám, ô thay đổi > 0 viền và nền xanh nhạt số #005F41, cảnh báo vàng; 1024–1199 px nhóm ô SKU nằm một hàng. Dòng load dưới nút (18/10/2026): nút đang chạy (`data-busy="true"`: 12 nút đọc `.src-read` và nút Cập nhật `#ss-apply` / `#gu-apply` khi đang ghi, vẫn giữ chữ Cập nhật) có vạch 3 px bo tròn ngay dưới nút (`::after` của nút, nền #dceae5, vạch #00a878) thay cho thanh tiến độ rời chạy ngang cả màn (`#sku-sync-progress`, `#gu-progress`, `#ia-progress`, `#sc-progress`, `#uh-progress` còn trong DOM nhưng ẩn); chưa có tiến độ thật thì đoạn 38 % trượt qua lại, có tiến độ theo trang (Kiểm kê, Công trình, Lịch sử Group UID, đọc WMS ở Group UID) thì JS đặt biến `--p` (0–1) trên nút và vạch tô theo % bề rộng nút; `prefers-reduced-motion` không trượt, vạch tĩnh. Test: `tests/src_read_style_browser.cjs` (12 nút cùng một kiểu, rảnh ↔ đang đọc không đổi bề rộng, vạch load không bị cắt hay đè), `tests/sku_sync_admin_browser.cjs`, `tests/group_uid_sync_admin_browser.cjs`. Nhãn cũ → mới:
-
-**Nút đọc trong dải mốc giờ (18/10/2026, khối `#strip-read`, chỉ `index.html`).** KIỂM KÊ SKU, KIỂM SOÁT CÔNG TRÌNH, LỊCH SỬ GROUP UID không còn thẻ thanh lệnh riêng: nhóm nút Admin (`#ia-admin-tools`, `#sc-admin-tools`, `#uh-admin-tools`, giữ id) nằm trong ô đầu của dải "Cập nhật lúc / Kho đã đọc…" (`.as-strip__lead`), cạnh mốc giờ mà nút làm mới. RỦI RO LƯU TRỮ: hàng tab bọc trong `.sr-tabrow`, nút ở cuối hàng, tab nào mở thì hiện nút của tab đó (`#sr-run` đọc cả UID tạm, `#srt-run` chỉ UID tạm). Máy tính: nút gọn cao 36, chữ 14/600; ≤ 760 px: nút tròn 44 chỉ icon (chữ ẩn, vẫn là tên truy cập). Trạng thái Extension (`#ia-connection`, `#sc-connection`) thành chấm 12 px ở góc trên phải nút (xám / xanh / đỏ). Hero còn lại chỉ giữ h2 ẩn (`display: contents`). Màn đồng bộ SKU / Group UID và Trợ lý in giữ thanh lệnh như cũ. Test: `tests/strip_read_browser.cjs`.
-
-| Nhãn cũ | Nhãn mới |
-|---|---|
-| Kiểm tra dữ liệu Inside | **Đọc Inside** |
-| Kiểm tra thay đổi, Đọc từ WMS, Đọc và đồng bộ WMS, Đối chiếu (Công trình), Lấy từ WMS, Packing List, Đọc phiếu | **Đọc WMS** |
-| Đối chiếu toàn bộ (nút) | **Toàn bộ** |
-| Cập nhật Supabase, Cập nhật N thay đổi | **Cập nhật** + huy hiệu số |
-| Nút đồng hồ (Lịch sử Group UID) | **Đọc lại 365 ngày** (chỉ icon) |
-
-**Gọn icon, bỏ chú thích (18/10/2026, chỉ `index.html`: không đổi Extension, Edge, SQL).** Nút **Phiếu IT** ở IN TEM SKU chỉ còn icon phiếu (tròn 40 × 40, icon 20 px, `aria-label` + `title` "Phiếu IT") ở mép phải hàng tiêu đề "Nhập thông tin tem"; hai icon nhãn trang trí đứng một mình (`.skq-tag` ở IN TEM SKU, `.uid-head-icon` ở "3 Gán SKU" của IN TEM GROUP UID) bỏ hẳn. Thẻ số liệu của Kiểm kê, Kiểm soát công trình và Rủi ro lưu trữ (Hàng chưa lên kệ, UID tạm) không còn dòng chú thích giải thích: câu cũ chuyển vào `title` của thẻ; chỉ còn dòng nhỏ mang số liệu do JS ghi (`#ia-total-qty` "N đơn vị In-BIN", `#sc-total-sub` "N SKU chưa lên kệ", `#sr-total-sub` "N SKU"), trống thì ẩn (khối `#metric-caption-trim`, nhãn và số xếp từ trên xuống như thẻ Lịch sử UID). Ô **Đối chiếu toàn bộ** ở hai màn đồng bộ chỉ ghi "Chưa chạy" hoặc "<x> trước · quá 36 giờ" (Group UID: quá 24 giờ) và vẫn đổi sang nền vàng, không còn câu khuyên "nên chạy / đối chiếu toàn bộ". Dải mốc giờ của Kiểm kê và Rủi ro, thẻ Lịch sử UID (mã vị trí F0-VR…, số UID) giữ nguyên. Test: `tests/sku_it_browser.cjs`, `group_uid_mockup_browser.cjs`, `inventory_audit_browser.cjs`, `site_control_browser.cjs`, `storage_risk_browser.cjs`, `storage_risk_temp_browser.cjs`, `sku_sync_admin_browser.cjs`, `group_uid_sync_admin_browser.cjs`.
-
-Ô **LỊCH SỬ GROUP UID** (nhóm Vận hành kho trên trang chủ, `#group-uid-history`) tra cứu Group UID đã chuyển đến hoặc đi từ một vị trí và người cập nhật (từ đợt B 23/10/2026: người xem chưa đăng nhập Admin thấy phần trước @ của email, Admin thấy đầy đủ). **Xem thì ai cũng dùng được, không cần đăng nhập**: màn gọi hai hàm chỉ đọc `group_uid_moves_overview` / `group_uid_moves_lookup` (cấp cho anon như bảng Tra cứu UID). **Đọc dữ liệu mới từ WMS bắt buộc đăng nhập Admin**: bấm biểu tượng khiên ở thanh tiêu đề, đăng nhập bằng hộp Quản trị dùng chung, khi đó mới hiện nút **Đọc WMS** (nút **Đọc lại 365 ngày** bên cạnh, biểu tượng đồng hồ, đọc lại 365 ngày). Extension 0.7.1 đọc WMS `group-uid-info-histories?actions=4` (Transfer location) một luồng cho mọi kho tài khoản được xem — WMS không lọc endpoint này theo `company-ids` (đo 10/10/2026: ba công ty cùng trả 5.072 dòng); lần đầu lấy 365 ngày, các lần sau lùi 30 phút từ mốc đã đọc. Từng trang 500 dòng được ghi vào `group_uid_moves` bằng RPC chỉ Admin (`p_company_id = 0`, khóa là mã dòng lịch sử WMS nên nạp chồng không nhân đôi). Dòng chuyển vị trí của WMS không có SKU: SKU và tên sản phẩm được ghép từ `group_uid_details` / `group_uid_products` khi tìm. Giao diện (10/10/2026) cùng khung với Đồng bộ Group UID: dải thông tin (cập nhật gần nhất, số lượt đã lưu, kho), ô SKU và mã vị trí (khung quét chuẩn từ 18/10/2026: icon quét đầu ô, camera · bàn phím trong ô, bàn phím ảo ẩn mặc định, nhớ ở khoá `uh-sku-ban-phim` / `uh-loc-ban-phim`; dán SKU Combo đúng 9 số thì hỏi SKU Normal bằng hộp chọn dùng chung với TÌM SKU/CẮT UID vì Group UID lưu theo SKU Normal), chip bộ lọc đang dùng, rồi 4 thẻ số liệu **Lượt chuyển · Còn ở đây · Đã chuyển tiếp · Trả NCC**. Bấm thẻ hoặc **Xem kết quả** (Enter, quét xong cũng vậy) mở popup bảng dùng chung `AdminSyncUI`: tab theo 4 nhóm, tìm không dấu, lọc Kho / Người cập nhật, sắp xếp, 50 dòng/trang, xuất Excel, bấm mã UID để sao chép; điện thoại hiện dạng tấm trượt từ đáy, mỗi dòng thành một thẻ. Hướng (đến / từ / cả hai), kho và khoảng ngày nằm trong popup **Bộ lọc** (nút ghi số bộ lọc đã đổi). Mỗi lần tìm lấy tối đa 1.000 lượt mới nhất. `F0-VR-00-00-00-00` hiện nhãn **Trả NCC** (vị trí để hàng trả nhà cung cấp). Điện thoại và máy tính bảng chỉ xem; máy cập nhật cần Chrome, Extension 0.7.1 và một tab WMS đang đăng nhập. Áp dụng `supabase/group_uid_moves_v1.sql` và `supabase/group_uid_moves_v2_lookup.sql` (đã chạy ngày 10/10/2026). Test: `tests/group_uid_moves_core.cjs`, `tests/group_uid_moves_browser.cjs`.
-
-Ô **KIỂM KÊ SKU** (nhóm Kiểm tra trên trang chủ, `#inventory-audit`; 12/10/2026 chuyển từ `#admin/kiem-ke` ra trang chủ, đường dẫn cũ tự chuyển hướng) là dashboard đối chiếu kiểm kê theo kho. **Xem thì ai cũng dùng được, không cần đăng nhập**: màn gọi hàm chỉ đọc `sku_count_overview` (cấp cho anon) và hiện bản chụp đã lưu gần nhất. **Đồng bộ từ WMS bắt buộc đăng nhập Admin**: bấm biểu tượng khiên ở thanh tiêu đề, đăng nhập bằng hộp Quản trị dùng chung, khi đó mới hiện nút **Đọc WMS**. Admin bấm thì Extension 0.6.1 đọc WMS (tự đổi `company-ids` theo từng nguồn: công ty Mastige cho `WH - MATERIAL - MTG`, công ty Garment cho `WH - MATERIAL - GARMENT`; tồn kho lấy từ báo cáo `Stock Location` đã gộp theo SKU/vị trí, chỉ giữ `count_inbin > 0`; lịch sử là kiểm kê loại SKU có trạng thái `APPROVED`), trình duyệt đối chiếu rồi lưu kết quả đã gộp theo (kho, SKU) lên Supabase bằng ba RPC chỉ Admin: `sku_count_save_start` → `sku_count_save_chunk` (tối đa 500 dòng/lần) → `sku_count_save_finish` (`supabase/sku_count_v1.sql`; bảng `sku_count_runs` + `sku_count_rows` chỉ cấp cho `service_role`). Dòng của lượt chỉ hiện với người xem sau khi `finish` đánh dấu lượt hoàn tất, nên không ai thấy dữ liệu dở dang; lượt rỗng bị từ chối để không thay bản chụp cũ bằng bản trống; giữ 3 lượt hoàn tất gần nhất. Phân nhóm (chưa có lần duyệt / lần gần nhất không quá 30 ngày / quá 30 ngày) tính **lúc xem** theo giờ hiện tại, không lưu sẵn, nên mốc 30 ngày luôn đúng dù bản chụp đã cũ. Token WMS vẫn chỉ nằm trong tab WMS/Extension; Supabase chỉ nhận SKU, tên, tồn, vị trí, ngày và người duyệt kiểm kê gần nhất. Giao diện cùng khung với Lịch sử Group UID (`.uid-topbar`, nhóm màu Kiểm tra) và dùng chung bộ công cụ `AdminSyncUI`: thẻ trạng thái bấm để lọc, tab theo tình trạng, tìm không dấu, lọc Kho, sắp xếp, phân trang, xuất Excel và hộp chi tiết theo vị trí; trên điện thoại (nhân viên kho) bảng thành thẻ từng SKU. Test: `tests/inventory_audit_browser.cjs`.
-
-Ô **RỦI RO LƯU TRỮ** (nhóm Kiểm tra trên trang chủ, `#storage-risk`; 12/10/2026 làm lại, bỏ phần quan hệ Normal–Combo) là màn **Hàng chưa lên kệ**: liệt kê hàng còn tồn ở vị trí chưa phải kệ thật trong đúng hai kho `WH - MATERIAL - MTG` và `WH - MATERIAL - GARMENT` (A0, AJ, VR, IT, TF... đều là vùng ảo dạng `F0-<vùng>-00-00-00-NN`). Màn **dùng chung bản chụp của Kiểm kê SKU** (`sku_count_overview`, không migration mới): ai cũng xem được, chỉ Admin có nút **Đọc WMS** (chạy đúng bộ đọc Extension của Kiểm kê, từ Extension 0.8.1 kèm tổng mọi trạng thái `total`, `modified` (Modified date) và `created` trong `sku_count_rows.locations`). **Chống bỏ sót**: mọi dòng tồn đều được phân loại kệ thật / vùng ảo / vị trí lạ và chỉ "kệ thật" (vùng `KHO`, `XV`, `CAT`, `BAIXE` với mã kệ khác 00) mới bị loại, nên vùng mới, mã sai định dạng hoặc không có vị trí tự hiện là rủi ro; hàng giữ chỗ (In-BIN = 0 nhưng tổng > 0) được lưu trong `sku_count_runs.source_counts.held` thay vì bỏ lặng lẽ; màn báo khi thiếu một trong hai kho, bản chụp quá 24 giờ, số dòng đã lưu lệch số dòng WMS đã đọc, hoặc dòng chưa có ngày. Mức: ≤ 7 ngày Theo dõi, 8–30 Cần xử lý, > 30 hoặc vị trí lạ Rủi ro cao (tính theo giờ lúc xem, từ **Modified date** của dòng tồn WMS; dòng thiếu Modified date dùng tạm ngày tạo và có cảnh báo). Hàng đã tồn 0 (đi qua TF...) cố ý không theo dõi. Test: `node tests/storage_risk_browser.cjs` (cần `python -m http.server 8000`; đặt `PLAYWRIGHT_MODULE` nếu Playwright không nằm trong `node_modules`).
-
-Màn **RỦI RO LƯU TRỮ** có hai tab cấp màn (nhớ theo máy, khoá `sr-tab-dang-mo`): **Hàng chưa lên kệ** (mặc định) và **UID tạm** (16/10/2026). Tab UID tạm cảnh báo các dòng **Create Temporary UID** ("Tạo UID Temp") của kho **WH - MATERIAL - MTG** và **WH - MATERIAL - GARMENT**: phiếu xuất kho chạy khi không đủ điều kiện sẽ tự nhập UID tạm bằng phiếu điều chỉnh và làm lệch tồn. Nguồn là báo cáo Import/Export của WMS (`GET_STOCK_IMPORT_EXPORT_PAGE`, 90 ngày gần nhất, qua Extension như KIỂM SOÁT CÔNG TRÌNH); chỉ giữ dòng nhập (`type=1`), `source_type = ADJUSTMENT` và lý do khớp `uid temp` hoặc `temporary uid`, mới nhất trước. Chỉ Admin thấy nút **Đọc WMS**: một lần bấm ở bất kỳ tab nào làm cả hai việc (đồng bộ Kiểm kê rồi đọc UID tạm; bước UID tạm lỗi chỉ báo ở tab này, không đổi kết quả tab Hàng chưa lên kệ), đọc UID tạm luôn xác minh Admin qua mạng trước khi gọi Extension, lượt lỗi xoá kết quả cũ, và Admin cũng nhận cảnh báo khi WMS báo nhiều dòng hơn số đọc được; thẻ tổng là **Dòng tạo UID tạm**; bảng có Kho, Ngày tạo, SKU, Sản phẩm, Số lượng, Mã ADJ, Phiếu gốc, Người tạo, Tuổi (≤ 3 ngày tính theo mili giây là "Mới", ≤ 14 ngày là cảnh báo), thẻ lọc MTG / GARMENT / Trong 3 ngày và xuất Excel `uid-tam-<ngày giờ>.xlsx`. **Từ 18/10/2026 phần UID tạm lưu Supabase** (migration `supabase/uid_temp_snapshot_v1.sql`; trước đó chỉ nằm trong bộ nhớ trang): mỗi lần Admin đọc xong, web gọi `uid_temp_save` (chỉ Admin, một giao dịch, lượt 0 dòng vẫn lưu, giữ 10 lượt gần nhất); ai mở tab UID tạm cũng nạp lần đọc gần nhất qua `uid_temp_overview` (không cần đăng nhập, không cần WMS) — dòng trạng thái "Bản đọc lúc …: N dòng tạo UID tạm.". Lưu lỗi thì báo "Đã đọc N dòng nhưng chưa lưu được: …" mà vẫn hiện dữ liệu vừa đọc; thoát Admin không xoá bản đang xem. Test: `tests/storage_risk_temp_browser.cjs`, `tests/uid_temp_snapshot_sql.cjs`.
-
-**Bản lưu trên máy + kiểm phiên bản (18/10/2026, khối `snapshot-cache-script`, migration `supabase/snapshot_cache_v1.sql`).** KIỂM KÊ SKU, RỦI RO LƯU TRỮ (Hàng chưa lên kệ dùng chung bản lưu với Kiểm kê; UID tạm) giữ bản sao lần đọc gần nhất trong IndexedDB `print-sku-cache`. Mở màn: hiện ngay bản trên máy, rồi hỏi Supabase **một lần** kèm mã lần đọc đang có (`sku_count_snapshot` / `uid_temp_snapshot`): không đổi → máy chủ trả vài chục byte, màn giữ nguyên; có lần đọc mới → nhận bản đầy đủ và thay bản trên máy. Vào lại màn trong cùng phiên cũng hỏi lại. Mất mạng → vẫn xem bản trên máy, dòng trạng thái ghi "Bản lưu trên máy lúc …"; màn đang có dữ liệu thì không bị bản trên máy vẽ đè. Supabase luôn đúng, bản trên máy không bao giờ ghi ngược lên. Chưa chạy migration → tự lùi về `sku_count_overview` / `uid_temp_overview`. Test: `tests/snapshot_cache_browser.cjs`, `tests/snapshot_cache_edge_browser.cjs`, `tests/snapshot_cache_sql.cjs`.
-
-Ô **KIỂM SOÁT CÔNG TRÌNH** (nhóm Kiểm tra trên trang chủ, `#site-control`; 15/10/2026) đối chiếu app Hasaki Construction Management với kho WMS **OFFICE - 130 AP CHANH - MTG** (id 1151, mã 1611) theo từng SKU của app. Chỉ Admin bấm **Đọc WMS** (cần hai tab đang mở và đã đăng nhập: WMS và app xây dựng; Extension 0.9.0). Màn không có bảng nằm sẵn: bốn ô số liệu (SKU theo dõi, Lệch tồn, Lệch nhập, Lệch xuất) mở **popup** danh sách theo chuẩn popup của Đồng bộ SKU / Group UID (ô 0 dòng làm mờ, đối chiếu xong không tự mở popup, ô "Lệch" mở sẵn với bộ lọc Lệch, trên điện thoại là tờ trượt). Trong popup có ba tab: **Tồn kho** (tồn app so với tổng In-BIN theo vị trí WMS, có nhãn *Chưa lên kệ* cho vị trí `F0-<vùng>-00-00-00-NN`), **Nhập** (nhập app so với nhập WMS và khớp từng dòng theo SKU + mã nguồn + số lượng: *WMS có, app thiếu* / *App có, WMS không thấy*) và **Xuất** (xuất app so với lý do `Xuất sử dụng` của WMS; xuất kiểm kê, test, điều chuyển tách ra cột *WMS khác*). Kỳ nhập xuất bắt đầu từ 0 giờ ngày dòng nhập đầu tiên đã nạp vào app. Kết quả chỉ nằm trong trình duyệt (không lưu Supabase, không migration); bấm một dòng mở popup chi tiết xếp chồng trên popup danh sách (Esc đóng chi tiết trước), xuất Excel theo từng tab. App xây dựng được đọc qua endpoint chỉ đọc `/api/stock` và `/api/wms-imports` bằng phiên của chính tab app. Test: `tests/site_control_browser.cjs` (Playwright), `tests/hcm_bridge_reads.cjs`, `tests/wms_bridge_reads.cjs`, `tests/inventory_audit_core.cjs`.
-
-Giao diện hai màn đồng bộ (`#admin/sku-sync`, `#admin/group-uid-sync`, 08/10/2026) dùng chung một bộ công cụ `AdminSyncUI` (khối `admin-sync-shared` trong `index.html`):
-- Danh sách thay đổi có ô tìm (không phân biệt dấu), lọc theo nhóm trường, sắp xếp theo mã/ngày cập nhật WMS, phân trang 50 dòng và xuất Excel `.xlsx` (đúng các dòng đang lọc; Group UID giữ đủ 16 chữ số dạng chữ, ngày giờ là ngày giờ thật, dòng tiêu đề dính và có bộ lọc; ghi bằng bộ zip có sẵn của app, không thêm thư viện). Bấm vào mã để sao chép; riêng bảng thay đổi Group UID, bấm mã UID mở hộp chi tiết SKU (kèm số lượng và tên sản phẩm), Batch (Lot), Roll, kho, vị trí, số lượng, trạng thái (giá trị khác bản kia có thêm dòng "Trước") và nút sao chép.
-- Mỗi thay đổi hiện từng trường dạng `giá trị cũ → mới` (số lượng kèm chênh lệch; trường **QC** là kết quả Evaluation Passed/Failed hiện bằng chip, có tag lọc *QC*), tên trường tiếng Việt, không in `updated_date` trong phần so sánh. UID mới hiện kho, vị trí, số lượng, trạng thái, Lot/Roll và SKU; SKU mới hiện tên sản phẩm (phần đầu in đậm) và nhóm hàng.
-- Group UID có thanh cơ cấu kết quả (không đổi / cập nhật / mới / WMS cũ hơn), chênh lệch so với lần toàn bộ trước, tab theo nhóm, cảnh báo bấm được và dải thời gian lần đồng bộ gần nhất; SKU chia thẻ thành 3 cụm (SKU, Combo, Cảnh báo). Lịch sử có lý do lỗi, thời lượng và nút ẩn lượt lỗi.
-- Edge Function chỉ trả tối đa 1.000 dòng mỗi nhóm, nên danh sách hiện `đã tải N / tổng` khi nhóm lớn hơn; tìm và CSV chỉ trên phần đã tải.
-- Group UID có cột **Kho** (sắp xếp được) và bộ lọc **Kho** chọn nhiều có ô tìm và số đếm theo các bộ lọc đang bật; kết hợp với bộ lọc trường theo kiểu "và" (chip "Đổi kho" là UID bị chuyển kho). Ô tìm và file Excel có cả kho; UID bị chuyển kho hiện kho mới kèm "từ kho cũ". Danh sách chọn dùng chung trong `AdminSyncUI.createList` (tùy chọn `facets`).
-- Giao diện điện thoại của màn Admin không được thiết kế lại (chỉ đảm bảo không tràn ngang). Test: `tests/group_uid_sync_admin_browser.cjs`, `tests/sku_sync_admin_browser.cjs`.
-
-## Thiết bị in — kích hoạt máy bằng mã chung
-
-Từ 10/10/2026 (`supabase/print_devices_v1.sql`), máy chủ chỉ nhận lệnh in từ máy đã kích hoạt. Mỗi máy kích hoạt một lần bằng mã chung do Admin tạo, đổi lấy khoá riêng lưu trong trình duyệt (`localStorage` khoá `tb-khoa`). Agent máy trạm không liên quan, vẫn dùng token agent riêng.
-
-Triển khai:
-
-1. Chạy migration: `python scripts/apply_supabase_sql.py supabase/print_devices_v1.sql`. Migration chèn khoá chuyển tiếp `legacy-public` nên máy chưa kích hoạt vẫn in được như cũ.
-2. Admin vào **Quản trị → Lệnh in → tab Thiết bị** (`#admin/lenh-in/thiet-bi`), bấm **Tạo mã kích hoạt**. Mã dạng `XXXX-XXXX`, hiệu lực 30 phút, dùng được cho nhiều máy trong thời gian đó, chỉ hiện rõ một lần.
-3. Trên từng máy, mở trang chủ, bấm ô **KÍCH HOẠT MÁY** (chỉ hiện khi máy chưa có khoá), nhập mã và tên máy. Ô biến mất là xong. Máy bị máy chủ từ chối cũng tự mở hộp này.
-4. Khi mọi máy đã có trong danh sách, tắt **Khoá chung cũ** trong màn Thiết bị in. Từ đó chỉ máy đã kích hoạt mới in được; bật lại được bất cứ lúc nào.
-
-Trong màn Thiết bị in còn có: tắt/bật và đổi tên từng máy, số lệnh in theo máy (`print_jobs.device_id`), thu hồi mã trước hạn. Nhập sai mã quá 30 lần trong một phút thì máy chủ tạm khoá việc kích hoạt một phút. Mất khoá (xoá dữ liệu trình duyệt, đổi máy) thì kích hoạt lại bằng mã mới.
-
-Popup máy (14/10/2026, khối `#pdm-polish`): thân popup có lề, 4 ô thông tin một hàng trên nền nhạt, ô tên + nút cao 44 chữ hệ thống, dòng lệnh in
-không bị cắt nhãn trạng thái. Trình duyệt hiện gọn kiểu "Android 10 · Chrome 141" (popup + bảng; chuỗi User-Agent đầy đủ ở title, ô tìm và CSV).
-Hộp KÍCH HOẠT MÁY (14/10/2026): sửa `font: … inherit` sai cú pháp → ô tên máy và nút Huỷ / Kích hoạt 16/600 (trước rơi về 400), mã kích hoạt 700.
-Popup có thanh tìm + Xuất Excel trên điện thoại (khối `#dlg-polish`, vd. Lịch sử Group UID): nút Xuất Excel giữ cỡ vừa chữ, ô tìm lấy phần còn lại.
-
-## Nạp schema lên Supabase
-
-`scripts/apply_supabase_sql.py` chạy một file `.sql` lên project qua Management API — không cần `psql`, không cần Supabase CLI, chỉ dùng thư viện chuẩn của Python.
-
-Một lần duy nhất: tạo **personal access token** ở https://supabase.com/dashboard/account/tokens (bắt đầu bằng `sbp_`), rồi đặt vào biến môi trường `SUPABASE_ACCESS_TOKEN` hoặc vào file `.env` ở gốc repo (`.env` đã nằm trong `.gitignore`).
-
-```
-SUPABASE_ACCESS_TOKEN=sbp_...
-```
-
-Token này khác publishable key và secret key: hai key kia chỉ tới được PostgREST nên không chạy được `create table`. Script không bao giờ in token ra màn hình.
-
-```powershell
-python scripts/apply_supabase_sql.py supabase/print_devices_v1.sql --dry-run   # xem trước, không gọi Supabase
-python scripts/apply_supabase_sql.py supabase/print_devices_v1.sql             # chạy thật
-```
-
-Project ref lấy tự động từ `SUPABASE_URL`, ghi đè bằng `--project-ref`. Chạy xong script liệt kê lại toàn bộ bảng và hàm trong schema `public` để đối chiếu.
-
-**Cầu dao:** file chứa `DROP`, `TRUNCATE` hay `DELETE FROM` ở cấp cao nhất bị chặn, phải thêm `--allow-destructive` mới chạy. Câu lệnh nằm trong thân hàm `$$ ... $$` không tính — đó là định nghĩa chứ không phải lệnh chạy, và nếu chặn cả hai thì ai cũng gõ `--allow-destructive` theo phản xạ, lúc đó cầu dao hết tác dụng.
-
-## Database Group UID
-
-`public.group_uid_details` lưu 10 trường: `group_uid_code`, `batch_code`,
-`roll_code`, `warehouse`, `location`, `sku`, `qty`, `updated_by`,
-`updated_date`, `status`. Khóa chính là Group UID Code; mã lưu dạng text để giữ
-số 0 đầu. `qty` lấy từ Qty (không phải SKU Qty). Tên sản phẩm được tra qua
-`SKU_Name.product_name` bằng SKU, không lưu lại trong bảng Group UID. SKU, vị trí
-và người cập nhật có thể trống. Không ràng buộc SKU vào danh mục Active vì file
-WMS có thể chứa SKU ngoài danh mục đó.
-
-Tạo bảng một lần trên project hiện tại:
-
-```powershell
-python scripts/apply_supabase_sql.py supabase/group_uid_v1.sql
-python scripts/apply_supabase_sql.py supabase/group_uid_v2_lookup.sql
-python scripts/apply_supabase_sql.py supabase/group_uid_v3_drop_product.sql --allow-destructive
-```
-
-Kiểm tra rồi nhập file export (chỉ cần Python standard library):
+Nạp Excel bằng script (dự phòng; kiểm trước, `--apply` mới ghi, lô 500 dòng, không ghi đè bản ghi mới hơn, không xoá):
 
 ```powershell
 python scripts/import_group_uid_xlsx.py "C:\path\to\GROUP_UID_DETAIL.xlsx"
 python scripts/import_group_uid_xlsx.py "C:\path\to\GROUP_UID_DETAIL.xlsx" --apply
 ```
 
-Lệnh nhập dùng `SUPABASE_URL` và personal access token giống script nạp schema.
-Toàn bộ file được kiểm tra trước khi gửi và upsert theo lô 500 dòng để nằm trong
-giới hạn Management API; mỗi lô là một giao dịch nguyên tử. Nếu gián đoạn, các lô
-đã xong vẫn được giữ; chạy lại cùng file để hoàn tất mà không tạo dòng trùng.
-Mã trùng trong file, số lượng âm/không hợp lệ hoặc ngày thiếu/sai sẽ bị từ chối.
-File cũ không ghi đè bản ghi có Updated Date mới hơn; mã không có trong file
-không bị xóa. Ngày không có múi giờ được hiểu là UTC+07:00. Updated By và
-Updated Date giữ thông tin WMS, không tự đổi thành người/giờ nhập Supabase.
-Status giữ nguyên văn bản WMS để tiếp nhận trạng thái mới.
+### Đồng bộ tự động
 
-Bảng bật RLS; chưa mở quyền đọc/ghi cho `anon` hoặc `authenticated`.
-Quản trị truy cập bằng SQL Editor/Management API hoặc backend `service_role`.
-Không lưu file dữ liệu thật vào Git.
+Extension chạy nền trên máy đã đăng nhập Admin (trang Options): Group UID và SKU gia tăng mỗi 30 phút trong giờ làm, Toàn bộ một lần mỗi ngày trong khung 07:30–11:00; Đối chiếu ADJ và Rủi ro lưu trữ mỗi 2 giờ 07:00–19:30. Mỗi loại có lease 15 phút; lượt vượt ngưỡng bị giữ chờ Admin; tự động ngừng quá 70 phút thì Extension và màn Admin cảnh báo (ngừng buổi tối do tắt máy là bình thường).
 
-Màn `#group-uid` tự gọi RPC `group_uid_lookup` khi thêm mã hoặc import Excel,
-chuyển UID đủ tên sản phẩm sang Sẵn sàng in. Tên lấy từ `SKU_Name`;
-Batch Code → Lot, Roll Code → Roll. Mỗi UID vẫn in
-một tem, không lấy Qty tồn kho làm số bản in. Thiếu tên/chưa có mã/lỗi mạng thì
-chuyển về chờ gán thủ công; SKU, lot và roll đã tra được vẫn giữ khi bổ sung tên.
+## Agent máy trạm
 
-RPC được định nghĩa trong `supabase/group_uid_v2_lookup.sql`, chỉ trả thông tin
-tem theo danh sách tối đa 100 mã chính xác, không trả người cập nhật hoặc vị trí kho.
-Migration v2 đã triển khai sau khi chủ ứng dụng xác nhận quyền tra cứu thông tin
-tem cho người không đăng nhập (`anon`). Bảng vẫn không mở quyền đọc/ghi trực tiếp.
-Migration v3 xóa cột `product` và sửa RPC để chỉ dùng tên từ `SKU_Name`.
-Các UID có SKU chưa có tên trong `SKU_Name` sẽ chờ gán tên thủ công.
-Đã kiểm tra frontend với RPC thật: UID có dữ liệu tự chuyển sang Sẵn sàng in,
-đủ SKU, tên sản phẩm, lot và roll. Frontend báo lỗi và cho gán tay nếu RPC không truy cập được.
+Agent Node trong `workstation-agent/` chạy trên máy trạm `may-kho-01`: nhận lệnh từ `print_jobs` theo khả năng (`sku:v1`, `sku:v2`, `sku:v3`, `group_uid:v1`, `location:v1`, `location:name-optional`), vẽ tem rồi gửi máy in TSC. Cài đặt, cấu hình và lịch sử phiên bản: `workstation-agent/README.md`.
 
-## SKU ngừng hoạt động
+Phát hành mẫu tem mới: cài agent mới lên máy trạm và in thử thật trước khi push web — agent cũ bỏ qua trường mới mà web vẫn báo "Đã gửi".
 
-Từ 11/10/2026 (`supabase/sku_inactive_v1.sql`), SKU ngừng = `SKU_Name.status <> '1'` theo Inside. Không xoá dòng; thay vào đó:
+## Chuẩn giao diện
 
-- **Ẩn khỏi tìm kiếm**: policy đọc công khai trên `SKU_Name` chỉ trả SKU đang hoạt động, nên IN TEM SKU và TÌM SKU không gợi ý SKU ngừng. Các hàm tra Group UID, Cắt UID, Combo và Admin vẫn thấy đủ.
-- **Chặn in tem SKU mới**: `print_enqueue` từ chối lệnh loại `sku` có SKU ngừng với lỗi `SKU_INACTIVE` kèm danh sách mã. Tem Group UID và tem vị trí vẫn in vì cuộn vải còn trong kho.
-- **Cắt UID**: vẫn lưu tem, thẻ "tem vừa lưu" gắn nhãn *SKU đã ngừng hoạt động* và thông báo màu cảnh báo.
-- **Mốc ngừng**: cột `inactive_since` do trigger đặt khi `status` chuyển khỏi `'1'`, xoá khi hoạt động lại.
-- **Lưu trữ**: pg_cron `sku-inactive-archive` chạy 03:45 thứ hai hằng tuần, chuyển SKU ngừng quá 180 ngày, không còn UID sống, không trong Combo đang Active, không ở phiên xả vải mở và không cắt trong 90 ngày sang bảng `sku_archive`. Kết quả ghi ở `print_maintenance`.
-
-Từ 14/10/2026 **không nạp bù** SKU đã ngừng trước khi đồng bộ (lượt toàn bộ đầu tiên đếm 2.629 SKU như vậy, chỉ 3 còn Group UID sống); Đồng bộ SKU cũng bỏ qua SKU mới đang ngừng. Nếu sau này cần, vẫn có thể nạp bù một lần: xuất Inside **Download → File** có cả SKU Inactive, nhập bằng `scripts/import_sku_xlsx.py`, rồi:
-
-```powershell
-python scripts/sync_sku_to_supabase.py --include-inactive
-```
-
-Thiếu cờ `--include-inactive`, script vẫn chỉ đẩy SKU hoạt động như trước.
-
-## Đồng bộ danh mục SKU lên Supabase
-
-Đặt `SUPABASE_URL` và `SUPABASE_SECRET_KEY` trong biến môi trường của máy chạy đồng bộ. Không lưu secret key trong source code hoặc Git.
-
-Kiểm tra dữ liệu local mà không gọi Supabase:
-
-```powershell
-python scripts/sync_sku_to_supabase.py --database data/sku.db --dry-run
-```
-
-Upsert các SKU Active lên bảng `SKU_Name`:
-
-```powershell
-python scripts/sync_sku_to_supabase.py --database data/sku.db
-```
-
-Đồng bộ chỉ thêm mới hoặc cập nhật theo khóa `sku`; script không tự xóa bản ghi trên Supabase.
-
-
-## Mã vị trí — tem QR dán kệ
-
-Mở **MÃ VỊ TRÍ** ở WH-MATERIAL (nhóm In tem) hoặc `#location`. Hai mục:
-
-1. **Thông tin tem** — nhập **Mã vị trí** (chữ hoa không dấu, số và `. _ / -`, tối đa 40 ký tự — gõ chữ
-   thường tự đổi hoa), **Tên vị trí** (tối đa 60 ký tự, không bắt buộc: trống thì tem chỉ in QR và mã),
-   **Số tem** (1–500) rồi **Thêm vào hàng đợi**. Enter ở ô mã (máy quét cầm tay) chỉ chuyển sang ô tên.
-   **Nhập file Excel** (.xlsx, đọc sheet đầu tiên theo thứ tự trong workbook):
-   - template import vị trí của WMS: mã lấy cột **Code** (công thức `Floor-Area-Aisle-Rack-Shelf-Bin`; ô
-     chưa tính thì tự ghép từ 6 cột đó), tên lấy cột **Bin Location Description** — chữ mẫu "Mô tả mã vị
-     trí" của template coi như không tên;
-   - bảng **Location / Description** (hoặc Mã vị trí / Tên vị trí; không có cột mã thì ghép Lầu-Khu vực-
-     Dãy-Kệ-Mâm-Ô).
-   Mỗi vị trí nhận số tem đang đặt ở ô Số tem. Dòng trống bỏ qua; mã trùng và dòng sai mã/tên bị bỏ, báo
-   số dòng.
-2. **Hàng đợi in** — lưu trên máy đang dùng (localStorage, tối đa 500 vị trí), còn sau khi tải lại trang.
-   Tick chọn, sửa số tem từng dòng, xoá dòng hoặc Xoá hết; **In N tem** gửi mọi dòng đã chọn. Quá 100 vị
-   trí hoặc 500 tem thì tự chia nhiều lệnh. In xong vị trí tự rời hàng đợi; in lỗi thì giữ lại, ghi lỗi
-   để in lại. Gửi lại sau lỗi mạng dùng đúng nonce cũ, không in trùng.
-
-**Không lưu danh mục vị trí trên Supabase** (03/10/2026 — người dùng hiếm khi in lại một vị trí): web gửi
-thẳng lệnh `location` (mã + tên + số tem) vào hàng đợi in như các màn khác; `print_enqueue` kiểm tra định
-dạng. Không có lịch sử vị trí (bảng `print_jobs` cũng có lúc được dọn).
-
-Tem 40 × 60 mm (giấy đang lắp, 2 tem/hàng): QR chứa đúng mã vị trí ở trên, mã Arial đậm, tên Arial
-thường. Chữ được **đo thật** để không tràn tem và không mất ký tự: agent đo tên bằng GDI+ (cùng bộ đo
-và cache với tên sản phẩm), mã đo theo bảng bề rộng Arial Bold; mã dài thì ép ngang, tên dài thì xuống
-dòng/giảm cỡ, không bao giờ cắt bớt. Web không có ô xem trước (03/10/2026). Chi tiết:
-`workstation-agent/README.md` mục 0.8.7–0.8.8.
-
-Triển khai theo đúng thứ tự:
-
-1. Áp dụng migration — `print_enqueue` nhận mã/tên trực tiếp (các loại tem khác giữ nguyên từng dòng),
-   bỏ trigger đếm tem, 6 hàm và bảng `warehouse_locations` của danh mục vị trí. **Đã chạy trên Supabase
-   03/10/2026** (bảng lúc đó còn 2 mã, người dùng đồng ý xoá); dự án mới thì chạy:
-
-   ```powershell
-   python scripts/apply_supabase_sql.py supabase/warehouse_location_v3_no_table.sql --allow-destructive
-   ```
-
-   Chạy **trước** khi đưa `index.html` lên (print_enqueue cũ chỉ in mã có trong bảng). Dự án mới chỉ cần
-   file này — `warehouse_location_v1/v2` là lịch sử bản có danh mục.
-2. Agent máy trạm **0.8.7** trở lên (capability `location:v1`); tem không tên cần **0.8.8**
-   (`location:name-optional`). Web kiểm tra capability và **không gửi** lệnh khi chưa có agent phù hợp.
-3. Cập nhật `index.html`. In thử 1–3 tem và quét QR bằng máy quét WMS.
-
-Kiểm thử không cần mạng: `node --test` trong `workstation-agent` (tem, đo chữ, lệnh in) và
-`node tests/location_browser.cjs` khi server local chạy cổng 8000 (mọi kết nối Supabase/in bị giả lập).
-
-## Cấp vải
-
-Ô **CẤP VẢI** (`#cap-vai`, nhóm Vận hành kho): nhập Packing List (.xlsx) → ghép Group UID theo SKU + Lot + Roll →
-quét UID để báo "Cấp Group UID này" và đánh dấu đã quét. Nạp schema một lần:
-`python scripts/apply_supabase_sql.py supabase/fabric_issue_v1.sql` (chỉ thêm bảng/hàm; bảng bật RLS, chỉ `service_role`,
-web đi qua RPC `fabric_issue_*`).
-
-- **Nhập (chỉ Admin)**: đăng nhập Admin bằng nút khiên ở thanh trên → tab *Đợt cấp vải* → *Nhập Packing List*. File được
-  đọc ngay trên trình duyệt (không gửi file lên server), chỉ danh sách cuộn đi lên Supabase. Bảng Packing List tìm theo tên
-  sheet "Packing" hoặc theo tiêu đề cột ROLLS NO / LOT NO / QTY; mỗi dòng `COLOR: … (SKU 9 số)` đặt SKU cho các dòng bên
-  dưới, dòng SUB TOTAL bị bỏ qua. Sheet nào có cột "Mã NPL" + "Định mức cấp phát" thì lấy số cần cấp theo SKU (chỉ hiển thị).
-- **Ghép UID** (`fabric_issue_find_uid`): chỉ UID `Available`, cùng SKU; Lot = Batch Code, Roll = Roll Code sau khi chuẩn
-  hoá (bỏ khoảng trắng, `12.0` → `12`, bỏ số 0 đầu, không phân biệt hoa/thường); không khớp thì thử Roll Code dạng
-  `<batch>-<roll>`. Dòng không ghép được ghi lý do — *Không có UID*, *UID không còn Available* (kèm trạng thái WMS),
-  *Trùng dòng*, *Nhiều UID khớp* — và không đoán bừa. Đồng bộ thêm Group UID xong thì bấm *Ghép lại*.
-- **Quét**: ai cũng quét được (khoá công khai như Xả vải), bằng máy quét cầm tay hoặc camera. Mỗi lần quét hiện pop-up giữa
-  màn hình: *Cấp Group UID này* (xanh, tự đóng sau 1,6 giây), *Đã quét trước đó* (vàng, kèm giờ và máy), *Không cấp* (đỏ: không
-  thuộc đợt, hoặc UID chưa có dữ liệu — kèm tên đợt khác nếu UID thuộc một đợt đang mở), *Đợt đã đóng*; vàng/đỏ ở lại tới khi
-  chạm, bấm Esc hoặc quét mã khác. Pop-up không chiếm con trỏ nên máy quét cầm tay bắn tiếp được. Mã quét liên tiếp xếp hàng
-  tuần tự; âm báo bật/tắt bằng nút loa.
-- **Vị trí cần đến**: tab *Vị trí* gom cuộn theo vị trí kệ (`group_uid_details.location`, sắp theo mã vị trí): mỗi vị trí hiện
-  số UID còn phải quét / tổng và số mét còn lại, bấm vào để xem từng cuộn (Roll, Lot, UID). Lọc Còn lại / Đã xong / Tất cả; cuộn
-  chưa ghép UID gom ở thẻ đỏ riêng. Tab *Danh sách cuộn* lọc Chưa quét / Đã quét / Chưa ghép; cả hai tự làm mới mỗi 20 giây để
-  thấy máy quét khác.
-- **Không cấp trùng giữa các đợt** (`supabase/fabric_issue_v2_no_double_issue.sql`): UID đã quét ở đợt khác thì quét lại ở đợt
-  này báo đỏ *Đã cấp ở đợt khác* (tên đợt, giờ, máy) và không đánh dấu thêm; muốn cấp lại thì Admin bỏ dấu ở đợt cũ. Hai máy
-  quét cùng UID ở hai đợt cùng lúc vẫn chỉ một nơi được cấp (khoá tư vấn theo UID). Danh sách/Vị trí đánh dấu sẵn cuộn đã cấp ở
-  đợt khác; nhập lại file cảnh báo số cuộn trùng đợt khác và tên đợt trùng tự thêm giờ nhập.
-- **Admin** còn có *Ghép lại*, *Đóng đợt / Mở lại*, *Xóa đợt* và bỏ dấu đã quét từng cuộn.
-- **Số mét**: tiến độ tính theo Packing List; từng cuộn hiện số mét WMS (đổi từ mm khi tên SKU kết thúc `/mm`) và "PL …"
-  khi khác Packing List.
-
-## Tìm Group UID (gộp Cấp vải + UID blocked)
-
-Từ 21/10/2026 trang chủ (nhóm Vận hành kho) chỉ còn ô **TÌM GROUP UID** thay cho hai ô CẤP VẢI và LỰA UID BLOCKED. Bấm ô → mở phần dùng
-gần nhất (lần đầu: Cấp vải); công tắc đầu màn **Cấp vải | UID blocked** đổi qua lại. Hai phần độc lập như cũ (màn, dữ liệu, quét, quyền riêng),
-đường dẫn cũ `#cap-vai`, `#uid-block` vẫn mở thẳng; thanh bên một mục "Tìm Group UID". Khối `find-uid-style` / `find-uid-script`.
-Test: `tests/find_uid_browser.cjs`.
-
-## Lựa UID blocked
-
-Ô **LỰA UID BLOCKED** (`#uid-block`, nhóm Vận hành kho): người kho bắn máy scan vào khung quét chuẩn (có camera, gõ tay);
-Group UID nằm trong danh sách blocked → thẻ đỏ **BLOCKED** + SKU, tên hàng, Lot, Roll, kho, vị trí, âm báo riêng và rung,
-ghi vào *Đã lựa*; quét lại UID đã lựa (trên bất kỳ máy nào) → thẻ vàng **ĐÃ SCAN** kèm giờ quét lần đầu và tên máy; UID ngoài danh sách → thẻ xanh ngắn.
-Tab *Còn thiếu* gom UID theo vị trí (số cuộn mỗi vị trí) để đi tìm; *Đã lựa* / *Còn thiếu* xuất Excel. Nạp schema một lần:
-`python scripts/apply_supabase_sql.py supabase/uid_block_v1.sql`.
-
-- **Lấy từ WMS (chỉ Admin, từ 21/10/2026, nguồn chính)**: tab *Danh sách* → *Lấy từ WMS* → danh sách = mọi Group UID đang
-  **Blocked** ở WH - MATERIAL - MTG và WH - MATERIAL - GARMENT trong dữ liệu đồng bộ WMS (`uid_block_import_wms`, migration
-  `supabase/uid_block_wms_v1.sql`); số liệu mới tới lượt đồng bộ Group UID gần nhất. Giữ lượt đã scan của UID còn trong danh sách.
-- **Tự cập nhật (21/10/2026, `supabase/uid_block_auto_v1.sql`)**: khi danh sách đang dùng lấy từ WMS, máy chủ tự so với dữ liệu đồng bộ
-  mỗi 30 phút (pg_cron `uid-block-refresh-wms`): UID mới Blocked → thêm vào (nhãn **Mới** 24 giờ); UID hết Blocked → bỏ khỏi Còn thiếu, hiện ở mục
-  **Hết Blocked** (trạng thái WMS hiện tại), quét trúng → thẻ **HẾT BLOCKED**; giữ 7 ngày (UID đã quét thì giữ luôn trong Đã lựa). Danh sách Excel không tự đổi.
-- **Giao diện (21/10/2026)**: khung quét luôn ở đầu, dưới là dải tiến độ gọn (Đã lựa x/y · Còn thiếu), rồi tab **Còn thiếu** (vị trí còn cuộn chưa quét,
-  đóng sẵn — chạm để mở, vị trí đủ không hiện, ô lọc vị trí / UID / SKU) · **Đã lựa** · **Danh sách** (Admin).
-- **Nạp danh sách từ Excel (chỉ Admin, cách cũ)**: tab *Danh sách* → *Nạp Excel*. Tệp đọc trên trình duyệt (mọi sheet), lấy dòng có cột
-  `Status` = Blocked (không phân biệt hoa thường; không có cột Status → mọi dòng có Group UID, xem trước báo vàng), bỏ UID trùng,
-  áp mọi kho. Tên cột theo bản xuất WMS (Group UID Code, Batch Code, Roll Code, Warehouse, Location, SKU, Product Name, Status),
-  dòng tiêu đề không cần ở dòng 1; ô Group UID không đúng 16 số được đếm là "mã lỗi" (báo đỏ).
-  Xem trước số UID theo kho + *Đối chiếu WMS* (đang đối chiếu thì khoá *Lưu*, lỗi thì hỏi lại trước khi lưu) (`uid_block_compare`: trạng thái hiện tại trong `group_uid_details`, UID đang
-  Blocked trên WMS mà tệp không có) → *Lưu*. Danh sách mới thay danh sách đang dùng; Supabase giữ 5 lần nạp gần nhất.
-- **Quét (máy đã kích hoạt, như Cắt / Cấp vải)**: danh sách tải về máy một lần (IndexedDB `print-sku-cache`, khoá `uid_block`),
-  hỏi lại phiên bản khi vào màn và 20 giây/lần. Lượt quét lưu **Supabase dùng chung** (`uid_block_scan`): nhiều người quét
-  chung một danh sách, máy chờ máy chủ tối đa 2 giây rồi báo (máy khác đã scan → ĐÃ SCAN). Máy chưa kích hoạt → thẻ đỏ
-  "chưa ghi nhận". Mất mạng → vẫn báo theo bản trên máy, lượt quét vào hàng chờ (`localStorage` `uid-block-cho-gui`) và tự gửi
-  khi có mạng. Nạp danh sách mới giữ lượt quét của UID còn trong danh sách mới.
-- Test: `tests/uid_block_browser.cjs` (390 + 1280, dữ liệu giả `1028260000000xxx`), `tests/uid_block_sql.cjs`.
-
-## Cắt Group UID
-
-Mở **CẮT GROUP UID** ở WH-MATERIAL hoặc `#cut-group-uid`. Người dùng quét một
-UID, hệ thống tra `group_uid_details` và `SKU_Name`, rồi lưu snapshot SKU, UID,
-Lot, Roll và tên sản phẩm vào bảng `cut_group_uids` (trạng thái in `pending`). Màn có 4 tab:
-**1 · Quét Group UID**, **2 · Tra cứu UID đã cắt**, **3 · Tem chờ in**, **4 · Đối chiếu**. Lệnh in dùng lại đúng loại
-`group_uid` (mẫu v1) của IN TEM GROUP UID nên không cần agent riêng; agent 0.10.0 in Lot / Roll thành khối chữ đậm "Số lô" / "Số cuộn" (mỗi giá trị một dòng, tự thu nhỏ khi dài; trước 0.10.0 là một/hai hàng LOT/ROLL ở đáy tem), và web cắt phần Roll lặp lại Lot (`197/9-004` → `004`) trước khi gửi.
-
-Ô quét `#cut-code` mặc định ẩn bàn phím ảo (`inputmode="none"`); nút bàn phím **chỉ còn icon nhỏ** cùng hàng bên phải ô quét
-(`#cut-keyboard`, `aria-label`/`title` "Hiện bàn phím" / "Ẩn bàn phím", nhớ theo từng máy ở khoá `cut-ban-phim`). Sau mỗi lần lưu tem, app chỉ
-focus lại ô quét khi ô chưa giữ focus (Chrome Android coi mỗi lần `focus()` thành công là yêu cầu hiện bàn phím, kể cả với ô đang focus) và
-khi đang ở chế độ ẩn thì gọi `navigator.virtualKeyboard.hide()` nếu trình duyệt có.
-
-Áp dụng backend theo thứ tự, mỗi file một lần (database đang chạy đã áp dụng đến v9). Cờ `--allow-destructive` chỉ
-cần ở file có `drop function` (tạo lại hàm tra cứu với chữ ký mới; tham số mới đều có mặc định nên web cũ vẫn gọi được):
-
-| File (`supabase/cut_group_uid_…`) | Nội dung | Cờ |
-| --- | --- | --- |
-| `v1.sql` | Bảng `cut_group_uids`; RPC quét, danh sách, tra cứu, đánh dấu in | |
-| `v2_lock_delete.sql` | Khóa đường xóa `cut_group_uid_remove` khỏi web | |
-| `v3_search_lot_filter.sql` | Lọc theo Lot ở Tra cứu | `--allow-destructive` |
-| `v4_allow_reprint.sql` | Cho in lại UID đã `printed` | |
-| `v4_search_date_filter.sql` | Lọc theo ngày cắt | `--allow-destructive` |
-| `v5_adj_export.sql` | Tick **Đã xuất ADJ** + lọc ADJ | `--allow-destructive` |
-| `v6_wms_reconcile.sql` | Đối chiếu với lịch sử WMS | |
-| `v7_admin_delete.sql` | Admin xóa UID + bảng nhật ký | |
-| `v8_adj_resolved.sql` | **Đã xử lý** cho UID lệch | |
-| `v9_mark_result_missing_job.sql` | UID `queued` mà lệnh in đã bị dọn thì chuyển `failed` được | |
-| `po_v1.sql` (21/10/2026) | Lọc theo **PO** ở Tra cứu + Đối chiếu ADJ, cột PO; số PO đồng bộ từ WMS (Extension 0.10.4, Edge `group-uid-sync`) | `--allow-destructive` |
-
-```powershell
-python scripts/apply_supabase_sql.py supabase/cut_group_uid_v1.sql
-```
-
-**Trạng thái in** (`print_status`: `pending` chờ in, `queued` đã gửi agent, `printed`, `failed`) nằm trên Supabase nên
-không mất khi tải lại trang hoặc đổi thiết bị. Riêng **tab 3 · Tem chờ in chỉ là rổ tạm trong trình duyệt**: nó chứa
-các UID bạn chọn ở tab Tra cứu rồi bấm **Đưa vào hàng chờ in**; tải lại trang thì rổ trống (UID vẫn giữ trạng thái cũ,
-chọn lại ở Tra cứu). UID đang `queued` thì sau khi tải lại app vẫn tự theo dõi lệnh in cho tới khi xong. Mỗi lệnh tối
-đa 100 tem (mỗi UID một tem); chọn được cả UID `printed` để in lại, không chọn được UID `queued`; gửi lại sau lỗi mạng
-dùng đúng nonce cũ nên không in trùng. Lệnh in cũ bị dọn khỏi hàng đợi sau vài ngày: UID còn `queued` mà lệnh đã mất
-thì web đánh dấu `failed` để in lại được (migration v9); không bao giờ tự đánh dấu `printed` khi không còn lệnh để chứng minh.
-
-Phần tra cứu lọc theo SKU, Lot, **PO** (khớp đúng số PO; từ 21/10/2026) và **ngày cắt** (từ ngày → đến ngày, giờ Việt Nam; để
-trống là không lọc) và xuất `.xlsx` có thiết lập giấy A4 ngang, gồm SKU, UID, Lot, Roll, PO và
-Tên SP. PO chỉ có ở UID nhận hàng theo PO trên WMS (nguồn PURCHASE_ORDER); UID từ kiểm kê, phiếu IT hoặc tạo tay để trống "—". Bộ lọc ngày cần hàm tra cứu bản v4 (đã áp dụng 30/09/2026):
-
-```powershell
-python scripts/apply_supabase_sql.py supabase/cut_group_uid_v4_search_date_filter.sql --allow-destructive
-```
-
-`--allow-destructive` chỉ vì file `drop` chữ ký hàm v3 để tạo lại với 2 tham số ngày; hai
-tham số có mặc định nên trang web cũ vẫn gọi được hàm mới.
-
-**Đã xuất ADJ.** Bấm UID ở bảng Tra cứu để mở popup barcode, quét mã trên màn hình vào phiếu ADJ
-trên WMS rồi tick **Đã xuất ADJ xong** — cột `cut_group_uids.adj_exported_at` ghi thời điểm tick
-(bỏ tick phải xác nhận, trả về trống). Bảng có cột **ADJ** và bộ lọc *ADJ: Tất cả / Chưa xuất ADJ /
-Đã xuất ADJ*. Cần migration v5 (thêm cột, RPC `cut_group_uid_mark_adj`, tham số `p_adj` cho hàm
-tra cứu); chạy migration **trước** khi cập nhật `index.html`:
-
-```powershell
-python scripts/apply_supabase_sql.py supabase/cut_group_uid_v5_adj_export.sql --allow-destructive
-```
-
-`--allow-destructive` chỉ vì file `drop` chữ ký hàm tra cứu v4 để tạo lại với `p_adj` (có mặc định,
-trang web cũ vẫn gọi được). Web chỉ gửi `p_adj` khi có chọn lọc ADJ.
-
-**Đối chiếu ADJ với lịch sử WMS.** Tab **4 · Đối chiếu** so UID đã cắt với lịch sử Group UID của WMS trong
-phạm vi `warehouse_id=1177` (**WH - MATERIAL - MTG**). Extension (đọc lịch sử từ bản 0.5.0; hiện 0.10.2) dùng phiên WMS Admin đang mở để đọc
-trực tiếp API theo trang 500 dòng; lần sau đọc chồng lại 30 phút và nhận diện lệnh ADJ bằng Note
-`Cut ... out of group ...` (WMS có thể hiển thị Action là `N/A`). Bấm **Đọc WMS** để nạp tự động. Nút
-**Nạp ZIP/XLSX** giữ vai trò đối chiếu toàn bộ/dự phòng; cả hai cách đều cần phiên Supabase Admin. Dữ liệu nạp chồng
-không nhân đôi. Dashboard chia UID thành: *Khớp*, *Quên tick* (đã ADJ nhưng chưa tick), *Sai số lượng*
-(so với chuẩn 1 m như cột số lượng ở Tra cứu), *Tick, WMS không có*, *Cut nhiều lần*, *Chưa ADJ*, *Chờ dữ liệu WMS*
-— bấm thẻ để lọc, lọc thêm theo SKU / Lot / ngày cắt, xuất Excel các dòng đang hiện. Nút **Tick giúp** tick hàng
-loạt các dòng *Quên tick* theo giờ Cut trên WMS. Nhóm *Cắt mẫu QC* là lệnh Cut thứ hai trở đi trên UID đã có kết quả QC Passed/Failed
-(`qcStatus` từ Group UID Detail): chỉ để xem, không phải lệch nên không tính vào số cảnh báo và không có ô chọn. Cần migration v6 (chỉ thêm bảng và hàm, không `drop`; chạy
-**trước** khi cập nhật `index.html`):
-
-```powershell
-python scripts/apply_supabase_sql.py supabase/cut_group_uid_v6_wms_reconcile.sql
-```
-
-**Đã xử lý.** Kiểm tra xong một UID lệch thì tick nó trong popup nhóm lệch rồi bấm **Đã xử lý**: UID chuyển sang
-thẻ *Đã xử lý* (lưu trên Supabase, không còn tính là lệch). Dấu này gắn với đúng kiểu lệch lúc tick — dữ liệu WMS
-đổi làm UID lệch kiểu khác thì UID hiện lại ở nhóm lệch mới. **Bỏ xử lý** ở thẻ Đã xử lý để trả lại. Migration v8
-(đã áp dụng 10/10/2026; chỉ thêm cột và hàm):
-
-```powershell
-python scripts/apply_supabase_sql.py supabase/cut_group_uid_v8_adj_resolved.sql
-```
-
-Kiểm thử không cần mạng (file zip/xlsx tự dựng trong test, mọi kết nối Supabase được giả lập): với server local cổng 8000,
-`node tests/cut_adj_reconcile_browser.cjs` (đặt `PLAYWRIGHT_MODULE` nếu Playwright không nằm trong `node_modules`).
-
-**Admin xóa UID đã cắt.** Icon khiên ở góc phải thanh tiêu đề mở hộp đăng nhập Quản trị dùng chung; là Admin thì
-tab Tra cứu có nút **Xóa N UID** cho các dòng đang tick (không xóa dòng đang gửi máy in). Bấm lại icon để thoát Admin
-mà vẫn ở màn Cắt UID. RPC `cut_group_uid_admin_delete` chỉ cấp cho tài khoản đã đăng nhập và tự kiểm vai trò admin;
-mỗi dòng bị xóa được chép vào bảng `cut_group_uid_deletions` (ai xóa, lúc nào). Migration v7 đã áp dụng 08/10/2026:
-
-```powershell
-python scripts/apply_supabase_sql.py supabase/cut_group_uid_v7_admin_delete.sql
-```
-
-### Tab 1 · Quét: công tắc Cắt tự do | Theo PO
-
-Đầu thẻ **Quét Group UID** có công tắc **Cắt tự do | Theo PO**; hai chế độ dùng chung MỘT ô quét, camera, bàn phím ảo khóa và bộ giữ con trỏ
-(nhớ chế độ theo máy, mặc định Cắt tự do):
-
-- **Cắt tự do**: luồng cũ nguyên vẹn (quét → *Lưu tem* → thẻ vừa lưu → Tra cứu).
-- **Theo PO** (`#cs-scan[data-mode="po"]`): chọn phiên PO, quét UID để báo *Cắt* / *QC* / *Chuyển kho lưu trữ*, nút *Chuyển sang Cắt UID*
-  đẩy UID cắt đã quét sang luồng Cắt. Nút lưu đổi nhãn thành *Quét*; thẻ vừa lưu và link Tra cứu của luồng cũ ẩn. Ở chế độ này UID ngoài phiên
-  báo đỏ, KHÔNG tự rơi sang Cắt tự do (tránh cắt nhầm do lẫn hai luồng). Lượt submit của ô quét được chặn ở pha capture nên luồng cũ không chạy nhầm.
-
-Nạp schema một lần: `python scripts/apply_supabase_sql.py supabase/cut_sample_v1.sql` (chỉ thêm bảng/hàm; bảng bật RLS, chỉ `service_role`, web đi
-qua RPC `cut_sample_*`). App không ghi gì lên WMS; việc chuyển kho thật vẫn làm trên WMS.
-
-- **Quản lý phiên (chỉ Admin)**: đăng nhập Admin bằng nút khiên ở thanh trên → icon *bánh răng* cạnh ô chọn PO mở hộp thoại **Phiên theo PO**:
-  nhập số PO → *Đọc WMS* (cần Extension 0.9.2: `GET_PO_GROUP_UID_PAGE`, `GET_PO_ASN_PAGE`) → bản xem trước → *Tạo phiên* / *Thay phiên*;
-  *Mở để quét* chọn phiên, *Xóa phiên*. UID đã mang SKU Normal, Lot = Batch Code, Roll và số lượng (g hoặc mm theo đơn vị SKU), nên không cần đổi
-  Combo. App đọc hết các trang rồi đối chiếu số UID duy nhất với tổng WMS báo; lệch thì dừng và báo đọc lại. Loại khỏi phiên (đếm riêng ở bản xem
-  trước): UID chưa nhận (không SKU hoặc số lượng ≤ 0), UID nhiều SKU, UID `Canceled`/`Closed`. ASN chưa `Received` báo vàng. Phiên tối đa 5.000 UID.
-- **Quy tắc chia mẫu** (`CUT_SAMPLE_CORE`, `tests/cut_sample_core.cjs`): nhóm theo SKU Normal + Lot. **Cắt + QC phải đạt tối thiểu
-  30% số cây của mỗi lot** (làm tròn lên: `ceil(30% × n)`), mỗi bên ít nhất 1 cây khi lot có từ 2 cây. Tổng mẫu chia cho cắt : QC theo
-  tỷ lệ 20 : 10 (làm tròn gần nhất, 0,5 lên): **cắt** ưu tiên khối lượng/số mét **nhỏ nhất**, **QC** ưu tiên **lớn nhất**, hai nhóm không
-  trùng nhau (cắt chọn trước). Ví dụ: lot 10 cây = 2 cắt + 1 QC; lot 7 cây = 3 mẫu (2 + 1) chứ không phải 2; lot 12 cây = 4 mẫu (3 + 1);
-  lot 1 cây chỉ cắt (QC báo thiếu, ⚠ ở bản xem trước). Còn lại = chuyển kho lưu trữ. Hòa nhau thì theo mã UID tăng dần. Tính bằng số
-  nguyên. Bản xem trước hiện % mẫu từng lot và tổng cả phiên; hàm `cut_sample_create` cũng tự từ chối phiên có lot dưới 30%
-  (`SAMPLE_BELOW_MIN`), không tin riêng trình duyệt. PO thật 323 UID / 51 lot (2–8 cây/lot) ra 131 mẫu (cắt 80 + QC 51 = 40,6%).
-- **Phiên**: một phiên = một PO, lưu trên Supabase (`cut_sample_sessions` / `cut_sample_items`) để nhiều máy cùng quét và tải lại
-  không mất. Đọc lại cùng PO = *Thay phiên*, giữ dấu quét của UID còn cùng nhóm; một UID chỉ thuộc một phiên. Admin xóa phiên và
-  bỏ dấu quét từng UID (UID đã đẩy sang Cắt UID thì không bỏ được).
-- **Quét**: ai cũng quét được, bằng máy quét cầm tay (khóa bàn phím ảo, nút bàn phím để gõ tay) hoặc camera. Quét trúng thì tự đánh dấu đã quét
-  và hiện pop-up giữa màn hình (dải màu đặc trên đầu thẻ theo loại, 16/10/2026): *Cắt Group UID này* (xanh lá), *Chuyển QC test* (xanh dương), *Chuyển kho lưu trữ* (xám) — tự đóng sau 1,6–2,4 giây;
-  *Đã quét UID này* (vàng), *UID không thuộc phiên* / *thuộc phiên PO khác* (đỏ) ở lại tới khi chạm, bấm Esc hoặc quét mã khác. Mã quét liên tiếp
-  xếp hàng tuần tự; âm báo bật/tắt bằng nút loa. Mỗi SKU có hai thanh tiến độ (cắt, QC) và dấu *Đủ mẫu* khi cả hai đủ. Các chip *Cắt / QC /
-  Lưu trữ / n UID* mở hộp thoại **Danh sách Group UID** (lọc, tìm; Admin bỏ dấu quét từng UID).
-- **Chuyển sang Cắt UID** (`cut_sample_confirm`): nút đẩy các UID **cắt** đã quét vào `cut_group_uids` (trạng thái `pending`) từ dữ
-  liệu phiên, tên sản phẩm lấy ở `SKU_Name`; từ đó Tra cứu, in tem, xuất ADJ chạy như UID quét ở chế độ Cắt tự do (nút *Xem ở Tra cứu* nhảy sang
-  tab 2). UID đã có ở Cắt UID chỉ được đánh dấu đã đẩy; UID chưa có tên trong `SKU_Name` không đẩy (báo lại, đẩy sau khi bổ sung). Bấm
-  nhiều lần không tạo trùng.
-
-## Quét mã ở PRINT SKU
-
-Nút camera cạnh ô **Mã SKU** mở lớp quét toàn màn hình `window.PrintSkuScanUI` (script
-`print-sku-scan-ui` trong `index.html`; component React cũ trong bundle chỉ còn là vỏ gọi nó):
-khung 4 góc, đèn pin nếu máy hỗ trợ, 1×/2×/3×, "Gõ tay"; nút Back của điện thoại đóng lớp
-quét. Chỉ đọc mã nằm trong khung (tem có nhiều mã không bị đọc nhầm). Đọc được mã thì tra
-`SKU_Name` trước: đúng SKU → khung xanh + bíp + rung rồi điền vào ô (hộp gợi ý Combo vẫn chạy như
-cũ); không có trong danh mục → giữ camera, thẻ chỉ có tiêu đề + mã + 2 nút icon "Dùng mã này" / "Quét tiếp".
-
-**Đợt 4 (11/10/2026, camera):** không có câu hướng dẫn khi quét (khung ngắm tự nói lên việc cần làm; dòng trạng thái chỉ hiện khi
-đang mở camera / kiểm tra / đúng mã). Nút gõ tay chỉ ghi "Gõ tay" kèm icon bàn phím (tên đầy đủ ở `aria-label`). Lỗi camera hiện thẻ
-icon camera tắt + tên lỗi ngắn và luôn có **Gõ tay**: "Camera đang bị chặn" (kèm icon ổ khoá chỉ chỗ mở quyền), "Camera đang bận",
-"Không nạp được bộ đọc mã" có thêm **Thử lại** — mở lại camera ngay trong lớp quét, không phải đóng rồi mở; "Không có camera",
-"Cần HTTPS để mở camera" thì không. Điện thoại xoay ngang: khung ngắm bên trái, nút + thẻ thành cột bên phải. Đóng, ẩn tab (chuyển
-app) hay nút Back đều tắt camera (`wms-camera-lifecycle`). TÌM SKU cũng bỏ câu "Đưa tem vào khung". Test: `tests/scanner_states_browser.cjs`.
-
-Bộ đọc dùng chung `window.PrintSkuScanner.Jp()` → `doc(video, vung?)` (cả PRINT SKU, Xả vải, TÌM SKU):
-`vung` là `{x, y, w, h}` theo tỉ lệ khung hình, nhiều mã thì lấy mã gần tâm nhất. Máy không có
-`BarcodeDetector` (iPhone/iPad, Chrome trên Windows) dùng ZXing — trước 01/10/2026 nhánh này gần như
-không đọc được QR và mã vạch ngang do lỗi đảo màu của ZXing khi đọc thẳng từ `<video>`, và không đọc
-được Code 128 toàn số (SKU, UID) mỗi khi bên trái mã vạch có điểm tối trên cùng hàng do lỗi
-`Code128Reader.findStartPattern` của ZXing 0.21.3 (đã vá ngay trong bundle).
-
-Ô Mã SKU có nút bàn phím **chỉ còn icon** (Keyboard / KeyboardOff; `aria-label` và `title` là "Hiện bàn phím" / "Ẩn bàn phím"), nằm cùng hàng bên phải ô Mã SKU (cùng cách ẩn bàn phím như Cắt UID, Sample, Xả vải) — để dùng máy
-quét cầm tay không bị bàn phím che; mặc định ẩn, nhớ theo từng máy (`print-sku-ban-phim`). Công tắc áp dụng cho cả bốn ô của form
-(Mã SKU, Tên hàng, Số lượng in lên tem, Số bản in): khi ẩn, sau lần quét focus nhảy sang ô kế tiếp cũng không bật bàn phím ảo; muốn gõ tay
-thì bấm nút icon để hiện. Bấm "Gõ tay" trong lớp quét thì bàn phím tự bật lại. Số lượng in lên tem và Số bản in luôn nằm một hàng (bộ tăng giảm
-gọn, nút −/+ vẫn 44 px; kiểm ở 320–1280 px).
-
-## Tìm SKU bằng camera
-
-Mở **TÌM SKU** ở WH-MATERIAL hoặc `#find-sku`. Ba bước, bố cục như CẮT GROUP UID / XẢ VẢI:
-
-1. **Quét nhận diện** — bật camera (toàn màn hình như ứng dụng quét: trên là Đóng · đèn pin nếu
-   máy hỗ trợ, giữa là khung 4 góc + dòng trạng thái, dưới là 1×/2×/3× và nút chụp tròn giữa
-   "Ảnh" (thư viện) · "Gõ mã"; nút Back của điện thoại đóng camera), đưa tem nhà cung cấp vào khung: máy **tự chụp** khi ảnh nét
-   và đứng yên rồi gửi Edge Function `sku-vision` (Gemini) đọc chữ; khớp mã thì camera tự đóng và
-   cuộn tới kết quả, chưa khớp thì hiện "Xem N gợi ý" và tự chụp lại,
-   tối đa 3 lần/phiên camera (mỗi lần 1 lượt AI). QR/mã vạch được đọc trực tiếp không tốn lượt
-   (bộ quét chung với XẢ VẢI). Có thể "Chụp ngay", "Chọn ảnh", hoặc gõ mã in trên tem (`N0144`,
-   `C3966 Tex 27`) — không cần AI. Bộ đối chiếu `NDS_ENGINE` (chép nguyên từ tab "Nhận diện SKU"
-   của AuditFactory) gợi ý 3 SKU từ `SKU_Name` ngay trong trình duyệt; danh mục tải một lần, lưu
-   IndexedDB. **Kiểm phiên bản (18/10/2026, `sku_catalog_changes`):** mỗi lần vào màn hỏi máy chủ một lần, chỉ nhận SKU đổi /
-   bị gỡ từ lần trước và ghép vào bản trên máy; quá 2.000 dòng đổi, số SKU sau ghép lệch máy chủ, hoặc quá 12 giờ từ lần tải toàn
-   bộ thì tải lại toàn bộ. Chưa chạy migration `snapshot_cache_v1` / mất mạng → dùng bản trên máy như cũ. Mỗi thẻ gợi ý có **% khớp** cỡ chữ lớn (xanh + dấu tích khi khớp mã,
-   vàng + cảnh báo khi chỉ khớp chữ chung) và **đơn vị** của SKU — bản Normal và Combo cùng mã hàng
-   thường ra cùng điểm, khác nhau ở đơn vị (vd `mm` và `cuộn`). Không còn mục "Vì sao gợi ý"; từ khoá
-   đã nhận, chữ AI đọc được, "Đối chiếu lại" và "Tải lại danh mục" nằm trong **popup Chi tiết xử lý**
-   (nút icon cạnh Chọn ảnh, số từ khoá ở góc).
-   **Chọn SKU Combo** thì hiện hộp gợi ý SKU Normal — cùng hộp và cùng RPC `sku_combo_lookup`
-   với PRINT SKU / PRINT UID (`window.SkuComboPicker.chooseNormal`): chọn Normal thì bước 2
-   tính theo đơn vị của Normal và ghi "Đổi từ SKU Combo … · 1 Combo = …"; "Tiếp tục với SKU
-   Combo" giữ Combo; "Hủy" ở lại bước 1.
-   **Luôn gợi ý SKU Normal (10/10/2026):** dòng Combo trong kết quả được thay bằng SKU Normal theo quan hệ Combo → Normal
-   (RPC `sku_combo_lookup`); % trên thẻ là điểm khớp tem của **chính tên Normal**, kèm dòng "Combo … · %" của tên Combo. Tên Combo
-   khớp ≥ 70% mà tên Normal khớp < 70% thì **thẻ đỏ** để kiểm tra lại (gõ đúng số SKU Combo thì không cảnh báo). Chọn thẻ này thì
-   bước 2 ghi "Đổi từ SKU Combo …" và mang tỷ lệ Combo sang Chuyển đổi đơn vị. Combo chưa có quan hệ (hoặc tra lỗi) vẫn hiện như cũ.
-   Test: `tests/find_sku_combo_normal_browser.cjs`.
-2. **Tính toán số lượng** — SKU chỉ có đơn vị chiều dài (`mm`/`m`) hiện nút mở **CHUYỂN ĐỔI
-   ĐƠN VỊ**; kết quả mm có thể đưa ngược về form để in. Người dùng vẫn được gõ số lượng trực tiếp
-   và in tem, không bị khóa vào bước quy đổi. Chỉ được tính theo Tex hoặc khối lượng cuộn nguyên;
-   nếu có cả hai thì số cân thực tế được ưu tiên và Tex dùng để đối chiếu. Đơn vị khác (`pcs`,
-   `cuộn`, `g`…) tiếp tục gõ số thẳng. Nhập số tem rồi "Thêm vào chờ in". Phần logic quy đổi nằm
-   trong `FSK_CORE` (giữa hai dấu mốc trong `index.html`).
-3. **Chờ in** — danh sách lưu trên máy đang dùng (localStorage), tick chọn rồi "In tem đã chọn":
-   gửi lệnh `sku` vào hàng đợi Supabase như PRINT SKU (tối đa 100 SKU · 500 tem/lượt), theo dõi
-   tới khi agent báo xong (tự rời danh sách) hoặc lỗi (tick lại để in lại). Gửi lại sau lỗi mạng
-   dùng cùng nonce nên không tạo lệnh trùng.
-   **Danh mục SKU trên máy dùng chung (18/10/2026, khối `sku-catalog-script`):** TÌM SKU, IN TEM SKU (gõ mã, gợi ý khi gõ, ô quét), CHUYỂN ĐỔI ĐƠN VỊ và Gán tự động ở IN TEM GROUP UID tra tên SKU ngay trên máy (trước đây mỗi mã hỏi Supabase 0,6–1,4 s). Mở một trong các màn này thì danh mục nạp nền một lần; các lần vào màn sau chỉ hỏi phiên bản và lấy phần đổi. Mã không có trên máy hoặc danh mục chưa nạp xong → hỏi máy chủ như cũ.
-   **Tên trên tem luôn theo database (migration `print_name_from_db_v1`):** mọi lệnh in SKU và Group UID — SKU có trong danh mục thì máy chủ thay tên bằng tên database, không có thì giữ tên màn gửi, SKU ngừng vẫn bị chặn; tên đã thay hiện thông báo ngắn "Tên đã cập nhật · <SKU>" và ghi vào danh mục trên máy.
-   **Chốt chặn tên (18/10/2026):** bấm in thì đọc lại tên các SKU sắp in từ `SKU_Name` (một lần gọi) và **in theo tên database**:
-   tên khác bản trên máy → sửa dòng chờ in + danh mục trên máy, báo "dùng tên mới trên máy chủ cho …"; SKU không còn trong
-   danh mục (ngừng / gỡ) → không gửi lệnh, dòng đó ghi "in lỗi: SKU không còn trong danh mục"; không đọc được (mất mạng) →
-   không gửi lệnh. Test: `tests/find_sku_print_guard_browser.cjs`.
-
-**Giao diện điện thoại (10/10/2026, khối CSS `#mobile-pro-theme`, chỉ ≤ 800 px, áp cho TÌM SKU và CHUYỂN ĐỔI ĐƠN VỊ):** font hệ thống của máy
-(Roboto/San Francisco/Segoe UI — không tải thêm gì), chữ đậm vừa (600); thanh trên có icon module; tab bước và Chỉ | Vải là nút chọn liền khối; thẻ phẳng một lớp
-(bo 14 px, không bóng, không thẻ lồng thẻ); đơn vị (mm, cuộn, gr) và nút kg|gr nằm trong khung ô nhập; gợi ý SKU dạng danh sách — % bên trái, SKU + đơn vị,
-tên 2 dòng, nút chọn tròn bên phải, chạm cả dòng là chọn; Chuyển đổi đơn vị: "Lô tiếp theo" là nút phụ, "Nhập lại" và "Copy" là nút icon. Bản máy tính không đổi.
-Đợt 1 cho các module còn lại (khối CSS `#mobile-pro-modules`, ≤ 800 px): IN TEM GROUP UID, TEM XẢ VẢI, MÃ VỊ TRÍ, CẮT GROUP UID, THEO DÕI XẢ VẢI, KIỂM TRA ĐẦU VÀO,
-GOM HÀNG MẪU, RỦI RO LƯU TRỮ dùng cùng font hệ thống, chữ đậm vừa, nhãn chữ thường, số thứ tự khối là chấm tròn 22 px, thẻ phẳng bo 14 px, ô nhập viền mảnh với
-tiêu điểm nhẹ, nút 46 px. Tab Cắt UID / Xả vải là nút chọn liền khối với nhãn ngắn (Quét · Tra cứu · Chờ in · Đối chiếu; Quét · Đang xả · Đã xả) — máy tính vẫn nhãn
-đầy đủ, có số tròn. Nút bàn phím của Xả vải là icon cạnh ô quét. IN TEM GROUP UID đánh số lại theo thứ tự trên màn: 1 Thêm · 2 Chưa gán SKU · 3 Gán SKU ·
-4 Sẵn sàng in. Dòng "Tìm thấy N …" của Tra cứu không hiện khi đang ở tab Quét. Test: `tests/mobile_modules_browser.cjs`.
-
-Đợt 2 (11/10/2026, khối CSS `#mobile-pro-home`, chỉ điện thoại): trang chủ ≤ 620 px là lưới 3 cột ô gọn (icon 40 px, tên 13 px tối đa
-2 dòng) — 14 ô vừa một màn 390 × 844 thay vì cuộn 1,5 màn; ≤ 340 px về 2 cột. IN TEM SKU ≤ 800 px theo kiểu đợt 1: số thứ tự khối chấm tròn
-22 px, tiêu đề khối 18 px, thẻ phẳng bo 14 px, ô nhập tiêu điểm nhẹ, nút Thêm vào danh sách 46 px bo 12 px (font đã chuẩn từ đợt chuẩn chữ).
-Máy tính giữ nguyên. Test: `tests/mobile_home_browser.cjs`.
-
-**Trang chủ theo mẫu (11/10/2026, khối `#home-cards` + script `home-group-count`):** đầu trang icon kho trong ô bo góc + "WH-MATERIAL"
-trên ảnh nền kệ kho (ảnh người dùng gửi, nén lại 2000×722 webp ~21 KB và nhúng data URI trong `#home-cards` — không thêm file, không tải ngoài;
-lớp tối bên trái giữ chữ trắng đủ tương phản ≥ 4:1 ở mọi bề rộng; đầu trang cao 112 px điện thoại / 148 px máy tính; từ 1200 px ảnh giữ rộng 960 px neo phải, phần trái tô màu nền ảnh mờ dần
-vào ảnh — không phóng theo bề rộng màn; màn rộng icon kho thẳng mép thẻ nhóm). Ảnh nằm ở biến `--home-hero`. Đổi ảnh: nén webp rồi thay chuỗi base64 trong `--home-hero`. Mỗi nhóm là một thẻ có thanh tiêu đề màu nhạt (icon tròn, tên nhóm, "0N chức năng" tự đếm số ô đang
-hiện — ô KÍCH HOẠT MÁY chèn/ẩn bằng JS cũng được tính). Màu riêng từng nhóm chỉ ở thanh tiêu đề: In tem xanh lá, Vận hành kho xanh dương,
-Kiểm tra cam, Quản trị tím (chữ đủ tương phản ≥ 4,5:1). Theo chuẩn: không câu mô tả, không chuông, không mũi tên ">" (chưa có chức năng
-tương ứng). Điện thoại ô 3 cột, cuộn khoảng 1,2 màn; máy tính thẻ nhóm xếp 2 cột kiểu báo (không chừa khoảng trống).
-
-**Thanh điều hướng trái (11/10/2026, khối `#app-nav-theme` + script `app-nav-script`, cuối `index.html`).** Chỉ máy tính ≥ 1024 px; điện thoại và
-máy tính bảng giữ ô trang chủ + nút quay lại. Thanh 264 px dựng từ chính các ô trang chủ (ô ẩn — vd. KÍCH HOẠT MÁY khi máy đã có khoá — thì mục ẩn;
-bấm mục = bấm ô): nhóm WH-MATERIAL › Trang chủ rồi 4 nhóm theo màu trang chủ (ô vuông màu + tên nhóm 14/700, mục con 16/400 có chấm trên đường dọc,
-mục đang mở nền trắng + vạch màu nhóm, `aria-current="page"`), thanh cuộn mảnh chỉ hiện khi rê chuột. Nút thu gọn (ô xanh, icon bảng) nằm đầu thanh
-trên của từng màn — trang chủ, module, Admin, IN TEM SKU/Cấu hình (React vẽ lại thì gắn lại); **bấm vào khoảng trống của trang** (nền, không
-phải thẻ nền trắng / có viền / có bóng, nút, ô nhập, thanh trên, lớp phủ cố định; không khi đang bôi đen chữ) cũng thu thanh — 12/10/2026;
-thu gọn là **ẩn hẳn thanh**, nội dung tràn hết bề
-rộng, nhớ trên máy (`localStorage` `wh-app-nav-collapsed`). Màn thường: nhóm Quản trị chỉ Kích hoạt máy + Quản trị (mở hộp đăng nhập nếu chưa có
-phiên). **Chế độ Quản trị** (mọi `#admin/*`): thanh chỉ còn ← Trang chủ (ô icon xanh), nhóm Quản trị 5 mục mỗi mục một ô icon 36 px + tên ngắn
-(Lệnh in, Đồng bộ SKU, Đồng bộ UID, Kiểm kê, Cấu hình — tên đầy đủ ở `aria-label`/`title`; mục đang mở ô tím đặc) và **Đăng xuất** ở chân thanh —
-thay thanh bên riêng của Admin (`.ss-side`, `#root aside` ẩn từ 1024 px). Admin báo trạng thái qua `PrintSkuAdminAccess.isAuthorized()` (sự kiện `print-sku-admin-ready` có thể bắn trước khi
-script cuối body chạy). Nút "← WH-MATERIAL" ẩn vì đã có mục Trang chủ; dưới tên module có tên nhóm viết hoa giãn chữ theo màu nhóm. Nội dung lùi
-bằng `--app-nav-w`; chỉ chuyển động khi bấm thu gọn (CSS cuối body tới sau lần vẽ đầu nên không để trượt lúc tải). Không ra giấy in.
-Test: `tests/app_nav_browser.cjs`.
-
-**Ảnh nền 4 nhóm + chuẩn thanh trên (11/10/2026, khối `#group-banners` cuối `index.html`).** 4 ảnh người dùng gửi (nén 1280 px webp
-~12–17 KB/ảnh, nhúng data URI ở biến `--grp-img-print/ops/check/admin`): In tem xanh lá (máy in tem), Vận hành kho xanh dương (xe nâng), Kiểm tra
-cam (bảng kiểm), Quản trị tím (laptop). Dùng ở thanh tiêu đề 4 thẻ nhóm trang chủ và thanh trên của mọi màn theo nhóm — module (`.uid-topbar`),
-IN TEM SKU (`#root > header`), Admin (`.ss-top`, Cấu hình `#root header.ss-command-react`). Ảnh neo phải, rộng tối đa `--gb-w` (thanh trên 760 px,
-thẻ nhóm 380 px), phần trái tô `--gb-fill` mờ dần vào ảnh, lớp tối `--gb-shade` bên trái (điện thoại giữ đậm tới 72 % bề ngang) cho chữ trắng —
-đo điểm ảnh sáng nhất dưới chữ ≥ 4,5 ở mọi màn. **Chuẩn thanh trên:** máy tính cao 80 px; chữ trắng; ô icon / nút thanh trái / nút quay lại nền trắng
-mờ; chip trạng thái nền trắng; Admin tiêu đề 18/700, ô icon 38, icon KPI 16, chữ ≥ 12 / đậm ≤ 700, bỏ dòng "WH-MATERIAL". Điện thoại giữ chiều cao
-cũ. Map nhóm ↔ màn nằm trong CSS (ID màn). Test: `tests/group_banners_browser.cjs`.
-
-**Soát Admin (12/10/2026, khối `#admin-polish`).** Thanh trên Admin gọn: ẩn ô KPI và mốc giờ của Header B (trùng các thẻ ngay bên
-dưới — script vẫn tính) → còn tên màn, dòng phụ, trạng thái kết nối/Extension, nút làm mới (Cấu hình: Kiểm tra lại + trạng thái máy in). Icon mục
-Admin ở thanh trái = icon trên thanh trên của từng màn. Tab Thiết bị: nút Tạo mã kích hoạt icon cạnh chữ, chữ trắng 14 (quy tắc `.pdm-strip span`
-từng làm chữ xám 12); bỏ câu hướng dẫn. Đồng bộ SKU / Group UID < 1200 px: tên khối trên, hàng nút dưới, không vạch ngăn lẻ. Đồng bộ Group UID chưa
-có lượt thì không hiện dấu "—" ở dòng trạng thái. Ghi chú: "Tin cũ" là trạng thái có sẵn của ô máy in (thông tin máy in đã cũ).
-
-**Soát Cấp vải (12/10/2026, khối `#cap-vai-polish`).** Dòng thông báo trống thì ẩn (trước hàng tab cách thẻ 48 px); nút camera / bàn phím
-cạnh ô Group UID có khung như Cắt Group UID; số thứ tự cách tên thẻ 8 px ở mọi bề rộng (sửa luôn Cắt Group UID, Theo dõi xả vải — máy tính
-trước dính sát); tab Danh sách trên điện thoại gọn 3 dòng mỗi cuộn (Group UID + trạng thái; SKU · Lot · Roll; số mét · vị trí), ~92 px thay ~185 px;
-máy tính giữ bảng.
-
-**Cấp vải · thẻ Quét Group UID gọn (12/10/2026, khối `#cap-vai-compact`).** Đầu thẻ: tiêu đề + nút âm báo + nút thu gọn (^). Khối đợt cấp:
-icon tem (ẩn ≤ 480 px) | chọn đợt, thanh tiến độ, "x / y cuộn" · mét | chip ✓ đã quét, 🕐 còn lại (⚠ chưa ghép khi có; chữ chỉ đọc màn hình + title).
-Hàng quét = ô Group UID liền (khối chung `#scan-field`, xem dưới). "Xem chi tiết" (`<details>`) chứa chip có chữ (+ "đã đóng") và lượt quét gần đây; ẩn khi chưa có đợt và chưa quét. Thu gọn ẩn khối đợt cấp, đầu thẻ
-hiện số đã quét / tổng. Trạng thái thu gọn và Xem chi tiết nhớ theo máy (`localStorage` `cap-vai-thu-gon`, `cap-vai-chi-tiet`). Giữ nguyên id cũ.
-
-**Ô Group UID liền (14/10/2026, khối `#scan-field`; mockup Cấp vải 12/10).** Dùng chung cho Cắt Group UID, Theo dõi xả vải, Cấp vải: `.scan-field`
-= icon quét | vạch | mã | `.scan-field__tools` (camera · bàn phím nằm trong ô, nền xanh nhạt, vạch giữa; bàn phím đang bật = nền trắng; camera ẩn thì
-ô bớt lề phải). Nút chính (Lưu tem / Bắt đầu xả vải / Quét) bên phải trên máy tính, dưới và rộng hết ≤ 620 px. Xả vải: nút bàn phím trước nằm ngoài
-form (form `display: contents`) nay vào trong ô; nút camera trước là icon khung quét nay là icon camera như hai màn kia. Chữ trong ô giữ "Group UID".
-Test `ui_standard` kiểm nút trong ô cao = ô nhập − 8 và nằm gọn trong ô; `mobile_modules` chấp nhận nút bàn phím cạnh hoặc trong ô.
-
-**Khung quét chuẩn (18/10/2026, khối `#scan-field-std` + script `scan-field-std-script`, kế hoạch `docs/plans/2026-10-18-khung-quet-chuan.md`).** Cùng khối liền (icon quét + vạch ngăn đầu ô,
-khay nền xanh nhạt trong ô gồm camera · bàn phím, ô cao 52 / 48, nút trong khay 44) áp cho `.scan-field` ở mọi màn: IN TEM GROUP UID (`#uid-code`; Gán SKU `#uid-bulk-sku`),
-CHUYỂN ĐỔI ĐƠN VỊ (`#uc-code`), LỊCH SỬ GROUP UID (`#uh-sku`, `#uh-loc` — bỏ icon hộp / ghim đầu ô, hai ô phân biệt bằng chữ gợi ý "SKU" / "Mã vị trí"). Camera chỉ hiện khi máy
-mở được camera (không thì khay chỉ còn nút bàn phím). Bàn phím ảo ẩn mặc định ở mọi ô quét (`inputmode="none"`, `aria-pressed="true"` = đang ẩn); nút bàn phím có `aria-controls` = id ô
-và `data-kb-key` = khoá `localStorage` của ô (`uid-ban-phim`, `uid-sku-ban-phim`, `uc-ban-phim`, `uh-sku-ban-phim`, `uh-loc-ban-phim`; giá trị `hien` / `an` như Cắt UID); script
-`window.PrintSkuScanField.keyboard(ô, nút, khoá)` gắn tự động cho mọi nút có `data-kb-key`. "Gõ tay" trong lớp quét bấm đúng nút này rồi trỏ về ô (CHUYỂN ĐỔI ĐƠN VỊ trước thiếu `#`
-trong `typeFocus` nên không trỏ được). Ba màn Cắt / Xả vải / Cấp vải giữ nguyên JS và khoá riêng. IN TEM SKU (`#f-sku`, bundle React) vào cùng khung chỉ bằng CSS: khay vẽ bằng `.sku-row::after`, nút camera React
-(icon camera thay khung quét) và `#f-sku-kb` nằm trong khay; bàn phím vẫn theo trạng thái chung của chuỗi ô SKU → Tên hàng → Số lượng (khoá `print-sku-ban-phim`, quyết định 03/10/2026).
-Test: `tests/scan_field_standard_browser.cjs` (9 ô × 390 / 1280 × có / không camera).
-
-**IN TEM SKU · Phiếu IT (15/10/2026, Extension 0.9.1, khối `#sku-it-style` + script `sku-it-script`).** Nút **Phiếu IT** (từ 18/10/2026 chỉ icon phiếu, tròn 40 × 40, `aria-label` + `title` "Phiếu IT") ở mép phải hàng tiêu đề thẻ 1 (từ 801 px, cần Admin như các màn đọc WMS) mở tấm `#sku-it`: nhập số phiếu IT (chuyển kho nội bộ, vd `1007261015013137`) → **Đọc phiếu** → Extension đọc phiếu trên WMS (lệnh chỉ đọc `GET_INTERNAL_TRANSFER`: `internal-transfers?internal_transfer_numbers=` tìm đúng số phiếu, rồi `transfer/internal-transfer-items/list-details?internal_transfer_id=` lấy hết các dòng một lần). Tấm hiện số phiếu · kho đi → kho đến · trạng thái · số dòng · mô tả, và từng dòng: ô tick, SKU, tên, **số lượng đúng theo phiếu** kèm đơn vị (pcs / mm / g; có phiếu không ghi đơn vị) và **số bản in** (mặc định 1, chỉnh bằng −/+ hoặc gõ, 1–200). Tên lấy theo danh mục `SKU_Name` như khi nhập tay; SKU không có trong danh mục (đã ngừng / chưa đồng bộ) gắn nhãn "Không có trong danh mục" và bỏ tick sẵn (máy chủ từ chối cả lệnh nếu có SKU ngừng). **Thêm N SKU vào danh sách** đưa thẳng vào danh sách chờ in của React qua `window.PrintSkuWorker.add` (cùng dạng nút Thêm vào danh sách: `{sku, pn, slHang = số lượng phiếu, ban = số bản}`) nên Sửa / Xoá / In tem chạy như cũ; một lệnh in tối đa `tranSku` SKU (hàng đợi trả 30): chọn nhiều hơn chỗ còn trống thì báo lỗi, không thêm. Dòng đã thêm bị bỏ khỏi tấm, dòng chưa tick giữ lại. **Chỉ Admin:** thanh trên IN TEM SKU có **khiên Admin** (`#sku-admin`, cùng kiểu các màn khác: trắng khi chưa đăng nhập, xanh có dấu tick khi là Admin, bấm khi là Admin thì hỏi thoát; hiện cả điện thoại); chưa là Admin thì bấm **Phiếu IT** không mở tấm mà mở hộp đăng nhập Admin dùng chung, đăng nhập xong tấm tự mở; hết phiên giữa chừng thì tấm đóng lại và hỏi đăng nhập. Test: `tests/sku_it_browser.cjs`, `tests/internal_transfer_core.cjs`.
-
-**KHOÁ MÁY CHO NHÓM GHI Ở XƯỞNG (17/10/2026, migration `supabase/floor_access_v1.sql`).** Quét Cắt Group UID (kể cả đánh dấu ADJ, đưa vào hàng in, kết quả in, đối chiếu ADJ), quét lấy mẫu theo PO, quét cấp vải, quét lựa UID blocked (`uid_block_scan`, từ 20/10/2026), bắt đầu/kết thúc xả vải chỉ chạy trên máy đã kích hoạt ở ô **KÍCH HOẠT MÁY** (như in tem); khoá in dùng chung không mở được cổng này. Máy chưa kích hoạt nhận `ACCESS_DENIED` và hộp Kích hoạt máy tự mở; tra cứu (danh sách, tìm kiếm, đối chiếu, Group UID, combo, kiểm kê) vẫn mở. Admin xem số phút có máy lạ gọi trong 7 ngày và lùi khẩn cấp về chế độ Ghi nhận (vẫn chạy, hiện thanh vàng "Máy chưa kích hoạt") ở **Lệnh in → Thiết bị → Khoá máy xưởng**. Migration cũng tắt hai khoá in dùng chung `print-web-main` và `legacy-public`. Thứ tự lên: chạy migration buổi tối → push web → sáng nhân viên tải lại trang. Test: `tests/floor_access_sql.cjs`, `tests/floor_access_browser.cjs`, khối khoá máy trong `cut_group_uid_browser`/`cut_sample_browser`.
-
-**TRỢ LÝ IN (17/10/2026, khối `#print-assistant-style` + section `#assistant-screen` + script `print-assistant-script`).** Ô **TRỢ LÝ IN** (icon `bot`) ở nhóm In tem mở `#assistant`: gõ hoặc nói (nút mic, `vi-VN`, một lần nghe, chỉ điền ô nhập, không tự gửi) một câu như `IT 100000001, 2 bản`. Ô chỉ hiện từ 801 px trở lên (cần Admin và tab WMS như nút Phiếu IT); trên điện thoại ô ẩn để trang chủ giữ tối đa 1,25 màn. Chỉ Admin (chưa đăng nhập: chip đỏ, ô nhập khoá, nút **Đăng nhập Admin**). Ba chip trạng thái: Admin, WMS (Chưa kiểm / Đang mở / Không có tab, cập nhật sau lần đọc phiếu), Máy in (khoá máy `tb-khoa` đã kích hoạt hay chưa). Ý định của câu nói là in tem SKU theo phiếu IT (danh sách Group UID đi luồng Packing List cấp vải, đoạn dưới); câu khác trợ lý trả lời ngắn rồi thôi. **Không bao giờ in thẳng từ câu nói.** Bộ phân tích tất định chạy trước: có từ khoá `IT`/`phiếu` kèm dãy 6–40 chữ số là đủ số phiếu (số bản nhận `N bản`/`N tem`/`xN`/`Nx`, 1–200, không nói thì 1) và đi thẳng bước đọc, không gọi Edge; chỉ câu tự do mới gọi Edge `print-assistant` (Bearer Admin, timeout 25 giây; Edge dùng Anthropic nếu có khoá, không thì Gemini `gemini-3.1-flash-lite` bằng khoá sẵn của Tìm SKU, model này 404/503 thì thử `gemini-3.8-flash` một lần), Edge lỗi thì bong bóng "Trợ lý AI tạm nghỉ; gõ: IT <số phiếu> [N bản]". Bước đọc dùng cổng `window.HasakiSkuIt` (`readSlip` → thẻ xác nhận `#pa-confirm`: số phiếu, kho đi → kho đến, bảng dòng có ô tick và số bản từng dòng, dòng không có trong danh mục bỏ tick, bộ đếm số bản chung `#pa-copies` áp cho mọi dòng đang tick, tổng tem, dòng máy in); nút **In** (`buildItems` → `enqueue`, `requestedBy` = `tro-ly:<email Admin>`) chỉ mở khi máy đã kích hoạt và có dòng tick, **Huỷ** bỏ thẻ. Trạng thái rỗng có icon bot, nhãn "Phiếu IT → tem SKU", chip mẫu điền ô nhập (`IT 123456 · 1 bản`, `· 2 bản`, **Nói**) và hàng **Gần đây** (tối đa 4 số phiếu đã in, lấy từ `localStorage["pa-recent"]`, ≤ 8, bấm là gửi `IT <số> 1 bản`). Bong bóng trợ lý có avatar bot và giờ HH:MM; lúc chờ Edge/WMS hiện chỉ báo đang nhập (3 chấm, tắt khi `prefers-reduced-motion`). Thẻ xác nhận đóng (In hoặc Huỷ) để lại dòng tóm tắt `IT <số> · kho đi → kho đến · N SKU · M tem`; sau In có thẻ kết quả "Đã gửi N tem · M lệnh", mỗi lệnh một dòng (mã 8 ký tự + chip Đang chờ / Đang in / Đã in / Lỗi cập nhật qua `PrintSkuQueue.jobStatus` mỗi 3 giây, tối đa 2 phút) với nút **In lại phiếu này** (đọc lại WMS) và **Phiếu khác**. Nút xoá hội thoại (icon eraser) chỉ hiện khi đã có lượt. Hội thoại giữ tối đa 20 lượt trong bộ nhớ trang. Test: `tests/print_assistant_browser.cjs` (Edge, `HasakiSkuIt`, Admin, SpeechRecognition giả lập).
-
-**TRỢ LÝ IN → PACKING LIST CẤP VẢI (24/10/2026, khối `assistant-pl-style` / `assistant-pl-script`, kế hoạch `docs/plans/2026-10-24-tro-ly-in-tao-pl.md`).** Trong `#assistant`, Admin dán bảng WMS, gõ, kéo thả hoặc đính kèm (nút kẹp giấy `#pa-attach`, .xlsx / .csv / .txt, nhiều tệp) danh sách Group UID (16 số bắt đầu `1028`; số phiếu IT cũng 16 số nên không bị bắt; ô câu lệnh có chữ IT/phiếu và dưới 2 UID thì dán như cũ, từ 2 UID là danh sách). Ô Excel kiểu số ≥ 10^15 và dạng `1.02826E+15` không bao giờ dùng làm UID (Excel chỉ giữ 15 chữ số) — thẻ báo số ô bị làm tròn; sheet ẩn bị bỏ. Trợ lý tra RPC `fabric_issue_lookup_uids` (Admin, ≤ 1.000 mã, lô 500) rồi dựng thẻ **Packing List cấp vải** `#pa-pl`: tên đợt (gợi ý `<đợt đang mở cùng SKU> · bổ sung`), Style, PO (khi mọi cuộn cùng PO); mỗi cuộn một hàng (bấm cả hàng để tick) với SKU · Lot · Roll · vị trí và số mét = số lượng WMS đổi theo đuôi tên SKU (`/mm` ÷ 1.000, `/cm` ÷ 100, `/m`), giữ 3 chữ số. Cuộn thiếu SKU / Lot / Roll, mã quá dài, đơn vị không đổi được sang mét hoặc số lượng 0 bị khoá tick; cuộn không Available hoặc đã có / đã cấp ở đợt khác bỏ tick mặc định (Admin tick tay được); UID chưa có trong dữ liệu đồng bộ được liệt kê. **Tạo đợt** gọi `fabric_issue_import` có sẵn, đọc lại `fabric_issue_get` so tập UID đã ghép với tập đã chọn (báo "Ghép lệch UID" nếu khác), khoá thẻ (nút thành Đã tạo) và hiện nút **Mở Cấp vải** (chọn sẵn đợt mới qua khoá `cap-vai-dot` + sự kiện `print-sku-cap-vai-plan`). Mỗi lần bấm Tạo đợt gắn mã thao tác riêng vào `sourceName` (`Trợ lý in:<uuid>`, không hiện trên giao diện); rớt mạng / quá thời gian / phản hồi không đọc được: báo "chưa rõ", khoá thẻ, chờ 20 giây rồi tìm đợt theo đúng mã đó trong `fabric_issue_list` — thấy thì coi như đã tạo, không thấy mới cho gửi lại. **Tải PL** xuất .xlsx (sheet PACKING LIST, cột SKU / COLOR / LOT NO / ROLLS NO / QTY (M) / GROUP UID / LOCATION / PO NO, dòng TOTAL) nhập lại được ở CẤP VẢI. Luồng phiếu IT và Packing List dùng chung cờ bận (đang bận thì báo, không nhận thêm; lúc bận thẻ phiếu IT khoá ô sửa). Cần migration `supabase/fabric_issue_lookup_v1.sql`. Test: `tests/assistant_pl_browser.cjs`, `tests/fabric_issue_lookup_sql.cjs`.
-
-**IN TEM SKU theo mẫu (11/10/2026, khối `#sku-queue-ui` + script `sku-queue-ui-script`).** Bundle React không có chọn/sửa/xoá nhiều tem nên
-danh sách chờ in của React (`ul.divide-y`) bị ẩn và thay bằng danh sách mới đọc lại từ nó (SKU, tên, số lượng in lên tem, số bản): mỗi dòng ô chọn
-(tem mới mặc định đã chọn), số lượng + "N bản", nút **Sửa** (đưa tem về ô nhập rồi bỏ khỏi danh sách — React tra danh mục có thể xoá tên nên điền
-lại tới khi các ô giữ nguyên 1 giây; người dùng bấm/gõ thì dừng) và **Xoá** (bấm nút Bỏ của React). Thẻ 2 có chip "N tem"; thanh đáy thêm
-Chọn tất cả + xoá tem đã chọn (hỏi lại bằng WhDialog) và tổng "N tem / Tổng M bản in". Điện thoại: nút › mở tấm kéo lên (tìm theo SKU/tên không dấu,
-lọc Tất cả / Đã chọn / Chưa chọn, In tem). **In tem vẫn in cả danh sách** như React (ô chọn dùng cho xoá nhiều). Thẻ 1 đổi tên "Nhập thông tin
-tem" (không còn icon nhãn trang trí từ 18/10/2026); ô SKU giữ gợi ý "SKU" (chuẩn không câu hướng dẫn). Test: `tests/sku_queue_browser.cjs`.
-
-**IN TEM GROUP UID + IN TEM SKU · thanh trên điện thoại (14/10/2026, khối `#uid-topbar-narrow`).** ≤ 440 px: tên màn dòng trên, trạng thái
-máy in dòng dưới trong cùng thanh, nút Admin (nếu có) bên phải (trước cùng một hàng nên 360–390 px cắt "IN TEM GROUP U…" / "IN TEM SK…").
-Trạng thái khi máy trạm in không báo về quá 45 giây hoặc không gọi được máy chủ: **"Mất kết nối máy in"** (trước "Chưa rõ máy in").
-
-**IN TEM GROUP UID · Lấy từ WMS (14/10/2026, Extension 0.8.3).** Nút **Lấy từ WMS** cạnh Nhập Excel (chỉ hiện từ 801 px: điện thoại không có Extension) mở tấm `#uid-wms`:
-đọc Group UID trạng thái **New** của WH - MATERIAL - MTG (1177) và WH - MATERIAL - GARMENT (1339) qua lệnh chỉ đọc `GET_GROUP_UID_NEW_PAGE`
-(500 dòng/trang). WMS chỉ lọc được kho, trạng thái và mốc cập nhật (`from_updated_at` + `to_updated_at`, cần đủ cả hai); **không có bộ lọc ngày tạo
-hay người tạo**, nên hai bộ lọc này chạy ở trình duyệt trên dữ liệu đã tải: UID New chưa đổi có `updated_at` = `created_at`, nên đọc từ mốc "từ ngày"
-là tập cha của khoảng ngày tạo. Bộ lọc: chip kho (không bỏ hết được), chip ngày (Hôm nay / 7 ngày / 30 ngày / Tất cả / chọn ngày) và ô người tạo
-có số đếm, và ô **Đợt tạo** (cùng phút + cùng người tạo, đúng dòng "04/08/2026 15:59 · tuanlq5@hasaki.vn" dưới mỗi UID, đợt mới nhất trước, kèm số UID; UID thường được tạo hàng loạt cho một lô cuộn; thu hẹp theo kho / ngày / người tạo, đổi bộ lọc làm đợt không còn thì tự bỏ chọn). Thu hẹp bộ lọc không gọi lại WMS; mở rộng kho hoặc khoảng ngày thì đọc lại. Chọn từng UID hoặc Chọn tất cả (cả phần chưa hiện), **Thêm N vào danh sách**
-đưa qua đúng đường nhập tay (`addGroupUids`: tra Supabase, có SKU vào Sẵn sàng in, chưa có vào Chưa gán SKU) và lấy Lot / Roll của WMS (`batch_code`,
-`roll_code`) làm gợi ý khi Supabase chưa có. UID đã có trong danh sách hiện nhãn "Đã có", khoá ô chọn. Cổng cho tấm là `window.PrintSkuUid {has, add}`.
-**Chỉ Admin được đọc từ WMS** (như Lịch sử Group UID): chưa có phiên thì bấm nút sẽ mở hộp đăng nhập Admin dùng chung, đăng nhập xong tự mở tấm; hết phiên giữa chừng thì tấm đóng lại và hỏi đăng nhập. Đây là cổng giao diện (Extension tự đọc bằng phiên WMS của máy). Thanh trên IN TEM GROUP UID có **khiên Admin** (`#uid-admin`, cùng kiểu Cắt Group UID / Lịch sử Group UID / Kiểm kê SKU / Rủi ro lưu trữ / Cấp vải: trắng khi chưa đăng nhập, nền xanh + dấu tick khi là Admin, bấm khi là Admin thì hỏi thoát); mọi màn có việc cần Admin đều dùng khiên này.
-Đo 14/10/2026: 5.590 UID New (Garment 4.213, MTG 1.377; ~2,5 MB), 7 ngày = 84. Test: `tests/group_uid_wms_picker_browser.cjs`, `tests/group_uid_new_core.cjs`.
-
-**IN TEM GROUP UID · Lấy từ WMS — chuẩn hoá giao diện (14/10/2026, khối `#uid-wms-std`, chỉ CSS, từ 801 px).** Bộ lọc kiểu Admin (Lịch sử Group UID /
-Đồng bộ), 2 hàng: ngày tạo = thanh tab xám (mục chọn nền trắng) + chip kho viền nhạt (bật = xanh nhạt); nút lọc Người tạo / Đợt tạo có icon + mũi tên
-(đang lọc = xanh nhạt) … nút tải lại cuối hàng. Mọi mục bấm cao 44 (test `group_uid_wms_picker`). Danh sách dạng bảng: đầu bảng "Chọn tất cả" xám nhạt,
-mỗi UID một dòng (mã │ kho · ngày tạo · người tạo │ Lot · Roll). 1280 × 800 thấy 6 UID (trước 2). Chức năng, id, chữ giữ nguyên.
-
-**IN TEM GROUP UID · tab Gán WMS — gán theo Packing List PO (14–15/10/2026, Extension 0.8.4).** Khung Gán SKU có ba tab: **Gán theo tick chọn**, **Gán tự động** (luồng cũ giữ nguyên: dòng SKU + số UID nhập tay, nút khoá khi vượt UID chờ gán) và **Gán WMS** (từ 801 px, cần Admin như Lấy từ WMS). Gán WMS: nhập **Mã PO** + nút **Packing List** (nhiều PO cách nhau bằng dấu phẩy / xuống dòng, tối đa 20) → Extension đọc Packing List của PO trên WMS (lệnh chỉ đọc `GET_PACKING_LIST_PAGE`, lọc `purchase_order_numbers`, 500 dòng/trang). **Mỗi dòng đã Approved là một cây vải** (kể cả số lượng 1 mã "1": PO `10012610099966` có 2 dòng = 2 cây = 2 UID) nên số UID = số dòng theo từng SKU; SKU Combo (kg) đổi sang SKU Normal bằng RPC `sku_combo_lookup` (SKU không có liên kết giữ nguyên, Combo nhiều thành phần bỏ ra và báo), các Combo cùng Normal cộng lại, tối đa 500 UID một dòng. Hiện **danh sách SKU Normal + số UID + tên**, mỗi dòng có ô tick (mặc định đã tick), chỉnh được số UID và **nút xóa SKU** (xóa được từng dòng, kể cả dòng cuối; đọc lại PO thì danh sách có lại); "Sẽ gán" chỉ tính dòng đã tick và tự cập nhật khi thêm / xóa UID chờ gán. Bấm **Gán Group UID**: thiếu UID chờ gán thì báo lỗi "Thiếu N UID chờ gán: cần X, đang chờ Y" và không gán gì; đủ thì gán UID chờ theo thứ tự (chọn UID New bằng **Lấy từ WMS** trước), dòng đã gán bị bỏ, dòng chưa tick giữ lại để gán sau. **Không gán Lot/Roll:** tem in trước khi nhận hàng, WMS gán Lot/Roll cho UID New lúc nhận. Bỏ ra và báo: dòng chưa Approved, Combo nhiều thành phần, PO chưa có Packing List. Test: `tests/group_uid_po_browser.cjs`, `tests/packing_list_core.cjs`.
-
-**IN TEM GROUP UID · số PO và ngày nhận trên tem (21/10/2026, agent 0.10.0).** Khung **Sẵn sàng in** có hai ô tùy chọn **Số PO** (`#uid-print-po`) và **Ngày nhận** (`#uid-print-date`, ô chọn ngày; dòng cạnh nhãn nhắc đúng chuỗi dd/mm/yyyy sẽ in). Tem có ô hai cột **SỐ PO | NGÀY NHẬN** dưới khối Số lô / Số cuộn / RFID; có một trong hai là vẽ cả ô, cột trống để ghi bút, không có cả hai thì không vẽ ô. PO: UID gán ở tab **Gán WMS** mang đúng số PO đã đọc (SKU nằm ở nhiều PO thì để trống, có dòng báo), ô nhập tay áp cho UID còn lại và không ghi đè PO của WMS; ngày nhận chung cho cả lệnh. PO chỉ gồm chữ, số và `. _ / -`, tối đa 20 ký tự (sai thì web dừng và báo, không cắt); hai ô khoá trong lúc gửi và được xóa khi gửi xong; sửa PO rồi gửi lại là lệnh mới (nonce theo nội dung). Chỉ agent ≥ 0.10.0 in hai trường này: **cài agent 0.10.0 lên may-kho-01 trước khi push web**, nếu không tem ra như cũ mà web vẫn báo "Đã gửi". Cảnh báo Lot/Roll trước khi in nay chỉ hỏi khi Lot hoặc Roll dài quá 20 ký tự (agent cắt). Bản vẽ: `docs/label-design/tem-group-uid-po-ngay-nhan.svg`. Màn **CẮT GROUP UID** (tab 3 Tem chờ in) có cùng hai ô Số PO + Ngày nhận, áp cho mọi tem của lệnh, cùng luật kiểm và khóa/xóa ô (kiểm dùng chung `PrintSkuQueue.poDate`); PO không tự điền theo phiên lấy mẫu vì dòng cắt chưa lưu PO. Test: `tests/group_uid_po_date_browser.cjs`, `tests/cut_group_uid_po_date_browser.cjs`, `workstation-agent/tests/group-uid-po-date-0100.test.mjs`.
-
-**Soát chuẩn 15/10/2026 (khối `#std-1510`).** Kiểm soát công trình: ô "Lệch xuất" và tiêu đề popup Xuất dùng icon tải lên (thêm `upload` vào bộ icon
-Admin, cặp với tải xuống của Nhập; trước là mũi nhọn ^); nhãn "Chưa lên kệ" trong dòng vị trí popup chi tiết dùng font chung. IN TEM GROUP UID · Gán WMS
-(> 800 px): SKU + tên từ Packing List (ô chỉ xem) hiện như chữ — hàng 1 SKU đậm + số UID + xoá, hàng 2 tên. Trang chủ điện thoại (≤ 620 px): ô lẻ cuối
-nhóm (Kiểm tra 4 ô) thành thẻ ngang hết hàng, dải tiêu đề nhóm 58 px, nhóm cách 12 px → ô cuối 1042 px (≤ 1,25 màn). Test `mobile_home`: ô vuông ≥ 88 px,
-thẻ ngang ≥ 56 px.
-
-**IN TEM SKU · Phiếu IT — chuẩn hoá (15/10/2026, khối `#sku-it-std`, chỉ CSS).** Cùng kiểu tấm "Lấy từ WMS" (> 800 px): ô số phiếu + "Đọc phiếu" cao
-như ô nhập (52, giống Mã PO / Packing List của Gán WMS); danh sách dạng bảng — đầu bảng "Chọn tất cả" xám nhạt, dòng ngăn bằng vạch, dòng chọn xanh nhạt,
-dòng ngoài danh mục vàng nhạt; bộ tăng giảm số bản 44. Chung mọi popup: `:root` đang `color-scheme: dark` (giao diện cũ) nên hộp thoại nằm ngoài các màn
-sáng (Phiếu IT, danh sách chờ in IN TEM SKU, Kích hoạt máy, đăng nhập Admin, popup Admin…) thừa hưởng tối — ô tick chưa chọn tô đen; nay
-`dialog, #admin-auth, #cut-barcode-modal` luôn `color-scheme: light`.
-
-**Soát P0 vùng bấm + focus (16/10/2026, khối `#p0-1610`, theo lộ trình UI/UX 02/10/2026).** Nút ☰ điện thoại /
-máy tính bảng 42 → 44; chip bộ lọc đang dùng của Lịch sử Group UID 32 → 44 (chuẩn chip lọc); ô tìm danh sách IN TEM GROUP UID có vòng focus 3 px.
-Nút icon trong ô nhập trên điện thoại 40 → 44 (người dùng chọn): biến chuẩn `--ui-icon-in` điện thoại 44; cụm camera · bàn phím của ô Group UID liền
-cách mép ô 2 px (ô 48) → nút 44 ở mọi khổ (test `ui_standard` kiểm 44). Sau đợt này không còn vùng bấm < 44 trên 13 màn điện thoại.
-
-**Tấm `.uid-sheet` trên máy tính (16/10/2026, khối `#sheet-center`).** Phiếu IT, Lấy từ WMS, Danh sách Group UID, danh sách chờ in IN TEM SKU: từ 801 px
-hiện giữa màn như popup Admin (bo 4 góc, cao tối đa 88vh, bỏ thanh kéo); trước dính đáy kiểu tấm kéo lên của điện thoại — màn rộng, chưa đọc phiếu thì
-thành dải thấp sát đáy. Điện thoại giữ tấm kéo lên từ đáy.
-
-**Khổ trung (16/10/2026, khối `#mid-width`).** Máy tính bảng 801–1023 px, hoặc 1024–1199 px khi thanh trái mở (vùng nội dung ~730–790 px): nhãn tab ngắn ở
-Cắt Group UID / Xả vải / Cấp vải (trước "Tra cứu UID đã cắt" xuống 2 dòng); Chuyển đổi đơn vị 1 cột (trước ô "SKU hoặc Group UID" còn ~100 px); dải 4 ô
-thông tin (`.as-strip` có đúng 4 ô: Rủi ro lưu trữ, Kiểm kê SKU, Admin…) xếp 2 × 2 (trước 3 + 1).
-
-**Phiếu IT nhìn chuyên nghiệp + icon đồng bộ (16/10/2026, khối `#sku-it-pro` + sửa nhỏ trong `sku-it-script`).** Đầu tấm có ô icon phiếu và vạch ngăn;
-thông tin phiếu thành các ô Số phiếu / Chuyển kho / Trạng thái (chip) / Số dòng / Ghi chú (trước một dòng chữ dồn cục); dòng trạng thái là thanh cảnh
-báo có icon (vàng / đỏ / xanh); đầu bảng có tên cột "SL theo phiếu" · "Số bản in" thẳng cột. Nút "Đọc phiếu" (Phiếu IT) và "Packing List" (Gán WMS)
-dùng icon đồng bộ của Admin (2 mũi tên vòng) — khi đang đọc icon xoay (trước cả đám mây xoay tròn). Số lượng giữ dạng thô (cũng là chữ in lên tem).
-
-**IN TEM GROUP UID theo mẫu (11/10/2026, khối `#uid-mockup` + sửa trong script màn).** Ô Group UID là khung quét chuẩn (từ 18/10/2026: icon quét đầu ô, camera · bàn phím trong ô; trước là icon mã vạch + camera cùng hàng), nút
-**Thêm vào danh sách** xuống hàng riêng (mọi bề rộng); Nhập Excel viền liền. Thẻ **Chưa gán SKU**: chip số + › (điện thoại), hàng Chọn tất cả +
-**Xóa đã chọn** (hỏi lại bằng WhDialog), ô tìm Group UID / Lot / Roll (chuẩn ô nhập), mỗi dòng UID + "Lot | Roll" + "Thêm: dd/mm/yyyy hh:mm" (giờ thêm
-lưu ở `addedAt` khi tra xong) + **chép** + xoá; điện thoại hiện 3 dòng đầu + "Xem tất cả". Tay kéo **⋮⋮** (12/10/2026) đổi thứ tự UID
-chờ gán — kéo bằng chuột/cảm ứng hoặc phím mũi tên trên tay kéo, có cả trong tấm kéo lên; thứ tự có tác dụng vì Gán tự động lấy UID từ đầu khung
-chờ; đang tìm / lọc "Đã gán" thì ẩn tay kéo. Tấm **Danh sách Group UID** (› hoặc Xem tất cả): tìm,
-lọc Tất cả / Chưa gán SKU / Đã gán (UID đã gán không có ô chọn, có SKU · tên), Chọn tất cả, "Đã chọn N / Tổng M Group UID", Xóa đã chọn, Xác nhận.
-Thẻ **Gán SKU** chỉ có số và tên (từ 18/10/2026 không còn icon nhãn trang trí); ô SKU và Tên sản phẩm chiếm cả hàng, ô SKU là khung quét chuẩn: quét (lớp quét SKU dùng chung) và nút ẩn/hiện bàn phím trong ô, bàn phím ẩn mặc định, nhớ ở khoá `uid-sku-ban-phim`. Test:
-`tests/group_uid_mockup_browser.cjs`.
-
-**Bố cục điện thoại (10/10/2026).** Toàn màn hình bỏ các câu hướng dẫn (thông báo sau khi đọc tem/chọn SKU, mẹo gõ mã, "Lưu trên máy này…", đuôi "kiểm tra mạng rồi bấm…"
-của các thông báo lỗi); chỉ giữ trạng thái và lỗi ngắn. Bước 1: nút Bật camera và nút Chọn ảnh (chỉ icon, vẫn có tên cho trình đọc màn hình) cùng một hàng. Bước 2: thẻ SKU gọn
-(SKU · chip đơn vị · nút Đổi), bỏ các câu giải thích đơn vị/cách nhập và thông báo "nhập số lượng và số tem"; nút **Tính mm từ cân** thay khối giải thích; **Số tem**
-cùng hàng với bộ − / +. Thanh **Thêm vào chờ in** dính đáy màn hình (điện thoại ẩn dòng tóm tắt lặp lại). Gốc lỗi cũ trên Chrome Android: khung toàn màn hình `.cut-screen`
-có `min-height:100vh`, mà 100vh của Android tính cả lúc ẩn thanh địa chỉ nên khung cao hơn vùng nhìn thấy và thanh dính đáy bị cắt — đã bỏ `min-height` đó (áp cho mọi màn
-dùng `.cut-screen`: CẮT GROUP UID, XẢ VẢI, MÃ VỊ TRÍ, TÌM SKU, CHUYỂN ĐỔI ĐƠN VỊ). Bước 3: dòng chờ in ghi "29.750.000 mm · 2 tem" (chỉ thêm trạng thái khi không phải "chờ in"),
-nút **Quét thêm tem** thay dòng "Lưu trên máy này…". Test: `tests/find_sku_mobile_browser.cjs`.
-
-## Chuyển đổi đơn vị
-
-Mở **CHUYỂN ĐỔI ĐƠN VỊ** ở WH-MATERIAL hoặc `#unit-converter`:
-
-- **Chỉ:** trừ tổng khối lượng lõi khỏi khối lượng lô; quy đổi theo `Tex / 1.000` g/m hoặc theo
-  khối lượng chỉ thật của một cuộn nguyên. Khi có số cân cuộn nguyên, kết quả cân được ưu tiên và
-  chênh lệch trên 5% so với Tex được cảnh báo. Ví dụ 10.000 g, 10 lõi × 14 g, Tex 27 cho
-  `365.185.185 mm`.
-- **Vải:** quy đổi danh nghĩa theo `GSM × khổ(cm) / 100` g/m; nếu nhập thêm mét và khối lượng một
-  cuộn nguyên thì ưu tiên định mức cân thực tế. Kết quả chỉ theo GSM có cảnh báo sai số ±5–8%.
-- Có thể nhập tay, quét/nhập SKU hoặc Group UID (ô là khung quét chuẩn: bàn phím ảo ẩn mặc định, nút camera · bàn phím trong ô, nhớ ở khoá `uc-ban-phim`). Tên hàng được đọc để tự điền Tex, quy cách cuộn,
-  khổ vải và GSM. Chỉ SKU có đơn vị chiều dài mới được đưa kết quả mm sang TÌM SKU để in, tránh
-  gắn nhầm số mm vào SKU đơn vị gram/cuộn.
-- **Giao diện gọn (21/10/2026, khối `uc-compact`).** Máy tính: đơn vị nằm trong ô (cao 52, bo 13), Cuộn thừa · Lõi 1 cuộn · Chỉ số Tex một hàng,
-  Quy cách + Cân 1 cuộn nguyên một hàng. Điện thoại: nút Tra là icon cạnh ô quét, 3 ô số một hàng, kết quả là thanh dính đáy (số mm · Cách tính · Copy),
-  nút Thông số hàng giữ nhãn kèm giá trị ("Thông số hàng · 5.000 m").
-- **Không cần SKU, Tex ở ngoài (21/10/2026).** Ô **Chỉ số Tex** nằm ngay trên màn (cạnh Số cuộn thừa / Khối lượng 1 lõi), không còn trong
-  "Thông số hàng". Có Tex thì **quy cách cuộn nguyên không bắt buộc**: nhập đủ tổng khối lượng, số cuộn, lõi, Tex là ra mm, không cần SKU
-  (quy cách chỉ để cảnh báo cuộn thừa dài hơn cuộn nguyên; tính bằng cân cuộn nguyên vẫn cần quy cách). Nhập dở → dòng "Còn thiếu: …".
-- **Quy cách cuộn nguyên suy ra từ Combo (10/10/2026).** Tên SKU Normal chỉ (`…/Tex 27- 60-3/mm`) không ghi quy cách, nhưng Combo của nó
-  (`…/cuộn 5000m`) có quan hệ `1 Combo = 5.000.000 mm`. Chọn SKU Normal chỉ thì màn hình gọi RPC `sku_combo_by_normal`
-  (`supabase/sku_combo_links_v3_by_normal.sql`; tra ngược Normal → Combo, bảng quan hệ vẫn private) và lấy `quantity` làm quy cách:
-  chỉ nhận Combo **một thành phần** (`component_count = 1`) và 500–100.000 m, gộp theo quy cách. Một quy cách thì tự điền; nhiều quy cách khác nhau thì
-  hiện chip (icon móc xích, mở tooltip "Theo Combo …") để chọn, không tự chọn hộ. Quy cách trong tên SKU (nếu có) và số người dùng gõ luôn thắng.
-  Từ TÌM SKU, chọn Combo → Normal cũng mang theo `combo.ratio` làm quy cách.
-- **Điện thoại (10/10/2026).** Kết quả mm (kèm "mét · thước đang dùng") nằm trên cùng, thanh dưới dính đáy có **Copy** và **In ở TÌM SKU**.
-  Mỗi lô chỉ nhập **tổng khối lượng**, **số cuộn thừa** và **khối lượng 1 lõi** (hai ô sau cùng một hàng, kể cả điện thoại); các thông số ít đổi (quy cách, Tex, khối lượng 1 cuộn nguyên; vải: khổ, GSM, cuộn nguyên)
-  gom thành một dòng tóm tắt ("5.000 m · Tex 27") — chạm mở popup **Thông số hàng**; "Cách tính" (mét, mm/gram, các bước) là popup mở bằng icon ⓘ.
-  Popup là `dialog.uc-sheet`: ≤ 800 px là tờ trượt dưới (modal), từ 801 px mở không-modal ngay trong trang như bố cục cũ (JS `matchMedia`). Đã bỏ các câu hướng dẫn và
-  dòng "Còn thiếu: …". Test: `tests/unit_converter_browser.cjs`.
-- Mục nhận diện có thể thu gọn và tự thu sau khi tra thành công. **Lô tiếp theo** giữ SKU/thông số
-  hàng nhưng xóa số cân của lô; **Nhập lại** xóa SKU cùng toàn bộ số liệu và mở lại mục nhận diện.
-
-Triển khai một lần:
-
-```powershell
-python scripts/apply_supabase_sql.py supabase/sku_vision_v1.sql   # bộ đếm lượt đọc tem
-python scripts/apply_supabase_sql.py supabase/print_queue_v5_realtime_wake.sql --allow-destructive   # agent 0.8.4: Realtime đánh thức (DROP chỉ là drop trigger if exists)
-python scripts/deploy_sku_vision.py                               # token cần quyền "Edge Functions: write"
-```
-
-Khoá Gemini tạo miễn phí ở Google AI Studio (nên tạo project riêng để có hạn mức riêng), người
-quản trị tự nhập ở Supabase Dashboard → Edge Functions → Secrets với tên `GEMINI_API_KEY` (không
-bao giờ nằm trong `index.html`). Tuỳ chọn: `GEMINI_MODELS` (thứ tự model thử, mặc định
-`gemini-3.1-flash-lite,gemini-3.8-flash,gemini-3.5-flash-lite` — đo 30/09/2026: bản lite đọc đúng
-2 tem thật trong ~3 giây và luôn trả được, còn 3.8-flash hay báo quá tải ở gói miễn phí; model
-lỗi/quá tải thì tự chuyển model kế tiếp), `SKU_VISION_DEVICE_DAILY` (mặc định không giới hạn theo máy từ 21/10/2026 — trước là 60 lượt/máy/ngày; đặt số dương để bật lại),
-`SKU_VISION_GLOBAL_DAILY` (mặc định 450 lượt/ngày cho cả kho — dưới hạn mức miễn phí của Gemini),
-`SKU_VISION_HEDGE_MS` (mặc định 6000: model đang chạy quá 6 giây chưa trả thì gọi thêm model kế tiếp
-song song, model nào trả trước thì dùng; lỗi tạm thời 429/404/5xx thì gọi ngay; mỗi model chờ tối đa 40 giây).
-Hết mọi model mà vẫn lỗi/treo thì trang báo "AI đang quá tải, chưa đọc được tem." — bấm 🔄 Đọc lại tem hoặc gõ mã.
-Ngày tính theo giờ Pacific vì Gemini reset hạn mức lúc nửa đêm Pacific. Hết lượt hoặc mất mạng
-thì ô "Mã trên tem" vẫn tìm được. Lưu ý: ở gói miễn phí, Google được dùng ảnh gửi lên để cải
-thiện sản phẩm.
-
-Trợ lý in (17/10/2026) cần `ANTHROPIC_API_KEY` hoặc `GEMINI_API_KEY` (dùng sẵn khoá của Tìm SKU); có cả hai thì ưu tiên Anthropic.
-Người quản trị tự nhập ở Supabase Dashboard → Edge Functions → Secrets (không bao giờ nằm trong `index.html` hay Extension; tuỳ chọn
-`ANTHROPIC_MODEL`, `GEMINI_ASSISTANT_MODEL`). Không có khoá nào thì Edge `print-assistant` trả 503 `NO_AI_KEY` và
-trang hiện "Trợ lý AI tạm nghỉ", lệnh gõ trực tiếp `IT <số phiếu> [N bản]` vẫn chạy.
-
-Kiểm thử không cần mạng:
-
-```powershell
-node tests/find_sku_engine.cjs                    # bộ đối chiếu cắt ra từ index.html
-node tests/find_sku_core.cjs                      # quy đổi cân → mm, đơn vị, tự chụp
-node tests/unit_converter_browser.cjs             # giao diện quy đổi chỉ/vải, SKU/UID, desktop/mobile
-node --test tests/sku_vision_function.mjs         # Edge Function, giả lập Deno/Supabase/Gemini
-```
+Luật giao diện (màu, chữ, icon, vùng chạm, khung quét, hộp thoại, báo lỗi) và bộ test giữ luật: `docs/chuan/GIAO_DIEN.md`. Mã web: `docs/chuan/MA_WEB.md`.

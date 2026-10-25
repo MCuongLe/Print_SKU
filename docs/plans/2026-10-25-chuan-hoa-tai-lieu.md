@@ -41,9 +41,10 @@ Thứ tự: đợt 1 → 2 → 3 → 4 → 5 (đợt 3 và 4 có thể đổi ch
 - [x] Mã `N…` trong `QUYET_DINH.md` vẫn tra trong `RULES.md` trên máy — 340/340 mã có thẻ; mọi dòng thân mục lục cũ có mặt (trừ 3 dòng sửa có chủ đích: thứ tự đọc, "đã vào git", che email).
 - [x] 17 tệp dẫn "mục lục đầu RULES.md" đổi sang `docs/QUYET_DINH.md` (AGENTS, DOI_AGENT, CONTEXT_MAP + sơ đồ svg, PROJECT_MAP, TAI_LIEU, 4 tệp chuẩn, hồ sơ co-van / trinh-sat, skill review-claude / review-codex, repomix, plans README); `scripts/codex_review.py` trích `docs/QUYET_DINH.md` trước rồi nhật ký `RULES.md` (thử: từ khoá "Packing List" ra 6 dòng, "Combo" 40 dòng; `py_compile` OK).
 
-### Đợt 4 — README theo khuôn · lead · [ ]
-- [ ] Đầu tệp: giới thiệu, mục lục, chạy / test / lên bản.
-- [ ] Module theo thứ tự thanh biên, khuôn mục module của `TAI_LIEU.md`; đoạn ≤ 600 ký tự; lịch sử thiết kế chuyển ra nhật ký.
+### Đợt 4 — README theo khuôn · lead · [x]
+- [x] Đầu tệp: giới thiệu, mục lục (21 liên kết, đều khớp tiêu đề), chạy / test / lên bản (migration, Edge + Secrets, Extension, thứ tự lên), bảng tài liệu.
+- [x] Module theo thứ tự thanh biên, khuôn mục module của `TAI_LIEU.md` (17 mục + 3 phần của TÌM GROUP UID); đoạn ≤ 600 ký tự, dòng ≤ 400; 70 tên test đều có thật; không email. README 934 → 358 dòng (115 → 28 nghìn ký tự).
+- [x] Lịch sử thiết kế: bỏ khỏi README; bản cũ đầy đủ ở git `41160e7:README.md`; số đo / quyết định đã có trong nhật ký `RULES.md` (đối chiếu mẫu 20 mục), chi tiết hành vi chỉ có ở README cũ (đọc Packing List: SUB TOTAL, Định mức cấp phát) đưa lại vào mục Cấp vải; `GIAO_DIEN.md` bỏ mục lệch README 64 px.
 
 ### Đợt 5 — Cảnh báo tự động · lead · [ ]
 - [ ] `commit_gate` cảnh báo (không chặn): dòng tài liệu > 400 ký tự; đổi id khối / Edge / migration mà không sửa PROJECT_MAP; `SECURITY DEFINER` thiếu revoke / `search_path`; commit message sai khuôn; mã `N…` trỏ không tồn tại.
@@ -56,10 +57,13 @@ Thứ tự: đợt 1 → 2 → 3 → 4 → 5 (đợt 3 và 4 có thể đổi ch
 - 25/10 Đợt 3: soát git thấy email nhân viên thật có sẵn trong `README.md`, `index.html`, `tests/group_uid_moves_browser.cjs` (ngoài mục lục) → không sửa trong đợt này, đề xuất phiên riêng.
 - 25/10 Đợt 3: `docs/QUYET_DINH.md` còn 6 dòng > 400 ký tự (chép nguyên từ mục lục) → tách ở lần sửa nội dung kế tiếp; đợt 5 `commit_gate` sẽ cảnh báo.
 
+- 25/10 Đợt 4: README cũ có email nhân viên thật (dòng Đợt tạo) → bỏ trong bản viết lại; đã nhắn phiên che email không sửa README.md để tránh xung đột.
+
 ## Lệch kế hoạch
 - 25/10 Đợt 1: thứ tự lên bản trong `docs/DOI_AGENT.md` ghi "push → Reload Extension", còn `docs/CONTEXT_MAP.md` và `AGENTS.md` cũ ghi Reload Extension trước push. `AGENTS.md` mới theo CONTEXT_MAP; DOI_AGENT nay trỏ về AGENTS. · báo người dùng 25/10.
 
 ## Nhật ký
 - 25/10 Đợt 1 xong (tài liệu thuần, không Codex theo `docs/DOI_AGENT.md`); commit + push `8ef8c69`.
 - 25/10 Đợt 2 xong; commit + push `1670369`.
-- 25/10 Đợt 3 xong; chưa commit. `RULES.md` (chỉ trên máy): 10 tham chiếu cũ kiểu "nhật ký cuối tệp" / "đợt B" đổi thành mã; sửa 2 dòng mục lục đã cũ (TÌM SKU nay lớp phủ chibi; Extension hiện hành 0.10.8).
+- 25/10 Đợt 3 xong; commit + push `41160e7`.
+- 25/10 Đợt 4 xong; chưa commit. `RULES.md` (chỉ trên máy): 10 tham chiếu cũ kiểu "nhật ký cuối tệp" / "đợt B" đổi thành mã; sửa 2 dòng mục lục đã cũ (TÌM SKU nay lớp phủ chibi; Extension hiện hành 0.10.8).

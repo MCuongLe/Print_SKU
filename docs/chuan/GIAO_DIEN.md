@@ -1,7 +1,7 @@
 # Chuẩn giao diện (25/10/2026)
 
 Áp cho: mọi màn trong `index.html`, kể cả CSS đè lên bundle React. Đọc khi: làm màn mới, sửa giao diện, chụp ảnh review.
-Gom từ `docs/QUYET_DINH.md` chủ đề 2, các mục "Chuẩn …" của `README.md`, `docs/DOI_AGENT.md` và các test chuẩn; không có luật mới. Luật nền (tiếng Việt, không CDN, sửa nhỏ nhất): `AGENTS.md`.
+Gom từ `docs/QUYET_DINH.md` chủ đề 2, các mục "Chuẩn …" của `README.md` cũ (bản `41160e7`), `docs/DOI_AGENT.md` và các test chuẩn; không có luật mới. Luật nền (tiếng Việt, không CDN, sửa nhỏ nhất): `AGENTS.md`.
 
 ## Nguyên tắc
 
@@ -20,7 +20,7 @@ Gom từ `docs/QUYET_DINH.md` chủ đề 2, các mục "Chuẩn …" của `REA
 
 ## Kích thước, vùng chạm, icon
 
-- Khối `#ui-standard` (`--ui-*`): thẻ bo 22 / 14; ô nhập và nút chính cao 52 / 48; nút icon cạnh ô 52 / 48, trong ô 44; điều khiển gọn cao 44, chữ 14/600. CSS mới chỉ dùng `--ui-*`. Giữ bởi: `ui_standard_browser`. Nguồn: (11/10 · N0514; README "Chuẩn giao diện chung")
+- Khối `#ui-standard` (`--ui-*`): thẻ bo 22 / 14; ô nhập và nút chính cao 52 / 48; nút icon cạnh ô 52 / 48, trong ô 44; điều khiển gọn cao 44, chữ 14/600. CSS mới chỉ dùng `--ui-*`. Giữ bởi: `ui_standard_browser`. Nguồn: (11/10 · N0514; README cũ "Chuẩn giao diện chung")
 - Mọi vùng bấm ≥ 44 px trên điện thoại (`--target-min`, thêm `::after` khi cần); chữ ≥ 12 px; ô nhập chữ 16 px trên điện thoại. Giữ bởi: `touch_target_browser`, `small_targets_browser`. Nguồn: (11–23/10 · N0806, N1137, N1172, N0085)
 - Icon nét 2, `currentColor`, chỉ cỡ 16 / 20 / 24 / 32 (`#icon-standard`); không dùng ký tự làm icon (→ ← ×); nút chỉ có icon luôn có `aria-label` / `title`; nút −/+ và `.act-icon` dùng mask `::before`; một chức năng lặp ở nhiều màn dùng cùng icon. Giữ bởi: `icon_standard_browser`. Nguồn: (26/09, 11/10 · N0398, N0499, N0710)
 - Ô tick một kiểu (`#tick-standard`): vuông 22 px (≤ 800 px: 24), tick #005F41, viền #6f8f83; ô tick không bọc label có vùng chạm 44 bằng `::after`. Giữ bởi: `tick_standard_browser`. Nguồn: (22–23/10 · N1126, N1172)
@@ -48,7 +48,7 @@ Gom từ `docs/QUYET_DINH.md` chủ đề 2, các mục "Chuẩn …" của `REA
 - Âm báo quét chung `PrintSkuScanCue.play(tone)`; tắt âm vẫn rung. Camera chung `PrintSkuScanUI`, lỗi có Thử lại trong cùng lớp. Nguồn: (01–23/10 · N1168, N0412, N0417, N0063, N0507)
 - Nút In: trạng thái `data-print-state` idle / working / failed / disabled, vạch load tới khi lệnh xong, lỗi → "Thử lại" dùng lại nonce; mọi lệnh qua `PrintSkuQueue.enqueue` hiện lớp phủ chibi chung (tick 700 ms rồi đóng). Nguồn: (03/10, 25/10 · N0079, N1206)
 - Không đặt `min-height: 100vh` cho `.cut-screen` (Chrome Android cắt thanh đáy). Nguồn: (10/10 · N0030)
-- Chuyển động tôn trọng `prefers-reduced-motion`. Nguồn: (03/10, 25/10 · README "Nút In tem"; N1204)
+- Chuyển động tôn trọng `prefers-reduced-motion`. Nguồn: (03/10, 25/10 · README cũ "Nút In tem"; N1204)
 
 ## Kiểm giao diện
 
@@ -57,5 +57,4 @@ Gom từ `docs/QUYET_DINH.md` chủ đề 2, các mục "Chuẩn …" của `REA
 
 ## Chưa thống nhất (chờ chốt hoặc sửa ở đợt sau)
 
-- `README.md` mục "Header các màn hình" ghi header cao 64 px; `docs/QUYET_DINH.md` (12/10 · N0564) ghi máy tính cao 80. Tệp này theo `docs/QUYET_DINH.md`; README sửa ở đợt 4.
 - `docs/THIET_KE_HEADER_UI.md`, `docs/THIET_KE_BO_ICON_UI.md`, `docs/THIET_KE_BUTTON_IN_TEM_CHUYEN_DONG.md` là đặc tả gốc 03–07/10, đã đánh dấu lịch sử; luật hiện hành ở tệp này.
