@@ -30,6 +30,7 @@ const backend = srv => route => {
   if (rpc === "vendor_return_scan") {
     if (srv.scanDelay) return new Promise(r => setTimeout(r, srv.scanDelay)).then(() => { srv.scanDelay = 0; return backend(srv)(route); });
     if (srv.deny) return json({ ok: false, error: { code: "ACCESS_DENIED", message: "Máy chưa kích hoạt" } });
+    if (!srv.list) return json({ ok: false, error: { code: "NO_LIST", message: "Chưa có danh sách trả nhà cung cấp" } });
     if (args.p_list_id !== srv.list.id) return json({ ok: false, error: { code: "STALE_LIST", message: "Danh sách đã đổi", data: { listId: srv.list.id } } });
     const it = srv.items.find(x => x.groupUid === args.p_group_uid);
     if (!it) return json({ ok: true, data: { result: "not_in_list" } });
@@ -42,6 +43,18 @@ const backend = srv => route => {
     for (const r of args.p_rows) { const it = srv.items.find(x => x.groupUid === r.groupUid); if (it) Object.assign(it, { currentLocation: r.location || null, status: r.status || null, locationSource: "wms" }); }
     srv.list = { ...srv.list, reconciledAt: "2026-10-24T03:00:00Z" };
     return json({ ok: true, data: { updated: args.p_rows.length, reconciledAt: srv.list.reconciledAt } });
+  }
+  if (rpc === "vendor_return_delete") {   // máy chủ giả: Admin + đúng đợt đang dùng → xoá cả danh sách lẫn lượt quét
+    if (srv.deleteMode === "forbidden") return json({ ok: false, error: { code: "FORBIDDEN", message: "Chỉ Admin được xoá đợt trả nhà cung cấp" } });
+    if (srv.deleteMode === "stale") {   // Admin khác vừa nạp danh sách mới trong lúc máy này còn giữ đợt cũ
+      srv.list = { ...LIST, id: "55555555-5555-4555-8555-555555555555", fileName: "tra-ncc-khac.xlsx" }; srv.items = ITEMS();
+      return json({ ok: false, error: { code: "STALE_LIST", message: "Danh sách đã đổi, chưa xoá gì", data: { listId: srv.list.id } } });
+    }
+    if (!srv.list) return json({ ok: false, error: { code: "NO_LIST", message: "Chưa có danh sách" } });
+    if (args.p_list_id !== srv.list.id) return json({ ok: false, error: { code: "STALE_LIST", message: "Danh sách đã đổi", data: { listId: srv.list.id } } });
+    const data = { deleted: true, listId: srv.list.id, items: srv.items.length, scans: srv.items.filter(x => x.scannedAt).length };
+    srv.deleted = args; srv.list = null; srv.items = [];
+    return json({ ok: true, data });
   }
   if (rpc === "vendor_return_import") {
     srv.imported = args;
@@ -121,6 +134,8 @@ const locHeads = page => page.locator("#vr-locs .vr-loc__head").allInnerTexts().
       assert.equal(await page.locator("#vr-file").innerText(), "tra-ncc-gia.xlsx");
       assert.equal(await page.locator("#vr-admin-panel").isVisible(), false, "không Admin: ẩn phần nạp Excel");
       assert.equal(await page.locator("#vr-reconcile").isVisible(), false, "không Admin: ẩn Đối chiếu");
+      assert.equal(await page.locator("#vr-delete").isVisible(), false, "không Admin: ẩn Xoá đợt");
+      assert.equal(srv.calls.some(c => c.rpc === "vendor_return_delete"), false);
       await shot(page, `tra-ncc-list-${width}`);
       await page.locator('[data-vr-tab="left"]').click();
       // Ngoài danh sách → đỏ, không gọi máy chủ
@@ -278,6 +293,77 @@ const locHeads = page => page.locator("#vr-locs .vr-loc__head").allInnerTexts().
       assert.deepEqual(errors, []);
       await context.close();
     }
-    console.log("vendor_return_browser: thẻ Navy/Black, đánh dấu dòng đã quét, ngoài danh sách đỏ, trùng báo máy, mã mới gửi khoá máy + chuyển tab, bị từ chối không đánh dấu, Admin nạp Excel (sheet navy/black, bỏ pivot); 1280 / 390 — passed");
+
+    // Admin xoá đợt (26/10/2026, vendor_return_v3): nút chỉ có khi Admin + có danh sách; hộp xác nhận nêu tên tệp + số đã quét; Giữ = không gọi máy chủ;
+    // Xoá → vendor_return_delete bằng phiên Admin với đúng mã đợt, màn về "Chưa có danh sách" (lượt quét xoá theo ở máy chủ giả)
+    {
+      const { context, page, errors, srv } = await open(browser, { admin: true });
+      await page.locator('[data-vr-tab="list"]').click();
+      await page.locator("#vr-delete").waitFor({ state: "visible" });
+      await page.locator("#vr-delete").click();
+      const dlg = page.locator("dialog.whd");
+      await dlg.waitFor({ state: "visible" });
+      const text = await dlg.innerText();
+      assert.match(text, /Xoá đợt trả NCC\?/);
+      assert.match(text, /tra-ncc-gia\.xlsx/);
+      assert.match(text, /5 Group UID · 1 đã quét/, "nêu số lượt quét sẽ mất");
+      assert.equal(await dlg.evaluate(d => d.dataset.tone), "danger");
+      await shot(page, "tra-ncc-xoa-dot-1280");
+      await dlg.locator(".whd-cancel").click();
+      await dlg.waitFor({ state: "hidden" });
+      assert.equal(srv.calls.some(c => c.rpc === "vendor_return_delete"), false, "Giữ: không gọi máy chủ");
+      assert.equal(await page.locator("#vr-total").innerText(), "5", "Giữ: danh sách còn nguyên");
+      await page.locator("#vr-delete").click();
+      await dlg.locator(".whd-ok").click();
+      await page.waitForFunction(() => /Đã xoá đợt/.test(document.getElementById("vr-message").textContent));
+      const del = srv.calls.find(c => c.rpc === "vendor_return_delete");
+      assert.deepEqual(del.args, { p_list_id: LIST.id }, "gửi đúng mã đợt đang hiện");
+      assert.equal(del.auth, "Bearer test-admin-token", "xoá bằng phiên Admin, không phải khoá công khai");
+      assert.match(await page.locator("#vr-message").innerText(), /Đã xoá đợt tra-ncc-gia\.xlsx · 5 Group UID · 1 lượt quét/);
+      assert.equal(await page.locator("#vr-total").innerText(), "—");
+      assert.equal(await page.locator("#vr-file").innerText(), "Chưa có danh sách");
+      assert.equal(await page.locator("#vr-delete").isVisible(), false, "hết danh sách: ẩn Xoá đợt");
+      assert.equal(await page.locator("#vr-pick").isVisible(), true, "vẫn nạp được danh sách mới");
+      await page.locator('[data-vr-tab="left"]').click();
+      assert.match(await page.locator("#vr-locs").innerText(), /Chưa có danh sách/);
+      assert.deepEqual(errors, []);
+      await context.close();
+    }
+
+    // Xoá đợt khi máy chủ từ chối / danh sách đã đổi / đã bị xoá: báo rõ, không giả "đã xoá", không xoá nhầm đợt khác
+    {
+      const { context, page, errors, srv } = await open(browser, { admin: true });
+      await page.locator('[data-vr-tab="list"]').click();
+      const confirmDelete = async () => { await page.locator("#vr-delete").click(); await page.locator("dialog.whd .whd-ok").click(); };
+      const said = re => page.waitForFunction(s => new RegExp(s).test(document.getElementById("vr-message").textContent), re.source);
+      srv.deleteMode = "forbidden";
+      await confirmDelete();
+      await said(/Chưa xoá được: Chỉ Admin/);
+      assert.equal(await page.locator("#vr-total").innerText(), "5", "bị từ chối: danh sách còn nguyên");
+      assert.equal(await page.locator("#vr-delete").isDisabled(), false, "bị từ chối: nút mở lại");
+      srv.deleteMode = "stale";
+      await confirmDelete();
+      await said(/vừa đổi sang đợt khác, chưa xoá gì/);
+      assert.equal(await page.locator("#vr-file").innerText(), "tra-ncc-khac.xlsx", "tải lại thấy đợt mới, không xoá nhầm");
+      srv.deleteMode = ""; srv.list = null; srv.items = [];
+      await confirmDelete();
+      await said(/đã được xoá trước đó/);
+      assert.equal(await page.locator("#vr-total").innerText(), "—", "đợt đã bị xoá nơi khác: tải lại → trống");
+      assert.deepEqual(errors, []);
+      await context.close();
+    }
+
+    // Máy quét còn giữ đợt vừa bị Admin xoá: lượt quét → NO_LIST → tải lại → "Chưa có danh sách" (không báo đã lưu)
+    {
+      const { context, page, errors, srv } = await open(browser);
+      srv.list = null; srv.items = [];
+      await scan(page, "1028260000000102");
+      await page.waitForFunction(() => document.getElementById("vr-total").textContent.trim() === "—");
+      assert.deepEqual(await result(page), { tone: "bad", title: "Chưa có danh sách", note: "Danh sách đã bị xoá" });
+      assert.equal(srv.calls.filter(c => c.rpc === "vendor_return_scan").length, 1);
+      assert.deepEqual(errors, []);
+      await context.close();
+    }
+    console.log("vendor_return_browser: thẻ Navy/Black, đánh dấu dòng đã quét, ngoài danh sách đỏ, trùng báo máy, mã mới gửi khoá máy + chuyển tab, bị từ chối không đánh dấu, Admin nạp Excel (sheet navy/black, bỏ pivot), Admin xoá đợt (xác nhận, Giữ, bị từ chối, đợt đã đổi / đã xoá, máy quét thấy NO_LIST); 1280 / 390 — passed");
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

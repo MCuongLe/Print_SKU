@@ -230,12 +230,16 @@ Quét: trong danh sách → thẻ đỏ **BLOCKED** (SKU, Lot, Roll, kho, vị t
 ### Trả NCC (`#tra-ncc`)
 
 - Dùng để: theo dõi các cuộn trả nhà cung cấp theo danh sách tạm.
-- Ai dùng: nạp danh sách và Đối chiếu chỉ Admin; quét trên máy đã kích hoạt.
+- Ai dùng: nạp danh sách, Đối chiếu và Xoá đợt chỉ Admin; quét trên máy đã kích hoạt.
 - Màn: `vendor-return-style` / `vendor-return-script`, `#vendor-return-screen`.
-- Dữ liệu: `vendor_return_*`; Đối chiếu cần Extension ≥ 0.10.6.
-- Test: `vendor_return_browser`, `vendor_return_sql`, `vendor_return_v2_sql`.
+- Dữ liệu: `vendor_return_*` (v1–v3); Đối chiếu cần Extension ≥ 0.10.6.
+- Test: `vendor_return_browser`, `vendor_return_sql`, `vendor_return_v2_sql`, `vendor_return_v3_sql`.
 
 Bố cục như UID blocked: dải tiến độ, tab Còn thiếu (thẻ theo vị trí hiện tại) · Đã quét · Danh sách. Cuộn chia theo vị trí hiện tại → `F0-VR-00-00-00-00` (đích) → Đã rời kho. **Đối chiếu** đọc WMS trực tiếp qua Extension; đọc lệch thì báo đỏ và không lưu. Kết quả quét là pop-up không chiếm con trỏ như Cấp vải.
+
+**Xoá đợt** (tab Danh sách, Admin): hộp xác nhận nêu tên tệp và số Group UID đã quét; xoá luôn danh sách và lượt quét của đợt, không khôi phục được.
+
+Máy chủ chỉ cho Admin và chỉ xoá đúng đợt đang hiện: Admin khác vừa nạp đợt mới thì báo "danh sách vừa đổi", không xoá gì. Máy quét còn giữ đợt đã xoá báo "Chưa có danh sách" rồi tải lại. Nạp Excel mới vẫn chỉ tắt đợt cũ.
 
 ## KIỂM TRA ĐẦU VÀO (`#inspection`)
 

@@ -13986,6 +13986,7 @@ async function rpc(name,args,retry=true){
       #vendor-return-screen .vr-scan { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: stretch; }
       #vendor-return-screen .vr-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: var(--target-min); padding: 0 var(--space-4); border: 1px solid var(--wms-control-border); border-radius: var(--radius-control); background: var(--wms-surface); color: var(--wms-brand); font: var(--fw-semibold) var(--fs-16) var(--wms-font); cursor: pointer; }
       #vendor-return-screen .vr-btn--primary { border-color: var(--wms-brand); background: var(--wms-brand); color: var(--wms-on-brand); }
+      #vendor-return-screen .vr-btn--danger { border-color: var(--wms-danger); color: var(--wms-danger); }
       #vendor-return-screen .vr-btn:disabled { background: var(--wms-disabled-bg); border-color: var(--wms-border); color: var(--wms-disabled-text); cursor: not-allowed; }
       #vendor-return-screen .vr-pop { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; padding: var(--space-4); background: color-mix(in srgb, var(--wms-text) 45%, transparent); -webkit-tap-highlight-color: transparent; }
       #vendor-return-screen .vr-pop[hidden] { display: none; }
@@ -14125,7 +14126,7 @@ async function rpc(name,args,retry=true){
           <div class="as-pager" id="vr-pager" hidden></div>
         </section>
         <section class="vr-panel" data-vr-panel="list" aria-label="Danh sách trả" hidden>
-          <div class="vr-head vr-listhead"><div class="vr-listinfo"><h2>Danh sách trả NCC</h2><p class="vr-filehead"><span id="vr-file">—</span><span id="vr-at"></span></p></div><div class="vr-actions" id="vr-admin-panel" hidden><input id="vr-file-input" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden><button class="vr-btn vr-btn--wms" id="vr-reconcile" type="button" hidden><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="6" r="3"/><path d="M12 6h5a2 2 0 0 1 2 2v7"/><path d="m15 9-3-3 3-3"/><circle cx="19" cy="18" r="3"/><path d="M12 18H7a2 2 0 0 1-2-2V9"/><path d="m9 15 3 3-3 3"/></svg><span>Đối chiếu</span></button><button class="vr-btn" id="vr-pick" type="button"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/></svg>Nạp Excel</button></div></div>
+          <div class="vr-head vr-listhead"><div class="vr-listinfo"><h2>Danh sách trả NCC</h2><p class="vr-filehead"><span id="vr-file">—</span><span id="vr-at"></span></p></div><div class="vr-actions" id="vr-admin-panel" hidden><input id="vr-file-input" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden><button class="vr-btn vr-btn--wms" id="vr-reconcile" type="button" hidden><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="6" r="3"/><path d="M12 6h5a2 2 0 0 1 2 2v7"/><path d="m15 9-3-3 3-3"/><circle cx="19" cy="18" r="3"/><path d="M12 18H7a2 2 0 0 1-2-2V9"/><path d="m9 15 3 3-3 3"/></svg><span>Đối chiếu</span></button><button class="vr-btn" id="vr-pick" type="button"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/></svg>Nạp Excel</button><button class="vr-btn vr-btn--danger" id="vr-delete" type="button" hidden><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><path d="M10 11v6"/><path d="M14 11v6"/></svg><span>Xoá đợt</span></button></div></div>
           <dl class="vr-kv" id="vr-info"></dl>
           <div class="vr-preview" id="vr-preview" hidden></div>
         </section>
@@ -14333,7 +14334,7 @@ async function rpc(name,args,retry=true){
           $('vr-at').textContent=l?`Nạp ${fmtAt(l.createdAt)}`:'';
           $('vr-info').innerHTML=l?kv('Navy',num(n('navy')))+kv('Black',num(n('black')))+kv('Về F0-VR',`${num(S.items.filter(it=>where(it)===TARGET).length)}/${num(S.items.length)}`,'ok')+kv('Đối chiếu WMS',l.reconciledAt?fmtAt(l.reconciledAt):'Chưa',l.reconciledAt?'':'warn'):'';
           $('vr-listname').lastElementChild.textContent=l?`${l.fileName||'—'} · ${fmtAt(l.createdAt)}${l.reconciledAt?` · Đối chiếu ${fmtAt(l.reconciledAt)}`:''}`:'Chưa có danh sách';
-          $('vr-reconcile').hidden=!S.admin||!l;
+          $('vr-reconcile').hidden=!S.admin||!l;$('vr-delete').hidden=!S.admin||!l;
         };
         const renderAll=()=>{renderCounts();renderView();renderInfo()};
         const setView=v=>{
@@ -14376,6 +14377,7 @@ async function rpc(name,args,retry=true){
             const listId=S.list.id,{res,body}=await post('vendor_return_scan',{p_access_token:window.PrintSkuFloorAccess?.token?.()||'public',p_list_id:listId,p_group_uid:code},'',10000);
             if(body&&typeof body==='object')window.PrintSkuFloorAccess?.check?.(body);
             if(body?.error?.code==='STALE_LIST'&&!retried){if(await load())return checkOne(code,true);paint({tone:'bad',title:'Không tải được danh sách',code,note:'Danh sách vừa đổi'});cue('bad');return}
+            if(body?.error?.code==='NO_LIST'){await load();paint({tone:'bad',title:'Chưa có danh sách',code,note:'Danh sách đã bị xoá'});cue('bad');return}   // Admin vừa xoá đợt: tải lại → màn rỗng
             if(!res.ok||!body?.ok)throw fail(body,res);
             const d=body.data||{};
             if(d.result==='not_in_list'){paint({tone:'bad',title:'Không thuộc danh sách trả',code});cue('bad');return}
@@ -14479,6 +14481,26 @@ async function rpc(name,args,retry=true){
           finally{btn.disabled=false;label.textContent=old}
         };
         $('vr-reconcile').addEventListener('click',reconcile);
+
+        // ---- Xoá đợt (Admin, 26/10/2026, supabase/vendor_return_v3.sql): hỏi xác nhận rồi vendor_return_delete xoá danh sách đang dùng KÈM lượt quét; máy chủ kiểm Admin + đúng đợt ----
+        const removeList=async()=>{
+          const btn=$('vr-delete'),l=S.list;if(!l||S.deleting||S.saving||btn.disabled)return;
+          const scanned=S.items.filter(it=>it.scannedAt).length;
+          if(!await window.WhDialog?.confirm?.({tone:'danger',title:'Xoá đợt trả NCC?',facts:[l.fileName||'—',`${num(S.items.length)} Group UID · ${num(scanned)} đã quét`,'Lượt quét cũng bị xoá'],confirmText:'Xoá',cancelText:'Giữ'}))return;
+          S.deleting=true;btn.disabled=true;
+          try{
+            let token='';try{token=await window.PrintSkuAdminAuth.accessToken()}catch(_){/* hết phiên: báo bên dưới */}
+            if(!token)throw new Error('Phiên Admin đã hết hạn, đăng nhập lại');
+            const{res,body}=await post('vendor_return_delete',{p_list_id:l.id},token);
+            if(!res.ok||!body?.ok)throw fail(body,res);
+            if(!await load())apply({list:null,items:[]});   // tải lại sau lượt đang chạy; không tải được thì hiện rỗng (đã xoá thật)
+            tell(`Đã xoá đợt ${l.fileName||''} · ${num(body.data?.items)} Group UID · ${num(body.data?.scans)} lượt quét.`,'ok');
+          }catch(e){
+            if(e.code==='STALE_LIST'||e.code==='NO_LIST'){await load();tell(e.code==='NO_LIST'?'Đợt này đã được xoá trước đó.':'Danh sách vừa đổi sang đợt khác, chưa xoá gì. Kiểm tra rồi xoá lại.','error')}
+            else tell(`Chưa xoá được: ${e.message}`,'error');
+          }finally{S.deleting=false;btn.disabled=false}
+        };
+        $('vr-delete').addEventListener('click',removeList);
 
         // ---- Admin + route ----
         const syncAdmin=()=>{S.admin=!!window.PrintSkuAdminAccess?.peekToken?.();const b=$('vr-admin'),label=S.admin?'Đang là Admin · bấm để thoát':'Đăng nhập Admin';b.setAttribute('aria-pressed',String(S.admin));b.setAttribute('aria-label',label);b.title=label;renderInfo()};

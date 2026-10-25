@@ -51,3 +51,13 @@ v2: migration `vendor_return_v2.sql` (chỉ thêm cột + create or replace, kh�
 
 ## Bố cục như UID blocked (24/10/2026 tối)
 - Người dùng (ảnh UID blocked): "tôi cần thiết kế tương tự tìm group UID Blocked" + "phần danh sách cũng tương tự" → dải tiến độ, tab Còn thiếu (thẻ vị trí mở/đóng, lọc chữ + màu) | Đã quét (bảng chung, SL, Xuất Excel ngày đủ năm) | Danh sách (như UID blocked); bỏ thẻ màu và bảng nhóm cũ. Codex (mã + ảnh): thêm SL, ngày giờ đủ năm, nút lọc màu 44 px; giữ danh sách vừa quét / nút Kiểm / ô quét như UID blocked.
+
+## v3 — Admin xoá đợt (26/10/2026)
+Trạng thái: ĐÃ BUILD + test (`vendor_return_v3_sql`, `vendor_return_browser`), chưa commit, chưa chạy migration — chờ người dùng.
+- Người dùng: "đăng nhập admin cho phép xóa đợt return vendor". Thay quyết định 24/10 "chưa có chức năng xoá, báo thì lead dọn tay": nay Admin tự xoá trên màn.
+- "Đợt" = một danh sách Admin nạp bằng Excel. Màn chỉ hiện đợt đang dùng (`active`), nên chỉ xoá đợt đó. Số liệu thật 26/10: 1 đợt (234 dòng, 209 lượt quét), chưa có danh sách tắt nào.
+- Dữ liệu quét xoá THEO đợt (có chủ ý): `vendor_return_items` / `vendor_return_scans` khoá ngoại `ON DELETE CASCADE`; lượt quét không thể sống thiếu dòng danh sách và không có màn xem lại.
+- `supabase/vendor_return_v3.sql`: `vendor_return_delete(p_list_id)`, SECURITY DEFINER + `search_path = ''`, `group_uid_admin_allowed()` đầu tiên, khoá độc quyền chung với nạp / quét / đối chiếu, `STALE_LIST` (không xoá) / `NO_LIST`, chỉ `authenticated`.
+- Web: nút `#vr-delete` (Admin + có danh sách) → `WhDialog.confirm` danger (tên tệp, số UID đã quét) → RPC bằng phiên Admin; máy quét gặp `NO_LIST` thì tải lại và hiện "Chưa có danh sách".
+- Thứ tự lên: migration `vendor_return_v3.sql` → push web (web gọi hàm mới).
+- Không làm (chưa ai yêu cầu): xoá các danh sách đã tắt (`active = false`) từ lần nạp thay thế; hiện chưa có dòng nào.
