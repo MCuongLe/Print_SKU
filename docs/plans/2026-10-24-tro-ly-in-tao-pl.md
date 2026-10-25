@@ -42,10 +42,10 @@ Thứ tự chạy: Việc 1 → Việc 2 → Việc 3 (review) → Việc 4 (lê
 - [x] Vòng 2 (chỉ phần vừa sửa): Codex + Claude A/B/C, Fable lọc — sửa 4 nhóm (Nhật ký)
 - [x] Cả bộ `python scripts/run_tests.py` + `python scripts/commit_gate.py` — 25/10 trên bản dựng HEAD 96c1257 + đợt này: 116/117 PASS (1114 s); `sku_po_reprint_browser` hỏng cả 2 lần NHƯNG hỏng y hệt trên HEAD không có đợt này (6dece2b đạt, 96c1257 commit chibi phiên khác làm hỏng) → không do đợt; commit_gate --cached ĐẠT (10 tệp).
 
-### Việc 4 — Lên máy chủ · người dùng + lead · [ ]
-- [ ] Commit (khi người dùng bảo)
-- [ ] Chạy migration: `python scripts/apply_supabase_sql.py supabase/fabric_issue_lookup_v1.sql` (người dùng) — kiểm hàm có trên DB (chỉ đọc)
-- [ ] Push main sau migration; kiểm trang thật
+### Việc 4 — Lên máy chủ · người dùng + lead · [x]
+- [x] Commit (khi người dùng bảo) — 25/10 `fd9c2e1` (đợt này) + `e166c3d` (DOI_AGENT bước 1, riêng)
+- [x] Chạy migration: `python scripts/apply_supabase_sql.py supabase/fabric_issue_lookup_v1.sql` (người dùng) — kiểm hàm có trên DB (chỉ đọc) — 25/10 lead chạy theo yêu cầu người dùng; kiểm: SECURITY DEFINER, anon không execute, gọi không Admin → FORBIDDEN
+- [x] Push main sau migration; kiểm trang thật — 25/10 push `96c1257..e166c3d`; trang thật có `#pa-attach`, `PrintSkuAssistantPl`, console sạch, anon gọi RPC mới → 42501, CẤP VẢI 200. Chưa thử luồng Admin thật
 
 ## Đợt sau (chưa làm)
 - **Đợt 2 — ảnh / PDF (AI):** action mới của Edge `print-assistant` (giới hạn riêng: kích thước ảnh, lượt/ngày, nhật ký), Gemini mặc định / Anthropic nếu có khoá, khuôn JSON tìm Group UID (hoặc Lot/Roll/Qty khi không có UID); số liệu vẫn lấy lại từ Supabase; dòng chỉ có số AI đọc thì tô để soát. Deploy Edge → push.
