@@ -5,8 +5,8 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const assert = require('node:assert/strict');
 
 const BASE = process.env.BASE || 'http://127.0.0.1:8000/';
-const SKU = '422412924';
-const NAME = 'Chỉ Irisa/FS9286_Phong Việt/100% Polyester/none/Black Marle-Melange/none/Tex 60- 20-2/mm';
+const SKU = '900000001';
+const NAME = 'Chỉ may mẫu/Tex 27/Black/5000m/mm';
 
 (async () => {
   const browser = await chromium.launch({ channel: 'chrome', headless: true });
@@ -17,10 +17,14 @@ const NAME = 'Chỉ Irisa/FS9286_Phong Việt/100% Polyester/none/Black Marle-Me
       const page = await context.newPage();
       const errors = [];
       page.on('pageerror', error => errors.push(error.message));
-      await page.route('**/*', route => {
+      await page.route('**/*', async route => {
         const url = route.request().url();
         if (url.startsWith(BASE)) return route.continue();
         if (url.includes('/SKU_Name?')) return route.fulfill({ contentType: 'application/json', body: JSON.stringify([{ sku: SKU, product_name: NAME }]) });
+        if (url.includes('/functions/v1/sku-vision')) {
+          await new Promise(resolve => setTimeout(resolve, 450));
+          return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ ok: true, text: SKU, tokens: { item_codes: [SKU] }, quality: 'doc_duoc' }) });
+        }
         if (url.includes('/rpc/') || url.includes('/functions/')) return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ ok: true, data: { agents: [], jobs: [], items: [] } }) });
         return route.fulfill({ contentType: 'application/json', body: '[]' });
       });
@@ -35,11 +39,38 @@ const NAME = 'Chỉ Irisa/FS9286_Phong Việt/100% Polyester/none/Black Marle-Me
       if (mobile) {
         assert.ok(Math.abs(cam.top - file.top) <= 4, `camera và chọn ảnh phải cùng hàng (${cam.top} vs ${file.top})`);
         assert.ok(file.right - file.left <= 56, 'chọn ảnh chỉ là icon');
+        const mobileChrome = await page.evaluate(() => ({
+          tabsPosition: getComputedStyle(document.querySelector('#find-sku-screen .cut-tabs')).position,
+          tabsTop: getComputedStyle(document.querySelector('#find-sku-screen .cut-tabs')).top
+        }));
+        assert.equal(mobileChrome.tabsPosition, 'sticky', 'thanh ba bước phải còn thấy khi danh sách dài');
+        assert.equal(mobileChrome.tabsTop, '56px', 'thanh ba bước dính ngay dưới header 56 px');
       }
       assert.equal(await page.locator('.fsk-file').getAttribute('aria-label'), 'Chọn ảnh');
 
       assert.equal((await page.locator('#fsk-results').innerText()).trim(), '', 'chưa tìm thì không có dòng "Chưa có kết quả"');
       assert.equal(await visible('#fsk-token-count'), false, 'chưa có từ khoá thì không hiện số trên nút Chi tiết xử lý');
+      if (mobile) {
+        const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAFElEQVR42mNkYGD4z8DAwMDAxAADAAAQkgIB3wAAAABJRU5ErkJggg==', 'base64');
+        await page.locator('#fsk-file').setInputFiles({ name: 'tem-mau.png', mimeType: 'image/png', buffer: png });
+        await page.waitForFunction(() => document.getElementById('find-sku-screen').dataset.aiReading === 'true');
+        assert.equal(await visible('.fsk-photo-state'), true, 'đang đọc ảnh phải hiện trạng thái AI trên ảnh');
+        const readingFx = await page.evaluate(() => ({
+          label: document.querySelector('.fsk-photo-state').textContent.trim(),
+          beam: getComputedStyle(document.querySelector('.fsk-photo-beam')).display,
+          animation: getComputedStyle(document.querySelector('.fsk-photo-beam')).animationName,
+          photoRatio: document.querySelector('#fsk-photo').getBoundingClientRect().width / document.querySelector('#fsk-photo').getBoundingClientRect().height,
+          naturalRatio: document.querySelector('#fsk-photo').naturalWidth / document.querySelector('#fsk-photo').naturalHeight
+        }));
+        assert.equal(readingFx.label, 'AI đang đọc ảnh…');
+        assert.equal(readingFx.beam, 'block', 'đang đọc ảnh phải có vạch quét');
+        assert.equal(readingFx.animation, 'fsk-photo-scan', 'vạch quét chạy theo trạng thái đọc thật');
+        assert.ok(Math.abs(readingFx.photoRatio - readingFx.naturalRatio) < 0.05, 'khung hiệu ứng phải co theo đúng tỷ lệ ảnh');
+        assert.equal((await page.locator('#fsk-message').innerText()).trim(), '', 'không lặp trạng thái AI ở đầu thẻ');
+        assert.equal((await page.locator('#fsk-results').innerText()).trim(), '', 'không lặp trạng thái AI dưới ảnh');
+        await page.waitForFunction(() => document.getElementById('find-sku-screen').dataset.aiReading === 'false');
+        assert.equal(await visible('.fsk-photo-state'), false, 'đọc xong phải tắt hiệu ứng');
+      }
       // Chọn SKU chỉ (đơn vị mm) → tab 2
       await page.locator('#fsk-code').fill(SKU); await page.locator('#fsk-code-form').press('Enter');
       await page.locator('#fsk-results button').first().waitFor();
@@ -51,13 +82,15 @@ const NAME = 'Chỉ Irisa/FS9286_Phong Việt/100% Polyester/none/Black Marle-Me
       assert.equal(await page.locator('#fsk-results .fsk-why, #fsk-results .fsk-conf, #fsk-results details').count(), 0, 'thẻ gợi ý không còn mục "Vì sao gợi ý"');
       assert.equal((await page.locator('#fsk-results .fsk-pick').first().innerText()).trim(), 'Chọn');
       if (mobile) {
-        // Giao diện điện thoại: font hệ thống, gợi ý dạng danh sách (% bên trái, nút chọn tròn 40 px), đơn vị nằm trong khung ô nhập
-        const look = await page.evaluate(() => { const screen = document.getElementById('find-sku-screen'), card = document.querySelector('#fsk-results .fsk-card'), pick = card.querySelector('.fsk-pick').getBoundingClientRect(), pct = card.querySelector('.fsk-pct').getBoundingClientRect(), tabs = getComputedStyle(document.querySelector('#find-sku-screen .cut-tab[aria-selected="true"]')); return { font: getComputedStyle(screen).fontFamily, grid: getComputedStyle(card).display, pick: Math.round(pick.width), pickH: Math.round(pick.height), pickShape: (s => [s.borderTopLeftRadius, s.fontSize])(getComputedStyle(card.querySelector('.fsk-pick'))), pickTextHidden: (b => b.scrollWidth <= b.clientWidth + 1)(card.querySelector('.fsk-pick')), pctLeft: pct.right <= card.querySelector('.fsk-card__id').getBoundingClientRect().left, tabBorder: tabs.borderTopWidth }; });
+        // Giao diện điện thoại: font hệ thống, gợi ý dạng danh sách (% bên trái, nút chọn tròn 44 px), đơn vị nằm trong khung ô nhập
+        const look = await page.evaluate(() => { const screen = document.getElementById('find-sku-screen'), card = document.querySelector('#fsk-results .fsk-card'), pickButton = card.querySelector('.fsk-pick'), pick = pickButton.getBoundingClientRect(), pct = card.querySelector('.fsk-pct').getBoundingClientRect(), tabs = getComputedStyle(document.querySelector('#find-sku-screen .cut-tab[aria-selected="true"]')), pickStyle = getComputedStyle(pickButton), pickIcon = getComputedStyle(pickButton, '::before'); return { font: getComputedStyle(screen).fontFamily, grid: getComputedStyle(card).display, pick: Math.round(pick.width), pickH: Math.round(pick.height), pickShape: [pickStyle.borderTopLeftRadius, pickStyle.fontSize], pickFill: pickStyle.backgroundColor, pickIcon: [pickIcon.width, pickIcon.height], pickTextHidden: pickButton.scrollWidth <= pickButton.clientWidth + 1, pctLeft: pct.right <= card.querySelector('.fsk-card__id').getBoundingClientRect().left, tabBorder: tabs.borderTopWidth }; });
         assert.match(look.font, /system-ui/, 'điện thoại dùng font hệ thống');
-        assert.equal(look.grid, 'grid'); assert.equal(look.pick, 40, 'nút chọn tròn 40 px');
-        // 22/10/2026: khối ui-standard (11/10) ép .cut-primary cao 48, bo 12, chữ 16 nên nút thành khối 40×48 lộ chữ "Chọ" bị cắt
-        assert.equal(look.pickH, 40, 'nút chọn cao 40 px (tròn, không phải 40×48)');
+        assert.equal(look.grid, 'grid'); assert.equal(look.pick, 44, 'nút chọn tròn đạt vùng chạm tối thiểu 44 px');
+        // Giữ nút tròn + chỉ icon, đồng thời đạt chuẩn vùng chạm của dự án.
+        assert.equal(look.pickH, 44, 'nút chọn cao 44 px và vẫn tròn');
         assert.deepEqual(look.pickShape, ['50%', '0px'], 'nút chọn bo tròn, chỉ icon (chữ ẩn)');
+        assert.equal(look.pickFill, 'rgb(233, 239, 236)', 'nút chọn dùng nền xanh nhạt, không còn mảng xanh đặc nặng');
+        assert.deepEqual(look.pickIcon, ['18px', '18px'], 'dấu tick gọn 18 px');
         assert.equal(look.pickTextHidden, true, 'chữ "Chọn" không tràn khỏi nút'); assert.equal(look.pctLeft, true, '% nằm bên trái SKU');
         assert.equal(look.tabBorder, '0px', 'tab bước là nút chọn liền khối, không viền riêng');
       }
@@ -112,7 +145,7 @@ const NAME = 'Chỉ Irisa/FS9286_Phong Việt/100% Polyester/none/Black Marle-Me
 
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, 'không tràn ngang');
       assert.deepEqual(errors, []);
-      console.log(`PASS ${width}px: TÌM SKU — camera/ảnh một hàng, bớt câu hướng dẫn, số tem một hàng, thanh Thêm vào chờ in dính đáy, hàng chờ gọn, mỗi tab một khung`);
+      console.log(`PASS ${width}px: TÌM SKU — mobile gọn, tab bước dính dưới header, nút chọn 44 px, camera/ảnh một hàng, thanh hành động dính đáy`);
       await context.close();
     }
   } finally { await browser.close(); }
