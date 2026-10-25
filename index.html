@@ -88,12 +88,19 @@
           return { error: { code: "AGENT_OUTDATED", message: asked === 2 ? "Máy in chưa in được số lượng trên tem (cần agent 0.10.2)" : "Máy in chưa in được tem SKU có PO — cần agent 0.10.2" } };
         };
         const enqueue = async ({ type, payload, copies, requestedBy, requestNonce, templateVersion = 1 }) => {
-          if (type === "sku") {
-            const pickTemplate = await skuTemplate(payload, templateVersion);
-            if (pickTemplate.error) return { ok: false, error: pickTemplate.error };
-            templateVersion = pickTemplate.version;
-          }
-          return enqueueRaw({ type, payload, copies, requestedBy, requestNonce, templateVersion });
+          const animation = window.PrintSkuAnimation;
+          animation?.begin();
+          let accepted = false;
+          try {
+            if (type === "sku") {
+              const pickTemplate = await skuTemplate(payload, templateVersion);
+              if (pickTemplate.error) return { ok: false, error: pickTemplate.error };
+              templateVersion = pickTemplate.version;
+            }
+            const result = await enqueueRaw({ type, payload, copies, requestedBy, requestNonce, templateVersion });
+            accepted = Boolean(result?.ok);
+            return result;
+          } finally { animation?.finish(accepted); }
         };
         const enqueueRaw = async ({ type, payload, copies, requestedBy, requestNonce, templateVersion = 1 }) => namesWatch(deniedWatch(rpc("print_enqueue", {
           p_access_token: accessToken(),
@@ -235,6 +242,90 @@
             return legacyResponse({ status: "error", message: String(error?.message || error).slice(0, 200) });
           }
         };
+      })();
+    </script>
+    <style id="print-chibi-style">
+      .print-chibi-overlay{position:fixed;inset:0;z-index:9000;display:grid;width:100%;height:100%;max-width:none;max-height:none;margin:0;padding:20px;border:0;place-items:center;overflow:hidden;background:rgba(15,35,28,.45);overscroll-behavior:contain;touch-action:none}
+      .print-chibi-overlay[hidden]{display:none}
+      .print-chibi-overlay::backdrop{background:transparent}
+      .print-chibi-overlay::before{content:"";position:absolute;width:min(92vw,520px);aspect-ratio:1;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.16),transparent 69%)}
+      .print-chibi-sr{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;clip-path:inset(50%)!important;white-space:nowrap!important;border:0!important}
+      .print-chibi-scene{position:relative;width:min(92vw,500px);height:min(68vh,520px)}
+      .print-chibi-character{position:absolute;z-index:3;left:1%;bottom:0;width:56%;height:auto;transform-origin:50% 92%;animation:print-chibi-watch 2s ease-in-out infinite;will-change:transform}
+      .print-chibi-printer{position:absolute;z-index:5;right:0;top:28%;width:49%;transform-origin:50% 76%;will-change:transform}
+      .print-chibi-printer-body{fill:var(--wms-surface,#fff);stroke:var(--wms-brand,#005f41);stroke-width:3}.print-chibi-printer-top{fill:var(--wms-bg,#f4f7f6);stroke:var(--wms-brand,#005f41);stroke-width:3}.print-chibi-printer-slot{fill:var(--wms-text,#17251f)}.print-chibi-printer-button{fill:var(--wms-success,#0f6e49)}.print-chibi-printer-shadow{fill:var(--wms-border,#d9e2de)}
+      .print-chibi-paper{position:absolute;z-index:2;right:7%;top:48%;width:34%;height:31%;overflow:hidden}
+      .print-chibi-paper-strip{position:absolute;inset:-58% 0 auto;height:160%;border:3px solid var(--wms-brand,#005f41);border-radius:var(--radius-control);background:var(--wms-surface,#fff);transform:translateY(-46%);will-change:transform,opacity}
+      .print-chibi-label{position:absolute;left:12%;right:12%;height:26%;border:2px dashed var(--wms-control-border,#6f8f83);border-radius:5px;background:repeating-linear-gradient(90deg,var(--wms-text,#17251f) 0 4px,transparent 4px 8px)}
+      .print-chibi-label:first-child{top:12%}.print-chibi-label:last-child{top:59%}
+      .print-chibi-signal{position:absolute;z-index:5;left:43%;top:24%;width:32%;height:24%;pointer-events:none}
+      .print-chibi-signal i{position:absolute;left:5%;top:62%;width:12px;height:12px;border-radius:50%;background:var(--wms-success,#0f6e49);opacity:0;animation:print-chibi-send 1.35s ease-in-out infinite;will-change:transform,opacity}
+      .print-chibi-signal i:nth-child(2){animation-delay:.22s}.print-chibi-signal i:nth-child(3){animation-delay:.44s}
+      .print-chibi-check{position:absolute;z-index:5;right:1%;top:10%;display:grid;place-items:center;width:82px;height:82px;border:5px solid var(--wms-on-brand,#fff);border-radius:50%;background:var(--wms-success,#0f6e49);color:var(--wms-on-brand,#fff);box-shadow:var(--shadow-card);font-size:var(--fs-28);font-weight:700;line-height:1;opacity:0;transform:translateY(20px) scale(0);will-change:transform,opacity}
+      .print-chibi-overlay[data-state="sending"] .print-chibi-printer{animation:print-chibi-printer .42s ease-in-out infinite alternate}
+      .print-chibi-overlay[data-state="sending"] .print-chibi-paper-strip{animation:print-chibi-paper 1.5s linear infinite}
+      .print-chibi-overlay[data-state="done"] .print-chibi-signal{display:none}
+      .print-chibi-overlay[data-state="done"] .print-chibi-character{animation:print-chibi-done .55s cubic-bezier(.18,.89,.32,1.28) both}
+      .print-chibi-overlay[data-state="done"] .print-chibi-paper-strip{transform:translateY(0)}
+      .print-chibi-overlay[data-state="done"] .print-chibi-check{animation:print-chibi-check .52s cubic-bezier(.18,.89,.32,1.28) forwards}
+      @keyframes print-chibi-watch{0%,100%{transform:translateY(0) rotate(-1deg)}50%{transform:translateY(-7px) rotate(1deg)}}
+      @keyframes print-chibi-printer{from{transform:translateY(0) rotate(-.35deg)}to{transform:translateY(2px) rotate(.35deg)}}
+      @keyframes print-chibi-paper{0%{transform:translateY(-48%);opacity:.5}18%{opacity:1}100%{transform:translateY(3%);opacity:1}}
+      @keyframes print-chibi-send{0%{opacity:0;transform:translate(0,18px) scale(.55)}35%{opacity:1}100%{opacity:0;transform:translate(118px,-28px) scale(1)}}
+      @keyframes print-chibi-done{0%{transform:translateY(0) scale(.96)}65%{transform:translateY(-12px) scale(1.04)}100%{transform:translateY(0) scale(1)}}
+      @keyframes print-chibi-check{0%{opacity:0;transform:translateY(20px) scale(0)}70%{opacity:1;transform:translateY(-6px) scale(1.14)}100%{opacity:1;transform:none}}
+      @media(max-width:430px){.print-chibi-scene{width:min(94vw,380px);height:min(66vh,440px)}.print-chibi-character{left:-2%;bottom:4%;width:59%}.print-chibi-printer{right:-2%;top:30%;width:51%}.print-chibi-paper{right:5%;top:49%;width:36%;height:31%}.print-chibi-check{right:1%;top:12%;width:68px;height:68px}.print-chibi-signal{left:42%;top:27%}}
+      @media(prefers-reduced-motion:reduce){.print-chibi-character,.print-chibi-printer,.print-chibi-paper-strip,.print-chibi-signal i,.print-chibi-overlay[data-state="done"] .print-chibi-character,.print-chibi-overlay[data-state="done"] .print-chibi-check{animation:none!important}.print-chibi-overlay[data-state="sending"] .print-chibi-paper-strip{transform:translateY(-5%)}.print-chibi-overlay[data-state="done"] .print-chibi-check{opacity:1;transform:none}}
+      @media print{.print-chibi-overlay{display:none!important}}
+    </style>
+    <script id="print-chibi-script">
+      (() => {
+        let overlay = null, status = null, active = 0, failed = false, hideTimer = 0, announceTimer = 0;
+        const ensure = () => {
+          if (overlay) return overlay;
+          if (!document.body) return null;
+          overlay = document.createElement("dialog");
+          overlay.id = "print-chibi-overlay"; overlay.className = "print-chibi-overlay"; overlay.dataset.state = "sending";
+          overlay.setAttribute("aria-label", "Đang gửi lệnh in"); overlay.hidden = true;
+          overlay.innerHTML = `<div class="print-chibi-scene" aria-hidden="true"><div class="print-chibi-signal"><i></i><i></i><i></i></div><img class="print-chibi-character" src="assets/ai-thinking-chibi-simple.png" alt=""><svg class="print-chibi-printer" viewBox="0 0 220 170"><path class="print-chibi-printer-shadow" d="M35 145h150l-13 14H48z"/><rect class="print-chibi-printer-top" x="54" y="18" width="112" height="68" rx="14"/><path class="print-chibi-printer-body" d="M26 70h168a14 14 0 0 1 14 14v54a14 14 0 0 1-14 14H26a14 14 0 0 1-14-14V84a14 14 0 0 1 14-14z"/><rect class="print-chibi-printer-slot" x="43" y="112" width="134" height="13" rx="6.5"/><circle class="print-chibi-printer-button" cx="180" cy="91" r="7"/><path class="print-chibi-printer-top" d="M69 39h82v39H69z"/></svg><div class="print-chibi-paper"><div class="print-chibi-paper-strip"><i class="print-chibi-label"></i><i class="print-chibi-label"></i></div></div><div class="print-chibi-check">✓</div></div>`;
+          status = document.createElement("span"); status.id = "print-chibi-status"; status.className = "print-chibi-sr";
+          status.setAttribute("role", "status"); status.setAttribute("aria-live", "polite"); status.setAttribute("aria-atomic", "true");
+          document.body.append(overlay, status);
+          return overlay;
+        };
+        const announce = text => {
+          if (!status) return;
+          clearTimeout(announceTimer); status.textContent = "";
+          if (text) announceTimer = setTimeout(() => { status.textContent = text; }, 20);
+        };
+        const hide = clearStatus => {
+          clearTimeout(hideTimer); hideTimer = 0;
+          if (!overlay) return;
+          if (overlay.open) overlay.close(); else overlay.removeAttribute("open");
+          overlay.hidden = true; overlay.dataset.state = "sending";
+          if (clearStatus && status) { clearTimeout(announceTimer); status.textContent = ""; }
+        };
+        const begin = () => {
+          const node = ensure();
+          if (!node) return;
+          clearTimeout(hideTimer); hideTimer = 0;
+          if (!active) {
+            failed = false; node.dataset.state = "sending"; node.setAttribute("aria-label", "Đang gửi lệnh in"); node.hidden = false;
+            if (!node.open) { try { node.showModal(); } catch (_) { node.setAttribute("open", ""); } }
+            announce("Đang gửi lệnh in");
+          }
+          active += 1;
+        };
+        const finish = ok => {
+          active = Math.max(0, active - 1); failed ||= !ok;
+          if (!ok) { hide(true); if (!active) failed = false; return; }
+          if (active) return;
+          if (failed) { failed = false; return; }
+          const node = ensure(); node.dataset.state = "done"; node.setAttribute("aria-label", "Đã đưa lệnh vào hàng chờ"); announce("Đã đưa lệnh vào hàng chờ");
+          hideTimer = setTimeout(hide, 700);
+        };
+        window.PrintSkuAnimation = Object.freeze({ begin, finish, hide });
+        if (document.readyState === "loading") addEventListener("DOMContentLoaded", ensure, { once: true }); else ensure();
       })();
     </script>
     <style id="sku-combo-picker-style">
@@ -10850,13 +10941,15 @@ async function rpc(name,args,retry=true){
           const chosen=(job.items||[]).filter(it=>picked.has(it.index)),dates=[...new Set(chosen.map(it=>it.printedDate).filter(Boolean))];
           if(!await window.WhDialog.confirm(uid?{icon:'reprint',title:`In lại ${num(count)} UID`,facts:[`${num(copies)} tem`,all?'Toàn bộ lệnh':`${num(count)}/${num((job.items||[]).length)} dòng`],list:chosen.map(it=>it.groupUid),confirmText:`In lại ${num(copies)} tem`}:{icon:'reprint',title:'In lại lệnh SKU',facts:[`${num(chosen.length)} SKU`,`${num(job.copies)} tem`,dates.length===1?`Ngày in ${dates[0]}`:''],list:chosen.map(it=>`${it.sku} · ${it.productName||''}`),confirmText:`In lại ${num(job.copies)} tem`}))return;
           sending=true;renderFoot();const note=$("pj-d-note");note.dataset.tone="";note.textContent="Đang gửi…";
+          const animation=window.PrintSkuAnimation;let accepted=false;animation?.begin();
           const nonce=`rp-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,10)}`;
           try{
             const result=await rpc("print_admin_reprint",{p_job_id:job.id,p_items:uid&&!all?[...picked].sort((a,b)=>a-b):null,p_nonce:nonce});
+            accepted=true;
             sent=result;note.dataset.tone="ok";note.textContent=`Lệnh ${id8(result.id)} · ${num(result.copies)} tem · Chờ`;
             loadJobs(true);track(result.id);
           }catch(error){note.dataset.tone="bad";note.textContent=error.message||"Chưa in lại được"}
-          finally{sending=false;renderFoot()}
+          finally{animation?.finish(accepted);sending=false;renderFoot()}
         }
 
         // Menu React: ẩn "Tổng quan" và "Đợt đã gửi" (để nguyên trong DOM — hai module Đồng bộ tìm menu theo chữ

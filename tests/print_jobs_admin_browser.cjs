@@ -189,6 +189,11 @@ const lastCall = (calls, name) => [...calls].reverse().find(call => call.rpc ===
       await whd(page).waitFor({ state: 'visible' });
       await page.keyboard.press('Enter');    // Enter = đồng ý ở hộp thường
       await page.waitForFunction(() => /ffff6666/.test(document.getElementById('pj-d-note').textContent));
+      const printAnimation = page.locator('#print-chibi-overlay');
+      await printAnimation.waitFor({ state: 'visible' });
+      assert.equal(await printAnimation.getAttribute('data-state'), 'done', 'In lại Admin phải dùng animation lệnh in chung');
+      assert.equal(await page.evaluate(() => Boolean(document.elementsFromPoint(innerWidth / 2, innerHeight / 2)[0]?.closest('#print-chibi-overlay'))), true, 'animation phải nằm trên dialog In lại trong top layer');
+      await printAnimation.waitFor({ state: 'hidden' });
       const skuCall = lastCall(calls, 'print_admin_reprint');
       assert.equal(skuCall.args.p_job_id, JOBS[0].id);
       assert.equal(skuCall.args.p_items, null);
@@ -230,6 +235,7 @@ const lastCall = (calls, name) => [...calls].reverse().find(call => call.rpc ===
       await shot(page, `confirm-uid-${width}`);
       await answer(page, true);
       await page.waitForFunction(() => /ffff6666/.test(document.getElementById('pj-d-note').textContent));
+      await printAnimation.waitFor({ state: 'hidden' });
       assert.deepEqual(lastCall(calls, 'print_admin_reprint').args.p_items, [0, 2]);
       await shot(page, `uid-popup-${width}`);
       if (width < 768) {
@@ -248,6 +254,7 @@ const lastCall = (calls, name) => [...calls].reverse().find(call => call.rpc ===
       assert.deepEqual(await whd(page).locator('.whd-facts li').allTextContents(), ['3 tem', 'Toàn bộ lệnh']);
       await answer(page, true);
       await page.waitForFunction(() => /ffff6666/.test(document.getElementById('pj-d-note').textContent));
+      await printAnimation.waitFor({ state: 'hidden' });
       assert.equal(lastCall(calls, 'print_admin_reprint').args.p_items, null);
       await page.locator('#pj-d-close').click();
 
