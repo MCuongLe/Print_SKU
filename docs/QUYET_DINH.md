@@ -224,7 +224,7 @@
 - Một ô trang chủ, công tắc Cấp vải | UID blocked (độc lập, nhớ phần dùng gần nhất); 2 ô cũ hidden, đường dẫn cũ giữ. (21/10 · N1057)
 - Cấp vải: ghép UID `Available` theo SKU + Lot + Roll của Packing List (không đoán khi nhiều UID khớp); nhập/xoá/đóng đợt = Admin, quét + xem = mọi người; mỗi file = 1 đợt. (12/10 · N0010, N0011)
 - Cấp vải chặn cấp trùng giữa các đợt (`ISSUED_ELSEWHERE`); nhiều máy quét (mã "Máy XXXX", chấp nhận trễ ≤ 20 s); popup kết quả không modal để giữ con trỏ máy quét. (12/10 · N0010, N0011)
-- Trả NCC (`#tra-ncc`, phần 3 TÌM GROUP UID): bố cục như UID blocked (dải tiến độ · tab Còn thiếu thẻ vị trí | Đã quét bảng | Danh sách). Danh sách tạm — người dùng báo thì dọn. (24/10 · N1198, N1200, N1201)
+- Trả NCC (`#tra-ncc`, phần 3 TÌM GROUP UID): bố cục như UID blocked (dải tiến độ · tab Còn thiếu thẻ vị trí | Đã quét bảng | Danh sách). Danh sách tạm — Admin tự xoá đợt đang dùng trên màn (v3, 26/10: xoá kèm lượt quét, chỉ đợt web đang hiện); không cron, không tự xoá danh sách tắt. (24/10, 26/10 · N1198, N1200, N1201, N20261026-0126)
   - Danh sách Navy/Black do Admin nạp Excel, máy đã kích hoạt quét đánh dấu; kết quả quét = pop-up không modal như Cấp vải (Đúng tự đóng 1,6 s).
   - v2: bảng chia theo vị trí HIỆN TẠI (nguồn mới hơn giữa Đối chiếu và `group_uid_details`, thiếu thì Excel) → `F0-VR-00-00-00-00` (đích) → "Đã rời kho" (status Canceled/Closed/Transferred hoặc WMS không còn vị trí; không tính Về F0-VR); hai mốc riêng Đã quét + Về F0-VR.
   - Nút Đối chiếu = Admin đọc WMS trực tiếp qua Extension ≥ 0.10.6 bằng `GroupUidSnapshotCore` (bản chép nguyên văn trong index.html), lệch → báo đỏ không lưu.
@@ -387,6 +387,7 @@ Mục này thắng mọi ghi chú "CHƯA LÊN" trong nhật ký. Kiểm lại kh
 - Tem SKU một mẫu v3 + in lại tem PO: `print_sku_v3_v1` + `sku_po_receipts_v1` (23/10).
 - `backend_hygiene_v1` (Đợt B, 24/10 00:34: có `print_job_cancel`, index `uid_block_scans_device_idx` · N1194, N1195).
 - `vendor_return_v1` + `vendor_return_v2` (Trả NCC, 24/10: bảng `vendor_return_lists`, index `vendor_return_lists_one_active`, hàm `vendor_return_reconcile` · N1198, N1200).
+- `vendor_return_v3` (Trả NCC, 26/10 01:25: hàm `vendor_return_delete`, kiểm: SECURITY DEFINER, anon không execute · N20261026-0126).
 - `sku_name_touch_v1` (25/10: hàm + trigger `sku_name_touch` trên `SKU_Name` · N20261025-2156).
 
 **ĐÃ LÊN — Edge Function (bản đang chạy ↔ commit cuối của thư mục hàm)**
