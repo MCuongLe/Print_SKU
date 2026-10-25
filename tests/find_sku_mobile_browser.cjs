@@ -54,22 +54,33 @@ const NAME = 'Chỉ may mẫu/Tex 27/Black/5000m/mm';
         const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAFElEQVR42mNkYGD4z8DAwMDAxAADAAAQkgIB3wAAAABJRU5ErkJggg==', 'base64');
         await page.locator('#fsk-file').setInputFiles({ name: 'tem-mau.png', mimeType: 'image/png', buffer: png });
         await page.waitForFunction(() => document.getElementById('find-sku-screen').dataset.aiReading === 'true');
-        assert.equal(await visible('.fsk-photo-state'), true, 'đang đọc ảnh phải hiện trạng thái AI trên ảnh');
+        assert.equal(await visible('#fsk-ai-overlay'), true, 'đang đọc ảnh phải có lớp phủ chibi toàn màn hình');
+        const overlayFx = await page.evaluate(() => {
+          const overlay = document.getElementById('fsk-ai-overlay'), image = overlay.querySelector('.fsk-ai-character'), box = overlay.getBoundingClientRect();
+          return { state: overlay.dataset.state, position: getComputedStyle(overlay).position, box: [Math.round(box.left), Math.round(box.top), Math.round(box.width), Math.round(box.height)], image: image.getAttribute('src'), visibleCopy: overlay.querySelectorAll('.fsk-ai-copy').length };
+        });
+        assert.equal(overlayFx.state, 'thinking', 'chibi phải ở trạng thái suy nghĩ khi AI đang chạy');
+        assert.equal(overlayFx.position, 'fixed');
+        assert.deepEqual(overlayFx.box, [0, 0, width, height], 'lớp phủ chibi phải che đúng toàn bộ viewport');
+        assert.equal(overlayFx.image, 'assets/ai-thinking-chibi-simple.png');
+        assert.equal(overlayFx.visibleCopy, 0, 'animation không lặp dòng trạng thái nhìn thấy');
+        const a11yState = await page.locator('#fsk-ai-a11y').evaluate(node => { const style = getComputedStyle(node), box = node.getBoundingClientRect(); return { width: Math.round(box.width), height: Math.round(box.height), clip: style.clipPath }; });
+        assert.deepEqual(a11yState, { width: 1, height: 1, clip: 'inset(50%)' }, 'trạng thái dành cho trình đọc màn hình phải bị cắt khỏi phần nhìn thấy');
         const readingFx = await page.evaluate(() => ({
-          label: document.querySelector('.fsk-photo-state').textContent.trim(),
           beam: getComputedStyle(document.querySelector('.fsk-photo-beam')).display,
           animation: getComputedStyle(document.querySelector('.fsk-photo-beam')).animationName,
           photoRatio: document.querySelector('#fsk-photo').getBoundingClientRect().width / document.querySelector('#fsk-photo').getBoundingClientRect().height,
           naturalRatio: document.querySelector('#fsk-photo').naturalWidth / document.querySelector('#fsk-photo').naturalHeight
         }));
-        assert.equal(readingFx.label, 'AI đang đọc ảnh…');
         assert.equal(readingFx.beam, 'block', 'đang đọc ảnh phải có vạch quét');
         assert.equal(readingFx.animation, 'fsk-photo-scan', 'vạch quét chạy theo trạng thái đọc thật');
         assert.ok(Math.abs(readingFx.photoRatio - readingFx.naturalRatio) < 0.05, 'khung hiệu ứng phải co theo đúng tỷ lệ ảnh');
         assert.equal((await page.locator('#fsk-message').innerText()).trim(), '', 'không lặp trạng thái AI ở đầu thẻ');
         assert.equal((await page.locator('#fsk-results').innerText()).trim(), '', 'không lặp trạng thái AI dưới ảnh');
         await page.waitForFunction(() => document.getElementById('find-sku-screen').dataset.aiReading === 'false');
-        assert.equal(await visible('.fsk-photo-state'), false, 'đọc xong phải tắt hiệu ứng');
+        assert.equal(await page.locator('#fsk-ai-overlay').getAttribute('data-state'), 'success', 'đọc xong phải bật bóng đèn thành công');
+        assert.equal(await visible('#fsk-ai-overlay'), true, 'bóng đèn thành công phải hiện ngắn trước khi đóng');
+        await page.locator('#fsk-ai-overlay').waitFor({ state: 'hidden' });
       }
       // Chọn SKU chỉ (đơn vị mm) → tab 2
       await page.locator('#fsk-code').fill(SKU); await page.locator('#fsk-code-form').press('Enter');

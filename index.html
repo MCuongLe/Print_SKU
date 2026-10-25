@@ -4753,7 +4753,7 @@ Error generating stack: `+y.message+`
             <div class="fsk-cam-empty" id="fsk-cam-empty"><span class="fsk-cam-empty__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13.997 4a2 2 0 0 1 1.76 1.05l.486.9A2 2 0 0 0 18.003 7H20a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1.997a2 2 0 0 0 1.759-1.048l.489-.904A2 2 0 0 1 10.004 4z"/><circle cx="12" cy="13" r="3"/></svg></span><button class="cut-primary act-icon act-icon--camera" id="fsk-cam" type="button">Bật camera</button></div>
             <div class="fsk-camera" id="fsk-camera" role="dialog" aria-modal="true" aria-label="Quét tem bằng camera" hidden><video id="fsk-video" playsinline muted autoplay></video><div class="fsk-guide"><i aria-hidden="true"></i><i aria-hidden="true"></i><i aria-hidden="true"></i><i aria-hidden="true"></i><span class="fsk-spin" aria-hidden="true"></span><p class="fsk-cam-status" id="fsk-cam-status" aria-live="polite">Đang mở camera…</p></div><div class="fsk-cam-top"><button class="fsk-cam-icon" id="fsk-cam-off" type="button" aria-label="Đóng camera"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button><b class="fsk-cam-title">Quét tem</b><button class="fsk-cam-icon" id="fsk-torch" type="button" aria-label="Bật đèn" aria-pressed="false" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 13v1M17 2a1 1 0 0 1 1 1v4a3 3 0 0 1-.6 1.8l-.6.8A4 4 0 0 0 16 12v8a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2v-8a4 4 0 0 0-.8-2.4l-.6-.8A3 3 0 0 1 6 7V3a1 1 0 0 1 1-1zM6 6h12"/></svg></button></div><div class="fsk-cam-bottom"><button class="fsk-cam-hits" id="fsk-cam-hits" type="button" hidden></button><div class="fsk-zoom" id="fsk-zoom" role="group" aria-label="Thu phóng"><button type="button" data-zoom="1" aria-pressed="true">1×</button><button type="button" data-zoom="2" aria-pressed="false">2×</button><button type="button" data-zoom="3" aria-pressed="false">3×</button></div><div class="fsk-cam-row"><label class="fsk-cam-side"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></svg><span>Ảnh</span><input id="fsk-gallery" type="file" accept="image/*" hidden></label><button class="fsk-shutter" id="fsk-shot" type="button" aria-label="Chụp ngay"></button><button class="fsk-cam-side" id="fsk-cam-type" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M8 12h.01M12 12h.01M16 12h.01M7 16h10"/></svg><span>Gõ mã</span></button></div></div></div>
             <div class="fsk-alt"><label class="cut-secondary fsk-file act-icon act-icon--image" aria-label="Chọn ảnh" title="Chọn ảnh"><span class="fsk-sr">Chọn ảnh</span><input id="fsk-file" type="file" accept="image/*" capture="environment" hidden></label><button class="cut-secondary act-icon act-icon--load" id="fsk-read" type="button" hidden aria-label="Đọc lại tem" title="Đọc lại tem"><span class="fsk-sr">Đọc lại tem</span></button><button class="cut-secondary fsk-more-btn" id="fsk-more-open" type="button" aria-haspopup="dialog" aria-label="Chi tiết xử lý" title="Chi tiết xử lý"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 4h-7"/><path d="M10 4H3"/><path d="M21 12h-9"/><path d="M8 12H3"/><path d="M21 20h-5"/><path d="M12 20H3"/><path d="M14 2v4"/><path d="M8 10v4"/><path d="M16 18v4"/></svg><b class="cut-badge" id="fsk-token-count" hidden>0</b></button></div>
-            <div class="fsk-photo-stage"><img class="fsk-photo" id="fsk-photo" alt="Ảnh tem vừa chụp" hidden><span class="fsk-photo-beam" aria-hidden="true"></span><span class="fsk-photo-state" role="status"><i aria-hidden="true"></i>AI đang đọc ảnh…</span></div>
+            <div class="fsk-photo-stage"><img class="fsk-photo" id="fsk-photo" alt="Ảnh tem vừa chụp" hidden><span class="fsk-photo-beam" aria-hidden="true"></span></div>
             <div class="fsk-results" id="fsk-results"></div>
 
           </section>
@@ -4792,6 +4792,14 @@ Error generating stack: `+y.message+`
             <p class="cut-note fsk-list-note" id="fsk-list-note" hidden><button class="cut-secondary act-icon act-icon--add" type="button" data-goto-scan>Quét thêm tem</button></p>
             <div class="fsk-bar" id="fsk-print-bar" hidden><span class="fsk-bar__sum" id="fsk-selected-count">Chưa chọn tem</span><button class="cut-primary act-icon act-icon--print" id="fsk-print" type="button" disabled>In tem</button></div>
           </section>
+        </div>
+      </div>
+      <div class="fsk-ai-overlay" id="fsk-ai-overlay" data-state="thinking" role="status" aria-live="polite" hidden>
+        <span class="fsk-ai-sr" id="fsk-ai-a11y">AI đang đọc tem</span>
+        <div class="fsk-ai-visual" aria-hidden="true">
+          <span class="fsk-ai-thought fsk-ai-thought--1"></span><span class="fsk-ai-thought fsk-ai-thought--2"></span><span class="fsk-ai-thought fsk-ai-thought--3"></span>
+          <svg class="fsk-ai-bulb" viewBox="0 0 64 64"><circle class="fsk-ai-bulb-halo" cx="32" cy="27" r="27"></circle><circle cx="32" cy="27" r="18"></circle><path d="M25 43h14M27 49h10M29 54h6M23 35c-4-3-7-8-7-14a16 16 0 0 1 32 0c0 6-3 11-7 14-2 2-2 5-2 8H25c0-3 0-6-2-8ZM32 2v-6M10 10 5 5M54 10l5-5M9 29H2M62 29h-7"></path></svg>
+          <img class="fsk-ai-character" src="assets/ai-thinking-chibi-simple.png" alt="">
         </div>
       </div>
       <dialog class="as-dialog fsk-dialog" id="fsk-more" aria-labelledby="fsk-more-title">
@@ -4958,16 +4966,37 @@ Error generating stack: `+y.message+`
       .fsk-shutter{width:78px;height:78px;padding:0;border:5px solid #fff;border-radius:50%;background:rgba(255,255,255,.28);box-shadow:inset 0 0 0 5px rgba(0,0,0,.25);cursor:pointer;transition:transform .12s}
       .fsk-shutter:active{transform:scale(.92)}
       .fsk-shutter:disabled{opacity:.45;cursor:default}
-      @media(prefers-reduced-motion:reduce){.fsk-spin,.fsk-photo-state i{animation-duration:2.4s}.fsk-shutter,.fsk-guide i{transition:none}#find-sku-screen[data-ai-reading="true"] .fsk-photo-beam{top:50%;animation:none}}
+      @media(prefers-reduced-motion:reduce){.fsk-spin{animation-duration:2.4s}.fsk-shutter,.fsk-guide i{transition:none}#find-sku-screen[data-ai-reading="true"] .fsk-photo-beam{top:50%;animation:none}}
       .fsk-photo-stage{position:relative;display:block;width:fit-content;max-width:100%;margin:12px auto 0;overflow:hidden;border:1px solid var(--wms-border,#d9e2de);border-radius:12px;background:var(--wms-bg,#f4f7f6)}
       .fsk-photo-stage:has(.fsk-photo[hidden]){display:none}
       .fsk-photo{display:block;width:auto;max-width:100%;height:auto;max-height:160px}
-      .fsk-photo-beam,.fsk-photo-state{display:none}
+      .fsk-photo-beam{display:none}
       #find-sku-screen[data-ai-reading="true"] .fsk-photo{filter:saturate(.82) brightness(.82)}
       #find-sku-screen[data-ai-reading="true"] .fsk-photo-beam{position:absolute;z-index:1;left:8px;right:8px;top:0;display:block;height:2px;border-radius:999px;background:var(--wms-success,#0f6e49);box-shadow:0 0 0 3px rgba(0,119,84,.15);animation:fsk-photo-scan 1.45s ease-in-out infinite alternate}
-      #find-sku-screen[data-ai-reading="true"] .fsk-photo-state{position:absolute;z-index:2;left:50%;bottom:10px;display:inline-flex;align-items:center;gap:8px;min-height:34px;padding:0 12px;border:1px solid var(--wms-on-brand,#fff);border-radius:999px;background:var(--wms-text,#17251f);color:var(--wms-on-brand,#fff);font-size:13px;font-weight:600;white-space:nowrap;transform:translateX(-50%);backdrop-filter:blur(6px)}
-      .fsk-photo-state i{width:14px;height:14px;border:2px solid var(--wms-muted,#60736b);border-top-color:var(--wms-on-brand,#fff);border-radius:50%;animation:fsk-spin .8s linear infinite}
       @keyframes fsk-photo-scan{from{top:8px}to{top:calc(100% - 10px)}}
+      .fsk-ai-overlay{position:fixed;inset:0;z-index:9000;display:grid;place-items:center;min-height:100dvh;padding:24px;overflow:hidden;background:rgba(15,35,28,.45);overscroll-behavior:contain;touch-action:none}
+      .fsk-ai-overlay[hidden]{display:none}
+      .fsk-ai-sr{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;clip-path:inset(50%)!important;white-space:nowrap!important;border:0!important}
+      .fsk-ai-overlay::before{content:"";position:absolute;width:min(86vw,430px);aspect-ratio:1;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.16),transparent 68%)}
+      .fsk-ai-visual{position:relative;display:grid;place-items:end center;width:min(72vw,300px);height:min(54vh,390px)}
+      .fsk-ai-character{position:relative;z-index:2;display:block;width:auto;max-width:100%;height:100%;object-fit:contain;animation:fsk-ai-think 2.1s ease-in-out infinite;transform-origin:50% 92%;will-change:transform}
+      .fsk-ai-thought{position:absolute;z-index:3;top:13%;right:4%;width:16px;height:16px;border-radius:50%;background:var(--wms-on-brand,#fff);opacity:.4;animation:fsk-ai-thought 1.35s ease-in-out infinite;will-change:transform,opacity}
+      .fsk-ai-thought--2{top:7%;right:-5%;width:23px;height:23px;animation-delay:.18s}
+      .fsk-ai-thought--3{top:0;right:-17%;width:33px;height:33px;animation-delay:.36s}
+      .fsk-ai-bulb{position:absolute;z-index:5;top:-1%;right:-18%;width:78px;height:78px;overflow:visible;color:#8a5b00;opacity:0;transform:translateY(24px) scale(0);will-change:transform,opacity}
+      .fsk-ai-bulb circle:not(.fsk-ai-bulb-halo){fill:#fff3d6}.fsk-ai-bulb-halo{fill:#fff3d6;opacity:.18;transform-origin:32px 27px}
+      .fsk-ai-bulb path{fill:none;stroke:currentColor;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+      .fsk-ai-overlay[data-state="success"] .fsk-ai-thought{display:none}
+      .fsk-ai-overlay[data-state="success"] .fsk-ai-character{animation:fsk-ai-done .5s cubic-bezier(.18,.89,.32,1.28) both}
+      .fsk-ai-overlay[data-state="success"] .fsk-ai-bulb{animation:fsk-ai-bulb-pop .5s cubic-bezier(.18,.89,.32,1.28) forwards}
+      .fsk-ai-overlay[data-state="success"] .fsk-ai-bulb-halo{animation:fsk-ai-halo .65s ease-in-out .25s infinite alternate}
+      @keyframes fsk-ai-think{0%,100%{transform:translateY(0) rotate(-1deg)}50%{transform:translateY(-10px) rotate(1deg)}}
+      @keyframes fsk-ai-thought{0%,100%{opacity:.4;transform:scale(.76)}50%{opacity:1;transform:scale(1)}}
+      @keyframes fsk-ai-done{0%{transform:scale(.96)}65%{transform:scale(1.04)}100%{transform:scale(1)}}
+      @keyframes fsk-ai-bulb-pop{0%{opacity:0;transform:translateY(24px) scale(0)}70%{opacity:1;transform:translateY(-8px) scale(1.18)}100%{opacity:1;transform:translateY(0) scale(1)}}
+      @keyframes fsk-ai-halo{from{opacity:.12;transform:scale(.9)}to{opacity:.3;transform:scale(1.12)}}
+      @media(max-width:430px){.fsk-ai-visual{width:min(72vw,270px);height:min(50vh,340px)}.fsk-ai-bulb{right:-11%;width:66px;height:66px}.fsk-ai-thought--3{right:-10%}}
+      @media(prefers-reduced-motion:reduce){.fsk-ai-character,.fsk-ai-thought,.fsk-ai-overlay[data-state="success"] .fsk-ai-character,.fsk-ai-overlay[data-state="success"] .fsk-ai-bulb,.fsk-ai-overlay[data-state="success"] .fsk-ai-bulb-halo{animation:none}.fsk-ai-overlay[data-state="success"] .fsk-ai-bulb{opacity:1;transform:none}}
       .fsk-file{display:inline-flex;align-items:center;justify-content:center}
       .fsk-results{margin-top:14px;scroll-margin-top:72px}
       .fsk-more{margin-top:16px;padding:12px 14px;border:1px solid var(--wms-border,#d9e2de);border-radius:14px}
@@ -7271,6 +7300,7 @@ var FSK_CORE = (function () {
         const message = $("fsk-message"), codeForm = $("fsk-code-form"), codeInput = $("fsk-code");
         const camButton = $("fsk-cam"), camEmpty = $("fsk-cam-empty"), shotButton = $("fsk-shot"), fileInput = $("fsk-file"), readButton = $("fsk-read");
         const cameraBox = $("fsk-camera"), video = $("fsk-video"), camStatusEl = $("fsk-cam-status"), zoomBox = $("fsk-zoom"), photo = $("fsk-photo");
+        const aiOverlay = $("fsk-ai-overlay"), aiA11y = $("fsk-ai-a11y");
         const torchButton = $("fsk-torch"), hitsButton = $("fsk-cam-hits"), galleryInput = $("fsk-gallery");
         const raw = $("fsk-raw"), tags = $("fsk-tags"), tokenCount = $("fsk-token-count"), results = $("fsk-results"), catalogNote = $("fsk-catalog");
         const selBox = $("fsk-sel"), selEmpty = $("fsk-sel-empty"), calcBody = $("fsk-calc-body");
@@ -7289,11 +7319,27 @@ var FSK_CORE = (function () {
           stream: null, track: null, zoom: 1, hardZoom: null, torch: false, camHistory: false, auto: null, scanEngine: null, raf: 0, lastSample: 0, lastScan: 0, prevGray: null,
           selected: null, pickRun: 0, queue: [], busy: false, pollTimer: 0
         };
+        let aiOverlayTimer = 0;
         // Luật chung với PRINT SKU / PRINT UID (RULES.md "Gợi ý SKU Normal khi nhập SKU Combo").
         const COMBO_NOTE = "Chọn mã Normal thì bước Số lượng tính theo đơn vị của mã Normal. Chọn “Tiếp tục với SKU Combo” nếu cần in đúng tem Combo.";
 
         const active = () => location.hash.replace(/^#/, "").split("&")[0] === "find-sku";
         const tell = (text, tone = "") => { message.textContent = text; message.dataset.tone = tone; };
+        const hideAiOverlay = () => {
+          clearTimeout(aiOverlayTimer); aiOverlayTimer = 0;
+          aiOverlay.hidden = true; aiOverlay.dataset.state = "thinking"; screen.removeAttribute("aria-busy");
+        };
+        const showAiOverlay = () => {
+          clearTimeout(aiOverlayTimer); aiOverlayTimer = 0;
+          aiOverlay.dataset.state = "thinking"; aiA11y.textContent = "AI đang đọc tem"; aiOverlay.hidden = false; screen.setAttribute("aria-busy", "true");
+          if (screen.contains(document.activeElement)) document.activeElement.blur();
+        };
+        const finishAiOverlay = success => {
+          screen.removeAttribute("aria-busy");
+          if (!success) { hideAiOverlay(); return; }
+          aiOverlay.dataset.state = "success"; aiA11y.textContent = "AI đã nhận diện xong tem";
+          aiOverlayTimer = setTimeout(hideAiOverlay, 700);
+        };
         const esc = value => String(value ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
         const shown = (text, role) => (role === "code" ? String(text).toUpperCase() : String(text));
         const setCatalog = text => { catalogNote.textContent = text; };
@@ -7409,7 +7455,7 @@ var FSK_CORE = (function () {
           state.run += 1;
           // Lần đọc AI đang chạy (nếu có) thành cũ và bị bỏ kết quả; finally của nó không nhả cờ, nên phải nhả ở đây
           // không thì lần đọc mới bị chặn mãi (nút Đọc lại khoá, tự chụp và quét QR dừng) cho tới khi tải lại trang.
-          state.reading = false; screen.dataset.aiReading = "false"; readButton.disabled = false; cameraBox.dataset.busy = "false"; shotButton.disabled = false;
+          state.reading = false; screen.dataset.aiReading = "false"; hideAiOverlay(); readButton.disabled = false; cameraBox.dataset.busy = "false"; shotButton.disabled = false;
           state.tokens = []; state.removed = new Set(); state.rawSplit = "";
           raw.value = ""; renderTags();
           // Kết quả của tem trước không được nằm lại trong lúc đọc tem mới — người dùng sẽ chọn nhầm.
@@ -7524,14 +7570,14 @@ var FSK_CORE = (function () {
         const readLabel = async (dataUrl, auto) => {
           if (state.reading) return;
           const run = state.run;
-          state.reading = true; screen.dataset.aiReading = "true"; readButton.disabled = true;
+          state.reading = true; screen.dataset.aiReading = "true"; showAiOverlay(); readButton.disabled = true;
           if (state.stream) { cameraBox.dataset.busy = "true"; shotButton.disabled = true; hitsButton.hidden = true; }
-          // Ảnh đã có trạng thái + vạch quét ngay trên preview; không lặp thêm thông báo ở đầu và cuối thẻ.
+          // Lớp phủ chibi + vạch quét đã thể hiện tiến trình; không lặp thêm thông báo ở đầu và cuối thẻ.
           if (state.photo) results.innerHTML = "";
           tell("");
           if (state.stream) camStatus(auto ? "Đã tự chụp — AI đang đọc…" : "AI đang đọc ảnh…", "ok");
           ensureCatalog().catch(() => {});
-          let quotaOut = false;
+          let quotaOut = false, readComplete = false;
           try {
             const queue = window.PrintSkuQueue;
             const response = await fetch(`${queue.supabaseUrl}/functions/v1/sku-vision`, {
@@ -7544,6 +7590,7 @@ var FSK_CORE = (function () {
             if (run !== state.run) return;
             quotaOut = response.status === 429;
             if (!response.ok || !result?.ok) throw new Error(result?.message || `Máy chủ đọc tem trả HTTP ${response.status}`);
+            readComplete = true;
             raw.value = String(result.text || "");
             state.rawSplit = "";
             const t = result.tokens || {};
@@ -7584,7 +7631,7 @@ var FSK_CORE = (function () {
             if (state.stream) camStatus(quotaOut ? "Hết lượt đọc tem hôm nay" : "AI chưa đọc được", "warn");
             else if (finePointer()) codeInput.focus();
           } finally {
-            if (run === state.run) { state.reading = false; screen.dataset.aiReading = "false"; readButton.disabled = false; readButton.hidden = !state.photo; cameraBox.dataset.busy = "false"; shotButton.disabled = false; }
+            if (run === state.run) { state.reading = false; screen.dataset.aiReading = "false"; finishAiOverlay(readComplete); readButton.disabled = false; readButton.hidden = !state.photo; cameraBox.dataset.busy = "false"; shotButton.disabled = false; }
           }
         };
 
