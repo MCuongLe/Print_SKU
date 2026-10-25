@@ -67,14 +67,12 @@ const NAME = 'Chỉ may mẫu/Tex 27/Black/5000m/mm';
         const a11yState = await page.locator('#fsk-ai-a11y').evaluate(node => { const style = getComputedStyle(node), box = node.getBoundingClientRect(); return { width: Math.round(box.width), height: Math.round(box.height), clip: style.clipPath }; });
         assert.deepEqual(a11yState, { width: 1, height: 1, clip: 'inset(50%)' }, 'trạng thái dành cho trình đọc màn hình phải bị cắt khỏi phần nhìn thấy');
         const readingFx = await page.evaluate(() => ({
-          beam: getComputedStyle(document.querySelector('.fsk-photo-beam')).display,
-          animation: getComputedStyle(document.querySelector('.fsk-photo-beam')).animationName,
+          scanDecoration: document.querySelectorAll('.fsk-photo-beam').length,
           photoRatio: document.querySelector('#fsk-photo').getBoundingClientRect().width / document.querySelector('#fsk-photo').getBoundingClientRect().height,
           naturalRatio: document.querySelector('#fsk-photo').naturalWidth / document.querySelector('#fsk-photo').naturalHeight
         }));
-        assert.equal(readingFx.beam, 'block', 'đang đọc ảnh phải có vạch quét');
-        assert.equal(readingFx.animation, 'fsk-photo-scan', 'vạch quét chạy theo trạng thái đọc thật');
-        assert.ok(Math.abs(readingFx.photoRatio - readingFx.naturalRatio) < 0.05, 'khung hiệu ứng phải co theo đúng tỷ lệ ảnh');
+        assert.equal(readingFx.scanDecoration, 0, 'animation chibi đã thay thế vạch quét cũ trên ảnh');
+        assert.ok(Math.abs(readingFx.photoRatio - readingFx.naturalRatio) < 0.05, 'khung ảnh phải co theo đúng tỷ lệ ảnh');
         assert.equal((await page.locator('#fsk-message').innerText()).trim(), '', 'không lặp trạng thái AI ở đầu thẻ');
         assert.equal((await page.locator('#fsk-results').innerText()).trim(), '', 'không lặp trạng thái AI dưới ảnh');
         await page.waitForFunction(() => document.getElementById('find-sku-screen').dataset.aiReading === 'false');
