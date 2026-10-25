@@ -15,9 +15,9 @@ const JOBS = [
             { sku: '900000102', productName: 'Vải mẫu A cotton đỏ đô', quantity: '', printedDate: '08/10/26', copies: 2 },
             { sku: '900000103', productName: 'Chỉ mẫu B polyester trắng', quantity: '', printedDate: '08/10/26', copies: 2 }] },
   { id: 'bbbb2222-0000-4000-8000-000000000002', type: 'group_uid', status: 'completed', copies: 3, source: 'web-group-uid', createdAt: at('09', '58'), completedAt: at('09', '58'),
-    items: [{ groupUid: '1028260900000101', sku: '900000201', productName: 'Vải mẫu C canvas đen', lot: '11', roll: '16', copies: 1 },
-            { groupUid: '1028260900000102', sku: '900000201', productName: 'Vải mẫu C canvas đen', lot: '11', roll: '20', copies: 1 },
-            { groupUid: '1028260900000103', sku: '900000201', productName: 'Vải mẫu C canvas đen', lot: '5', roll: '2', copies: 1 }] },
+    items: [{ groupUid: '1028260000000101', sku: '900000201', productName: 'Vải mẫu C canvas đen', lot: '11', roll: '16', copies: 1 },
+            { groupUid: '1028260000000102', sku: '900000201', productName: 'Vải mẫu C canvas đen', lot: '11', roll: '20', copies: 1 },
+            { groupUid: '1028260000000103', sku: '900000201', productName: 'Vải mẫu C canvas đen', lot: '5', roll: '2', copies: 1 }] },
   { id: 'cccc3333-0000-4000-8000-000000000003', type: 'sku', status: 'failed', copies: 10, source: 'web-find-sku', createdAt: at('09', '52'), completedAt: null,
     errorCode: 'PRINTER_STALLED', errorMessage: 'Máy in đứng quá 600 giây',
     items: [{ sku: '900000301', productName: 'Dây kéo mẫu D size 7 50cm', quantity: '', printedDate: '08/10/26', copies: 10 }] },
@@ -204,7 +204,7 @@ const lastCall = (calls, name) => [...calls].reverse().find(call => call.rpc ===
       await dlg.waitFor({ state: 'hidden' });
 
       // Popup UID: tick sẵn tất cả; bỏ 1 dòng → in lại một phần, gửi đúng số thứ tự dòng
-      await rows(page).filter({ hasText: '1028260900000101' }).click();
+      await rows(page).filter({ hasText: '1028260000000101' }).click();
       await page.waitForFunction(() => document.querySelectorAll('#pj-d-tbody input[data-pick]').length === 3);
       assert.equal(await page.locator('#pj-d-tbody input[data-pick]:checked').count(), 3);
       assert.equal(await page.locator('#pj-d-all').isChecked(), true);
@@ -224,7 +224,7 @@ const lastCall = (calls, name) => [...calls].reverse().find(call => call.rpc ===
       await page.locator('#pj-d-reprint').click();
       await whd(page).waitFor({ state: 'visible' });
       assert.equal((await whd(page).locator('.whd-title').textContent()).trim(), 'In lại 2 UID');
-      assert.deepEqual(await whd(page).locator('.whd-list li').allTextContents(), ['1028260900000101', '1028260900000103']);
+      assert.deepEqual(await whd(page).locator('.whd-list li').allTextContents(), ['1028260000000101', '1028260000000103']);
       assert.deepEqual(await whd(page).locator('.whd-facts li').allTextContents(), ['2 tem', '2/3 dòng']);
       if (width < 768) {
         const sheet = await whd(page).boundingBox(), viewport = page.viewportSize();
@@ -247,7 +247,7 @@ const lastCall = (calls, name) => [...calls].reverse().find(call => call.rpc ===
       await dlg.waitFor({ state: 'hidden' });
 
       // UID: chọn đủ dòng → p_items null (nguyên lệnh)
-      await rows(page).filter({ hasText: '1028260900000101' }).click();
+      await rows(page).filter({ hasText: '1028260000000101' }).click();
       await page.waitForFunction(() => document.querySelectorAll('#pj-d-tbody input[data-pick]').length === 3);
       await page.locator('#pj-d-reprint').click();
       await whd(page).waitFor({ state: 'visible' });

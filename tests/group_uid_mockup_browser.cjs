@@ -5,7 +5,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const assert = require('node:assert/strict');
 
 const BASE = process.env.BASE || 'http://127.0.0.1:8000/';
-const CODES = ['1028260925000001', '1028260925000002', '1028260925000003', '1028260925000004', '1028260925000009'];
+const CODES = ['1028260000000001', '1028260000000002', '1028260000000003', '1028260000000004', '1028260000000009'];
 
 (async () => {
   const browser = await chromium.launch({ channel: 'chrome', headless: true });
@@ -40,18 +40,18 @@ const CODES = ['1028260925000001', '1028260925000002', '1028260925000003', '1028
       const rows = () => page.evaluate(() => [...document.querySelectorAll('#uid-pending .uid-row')].filter(r => r.getBoundingClientRect().height).map(r => r.querySelector('.uid-row__body').innerText.replace(/\s+/g, ' ').trim()));
       let visible = await rows();
       assert.equal(visible.length, mobile ? 3 : 4, mobile ? 'điện thoại: 3 dòng đầu' : 'máy tính: đủ dòng');
-      assert.match(visible[0], /^1028260925000001 Lot: L1\s*\|\s*Roll: 51 Thêm: \d{2}\/\d{2}\/\d{4} \d{2}:\d{2}$/, 'dòng có Lot/Roll và giờ thêm');
+      assert.match(visible[0], /^1028260000000001 Lot: L1\s*\|\s*Roll: 51 Thêm: \d{2}\/\d{2}\/\d{4} \d{2}:\d{2}$/, 'dòng có Lot/Roll và giờ thêm');
       assert.equal(await page.locator('#uid-more').isVisible(), mobile, 'Xem tất cả chỉ trên điện thoại khi > 3 dòng');
 
       // Tìm theo Group UID / Lot / Roll
       await page.locator('#uid-search').fill('L3');
-      assert.deepEqual((await rows()).map(t => t.split(' ')[0]), ['1028260925000003']);
+      assert.deepEqual((await rows()).map(t => t.split(' ')[0]), ['1028260000000003']);
       await page.locator('#uid-search').fill('');
 
       // Chép UID
       await page.locator('#uid-pending .uid-row').first().locator('[data-action="copy"]').click();
       // Chép qua clipboard là bất đồng bộ: chờ dòng trạng thái đổi (đọc ngay sau click có lúc còn dòng cũ khi máy chạy nặng)
-      await page.waitForFunction(() => document.getElementById('uid-status').textContent.trim() === 'Đã chép 1028260925000001.', null, { timeout: 5000 });
+      await page.waitForFunction(() => document.getElementById('uid-status').textContent.trim() === 'Đã chép 1028260000000001.', null, { timeout: 5000 });
 
       // Chọn 2 → Xóa đã chọn (hỏi lại)
       assert.equal(await page.locator('#uid-bulk-delete').isDisabled(), true);
@@ -62,7 +62,7 @@ const CODES = ['1028260925000001', '1028260925000002', '1028260925000003', '1028
       assert.equal((await page.locator('dialog.whd .whd-title').textContent()).trim(), 'Xóa 2 Group UID đã chọn');
       await page.locator('dialog.whd .whd-ok').click();
       await page.waitForFunction(() => document.querySelector('#uid-pending-count').textContent === '2');
-      assert.deepEqual((await rows()).map(t => t.split(' ')[0]), ['1028260925000003', '1028260925000004']);
+      assert.deepEqual((await rows()).map(t => t.split(' ')[0]), ['1028260000000003', '1028260000000004']);
 
       // Kéo ⋮⋮ đổi thứ tự (Gán tự động lấy UID từ đầu khung chờ): kéo dòng 2 lên trên dòng 1, rồi phím mũi tên xuống trả lại
       const order = () => page.evaluate(() => [...document.querySelectorAll('#uid-pending .uid-row')].map(r => r.querySelector('.uid-row__code').textContent));
@@ -72,11 +72,11 @@ const CODES = ['1028260925000001', '1028260925000002', '1028260925000003', '1028
       await page.mouse.down();
       await page.mouse.move(hb.x + hb.width / 2, first.y + 6, { steps: 8 });
       await page.mouse.up();
-      assert.deepEqual(await order(), ['1028260925000004', '1028260925000003'], 'kéo thả đổi thứ tự');
-      assert.match(await page.locator('#uid-status').textContent(), /1028260925000004 tới vị trí 1/);
+      assert.deepEqual(await order(), ['1028260000000004', '1028260000000003'], 'kéo thả đổi thứ tự');
+      assert.match(await page.locator('#uid-status').textContent(), /1028260000000004 tới vị trí 1/);
       await page.locator('#uid-pending .uid-row').first().locator('[data-drag]').focus();
       await page.keyboard.press('ArrowDown');
-      assert.deepEqual(await order(), ['1028260925000003', '1028260925000004'], 'phím mũi tên đổi thứ tự');
+      assert.deepEqual(await order(), ['1028260000000003', '1028260000000004'], 'phím mũi tên đổi thứ tự');
       await page.locator('#uid-search').fill('L3');
       assert.equal(await page.locator('#uid-pending [data-drag]').count(), 0, 'đang tìm thì ẩn tay kéo');
       await page.locator('#uid-search').fill('');
@@ -96,14 +96,14 @@ const CODES = ['1028260925000001', '1028260925000002', '1028260925000003', '1028
         await sheet.waitFor({ state: 'visible' });
         assert.deepEqual(await sheet.locator('[data-sheet-filter]').allTextContents(), ['Tất cả (3)', 'Chưa gán SKU (2)', 'Đã gán (1)']);
         await sheet.locator('[data-sheet-filter="mapped"]').click();
-        assert.deepEqual(await sheet.locator('.uid-row .uid-row__code').allTextContents(), ['1028260925000009']);
+        assert.deepEqual(await sheet.locator('.uid-row .uid-row__code').allTextContents(), ['1028260000000009']);
         assert.equal(await sheet.locator('.uid-row input[type=checkbox]').count(), 0, 'UID đã gán không có ô chọn');
         await sheet.locator('[data-sheet-filter="all"]').click();
         await sheet.locator('#uid-sheet-all').check();
         assert.equal((await sheet.locator('#uid-sheet-picked').textContent()).trim(), 'Đã chọn 2');
         assert.equal((await sheet.locator('#uid-sheet-total').textContent()).trim(), 'Tổng 3 Group UID');
         await sheet.locator('#uid-sheet-search').fill('000004');
-        assert.deepEqual(await sheet.locator('.uid-row .uid-row__code').allTextContents(), ['1028260925000004']);
+        assert.deepEqual(await sheet.locator('.uid-row .uid-row__code').allTextContents(), ['1028260000000004']);
         await sheet.locator('.uid-sheet__ok').click();
         assert.equal(await sheet.isVisible(), false, 'Xác nhận đóng tấm');
         assert.equal(await page.locator('#uid-select-all').isChecked(), true, 'chọn trong tấm áp vào thẻ Chưa gán SKU');

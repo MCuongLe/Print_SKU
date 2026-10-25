@@ -20,9 +20,9 @@ vm.runInNewContext(`${zipSource}\n${toolkitSource}\nthis.xlsxBlob = xlsxBlob;`, 
 (async () => {
   const head = ["Thời điểm", "Group UID", "SKU", "Sản phẩm", "Tồn", "Vị trí", "Ghi chú"];
   const rows = [
-    ["10/10/2026 22:13", "1028260605000272", "422513459", "Vải Single /HP SV18/60% Cotton & 40% Polyester <190gsm>", 12000.5, "F0-VR-00-00-00-00", 'Cắt "đôi" \'x\''],
+    ["10/10/2026 22:13", "1028260000000272", "900000072", "Vải Single /HP SV18/60% Cotton & 40% Polyester <190gsm>", 12000.5, "F0-VR-00-00-00-00", 'Cắt "đôi" \'x\''],
     ["31/09/2026 10:00", "0123456789012345", "0123", "Ngày sai", 7, "—", ""],
-    ["08/10/2026 09:43", "1028260605000299", "422513460", null, 0, "F0-KHO-503-02-04-01", "tab\u0001ctl"],
+    ["08/10/2026 09:43", "1028260000000299", "900000073", null, 0, "F0-KHO-503-02-04-01", "tab\u0001ctl"],
   ];
   const blob = context.xlsxBlob(head, rows, "Lịch sử: UID/1");
   assert.equal(blob.type, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
@@ -31,7 +31,7 @@ vm.runInNewContext(`${zipSource}\n${toolkitSource}\nthis.xlsxBlob = xlsxBlob;`, 
   assert.deepEqual(book.names, ["[Content_Types].xml", "_rels/.rels", "xl/workbook.xml", "xl/_rels/workbook.xml.rels", "xl/styles.xml", "xl/worksheets/sheet1.xml"]);
   assert.equal(book.table.length, 4, "tiêu đề + 3 dòng");
   assert.deepEqual(book.table[0], head);
-  assert.equal(book.table[1][1], "1028260605000272", "Group UID 16 số là chữ, đủ chữ số");
+  assert.equal(book.table[1][1], "1028260000000272", "Group UID 16 số là chữ, đủ chữ số");
   assert.equal(book.table[2][1], "0123456789012345", "mã có số 0 đầu giữ nguyên");
   assert.equal(book.table[2][2], "0123");
   assert.equal(typeof book.table[1][4], "number");

@@ -69,7 +69,7 @@ test('PO thật (323 UID, 51 lot, 2–8 cây/lot): mọi lot ≥ 30%; tổng c�
   const rows = [];
   let lotNo = 0;
   for (const [size, lots] of Object.entries(histogram)) {
-    for (let k = 0; k < lots; k += 1) { lotNo += 1; rows.push(...lot('422494672', `L${String(lotNo).padStart(2, '0')}`, Number(size))); }
+    for (let k = 0; k < lots; k += 1) { lotNo += 1; rows.push(...lot('900000060', `L${String(lotNo).padStart(2, '0')}`, Number(size))); }
   }
   const result = CORE.plan(rows);
   assert.deepEqual(result.errors, []);

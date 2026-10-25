@@ -9,7 +9,7 @@ const bridgeSource = fs.readFileSync(dir + "wms-bridge.js", "utf8");
 
 // Dòng thật của WMS (rút gọn): mỗi dòng là một cuộn của PO; SKU là Combo (kg)
 const row = (code, extra = {}) => ({
-  id: 10326, inbound_shmt_id: 42241906, inbound_shmt_number: "1001261014067061", purchase_order_number: "10012608011632", sku: "422513455",
+  id: 10326, inbound_shmt_id: 42241906, inbound_shmt_number: "1001261014067061", purchase_order_number: "10012608011632", sku: "900000071",
   quantity: 19.76, code, created_at: "2026-10-08 10:17:33", created_by: "nguoidung5@example.com", product_name: "(Combo) Vải Single/HP SV18/190gsm/Đen/kg",
   purchase_order_status_name: "Open", batch_code: "1148/8", status_id: 2, status_name: "Approved", gross_quantity: 19.76, net_quantity: 19.76, delivery_method: "PARTIAL", ...extra,
 });
@@ -20,14 +20,14 @@ const core = coreContext.globalThis.HasakiGroupUidSyncCore;
 assert.equal(typeof core.normalizePackingListPage, "function");
 
 const page = core.normalizePackingListPage({ page: 1, size: 500, count: 53, records: [
-  row("1148/8-025"), row("1148/8-024", { quantity: 19.88 }), row("1", { quantity: 1, batch_code: "N03-693/9/26DT", delivery_method: "FULL_PO", sku: "422480938" }),
+  row("1148/8-025"), row("1148/8-024", { quantity: 19.88 }), row("1", { quantity: 1, batch_code: "N03-693/9/26DT", delivery_method: "FULL_PO", sku: "900000057" }),
   row("14", { status_name: undefined, product_name: undefined, batch_code: undefined, inbound_shmt_number: undefined, delivery_method: undefined }),
   row("12", { group_uid_code: 1028260000000146 }), row("13", { group_uid_code: " 1028260000000147 " }), row("15", { group_uid_code: "" }),
 ] });
 assert.equal(page.total, 53, "tổng lấy từ count của WMS");
 assert.equal(page.sourceRows, 7); assert.equal(page.rows.length, 7, "giữ nguyên từng dòng (từng cuộn), việc đếm UID do trang làm");
 assert.deepEqual(JSON.parse(JSON.stringify(page.rows[0])), {
-  purchase_order: "10012608011632", shipment: "1001261014067061", sku: "422513455", product_name: "(Combo) Vải Single/HP SV18/190gsm/Đen/kg",
+  purchase_order: "10012608011632", shipment: "1001261014067061", sku: "900000071", product_name: "(Combo) Vải Single/HP SV18/190gsm/Đen/kg",
   quantity: 19.76, code: "1148/8-025", batch_code: "1148/8", status: "Approved", delivery: "PARTIAL", group_uid: null,
 });
 // Cuộn đã tạo Group UID (WMS trả số; mã giả): giữ dạng chuỗi để trang bỏ dòng này khi gán tem; khoá luôn có (kể cả null) để trang biết Extension đã đủ mới

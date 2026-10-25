@@ -14,7 +14,7 @@ const CHANGES = {
       { sku: '900000001', after: { product_name: 'SKU thử', category_name: 'Thời Trang (Phụ Liệu)' } },
       { sku: '900000002', after: { product_name: 'Chỉ Irisa/F6-8012/100% Polyester/Navy', category_name: 'Thời Trang (Phụ Liệu)' } },
     ],
-    updated: [{ sku: '422292491', fields: { product_name: { before: 'Thẻ bài/S/pcs', after: 'Thẻ bài/S/cái' }, status: { before: '1', after: '0' } } }],
+    updated: [{ sku: '900000037', fields: { product_name: { before: 'Thẻ bài/S/pcs', after: 'Thẻ bài/S/cái' }, status: { before: '1', after: '0' } } }],
   },
   combos: {
     added: [], updated: [],

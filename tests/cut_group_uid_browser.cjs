@@ -153,20 +153,20 @@ const FLOOR_TOKEN = 'pd_' + 'ab'.repeat(24);
       await page.evaluate(() => {
         const canvas = document.createElement('canvas'); canvas.width = 320; canvas.height = 240;
         const ctx = canvas.getContext('2d'); setInterval(() => { ctx.fillStyle = '#345'; ctx.fillRect(0, 0, 320, 240); }, 100);
-        window.testNextCode = '422467418';
+        window.testNextCode = '900000053';
         window.PrintSkuScanner = { ...window.PrintSkuScanner, gl: () => true, k0: () => true, Jp: async () => ({ doc: async () => ({ ma: window.testNextCode }) }), ev: async () => canvas.captureStream(10) };
       });
       await page.locator('#cut-camera').click();
       const scanner = page.locator('.pss');
       await page.waitForFunction(() => document.querySelector('.pss')?.dataset.state === 'warn');
-      assert.match(await scanner.locator('.pss-card').innerText(), /Mã này không phải Group UID.*422467418/s);
+      assert.match(await scanner.locator('.pss-card').innerText(), /Mã này không phải Group UID.*900000053/s);
       assert.equal(await scanner.locator('.pss-type').getAttribute('aria-label'), 'Gõ tay mã UID');
-      await page.evaluate(() => { window.testNextCode = '1028269999000001'; });
+      await page.evaluate(() => { window.testNextCode = '1028260000000001'; });
       await scanner.locator('[data-act="again"]').click();
       await scanner.waitFor({ state: 'detached' });
-      await page.waitForFunction(() => document.querySelector('#cut-last').textContent.includes('1028269999000001'));
-      assert.equal(records.some(x => x.groupUid === '1028269999000001'), true);
-      assert.equal(records.some(x => x.groupUid === '422467418'), false);
+      await page.waitForFunction(() => document.querySelector('#cut-last').textContent.includes('1028260000000001'));
+      assert.equal(records.some(x => x.groupUid === '1028260000000001'), true);
+      assert.equal(records.some(x => x.groupUid === '900000053'), false);
       // Admin: icon khiên mở hộp đăng nhập dùng chung; đăng nhập xong ở lại CẮT UID, hiện nút Xóa; ô quét không giành focus của ô email.
       assert.equal(await page.locator('#cut-admin').getAttribute('aria-pressed'), 'false');
       assert.equal(await page.locator('#cut-delete').isVisible(), false);

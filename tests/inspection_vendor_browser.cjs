@@ -12,13 +12,13 @@ const POS = {
   // Danh sách PO của Inside trả "<tên công ty> - <người liên hệ>".
   // Extension 0.10.1+ trả lastModified (cột LastModified danh sách PO) → Rcvd date; các PO còn lại giả lập Extension cũ (chỉ deliveryDate).
   '99900000000011': { poId: '1', poCode: '99900000000011', vendor: 'CÔNG TY TNHH SPICA ELASTIC VIỆT NAM - Ms Hà', warehouse: 'WH - MATERIAL - MTG', deliveryDate: '2027-02-08', lastModified: '2026-10-15', status: 'approved',
-    items: [item('422000001', NAME_SPICA, 30000), item('422100001', '(Combo) ' + NAME_SPICA, 500)] },
+    items: [item('900000014', NAME_SPICA, 30000), item('900000025', '(Combo) ' + NAME_SPICA, 500)] },
   // Tên pháp nhân chứa " - " thật: chỉ cắt hậu tố người liên hệ cuối cùng.
-  '99900000000012': { poId: '2', poCode: '99900000000012', vendor: 'CÔNG TY TNHH SẢN XUẤT - THƯƠNG MẠI - XUẤT NHẬP KHẨU SONG THỦY H.K - Ms Lan', warehouse: 'WH - MATERIAL - MTG', deliveryDate: '2026-10-20', status: 'approved', items: [item('422000002', NAME_SONG, 100)] },
+  '99900000000012': { poId: '2', poCode: '99900000000012', vendor: 'CÔNG TY TNHH SẢN XUẤT - THƯƠNG MẠI - XUẤT NHẬP KHẨU SONG THỦY H.K - Ms Lan', warehouse: 'WH - MATERIAL - MTG', deliveryDate: '2026-10-20', status: 'approved', items: [item('900000015', NAME_SONG, 100)] },
   // "Nhà cung cấp nhỏ lẻ" đại diện nhiều nhà thật: dùng NCC trong tên SKU.
-  '99900000000013': { poId: '3', poCode: '99900000000013', vendor: 'Nhà cung cấp nhỏ lẻ - Nhà cung cấp nhỏ lẻ', warehouse: 'WH - MATERIAL - MTG', deliveryDate: '2026-10-20', status: 'approved', items: [item('422000003', NAME_SONG, 100)] },
+  '99900000000013': { poId: '3', poCode: '99900000000013', vendor: 'Nhà cung cấp nhỏ lẻ - Nhà cung cấp nhỏ lẻ', warehouse: 'WH - MATERIAL - MTG', deliveryDate: '2026-10-20', status: 'approved', items: [item('900000016', NAME_SONG, 100)] },
   // Không có nhà cung cấp: dùng NCC trong tên SKU.
-  '99900000000014': { poId: '4', poCode: '99900000000014', vendor: '', warehouse: 'WH - MATERIAL - MTG', deliveryDate: '2026-10-20', status: 'approved', items: [item('422000004', NAME_SONG, 100)] },
+  '99900000000014': { poId: '4', poCode: '99900000000014', vendor: '', warehouse: 'WH - MATERIAL - MTG', deliveryDate: '2026-10-20', status: 'approved', items: [item('900000020', NAME_SONG, 100)] },
 };
 const NORMAL_NAME = 'Thun dệt mẫu/JV9999_NCC Normal Khác/61% Nylon/none/Đen/30mm/none/mm';
 
@@ -43,7 +43,7 @@ const NORMAL_NAME = 'Thun dệt mẫu/JV9999_NCC Normal Khác/61% Nylon/none/Đe
     await page.route(/\/rest\/v1\/rpc\/sku_combo_lookup$/, route => {
       const cors = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'POST, OPTIONS' };
       if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors });
-      const rows = route.request().postDataJSON().p_sku === '422100001' ? [{ normal_sku: '422900001', product_name: NORMAL_NAME, category_name: 'Phụ liệu', quantity: 1000, available: true }] : [];
+      const rows = route.request().postDataJSON().p_sku === '900000025' ? [{ normal_sku: '900000086', product_name: NORMAL_NAME, category_name: 'Phụ liệu', quantity: 1000, available: true }] : [];
       return route.fulfill({ status: 200, headers: cors, contentType: 'application/json', body: JSON.stringify(rows) });
     });
     await page.goto(APP_URL + '#inspection');
@@ -87,7 +87,7 @@ const NORMAL_NAME = 'Thun dệt mẫu/JV9999_NCC Normal Khác/61% Nylon/none/Đe
         `<row r="8">${text('A8', vendor)}</row>`,
         `<row r="9">${text('E9', 'Ngày giao: 11:33 22/10/2026')}</row>`,
         `<row r="16">${['STT', 'SKU', 'Tên', 'Barcode', 'Mã NCC', 'Số lượng', 'Giá(+VAT)', 'Thành tiền'].map((h, i) => text('ABCDEFGH'[i] + 16, h)).join('')}</row>`,
-        `<row r="17">${num('A17', 1)}${text('B17', '422000005')}${text('C17', name)}${num('F17', 100)}</row>`,
+        `<row r="17">${num('A17', 1)}${text('B17', '900000023')}${text('C17', name)}${num('F17', 100)}</row>`,
       ].join('');
       const parts = {
         '[Content_Types].xml': '<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/></Types>',

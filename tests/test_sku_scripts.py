@@ -98,8 +98,8 @@ class GroupUidQtyTests(unittest.TestCase):
     def parse(self, qty):
         header = list(group_sync.SOURCE_COLUMNS.values())
         values = {
-            "Group UID Code": "1028261006000050", "Batch Code": "B", "Roll Code": "5", "Warehouse": "WH", "Location": "A-01",
-            "SKU": "422000001", "Qty": qty, "Updated By": "x", "Updated Date": "2026-10-10 10:00:00", "Status": "Available",
+            "Group UID Code": "1028260000000050", "Batch Code": "B", "Roll Code": "5", "Warehouse": "WH", "Location": "A-01",
+            "SKU": "900000014", "Qty": qty, "Updated By": "x", "Updated Date": "2026-10-10 10:00:00", "Status": "Available",
         }
         with patch.object(group_sync, "worksheet_rows", lambda path: iter([header, [values[name] for name in header]])):
             return group_sync.parse_rows(Path("giả.xlsx"))

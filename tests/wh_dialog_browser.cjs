@@ -115,11 +115,11 @@ const focused = (page, cls) => box(page).locator(cls).evaluate(button => button 
       // agent cắt Lot / Roll quá 20 ký tự, nên web chỉ hỏi khi Lot hoặc Roll (sau khi bỏ phần lặp Lot) dài quá 20: ngắn → true; đúng 20 → true; dài hơn → hộp cảnh báo
       assert.equal(await page.evaluate(() => window.PrintSkuQueue.confirmLotRoll([{ groupUid: 'U1', lot: '5', roll: '2' }])), true);
       assert.equal(await page.evaluate(() => window.PrintSkuQueue.confirmLotRoll([{ groupUid: 'U2', lot: 'LOT-MAU-RAT-DAI-01', roll: 'ROLL-MAU-RAT-DAI-02' }])), true, 'còn trong 20 ký tự, web không hỏi');
-      await page.evaluate(() => { window.__answer = 'chưa'; window.PrintSkuQueue.confirmLotRoll([{ groupUid: '1028260900000999', lot: 'LOT-MAU-RAT-DAI-01-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX', roll: 'ROLL-MAU-RAT-DAI-02' }]).then(value => { window.__answer = value; }); });
+      await page.evaluate(() => { window.__answer = 'chưa'; window.PrintSkuQueue.confirmLotRoll([{ groupUid: '1028260000000999', lot: 'LOT-MAU-RAT-DAI-01-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX', roll: 'ROLL-MAU-RAT-DAI-02' }]).then(value => { window.__answer = value; }); });
       await box(page).waitFor({ state: 'visible' });
       assert.equal(await box(page).getAttribute('data-tone'), 'warning');
       assert.equal((await box(page).locator('.whd-title').textContent()).trim(), 'Lot hoặc Roll quá 20 ký tự, tem sẽ bị cắt');
-      assert.match(await box(page).locator('.whd-list li').first().textContent(), /^1028260900000999 · LOT LOT-MAU-RAT-DAI-01-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX · ROLL ROLL-MAU-RAT-DAI-02$/);
+      assert.match(await box(page).locator('.whd-list li').first().textContent(), /^1028260000000999 · LOT LOT-MAU-RAT-DAI-01-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX · ROLL ROLL-MAU-RAT-DAI-02$/);
       assert.equal((await box(page).locator('.whd-cancel').textContent()).trim(), 'Dừng kiểm tra');
       assert.equal(await focused(page, '.whd-cancel'), true);
       await box(page).locator('.whd-cancel').click();

@@ -11,23 +11,23 @@ const PO1 = "10012608011632", PO2 = "10012606143838", PO_BIG = "10012600000500",
 const PO_PART = "10012600000601", PO_DONE = "10012600000602", PO_OLD = "10012600000603";
 const data = {
   [PO1]: [
-    ...Array.from({ length: 53 }, (_, i) => pl(PO1, "422513455", i)),
-    ...Array.from({ length: 2 }, (_, i) => pl(PO1, "422494699", i, { quantity: 1, code: "1", batch_code: i ? "590/9" : "591/9" })), // PO thật 10012610099966: 2 cây vải, mỗi cây một dòng số lượng 1 mã "1"
-    pl(PO1, "422513455", 60, { status: "Draft" }), // chưa Approved
-    ...Array.from({ length: 3 }, (_, i) => pl(PO1, "422427353", i)), // Combo nhiều thành phần
-    ...Array.from({ length: 4 }, (_, i) => pl(PO1, "422280728", i, { product_name: "Vải warp knit/TIVNHH/300gsm/mét", quantity: 60 + i })), // SKU Normal sẵn
+    ...Array.from({ length: 53 }, (_, i) => pl(PO1, "900000071", i)),
+    ...Array.from({ length: 2 }, (_, i) => pl(PO1, "900000061", i, { quantity: 1, code: "1", batch_code: i ? "590/9" : "591/9" })), // PO thật 10012610099966: 2 cây vải, mỗi cây một dòng số lượng 1 mã "1"
+    pl(PO1, "900000071", 60, { status: "Draft" }), // chưa Approved
+    ...Array.from({ length: 3 }, (_, i) => pl(PO1, "900000050", i)), // Combo nhiều thành phần
+    ...Array.from({ length: 4 }, (_, i) => pl(PO1, "900000036", i, { product_name: "Vải warp knit/TIVNHH/300gsm/mét", quantity: 60 + i })), // SKU Normal sẵn
   ],
-  [PO2]: Array.from({ length: 140 }, (_, i) => pl(PO2, "422494699", i, { code: String(i + 1), batch_code: "187/9" })),
-  [PO_BIG]: Array.from({ length: 520 }, (_, i) => pl(PO_BIG, "422513455", i)),
+  [PO2]: Array.from({ length: 140 }, (_, i) => pl(PO2, "900000061", i, { code: String(i + 1), batch_code: "187/9" })),
+  [PO_BIG]: Array.from({ length: 520 }, (_, i) => pl(PO_BIG, "900000071", i)),
   // Cuộn đã tạo Group UID trên WMS (cột Group UID của Packing List PO) thì không gán tem nữa
   [PO_PART]: Array.from({ length: 5 }, (_, i) => pl(PO_PART, "900000455", i, { group_uid: i < 2 ? String(1028260000000751 + i) : null })),
   [PO_DONE]: Array.from({ length: 3 }, (_, i) => pl(PO_DONE, "900000455", i, { group_uid: String(1028260000000760 + i) })),
   // Extension cũ (≤ 0.10.2) không trả khoá group_uid
   [PO_OLD]: Array.from({ length: 4 }, (_, i) => { const r = pl(PO_OLD, "900000455", i); delete r.group_uid; return r; }),
 };
-const COMBOS = { "422513455": [{ normal_sku: "422513459", product_name: "Vải Single Normal 422513459", category_name: "Vải", quantity: 1000, available: true }],
-  "422494699": [{ normal_sku: "422494704", product_name: "Vải Jersey Normal 422494704", category_name: "Vải", quantity: 1000, available: true }],
-  "422427353": ["422500001", "422500002", "422500003"].map(n => ({ normal_sku: n, product_name: `Normal ${n}`, category_name: "Vải", quantity: 1, available: true })) };
+const COMBOS = { "900000071": [{ normal_sku: "900000072", product_name: "Vải Single Normal 900000072", category_name: "Vải", quantity: 1000, available: true }],
+  "900000061": [{ normal_sku: "900000062", product_name: "Vải Jersey Normal 900000062", category_name: "Vải", quantity: 1000, available: true }],
+  "900000050": ["900000065", "900000066", "900000067"].map(n => ({ normal_sku: n, product_name: `Normal ${n}`, category_name: "Vải", quantity: 1, available: true })) };
 COMBOS["900000455"] = [{ normal_sku: "900000459", product_name: "Vải giả Normal 900000459", category_name: "Vải", quantity: 1000, available: true }]; // dữ liệu giả cho các PO Group UID
 
 const fakeExtension = packing => {
@@ -145,14 +145,14 @@ async function desktop(browser) {
   assert.equal(await page.locator("#uid-po-go").isDisabled(), false);
   assert.deepEqual(await packingCalls(page), [{ purchaseOrders: [PO1], page: 1, size: 500 }]);
   assert.deepEqual(await poRows(page), [
-    { sku: "422513459", qty: 53, name: "Vải Single Normal 422513459" },
-    { sku: "422494704", qty: 2, name: "Vải Jersey Normal 422494704" },
-    { sku: "422280728", qty: 4, name: "Vải warp knit/TIVNHH/300gsm/mét" },
+    { sku: "900000072", qty: 53, name: "Vải Single Normal 900000072" },
+    { sku: "900000062", qty: 2, name: "Vải Jersey Normal 900000062" },
+    { sku: "900000036", qty: 4, name: "Vải warp knit/TIVNHH/300gsm/mét" },
   ]);
   let text = await poHelp(page);
   assert.ok(text.startsWith(`PO ${PO1} · 59 UID · 3 SKU Normal`), text);
   assert.ok(!/chưa chia cuộn/.test(text), "dòng số lượng 1 mã 1 vẫn là một cuộn");
-  assert.match(text, /Combo nhiều thành phần: 422427353/);
+  assert.match(text, /Combo nhiều thành phần: 900000050/);
   assert.match(text, /1 dòng chưa Approved/);
   assert.equal(await page.locator("#uid-po-help").getAttribute("data-tone"), "warn");
   assert.equal(await page.locator("#uid-po-total").innerText(), "59/0", "số UID cần so với UID đang chờ gán");
@@ -180,12 +180,12 @@ async function desktop(browser) {
   await page.waitForFunction(() => document.getElementById("uid-ready-count").textContent === "6");
   assert.equal(await page.locator("#uid-pending-count").textContent(), "0");
   const ready = await page.locator("#uid-ready").innerText();
-  assert.ok(ready.includes("422494704") && ready.includes("Vải Jersey Normal 422494704") && ready.includes("422280728"), "tem mang SKU Normal và tên Normal");
-  assert.ok(!ready.includes("422513459"), "dòng chưa tick không được gán");
+  assert.ok(ready.includes("900000062") && ready.includes("Vải Jersey Normal 900000062") && ready.includes("900000036"), "tem mang SKU Normal và tên Normal");
+  assert.ok(!ready.includes("900000072"), "dòng chưa tick không được gán");
   assert.ok(!/Lot:|Roll:/.test(ready), "không có Lot/Roll: WMS gán lúc nhận hàng");
   assert.equal(await poHelp(page), "Đã gán 6 UID theo 2 dòng SKU");
   assert.match(await page.locator("#uid-status").innerText(), /Đã gán WMS 6 UID theo 2 dòng SKU/);
-  assert.deepEqual(await poRows(page), [{ sku: "422513459", qty: 53, name: "Vải Single Normal 422513459" }], "dòng đã gán bị bỏ, dòng chưa tick giữ lại để gán sau");
+  assert.deepEqual(await poRows(page), [{ sku: "900000072", qty: 53, name: "Vải Single Normal 900000072" }], "dòng đã gán bị bỏ, dòng chưa tick giữ lại để gán sau");
   assert.equal(await page.locator("#uid-po-total").innerText(), "0/0");
 
   // Đủ UID rồi tick lại dòng còn lại để gán nốt
@@ -202,7 +202,7 @@ async function desktop(browser) {
   comboCalls.length = 0;
   await run(page, `${PO1}, ${PO2}\n${PO1}`);
   assert.deepEqual((await packingCalls(page)).at(-1), { purchaseOrders: [PO1, PO2], page: 1, size: 500 }, "mã trùng chỉ gửi một lần");
-  assert.deepEqual((await poRows(page)).map(r => [r.sku, r.qty]), [["422513459", 53], ["422494704", 142], ["422280728", 4]], "Combo của hai PO cùng Normal thì cộng lại");
+  assert.deepEqual((await poRows(page)).map(r => [r.sku, r.qty]), [["900000072", 53], ["900000062", 142], ["900000036", 4]], "Combo của hai PO cùng Normal thì cộng lại");
   assert.match(await poHelp(page), /^2 PO · 199 UID · 3 SKU Normal/);
   assert.equal(new Set(comboCalls).size, comboCalls.length, "mỗi SKU tra Combo một lần");
 
@@ -221,14 +221,14 @@ async function desktop(browser) {
   const removeButtons = page.locator('#uid-po-rows [data-action="remove-row"]');
   assert.equal(await removeButtons.count(), 3, "mỗi dòng SKU có nút xóa");
   assert.equal(await removeButtons.first().isDisabled(), false);
-  assert.equal(await removeButtons.first().getAttribute("aria-label"), "Xóa SKU 422513459");
+  assert.equal(await removeButtons.first().getAttribute("aria-label"), "Xóa SKU 900000072");
   const removeBox = await removeButtons.first().boundingBox();
   assert.ok(removeBox.width >= 40 && removeBox.height >= 40, "nút xóa đủ lớn để bấm");
   await removeButtons.first().click();
-  assert.deepEqual((await poRows(page)).map(r => [r.sku, r.qty]), [["422494704", 142], ["422280728", 4]]);
+  assert.deepEqual((await poRows(page)).map(r => [r.sku, r.qty]), [["900000062", 142], ["900000036", 4]]);
   assert.equal(await page.locator("#uid-po-total").innerText(), "146/0", "xóa SKU thì tổng cập nhật");
   await removeButtons.nth(1).click();
-  assert.deepEqual((await poRows(page)).map(r => r.sku), ["422494704"]);
+  assert.deepEqual((await poRows(page)).map(r => r.sku), ["900000062"]);
   await removeButtons.first().click();
   assert.deepEqual(await poRows(page), [], "xóa hết được, kể cả dòng cuối");
   assert.equal(await page.locator("#uid-po-apply").isDisabled(), true);
@@ -241,13 +241,13 @@ async function desktop(browser) {
   // Quá 500 cuộn: giới hạn 500 và báo; Packing List chia 2 trang
   await run(page, PO_BIG);
   assert.deepEqual((await packingCalls(page)).slice(-2).map(c => c.page), [1, 2], "520 dòng = 2 trang");
-  assert.deepEqual((await poRows(page)).map(r => [r.sku, r.qty]), [["422513459", 500]]);
+  assert.deepEqual((await poRows(page)).map(r => [r.sku, r.qty]), [["900000072", 500]]);
   assert.match(await poHelp(page), /1 SKU quá 500 UID, đã giới hạn/);
 
   // PO chưa có Packing List: báo, giữ nguyên danh sách đang có
   await run(page, PO_NONE);
   assert.match(await poHelp(page), new RegExp(`Chưa có Packing List: ${PO_NONE}`));
-  assert.deepEqual((await poRows(page)).map(r => r.sku), ["422513459"], "không có dòng nào thì giữ nguyên");
+  assert.deepEqual((await poRows(page)).map(r => r.sku), ["900000072"], "không có dòng nào thì giữ nguyên");
 
   // Chỉ lấy cuộn chưa có Group UID: 5 cuộn, 2 cuộn đã có UID → gán 3; báo số cuộn bỏ qua (không phải cảnh báo)
   await run(page, PO_PART);
@@ -288,8 +288,8 @@ async function legacyAuto(browser) {
   assert.equal(await page.locator("#uid-map-auto .uid-po, #uid-map-auto #uid-po-input, #uid-map-auto .uid-auto__pick").count(), 0, "tab Gán tự động không có ô PO hay ô tick");
   assert.equal(await page.locator("#uid-auto-rows .uid-auto__row").count(), 1);
   assert.equal(await page.locator("#uid-auto-apply").innerText(), "Gán tự động");
-  await addUids(page, ["1028261014000001", "1028261014000002"]); await pendingIs(page, 2);
-  await page.locator('#uid-auto-rows [data-field="sku"]').fill("422513459");
+  await addUids(page, ["1028260000000001", "1028260000000002"]); await pendingIs(page, 2);
+  await page.locator('#uid-auto-rows [data-field="sku"]').fill("900000072");
   await page.waitForFunction(() => document.querySelector('#uid-auto-rows [data-field="name"]').value === "Tên SKU tra từ Supabase");
   assert.equal(await page.locator("#uid-auto-total").innerText(), "1/2");
   await page.locator('#uid-auto-rows [data-field="qty"]').fill("3");

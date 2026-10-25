@@ -8,7 +8,7 @@ const coreSource = fs.readFileSync(dir + "group-uid-sync-core.js", "utf8");
 const bridgeSource = fs.readFileSync(dir + "wms-bridge.js", "utf8");
 
 const transfer = (id, extra = {}) => ({
-  id, group_uid_id: 20000 + id, group_uid_code: 1028260605000000 + id, action: 4, action_name: "Transfer location",
+  id, group_uid_id: 20000 + id, group_uid_code: 1028260000000000 + (id % 1000), action: 4, action_name: "Transfer location",
   warehouse_id: 1177, warehouse_name: "WH - MATERIAL - MTG",
   location_description: "F0-VR-00-00-00-00", old_location_description: "F0-KHO-503-02-04-01",
   updated_by_name: "user@example.test", created_by_name: "other@example.test",
@@ -23,7 +23,7 @@ assert.equal(typeof core.normalizeMovesPage, "function");
 
 const page = core.normalizeMovesPage({ page: 1, size: 500, count: 7, records: [
   transfer(39311),
-  { id: 39312, group_uid_code: 1028260605000999, action: 9, action_name: "Cut", warehouse_id: 1177, note: "Cut 1 out of group 1028260605000999 (remaining 2)", updated_at_tz: "2026-10-10T15:40:00+07:00" },
+  { id: 39312, group_uid_code: 1028260000000999, action: 9, action_name: "Cut", warehouse_id: 1177, note: "Cut 1 out of group 1028260000000999 (remaining 2)", updated_at_tz: "2026-10-10T15:40:00+07:00" },
   transfer(39313, { action: undefined, action_name: "transfer LOCATION", old_location_description: null, location_description: "  F0-KHO-501-01-01-01 " }),
   transfer(39311),
   transfer(39314, { warehouse_id: null, warehouse_name: "", updated_by_name: undefined, created_by_name: "creator@example.test" }),
@@ -32,7 +32,7 @@ assert.equal(page.total, 7, "tổng lấy từ count của WMS");
 assert.equal(page.sourceRows, 5);
 assert.equal(page.rows.length, 3, "bỏ dòng Cut, gộp dòng trùng id");
 assert.deepEqual(JSON.parse(JSON.stringify(page.rows[0])), {
-  history_id: 39311, group_uid_code: "1028260605039311", warehouse_id: 1177, warehouse: "WH - MATERIAL - MTG",
+  history_id: 39311, group_uid_code: "1028260000000311", warehouse_id: 1177, warehouse: "WH - MATERIAL - MTG",
   action_code: 4, action_name: "Transfer location", from_location: "F0-KHO-503-02-04-01", to_location: "F0-VR-00-00-00-00",
   moved_by: "user@example.test", moved_at: "2026-10-10T08:37:52.000Z",
 });
@@ -57,7 +57,7 @@ const bridgeContext = {
   localStorage: { getItem: key => ({ auth_store: JSON.stringify({ state: { token: "test-token" } }), company_id: "1001" })[key] ?? null },
   fetch: async (url, options) => {
     calls.push({ url: new URL(url), headers: options.headers });
-    return { ok: true, status: 200, json: async () => ({ page: 1, size: 500, count: 1, records: [transfer(1), { id: 2, group_uid_code: 1028260605000300, action: 9, action_name: "Cut", updated_at_tz: "2026-10-10T15:40:00+07:00" }] }) };
+    return { ok: true, status: 200, json: async () => ({ page: 1, size: 500, count: 1, records: [transfer(1), { id: 2, group_uid_code: 1028260000000300, action: 9, action_name: "Cut", updated_at_tz: "2026-10-10T15:40:00+07:00" }] }) };
   },
   chrome: { runtime: { id: "ext-id", onMessage: { addListener: fn => { listener = fn; } } } },
 };

@@ -14,7 +14,7 @@ const HEAD = {
   created_at: "2026-10-15 16:38:39", created_at_tz: "2026-10-15T16:38:39+07:00",
 };
 const item = (sku, quantity, uom, extra = {}) => ({ internal_transfer_item_id: 1, internal_transfer_id: 8121626, status_id: 4, product_id: 1, product_name: `Hàng ${sku}/${uom}`, sku, quantity, uom, stock_out_quantity: 999999, ...extra });
-const ITEMS = { total_quantity: 170042, records: [item("422499599", 2, "pcs"), item("422292974", 170000, "mm"), item("422386182", 42, "g"), item("422386183", 1.5, null, { product_name: undefined })] };
+const ITEMS = { total_quantity: 170042, records: [item("900000064", 2, "pcs"), item("900000039", 170000, "mm"), item("900000041", 42, "g"), item("900000045", 1.5, null, { product_name: undefined })] };
 
 const coreContext = { globalThis: {} };
 vm.runInNewContext(coreSource, coreContext);
@@ -28,10 +28,10 @@ assert.deepEqual(itHead, {
   description: "outsource_order 45 IT_OUT", createdBy: "nguoi.tao@example.com", createdAt: "2026-10-15T09:38:39.000Z", totalItems: 22,
 });
 assert.deepEqual(it.items, [
-  { sku: "422499599", name: "Hàng 422499599/pcs", quantity: 2, unit: "pcs" },
-  { sku: "422292974", name: "Hàng 422292974/mm", quantity: 170000, unit: "mm" },
-  { sku: "422386182", name: "Hàng 422386182/g", quantity: 42, unit: "g" },
-  { sku: "422386183", name: null, quantity: 1.5, unit: null },
+  { sku: "900000064", name: "Hàng 900000064/pcs", quantity: 2, unit: "pcs" },
+  { sku: "900000039", name: "Hàng 900000039/mm", quantity: 170000, unit: "mm" },
+  { sku: "900000041", name: "Hàng 900000041/g", quantity: 42, unit: "g" },
+  { sku: "900000045", name: null, quantity: 1.5, unit: null },
 ], "số lượng giữ đúng theo phiếu (quantity, không dùng stock_out_quantity), phiếu không ghi đơn vị thì unit = null");
 assert.equal(core.normalizeInternalTransfer({ ...HEAD, created_at_tz: "sai", created_at: undefined, total_it_items: 0 }, { records: [] }).createdAt, null, "ngày sai không làm hỏng phiếu");
 assert.equal(core.normalizeInternalTransfer({ ...HEAD, total_it_items: 0 }, { records: [item("1", 1, "pcs")] }).totalItems, 1);

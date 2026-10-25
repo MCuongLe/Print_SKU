@@ -7,13 +7,13 @@ const APP_URL = process.env.APP_URL || process.env.BASE || 'http://localhost:800
 
 // sku, tên, số lượng
 const ITEMS = [
-  ['422100001', '(Combo) Chỉ mẫu A/FX-0001_NCC Alpha/100% Polyester/none/Xám/Tex 24/none/cuộn 5000m', 145],
-  ['422100002', '(Combo) Bo cổ - tay mẫu/BO-0002_NCC Beta/98% Cotton 2% Spandex/none/Navy/Size 7x35cm/none/set', 60],
-  ['422100003', '(Combo) Dây thun mẫu C/EL-0003_NCC Gamma/60% Nylon/none/Đen/25mm/none/m', 10],
-  ['422100004', 'Nhãn care mẫu D/LAB004_ACME LABELS/100% Polyester/none/White/none/25x78mm/pcs', 12003],
-  ['422100005', '(Combo) Chỉ mẫu E/FX-0005_NCC Alpha/100% Polyester/none/Đỏ/Tex 24/none/cuộn 5000m', 20],
-  ['422100006', '(Combo) Chỉ mẫu F/FX-0006_NCC Alpha/100% Polyester/none/Xanh/Tex 24/none/cuộn 5000m', 30],
-  ['422100007', 'Dây kéo mẫu G/ZIP-0007_NCC Alpha/100% Polyester/none/Đen/20cm/none/pcs', 15],
+  ['900000025', '(Combo) Chỉ mẫu A/FX-0001_NCC Alpha/100% Polyester/none/Xám/Tex 24/none/cuộn 5000m', 145],
+  ['900000026', '(Combo) Bo cổ - tay mẫu/BO-0002_NCC Beta/98% Cotton 2% Spandex/none/Navy/Size 7x35cm/none/set', 60],
+  ['900000027', '(Combo) Dây thun mẫu C/EL-0003_NCC Gamma/60% Nylon/none/Đen/25mm/none/m', 10],
+  ['900000028', 'Nhãn care mẫu D/LAB004_ACME LABELS/100% Polyester/none/White/none/25x78mm/pcs', 12003],
+  ['900000029', '(Combo) Chỉ mẫu E/FX-0005_NCC Alpha/100% Polyester/none/Đỏ/Tex 24/none/cuộn 5000m', 20],
+  ['900000030', '(Combo) Chỉ mẫu F/FX-0006_NCC Alpha/100% Polyester/none/Xanh/Tex 24/none/cuộn 5000m', 30],
+  ['900000033', 'Dây kéo mẫu G/ZIP-0007_NCC Alpha/100% Polyester/none/Đen/20cm/none/pcs', 15],
 ];
 // Phản hồi giả lập của RPC; E và G luôn lỗi 500 (G là SKU thường), F lỗi 500 lần đầu rồi thành công (thử lại lúc xuất).
 const NAME_A = 'Chỉ mẫu A/FX-9001_NCC Normal Alpha/100% Polyester/none/Xám nhạt/Tex 24/none/mm';
@@ -21,9 +21,9 @@ const NAME_B1 = 'Bo cổ mẫu/BO-9002_NCC Normal Beta/98% Cotton 2% Spandex/non
 const NAME_B2 = 'Bo tay mẫu/BO-9003_NCC Normal Beta/98% Cotton 2% Spandex/none/Navy đậm/Size 7x35cm/none/pcs';
 const NAME_F = 'Chỉ mẫu F/FX-9006_NCC Normal Gamma/100% Polyester/none/Xanh lá/Tex 24/none/mm';
 const NORMALS = {
-  '422100001': [{ normal_sku: '422900001', product_name: NAME_A, category_name: 'Phụ liệu', quantity: 5000000, available: true }],
-  '422100002': [{ normal_sku: '422900002', product_name: NAME_B1, category_name: 'Phụ liệu', quantity: 1, available: true }, { normal_sku: '422900003', product_name: NAME_B2, category_name: 'Phụ liệu', quantity: 2, available: false }],
-  '422100006': [{ normal_sku: '422900006', product_name: NAME_F, category_name: 'Phụ liệu', quantity: 5000000, available: true }],
+  '900000025': [{ normal_sku: '900000086', product_name: NAME_A, category_name: 'Phụ liệu', quantity: 5000000, available: true }],
+  '900000026': [{ normal_sku: '900000087', product_name: NAME_B1, category_name: 'Phụ liệu', quantity: 1, available: true }, { normal_sku: '900000089', product_name: NAME_B2, category_name: 'Phụ liệu', quantity: 2, available: false }],
+  '900000030': [{ normal_sku: '900000097', product_name: NAME_F, category_name: 'Phụ liệu', quantity: 5000000, available: true }],
 };
 
 (async () => {
@@ -39,7 +39,7 @@ const NORMALS = {
       if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors });
       const sku = route.request().postDataJSON().p_sku;
       calls[sku] = (calls[sku] || 0) + 1;
-      if (sku === '422100005' || sku === '422100007' || (sku === '422100006' && calls[sku] === 1)) return route.fulfill({ status: 500, headers: cors, body: 'error' });
+      if (sku === '900000029' || sku === '900000033' || (sku === '900000030' && calls[sku] === 1)) return route.fulfill({ status: 500, headers: cors, body: 'error' });
       return route.fulfill({ status: 200, headers: cors, contentType: 'application/json', body: JSON.stringify(NORMALS[sku] || []) });
     });
     await page.goto(APP_URL + '#inspection');
@@ -75,14 +75,14 @@ const NORMALS = {
       const cell = row.querySelector('[data-sku-cell]');
       return { normal: cell.classList.contains('ins-sku'), text: cell.value ?? cell.innerText, warn: cell.classList.contains('ins-sku--warn'), title: cell.title, qty: row.querySelector('[data-field="qty"]').value };
     }));
-    assert.deepEqual(cells[0], { normal: true, text: '422900001', warn: false, title: `Combo 422100001 — ${ITEMS[0][1]}`, qty: '145' });
+    assert.deepEqual(cells[0], { normal: true, text: '900000086', warn: false, title: `Combo 900000025 — ${ITEMS[0][1]}`, qty: '145' });
     assert.equal(cells[1].normal, true);
-    assert.equal(cells[1].text.replace(/\n+/g, ' ').trim(), '422900002 422900003', 'Combo 2 Normal hiện cả hai SKU');
+    assert.equal(cells[1].text.replace(/\n+/g, ' ').trim(), '900000087 900000089', 'Combo 2 Normal hiện cả hai SKU');
     assert.match(cells[1].title, /ngừng hoạt động/, 'Normal không available phải được ghi trong tooltip');
-    assert.deepEqual([cells[2].normal, cells[2].warn, cells[2].text], [false, true, '422100003'], 'Combo chưa có liên kết: giữ SKU Combo và cảnh báo');
-    assert.deepEqual([cells[3].normal, cells[3].warn, cells[3].text], [false, false, '422100004'], 'SKU thường giữ nguyên');
+    assert.deepEqual([cells[2].normal, cells[2].warn, cells[2].text], [false, true, '900000027'], 'Combo chưa có liên kết: giữ SKU Combo và cảnh báo');
+    assert.deepEqual([cells[3].normal, cells[3].warn, cells[3].text], [false, false, '900000028'], 'SKU thường giữ nguyên');
     assert.deepEqual([cells[4].normal, cells[4].warn], [false, true], 'Tra lỗi: giữ SKU Combo và cảnh báo');
-    assert.deepEqual([cells[6].normal, cells[6].warn, cells[6].text], [false, false, '422100007'], 'SKU thường lỗi mạng: giữ nguyên, không bị đánh dấu');
+    assert.deepEqual([cells[6].normal, cells[6].warn, cells[6].text], [false, false, '900000033'], 'SKU thường lỗi mạng: giữ nguyên, không bị đánh dấu');
     assert.deepEqual(cells.map(cell => cell.qty), ['145', '60', '10', '12003', '20', '30', '15'], 'số lượng giữ nguyên theo PO');
     const fieldsOf = index => page.$$eval(`.ins-row[data-index="${index}"] input[data-field]`, inputs => Object.fromEntries(inputs.map(input => [input.dataset.field, input.value])));
     const row0 = await fieldsOf(0), row1 = await fieldsOf(1), row2 = await fieldsOf(2), row3 = await fieldsOf(3);
@@ -90,7 +90,7 @@ const NORMALS = {
     assert.deepEqual([row1.name, row1.supplier, row1.colour], [`${NAME_B1} + ${NAME_B2}`, 'NCC Normal Beta', 'Navy đậm'], 'Combo 2 Normal: nối tên, gộp NCC/màu trùng');
     assert.deepEqual([row2.name, row2.supplier], [ITEMS[2][1], 'NCC Gamma'], 'Combo chưa có liên kết giữ tên theo PO');
     assert.deepEqual([row3.name, row3.supplier], [ITEMS[3][1], 'ACME LABELS'], 'SKU thường giữ nguyên');
-    assert.match(cells[0].title, /^Combo 422100001 — \(Combo\) Chỉ mẫu A/, 'tooltip ghi tên Combo gốc');
+    assert.match(cells[0].title, /^Combo 900000025 — \(Combo\) Chỉ mẫu A/, 'tooltip ghi tên Combo gốc');
 
     // Người dùng sửa tay tên của dòng F trước khi xuất: tên sửa tay được giữ, NCC/màu chưa sửa theo Normal khi tra lại thành công.
     await page.fill('.ins-row[data-index="5"] input[data-field="name"]', 'Tên sửa tay');
@@ -104,24 +104,24 @@ const NORMALS = {
     }, bytes);
     const cellText = ref => { const match = sheet.match(new RegExp(`<c r="${ref}"[^>]*t="inlineStr"><is><t[^>]*>([^<]*)</t>`)); return match ? match[1] : null; };
     const heightOf = row => Number(sheet.match(new RegExp(`<row r="${row}"[^>]*\\sht="([\\d.]+)"`))[1]);
-    assert.equal(cellText('A14'), '422900001');
+    assert.equal(cellText('A14'), '900000086');
     assert.equal(cellText('B14'), NAME_A, 'biên bản: tên theo SKU Normal');
     assert.equal(cellText('C14'), 'NCC Normal Alpha');
     assert.equal(cellText('D14'), 'Xám nhạt');
     assert.equal(cellText('B15'), `${NAME_B1}\n${NAME_B2}`, 'Combo 2 Normal: mỗi tên một dòng, cùng thứ tự với SKU');
     assert.equal(cellText('B16'), ITEMS[2][1], 'Combo chưa có liên kết giữ tên theo PO');
-    assert.equal(cellText('A15'), '422900002\n422900003', 'hai Normal: mỗi SKU một dòng trong cùng ô');
-    assert.equal(cellText('A16'), '422100003');
+    assert.equal(cellText('A15'), '900000087\n900000089', 'hai Normal: mỗi SKU một dòng trong cùng ô');
+    assert.equal(cellText('A16'), '900000027');
     assert.equal(cellText('O16'), 'Combo chưa có SKU Normal');
-    assert.equal(cellText('A17'), '422100004');
+    assert.equal(cellText('A17'), '900000028');
     assert.equal(cellText('O17'), null);
-    assert.equal(cellText('A18'), '422100005');
+    assert.equal(cellText('A18'), '900000029');
     assert.equal(cellText('O18'), 'Chưa tra được SKU Normal');
-    assert.equal(cellText('A19'), '422900006', 'dòng lỗi lần đầu được thử lại lúc xuất');
+    assert.equal(cellText('A19'), '900000097', 'dòng lỗi lần đầu được thử lại lúc xuất');
     assert.equal(cellText('B19'), 'Tên sửa tay', 'tên người dùng đã sửa không bị ghi đè');
     assert.equal(cellText('C19'), 'NCC Normal Gamma');
     assert.equal(cellText('O19'), null);
-    assert.equal(cellText('A20'), '422100007');
+    assert.equal(cellText('A20'), '900000033');
     assert.equal(cellText('O20'), null, 'SKU thường lỗi mạng không bị ghi chú');
     assert.ok(heightOf(15) >= 32, 'ô SKU hai dòng phải đủ cao');
     assert.ok(heightOf(16) >= 32, 'ghi chú hai dòng phải đủ cao');
@@ -129,7 +129,7 @@ const NORMALS = {
     assert.match(await page.locator('#ins-status').innerText(), /Chưa tra được SKU Normal cho 3 dòng/);
 
     // Mỗi SKU chỉ tra một lần (có nhớ kết quả); chỉ F được thử lại sau lỗi.
-    assert.deepEqual(calls, { '422100001': 1, '422100002': 1, '422100003': 1, '422100004': 1, '422100005': 2, '422100006': 2, '422100007': 2 });
+    assert.deepEqual(calls, { '900000025': 1, '900000026': 1, '900000027': 1, '900000028': 1, '900000029': 2, '900000030': 2, '900000033': 2 });
     assert.deepEqual(errors, [], 'không có lỗi trang');
     console.log('inspection_normal_sku_browser: màn hình và biên bản hiển thị SKU Normal; Combo thiếu liên kết/lỗi giữ SKU Combo kèm ghi chú');
   } finally {

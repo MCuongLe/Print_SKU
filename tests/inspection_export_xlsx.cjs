@@ -5,11 +5,11 @@ const assert = require('node:assert/strict');
 const APP_URL = process.env.APP_URL || process.env.BASE || 'http://localhost:8000/';
 
 const ITEMS = [
-  ['422000001', 'Dây kéo mẫu A/ZIP-0001_NCC Alpha/100% Polyester/none/Đen-580-AA/M,L:41cm/none/pcs', 480],
+  ['900000014', 'Dây kéo mẫu A/ZIP-0001_NCC Alpha/100% Polyester/none/Đen-580-AA/M,L:41cm/none/pcs', 480],
   ['000123456', 'Chỉ may mẫu B/FX-0002_Công Ty TNHH Sản Xuất Thương Mại Dịch Vụ Alpha Beta Gamma/100% Polyester/none/Xám lông chuột ánh kim đậm HP SBD17 (2)/Tex 24-100D-2/none/cuộn 5000m', 1250],
-  ['422000003', 'Nhãn care mẫu D/LAB004_ACME LABELS INDUSTRIAL VIỆT NAM/100% Polyester/none/White_TN035/none/25x78mm/pcs', 12003],
-  ['422000004', 'Thun mẫu E/EL-0005_Spica/60% Nylon 40% Polyester/none/Xanh Navy-Navy 19-4031TCX/25mm/none/m', 79],
-  ['422000005', 'Bo cổ mẫu F/BO-0006_NCC Gamma/98% Cotton 2% Spandex/none/Be ca cao-Etherea/Size 7x35cm/none/kg', 23],
+  ['900000016', 'Nhãn care mẫu D/LAB004_ACME LABELS INDUSTRIAL VIỆT NAM/100% Polyester/none/White_TN035/none/25x78mm/pcs', 12003],
+  ['900000020', 'Thun mẫu E/EL-0005_Spica/60% Nylon 40% Polyester/none/Xanh Navy-Navy 19-4031TCX/25mm/none/m', 79],
+  ['900000023', 'Bo cổ mẫu F/BO-0006_NCC Gamma/98% Cotton 2% Spandex/none/Be ca cao-Etherea/Size 7x35cm/none/kg', 23],
 ];
 
 (async () => {

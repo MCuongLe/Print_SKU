@@ -47,10 +47,10 @@ const fakeExtension = (data, version) => {
 
 // --- Supabase giả: mô phỏng group_uid_moves_* (đối chiếu logic với supabase/group_uid_moves_v1.sql + v2_lookup.sql) ---
 const db = new Map(), reads = new Map(), rpcCalls = [], comboCalls = [];
-// Liên kết Combo → Normal giả (sku_combo_lookup): 422266614 có 1 Normal, 422427353 có 3 Normal, còn lại không phải Combo.
+// Liên kết Combo → Normal giả (sku_combo_lookup): 900000035 có 1 Normal, 900000050 có 3 Normal, còn lại không phải Combo.
 const comboRows = sku => ({
-  "422266614": [["422500005", 914]],
-  "422427353": [["422500001", 1], ["422500002", 2], ["422500003", 1]],
+  "900000035": [["900000068", 914]],
+  "900000050": [["900000065", 1], ["900000066", 2], ["900000067", 1]],
 }[sku] || []).map(([normal, quantity]) => ({ normal_sku: normal, product_name: `Chỉ mẫu ${normal}`, category_name: "Phụ liệu", quantity, available: true }));
 function lookup(a) {
   const loc = (a.p_location || "").trim().toLowerCase(), sku = (a.p_sku || "").trim().toLowerCase(), wh = (a.p_warehouse || "").trim(), match = ["to", "from", "any"].includes(a.p_match) ? a.p_match : "to";
@@ -285,42 +285,42 @@ const expectBar = (info, tag, ratio) => {
       await page.locator("#uh-sku").fill("42250001");
       await wait(count(r => inRange(r) && skuOf(r.group_uid_code).includes("42250001")));
       assert.equal(comboCalls.length, calls0, "mã chưa đủ 9 số thì không tra Combo");
-      await page.locator("#uh-sku").fill("422266614");
+      await page.locator("#uh-sku").fill("900000035");
       await picker.waitFor({ state: "visible" });
-      assert.equal(await picker.locator(".sku-combo-code").innerText(), "422266614");
+      assert.equal(await picker.locator(".sku-combo-code").innerText(), "900000035");
       assert.equal((await picker.locator("h2").innerText()).trim(), "Chọn SKU Normal để tra cứu");
       assert.match(await picker.locator(".sku-combo-note-text").innerText(), /Group UID lưu theo SKU Normal/);
       assert.equal(await picker.locator(".sku-combo-option").count(), 1);
-      assert.match(await picker.locator(".sku-combo-option").first().innerText(), /422500005/);
+      assert.match(await picker.locator(".sku-combo-option").first().innerText(), /900000068/);
       await picker.locator(".sku-combo-option").first().click();
       await picker.waitFor({ state: "detached" });
-      await page.waitForFunction(() => document.getElementById("uh-sku").value === "422500005");
-      await until(() => lookups().at(-1).args.p_sku === "422500005");
-      await page.waitForFunction(() => /SKU Combo 422266614 → SKU Normal 422500005/.test(document.getElementById("uh-message").textContent));
-      await wait(count(r => inRange(r) && skuOf(r.group_uid_code).includes("422500005")));
+      await page.waitForFunction(() => document.getElementById("uh-sku").value === "900000068");
+      await until(() => lookups().at(-1).args.p_sku === "900000068");
+      await page.waitForFunction(() => /SKU Combo 900000035 → SKU Normal 900000068/.test(document.getElementById("uh-message").textContent));
+      await wait(count(r => inRange(r) && skuOf(r.group_uid_code).includes("900000068")));
       // Đã chọn Normal: đổi khoảng ngày chạy lại tìm kiếm không hỏi lại
       const asked = comboCalls.length;
-      await setRange(90); await wait(count(r => Date.parse(r.moved_at) >= since(90) && skuOf(r.group_uid_code).includes("422500005")));
+      await setRange(90); await wait(count(r => Date.parse(r.moved_at) >= since(90) && skuOf(r.group_uid_code).includes("900000068")));
       assert.equal(comboCalls.length, asked, "mã đã chọn không hỏi lại"); assert.equal(await picker.count(), 0);
-      await setRange(30); await wait(count(r => inRange(r) && skuOf(r.group_uid_code).includes("422500005")));
+      await setRange(30); await wait(count(r => inRange(r) && skuOf(r.group_uid_code).includes("900000068")));
       // Combo nhiều Normal: huỷ thì không tìm và tự chạy lại không hỏi lại; Enter hỏi lại rồi chọn Normal thứ hai
-      await page.locator("#uh-sku").fill("422427353");
+      await page.locator("#uh-sku").fill("900000050");
       await picker.waitFor({ state: "visible" });
       assert.equal(await picker.locator(".sku-combo-option").count(), 3, "Combo có 3 Normal");
       const searches = lookups().length;
       await picker.locator(".sku-combo-close").click(); await picker.waitFor({ state: "detached" });
-      assert.equal(await page.locator("#uh-sku").inputValue(), "422427353", "huỷ giữ nguyên mã đã nhập");
+      assert.equal(await page.locator("#uh-sku").inputValue(), "900000050", "huỷ giữ nguyên mã đã nhập");
       await setRange(7); await page.waitForTimeout(700);
       assert.equal(await picker.count(), 0, "đã huỷ thì tìm tự động không bật lại hộp chọn");
       assert.equal(lookups().length, searches, "huỷ thì không gửi lượt tìm");
       await page.locator("#uh-sku").press("Enter"); await picker.waitFor({ state: "visible" });
       await picker.locator(".sku-combo-option").nth(1).click(); await picker.waitFor({ state: "detached" });
-      await page.waitForFunction(() => document.getElementById("uh-sku").value === "422500002");
+      await page.waitForFunction(() => document.getElementById("uh-sku").value === "900000066");
       await dialog.waitFor({ state: "visible" }); await page.keyboard.press("Escape"); await dialog.waitFor({ state: "hidden" });
       await setRange(30);
       // 9 số nhưng không phải Combo: tra một lần, không hộp chọn, tìm bình thường
-      await page.locator("#uh-sku").fill("422500009"); await until(() => lookups().at(-1).args.p_sku === "422500009");
-      assert.equal(comboCalls.at(-1), "422500009"); assert.equal(await picker.count(), 0);
+      await page.locator("#uh-sku").fill("900000069"); await until(() => lookups().at(-1).args.p_sku === "900000069");
+      assert.equal(comboCalls.at(-1), "900000069"); assert.equal(await picker.count(), 0);
       await page.locator("#uh-sku").fill(""); await wait(within30);
 
       // --- Sao chép UID trong popup, quét camera (SKU / vị trí) mở thẳng kết quả ---
@@ -347,11 +347,11 @@ const expectBar = (info, tag, ratio) => {
       assert.equal(await page.locator("#uh-note").innerText(), `${fmt(count(r => inRange(r) && r.to_location === "F0-VR-00-00-00-00"))} dòng`, "quét xong mở thẳng popup kết quả");
       await page.keyboard.press("Escape"); await dialog.waitFor({ state: "hidden" });
       await page.locator("#uh-sku-scan").click();
-      const skuScan = await page.evaluate(() => ({ title: window.__scan[1].title, ok: !!window.__scan[1].check("422500001"), bad: !!window.__scan[1].check("12345") }));
+      const skuScan = await page.evaluate(() => ({ title: window.__scan[1].title, ok: !!window.__scan[1].check("900000065"), bad: !!window.__scan[1].check("12345") }));
       assert.deepEqual(skuScan, { title: "Quét SKU", ok: true, bad: false });
       assert.deepEqual(await typeTarget(1), { id: "uh-sku", kb: true, inField: true, pressed: "true" }, "Gõ tay về ô SKU");
-      await page.evaluate(() => window.__scan[1].onCode("422500001"));
-      assert.equal(await page.locator("#uh-sku").inputValue(), "422500001");
+      await page.evaluate(() => window.__scan[1].onCode("900000065"));
+      assert.equal(await page.locator("#uh-sku").inputValue(), "900000065");
       await dialog.waitFor({ state: "visible" }); await page.keyboard.press("Escape");
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `${width}px không được tràn ngang`);
       assert.deepEqual(errors, []);

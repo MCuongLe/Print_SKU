@@ -43,9 +43,9 @@ function sequence(...steps) {
 }
 
 const ROW = {
-  group_uid_code: "1028261006000050", batch_code: "B", roll_code: "5", warehouse_name: "WH", location_description: "A-01",
+  group_uid_code: "1028260000000050", batch_code: "B", roll_code: "5", warehouse_name: "WH", location_description: "A-01",
   uid_quantity: 3, status_name: "Available", updated_at_tz: "2026-10-10T10:00:00+07:00",
-  products: [{ sku: "422000001", quantity: 3, product_name: "Vai thu nghiem" }],
+  products: [{ sku: "900000014", quantity: 3, product_name: "Vai thu nghiem" }],
 };
 
 (async () => {
@@ -110,7 +110,7 @@ const ROW = {
   assert.equal(fetchImpl.calls.length, 3);
 
   // Nhập xuất kho (Kiểm soát công trình): hai lệnh config_query=1 (dòng) + 2 (tổng), đúng kho/khoảng ngày/công ty, chia trang theo tổng
-  const movement = { id: 7, warehouse_id: 1151, warehouse_name: "OFFICE - 130 AP CHANH - MTG", sku: "422514039", quantity: 12, type: 2, source_type: "ADJUSTMENT", reason_name: "Xuất sử dụng", created_at_tz: "2026-10-12T17:23:09+07:00" };
+  const movement = { id: 7, warehouse_id: 1151, warehouse_name: "OFFICE - 130 AP CHANH - MTG", sku: "900000077", quantity: 12, type: 2, source_type: "ADJUSTMENT", reason_name: "Xuất sử dụng", created_at_tz: "2026-10-12T17:23:09+07:00" };
   const movementFetch = async (url, init) => {
     movementFetch.calls.push({ url: String(url), init });
     const query = new URL(url).searchParams.get("config_query");
@@ -154,11 +154,11 @@ const ROW = {
 
   // Lấy mẫu cắt/QC: Group UID và ASN theo PO — đúng tham số lọc, số PO sai không gọi WMS, WMS trả PO khác bị chặn, 403 / hết phiên / 204
   const PO = "10012600000777";
-  const poRow = (over = {}) => ({ ...ROW, group_uid_code: 1028261016000001, processing_source_code: PO, processing_source_type: "PURCHASE_ORDER", ...over });
+  const poRow = (over = {}) => ({ ...ROW, group_uid_code: 1028260000000001, processing_source_code: PO, processing_source_type: "PURCHASE_ORDER", ...over });
   fetchImpl = sequence(reply(200, { count: 1, records: [poRow()] }));
   result = await ask(load({ fetchImpl }), "GET_PO_GROUP_UID_PAGE", { purchaseOrder: ` ${PO} `, page: 2, size: 9999 });
   assert.equal(result.ok, true, JSON.stringify(result));
-  assert.deepEqual([result.data.rows[0].group_uid_code, result.data.rows[0].purchase_order, result.data.total, result.data.page, result.data.size, result.data.purchaseOrder], ["1028261016000001", PO, 1, 2, 500, PO]);
+  assert.deepEqual([result.data.rows[0].group_uid_code, result.data.rows[0].purchase_order, result.data.total, result.data.page, result.data.size, result.data.purchaseOrder], ["1028260000000001", PO, 1, 2, 500, PO]);
   let sentUrl = new URL(fetchImpl.calls[0].url);
   assert.equal(sentUrl.pathname, "/api/v1/wms/group-uid-infos");
   assert.deepEqual([sentUrl.searchParams.get("processing_source_code"), sentUrl.searchParams.get("active_tab"), sentUrl.searchParams.get("page"), sentUrl.searchParams.get("size")], [PO, "group-list", "2", "500"], "số PO được cắt khoảng trắng, size chặn ở 500");
@@ -173,7 +173,7 @@ const ROW = {
     assert.match(result.error.message, /mã PO hợp lệ/);
     assert.equal(fetchImpl.calls.length, 0, "PO sai thì không gọi WMS");
   }
-  result = await ask(load({ fetchImpl: sequence(reply(200, { count: 2, records: [poRow(), poRow({ group_uid_code: 1028261016000002, processing_source_code: "10012699999999" })] })) }), "GET_PO_GROUP_UID_PAGE", { purchaseOrder: PO });
+  result = await ask(load({ fetchImpl: sequence(reply(200, { count: 2, records: [poRow(), poRow({ group_uid_code: 1028260000000002, processing_source_code: "10012699999999" })] })) }), "GET_PO_GROUP_UID_PAGE", { purchaseOrder: PO });
   assert.equal(result.ok, false);
   assert.match(result.error.message, /không phải PO/, "WMS bỏ qua bộ lọc thì không trộn UID của PO khác");
   fetchImpl = sequence(reply(403, {}));

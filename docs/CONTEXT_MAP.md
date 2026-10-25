@@ -37,7 +37,8 @@ flowchart TB
 
 ## 2. Database — Supabase
 - Project `SKU_Name` (id ở `scripts`/`.env`, không chép vào tài liệu). Khoảng 47 bảng, 145 hàm, 7 việc pg_cron (23/10/2026).
-- **Mô hình quyền (gần như RPC-only):** bảng nội bộ bật RLS **không policy** (chỉ service_role) — web/Extension/agent gọi hàm `SECURITY DEFINER` `search_path = ''` tự kiểm quyền: Admin (`group_uid_admin_allowed()` / `user_roles`), khoá máy (`floor_access_check`, `print_device_by_token`), token agent (`print_agent_*`); hàm đọc cho anon chỉ ở các màn xem. **Ngoại lệ:** `SKU_Name` có policy SELECT SKU đang hoạt động (`sku_name_read_active`, `sku_inactive_v1`) — web và agent đọc thẳng qua PostgREST.
+- **Mô hình quyền (gần như RPC-only):** bảng nội bộ bật RLS **không policy** (chỉ service_role) — web/Extension/agent gọi hàm `SECURITY DEFINER` `search_path = ''` tự kiểm quyền: Admin (`group_uid_admin_allowed()` / `user_roles`), khoá máy (`floor_access_check`, `print_device_by_token`), token agent (`print_agent_*`); hàm đọc cho anon chỉ ở các màn xem.
+  - **Ngoại lệ:** `SKU_Name` có policy SELECT SKU đang hoạt động (`sku_name_read_active`, `sku_inactive_v1`) — web và agent đọc thẳng qua PostgREST.
 - **Migration = chuỗi tệp** `supabase/*.sql` (idempotent, `notify pgrst`); **bản mới nhất của một hàm nằm ở tệp mới nhất đụng nó** — chuỗi từng nhóm ở PROJECT_MAP mục 4.
 - Hỏi DB: Supabase MCP **chỉ đọc** (SELECT trên catalog / đếm). Ghi, migration, deploy: người dùng chạy `python scripts/apply_supabase_sql.py <tệp>`.
 
@@ -92,7 +93,9 @@ Quy ước chung: luật nền ở `AGENTS.md`; chuẩn kỹ thuật ở `docs/c
 **Bẫy:** push `main` khi web cần hàm/Edge mới mà chưa chạy migration → web hỏng ngay; commit trước, chờ migration/deploy rồi mới push.
 
 ## Gói ngữ cảnh (repomix)
-`repomix.config.json` ở gốc repo gói **phần lõi** thành một tệp XML (~118.000 token, 23/10/2026) cho AI khác đọc: tài liệu `docs/*.md`, Extension, Edge, agent in, script, hồ sơ agent/skill, 40 commit gần nhất. Mã JS/TS/Python được **nén** (giữ chữ ký hàm, cấu trúc, bỏ thân) — cần logic chi tiết thì đọc tệp thật trong repo. Không gói: `index.html` (2,5 MB — dùng PROJECT_MAP mục 2 + `scripts/index_outline.py`), migration SQL, test, ảnh, nội dung `docs/plans/` (chỉ tên tệp + `docs/plans/README.md`), `README.md` gốc và `workstation-agent/RULES.md` (dài, đọc riêng khi cần). Hồ sơ agent và vài tài liệu có đường dẫn máy người dùng (`C:/Users/…`) — repo đã public nên không phải bí mật, nhưng xem trước khi gửi gói ra ngoài. Có kiểm bí mật (secretlint) trước khi ghi. Đầu tệp gói có hướng dẫn đọc (`docs/repomix-instruction.md`).
+`repomix.config.json` ở gốc repo gói **phần lõi** thành một tệp XML (~118.000 token, 23/10/2026) cho AI khác đọc: tài liệu `docs/*.md`, Extension, Edge, agent in, script, hồ sơ agent/skill, 40 commit gần nhất. Mã JS/TS/Python được **nén** (giữ chữ ký hàm, cấu trúc, bỏ thân) — cần logic chi tiết thì đọc tệp thật trong repo.
+Không gói: `index.html` (2,5 MB — dùng PROJECT_MAP mục 2 + `scripts/index_outline.py`), migration SQL, test, ảnh, nội dung `docs/plans/` (chỉ tên tệp + `docs/plans/README.md`), `README.md` gốc và `workstation-agent/RULES.md` (dài, đọc riêng khi cần).
+Hồ sơ agent và vài tài liệu có đường dẫn máy người dùng (`C:/Users/…`) — repo đã public nên không phải bí mật, nhưng xem trước khi gửi gói ra ngoài. Có kiểm bí mật (secretlint) trước khi ghi. Đầu tệp gói có hướng dẫn đọc (`docs/repomix-instruction.md`).
 
 ```bash
 npx repomix@1.18.1

@@ -21,17 +21,17 @@ const core = coreContext.globalThis.HasakiGroupUidSyncCore;
 assert.equal(typeof core.normalizeNewUidPage, "function");
 
 const page = core.normalizeNewUidPage({ page: 1, size: 500, count: 5590, records: [
-  row(1028261014000001),
+  row(1028260000000001),
   row(1028260000000111, { warehouse_id: 1339, warehouse_name: "WH - MATERIAL - GARMENT", created_by_name: "nguoidung4@example.com", batch_code: "197/9", roll_code: "197/9-004", location_description: "F0-KHO-502-05-01-01", created_at_tz: "2026-10-08T08:02:01+07:00", updated_at_tz: "2026-10-09T10:00:00+07:00" }),
-  row(1028261008000112, { status_id: 2, status_name: "Available" }),
-  row(1028261014000001, { created_by_name: "trùng@hasaki.vn" }),
-  row(1028261014000003, { status_id: undefined, status_name: "NEW", created_by_name: undefined, created_by: 777, group_uid_type_name: "" }),
+  row(1028260000000112, { status_id: 2, status_name: "Available" }),
+  row(1028260000000001, { created_by_name: "trùng@hasaki.vn" }),
+  row(1028260000000003, { status_id: undefined, status_name: "NEW", created_by_name: undefined, created_by: 777, group_uid_type_name: "" }),
 ] });
 assert.equal(page.total, 5590, "tổng lấy từ count của WMS");
 assert.equal(page.sourceRows, 5);
 assert.equal(page.rows.length, 3, "bỏ UID không phải New, gộp UID trùng mã");
 assert.deepEqual(JSON.parse(JSON.stringify(page.rows[0])), {
-  group_uid_code: "1028261014000001", warehouse_id: 1177, warehouse: "WH - MATERIAL - MTG", type: "Fabric Roll",
+  group_uid_code: "1028260000000001", warehouse_id: 1177, warehouse: "WH - MATERIAL - MTG", type: "Fabric Roll",
   created_by: "trùng@hasaki.vn", created_at: "2026-10-14T04:13:37.000Z", updated_at: "2026-10-14T04:13:37.000Z",
   location: null, batch_code: null, roll_code: null,
 });
@@ -40,12 +40,12 @@ assert.equal(garment.warehouse_id, 1339);
 assert.equal(garment.batch_code, "197/9"); assert.equal(garment.roll_code, "197/9-004"); assert.equal(garment.location, "F0-KHO-502-05-01-01");
 assert.equal(garment.created_at, "2026-10-08T01:02:01.000Z");
 assert.equal(garment.updated_at, "2026-10-09T03:00:00.000Z", "created_at và updated_at tách riêng");
-const byId = page.rows.find(r => r.group_uid_code === "1028261014000003");
+const byId = page.rows.find(r => r.group_uid_code === "1028260000000003");
 assert.equal(byId.created_by, "777", "thiếu created_by_name thì dùng created_by");
 assert.equal(byId.type, null);
 assert.equal(core.normalizeNewUidPage({ records: [] }).rows.length, 0);
 assert.throws(() => core.normalizeNewUidPage({ records: [row("abc")] }), /Group UID không hợp lệ/);
-assert.throws(() => core.normalizeNewUidPage({ records: [row(1028261014000009, { created_at_tz: "sai-ngày", created_at: undefined })] }), /Ngày/);
+assert.throws(() => core.normalizeNewUidPage({ records: [row(1028260000000009, { created_at_tz: "sai-ngày", created_at: undefined })] }), /Ngày/);
 
 // --- Bộ đọc trong wms-bridge ---
 const calls = [];
@@ -53,7 +53,7 @@ let listener;
 const bridgeContext = {
   window: {}, URL, Date, Intl, Promise, JSON, Math, Number, String, Array, Object, Error, setTimeout, console,
   localStorage: { getItem: key => ({ auth_store: JSON.stringify({ state: { token: "test-token" } }), company_id: "1002" })[key] ?? null },
-  fetch: async (url, options) => { calls.push({ url: new URL(url), headers: options.headers }); return { ok: true, status: 200, json: async () => ({ page: 1, size: 500, count: 2, records: [row(1028261014000001), row(1028261008000112, { status_id: 2, status_name: "Available" })] }) }; },
+  fetch: async (url, options) => { calls.push({ url: new URL(url), headers: options.headers }); return { ok: true, status: 200, json: async () => ({ page: 1, size: 500, count: 2, records: [row(1028260000000001), row(1028260000000112, { status_id: 2, status_name: "Available" })] }) }; },
   chrome: { runtime: { id: "ext-id", onMessage: { addListener: fn => { listener = fn; } } } },
 };
 bridgeContext.globalThis = bridgeContext;

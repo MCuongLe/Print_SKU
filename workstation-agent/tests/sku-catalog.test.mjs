@@ -43,9 +43,9 @@ const setup = (rows, options = {}) => {
   });
   return { dir, base, textCache, measureText, server, make };
 };
-const NAMES = [["422475229", "Chỉ may/None/None/Roman N0144/Be/None/5000m/mm"], ["422475228", "(Combo) Chỉ may/None/None/Roman N0144/Be/None/5000m/cuộn"],
-  ["422483416", "Nút bấm/T09/POM/none/Dark Blue/none/9mm/pcs"], ["422478432", "Vải Pique/SK9115_Shaoxing Sukun/88% Nylon 12% Spandex/Navy/g"],
-  ["422521090", "Đệm vai/SP27826-190T_5S/100% Polyester/none/Trắng-White/none/12.5*7.5*6mm/pcs"]];
+const NAMES = [["900000055", "Chỉ may/None/None/Roman N0144/Be/None/5000m/mm"], ["900000054", "(Combo) Chỉ may/None/None/Roman N0144/Be/None/5000m/cuộn"],
+  ["900000058", "Nút bấm/T09/POM/none/Dark Blue/none/9mm/pcs"], ["900000056", "Vải Pique/SK9115_Shaoxing Sukun/88% Nylon 12% Spandex/Navy/g"],
+  ["900000079", "Đệm vai/SP27826-190T_5S/100% Polyester/none/Trắng-White/none/12.5*7.5*6mm/pcs"]];
 
 test("refresh: tải đủ danh mục theo trang; updated_at không đổi thì không tải lại; đổi thì tải lại", async () => {
   const { server, make } = setup(NAMES);
@@ -56,7 +56,7 @@ test("refresh: tải đủ danh mục theo trang; updated_at không đổi thì 
   assert.equal(await catalog.refresh(), false, "chưa có cập nhật mới");
   assert.equal(server.pageCalls, 2);
   server.updatedAt = "2026-10-02T00:55:00+00:00";
-  server.rows = [...NAMES, ["422999999", "Dây luồn/81T/None/Navy/Size 140cm/8mm/Sợi"]];
+  server.rows = [...NAMES, ["900000098", "Dây luồn/81T/None/Navy/Size 140cm/8mm/Sợi"]];
   assert.equal(await catalog.refresh(), true, "sáng hôm sau đồng bộ SKU");
   assert.equal(catalog.size, 6);
   const reopened = make();
@@ -77,7 +77,7 @@ test("warm: đo sẵn mọi tên; lệnh in sau đó không phải gọi PowerSh
   assert.ok(planned[0].payload.productNameLines.length > 0);
   assert.equal(await catalog.warm(), 0, "không có tên mới thì không đo gì");
   server.updatedAt = "2026-10-02T00:55:00+00:00";
-  server.rows = [...NAMES, ["422999999", "Dây luồn/81T/None/Navy/Size 140cm/8mm/Sợi"]];
+  server.rows = [...NAMES, ["900000098", "Dây luồn/81T/None/Navy/Size 140cm/8mm/Sợi"]];
   await catalog.refresh();
   assert.equal(await catalog.warm(), 1, "chỉ đo đúng tên mới");
 });

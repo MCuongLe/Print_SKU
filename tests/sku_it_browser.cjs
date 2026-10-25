@@ -7,15 +7,15 @@ const BASE = process.env.BASE || "http://127.0.0.1:8000/";
 const IT = "1007261015013137", IT_BIG = "1007261013010714", IT_NONE = "1007260101000001";
 const head = (number, items) => ({ number, id: 8121626, status: "In-progress", type: "Normal", fromWarehouse: "WH - MATERIAL - MTG", toWarehouse: "SF - HIEP THANH Q12", description: "outsource_order 45 IT_OUT", createdBy: "nguoi.tao@example.com", createdAt: "2026-10-15T09:38:39.000Z", totalItems: items.length, items, generatedAt: "2026-10-15T10:00:00.000Z" });
 const ITEMS = [
-  { sku: "422499599", name: "Nhãn care xé (tên WMS)", quantity: 2, unit: "pcs" },
-  { sku: "422292974", name: "Chỉ may astra C8154 (tên WMS)", quantity: 170000, unit: "mm" },
-  { sku: "422386182", name: "Vải Rib 1x1 (tên WMS)", quantity: 42, unit: "g" },
-  { sku: "422386183", name: "Vải lẻ", quantity: 1.5, unit: null },
-  { sku: "422999999", name: "SKU đã ngừng (tên WMS)", quantity: 5, unit: "pcs" },
+  { sku: "900000064", name: "Nhãn care xé (tên WMS)", quantity: 2, unit: "pcs" },
+  { sku: "900000039", name: "Chỉ may astra C8154 (tên WMS)", quantity: 170000, unit: "mm" },
+  { sku: "900000041", name: "Vải Rib 1x1 (tên WMS)", quantity: 42, unit: "g" },
+  { sku: "900000045", name: "Vải lẻ", quantity: 1.5, unit: null },
+  { sku: "900000098", name: "SKU đã ngừng (tên WMS)", quantity: 5, unit: "pcs" },
 ];
 const BIG = Array.from({ length: 105 }, (_, i) => ({ sku: `4225${String(i).padStart(5, "0")}`, name: `Hàng ${i}`, quantity: 100 + i, unit: "mm" }));
 const DATA = { [IT]: head(IT, ITEMS), [IT_BIG]: head(IT_BIG, BIG) };
-// Danh mục (SKU_Name chỉ trả SKU đang hoạt động): 422999999 không có
+// Danh mục (SKU_Name chỉ trả SKU đang hoạt động): 900000098 không có
 const CATALOG = new Map([...ITEMS.slice(0, 4), ...BIG].map(item => [item.sku, `${item.name.replace(" (tên WMS)", "")} · danh mục`]));
 
 const fakeExtension = data => {
@@ -173,11 +173,11 @@ async function desktop(browser) {
   const info = await page.locator("#sku-it-info").innerText();
   assert.ok(info.includes(`IT ${IT}`) && info.includes("WH - MATERIAL - MTG") && info.includes("SF - HIEP THANH Q12") && info.includes("In-progress") && info.includes("5 dòng"), info);
   assert.deepEqual(await rows(page), [
-    { sku: "422499599", name: "Nhãn care xé · danh mục", qty: "2 pcs", copies: "1", on: true, flag: "" },
-    { sku: "422292974", name: "Chỉ may astra C8154 · danh mục", qty: "170000 mm", copies: "1", on: true, flag: "" },
-    { sku: "422386182", name: "Vải Rib 1x1 · danh mục", qty: "42 g", copies: "1", on: true, flag: "" },
-    { sku: "422386183", name: "Vải lẻ · danh mục", qty: "1.5", copies: "1", on: true, flag: "" },
-    { sku: "422999999", name: "SKU đã ngừng (tên WMS)", qty: "5 pcs", copies: "1", on: false, flag: "Không có trong danh mục" },
+    { sku: "900000064", name: "Nhãn care xé · danh mục", qty: "2 pcs", copies: "1", on: true, flag: "" },
+    { sku: "900000039", name: "Chỉ may astra C8154 · danh mục", qty: "170000 mm", copies: "1", on: true, flag: "" },
+    { sku: "900000041", name: "Vải Rib 1x1 · danh mục", qty: "42 g", copies: "1", on: true, flag: "" },
+    { sku: "900000045", name: "Vải lẻ · danh mục", qty: "1.5", copies: "1", on: true, flag: "" },
+    { sku: "900000098", name: "SKU đã ngừng (tên WMS)", qty: "5 pcs", copies: "1", on: false, flag: "Không có trong danh mục" },
   ]);
   assert.match(await status(page), /Đã đọc 5 dòng · 1 SKU không có trong danh mục \(bỏ tick\)/);
   assert.equal(await page.locator("#sku-it-status").getAttribute("data-tone"), "warn");
@@ -202,7 +202,7 @@ async function desktop(browser) {
   assert.equal(await page.locator("#sku-it").evaluate(d => d.open), false);
   await page.waitForFunction(() => document.querySelector("#root main ul.divide-y")?.children.length === 4);
   const queue = await page.evaluate(() => [...document.querySelectorAll("#root main .skq-list > .skq-item")].map(li => `${li.querySelector("b").textContent}|${li.querySelector(".skq-meta").innerText.replace(/\s+/g, " ").trim()}`));
-  assert.deepEqual(queue, ["422499599|2 1 bản", "422292974|170000 3 bản", "422386182|42 1 bản", "422386183|1.5 1 bản"], "số lượng in lên tem giữ đúng theo phiếu IT");
+  assert.deepEqual(queue, ["900000064|2 1 bản", "900000039|170000 3 bản", "900000041|42 1 bản", "900000045|1.5 1 bản"], "số lượng in lên tem giữ đúng theo phiếu IT");
   assert.match(await page.locator("#root").innerText(), new RegExp(`Đã thêm 4 SKU từ phiếu IT ${IT}`));
 
   // In tem như cũ: lệnh in mang đúng SKU, tên danh mục, số lượng theo phiếu và số bản
@@ -211,8 +211,8 @@ async function desktop(browser) {
   await page.waitForTimeout(500);
   assert.equal(enqueued.length, 1, "gửi đúng một lệnh in");
   const sent = JSON.stringify(enqueued[0]);
-  assert.ok(sent.includes("422292974") && sent.includes("170000") && sent.includes("Chỉ may astra C8154 · danh mục"), sent.slice(0, 400));
-  assert.ok(!sent.includes("422999999"), "SKU bỏ tick không vào lệnh in");
+  assert.ok(sent.includes("900000039") && sent.includes("170000") && sent.includes("Chỉ may astra C8154 · danh mục"), sent.slice(0, 400));
+  assert.ok(!sent.includes("900000098"), "SKU bỏ tick không vào lệnh in");
 
   // Phiếu lớn hơn chỗ còn trống (một lệnh tối đa 100 SKU — 19/10/2026 nâng từ 30, khớp agent + Tìm SKU): báo lỗi, không thêm; bỏ bớt thì thêm được
   await page.waitForFunction(() => (document.querySelector("#root main ul.divide-y")?.children.length || 0) === 0).catch(() => {});

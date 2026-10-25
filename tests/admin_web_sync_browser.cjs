@@ -18,7 +18,7 @@ const SKU_CHANGES = {
 const SKU_COUNTS = { skuAdded: 60, skuUpdated: 0, comboAdded: 0, comboUpdated: 0, comboOrphaned: 0 };
 const SKU_SOURCE = { normalRows: 8500, comboRows: 1000, selectedComboLinks: 410, excludedBreakdown: {}, sourceIssues: 2 };
 const GU_COUNTS = { added: 1, updated: 0, unchanged: 5, missing: 3, issues: 1, totalChanges: 1 };
-const GU_CHANGES = [{ groupUidCode: '1028261006000050', changeType: 'added', before: null, after: { sku: '422439472', qty: 44, products: [{ sku: '422439472', quantity: 7 }], status: 'Available' }, changedFields: ['group_uid_code'], sourceUpdatedAt: '2026-10-08T01:00:00Z' }];
+const GU_CHANGES = [{ groupUidCode: '1028260000000050', changeType: 'added', before: null, after: { sku: '900000051', qty: 44, products: [{ sku: '900000051', quantity: 7 }], status: 'Available' }, changedFields: ['group_uid_code'], sourceUpdatedAt: '2026-10-08T01:00:00Z' }];
 
 // failOn: { fn: 'sku-sync' | 'group-uid-sync', actions: [...] } → trả lỗi 500 cho các action đó
 const mockRoutes = (page, failOn = null) => page.route('**/*', async route => {

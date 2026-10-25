@@ -47,9 +47,9 @@ function sequence(...steps) {
 }
 
 const STOCK = [
-  { sku: "422514039", name: "Xi măng", unit: "bao", qtyImported: 340, qtyExported: 251, qtyAdjust: 0, inStock: 89 },
-  { sku: "422513550", name: "Cừ tràm", unit: "cây", qtyImported: 192, qtyExported: 192, qtyAdjust: 0, inStock: 0 },
-  { sku: "422510596", name: "Cuộn", unit: "cuộn", qtyImported: 12, qtyExported: 0, qtyAdjust: 0, inStock: 12 },
+  { sku: "900000077", name: "Xi măng", unit: "bao", qtyImported: 340, qtyExported: 251, qtyAdjust: 0, inStock: 89 },
+  { sku: "900000076", name: "Cừ tràm", unit: "cây", qtyImported: 192, qtyExported: 192, qtyAdjust: 0, inStock: 0 },
+  { sku: "900000070", name: "Cuộn", unit: "cuộn", qtyImported: 12, qtyExported: 0, qtyAdjust: 0, inStock: 12 },
 ];
 
 (async () => {
@@ -66,11 +66,11 @@ const STOCK = [
   assert.equal(JSON.stringify(result).includes(TOKEN), false, "token không bao giờ được trả về trang Print SKU");
 
   // Dòng nhập WMS đã nạp vào app: đúng đường dẫn con, cùng cách đọc
-  fetchImpl = sequence(reply(200, { ok: true, totalCount: 1, rows: [{ id: "f#1", sku: "422514039", quantity: 340, type: "Imp" }] }));
+  fetchImpl = sequence(reply(200, { ok: true, totalCount: 1, rows: [{ id: "f#1", sku: "900000077", quantity: 340, type: "Imp" }] }));
   result = await ask(load({ fetchImpl }), { resource: "wmsImports" });
   assert.equal(result.ok, true, JSON.stringify(result));
   assert.equal(fetchImpl.calls[0].url, "/apps/hasaki-construction-management/api/wms-imports?limit=1000&offset=0");
-  assert.equal(result.data.rows[0].sku, "422514039");
+  assert.equal(result.data.rows[0].sku, "900000077");
 
   // Chạy cả khi địa chỉ app không có dấu "/" cuối
   fetchImpl = sequence(reply(200, { ok: true, totalCount: 0, rows: [] }));

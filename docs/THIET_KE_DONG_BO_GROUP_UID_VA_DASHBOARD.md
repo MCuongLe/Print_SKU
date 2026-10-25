@@ -140,8 +140,8 @@ Admin bấm vào từng thẻ để lọc bảng. Bảng dùng dạng text đơn
 
 | Group UID | Loại thay đổi | Giá trị cũ | Giá trị mới | Cập nhật WMS |
 | --- | --- | --- | --- | --- |
-| 1028261006000050 | Số lượng | `7.200` | `7.429` | 07/10/2026 08:41 |
-| 1028261006000049 | Trạng thái | `Available` | `Allocated` | 07/10/2026 08:40 |
+| 1028260000000050 | Số lượng | `7.200` | `7.429` | 07/10/2026 08:41 |
+| 1028260000000049 | Trạng thái | `Available` | `Allocated` | 07/10/2026 08:40 |
 
 Một UID thay đổi nhiều trường vẫn hiển thị trên một dòng. Cột giá trị dùng chuỗi dễ đọc:
 

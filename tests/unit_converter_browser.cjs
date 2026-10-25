@@ -146,9 +146,9 @@ const BASE = process.env.BASE || 'http://127.0.0.1:8000/';
       assert.equal(await page.locator('#uc-fabric-gsm').inputValue(), '');
 
       // Group UID tự tìm SKU/tên sản phẩm rồi đọc khổ và GSM.
-      await page.locator('#uc-code').fill('1028260900000101');
+      await page.locator('#uc-code').fill('1028260000000101');
       await page.locator('#uc-code-form').press('Enter');
-      await page.waitForFunction(() => document.querySelector('#uc-picked-code')?.textContent.includes('1028260900000101'));
+      await page.waitForFunction(() => document.querySelector('#uc-picked-code')?.textContent.includes('1028260000000101'));
       assert.equal(await page.locator('#uc-fabric-width').inputValue(), '180');
       assert.equal(await page.locator('#uc-fabric-gsm').inputValue(), '170');
       await page.locator('#uc-total').fill('10');

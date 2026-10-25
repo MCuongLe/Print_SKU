@@ -18,22 +18,22 @@ const uidRow = (code, sku, lot, roll, qty, extra = {}) => ({
   group_uid_code: String(code), batch_code: lot, roll_code: roll, warehouse: "WH - MATERIAL - MTG", location: "F0-A-01", sku, qty, updated_by: "api@hasaki.vn",
   updated_date: "2026-10-15T11:50:51.000Z", status: "Available", products: sku ? [{ sku, quantity: qty, product_name: `SP ${sku}` }] : [], purchase_order: PO, source_type: "PURCHASE_ORDER", ...extra
 });
-const A1 = Array.from({ length: 10 }, (_, i) => uidRow(1028261016000001 + i, "422000001", "L1", `1-${i + 1}`, 31000 + i * 1000));
-const A2 = [uidRow(1028261016000011, "422000001", "L2", "2-1", 50000)];
-const B1 = Array.from({ length: 5 }, (_, i) => uidRow(1028261016000021 + i, "422000002", "L3", `3-${i + 1}`, 60000 + i * 10000));
+const A1 = Array.from({ length: 10 }, (_, i) => uidRow(1028260000000001 + i, "900000014", "L1", `1-${i + 1}`, 31000 + i * 1000));
+const A2 = [uidRow(1028260000000011, "900000014", "L2", "2-1", 50000)];
+const B1 = Array.from({ length: 5 }, (_, i) => uidRow(1028260000000021 + i, "900000015", "L3", `3-${i + 1}`, 60000 + i * 10000));
 const INVALID = [
-  uidRow(1028261016000031, null, null, null, 0, { status: "New" }),
-  uidRow(1028261016000032, null, "L9", "9-1", 100, { products: [{ sku: "422000001", quantity: 40 }, { sku: "422000002", quantity: 60 }] }),
-  uidRow(1028261016000033, "422000001", "L1", "1-99", 31500, { status: "Canceled" })
+  uidRow(1028260000000031, null, null, null, 0, { status: "New" }),
+  uidRow(1028260000000032, null, "L9", "9-1", 100, { products: [{ sku: "900000014", quantity: 40 }, { sku: "900000015", quantity: 60 }] }),
+  uidRow(1028260000000033, "900000014", "L1", "1-99", 31500, { status: "Canceled" })
 ];
 const POOL = { [PO]: [...INVALID, ...A1, ...A2, ...B1].map(r => ({ ...r, purchase_order: PO })), [PO_EMPTY]: [],
-  [PO_RULE]: [...Array.from({ length: 7 }, (_, i) => uidRow(4028261016000000 + i, "422000002", "R7", `7-${i + 1}`, 60000 + i * 1000, { purchase_order: PO_RULE })),
-    ...Array.from({ length: 12 }, (_, i) => uidRow(4028261016000100 + i, "422000002", "R12", `12-${i + 1}`, 70000 + i * 1000, { purchase_order: PO_RULE }))],
-  [PO_HUGE]: Array.from({ length: 5100 }, (_, i) => uidRow(3028261016000000 + i, "422000003", `LH${Math.floor(i / 20)}`, String(i), 10000 + i, { purchase_order: PO_HUGE })),
-  [PO_BIG]: Array.from({ length: 620 }, (_, i) => uidRow(2028261016000000 + i, "422000003", `LB${Math.floor(i / 20)}`, String(i), 10000 + i, { purchase_order: PO_BIG })) };
+  [PO_RULE]: [...Array.from({ length: 7 }, (_, i) => uidRow(4028261016000000 + i, "900000015", "R7", `7-${i + 1}`, 60000 + i * 1000, { purchase_order: PO_RULE })),
+    ...Array.from({ length: 12 }, (_, i) => uidRow(4028261016000100 + i, "900000015", "R12", `12-${i + 1}`, 70000 + i * 1000, { purchase_order: PO_RULE }))],
+  [PO_HUGE]: Array.from({ length: 5100 }, (_, i) => uidRow(3028261016000000 + i, "900000016", `LH${Math.floor(i / 20)}`, String(i), 10000 + i, { purchase_order: PO_HUGE })),
+  [PO_BIG]: Array.from({ length: 620 }, (_, i) => uidRow(2028261016000000 + i, "900000016", `LB${Math.floor(i / 20)}`, String(i), 10000 + i, { purchase_order: PO_BIG })) };
 const ASNS = { [PO]: [{ asn_id: 60611, asn_number: "1002261015060611", type: "PURCHASE_ORDER", status: "Received", shipment: "1001260618081586", warehouse: "WH - MATERIAL - MTG", created_at: "2026-10-15T11:51:03.000Z" },
   { asn_id: 35563, asn_number: "1002261015035563", type: "PURCHASE_ORDER", status: "Open", shipment: "1001260618081586", warehouse: "WH - MATERIAL - MTG", created_at: "2026-10-15T07:05:23.000Z" }] };
-const NAMES = { "422000001": "Vải A đỏ/g", "422000002": "Vải B xanh/mm" };
+const NAMES = { "900000014": "Vải A đỏ/g", "900000015": "Vải B xanh/mm" };
 
 const fakeExtension = ({ pool, asns }) => {
   window.__extCalls = []; window.__extFail = "";
@@ -154,8 +154,8 @@ async function open(browser, server, width, { admin = true, openSample = true } 
     if (/\/rest\/v1\/rpc\/cut_group_uid_scan/.test(url)) {
       const uid = route.request().postDataJSON().p_group_uid;
       server.calls.push({ name: "cut_group_uid_scan", body: { uid } });
-      server.cutRows.set(uid, { sku: "422000009", lot: "FREE", roll: "9", name: "Vải quét tự do", status: "pending" });
-      return json({ ok: true, data: { groupUid: uid, sku: "422000009", productName: "Vải quét tự do", lot: "FREE", roll: "9" } });
+      server.cutRows.set(uid, { sku: "900000024", lot: "FREE", roll: "9", name: "Vải quét tự do", status: "pending" });
+      return json({ ok: true, data: { groupUid: uid, sku: "900000024", productName: "Vải quét tự do", lot: "FREE", roll: "9" } });
     }
     const cut = /\/rest\/v1\/rpc\/(cut_group_uid_list|cut_group_uid_search)/.exec(url);
     if (cut) {
@@ -268,7 +268,7 @@ async function desktop(browser) {
 
   // Chưa có phiên: chọn phiên trống, quét báo chưa chọn phiên.
   assert.match(await page.locator("#cs-plan").innerText(), /Chưa có phiên/);
-  await scan(page, "1028261016000001", "CHƯA CHỌN PHIÊN THEO PO");
+  await scan(page, "1028260000000001", "CHƯA CHỌN PHIÊN THEO PO");
   await page.locator("[data-pop-close]").click();
   assert.equal(await page.locator("#cs-pop").isHidden(), true);
 
@@ -326,7 +326,7 @@ async function desktop(browser) {
   const groupRows = await page.locator("#cs-preview tbody tr").evaluateAll(rows => rows.map(r => [...r.children].map(c => c.textContent.trim())));
   await shot(page, "d-preview");
   await axeCheck(page, "xem trước PO");
-  assert.deepEqual(groupRows, [["422000001", "L1", "10", "2", "1", "7", "30%"], ["422000001", "L2", "1", "1", "0", "0", "100%"], ["422000002", "L3", "5", "1", "1", "3", "40%"]]);
+  assert.deepEqual(groupRows, [["900000014", "L1", "10", "2", "1", "7", "30%"], ["900000014", "L2", "1", "1", "0", "0", "100%"], ["900000015", "L3", "5", "1", "1", "3", "40%"]]);
   assert.match(preview, /Mẫu 6\/16 · 38%/, "chip tổng mẫu cắt + QC");
   const asnCall = await page.evaluate(() => window.__extCalls.find(c => c.type === "GET_PO_ASN_PAGE").payload);
   assert.deepEqual([asnCall.purchaseOrder, asnCall.size], [PO, 500]);
@@ -340,36 +340,36 @@ async function desktop(browser) {
   assert.equal(created.body.p_po, PO);
   assert.equal(created.body.p_asns.length, 2);
   const role = code => created.body.p_items.find(i => i.groupUid === code)?.role;
-  assert.deepEqual(["1028261016000001", "1028261016000002"].map(role), ["cut", "cut"], "L1: 2 cây nhỏ nhất → cắt");
-  assert.equal(role("1028261016000010"), "qc", "L1: cây lớn nhất → QC");
-  assert.equal(role("1028261016000011"), "cut", "lot 1 cây → chỉ cắt");
-  assert.equal(role("1028261016000021"), "cut"); assert.equal(role("1028261016000025"), "qc");
+  assert.deepEqual(["1028260000000001", "1028260000000002"].map(role), ["cut", "cut"], "L1: 2 cây nhỏ nhất → cắt");
+  assert.equal(role("1028260000000010"), "qc", "L1: cây lớn nhất → QC");
+  assert.equal(role("1028260000000011"), "cut", "lot 1 cây → chỉ cắt");
+  assert.equal(role("1028260000000021"), "cut"); assert.equal(role("1028260000000025"), "qc");
   assert.equal(created.body.p_items.length, 16);
-  assert.equal(created.body.p_items.some(i => ["1028261016000031", "1028261016000032", "1028261016000033"].includes(i.groupUid)), false, "UID loại không đưa vào phiên");
+  assert.equal(created.body.p_items.some(i => ["1028260000000031", "1028260000000032", "1028260000000033"].includes(i.groupUid)), false, "UID loại không đưa vào phiên");
 
   // ---- Tab Quét: tổng, thanh tiến độ theo SKU ----
   assert.equal(await chipsText(page), "Cắt 0/4 QC 0/2 Lưu trữ 0/10");
   assert.equal(await page.locator(".cs-sku").count(), 2);
-  assert.match(await page.locator(".cs-sku").first().innerText(), /422000001/);
+  assert.match(await page.locator(".cs-sku").first().innerText(), /900000014/);
   assert.equal(await page.locator("#cs-confirm").isDisabled(), true, "chưa quét UID cắt nào thì chưa xác nhận được");
 
-  await scan(page, "1028261016000001", "CẮT GROUP UID NÀY");
-  assert.match(await page.locator("#cs-pop-card").innerText(), /422000001/);
+  await scan(page, "1028260000000001", "CẮT GROUP UID NÀY");
+  assert.match(await page.locator("#cs-pop-card").innerText(), /900000014/);
   assert.match(await page.locator("#cs-pop-card").innerText(), /31 kg/, "đơn vị g hiện kg");
   assert.equal(await page.locator("#cs-pop-card").getAttribute("data-tone"), "cut");
   await assertPopTone(page, "cut");
   assert.equal(await chipsText(page), "Cắt 1/4 QC 0/2 Lưu trữ 0/10");
   await shot(page, "d-pop-cut");
-  await scan(page, "1028261016000010", "CHUYỂN QC TEST");
+  await scan(page, "1028260000000010", "CHUYỂN QC TEST");
   await shot(page, "d-pop-qc");
   assert.equal(await page.locator("#cs-pop-card").getAttribute("data-tone"), "qc");
   await assertPopTone(page, "qc");
-  await scan(page, "1028261016000005", "CHUYỂN KHO LƯU TRỮ");
+  await scan(page, "1028260000000005", "CHUYỂN KHO LƯU TRỮ");
   await shot(page, "d-pop-store");
   assert.equal(await page.locator("#cs-pop-card").getAttribute("data-tone"), "store");
   await assertPopTone(page, "store");
   // Quét lại: báo đã quét, giờ quét không đổi.
-  await scan(page, "1028261016000001", "ĐÃ QUÉT UID NÀY");
+  await scan(page, "1028260000000001", "ĐÃ QUÉT UID NÀY");
   assert.equal(await page.locator("#cs-pop-card").getAttribute("data-tone"), "warn");
   await shot(page, "d-pop-warn");
   await assertPopTone(page, "warn");
@@ -382,18 +382,18 @@ async function desktop(browser) {
   await assertPopTone(page, "error");
   assert.equal(await chipsText(page), "Cắt 1/4 QC 1/2 Lưu trữ 1/10", "mã lạ không đổi số liệu");
   // Quét bằng máy quét: mã kèm khoảng trắng đầu/cuối vẫn khớp.
-  await scan(page, " 1028261016000002 ", "CẮT GROUP UID NÀY");
+  await scan(page, " 1028260000000002 ", "CẮT GROUP UID NÀY");
   assert.equal(await page.locator("#cut-code").inputValue(), "", "ô quét được xóa sau mỗi lần quét");
   assert.equal(server.calls.filter(c => c.name === "cut_group_uid_scan").length, 0, "Theo PO không chạy luồng quét cũ");
 
   // Hàng đợi: bắn liên tiếp nhiều mã, không mất mã nào.
-  await page.evaluate(() => { const c = document.getElementById("cut-code"); for (const v of ["1028261016000011", "1028261016000021", "1028261016000025"]) { c.value = v; document.getElementById("cut-form").requestSubmit(); } });
+  await page.evaluate(() => { const c = document.getElementById("cut-code"); for (const v of ["1028260000000011", "1028260000000021", "1028260000000025"]) { c.value = v; document.getElementById("cut-form").requestSubmit(); } });
   await page.waitForFunction(() => [...document.querySelectorAll('#cs-totals [data-role="cut"], #cs-totals [data-role="qc"], #cs-totals [data-role="store"]')].map(e => e.innerText).join(" ").replace(/\s+/g, " ").trim() === "Cắt 4/4 QC 2/2 Lưu trữ 1/10", null, { timeout: 8000 })
     .catch(async error => { throw new Error(`${error.message}
 Tổng hiện tại: ${await chipsText(page)} · tin nhắn: ${await msg(page)} · lỗi trang: ${JSON.stringify(errors)}`); });
-  // SKU 422000002 đủ cắt + QC → "Đủ mẫu"; SKU 422000001 còn thiếu.
+  // SKU 900000015 đủ cắt + QC → "Đủ mẫu"; SKU 900000014 còn thiếu.
   const skuCards = await page.locator(".cs-sku").evaluateAll(cards => cards.map(c => ({ sku: c.querySelector(".cs-sku__code").textContent, done: c.dataset.done, text: c.innerText.replace(/\s+/g, " ") })));
-  assert.equal(skuCards[0].done, "true", "422000001 đủ cả cắt lẫn QC");
+  assert.equal(skuCards[0].done, "true", "900000014 đủ cả cắt lẫn QC");
   assert.equal(skuCards[1].done, "true");
   assert.match(skuCards[1].text, /Đủ mẫu/);
   assert.match(skuCards[1].text, /Vải B xanh/);
@@ -405,13 +405,13 @@ Tổng hiện tại: ${await chipsText(page)} · tin nhắn: ${await msg(page)} 
   await axeCheck(page, "tab Quét có phiên");
   // UID thuộc phiên PO khác (tạo thêm phiên thứ 2 trực tiếp trên server giả).
   server.sessions.set("11111111-1111-4111-8111-111111111111", { id: "11111111-1111-4111-8111-111111111111", po: PO_OTHER, asns: [], createdAt: new Date().toISOString(), updatedAt: "2000-01-01T00:00:00.000Z" });
-  server.items.push({ sid: "11111111-1111-4111-8111-111111111111", groupUid: "7777777777777777", sku: "422000001", lot: "Z", roll: "1", qty: 1, role: "cut", scannedAt: null, scannedBy: null, pushedAt: null });
+  server.items.push({ sid: "11111111-1111-4111-8111-111111111111", groupUid: "7777777777777777", sku: "900000014", lot: "Z", roll: "1", qty: 1, role: "cut", scannedAt: null, scannedBy: null, pushedAt: null });
   await scan(page, "7777777777777777", "UID THUỘC PHIÊN PO KHÁC");
   assert.match(await page.locator("#cs-pop-card").innerText(), new RegExp(`PO ${PO_OTHER}`));
   await page.locator("[data-pop-close]").click();
 
   // ---- Xác nhận đẩy UID cắt đã quét sang luồng Cắt UID ----
-  server.cutRows.set("1028261016000002", { sku: "422000001", lot: "L1", roll: "1-2", name: "đã có", status: "pending" }); // đã nằm ở Cắt UID từ trước
+  server.cutRows.set("1028260000000002", { sku: "900000014", lot: "L1", roll: "1-2", name: "đã có", status: "pending" }); // đã nằm ở Cắt UID từ trước
   assert.equal(await page.locator("#cs-confirm").isDisabled(), false);
   assert.match(await page.locator("#cs-confirm").innerText(), /Chuyển sang Cắt UID · 4/);
   await page.locator("#cs-confirm").click();
@@ -423,8 +423,8 @@ Tổng hiện tại: ${await chipsText(page)} · tin nhắn: ${await msg(page)} 
   await page.locator("dialog.whd .whd-ok").click();
   await page.waitForFunction(() => /Đã chuyển 3 UID sang Cắt UID/.test(document.getElementById("cs-message").textContent));
   assert.match(await msg(page), /1 UID đã có sẵn ở Cắt UID/);
-  assert.deepEqual([...server.cutRows.keys()].sort(), ["1028261016000001", "1028261016000002", "1028261016000011", "1028261016000021"]);
-  assert.equal(server.cutRows.get("1028261016000011").status, "pending");
+  assert.deepEqual([...server.cutRows.keys()].sort(), ["1028260000000001", "1028260000000002", "1028260000000011", "1028260000000021"]);
+  assert.equal(server.cutRows.get("1028260000000011").status, "pending");
   assert.equal(await page.locator("#cs-confirm").isDisabled(), true, "đã chuyển hết thì nút xám");
   assert.match(await page.locator("#cs-confirm").innerText(), /Đã chuyển hết UID cắt/);
   // Luồng Cắt cũ thấy 4 UID mới ở Tra cứu (trạng thái pending, như UID quét ở tab Quét); script Cắt UID tải lại khi chuyển xong.
@@ -433,8 +433,8 @@ Tổng hiện tại: ${await chipsText(page)} · tin nhắn: ${await msg(page)} 
   await page.waitForSelector('#cut-tab-data[aria-selected="true"]');
   assert.equal(await page.locator("#cs-scan").isVisible(), false);
   await page.waitForFunction(() => document.getElementById("cut-found").textContent === "4");
-  assert.deepEqual((await page.locator("#cut-results tr[data-code]").evaluateAll(rows => rows.map(r => r.dataset.code))).sort(), ["1028261016000001", "1028261016000002", "1028261016000011", "1028261016000021"]);
-  assert.match(await page.locator("#cut-results").innerText(), /422000001/);
+  assert.deepEqual((await page.locator("#cut-results tr[data-code]").evaluateAll(rows => rows.map(r => r.dataset.code))).sort(), ["1028260000000001", "1028260000000002", "1028260000000011", "1028260000000021"]);
+  assert.match(await page.locator("#cut-results").innerText(), /900000014/);
   await page.locator("#cut-tab-scan").click();
   await page.waitForSelector('#cs-scan[data-mode="po"]');
 
@@ -448,17 +448,17 @@ Tổng hiện tại: ${await chipsText(page)} · tin nhắn: ${await msg(page)} 
   assert.deepEqual(filterCounts, ["Chưa quét 9", "Cắt 4", "QC 2", "Lưu trữ 10", "Tất cả 16"]);
   await page.locator('[data-filter="store"]').click();
   assert.equal(await page.locator("#cs-rows tr[data-code]").count(), 10);
-  await page.locator("#cs-q").fill("1028261016000005");
+  await page.locator("#cs-q").fill("1028260000000005");
   assert.equal(await page.locator("#cs-rows tr[data-code]").count(), 1);
   assert.equal(await page.locator("#cs-rows [data-unscan]").count(), 1, "Admin thấy nút bỏ dấu quét ở UID đã quét chưa chuyển");
   await page.locator("#cs-q").fill("");
   await page.locator('[data-filter="cut"]').click();
   assert.equal(await page.locator("#cs-rows [data-unscan]").count(), 0, "UID cắt đã chuyển sang luồng cũ thì không bỏ quét được");
   await page.locator('[data-filter="store"]').click();
-  await page.locator('#cs-rows [data-unscan="1028261016000005"]').click();
+  await page.locator('#cs-rows [data-unscan="1028260000000005"]').click();
   await page.locator("dialog.whd .whd-ok").click();
-  await page.waitForFunction(() => /Đã bỏ dấu quét 1028261016000005/.test(document.getElementById("cs-message").textContent));
-  assert.equal(server.items.find(i => i.groupUid === "1028261016000005").scannedAt, null);
+  await page.waitForFunction(() => /Đã bỏ dấu quét 1028260000000005/.test(document.getElementById("cs-message").textContent));
+  assert.equal(server.items.find(i => i.groupUid === "1028260000000005").scannedAt, null);
   assert.equal(await page.locator("#cs-rows [data-unscan]").count(), 0);
 
   // ---- Tab Phiên: đọc lại cùng PO → thay phiên, giữ dấu quét cùng vai trò ----
@@ -507,7 +507,7 @@ Tổng hiện tại: ${await chipsText(page)} · tin nhắn: ${await msg(page)} 
   await page.locator("#cs-po-go").click();
   await page.waitForSelector("#cs-create:not([disabled])");
   const ruleRows = await page.locator("#cs-preview tbody tr").evaluateAll(rows => rows.map(r => [...r.children].map(c => c.textContent.trim())));
-  assert.deepEqual(ruleRows, [["422000002", "R12", "12", "3", "1", "8", "33%"], ["422000002", "R7", "7", "2", "1", "4", "43%"]]);
+  assert.deepEqual(ruleRows, [["900000015", "R12", "12", "3", "1", "8", "33%"], ["900000015", "R7", "7", "2", "1", "4", "43%"]]);
   assert.match((await page.locator("#cs-preview").innerText()).replace(/\s+/g, " "), /Mẫu 7\/19 · 37%/);
   await page.locator("#cs-create").click();
   await page.waitForFunction(() => /Đã tạo phiên PO 10012600000444/.test(document.getElementById("cs-message").textContent));
@@ -568,10 +568,10 @@ async function freeMode(browser) {
   assert.equal(await page.locator("#cs-mode-free").getAttribute("aria-pressed"), "true");
   assert.equal(await page.locator("#cut-add").innerText(), "Lưu tem");
   assert.equal(await page.locator("#cs-po-top, #cs-po-bottom").evaluateAll(els => els.every(el => getComputedStyle(el).display === "none")), true, "phần Theo PO ẩn khi Cắt tự do");
-  await page.locator("#cut-code").fill("1028261099000001");
+  await page.locator("#cut-code").fill("1028260000000003");
   await page.locator("#cut-code").press("Enter");
   await page.waitForFunction(() => !document.getElementById("cut-last").hidden);
-  assert.match(await page.locator("#cut-last").innerText(), /1028261099000001 · 422000009/);
+  assert.match(await page.locator("#cut-last").innerText(), /1028260000000003 · 900000024/);
   await shot(page, "d-free");
   assert.equal(server.calls.filter(c => c.name === "cut_group_uid_scan").length, 1, "Cắt tự do lưu qua luồng cũ");
   assert.equal(server.calls.filter(c => c.name === "cut_sample_scan").length, 0);
@@ -582,9 +582,9 @@ async function freeMode(browser) {
   assert.equal(await page.locator("#cut-last").isVisible(), true);
   assert.equal(await page.locator("#cut-goto-data").isVisible(), true);
   assert.equal(await page.locator("#cut-add").innerText(), "Lưu tem");
-  await page.locator("#cut-code").fill("1028261099000002");
+  await page.locator("#cut-code").fill("1028260000000004");
   await page.locator("#cut-code").press("Enter");
-  await page.waitForFunction(() => /1028261099000002/.test(document.getElementById("cut-last").innerText));
+  await page.waitForFunction(() => /1028260000000004/.test(document.getElementById("cut-last").innerText));
   assert.equal(server.calls.filter(c => c.name === "cut_group_uid_scan").length, 2);
   assert.deepEqual(errors, []);
   await page.close();
@@ -613,7 +613,7 @@ async function mobile(browser) {
   assert.equal(await overflowX(page), 0);
   assert.equal(await page.locator("#cut-code").isVisible(), true);
   assert.equal(await page.locator("#cut-add").isVisible(), true);
-  await scan(page, "1028261016000001", "CẮT GROUP UID NÀY");
+  await scan(page, "1028260000000001", "CẮT GROUP UID NÀY");
   await shot(page, "m-pop");
   const card = await page.locator("#cs-pop-card").boundingBox();
   assert.ok(card.x >= 0 && card.x + card.width <= 375 && card.y >= 0 && card.y + card.height <= 900, "pop-up nằm trọn trong màn hình");
@@ -641,7 +641,7 @@ async function floorAccess(browser) {
   await page.waitForFunction(() => /Đã tạo phiên PO/.test(document.getElementById("cs-message").textContent));
   await closeDialogs(page);
   server.floor = "warn";
-  await scan(page, "1028261016000001", "CẮT GROUP UID NÀY");
+  await scan(page, "1028260000000001", "CẮT GROUP UID NÀY");
   await page.locator("#floor-access-bar").waitFor({ state: "visible" });
   assert.match((await page.locator("#floor-access-bar").innerText()).replace(/\s+/g, " "), /Máy chưa kích hoạt/);
   assert.equal(await chipsText(page), "Cắt 1/4 QC 0/2 Lưu trữ 0/10", "accessWarning không chặn: vẫn ghi nhận quét");
@@ -651,7 +651,7 @@ async function floorAccess(browser) {
   await page.waitForSelector("#pdv-dialog[open]");
   await page.locator("#pdv-cancel").click();
   server.floor = "deny";
-  await page.locator("#cut-code").fill("1028261016000002");
+  await page.locator("#cut-code").fill("1028260000000002");
   await page.locator("#cut-code").press("Enter");
   await page.waitForSelector("#pdv-dialog[open]");
   assert.equal(await chipsText(page), "Cắt 1/4 QC 0/2 Lưu trữ 0/10", "ACCESS_DENIED không đổi số liệu");

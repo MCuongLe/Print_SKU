@@ -5650,7 +5650,7 @@ var NDS_ENGINE = (function(){
     });
   }
   /* MÃ: có CẢ chữ lẫn số (f9-5284, jc01262, fv8820-8, sab-255lk3557-2, wkf-12473, tn035) hoặc dãy
-     số ≥5 chữ số (8846295 · 9151443 · SKU 422440680). */
+     số ≥5 chữ số (8846295 · 9151443 · SKU 900000052). */
   var RE_CODE = /\b(?=[0-9a-z.\-]*[a-z])(?=[0-9a-z.\-]*\d)[0-9a-z][0-9a-z.-]{2,}\b|\b\d{5,}\b/gi;
   function nhanCode(text, ra, raSpec){
     /* Gạch dưới là DẤU PHÂN CÁCH của WMS ("F9-5284_Phong Việt"), không phải ký tự trong mã. Bỏ bước
@@ -5755,7 +5755,7 @@ var NDS_ENGINE = (function(){
       /* ⚠ ĐÃ THỬ VÀ BÁC 20/08/2026: "phía TEM thì mảnh đã nằm ở rổ MÃ đừng nhân đôi sang rổ MÀU".
          Lý lẽ rất chắc (soát 30 tem thật: 47-51 loại mảnh bị nhân đôi, mà điểm vai màu =
          (max+trung bình)/2 trên mảnh CỦA TEM nên mỗi mảnh mã lọt vào đó làm loãng trung bình của MỌI
-         ứng viên). ĐO THẬT: **2 tốt hơn nhưng 1 XẤU HƠN** (tem 422407140: 89% đúng → 95% SAI), tức
+         ứng viên). ĐO THẬT: **2 tốt hơn nhưng 1 XẤU HƠN** (tem 900000047: 89% đúng → 95% SAI), tức
          Top-1 đứng im 24/30; bỏ riêng bản vá này ra thì được **25/30 (83%), 0 xấu hơn**.
          Nghĩa là mấy mảnh mã trong rổ màu của tem đang LÀM VIỆC: chúng khớp với mã màu chữ-số của
          dòng đúng (V8S41 · PD00695MIM · TN114-TN006B) — đó là thứ tách 102 biến thể dây kéo cùng mã.
@@ -6063,7 +6063,7 @@ var NDS_ENGINE = (function(){
    * gần như luôn là thứ khác: chiều dài cuộn ("5000 M" trên tem chỉ), MOQ ("MOQ: <= 1000"), mã keo
    * Bemis ("3914"), mã vải ("92419").
    * SỰ CỐ: tem Lenio in "5000 M" -> "5000" rơi vào rổ MÀU -> so với mã màu THẬT của dòng đúng
-   * ("19-3911", "PD00695MIM") -> XUNG ĐỘT MÃ MÀU GIẢ -> trừ 18% -> dòng ĐÚNG (422487060) tụt từ
+   * ("19-3911", "PD00695MIM") -> XUNG ĐỘT MÃ MÀU GIẢ -> trừ 18% -> dòng ĐÚNG (900000059) tụt từ
    * 88% xuống 59%, nhường hạng 1 cho 3 dòng "Chỉ Lenio mẫu" ghi THIẾU thông số nên không có gì
    * để lệch. Đây đúng mặt trái đã ghi ở 5b (Morito): dòng ghi ĐỦ bị phạt, dòng ghi THIẾU thoát án.
    * Lọc ở CẢ HAI phía (tem và danh mục) bằng cùng một hàm, không thì lại lệch nhau. */
@@ -6157,7 +6157,7 @@ var NDS_ENGINE = (function(){
    *     ⇒ Làm đúng như TIÊU ĐỀ mục 2 của spec ("khi có nhiều SKU CÙNG điểm"): ACTIVE/NORMAL là
    *     TIE-BREAK, chạy trong bộ so sánh nghiệp vụ `soSanh` đã có, không cộng vào BaseScore.
    *  ② `Nhóm 1` của spec là "token có cả chữ và số > 4 ký tự" — nhưng mã hàng mạnh nhất của kho lại
-   *     là **dãy số thuần** (`8846295`, `8209948`, SKU nội bộ `422440680`). Đo: IDF(8846295)=4,01 mà
+   *     là **dãy số thuần** (`8846295`, `8209948`, SKU nội bộ `900000052`). Đo: IDF(8846295)=4,01 mà
    *     theo spec nó chỉ được ×1, còn "38cm" được ×2 ⇒ số đo nặng hơn mã hàng. Đã gộp dãy ≥5 chữ số
    *     vào Nhóm 1.
    *  ③ GIỮ cơ chế XUNG ĐỘT. Tổng-IDF chỉ biết CỘNG khi khớp, không biết TRỪ khi trái ngược: tem ghi
@@ -6198,7 +6198,7 @@ var NDS_ENGINE = (function(){
    *      Thành phần vải: Vải Single Mesh/S130413 UZM Sheico/88% Re-Polyester, 12%Spandex/170 Gsm, 152cm
    *  Dòng "Thành phần vải" là tên NGUYÊN LIỆU dùng để may cái mẫu đó — nó chép gần như NGUYÊN VĂN
    *  PRODUCTNAME của một SKU VẢI có thật. Đọc cả thẻ như một túi chữ thì SKU vải khớp 5/6 phần tử và
-   *  THẮNG: đo được 422423807 (vải) **93%** đứng trên 422495218 (đúng — áo mẫu) **87%**, vì
+   *  THẮNG: đo được 900000049 (vải) **93%** đứng trên 900000063 (đúng — áo mẫu) **87%**, vì
    *    · vai MÃ chấm theo mã khớp TỐT NHẤT ⇒ "khớp mã vải" ăn điểm y như "khớp cả mã vải lẫn mã áo";
    *    · vai THÔNG SỐ thì dòng vải còn ĂN THÊM "152cm" (khổ vải) mà áo mẫu không có ⇒ PHẠT dòng đúng.
    *  Nghĩa là thẻ càng ghi đầy đủ về nguyên liệu thì máy càng chắc chắn trả về nguyên liệu.
@@ -6340,7 +6340,7 @@ var NDS_ENGINE = (function(){
     if (!t) return 1;
     if (RE_KHONG_LA_MA.test(t)) return 2;                       // số đo: 18cm · 38mm · tex27 · 24l
     if (/[a-z]/.test(t) && /[0-9]/.test(t) && t.length > 4) return 3;   // c2080 · fv10870c · v9b11
-    if (!/[a-z]/.test(t) && t.replace(/[^0-9]/g, '').length >= 5) return 3;  // 8846295 · 422440680 (spec thiếu)
+    if (!/[a-z]/.test(t) && t.replace(/[^0-9]/g, '').length >= 5) return 3;  // 8846295 · 900000052 (spec thiếu)
     return 1;
   }
   /** Trọng số cuối của một từ khoá tem: IDF × nhóm; từ quá phổ thông thì ép xuống (spec Nhóm 4). */
@@ -6897,7 +6897,7 @@ var NDS_ENGINE = (function(){
         /* HAI BẬC RIÊNG, COMBO TRƯỚC GỘP (vá 20/08/2026). Trước đó `(COMBO || gop)` bị gộp thành MỘT
            bậc, nên khi hai dòng CÙNG là hàng đóng gói thì bậc này im hẳn và thứ tự rơi xuống TỒN —
            tức COMBO tồn nhiều hơn thì COMBO lên #1, đúng thứ luật kho cấm. Ca thật đo được trên tem
-           C2080: 422266550 (Normal, "Cuộn 5000m", tồn 32) vs 422394068 ((Combo), cùng "Cuộn 5000m",
+           C2080: 900000034 (Normal, "Cuộn 5000m", tồn 32) vs 900000046 ((Combo), cùng "Cuộn 5000m",
            tồn 154 ở kho 1178) — hôm nay NORMAL thắng chỉ vì phạm vi danh mục chỉ thấy 12 của kho
            1177; tồn đổi chiều một cái là COMBO chiếm hạng 1. `type==='COMBO'` là DỮ LIỆU của WMS,
            `gop` là suy ra từ tên đơn vị, nên không được để chúng triệt tiêu nhau. */
@@ -6997,7 +6997,7 @@ var NDS_ENGINE = (function(){
   function laMaHinhDang(t){
     if (!t || t.length < 4 || RE_KHONG_LA_MA.test(t)) return false;
     if (/[a-z]/.test(t) && /[0-9]/.test(t)) return true;     // f9-5284 · jc01262 · v9b11
-    return !/[a-z]/.test(t) && t.replace(/[^0-9]/g,'').length >= 5;   // 8846295 · 422440680
+    return !/[a-z]/.test(t) && t.replace(/[^0-9]/g,'').length >= 5;   // 8846295 · 900000052
   }
   /** Mảnh nào RA DÁNG MÃ và CÓ THẬT trong danh mục thì phải vào vai MÃ, bất kể ai xếp nó ở đâu.
    *  CHỈ xét rổ màu / loại-NCC: đó là hai chỗ AI hay quăng mã hàng vào (đo thật: "F9-5284" nằm ở

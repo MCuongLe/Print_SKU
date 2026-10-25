@@ -9,18 +9,18 @@ vm.runInNewContext(source, context);
 const core = context.HasakiSkuSyncCore;
 
 assert.deepEqual(
-  JSON.parse(JSON.stringify(core.parseComboDescription("Combo 422531838=422522004x5000000"))),
-  { comboSku: "422531838", normalSku: "422522004", quantity: 5000000 }
+  JSON.parse(JSON.stringify(core.parseComboDescription("Combo 900000085=900000080x5000000"))),
+  { comboSku: "900000085", normalSku: "900000080", quantity: 5000000 }
 );
 assert.deepEqual(
   JSON.parse(JSON.stringify(core.parseComboDescription("Combo A-01 = B-02 × 1,250"))),
   { comboSku: "A-01", normalSku: "B-02", quantity: 1250 }
 );
 assert.deepEqual(
-  JSON.parse(JSON.stringify(core.parseComboDescriptions("Combo 422531687=422513490+422513485x2"))),
+  JSON.parse(JSON.stringify(core.parseComboDescriptions("Combo 900000084=900000075+900000074x2"))),
   [
-    { comboSku: "422531687", normalSku: "422513490", quantity: 1 },
-    { comboSku: "422531687", normalSku: "422513485", quantity: 2 }
+    { comboSku: "900000084", normalSku: "900000075", quantity: 1 },
+    { comboSku: "900000084", normalSku: "900000074", quantity: 2 }
   ]
 );
 assert.equal(core.parseComboDescription("không có quan hệ"), null);
