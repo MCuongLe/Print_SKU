@@ -4,7 +4,9 @@ Trang mở đầu cho mọi agent / phiên mới: 6 nguồn ngữ cảnh, mỗi 
 
 ![Bản đồ ngữ cảnh](context-map.svg)
 
-**Thứ tự đọc khi bắt đầu phiên:** `AGENTS.md` (luật làm việc) → tệp này → `docs/PROJECT_MAP.md` (module → id khối → Extension/Edge/SQL) → `docs/QUYET_DINH.md` (quyết định đang hiệu lực theo 12 chủ đề + trạng thái lên thật; căn cứ ở nhật ký `RULES.md` chỉ trên máy, trỏ bằng mã `[N0965]`) → `docs/plans/<ngày>-<tên>.md` của việc đang làm. Gói một tệp cho AI khác đọc: mục **Gói ngữ cảnh (repomix)** ở cuối.
+**Thứ tự đọc khi bắt đầu phiên:** `AGENTS.md` (luật làm việc) → tệp này → `docs/PROJECT_MAP.md` (module → id khối → Extension/Edge/SQL) → `docs/QUYET_DINH.md` (quyết định đang hiệu lực theo 12 chủ đề + trạng thái lên thật; căn cứ ở nhật ký `RULES.md` chỉ trên máy, trỏ bằng mã `[N0965]`) → `docs/plans/<ngày>-<tên>.md` của việc đang làm.
+
+Gói một tệp cho AI khác đọc: mục **Gói ngữ cảnh (repomix)** ở cuối.
 
 **Dự án là gì (một câu):** công cụ kho xưởng may Hasaki — trang tĩnh in tem SKU / Group UID / vị trí, cắt và kiểm UID, kiểm kê, đối chiếu với Inside + WMS; dữ liệu ở Supabase, lệnh in đi qua hàng đợi tới agent trên máy trạm `may-kho-01`.
 

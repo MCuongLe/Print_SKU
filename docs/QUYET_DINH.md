@@ -30,7 +30,11 @@
 - Mỗi commit đổi module/Edge/migration phải cập nhật `docs/PROJECT_MAP.md` cùng commit. (17/10 · N0965, N0966)
 - `docs/CONTEXT_MAP.md` cập nhật cùng commit khi thêm / bỏ Edge, Extension, agent hay hệ thống ngoài, khi có luồng nghiệp vụ mới đi qua từ 2 module trở lên, hoặc khi đổi cách gói repomix / công cụ tìm khối (luật ghi ở mục 5 của chính tệp đó). (25/10 · N1209)
 - Bước 1 "Hiểu và quyết": mã mới đọc phản hồi RPC / Edge / WMS / Inside nào thì lấy một mẫu phản hồi thật (chỉ đọc) của đúng lời gọi đó trước khi viết test — tên khoá, kiểu, định dạng mã; test giả dựng đúng theo mẫu, giá trị thay bằng dữ liệu giả chuẩn; mẫu thật không vào repo. Ghi ở `docs/DOI_AGENT.md` bước 1. (25/10 · N1210)
-- Bước 1 "Hiểu và quyết" thêm 6 luật (DOI_AGENT bước 1): đọc CONTEXT_MAP → PROJECT_MAP → mục lục RULES theo module; yêu cầu thiết kế / đánh giá / kiểm tra → giao đúng sản phẩm đó; sửa hàm SQL / Edge đang chạy → so bản trên Supabase với repo trước; màn mới sinh dữ liệu mặc định lưu Supabase; mỗi phương án hỏi kèm hệ quả một câu (+ con số lợi ích khi nhắm giảm dữ liệu / tăng tốc), đổi chốt ghi rõ; tin nhắn thiết kế mở bằng "Giả định đã kiểm" + "Ngoài phạm vi". Không thêm: kiểm phiên song song ở bước 1, trinh sát / tệp kế hoạch bắt buộc. (25/10 · N1212)
+- Bước 1 "Hiểu và quyết" thêm 6 luật (DOI_AGENT bước 1). (25/10 · N1212)
+  - Đọc CONTEXT_MAP → PROJECT_MAP → `docs/QUYET_DINH.md` theo module; yêu cầu thiết kế / đánh giá / kiểm tra → giao đúng sản phẩm đó.
+  - Sửa hàm SQL / Edge đang chạy → so bản trên Supabase với repo trước; màn mới sinh dữ liệu mặc định lưu Supabase.
+  - Mỗi phương án hỏi kèm hệ quả một câu (+ con số lợi ích khi nhắm giảm dữ liệu / tăng tốc), đổi chốt ghi rõ; tin nhắn thiết kế mở bằng "Giả định đã kiểm" + "Ngoài phạm vi".
+  - Không thêm: kiểm phiên song song ở bước 1, trinh sát / tệp kế hoạch bắt buộc.
 - Tài liệu theo `docs/chuan/TAI_LIEU.md`: mỗi chủ đề một nguồn (nơi khác chỉ trỏ), dòng văn xuôi ≤ 400 ký tự, trỏ nhật ký bằng mã ổn định `[N0965]` / `[N<yyyymmdd>-<hhmm>]` thay "dòng N + độ lệch". `AGENTS.md` viết tiếng Việt, giữ bốn luật cứng (DOI_AGENT trỏ về). (25/10 · N20261025-2108)
 - Chuẩn hoá tài liệu 5 đợt (`docs/plans/2026-10-25-chuan-hoa-tai-lieu.md`): mục lục quyết định đã vào git (tệp này, 25/10, che email); commit message tiếng Việt không dấu; `commit_gate` chỉ cảnh báo trước, sau 2–3 đợt mới xét chặn. (25/10 · N20261025-2108)
 - Đợt 5 (25/10): `commit_gate` thêm cảnh báo 8–11 (tài liệu > 400 ký tự, SQL `SECURITY DEFINER`, mã nhật ký, thông điệp có dấu) — chưa chặn; `scripts/live_status.py` (chỉ đọc) sinh phần máy kiểm được của "Trạng thái lên thật"; `codex_review.py` nạp `docs/chuan` theo loại tệp; `run_tests.py` chạy cả test Python. (25/10 · N20261025-2144)
@@ -82,7 +86,9 @@
 - Bảng thành thẻ trên điện thoại (`#wms-table-labels`); 801–1199 px dùng nhãn tab ngắn `.tab-s` (`#mid-width`). (02/10, 16/10 · N0083, N0828)
 - Xuất bảng = Excel `.xlsx` (`AdminSyncUI.xlsxBlob` / `PrintSkuZip.buildZip`, không thư viện, ô chữ `inlineStr` giữ mã 16 số); nút Xuất là icon Download 44 có aria-label. (26/09, 12/10 · N0370, N0016)
 
-- Báo lỗi / Thử lại / khung chờ / trạng thái rỗng dùng chung `window.PrintSkuNotice` (`notice-standard`, Đợt 6): chữ kỹ thuật tự đổi thành lời dễ hiểu khi phần tử có `data-tone="error"`; câu lỗi dạng "<phần không tải được>: <nguyên nhân>"; Thử lại CHỈ cho lần tải/đọc (không cho quét/ghi); vạch chờ sau 350 ms; thẻ `.ss-metric` chỉ tô màu khi có số (`data-zero`). (23–24/10 · N1187, N1194 · ĐÃ LÊN ff17171)
+- Báo lỗi / Thử lại / khung chờ / trạng thái rỗng dùng chung `window.PrintSkuNotice` (`notice-standard`, Đợt 6). (23–24/10 · N1187, N1194 · ĐÃ LÊN ff17171)
+  - Chữ kỹ thuật tự đổi thành lời dễ hiểu khi phần tử có `data-tone="error"`; câu lỗi dạng "<phần không tải được>: <nguyên nhân>".
+  - Thử lại CHỈ cho lần tải/đọc (không cho quét/ghi); vạch chờ sau 350 ms; thẻ `.ss-metric` chỉ tô màu khi có số (`data-zero`).
 
 ### Quét, bàn phím, camera
 - Khung quét chuẩn `.scan-field` cho mọi ô quét (trừ TÌM SKU): bàn phím ảo ẩn mặc định, nút bàn phím trong khay nhớ theo máy; các ô sau `#f-sku` theo `__kbH`. (03/10, 14/10, 18/10 · N0078, N0650, N1013)
@@ -91,7 +97,8 @@
 - Lớp camera chung `PrintSkuScanUI` (`open`; `openGroupUid` chỉ nhận UID 16 số), vòng đời `#wms-camera-lifecycle`, lỗi có Thử lại trong cùng lớp; ZXing trong bundle đã vá Code128. (01/10, 07/10, 11/10 · N0412, N0417, N0063, N0507)
 
 ### Màn cụ thể
-- TÌM SKU: % to, chi tiết trong `#fsk-more`, camera toàn màn (Back qua `pushState`), ô tìm trước camera; mobile giữ thanh ba bước dưới header khi cuộn; lúc AI đọc ảnh hiện lớp phủ chibi toàn màn (`assets/ai-thinking-chibi-simple.png`), không dòng trạng thái nhìn thấy, bỏ vạch quét trên preview; đóng theo request thật, tôn trọng giảm chuyển động. (30/09, 10/10, 24–25/10 · N0406, N0408, N0029, N1202, N1204, N1205)
+- TÌM SKU: % to, chi tiết trong `#fsk-more`, camera toàn màn (Back qua `pushState`), ô tìm trước camera; mobile giữ thanh ba bước dưới header khi cuộn. (30/09, 10/10, 24–25/10 · N0406, N0408, N0029, N1202, N1204, N1205)
+  - Lúc AI đọc ảnh: lớp phủ chibi toàn màn (`assets/ai-thinking-chibi-simple.png`), không dòng trạng thái nhìn thấy, bỏ vạch quét trên preview; đóng theo request thật, tôn trọng giảm chuyển động.
 - CHUYỂN ĐỔI ĐƠN VỊ: `#uc-thread-core` cạnh `#uc-thread-cones`, quy cách cuộn trong `dialog.uc-sheet`, Tex ra màn chính. (10/10, 21/10 · N0023, N0028, N1049)
 - Không đặt `min-height:100vh` cho `.cut-screen` (Chrome Android cắt thanh đáy). (10/10 · N0030)
 - Email người cập nhật: người chưa đăng nhập Admin thấy phần trước @, Admin thấy đầy đủ (Lịch sử Group UID, Đối chiếu ADJ, UID tạm; web gửi `PrintSkuAdminAccess.viewerToken()`). Thay chốt 10/10 "hiện đầy đủ". `sku_count_overview.lastApprovedBy` giữ nguyên (chốt 12/10). (23/10 · N1185)
@@ -132,7 +139,8 @@
 - Phát hành mẫu tem mới: cài agent trên may-kho-01 TRƯỚC khi push web (agent cũ bỏ im lặng trường mới), in thử thật trước khi push. (21/10, 23/10 · N1111, N1158)
 - Lệnh cần `sku:v3` không chặn lúc gửi; agent mất kết nối thì lệnh chờ như mọi lệnh. (23/10 · N1162)
 
-- Admin huỷ lệnh in đang chờ (`queued`) bằng nút "Huỷ lệnh" ở popup Lệnh in (RPC `print_job_cancel`, `backend_hygiene_v1`); lệnh Group UID trả UID về failed; không tự huỷ theo giờ. Lệnh hết lease sau khi đã gửi byte (sending/spooling, hoặc từng gửi theo `print_events`) giữ `agent_id` — chỉ agent đó nhận lại; queued còn `agent_id` > 30 phút → failed SENT_UNCONFIRMED (cron ngày). (23/10 · N1185, N1186)
+- Admin huỷ lệnh in đang chờ (`queued`) bằng nút "Huỷ lệnh" ở popup Lệnh in (RPC `print_job_cancel`, `backend_hygiene_v1`); lệnh Group UID trả UID về failed; không tự huỷ theo giờ. (23/10 · N1185, N1186)
+  - Lệnh hết lease sau khi đã gửi byte (sending/spooling, hoặc từng gửi theo `print_events`) giữ `agent_id` — chỉ agent đó nhận lại; queued còn `agent_id` > 30 phút → failed SENT_UNCONFIRMED (cron ngày).
 ## 4. SKU & danh mục
 
 ### Đồng bộ từ Inside
@@ -213,7 +221,10 @@
 - Một ô trang chủ, công tắc Cấp vải | UID blocked (độc lập, nhớ phần dùng gần nhất); 2 ô cũ hidden, đường dẫn cũ giữ. (21/10 · N1057)
 - Cấp vải: ghép UID `Available` theo SKU + Lot + Roll của Packing List (không đoán khi nhiều UID khớp); nhập/xoá/đóng đợt = Admin, quét + xem = mọi người; mỗi file = 1 đợt. (12/10 · N0010, N0011)
 - Cấp vải chặn cấp trùng giữa các đợt (`ISSUED_ELSEWHERE`); nhiều máy quét (mã "Máy XXXX", chấp nhận trễ ≤ 20 s); popup kết quả không modal để giữ con trỏ máy quét. (12/10 · N0010, N0011)
-- Trả NCC (`#tra-ncc`, phần 3 TÌM GROUP UID): bố cục như UID blocked (dải tiến độ · tab Còn thiếu thẻ vị trí | Đã quét bảng | Danh sách); danh sách tạm Navy/Black do Admin nạp Excel, máy đã kích hoạt quét đánh dấu; kết quả quét = pop-up không modal như Cấp vải (Đúng tự đóng 1,6 s). v2: bảng chia theo vị trí HIỆN TẠI (nguồn mới hơn giữa Đối chiếu và `group_uid_details`, thiếu thì Excel) → `F0-VR-00-00-00-00` (đích) → "Đã rời kho" (status Canceled/Closed/Transferred hoặc WMS không còn vị trí; không tính Về F0-VR); hai mốc riêng Đã quét + Về F0-VR; nút Đối chiếu = Admin đọc WMS trực tiếp qua Extension ≥ 0.10.6 bằng `GroupUidSnapshotCore` (bản chép nguyên văn trong index.html), lệch → báo đỏ không lưu. Danh sách tạm — người dùng báo thì dọn. (24/10 · N1198, N1200, N1201)
+- Trả NCC (`#tra-ncc`, phần 3 TÌM GROUP UID): bố cục như UID blocked (dải tiến độ · tab Còn thiếu thẻ vị trí | Đã quét bảng | Danh sách). Danh sách tạm — người dùng báo thì dọn. (24/10 · N1198, N1200, N1201)
+  - Danh sách Navy/Black do Admin nạp Excel, máy đã kích hoạt quét đánh dấu; kết quả quét = pop-up không modal như Cấp vải (Đúng tự đóng 1,6 s).
+  - v2: bảng chia theo vị trí HIỆN TẠI (nguồn mới hơn giữa Đối chiếu và `group_uid_details`, thiếu thì Excel) → `F0-VR-00-00-00-00` (đích) → "Đã rời kho" (status Canceled/Closed/Transferred hoặc WMS không còn vị trí; không tính Về F0-VR); hai mốc riêng Đã quét + Về F0-VR.
+  - Nút Đối chiếu = Admin đọc WMS trực tiếp qua Extension ≥ 0.10.6 bằng `GroupUidSnapshotCore` (bản chép nguyên văn trong index.html), lệch → báo đỏ không lưu.
 - UID blocked: nguồn = dữ liệu đồng bộ WMS 2 kho (`uid_block_import_wms`); lượt quét lưu `uid_block_scans` chung nhiều máy, quét trùng báo "ĐÃ SCAN"; tự cập nhật 30 phút; hết Blocked giữ 7 ngày; mất mạng → hàng chờ localStorage, đồng bộ 20 s. (20–21/10 · N1051, N1062, N1067)
 
 ### Khoá máy nhóm ghi
@@ -265,7 +276,10 @@
 - Nonce theo thẻ; lỗi giữa lô (`error.jobIds`/`error.uncertain`) → giữ thẻ + danh sách đã chụp, khoá sửa, chỉ "In" gửi nốt phần còn lại. (17/10, 23/10 · N0953, N1178)
 - `window.HasakiSkuIt` {readSlip, buildItems, enqueue} đóng băng, copies ≤ 200; ô Trợ lý in ẩn ≤ 800 px. (17/10 · N0951, N0953, N0956)
 - `sku-vision`: gọi model so le (hedge 6 s), trừ 1 lượt/lần đọc; trần tổng 450/ngày, không giới hạn theo máy. (10/10, 21/10 · N0026, N1107)
-- Trợ lý in → Packing List cấp vải (đợt 1, 24–25/10): danh sách Group UID (dán / gõ / đính kèm .xlsx·.csv·.txt; chỉ mã 16 số đầu `1028` — số phiếu IT tiền tố 1007) → RPC `fabric_issue_lookup_uids` (Admin) → thẻ xem trước → Tạo đợt (`fabric_issue_import` có sẵn, KHÔNG sửa; so UID sau khi tạo; `sourceName` = `Trợ lý in:<uuid>` để đối soát "chưa rõ" sau 20 giây) / Tải PL; ô Excel kiểu số ≥ 10^15 không dùng làm UID; hai luồng dùng chung cờ bận, lúc bận thẻ phiếu IT khoá ô sửa. (24–25/10 · N1207, N1208, N1215)
+- Trợ lý in → Packing List cấp vải (đợt 1, 24–25/10): danh sách Group UID → RPC `fabric_issue_lookup_uids` (Admin) → thẻ xem trước → Tạo đợt / Tải PL. (24–25/10 · N1207, N1208, N1215)
+  - Đầu vào: dán / gõ / đính kèm .xlsx·.csv·.txt; chỉ mã 16 số đầu `1028` (số phiếu IT tiền tố 1007); ô Excel kiểu số ≥ 10^15 không dùng làm UID.
+  - Tạo đợt gọi `fabric_issue_import` có sẵn, KHÔNG sửa; so UID sau khi tạo; `sourceName` = `Trợ lý in:<uuid>` để đối soát "chưa rõ" sau 20 giây.
+  - Hai luồng dùng chung cờ bận; lúc bận thẻ phiếu IT khoá ô sửa.
 
 ## 11. Đã bỏ hẳn / quyết định KHÔNG làm
 - Module GOM HÀNG MẪU (`#sample`, bảng `sample_bags`) và TEM XẢ VẢI (`#fabric-relaxation`, cả trong agent); `#xa-vai` vẫn dùng. (11/10 · N0035, N0494)

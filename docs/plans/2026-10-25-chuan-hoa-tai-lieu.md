@@ -70,4 +70,5 @@ Thứ tự: đợt 1 → 2 → 3 → 4 → 5 (đợt 3 và 4 có thể đổi ch
 - 25/10 Đợt 2 xong; commit + push `1670369`.
 - 25/10 Đợt 3 xong; commit + push `41160e7`.
 - 25/10 Đợt 4 xong; commit + push `a0ea302`.
-- 25/10 Đợt 5 xong; chưa commit. `RULES.md` (chỉ trên máy): 10 tham chiếu cũ kiểu "nhật ký cuối tệp" / "đợt B" đổi thành mã; sửa 2 dòng mục lục đã cũ (TÌM SKU nay lớp phủ chibi; Extension hiện hành 0.10.8).
+- 25/10 Đợt 5 xong; commit + push `1626b2e` (kèm `8cd7428`: QUYET_DINH ghi `sku_name_touch_v1` đã lên). `RULES.md` (chỉ trên máy): 10 tham chiếu cũ kiểu "nhật ký cuối tệp" / "đợt B" đổi thành mã; sửa 2 dòng mục lục đã cũ (TÌM SKU nay lớp phủ chibi; Extension hiện hành 0.10.8).
+- 25/10 Sau đợt: tách các dòng > 400 ký tự mà `commit_gate` cảnh báo ở `41160e7` (QUYET_DINH 6 dòng, CONTEXT_MAP, `co-van.md`, 2 SKILL review). Dòng dài trong tài liệu cũ khác (PROJECT_MAP, kế hoạch cũ, README Extension) để nguyên — gate chỉ xét dòng thêm mới.
