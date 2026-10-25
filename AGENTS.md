@@ -20,14 +20,14 @@
 |---|---|
 | Mọi việc | `docs/DOI_AGENT.md` — quy trình bước 1–9, đội agent, review |
 | Tài liệu, quyết định, nhật ký | `docs/chuan/TAI_LIEU.md` |
-| Giao diện | mục lục `RULES.md` chủ đề 2; `docs/THIET_KE_*.md` |
-| Mã web `index.html` | `docs/PROJECT_MAP.md` mục 2; `python scripts/index_outline.py [chuỗi lọc]` |
-| SQL, RPC, Edge, quyền | mục lục `RULES.md` chủ đề 9; `docs/PROJECT_MAP.md` mục 4 |
-| Extension, đồng bộ | mục lục `RULES.md` chủ đề 8; `docs/PROJECT_MAP.md` mục 3; `extension/inside-po-connector/README.md` |
+| Giao diện | `docs/chuan/GIAO_DIEN.md` |
+| Mã web `index.html` | `docs/chuan/MA_WEB.md`; `docs/PROJECT_MAP.md` mục 2; `python scripts/index_outline.py [chuỗi lọc]` |
+| SQL, RPC, Edge, quyền, luồng dữ liệu | `docs/chuan/DU_LIEU.md`; `docs/PROJECT_MAP.md` mục 4 |
+| Extension, đồng bộ | `docs/chuan/DU_LIEU.md`; `docs/PROJECT_MAP.md` mục 3; `extension/inside-po-connector/README.md` |
 | In tem, agent máy trạm | mục lục `RULES.md` chủ đề 3; `workstation-agent/README.md`, `workstation-agent/RULES.md` |
-| Test, commit | `docs/PROJECT_MAP.md` mục 5; `docs/DOI_AGENT.md` |
+| Test, commit | `docs/chuan/KIEM_THU_GIT.md`; lệnh ở `docs/PROJECT_MAP.md` mục 5 |
 
-Các dòng giao diện / mã web / SQL / test sẽ trỏ sang `docs/chuan/*.md` khi các tệp chuẩn đó có (kế hoạch `docs/plans/2026-10-25-chuan-hoa-tai-lieu.md`).
+Quyết định riêng của từng module vẫn ở mục lục `RULES.md` theo chủ đề.
 
 ## Bốn luật cứng
 

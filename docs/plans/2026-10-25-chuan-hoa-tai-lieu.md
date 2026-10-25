@@ -26,12 +26,13 @@ Thứ tự: đợt 1 → 2 → 3 → 4 → 5 (đợt 3 và 4 có thể đổi ch
 - [x] Kiểm: `git diff --check`, dòng văn xuôi mới ≤ 400 ký tự, `commit_gate --cached`.
 - Ngoài phạm vi: "Quy ước luôn đúng" trong CONTEXT_MAP mục 5 và PROJECT_MAP mục 6 (đợt 2); dòng thứ tự đọc ở CONTEXT_MAP (giữ, khớp `AGENTS.md`).
 
-### Đợt 2 — Bốn tệp chuẩn kỹ thuật · lead · [ ]
-- [ ] `docs/chuan/GIAO_DIEN.md`: gom luật giao diện từ mục lục `RULES.md` chủ đề 2, các mục "Chuẩn …" của README, `docs/THIET_KE_*.md`; mỗi luật trỏ test giữ (11 test chuẩn); tệp `THIET_KE_*` cũ đánh dấu lịch sử.
-- [ ] `docs/chuan/MA_WEB.md`: khuôn khối `index.html`, cổng `window.PrintSku*`, tên sự kiện `print-sku-*`, khoá localStorage, script phát lại, xử lý lỗi và nhánh "chưa rõ".
-- [ ] `docs/chuan/DU_LIEU.md`: đặt tên hàm, quyền, khuôn trả `{ok, error}` + bảng mã lỗi, JSON camelCase, tệp migration, mặc định lưu Supabase, timeout, cron dọn dữ liệu, khuôn hợp đồng luồng.
-- [ ] `docs/chuan/KIEM_THU_GIT.md`: test, mock theo mẫu thật, cổng + `BASE`, dữ liệu giả; khuôn commit (tiếng Việt không dấu), index tạm khi nhiều phiên.
-- [ ] Bỏ "Quy ước luôn đúng" ở CONTEXT_MAP / PROJECT_MAP → trỏ về tệp chuẩn; bảng loại việc trong `AGENTS.md` trỏ sang tệp chuẩn.
+### Đợt 2 — Bốn tệp chuẩn kỹ thuật · lead · [x]
+- [x] `docs/chuan/GIAO_DIEN.md`: gom luật giao diện từ mục lục `RULES.md` chủ đề 2, các mục "Chuẩn …" của README, `docs/THIET_KE_*.md`; mỗi luật trỏ test giữ (17 test, đều có trong `tests/`); 3 tệp `THIET_KE_*` giao diện đánh dấu lịch sử; README 4 mục "Chuẩn …" thêm dòng trỏ.
+- [x] `docs/chuan/MA_WEB.md`: khuôn khối `index.html`, cổng `window.PrintSku*`, tên sự kiện `print-sku-*`, khoá localStorage, script phát lại, xử lý lỗi và nhánh "chưa rõ".
+- [x] `docs/chuan/DU_LIEU.md`: đặt tên hàm, quyền, khuôn trả `{ok, error}` + bảng mã lỗi, JSON camelCase, tệp migration, mặc định lưu Supabase, timeout, cron dọn dữ liệu, khuôn hợp đồng luồng.
+- [x] `docs/chuan/KIEM_THU_GIT.md`: test, mock theo mẫu thật, cổng + `BASE`, dữ liệu giả; khuôn commit (tiếng Việt không dấu), index tạm khi nhiều phiên.
+- [x] Bỏ "Quy ước luôn đúng" ở CONTEXT_MAP / PROJECT_MAP → trỏ về tệp chuẩn; bảng loại việc trong `AGENTS.md` trỏ sang tệp chuẩn; `docs/DOI_AGENT.md` "Quy tắc chung không đổi" thành dòng trỏ (mọi gạch cũ đã có chỗ mới).
+- [x] Kiểm: 172 mã nguồn trong 4 tệp chuẩn grep ra đúng một dòng `RULES.md` (gắn thêm mã N1211); 22 tên test có thật; dòng văn xuôi ≤ 400 ký tự; `diff --check`; `commit_gate --cached`.
 - Chỉ gom luật đang có, không đặt luật mới; mỗi luật ghi nguồn (ngày · mã nhật ký).
 
 ### Đợt 3 — Mục lục quyết định vào git · lead · [ ]
@@ -49,9 +50,11 @@ Thứ tự: đợt 1 → 2 → 3 → 4 → 5 (đợt 3 và 4 có thể đổi ch
 - [ ] Prompt Codex và `/review-claude` nạp tệp chuẩn theo loại thay đổi.
 
 ## Phát sinh
+- 25/10 Đợt 2: mục lục `RULES.md` còn 10 tham chiếu không mã và 2 dòng cũ (TÌM SKU hiệu ứng quét đã bỏ, Extension 0.10.7) → sửa ngay (chỉ trên máy, không vào commit).
 
 ## Lệch kế hoạch
 - 25/10 Đợt 1: thứ tự lên bản trong `docs/DOI_AGENT.md` ghi "push → Reload Extension", còn `docs/CONTEXT_MAP.md` và `AGENTS.md` cũ ghi Reload Extension trước push. `AGENTS.md` mới theo CONTEXT_MAP; DOI_AGENT nay trỏ về AGENTS. · báo người dùng 25/10.
 
 ## Nhật ký
-- 25/10 Đợt 1 xong (tài liệu thuần, không Codex theo `docs/DOI_AGENT.md`); chưa commit.
+- 25/10 Đợt 1 xong (tài liệu thuần, không Codex theo `docs/DOI_AGENT.md`); commit + push `8ef8c69`.
+- 25/10 Đợt 2 xong; chưa commit. `RULES.md` (chỉ trên máy): 10 tham chiếu cũ kiểu "nhật ký cuối tệp" / "đợt B" đổi thành mã; sửa 2 dòng mục lục đã cũ (TÌM SKU nay lớp phủ chibi; Extension hiện hành 0.10.8).

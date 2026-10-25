@@ -1,5 +1,7 @@
 # Thiết kế hệ thống header cho Print SKU
 
+> **Lịch sử (25/10/2026):** đặc tả gốc, giữ để tra. Luật giao diện hiện hành ở `docs/chuan/GIAO_DIEN.md`.
+
 > Trạng thái: **biến thể 4.2 (header tác nghiệp) đã triển khai ngày 07/10/2026** cho các màn con theo kiểu IN TEM SKU (README mục "Header các màn hình"). Trang chủ, header Quản trị (React) và header camera/scanner chưa đổi; chưa có pill trạng thái máy in ở các màn ngoài IN TEM SKU và IN TEM GROUP UID.
 
 ## 1. Mục tiêu

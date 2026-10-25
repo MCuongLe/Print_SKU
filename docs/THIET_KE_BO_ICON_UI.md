@@ -1,5 +1,7 @@
 # Thiết kế bộ icon cho Print SKU / WH-MATERIAL
 
+> **Lịch sử (25/10/2026):** đặc tả gốc, giữ để tra. Luật giao diện hiện hành ở `docs/chuan/GIAO_DIEN.md`.
+
 > Trạng thái: đã tích hợp vào `index.html` ngày 02/10/2026 (chi tiết trong `RULES.md`); bảng dưới vẫn là đặc tả gốc.
 > Bảng mẫu: [`icon-design/print-sku-icon-concept-board.svg`](./icon-design/print-sku-icon-concept-board.svg)
 

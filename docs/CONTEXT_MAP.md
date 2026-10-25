@@ -72,13 +72,13 @@ flowchart TB
 | `docs/PROJECT_MAP.md` | Bản đồ chi tiết module ↔ khối ↔ Extension ↔ Edge ↔ SQL; khi nào cập nhật: `docs/chuan/TAI_LIEU.md` mục 5 |
 | `RULES.md` (chỉ trên máy, gitignored) | Đầu tệp: mục lục quyết định đang hiệu lực (12 chủ đề, "Đã bỏ", "Làm sau", trạng thái lên thật); dưới: nhật ký theo thời gian. Quyết định mới ghi vào CẢ hai. Ràng buộc mọi agent |
 | `docs/DOI_AGENT.md`, `.claude/agents/`, `.claude/skills/` | Đội agent (lead, trinh-sat, thuc-thi-logic, kiem-thu, co-van/Fable), quy trình review Codex + Claude |
-| `docs/chuan/` | Chuẩn viết tài liệu và khuôn mẫu (`TAI_LIEU.md`); chuẩn kỹ thuật theo chủ đề sẽ thêm ở đây |
+| `docs/chuan/` | Chuẩn viết tài liệu (`TAI_LIEU.md`) và chuẩn kỹ thuật: `GIAO_DIEN.md`, `MA_WEB.md`, `DU_LIEU.md`, `KIEM_THU_GIT.md` |
 | `docs/plans/` | Kế hoạch việc nhiều bước / có migration (mẫu `docs/plans/README.md`) |
 | `docs/THIET_KE_*.md`, `docs/*-design/` | Chuẩn giao diện, icon, tem |
 | `README.md`, `workstation-agent/README.md`, README Extension | Hướng dẫn vận hành, cài đặt, lịch sử phiên bản |
 | Bộ nhớ Claude (`~/.claude/projects/<repo>/memory/`) | Ghi nhớ của lead theo phiên; không phải nguồn sự thật thay RULES.md |
 
-Quy ước luôn đúng: trả lời tiếng Việt có dấu; UI = icon Lucide + nhãn ngắn, không câu hướng dẫn kiểu AI; Admin chỉ xét desktop; dữ liệu test giả (`9000000xx`, `1028260000000xxx`); commit/push chỉ khi người dùng nói.
+Quy ước chung: luật nền ở `AGENTS.md`; chuẩn kỹ thuật ở `docs/chuan/` (`GIAO_DIEN.md`, `MA_WEB.md`, `DU_LIEU.md`, `KIEM_THU_GIT.md`, cách viết tài liệu `TAI_LIEU.md`). Quyết định đã chốt nằm trong `RULES.md` — grep trước khi đề xuất lại.
 
 ## 6. Git History — lịch sử và thay đổi
 - Repo `MCuongLe/Print_SKU` (public), nhánh `main`, bắt đầu 31/08/2026. Commit theo **đợt**, thông điệp tiếng Việt không dấu tóm tắt việc + phiên bản (vd. `Extension 0.10.7: …`, `Tem SKU mot mau v3 (agent 0.10.2) …`).

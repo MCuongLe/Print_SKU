@@ -66,6 +66,8 @@ Mọi nút gửi lệnh in là một `.act-icon--print` (IN TEM SKU và Xác nh�
 
 ## Header các màn hình
 
+> Luật hiện hành: `docs/chuan/GIAO_DIEN.md` (từ 25/10/2026). Mục này mô tả lúc áp dụng.
+
 Mọi màn con dùng một kiểu header theo IN TEM SKU (`.uid-topbar`): nút Back dạng pill (nhãn "WH-MATERIAL"; riêng màn Nạp dữ liệu Group UID là "Tổng quan"),
 icon module 32 px (đúng icon ô trang chủ), tiêu đề đậm 16 px (không phụ đề mô tả — icon module đã cho biết màn) và — nếu màn có máy in — pill trạng thái máy in (hiện có ở IN TEM SKU và
 IN TEM GROUP UID). Cao 64 px + viền 1 px, dính đầu màn; từ 760 px trở xuống Back chỉ còn icon 44 px, ẩn icon module và phụ đề. Bề rộng header bám bề rộng nội dung
@@ -81,6 +83,8 @@ dạng trượt từ đáy. Đang dùng ở 9 chỗ: IN TEM SKU (Combo, > 30 tem
 dấu ADJ), Đối chiếu ADJ (tick giúp), Mã vị trí (xoá khỏi hàng đợi), Lệnh in (in lại). Test: `tests/wh_dialog_browser.cjs`.
 
 ## Chuẩn giao diện chung
+
+> Luật hiện hành: `docs/chuan/GIAO_DIEN.md` (từ 25/10/2026). Mục này mô tả lúc áp dụng.
 
 Từ 11/10/2026 (khối `#ui-standard`, biến `--ui-*`, test `tests/ui_standard_browser.cjs`) mọi ô trang chủ và Admin (Admin chỉ máy tính)
 theo một chuẩn; màu thương hiệu duy nhất `--wms-brand` (#005F41):
@@ -119,6 +123,8 @@ tiếp phần build/component (lộ trình UI/UX 02/10/2026 đã làm xong các 
 
 ## Chuẩn icon
 
+> Luật hiện hành: `docs/chuan/GIAO_DIEN.md` (từ 25/10/2026). Mục này mô tả lúc áp dụng.
+
 Từ 11/10/2026 (khối `#icon-standard`, test `tests/icon_standard_browser.cjs`): icon Lucide nét 2 px, tô `currentColor`, chỉ 4 cỡ —
 **16** (trong chữ, nhãn, chip) · **20** (nút, ô nhập, menu, thanh trên) · **24** (ô trang chủ điện thoại) · **32** (ô trang chủ máy tính). CSS cũ
 được quy đổi tại chỗ; SVG chỉ có thuộc tính `width/height` (markup, chuỗi JS, lucide-react của IN TEM SKU) đưa về thang bằng `:where()` nên CSS riêng
@@ -127,6 +133,8 @@ mô tả ở thanh trên, placeholder chỉ là danh từ ("Group UID", "SKU", "
 liên kết chuyển tab là nhãn ngắn + icon mũi tên ("Tra cứu", "Đang xả", "Chi tiết"), nút bàn phím Xả vải chỉ còn icon. Tem in không dùng khối này.
 
 ## Chuẩn chữ (font)
+
+> Luật hiện hành: `docs/chuan/GIAO_DIEN.md` (từ 25/10/2026). Mục này mô tả lúc áp dụng.
 
 Chuẩn từ 10/10/2026, áp cho mọi màn ở cả điện thoại và máy tính, kể cả IN TEM SKU và Admin:
 

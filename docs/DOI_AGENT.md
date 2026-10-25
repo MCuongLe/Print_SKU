@@ -88,14 +88,9 @@ Bàn giao: sửa thẳng (cây chính) | git diff > <scratchpad>/<việc>.patch 
 
 ## Quy tắc chung không đổi
 
-- Sửa nhỏ nhất trong `index.html`, không reformat; giữ CRLF/LF hiện trạng; đọc lại tệp ngay trước khi ghi; không ghi lại cả tệp từ bản đọc cũ. Khối mới đặt trong `<style id="…">`/`<script id="…">` riêng.
-- Tiếng Việt có dấu; icon Lucide trước nhãn ngắn; không câu hướng dẫn kiểu AI trong màn; Admin chỉ xét máy tính; trang chủ và màn xưởng xét cả 390 px.
-- Màn mới hoặc làm lại giao diện: nạp kỹ năng `frontend-design` để lấy hướng bố cục, thứ bậc thị giác, khoảng trắng, trạng thái rỗng/đang chờ/kết quả. **Chuẩn dự án thắng khi khác nhau:** giữ màu chính #005F41 và bảng màu hiện có, một font hệ thống, thang chữ và cỡ icon mà `typography_browser`/`icon_standard_browser`/`ui_standard_browser`/`a11y_axe_browser` kiểm; không thêm font, CDN hay thư viện.
-- Không phụ thuộc ngoài, không gọi mạng mới khi chưa được duyệt, không bí mật hay dữ liệu thật trong repo. Dữ liệu giả chuẩn: SKU `9000000xx`, Group UID `1028260000000xxx` (cũ còn dùng `9999991000000001`), số phiếu/PO `100000001`; fixture cũ đã có trong HEAD giữ nguyên.
-- **Supabase MCP (plugin, 17/10/2026) chỉ dùng để ĐỌC** (schema, RLS, log Edge, advisors, SELECT) trên project `ikzhitdqkoatlmkrxuuh`. Migration, deploy, ghi dữ liệu, đổi cấu hình/khoá vẫn qua `scripts/apply_supabase_sql.py` / `deploy_*.py` do người dùng chạy, trừ khi người dùng cho phép rõ từng lần. Thiết lập Auth/bảo mật trong Dashboard do người dùng tự bấm.
-- Extension đổi hành vi thì nâng phiên bản trong `manifest.json`, cập nhật mọi test khẳng định số đó (`grep -l` trong `tests/`) và ghi chú trong `extension/inside-po-connector/README.md`.
+- Luật nền: `AGENTS.md` (trang tĩnh, sửa nhỏ nhất, không CDN / bí mật / dữ liệu thật, Supabase MCP chỉ đọc).
+- Chuẩn kỹ thuật (gom 25/10/2026 từ mục này và `RULES.md`): giao diện, kể cả cách dùng kỹ năng `frontend-design` → `docs/chuan/GIAO_DIEN.md`; sửa `index.html` → `docs/chuan/MA_WEB.md`; Supabase / Edge / Extension, kể cả nâng phiên bản Extension → `docs/chuan/DU_LIEU.md`; test, dữ liệu giả, commit khi nhiều phiên → `docs/chuan/KIEM_THU_GIT.md`.
 - Việc đã chốt là không làm trong `RULES.md` thì không ai được "sửa lại cho đúng".
-- Nhiều phiên cùng sửa `index.html`: `git status` trước khi gộp; commit chỉ phần của đội.
 
 ## Chạy nhanh
 

@@ -1,5 +1,7 @@
 # Hướng thiết kế button In tem chuyển động
 
+> **Lịch sử (25/10/2026):** đặc tả gốc, giữ để tra. Luật giao diện hiện hành ở `docs/chuan/GIAO_DIEN.md`.
+
 > Phạm vi: nghiên cứu và thiết kế concept. **Đã ghép vào `index.html` ngày 03/10/2026 theo kiểu ĐƠN GIẢN theo yêu cầu**: bấm là nút đổi icon quay và hiện đường load chạy dưới nút, chạy tới khi lệnh in xong thì dừng (không có tem chạy vào máy in, đèn trạng thái, dấu kiểm hay trạng thái "gửi một phần"/"không chắc" như bản concept bên dưới). Chi tiết trong README mục "Nút In tem" và `RULES.md`; prototype: [print-button-prototype.html](./button-design/print-button-prototype.html).
 
 ## 1. Kết luận đề xuất

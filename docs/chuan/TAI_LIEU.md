@@ -36,7 +36,7 @@ Luật về cách viết tài liệu chỉ nằm ở tệp này; tệp khác tr�
 
 - Mỗi mục nhật ký mới mở bằng mã `[N<yyyymmdd>-<hhmm>]` theo giờ Việt Nam lúc ghi, vd. `[N20261025-2130]`. Trùng phút thì thêm `b`, `c`.
 - Dòng nhật ký cũ được trỏ tới mang mã `[N0965]`: 4 số là số dòng nhật ký gốc, đông cứng ngày 25/10/2026.
-- Mục lục và tài liệu khác trỏ bằng mã, không bằng số dòng: `(17/10 · N0965, N0966)`; đoạn liền: `N1180–N1182`.
+- Mục lục và tài liệu khác trỏ bằng mã, không bằng số dòng: `(17/10 · N0965, N0966)`; đoạn liền: `N0106–N0130`.
 - Tra: grep `[N0965]` trong `RULES.md`.
 
 ## 4. Khuôn mẫu
@@ -74,7 +74,12 @@ Thay luật cũ thì sửa hoặc xoá dòng cũ; không để hai bản cùng h
 
 ## <nhóm luật>
 - <luật>. Giữ bởi: `tests/<…>` | `commit_gate` | chưa có. Nguồn: (<ngày> · <mã nhật ký>)
+
+## Quy ước đang dùng trong mã, chưa chốt thành luật   ← tuỳ chọn: thấy trong mã, chưa có quyết định
+## Chưa thống nhất (chờ chốt)                         ← tuỳ chọn: hai nguồn lệch nhau, hoặc chưa có quy ước
 ```
+
+Gom luật vào tệp chuẩn thì chỉ chép luật đã có quyết định; quy ước chỉ thấy trong mã ghi ở mục "chưa chốt" để người dùng quyết.
 
 **Hàng `docs/PROJECT_MAP.md` mục 2** — giữ 4 cột:
 
