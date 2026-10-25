@@ -18,7 +18,7 @@ Xem `AGENTS.md` mục "Bốn luật cứng" (nguồn duy nhất từ 25/10/2026)
 | Trinh sát | Sonnet (từ 25/10/2026, trước là Haiku) | `trinh-sat` | Khi vùng mã lạ với lead **và** bản đồ dự án không đủ (ví dụ truy đường dữ liệu qua 4–5 chặng cho một lỗi), hoặc khi phải đọc nhiều mã mà lead chỉ cần bản đồ kết quả (giữ ngữ cảnh lead nhỏ). Không gọi cho việc đã rõ neo |
 | Kiểm thử | Sonnet (từ 18/10/2026, trước là Haiku) | `kiem-thu` | **Mỗi đợt, khi lead báo xong phần mã:** chạy cả bộ test nền (log test ở ngoài ngữ cảnh lead), phân loại mỗi test hỏng (lỗi thật / test lệch hành vi mới / chập chờn) kèm dòng mã nghi ngờ, rồi `commit_gate.py` + soát hunk `index.html` ngoài vùng giao; không sửa gì. Lead làm tài liệu, `RULES.md` song song |
 | Review chất lượng | Codex CLI | kỹ năng `review-codex` | **Một vòng** cuối mỗi đợt: SQL, Edge, Extension, luồng in/quyền **và giao diện** (ảnh chụp). Bỏ qua cho tài liệu và test thuần |
-| Review Claude | Opus + 2 Sonnet | kỹ năng `review-claude` | **Song song với mỗi lượt Codex mã** (SQL, Edge, Extension, in/quyền, cache/đồng bộ): 3 agent đọc cùng diff theo 3 góc (logic/race/mất mạng; luật dự án; lỗi im lặng), `co-van` gộp, chấm độ tin và xếp nhóm (từ 25/10/2026 thay agent Haiku); lỗi Codex cũng báo đánh dấu [cả hai]. Cùng số vòng với Codex (tối đa 3). Thêm 18/10/2026 theo yêu cầu người dùng |
+| Review Claude | Opus + Sonnet | kỹ năng `review-claude` | **Song song với mỗi lượt Codex mã** (SQL, Edge, Extension, in/quyền, cache/đồng bộ): 2 agent đọc cùng diff — A logic/race/mất mạng (Opus), BC luật dự án + lỗi im lặng (Sonnet; gộp B và C, thử 2 đợt từ 26/10/2026, mục "Thử gộp review B+C"); `co-van` gộp, chấm độ tin và xếp nhóm (từ 25/10/2026 thay agent Haiku); lỗi Codex cũng báo đánh dấu [cả hai]. Cùng số vòng với Codex (tối đa 3). Thêm 18/10/2026 theo yêu cầu người dùng |
 | Cố vấn quyết định | Fable | `co-van` | Chỉ đọc. **Bước cố định của mọi vòng review mã (người dùng yêu cầu 22/10/2026):** sau khi Codex + `/review-claude` xong, Fable nhận phát hiện thô (không kèm kết luận của lead), gộp trùng, mở mã xác nhận, chấm độ tin 0–100, xếp nên sửa / làm sau / bỏ qua; lead đối chiếu với bản lọc của mình, lệch thì đọc lại mã rồi quyết (không áp dụng cho vòng ảnh giao diện). Ngoài ra gọi khi lead (Opus hoặc Sonnet) **không tự quyết được**, ở 4 điểm: (1) chọn giữa ≥ 2 hướng thiết kế mà đọc mã/dữ liệu vẫn không rõ bên nào hơn, khi hướng đó chạm dữ liệu, in, quyền hay migration; (2) review chạm giới hạn 3 vòng, cần hướng tiếp cận khác; (3) Codex và `/review-claude` mâu thuẫn, hoặc không rõ một phát hiện có thật không; (4) đã thử 2 giả thuyết mà chưa ra nguyên nhân gốc. Bản hỏi ≤ 1 trang (câu hỏi, các hướng, bằng chứng, ràng buộc). Không gọi cho lựa chọn người dùng thấy (hỏi người dùng), lỗi đơn giản, thẩm mỹ giao diện. Lead vẫn quyết và báo người dùng "đã hỏi Fable: …". Lead là Fable thì lead tự làm cả hai việc. Thêm 18/10/2026 theo yêu cầu người dùng |
 | Nghiệm thu | người dùng | | chốt thiết kế khi có lựa chọn, chạy thật trên Inside/WMS/máy in, duyệt ảnh |
 
@@ -83,6 +83,15 @@ Rút từ đợt cache 18/10: lead quên Codex ảnh, hai phần của một vi�
 2. **Hai tiêu chí:** (a) thành viên có bắt được / làm được điều lead và người khác không làm được; (b) lead mất bao công kiểm lại, sửa lại.
 3. **Lỗi lặp lại được của một thành viên → sửa hồ sơ ngay đợt đó** (nguyên nhân gốc + luật mới + thử luật trên dữ liệu thật của lần lỗi), ghi vào bảng.
 4. **Mỗi 3 đợt**, lead xem lại bảng và đề xuất với người dùng: giữ / đổi mô hình (lên hoặc xuống) / sửa hồ sơ / bỏ.
+
+## Thử gộp review B+C (người dùng duyệt 26/10/2026)
+
+- `/review-claude` chạy 2 agent thay 3: A (Opus) giữ nguyên; B (luật dự án) và C (lỗi im lặng) gộp thành một agent Sonnet `BC`, mỗi nhóm phát hiện ghi góc `luật` hoặc `im lặng`.
+- Vì: B và C cùng model, cùng đọc một PROMPT; chạy tách tốn khoảng 140 + 145 nghìn token mỗi vòng (bảng đánh giá, đợt 3 ngày 20/10). Hai lần gộp tạm (Đợt B vòng 2 ngày 23/10, Trả NCC ngày 24/10) vẫn được đánh giá Tốt.
+- Phạm vi: 2 đợt kế tiếp có `/review-claude`, áp mọi vòng của đợt.
+- Mỗi vòng lead ghi vào bảng "Đánh giá thành viên": số nhóm BC, số nhóm dùng được và số nhóm riêng (không trùng A / Codex) theo từng góc, token.
+- Hết 2 đợt lead so với B, C tách ở các đợt trước rồi đề xuất người dùng giữ gộp hoặc tách lại.
+  - Nêu rõ khi: một góc không có nhóm riêng dùng được trong cả 2 đợt, hoặc token BC không giảm rõ so với B + C.
 
 ## Bản giao việc cho agent (dán vào lời nhắn, 7 dòng)
 
