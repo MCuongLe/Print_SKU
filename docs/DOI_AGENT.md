@@ -6,10 +6,7 @@ Lý do đổi (18/10/2026): bản 2 làm việc Vừa chậm gấp 3–5 lần v
 
 ## Bốn luật không ngoại lệ
 
-1. **Không báo "xong" khi chưa trích kết quả lệnh thật.** Điều chưa kiểm được phải nói rõ là chưa kiểm.
-2. **Không sửa lỗi khi chưa có nguyên nhân gốc có bằng chứng** (xem Quy trình sửa lỗi).
-3. **Không commit/push khi người dùng chưa nói**; xong việc thì nhắc commit kèm danh sách tệp.
-4. **Push `main` = deploy web.** Web cần hàm/cột/Edge mới thì: commit (chưa push) → migration → deploy Edge → push → Reload Extension.
+Xem `AGENTS.md` mục "Bốn luật cứng" (nguồn duy nhất từ 25/10/2026). Luật 2 làm theo mục "Quy trình sửa lỗi" dưới đây.
 
 ## Ai làm gì
 
@@ -86,7 +83,7 @@ Bàn giao: sửa thẳng (cây chính) | git diff > <scratchpad>/<việc>.patch 
 
 ## Khi phiên bị gián đoạn
 
-- Lead mới (hết ngữ cảnh, đổi model, phiên mới) đọc theo thứ tự: `docs/CONTEXT_MAP.md` → `docs/PROJECT_MAP.md` → mục lục đầu `RULES.md` + các mục cuối nhật ký → `git status` → tệp kế hoạch mới nhất trong `docs/plans/` nếu có.
+- Lead mới (hết ngữ cảnh, đổi model, phiên mới) đọc theo `AGENTS.md` mục "Đọc trước khi làm", rồi các mục cuối nhật ký `RULES.md` → `git status` → tệp kế hoạch mới nhất trong `docs/plans/` nếu có.
 - **Lead dự phòng**: Fable 5.1 hết hạn mức → Opus 5.5 làm lead trong cùng phiên (đổi model ở bộ chọn của app), giữ nguyên bốn luật và quy trình. Sonnet và Haiku không làm lead. Hết ngữ cảnh khác hết hạn mức: phiên tự tóm tắt và tiếp tục với cùng model.
 
 ## Quy tắc chung không đổi

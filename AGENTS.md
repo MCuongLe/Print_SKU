@@ -1,59 +1,68 @@
-# AGENTS.md
+# AGENTS.md — luật chung cho mọi phiên và agent
 
-## Scope
+Áp cho toàn repository. Tài liệu viết theo `docs/chuan/TAI_LIEU.md`.
 
-These instructions apply to the entire repository.
+## Dự án
 
-## Repository overview
+- Công cụ kho xưởng may Hasaki: trang tĩnh `index.html` (GitHub Pages) + Chrome Extension `extension/inside-po-connector` + Supabase (RPC, RLS, cron, Edge Function) + agent in trên máy trạm. Sơ đồ: `docs/CONTEXT_MAP.md`.
+- Mã vạch / QR, camera, khuôn tem in và trạng thái trên trình duyệt là hành vi người dùng đang dùng thật.
 
-- The app includes barcode/QR functionality, camera access, print layouts, and browser-side state. Treat those flows as user-facing production behavior.
+## Đọc trước khi làm
 
-## Working rules
+1. Tệp này.
+2. `docs/CONTEXT_MAP.md` — 6 nguồn ngữ cảnh.
+3. `docs/PROJECT_MAP.md` — module ↔ khối ↔ Extension ↔ Edge ↔ SQL ↔ test.
+4. Mục lục "QUYẾT ĐỊNH ĐANG HIỆU LỰC" đầu `RULES.md` (chỉ trên máy). Quyết định đã chốt ở đó ràng buộc mọi agent.
+5. Tệp trong `docs/plans/` nếu việc đang dở.
+6. Đọc thêm theo loại việc:
 
-- Keep the application usable as a standalone static page unless the task explicitly changes the deployment model.
-- Do not invent npm, build, lint, or test commands that are not present in the repository.
-- Avoid broad reformatting or re-minifying `index.html`; its generated sections produce very large diffs. Make the smallest targeted edit possible.
-- Preserve Vietnamese UI copy, Unicode encoding, existing print styles, and responsive behavior unless the requested change requires otherwise.
-- Do not add external runtime dependencies, CDN assets, analytics, trackers, or network calls without explicit approval.
-- Do not commit secrets, credentials, private endpoints, or real customer/SKU data. Use clearly synthetic examples when test data is needed.
+| Loại việc | Đọc thêm |
+|---|---|
+| Mọi việc | `docs/DOI_AGENT.md` — quy trình bước 1–9, đội agent, review |
+| Tài liệu, quyết định, nhật ký | `docs/chuan/TAI_LIEU.md` |
+| Giao diện | mục lục `RULES.md` chủ đề 2; `docs/THIET_KE_*.md` |
+| Mã web `index.html` | `docs/PROJECT_MAP.md` mục 2; `python scripts/index_outline.py [chuỗi lọc]` |
+| SQL, RPC, Edge, quyền | mục lục `RULES.md` chủ đề 9; `docs/PROJECT_MAP.md` mục 4 |
+| Extension, đồng bộ | mục lục `RULES.md` chủ đề 8; `docs/PROJECT_MAP.md` mục 3; `extension/inside-po-connector/README.md` |
+| In tem, agent máy trạm | mục lục `RULES.md` chủ đề 3; `workstation-agent/README.md`, `workstation-agent/RULES.md` |
+| Test, commit | `docs/PROJECT_MAP.md` mục 5; `docs/DOI_AGENT.md` |
 
-## Validation
+Các dòng giao diện / mã web / SQL / test sẽ trỏ sang `docs/chuan/*.md` khi các tệp chuẩn đó có (kế hoạch `docs/plans/2026-10-25-chuan-hoa-tai-lieu.md`).
 
-For every change, perform the checks that apply:
+## Bốn luật cứng
 
-1. Review `git diff --check` and inspect the final diff for accidental large generated changes.
-2. Serve the repository locally rather than relying only on opening the file directly. One available option is:
+1. Không báo "xong" khi chưa trích kết quả lệnh thật; điều chưa kiểm phải nói rõ là chưa kiểm.
+2. Không sửa lỗi khi chưa có nguyên nhân gốc có bằng chứng.
+3. Chỉ commit / push khi người dùng nói; xong việc nhắc commit kèm danh sách tệp.
+4. Push `main` = web lên ngay. Web cần hàm / cột / Edge mới: commit (chưa push) → migration → deploy Edge → Reload Extension (tải lại tab Inside / WMS) → push.
 
-   ```powershell
-   python -m http.server 8000
-   ```
+## Luật kỹ thuật
 
-3. Open `http://localhost:8000/` in a modern Chromium-based browser and confirm the page loads without console errors.
-4. Exercise the affected workflow with synthetic SKU data. Check both desktop and narrow/mobile viewport behavior.
-5. For label or layout changes, use print preview and verify page size, margins, clipping, barcode readability, and multi-label pagination.
-6. For scanner or camera changes, test permission denied, unavailable camera, successful scan, and manual-entry fallback. Camera behavior must remain compatible with secure contexts (`https://` or localhost).
-7. If automated validation is not possible, state exactly which manual checks remain for the user.
+- `index.html` chạy như trang tĩnh độc lập. Không thêm npm, bước build, CDN, analytics, tracker hay lời gọi mạng mới khi chưa được duyệt; không bịa lệnh build / lint / test không có trong repo.
+- Sửa `index.html` nhỏ nhất, tìm theo id khối hoặc chuỗi neo, không theo số dòng; không định dạng lại hay minify lại. Nhiều phiên cùng sửa tệp này: commit chỉ phần của mình.
+- Grep `index.html` luôn giới hạn độ dài dòng: khối `worker-bundle` có dòng hàng trăm KB.
+- Giữ chữ giao diện tiếng Việt, mã hoá Unicode, kiểu in và bố cục điện thoại.
+- Không commit bí mật, khoá, endpoint riêng hay dữ liệu SKU / UID / PO thật; dùng dữ liệu giả chuẩn (SKU `9000000xx`, UID `1028260000000xxx`).
+- Hàm SQL `SECURITY DEFINER` mới: `revoke execute … from public, anon, authenticated`, rồi chỉ `grant` cho vai cần.
+- Supabase MCP chỉ để đọc. Migration, deploy và mọi lệnh ghi do người dùng chạy script, trừ khi người dùng cho phép rõ từng lần.
+- Agent được giao việc không commit, không chạy migration / deploy, không ghi `RULES.md`.
 
-## Change handoff
+## Kiểm chứng (làm phần áp dụng)
 
-- Summarize the user-visible behavior changed.
-- List the validation performed and any untested browser, camera, printer, or label-size scenarios.
-- Call out unusually large changes to `index.html` and explain why they were necessary.
+1. `git diff --check`; xem diff không có thay đổi lớn ngoài ý muốn.
+2. Phục vụ repo qua máy chủ tĩnh (`python -m http.server 8000`; worktree của agent dùng cổng khác + `BASE=`), không mở tệp trực tiếp. Trang không có lỗi console.
+3. Chạy luồng bị ảnh hưởng bằng dữ liệu giả, trên máy tính và điện thoại. Giao diện Admin chỉ xét máy tính.
+4. Tem, bố cục in: xem trước khi in — khổ giấy, lề, chữ bị cắt, mã vạch đọc được, nhiều tem sang trang.
+5. Camera, máy quét: từ chối quyền, không có camera, quét đúng, nhập tay. Camera cần `https://` hoặc localhost.
+6. Trong lúc làm chạy test liên quan; trước khi báo xong chạy cả bộ `python scripts/run_tests.py` (nền) và `python scripts/commit_gate.py`.
+7. Phần không tự động kiểm được: nêu đúng những gì người dùng còn phải thử.
 
-## Agent team (from 16/10/2026)
+## Bàn giao
 
-- Roles and workflow live in `docs/DOI_AGENT.md` (version 3, 18/10/2026: the lead does most work directly; four hard rules — evidence before "done", root cause before bug fixes, commit only when the user says, migration before push; red test first only for bug fixes and logic changes; one Codex round per batch for SQL/Edge/Extension/print/permissions AND for UI via screenshots; plan files in `docs/plans/` only for multi-step migration work). Agent profiles are in `.claude/agents/` (`trinh-sat`, `thuc-thi-logic`, `kiem-thu`; `thuc-thi-khuon` removed 18/10/2026 — the lead builds UI directly; `co-van` (Fable, read-only) advises the Opus lead at four hard-decision points listed in DOI_AGENT and, from 22/10/2026, triages every code-review round — merges raw Codex + Claude findings, confirms them in code, sorts fix / later / skip), used only when work can genuinely run in parallel; the independent review skills are `.claude/skills/review-codex` and, run in parallel with it from 18/10/2026, `.claude/skills/review-claude` (three Claude reviewers + Haiku confidence filter ≥ 80, same diff scope and three-round limit via `scripts/codex_review.py --prepare-only`).
-- Agents given work stay inside the files and anchor strings named in their brief, never commit, never run migrations or deploys, never write `RULES.md`, and report real test output. The lead runs the related tests while working, the whole `python scripts/run_tests.py` once (in the background, it retries failures once and labels flaky tests) and `python scripts/commit_gate.py` before reporting, and owns migrations, deploys, commits and `RULES.md`.
-- Decisions already recorded as "do not do" in `RULES.md` are binding for every agent.
+- Hành vi người dùng thấy đã đổi.
+- Đã kiểm gì, chưa kiểm gì (trình duyệt, camera, máy in, khổ tem).
+- Thay đổi lớn ở `index.html` và lý do.
+- Tài liệu đã cập nhật theo `docs/chuan/TAI_LIEU.md` mục 5.
+- Dòng nhắc commit kèm danh sách tệp.
 
-## Project map (read first, from 17/10/2026)
-
-- Reading order for every session and agent: this file → `docs/CONTEXT_MAP.md` → `docs/PROJECT_MAP.md` → the index at the top of `RULES.md`. `docs/CONTEXT_MAP.md` (from 23/10/2026): one-page map of the six context sources (Source Code, Database, Business Logic, Dependencies, Documentation, Git History) with the diagram `docs/context-map.svg`, the reading order, and how to build a one-file AI context pack with repomix (`repomix.config.json` → `outputs/repomix/print-sku-context.xml`, not committed).
-- `RULES.md` (local only) now opens with a topic index "QUYẾT ĐỊNH ĐANG HIỆU LỰC" (12 topics, dropped / deferred items, what is live on Supabase); read that index instead of grepping the long log below it, and record each new decision in both the log and the index.
-- `index.html` blocks: run `python scripts/index_outline.py [filter]` for current line ranges (every style/script block has an id); always cap line length when grepping `index.html` (the `worker-bundle` block has lines of hundreds of KB).
-- New `SECURITY DEFINER` SQL functions: revoke EXECUTE explicitly `from public, anon, authenticated` (schema default privileges grant anon/authenticated), then grant only the roles that need it.
-- `docs/PROJECT_MAP.md` is the quick map of the whole project: home tiles → hash routes → `index.html` block ids, Extension files and commands, Edge actions, Supabase tables, which migration file holds the latest version of each function, test and deploy commands. Read it before exploring; grep only to confirm the part you touch.
-- One-line architecture: static `index.html` (GitHub Pages) + Chrome Extension `extension/inside-po-connector` (reads Inside/WMS inside logged-in tabs; tokens never leave the tab; since 0.10.0 it also runs auto-sync in the background; current version in `manifest.json`) + Supabase (RPC/RLS/pg_cron, Edge `sku-sync`, `group-uid-sync`, `print-assistant`, `sku-vision`) + print agent on `may-kho-01` reading `print_jobs`.
-- Every module lives in `index.html` as a `<style id=…>` + `<section id=…-screen>` + `<script id=…>` IIFE; locate by id or anchor string, never by line number. Shared gates: `window.PrintSkuQueue`, `PrintSkuAdminAuth`/`PrintSkuAdminAccess`, `extensionRequest` helpers (count asserted by `tests/bridge_ready.cjs`), `window.HasakiSkuIt`.
-- Release order is always migration → deploy Edge → Reload Extension (then reload Inside/WMS tabs). Pushing `main` deploys the web immediately (GitHub Pages): when the web needs new database functions or Edge actions, commit without pushing, run the migration/deploy, then push. The Supabase MCP plugin is for reads only; writes go through the scripts the user runs. `python scripts/run_tests.py` runs the whole suite against the static server on port 8000; agent worktrees must use another port and `BASE=`.
-- Decisions already made live in `RULES.md` (local, not in git) and in the lead's memory; the lead updates `docs/PROJECT_MAP.md` in the same commit whenever a module, command, Edge action or migration chain changes.
+Trả lời người dùng bằng tiếng Việt có dấu.

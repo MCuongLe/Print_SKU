@@ -68,10 +68,11 @@ flowchart TB
 | Tệp | Dùng để |
 |---|---|
 | `AGENTS.md` | Luật làm việc, kiểm chứng, bàn giao (áp cho mọi agent) |
-| `docs/CONTEXT_MAP.md` (tệp này) | Bản đồ 6 nguồn mức cao; cập nhật cùng commit khi thêm / bỏ Edge, Extension, agent hay hệ thống ngoài, khi có luồng nghiệp vụ mới đi qua từ 2 module trở lên, hoặc khi đổi cách gói repomix / công cụ tìm khối |
-| `docs/PROJECT_MAP.md` | Bản đồ chi tiết module ↔ khối ↔ Extension ↔ Edge ↔ SQL; cập nhật cùng commit khi đổi module |
+| `docs/CONTEXT_MAP.md` (tệp này) | Bản đồ 6 nguồn mức cao; khi nào cập nhật: `docs/chuan/TAI_LIEU.md` mục 5 |
+| `docs/PROJECT_MAP.md` | Bản đồ chi tiết module ↔ khối ↔ Extension ↔ Edge ↔ SQL; khi nào cập nhật: `docs/chuan/TAI_LIEU.md` mục 5 |
 | `RULES.md` (chỉ trên máy, gitignored) | Đầu tệp: mục lục quyết định đang hiệu lực (12 chủ đề, "Đã bỏ", "Làm sau", trạng thái lên thật); dưới: nhật ký theo thời gian. Quyết định mới ghi vào CẢ hai. Ràng buộc mọi agent |
 | `docs/DOI_AGENT.md`, `.claude/agents/`, `.claude/skills/` | Đội agent (lead, trinh-sat, thuc-thi-logic, kiem-thu, co-van/Fable), quy trình review Codex + Claude |
+| `docs/chuan/` | Chuẩn viết tài liệu và khuôn mẫu (`TAI_LIEU.md`); chuẩn kỹ thuật theo chủ đề sẽ thêm ở đây |
 | `docs/plans/` | Kế hoạch việc nhiều bước / có migration (mẫu `docs/plans/README.md`) |
 | `docs/THIET_KE_*.md`, `docs/*-design/` | Chuẩn giao diện, icon, tem |
 | `README.md`, `workstation-agent/README.md`, README Extension | Hướng dẫn vận hành, cài đặt, lịch sử phiên bản |
