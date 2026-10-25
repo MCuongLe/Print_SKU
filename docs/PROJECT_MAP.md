@@ -75,9 +75,10 @@ Migration là chuỗi tệp `supabase/*.sql` (idempotent, `notify pgrst`); **b�
 Chạy migration: `python scripts/apply_supabase_sql.py <tệp> [--dry-run] [--allow-destructive]` (token Management trong `.env`, gitignored). Thứ tự lên luôn là migration → deploy Edge → Reload Extension.
 
 ## 5. Kiểm thử và công cụ
-- `python scripts/run_tests.py [--no-server] [--only <tên>] [--no-retry]` chạy mọi `tests/*.cjs|*.mjs` (≈ 70 tệp, ~8–10 phút); test hỏng được chạy lại một lần tuần tự, in mục CHẬP CHỜN.
+- `python scripts/run_tests.py [--no-server] [--only <tên>] [--no-retry]` chạy mọi `tests/*.cjs|*.mjs` và `tests/test_*.py` (unittest) (≈ 70 tệp, ~8–10 phút); test hỏng được chạy lại một lần tuần tự, in mục CHẬP CHỜN.
 - Hook Claude Code (`.claude/settings.json` → `scripts/claude_hooks.py`, 18/10/2026): mọi lệnh Bash có `git commit` tự chạy `commit_gate.py` (`--cached`, hoặc cả cây khi cùng lệnh có `git add`) và chặn khi KHÔNG ĐẠT; chặn Write ghi đè cả `index.html` và mọi sửa `.env`. Kỹ năng `/commit-push` (chỉ người dùng gọi): chọn tệp của đợt, test, cổng, commit, push, ghi RULES.md.
 - `python scripts/commit_gate.py [--cached | --commit <sha>]`: cổng trước commit bằng máy (bí mật, dữ liệu thật, mojibake, CRLF cả tệp, phiên bản Extension, CDN/npm, cảnh báo bản đồ). Máy chủ tĩnh cổng 8000 cho cây chính (`.claude/launch.json` → `print-sku-test-8000`); worktree của agent dùng cổng khác + `BASE=`.
+- `commit_gate` mục 8–11 (25/10/2026, cảnh báo, chưa chặn): dòng tài liệu > 400 ký tự, `SECURITY DEFINER` thiếu `search_path` / `revoke`, mã nhật ký không có thẻ trong `RULES.md`, thông điệp có dấu (`--message-file`). `python scripts/live_status.py [--offline]` (chỉ đọc) in mục "Trạng thái lên thật" cho `docs/QUYET_DINH.md`. `codex_review.py` nạp `docs/chuan/*.md` theo loại tệp đổi.
 - Playwright: `PLAYWRIGHT_MODULE=C:/Users/HASAKI/playwright-tools/node_modules/playwright`. Bộ chuẩn: `typography_browser`, `ui_standard_browser`, `icon_standard_browser`, `a11y_axe_browser`, `app_nav_browser`, `mobile_home_browser` (trang chủ điện thoại ≤ 1,25 màn).
 - Edge test Node: `tests/sku_sync_function.mjs`, `group_uid_sync_function.mjs`, `print_assistant_function.mjs`, `sku_vision_function.mjs` (giả `Deno` + `fetch`).
 - Review độc lập: `python scripts/codex_review.py --working-tree|--commit <sha>|--images <thư mục> --brief <md>` (skill `review-codex`).

@@ -46,10 +46,10 @@ Thứ tự: đợt 1 → 2 → 3 → 4 → 5 (đợt 3 và 4 có thể đổi ch
 - [x] Module theo thứ tự thanh biên, khuôn mục module của `TAI_LIEU.md` (17 mục + 3 phần của TÌM GROUP UID); đoạn ≤ 600 ký tự, dòng ≤ 400; 70 tên test đều có thật; không email. README 934 → 358 dòng (115 → 28 nghìn ký tự).
 - [x] Lịch sử thiết kế: bỏ khỏi README; bản cũ đầy đủ ở git `41160e7:README.md`; số đo / quyết định đã có trong nhật ký `RULES.md` (đối chiếu mẫu 20 mục), chi tiết hành vi chỉ có ở README cũ (đọc Packing List: SUB TOTAL, Định mức cấp phát) đưa lại vào mục Cấp vải; `GIAO_DIEN.md` bỏ mục lệch README 64 px.
 
-### Đợt 5 — Cảnh báo tự động · lead · [ ]
-- [ ] `commit_gate` cảnh báo (không chặn): dòng tài liệu > 400 ký tự; đổi id khối / Edge / migration mà không sửa PROJECT_MAP; `SECURITY DEFINER` thiếu revoke / `search_path`; commit message sai khuôn; mã `N…` trỏ không tồn tại.
-- [ ] `scripts/live_status.py` (chỉ đọc) sinh mục "Trạng thái lên thật".
-- [ ] Prompt Codex và `/review-claude` nạp tệp chuẩn theo loại thay đổi.
+### Đợt 5 — Cảnh báo tự động · lead · [x]
+- [x] `commit_gate` cảnh báo (không chặn) mục 8–11: dòng tài liệu > 400 ký tự; `SECURITY DEFINER` thiếu revoke / `search_path`; mã `N…` không có thẻ; thông điệp có dấu (`--message-file`, `--commit`). "Đổi khối / Edge / migration mà không sửa PROJECT_MAP" đã có sẵn ở mục 7. Test `tests/test_commit_gate.py` (11, đỏ trước); thử trên commit 41160e7, 96c1257, 3775801 báo đúng.
+- [x] `scripts/live_status.py` (chỉ đọc) sinh mục "Trạng thái lên thật" — test `tests/test_live_status.py` (9, đỏ trước); chạy thật 25/10 21:41: 86/87 tệp migration đủ, thiếu `sku_name_touch_v1.sql` (khớp lần kiểm tay).
+- [x] Prompt Codex và `/review-claude` (`--prepare-only`) nạp tệp chuẩn theo loại thay đổi — test `tests/test_codex_review.py` (3, đỏ trước); thử `--prepare-only` ra đúng `KIEM_THU_GIT.md`.
 
 ## Phát sinh
 - 25/10 Đợt 2: mục lục `RULES.md` còn 10 tham chiếu không mã và 2 dòng cũ (TÌM SKU hiệu ứng quét đã bỏ, Extension 0.10.7) → sửa ngay (chỉ trên máy, không vào commit).
@@ -59,6 +59,9 @@ Thứ tự: đợt 1 → 2 → 3 → 4 → 5 (đợt 3 và 4 có thể đổi ch
 
 - 25/10 Đợt 4: README cũ có email nhân viên thật (dòng Đợt tạo) → bỏ trong bản viết lại; đã nhắn phiên che email không sửa README.md để tránh xung đột.
 
+- 25/10 Đợt 5: `scripts/run_tests.py` chạy thêm `tests/test_*.py` (unittest) để test mới vào cả bộ — làm ngay trong đợt (6/6 tệp Python đạt).
+- 25/10 Đợt 5: `live_status.py` lần đầu báo nhầm index `sku_archive_sku_idx` (db_hygiene_v1 đổi thành khoá chính trong khối do $$) → thêm luật `add constraint … using index` + test.
+
 ## Lệch kế hoạch
 - 25/10 Đợt 1: thứ tự lên bản trong `docs/DOI_AGENT.md` ghi "push → Reload Extension", còn `docs/CONTEXT_MAP.md` và `AGENTS.md` cũ ghi Reload Extension trước push. `AGENTS.md` mới theo CONTEXT_MAP; DOI_AGENT nay trỏ về AGENTS. · báo người dùng 25/10.
 
@@ -66,4 +69,5 @@ Thứ tự: đợt 1 → 2 → 3 → 4 → 5 (đợt 3 và 4 có thể đổi ch
 - 25/10 Đợt 1 xong (tài liệu thuần, không Codex theo `docs/DOI_AGENT.md`); commit + push `8ef8c69`.
 - 25/10 Đợt 2 xong; commit + push `1670369`.
 - 25/10 Đợt 3 xong; commit + push `41160e7`.
-- 25/10 Đợt 4 xong; chưa commit. `RULES.md` (chỉ trên máy): 10 tham chiếu cũ kiểu "nhật ký cuối tệp" / "đợt B" đổi thành mã; sửa 2 dòng mục lục đã cũ (TÌM SKU nay lớp phủ chibi; Extension hiện hành 0.10.8).
+- 25/10 Đợt 4 xong; commit + push `a0ea302`.
+- 25/10 Đợt 5 xong; chưa commit. `RULES.md` (chỉ trên máy): 10 tham chiếu cũ kiểu "nhật ký cuối tệp" / "đợt B" đổi thành mã; sửa 2 dòng mục lục đã cũ (TÌM SKU nay lớp phủ chibi; Extension hiện hành 0.10.8).

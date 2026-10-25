@@ -34,7 +34,7 @@ Luật về cách viết tài liệu chỉ nằm ở tệp này; tệp khác tr�
 
 ## 3. Mã tham chiếu ổn định
 
-- Mỗi mục nhật ký mới mở bằng mã `[N<yyyymmdd>-<hhmm>]` theo giờ Việt Nam lúc ghi, vd. `[N20261025-2130]`. Trùng phút thì thêm `b`, `c`.
+- Mỗi mục nhật ký mới mở bằng mã `[N<yyyymmdd>-<hhmm>]` theo giờ Việt Nam lúc ghi, vd. `[N20261025-2108]`. Trùng phút thì thêm `b`, `c`.
 - Dòng nhật ký cũ được trỏ tới mang mã `[N0965]`: 4 số là số dòng nhật ký gốc, đông cứng ngày 25/10/2026.
 - `docs/QUYET_DINH.md` và tài liệu khác trỏ bằng mã, không bằng số dòng: `(17/10 · N0965, N0966)`; đoạn liền: `N0106–N0130`.
 - Tra: grep `[N0965]` trong `RULES.md`.
@@ -44,7 +44,7 @@ Luật về cách viết tài liệu chỉ nằm ở tệp này; tệp khác tr�
 **Mục nhật ký `RULES.md`** (thêm ở cuối tệp):
 
 ```markdown
-- [N20261025-2130] **25/10/2026 — <tiêu đề ≤ 200 ký tự> (người dùng: "<câu nguyên văn ngắn>").**
+- [N20261025-2108] **25/10/2026 — <tiêu đề ≤ 200 ký tự> (người dùng: "<câu nguyên văn ngắn>").**
   - Quyết định: <…>
   - Số đo: <… — thời điểm, cách đo>
   - Commit / lên thật: <mã commit, migration, deploy>
@@ -60,6 +60,7 @@ Luật về cách viết tài liệu chỉ nằm ở tệp này; tệp khác tr�
 Thay luật cũ thì sửa hoặc xoá dòng cũ; không để hai bản cùng hiệu lực. Luật đã bỏ chuyển sang mục "Đã bỏ hẳn".
 
 **Mục "Trạng thái lên thật"** (cuối `docs/QUYET_DINH.md`):
+- Sinh phần máy kiểm được bằng `python scripts/live_status.py` (chỉ đọc: git, tệp migration, Supabase); nhóm "Đã lên, CHƯA thử thật" ghi tay.
 - Tiêu đề ghi ngày kiểm và cách kiểm (Supabase MCP chỉ đọc, git).
 - Nhóm theo thứ tự: Web · Migration · Edge · Extension / agent / cron · CHƯA LÊN · Đã lên, CHƯA thử thật.
 - Mỗi dòng có bằng chứng: tên đối tượng trên DB, bản Edge và giờ deploy, commit.
@@ -122,4 +123,5 @@ README mô tả hành vi hiện tại; lịch sử thay đổi ghi nhật ký `R
 - `git diff --check` sạch.
 - Dòng văn xuôi mới ≤ 400 ký tự.
 - Mọi mã trỏ mới (`N…`) grep ra đúng một dòng trong `RULES.md`.
+- `python scripts/commit_gate.py --cached` cảnh báo (chưa chặn) dòng tài liệu > 400 ký tự (mục 8) và mã nhật ký không có thẻ trong `RULES.md` (mục 10).
 - Không có dữ liệu thật hay khoá trong phần sửa.

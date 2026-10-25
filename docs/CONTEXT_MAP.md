@@ -26,7 +26,7 @@ flowchart TB
 | Chrome Extension | `extension/inside-po-connector/` (phiên bản ở `manifest.json`) | Đọc Inside/WMS trong tab đã đăng nhập (token không rời tab) + đồng bộ tự động nền. PROJECT_MAP mục 3. |
 | Edge Functions | `supabase/functions/{sku-sync,group-uid-sync,print-assistant,sku-vision}/index.ts` | `verify_jwt` false. `sku-sync`, `group-uid-sync`, `print-assistant` tự kiểm JWT Admin; `sku-vision` công khai (chỉ kiểm publishable key + trần lượt/ngày). Deploy bằng `scripts/deploy_<tên>.py`. |
 | Agent in | `workstation-agent/` (phiên bản ở `VERSION`) | Node trên `may-kho-01`: claim `print_jobs` theo capability → vẽ tem → máy in TSC. Mẫu tem `src/templates/`. |
-| Công cụ | `scripts/*.py` | `run_tests.py`, `commit_gate.py`, `apply_supabase_sql.py`, `codex_review.py`, `deploy_*.py`. |
+| Công cụ | `scripts/*.py` | `run_tests.py`, `commit_gate.py`, `apply_supabase_sql.py`, `codex_review.py`, `deploy_*.py`, `live_status.py` (trạng thái lên thật, chỉ đọc). |
 | Test | `tests/*.cjs|*.mjs`, `workstation-agent/tests/` | `python scripts/run_tests.py` (máy chủ tĩnh cổng 8000), agent: `node --test`. |
 
 **Tìm khối nhanh:** `python scripts/index_outline.py [chuỗi lọc] [--big KB]` in mục lục khối (loại, id, dòng đầu–cuối, KB) trong < 1 giây; mọi khối style/script đều có id. **Grep `index.html` luôn giới hạn độ dài dòng** (`rg -M 300 …` hoặc lọc theo khoảng dòng từ mục lục): khối `worker-bundle` (bundle React, 613 KB) và `group-banners` có dòng dài hàng trăm KB, trúng là tràn ngữ cảnh.

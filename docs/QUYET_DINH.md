@@ -33,6 +33,7 @@
 - Bước 1 "Hiểu và quyết" thêm 6 luật (DOI_AGENT bước 1): đọc CONTEXT_MAP → PROJECT_MAP → mục lục RULES theo module; yêu cầu thiết kế / đánh giá / kiểm tra → giao đúng sản phẩm đó; sửa hàm SQL / Edge đang chạy → so bản trên Supabase với repo trước; màn mới sinh dữ liệu mặc định lưu Supabase; mỗi phương án hỏi kèm hệ quả một câu (+ con số lợi ích khi nhắm giảm dữ liệu / tăng tốc), đổi chốt ghi rõ; tin nhắn thiết kế mở bằng "Giả định đã kiểm" + "Ngoài phạm vi". Không thêm: kiểm phiên song song ở bước 1, trinh sát / tệp kế hoạch bắt buộc. (25/10 · N1212)
 - Tài liệu theo `docs/chuan/TAI_LIEU.md`: mỗi chủ đề một nguồn (nơi khác chỉ trỏ), dòng văn xuôi ≤ 400 ký tự, trỏ nhật ký bằng mã ổn định `[N0965]` / `[N<yyyymmdd>-<hhmm>]` thay "dòng N + độ lệch". `AGENTS.md` viết tiếng Việt, giữ bốn luật cứng (DOI_AGENT trỏ về). (25/10 · N20261025-2108)
 - Chuẩn hoá tài liệu 5 đợt (`docs/plans/2026-10-25-chuan-hoa-tai-lieu.md`): mục lục quyết định đã vào git (tệp này, 25/10, che email); commit message tiếng Việt không dấu; `commit_gate` chỉ cảnh báo trước, sau 2–3 đợt mới xét chặn. (25/10 · N20261025-2108)
+- Đợt 5 (25/10): `commit_gate` thêm cảnh báo 8–11 (tài liệu > 400 ký tự, SQL `SECURITY DEFINER`, mã nhật ký, thông điệp có dấu) — chưa chặn; `scripts/live_status.py` (chỉ đọc) sinh phần máy kiểm được của "Trạng thái lên thật"; `codex_review.py` nạp `docs/chuan` theo loại tệp; `run_tests.py` chạy cả test Python. (25/10 · N20261025-2144)
 - Chuẩn kỹ thuật ở `docs/chuan/` (GIAO_DIEN, MA_WEB, DU_LIEU, KIEM_THU_GIT): chỉ gom luật đã có quyết định, mỗi luật ghi "Giữ bởi" (test / commit_gate) + nguồn mã nhật ký; quy ước chỉ thấy trong mã ghi mục "chưa chốt". `AGENTS.md` bảng loại việc trỏ sang đây; CONTEXT_MAP / PROJECT_MAP "Quy ước luôn đúng" và DOI_AGENT "Quy tắc chung" thành dòng trỏ. (25/10 · N20261025-2118)
 
 ### Kỹ thuật vá `index.html`
@@ -346,6 +347,8 @@
 ---
 
 ## Trạng thái lên thật (kiểm Supabase MCP chỉ đọc + git, 25/10/2026 tối)
+
+Kiểm lại: `python scripts/live_status.py` (chỉ đọc). Chạy 25/10/2026 21:41: 86/87 tệp migration đủ đối tượng; thiếu đúng `sku_name_touch_v1.sql`; Edge, agent, cron như dưới.
 
 Mục này thắng mọi ghi chú "CHƯA LÊN" trong nhật ký. Kiểm lại khi thêm migration / Edge / Extension / agent; ghi ngày kiểm ở tiêu đề.
 

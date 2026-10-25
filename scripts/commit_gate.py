@@ -15,6 +15,14 @@ Mục kiểm (chỉ trên DÒNG THÊM MỚI của diff, trừ mục 4–5):
     (package.json chỉ đổi dòng "version" thì không tính: nâng phiên bản agent không thêm phụ thuộc).
  7. Bản đồ (cảnh báo): diff thêm migration, Edge, tệp Extension hoặc khối <script id=/<style id= mới mà docs/PROJECT_MAP.md không đổi.
 
+Cảnh báo theo chuẩn docs/chuan (25/10/2026, chưa chặn — xét chuyển sang chặn sau 2–3 đợt):
+ 8. Tài liệu: dòng văn xuôi thêm mới trong .md dài quá 400 ký tự (bảng và khối mã không tính).
+ 9. SQL: hàm SECURITY DEFINER được tạo / sửa trong diff mà thiếu `set search_path` hoặc thiếu `revoke … on function` cùng tên trong tệp.
+10. Mã nhật ký: mã `N0965` / `N20261025-2108` thêm mới trong .md mà nhật ký RULES.md (trên máy) không có thẻ `[mã]`.
+11. Commit message: dòng đầu có chữ có dấu (khuôn: tiếng Việt không dấu). Chỉ xét với --commit hoặc --message-file.
+
+    python scripts/commit_gate.py --cached --message-file <tệp thông điệp>   # soát cả thông điệp trước khi commit
+
 Thoát mã 1 khi có mục KHÔNG ĐẠT; cảnh báo không chặn. Không sửa gì.
 """
 from __future__ import annotations
@@ -48,6 +56,63 @@ CDN = re.compile(r"""<(?:script[^>]*\ssrc|link[^>]*\shref)\s*=\s*["']https?://""
 VERSION_LINE = re.compile(r"(?i)\bver")
 VERSION_LIT = re.compile(r"""["']v?(\d+\.\d+\.\d+)["']""")
 BLOCK_ID = re.compile(r"""<(?:script|style)\s+id=["']""")
+RULES = ROOT / "RULES.md"
+DOC_LINE_MAX = 400
+CODE = re.compile(r"\bN(?:\d{8}-\d{4}[a-z]?|\d{4})\b")
+VI_MARKS = re.compile(r"[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]", re.I)
+FUNC_HEAD = re.compile(r"create\s+(?:or\s+replace\s+)?function\s+(?:public\.)?\"?(\w+)\"?\s*\((.*?)\$\w*\$", re.I | re.S)
+
+
+def doc_long_lines(content: str, added: set[int]) -> list[tuple[int, int]]:
+    """Dòng văn xuôi (không phải bảng, không trong khối ```) thuộc `added` mà dài hơn DOC_LINE_MAX: [(số dòng, độ dài)]."""
+    out, fence = [], False
+    for no, line in enumerate(content.splitlines(), 1):
+        if line.lstrip().startswith("```"):
+            fence = not fence
+            continue
+        if fence or line.lstrip().startswith("|") or no not in added:
+            continue
+        if len(line) > DOC_LINE_MAX:
+            out.append((no, len(line)))
+    return out
+
+
+def definer_issues(sql: str, added: set[int]) -> list[str]:
+    """Hàm SECURITY DEFINER có dòng `create … function` nằm trong `added` mà thiếu search_path / revoke cùng tên."""
+    issues = []
+    for match in FUNC_HEAD.finditer(sql):
+        line_no = sql.count("\n", 0, match.start()) + 1
+        head = match.group(0).lower()
+        if line_no not in added or "security definer" not in head:
+            continue
+        name = match.group(1)
+        if "search_path" not in head:
+            issues.append(f"{name} (dòng {line_no}): SECURITY DEFINER thiếu `set search_path`")
+        if not re.search(rf"revoke\s+[^;]*on\s+function\s+(?:public\.)?\"?{re.escape(name)}\"?\s*\(", sql, re.I):
+            issues.append(f"{name} (dòng {line_no}): thiếu `revoke … on function {name}` from public, anon, authenticated "
+                          "(bắt buộc với hàm mới; `create or replace` hàm đã có thì quyền cũ được giữ)")
+    return issues
+
+
+def message_issues(message: str) -> list[str]:
+    """Khuôn commit (docs/chuan/KIEM_THU_GIT.md): dòng đầu tiếng Việt không dấu."""
+    subject = next((line.strip() for line in message.splitlines() if line.strip()), "")
+    if not subject:
+        return ["thông điệp rỗng"]
+    if VI_MARKS.search(subject):
+        return [f"dòng đầu có dấu (khuôn: tiếng Việt không dấu): {subject[:80]}"]
+    return []
+
+
+def missing_codes(lines: list[str], rules_text: str) -> list[str]:
+    """Mã nhật ký trong `lines` mà RULES.md không có thẻ `[mã]`; giữ thứ tự gặp, không trùng."""
+    tags = set(re.findall(r"\[(N(?:\d{8}-\d{4}[a-z]?|\d{4}))\]", rules_text))
+    out: list[str] = []
+    for line in lines:
+        for code in CODE.findall(line):
+            if code not in tags and code not in out:
+                out.append(code)
+    return out
 
 
 def git(*args: str) -> str:
@@ -84,6 +149,7 @@ def main() -> int:
     scope = parser.add_mutually_exclusive_group()
     scope.add_argument("--cached", action="store_true")
     scope.add_argument("--commit")
+    parser.add_argument("--message-file", help="tệp thông điệp commit sắp dùng (soát khuôn, mục 11)")
     args = parser.parse_args()
 
     if args.commit:
@@ -193,6 +259,37 @@ def main() -> int:
     new_blocks = [f"index.html:{no}" for no, text in added.get("index.html", []) if BLOCK_ID.search(text)]
     if (triggers or new_blocks) and not touches_map:
         warns.append("[7 bản đồ] diff đụng " + ", ".join((triggers + new_blocks)[:5]) + " nhưng docs/PROJECT_MAP.md không đổi — kiểm xem bản đồ có cần cập nhật")
+
+    # 8–11. Cảnh báo theo chuẩn docs/chuan (không chặn)
+    def content_of(path: str) -> str:
+        if args.commit:
+            return git("show", f"{args.commit}:{path}")
+        if args.cached:
+            return git("show", f":{path}")
+        file = ROOT / path
+        return file.read_text(encoding="utf-8", errors="replace") if file.exists() else ""
+
+    rules_text = RULES.read_text(encoding="utf-8", errors="replace") if RULES.exists() else ""
+    for path, lines in added.items():
+        nos = {no for no, _text in lines}
+        if path.endswith(".md"):
+            for no, length in doc_long_lines(content_of(path), nos)[:5]:
+                warns.append(f"[8 tài liệu] {path}:{no}: dòng {length} ký tự > {DOC_LINE_MAX} (docs/chuan/TAI_LIEU.md)")
+            if rules_text and path != "RULES.md":
+                codes = missing_codes([text for _no, text in lines], rules_text)
+                if codes:
+                    warns.append(f"[10 mã nhật ký] {path}: không thấy thẻ trong RULES.md: {', '.join(codes[:8])}")
+        elif path.startswith("supabase/") and path.endswith(".sql"):
+            for issue in definer_issues(content_of(path), nos)[:6]:
+                warns.append(f"[9 SQL] {path}: {issue}")
+    message = ""
+    if args.message_file:
+        message = Path(args.message_file).read_text(encoding="utf-8", errors="replace")
+    elif args.commit:
+        message = git("log", "-1", "--format=%B", args.commit)
+    if args.message_file or args.commit:
+        for issue in message_issues(message):
+            warns.append(f"[11 commit] {issue}")
 
     untracked = [n for n in git("ls-files", "--others", "--exclude-standard").splitlines() if n]
     if untracked and not args.commit:

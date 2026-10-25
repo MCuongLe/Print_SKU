@@ -1,4 +1,4 @@
-"""Chạy cả bộ test trong tests/ (Playwright *_browser.cjs, Node *.cjs/*.mjs) và in bảng PASS/FAIL.
+"""Chạy cả bộ test trong tests/ (Playwright *_browser.cjs, Node *.cjs/*.mjs, Python test_*.py bằng unittest) và in bảng PASS/FAIL.
 
     python scripts/run_tests.py                 # cả bộ
     python scripts/run_tests.py --only sku_sync # chỉ test có tên chứa từ khoá
@@ -59,13 +59,15 @@ def main() -> int:
                 break
             time.sleep(0.5)
 
-    files = sorted(p for p in TESTS.iterdir() if p.suffix in {".cjs", ".mjs"} and p.name not in SKIP)
+    files = sorted(p for p in TESTS.iterdir()
+                   if (p.suffix in {".cjs", ".mjs"} or p.suffix == ".py" and p.name.startswith("test_")) and p.name not in SKIP)
     if args.only:
         files = [p for p in files if args.only in p.name]
     def run_one(path: Path) -> tuple[bool, float, str]:
         t0 = time.time()
         try:
-            run = subprocess.run(["node", str(path)], cwd=ROOT, env=env, capture_output=True,
+            cmd = [sys.executable, "-m", "unittest", str(path)] if path.suffix == ".py" else ["node", str(path)]
+            run = subprocess.run(cmd, cwd=ROOT, env=env, capture_output=True,
                                  text=True, encoding="utf-8", errors="replace", timeout=args.timeout)
             ok = run.returncode == 0
             tail = (run.stdout + run.stderr).strip().splitlines()

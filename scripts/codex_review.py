@@ -35,6 +35,7 @@ if hasattr(sys.stdout, "reconfigure"):  # Windows mặc định cp1252, không i
 ROOT = Path(__file__).resolve().parents[1]
 RULES = ROOT / "RULES.md"
 DECISIONS = ROOT / "docs" / "QUYET_DINH.md"  # mục lục quyết định, tách khỏi RULES.md ngày 25/10/2026
+STANDARDS = ROOT / "docs" / "chuan"  # chuẩn kỹ thuật nạp theo loại thay đổi (25/10/2026)
 IMAGE_TYPES = {".png", ".jpg", ".jpeg", ".webp"}
 
 CONTEXT = """Bạn là reviewer độc lập cho repo Print_SKU: ứng dụng web tĩnh một tệp index.html (React bundle + nhiều khối
@@ -88,6 +89,38 @@ def rules_excerpt(keywords: list[str], limit: int = 40) -> str:
 SNAP_ROOT = ROOT / "outputs" / "codex-review"
 MAX_ROUNDS = 3
 NULL = "NUL" if sys.platform == "win32" else "/dev/null"
+
+
+def standards_for(paths: list[str], images: bool) -> list[str]:
+    """Tệp trong docs/chuan cần nạp vào prompt theo loại thay đổi, giữ thứ tự gặp, không trùng."""
+    picked: list[str] = []
+
+    def add(*names: str) -> None:
+        for name in names:
+            if name not in picked:
+                picked.append(name)
+
+    if images:
+        add("GIAO_DIEN.md")
+    for path in paths:
+        if path == "index.html":
+            add("GIAO_DIEN.md", "MA_WEB.md")
+        elif path.startswith(("supabase/", "extension/")):
+            add("DU_LIEU.md")
+        elif path.startswith(("tests/", "scripts/", "workstation-agent/tests/")):
+            add("KIEM_THU_GIT.md")
+        elif path.endswith(".md"):
+            add("TAI_LIEU.md")
+    return picked
+
+
+def standards_block(names: list[str]) -> str:
+    parts = []
+    for name in names:
+        file = STANDARDS / name
+        if file.exists():
+            parts.append(f"--- docs/chuan/{name} ---\n" + file.read_text(encoding="utf-8", errors="replace").strip())
+    return "\n\n".join(parts)
 
 
 def rel_of(path: str) -> str:
@@ -228,6 +261,16 @@ def main() -> int:
         excerpt = rules_excerpt(keywords)
         if excerpt:
             parts.append("Quyết định đã chốt (trích docs/QUYET_DINH.md + RULES.md):\n" + excerpt)
+    if args.commit:
+        touched = [n for n in git("show", "--name-only", "--format=", args.commit).splitlines() if n]
+    elif args.images:
+        touched = []
+    else:
+        touched = changed_paths(args.add)
+    standards = standards_block(standards_for(touched, images=bool(args.images)))
+    if standards:
+        parts.append("Chuẩn dự án áp cho loại thay đổi này (vi phạm chuẩn là phát hiện hợp lệ; phần \"chưa chốt\" chỉ để tham khảo):\n"
+                     + standards)
     if args.focus:
         parts.append("Trọng tâm: " + args.focus)
     parts.append(output.format(max_findings=args.max))

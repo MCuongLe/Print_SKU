@@ -17,6 +17,7 @@ Gom từ `docs/QUYET_DINH.md` chủ đề 3, 5, 6, 8, 9, `docs/DOI_AGENT.md` và
 - Chạy bằng `python scripts/apply_supabase_sql.py <tệp>` (`--dry-run` trước); `DROP` / `DELETE` cấp cao nhất cần `--allow-destructive`. `UPDATE` dữ liệu đặt trong migration. Nguồn: (10–18/10 · N0034, N0036, N0993, N1030)
 - Đổi chữ ký hàm phải `drop` bản cũ (PostgREST không chọn giữa các overload). Nguồn: như trên.
 - Sau migration lead kiểm chỉ đọc (đối tượng có trên DB, quyền, gọi thử) rồi mới báo đã lên. Nguồn: như trên; `docs/DOI_AGENT.md` bước 6.
+- `python scripts/live_status.py` (chỉ đọc) liệt kê tệp migration còn đối tượng chưa có trên DB, bản Edge so với commit cuối, agent, cron. Nguồn: (25/10 · N20261025-2144)
 - Sửa hàm đang chạy: so bản trên Supabase (`pg_get_functiondef`) với tệp mới nhất trong repo trước khi viết; lệch thì xuất phát từ bản đang chạy. Nguồn: `docs/DOI_AGENT.md` bước 1; (25/10 · N1212)
 - Bỏ module vẫn giữ phần ở máy chủ khi gỡ có rủi ro (CHECK `print_jobs.type`, nhánh `fabric_relaxation`, migration cũ). Nguồn: (11/10 · N0035)
 
