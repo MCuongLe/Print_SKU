@@ -13,16 +13,29 @@ Xem `AGENTS.md` mục "Bốn luật cứng" (nguồn duy nhất từ 25/10/2026)
 
 | Vai | Mô hình | Hồ sơ | Khi nào dùng |
 |---|---|---|---|
-| Lead | Fable 5.1 (dự phòng Opus 5.5) | phiên chính | **Mặc định làm thẳng mọi việc**: đọc `docs/PROJECT_MAP.md`, grep xác minh neo, sửa, viết test, chạy test liên quan, gọi Codex, báo cáo, migration/deploy cùng người dùng, commit khi được bảo |
+| Lead | Fable 5.1 (dự phòng Opus 5.5); Sonnet cho việc tài liệu / commit / dọn / soát (mục "Chọn model và phiên") | phiên chính | **Mặc định làm thẳng mọi việc**: đọc `docs/PROJECT_MAP.md`, grep xác minh neo, sửa, viết test, chạy test liên quan, gọi Codex, báo cáo, migration/deploy cùng người dùng, commit khi được bảo |
 | Thực thi logic | Opus | `thuc-thi-logic` | Chỉ khi có **một khối logic lớn tách được** (hàm SQL mới nhiều nhánh, Edge action mới, bộ đọc Extension mới) **và** lead đang làm việc khác song song. Giao một lần cả khối, không chia việc con |
-| Trinh sát | Haiku | `trinh-sat` | Chỉ khi vùng mã lạ với lead **và** bản đồ dự án không đủ (ví dụ truy đường dữ liệu qua 4–5 chặng cho một lỗi). Không gọi cho việc đã rõ neo |
-| Kiểm thử | Sonnet (từ 18/10/2026, trước là Haiku) | `kiem-thu` | **Mỗi đợt, khi lead báo xong phần mã:** chạy cả bộ test nền, phân loại mỗi test hỏng (lỗi thật / test lệch hành vi mới / chập chờn) kèm dòng mã nghi ngờ, rồi `commit_gate.py` + soát hunk `index.html` ngoài vùng giao; không sửa gì. Lead làm tài liệu, `RULES.md` song song |
+| Trinh sát | Sonnet (từ 25/10/2026, trước là Haiku) | `trinh-sat` | Khi vùng mã lạ với lead **và** bản đồ dự án không đủ (ví dụ truy đường dữ liệu qua 4–5 chặng cho một lỗi), hoặc khi phải đọc nhiều mã mà lead chỉ cần bản đồ kết quả (giữ ngữ cảnh lead nhỏ). Không gọi cho việc đã rõ neo |
+| Kiểm thử | Sonnet (từ 18/10/2026, trước là Haiku) | `kiem-thu` | **Mỗi đợt, khi lead báo xong phần mã:** chạy cả bộ test nền (log test ở ngoài ngữ cảnh lead), phân loại mỗi test hỏng (lỗi thật / test lệch hành vi mới / chập chờn) kèm dòng mã nghi ngờ, rồi `commit_gate.py` + soát hunk `index.html` ngoài vùng giao; không sửa gì. Lead làm tài liệu, `RULES.md` song song |
 | Review chất lượng | Codex CLI | kỹ năng `review-codex` | **Một vòng** cuối mỗi đợt: SQL, Edge, Extension, luồng in/quyền **và giao diện** (ảnh chụp). Bỏ qua cho tài liệu và test thuần |
-| Review Claude | Opus + 2 Sonnet + Haiku | kỹ năng `review-claude` | **Song song với mỗi lượt Codex mã** (SQL, Edge, Extension, in/quyền, cache/đồng bộ): 3 agent đọc cùng diff theo 3 góc (logic/race/mất mạng; luật dự án; lỗi im lặng), Haiku chấm độ tin, giữ ≥ 80, gom theo loại; lỗi Codex cũng báo đánh dấu [cả hai]. Cùng số vòng với Codex (tối đa 3). Thêm 18/10/2026 theo yêu cầu người dùng |
-| Cố vấn quyết định | Fable | `co-van` | Chỉ đọc. **Bước cố định của mọi vòng review mã (người dùng yêu cầu 22/10/2026):** sau khi Codex + `/review-claude` xong, Fable nhận phát hiện thô (không kèm kết luận của lead), gộp trùng, mở mã xác nhận, xếp nên sửa / làm sau / bỏ qua; lead đối chiếu với bản lọc của mình, lệch thì đọc lại mã rồi quyết (không áp dụng cho vòng ảnh giao diện). Ngoài ra gọi khi lead (Opus) **không tự quyết được**, ở 4 điểm: (1) chọn giữa ≥ 2 hướng thiết kế mà đọc mã/dữ liệu vẫn không rõ bên nào hơn, khi hướng đó chạm dữ liệu, in, quyền hay migration; (2) review chạm giới hạn 3 vòng, cần hướng tiếp cận khác; (3) Codex và `/review-claude` mâu thuẫn, hoặc không rõ một phát hiện có thật không; (4) đã thử 2 giả thuyết mà chưa ra nguyên nhân gốc. Bản hỏi ≤ 1 trang (câu hỏi, các hướng, bằng chứng, ràng buộc). Không gọi cho lựa chọn người dùng thấy (hỏi người dùng), lỗi đơn giản, thẩm mỹ giao diện. Lead vẫn quyết và báo người dùng "đã hỏi Fable: …". Lead là Fable thì không cần. Thêm 18/10/2026 theo yêu cầu người dùng |
+| Review Claude | Opus + 2 Sonnet | kỹ năng `review-claude` | **Song song với mỗi lượt Codex mã** (SQL, Edge, Extension, in/quyền, cache/đồng bộ): 3 agent đọc cùng diff theo 3 góc (logic/race/mất mạng; luật dự án; lỗi im lặng), `co-van` gộp, chấm độ tin và xếp nhóm (từ 25/10/2026 thay agent Haiku); lỗi Codex cũng báo đánh dấu [cả hai]. Cùng số vòng với Codex (tối đa 3). Thêm 18/10/2026 theo yêu cầu người dùng |
+| Cố vấn quyết định | Fable | `co-van` | Chỉ đọc. **Bước cố định của mọi vòng review mã (người dùng yêu cầu 22/10/2026):** sau khi Codex + `/review-claude` xong, Fable nhận phát hiện thô (không kèm kết luận của lead), gộp trùng, mở mã xác nhận, chấm độ tin 0–100, xếp nên sửa / làm sau / bỏ qua; lead đối chiếu với bản lọc của mình, lệch thì đọc lại mã rồi quyết (không áp dụng cho vòng ảnh giao diện). Ngoài ra gọi khi lead (Opus hoặc Sonnet) **không tự quyết được**, ở 4 điểm: (1) chọn giữa ≥ 2 hướng thiết kế mà đọc mã/dữ liệu vẫn không rõ bên nào hơn, khi hướng đó chạm dữ liệu, in, quyền hay migration; (2) review chạm giới hạn 3 vòng, cần hướng tiếp cận khác; (3) Codex và `/review-claude` mâu thuẫn, hoặc không rõ một phát hiện có thật không; (4) đã thử 2 giả thuyết mà chưa ra nguyên nhân gốc. Bản hỏi ≤ 1 trang (câu hỏi, các hướng, bằng chứng, ràng buộc). Không gọi cho lựa chọn người dùng thấy (hỏi người dùng), lỗi đơn giản, thẩm mỹ giao diện. Lead vẫn quyết và báo người dùng "đã hỏi Fable: …". Lead là Fable thì lead tự làm cả hai việc. Thêm 18/10/2026 theo yêu cầu người dùng |
 | Nghiệm thu | người dùng | | chốt thiết kế khi có lựa chọn, chạy thật trên Inside/WMS/máy in, duyệt ảnh |
 
 Agent được giao việc **không commit, không migration/deploy, không ghi `RULES.md`**, báo cáo kèm dòng test thật. Quyết định đang hiệu lực: `docs/QUYET_DINH.md`. Nhật ký `RULES.md` không vào git: đọc bằng đường dẫn tuyệt đối `C:\Users\HASAKI\Documents\GitHub\Print_SKU\RULES.md`. Agent làm trong worktree thì dùng cổng máy chủ riêng (8001, 8002, …) và `BASE=`.
+
+## Chọn model và phiên (người dùng duyệt 25/10/2026)
+
+Vì: phần tốn token nhất là chính phiên lead dài — phiên 25/10 làm khoảng 10 việc liền, ngữ cảnh 494 nghìn token, mỗi lần gọi công cụ đọc lại chừng ấy.
+
+| Loại việc | Lead (chọn model khi mở phiên) |
+|---|---|
+| Tài liệu (PROJECT_MAP, README, QUYET_DINH, `docs/chuan`, kế hoạch), commit / push theo lệnh, dọn tệp / nhánh / dữ liệu ngoài git, soát chỉ đọc (quét repo, Supabase MCP chỉ đọc, `live_status.py`), thay dữ liệu giả trong test | Sonnet |
+| Logic SQL / Edge / Extension, luồng in / quyền, giao diện mới, thiết kế, tìm nguyên nhân gốc, lọc review mã | Fable 5.1 (dự phòng Opus 5.5) |
+
+- **Mỗi việc một phiên mới.** Xong một đợt đã commit thì mở phiên mới (hoặc Compact) trước việc kế tiếp; phiên mới đọc theo `AGENTS.md`.
+- Phiên Sonnet gặp việc thuộc hàng dưới (đổi logic, chọn hướng chạm dữ liệu / in / quyền / migration, lỗi chưa rõ gốc) thì dừng và báo người dùng mở phiên Fable / Opus; không tự làm.
+- Lead Fable / Opus giao phần đọc nhiều cho agent Sonnet: cả bộ test và phân loại test hỏng (`kiem-thu`), trinh sát vùng mã lớn (`trinh-sat`), soát chỉ đọc; chỉ nhận bản tóm tắt, không đổ log dài vào ngữ cảnh lead.
 
 ## Một yêu cầu đi thế nào
 
@@ -96,7 +109,7 @@ Bàn giao: sửa thẳng (cây chính) | git diff > <scratchpad>/<việc>.patch 
 ## Khi phiên bị gián đoạn
 
 - Lead mới (hết ngữ cảnh, đổi model, phiên mới) đọc theo `AGENTS.md` mục "Đọc trước khi làm", rồi các mục cuối nhật ký `RULES.md` → `git status` → tệp kế hoạch mới nhất trong `docs/plans/` nếu có.
-- **Lead dự phòng**: Fable 5.1 hết hạn mức → Opus 5.5 làm lead trong cùng phiên (đổi model ở bộ chọn của app), giữ nguyên bốn luật và quy trình. Sonnet và Haiku không làm lead. Hết ngữ cảnh khác hết hạn mức: phiên tự tóm tắt và tiếp tục với cùng model.
+- **Lead dự phòng**: Fable 5.1 hết hạn mức → Opus 5.5 làm lead trong cùng phiên (đổi model ở bộ chọn của app), giữ nguyên bốn luật và quy trình. Sonnet chỉ làm lead cho loại việc ở mục "Chọn model và phiên"; Haiku không làm lead. Hết ngữ cảnh khác hết hạn mức: phiên tự tóm tắt và tiếp tục với cùng model.
 
 ## Quy tắc chung không đổi
 

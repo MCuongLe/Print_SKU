@@ -11,14 +11,16 @@
 - Hiểu dự án nhanh: thứ tự đọc AGENTS → `docs/CONTEXT_MAP.md` (6 nguồn + sơ đồ + repomix) → PROJECT_MAP → tệp này; `scripts/index_outline.py` cho dòng khối index.html (mọi style/script có id); grep index.html giới hạn độ dài dòng; quyết định mới ghi CẢ nhật ký lẫn mục lục. (23/10 · N1184)
 
 ### Đội agent và review
-- Đội agent bản 3: lead (Opus) tự làm phần lớn việc, kể cả giao diện; `trinh-sat`, `thuc-thi-logic`, `kiem-thu` chỉ dùng khi việc chạy song song thật; vai trò chi tiết ở `docs/DOI_AGENT.md`. (18/10 · N1013, N1039)
+- Đội agent bản 3: lead (Fable, dự phòng Opus) tự làm phần lớn việc, kể cả giao diện; `trinh-sat`, `thuc-thi-logic`, `kiem-thu` chỉ dùng khi việc chạy song song thật; vai trò chi tiết ở `docs/DOI_AGENT.md`. (18/10 · N1013, N1039)
+- Chọn model theo loại việc: Sonnet làm lead cho tài liệu / commit / dọn / soát chỉ đọc; Fable (dự phòng Opus) cho logic, giao diện mới, thiết kế, nguyên nhân gốc; mỗi việc một phiên mới; lead giao phần đọc nhiều (cả bộ test, trinh sát, soát) cho agent Sonnet. (25/10 · N20261025-2344)
 - Bốn luật cứng: có bằng chứng mới báo "xong"; tìm nguyên nhân gốc trước khi sửa lỗi; chỉ commit khi người dùng bảo; migration trước push. Test đỏ trước chỉ áp cho sửa lỗi/đổi logic; tệp kế hoạch `docs/plans/` chỉ cho migration nhiều bước. (18/10 · N1013; AGENTS.md)
-- Review: một vòng Codex mỗi đợt cho SQL/Edge/Extension/luồng in/quyền VÀ giao diện (ảnh chụp), chạy song song `/review-claude` (A/B/C + Haiku lọc ≥ 80); tối đa 3 vòng rồi đổi hướng, vòng sau chỉ diff vừa sửa (`--since last`), gom lỗi theo loại. (18/10 · N1016, N1037)
-- `co-van` (Fable, chỉ đọc) là bước cố định mỗi vòng review: gộp phát hiện thô Codex + Claude, mở mã xác nhận, xếp Nên sửa / Làm sau / Bỏ qua; còn được gọi ở 4 điểm kẹt (chọn hướng chạm dữ liệu/in/quyền/migration, review chạm 3 vòng, Codex ↔ review-claude mâu thuẫn, 2 giả thuyết chưa ra gốc). Lead vẫn quyết. (18/10, 22/10 · N1044, N1132)
+- Review: một vòng Codex mỗi đợt cho SQL/Edge/Extension/luồng in/quyền VÀ giao diện (ảnh chụp), chạy song song `/review-claude` (A/B/C; `co-van` chấm độ tin và lọc); tối đa 3 vòng rồi đổi hướng, vòng sau chỉ diff vừa sửa (`--since last`), gom lỗi theo loại. (18/10, 25/10 · N1016, N1037, N20261025-2344)
+- `co-van` (Fable, chỉ đọc) là bước cố định mỗi vòng review: gộp phát hiện thô Codex + Claude, mở mã xác nhận, chấm độ tin 0–100 (thay Haiku), xếp Nên sửa / Làm sau / Bỏ qua; còn được gọi ở 4 điểm kẹt (chọn hướng chạm dữ liệu/in/quyền/migration, review chạm 3 vòng, Codex ↔ review-claude mâu thuẫn, 2 giả thuyết chưa ra gốc). Lead vẫn quyết. (18/10, 22/10, 25/10 · N1044, N1132, N20261025-2344)
 - Thay đổi rất nhỏ được bỏ `/review-claude` nhưng phải báo người dùng; sửa chỉ ở test đã chứng minh bằng đột biến thì không cần vòng 3. (22/10 · N1107, N1170)
 - Lead tự quyết sửa phát hiện review; chỉ hỏi người dùng khi đổi quyết định đã chốt hoặc đổi hành vi. Lỗi logic đã xác nhận → viết test đỏ rồi sửa. (17–18/10 · N1001, N1038)
 - Năm luật chống sót việc: ô tích từng gạch kèm bằng chứng; rà kế hoạch 3 mốc; phát sinh commit riêng; lệch kế hoạch báo ngay; chia việc cố định. Đánh giá thành viên mỗi đợt, xem lại mỗi 3 đợt. (18/10 · N1046, N1075)
 - `kiem-thu` (Sonnet): chạy cả bộ test nền, phân loại LỖI THẬT / TEST LỆCH / CHẬP CHỜN, chạy commit_gate, không sửa mã. Sonnet B/C trong `/review-claude` được giữ (đánh giá đợt 3 ngày 20/10: Tốt). (18–20/10 · N1041, N1081, N1098, N1099)
+- `trinh-sat` (Sonnet từ 25/10, trước là Haiku): gọi khi vùng mã lạ hoặc khi phải đọc nhiều mã mà lead chỉ cần bản đồ kết quả. (25/10 · N20261025-2344)
 - Codex CLI: `codex exec --sandbox read-only -C . -o <out.md> - < <prompt.md>`, prompt nêu quyết định đã chốt. (16/10 · N0872)
 - Bản giao việc cho agent phải ghi cổng server riêng + `BASE` (cây chính giữ cổng 8000). (16–17/10 · N0890, N1001)
 - Người dùng vắng và nói "theo khuyến nghị, xong commit push" → làm theo khuyến nghị rồi commit + push; ghi quyết định vào RULES. (02/10, 08/10, 11/10 · N0085, N0042, N0562)
@@ -282,6 +284,7 @@
   - Hai luồng dùng chung cờ bận; lúc bận thẻ phiếu IT khoá ô sửa.
 
 ## 11. Đã bỏ hẳn / quyết định KHÔNG làm
+- Agent Haiku chấm độ tin trong `/review-claude` (ngưỡng 80 quá chặt, bị bỏ qua khoảng nửa số vòng); `co-van` chấm thay. (25/10 · N1091, N1100, N20261025-2344)
 - Module GOM HÀNG MẪU (`#sample`, bảng `sample_bags`) và TEM XẢ VẢI (`#fabric-relaxation`, cả trong agent); `#xa-vai` vẫn dùng. (11/10 · N0035, N0494)
 - Màn nạp Excel Group UID trên web + thanh admin nổi; script xuất Group UID thủ công và 2 tài liệu lộ trình UI/UX 02/10. (07/10, 18/10 · N0061, N1021)
 - Phần Combo của Rủi ro lưu trữ (giữ hàm `sku_combo_risk_dashboard`). (12/10 · N0012)
@@ -348,7 +351,6 @@
 - Giao diện còn nợ: thẻ Kiểm kê đỏ/vàng khi chưa có bản chụp, "Nhập Excel" cạnh Đọc WMS trông bị khoá, dải lọc Rủi ro lưu trữ / tab Kiểm kê ở 390 px; popup còn lại (chi tiết một dòng, chip "N cảnh báo", Cấu hình máy in). (08/10, 18/10 · N0042, N1004, N1009, N1019)
 - Header còn nợ: pill máy in cho Cắt UID/TÌM SKU/Vị trí, Back cố định một vị trí, tab Cắt UID/Xả vải 375 px; Cấu hình React còn "Link cấp quyền cho máy khác"; mã chết `#fsk-cd`. (07/10, 10/10 · N0075, N0037, N0029)
 - Quét camera liên tục (in hàng loạt) ở IN TEM GROUP UID / Cắt UID / Xả vải — chờ yêu cầu. (07/10 · N0063, N0065)
-- Haiku lọc ngưỡng 80 quá chặt — xem lại ngưỡng. (18/10 · N1091, N1100)
 - Kiểm tra đầu vào cho vải: build riêng sau; tách source React chỉ khi có source gốc hoặc người dùng duyệt. (17/10, 11/10 · N0970, N0532)
 
 ### Chưa kiểm thật (cần thiết bị/dữ liệu thật)
