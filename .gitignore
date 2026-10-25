@@ -13,6 +13,7 @@ __pycache__/
 # Local secrets
 .env
 .env.*
+!/.env.example
 
 # Cấu hình chạy cục bộ (launch.json chứa đường dẫn tuyệt đối của từng máy)
 # Thu muc .claude: bo qua cau hinh may (launch.json, worktrees, lock) nhung giu ho so agent + skill cua doi (16/10/2026)
