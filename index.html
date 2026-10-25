@@ -12580,6 +12580,40 @@ async function rpc(name,args,retry=true){
         .pa-send { width: var(--ui-ctl, 48px); padding: 0; }
       }
     </style>
+    <style id="assistant-pl-style">
+      /* TRỢ LÝ IN → PACKING LIST CẤP VẢI (24/10/2026): nút đính kèm, vùng thả tệp, thẻ xem trước (khung dùng chung .pa-confirm). */
+      .pa-attach { display: inline-grid; place-items: center; flex: none; width: var(--target-min); height: var(--target-min); padding: 0; border: 0; border-radius: var(--radius-pill); background: #eef6f2; color: var(--wms-brand); cursor: pointer; }
+      .pa-attach:disabled { opacity: .4; cursor: not-allowed; }
+      .pa-attach svg { width: 20px; height: 20px; }
+      .pa-attach:focus-visible { outline: 2px solid var(--wms-focus-ring); outline-offset: 2px; }
+      .pa-chat[data-drop=on] { outline: 2px dashed var(--wms-focus-ring); outline-offset: -6px; }
+      .pa-pl[data-state=done] { border-color: #cfe5db; }
+      .pa-pl-src { color: var(--wms-muted); font-size: var(--fs-13); overflow-wrap: anywhere; }
+      .pa-pl-fields { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-2) var(--space-3); }
+      .pa-pl-f { display: grid; gap: var(--space-1); min-width: 0; color: var(--wms-muted); font-size: var(--fs-12); font-weight: var(--fw-semibold); }
+      .pa-pl-f input { min-width: 0; height: var(--target-min); padding: 0 var(--space-3); border: 1px solid var(--wms-control-border); border-radius: var(--radius-control); background: var(--wms-surface); color: var(--wms-text); font: inherit; font-size: var(--fs-14); font-weight: var(--fw-regular); }
+      .pa-pl-f input:disabled { background: var(--wms-bg); color: var(--wms-muted); }
+      /* Cảnh báo cả thẻ (UID chưa có, ô số bị làm tròn): dải vàng nhạt như khối kết quả đang chờ */
+      .pa-pl-missing { display: flex; align-items: flex-start; gap: var(--space-2); margin: 0; padding: var(--space-2) var(--space-3); border: 1px solid #f0e2b6; border-radius: var(--radius-control); background: #fffaeb; color: var(--wms-warning); font-size: var(--fs-13); font-weight: var(--fw-semibold); overflow-wrap: anywhere; }
+      .pa-pl-missing svg { flex: none; width: 16px; height: 16px; margin-top: 2px; }
+      .pa-pl-rows { max-height: 280px; overflow: auto; } /* cả thẻ (tên đợt → nút) vừa khung hội thoại ở màn 900 px */
+      /* Hàng là <label>: bấm cả hàng để tick */
+      .pa-pl-row { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; align-items: center; gap: var(--space-1) var(--space-3); padding: var(--space-2) var(--space-3); border-top: 1px solid var(--wms-border); font-size: var(--fs-14); cursor: pointer; }
+      .pa-pl-row:first-child { border-top: 0; }
+      .pa-pl-row:hover { background: var(--wms-bg); }
+      .pa-pl-row:has(input:disabled) { cursor: default; }
+      .pa-pl-row input[type=checkbox] { width: 20px; height: 20px; margin: 0; accent-color: var(--wms-brand); }
+      .pa-pl-row[data-off=true] .pa-main { color: var(--wms-muted); }
+      .pa-pl-row .pa-main { grid-area: auto; } /* .pa-main của thẻ phiếu IT gán grid-area: m — lưới hàng PL không có vùng đó */
+      .pa-pl-qty { color: var(--wms-text); font-size: var(--fs-13); white-space: nowrap; }
+      .pa-pl-m { font-size: var(--fs-14); font-weight: var(--fw-semibold); }
+      .pa-pl-skus { color: var(--wms-muted); font-size: var(--fs-13); }
+      .pa-pl-done { flex-wrap: wrap; }
+      #assistant-screen .pa-pl-open { display: inline-flex; align-items: center; gap: var(--space-2); margin-left: auto; }
+      .pa-pl-open svg, .pa-pl-dl svg { flex: none; width: 20px; height: 20px; }
+      #assistant-screen .pa-pl-dl { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); }
+      @media (max-width: 760px) { .pa-pl-fields { grid-template-columns: 1fr; } }
+    </style>
     <section class="cut-screen" id="assistant-screen" aria-labelledby="pa-title" hidden>
       <header class="uid-topbar"><div class="uid-topbar__inner"><button class="uid-back" id="pa-back" type="button" aria-label="Quay lại trang chủ WH-MATERIAL">WH-MATERIAL</button><span class="uid-topbar__mark" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg></span><div class="uid-topbar__name"><h1 id="pa-title">TRỢ LÝ IN</h1></div></div></header>
       <div class="ss-content pa-content">
@@ -12587,7 +12621,7 @@ async function rpc(name,args,retry=true){
         <section class="ss-panel pa-chat" aria-label="Hội thoại">
           <div class="pa-thread" id="pa-thread" role="log" aria-live="polite"></div>
           <form class="pa-bar" id="pa-form" autocomplete="off">
-            <div class="pa-field"><input id="pa-input" type="text" maxlength="300" enterkeyhint="send" autocomplete="off" spellcheck="false" placeholder="IT 123456, 2 bản" aria-label="Câu lệnh in tem"><button class="pa-mic" id="pa-mic" type="button" aria-pressed="false" aria-label="Nói bằng giọng" title="Nói bằng giọng" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19v3"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><rect x="9" y="2" width="6" height="13" rx="3"/></svg></button></div>
+            <div class="pa-field"><input id="pa-input" type="text" maxlength="300" enterkeyhint="send" autocomplete="off" spellcheck="false" placeholder="IT 123456, 2 bản" aria-label="Câu lệnh in tem"><button class="pa-attach" id="pa-attach" type="button" aria-label="Đính kèm danh sách Group UID" title="Đính kèm danh sách Group UID"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.234 20.252 21 12.3"/><path d="m16 6-8.414 8.586a2 2 0 0 0 0 2.828 2 2 0 0 0 2.828 0l8.414-8.586a4 4 0 0 0 0-5.656 4 4 0 0 0-5.656 0l-8.415 8.585a6 6 0 1 0 8.486 8.486"/></svg></button><input id="pa-file" type="file" accept=".xlsx,.csv,.txt,text/csv,text/plain" multiple hidden><button class="pa-mic" id="pa-mic" type="button" aria-pressed="false" aria-label="Nói bằng giọng" title="Nói bằng giọng" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19v3"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><rect x="9" y="2" width="6" height="13" rx="3"/></svg></button></div>
             <button class="ss-primary pa-send" id="pa-send" type="submit" aria-label="Gửi" title="Gửi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/></svg><span>Gửi</span></button>
           </form>
         </section>
@@ -12635,11 +12669,12 @@ async function rpc(name,args,retry=true){
           const ready = deviceReady();
           setChip("pa-chip-device", ready ? "new" : "bad", ICON.printer, ready ? "Máy in sẵn sàng" : "Máy chưa kích hoạt");
           loginBtn.hidden = state.admin;
-          for (const control of [input, micBtn]) control.disabled = !state.admin;
+          for (const control of [input, micBtn, $("pa-attach")]) if (control) control.disabled = !state.admin;
           sendBtn.disabled = !state.admin || state.busy;
           clearBtn.disabled = state.busy;
           thread.querySelectorAll(".pa-sug").forEach(btn => { btn.disabled = !state.admin; });
           paintConfirm();
+          window.PrintSkuAssistantPl?.paint();
         }
         async function refreshAdmin() {
           const seq = ++state.adminSeq;
@@ -12713,7 +12748,7 @@ async function rpc(name,args,retry=true){
           empty.querySelectorAll(".pa-sug").forEach(btn => { btn.disabled = !state.admin; });
           paintClear();
         }
-        function setBusy(value) { state.busy = value; sendBtn.disabled = !state.admin || value; clearBtn.disabled = value; paintConfirm(); }
+        function setBusy(value) { state.busy = value; sendBtn.disabled = !state.admin || value; clearBtn.disabled = value; if (!state.pending?.locked) freezeCard(value); paintConfirm(); window.PrintSkuAssistantPl?.paint(); }
 
         // ---- Bộ phân tích tất định: số phiếu chỉ nhận khi đúng MỘT dãy 6–40 chữ số đứng sát (≤ 3 từ, hai chiều) từ khoá IT/phiếu; số sau "SKU/mã" không tính ----
         function parse(text) {
@@ -12949,6 +12984,7 @@ async function rpc(name,args,retry=true){
         async function submit(raw) {
           const text = String(raw || "").trim().slice(0, 300);
           if (!text || state.busy || !state.admin) return;
+          if (window.PrintSkuAssistantPl?.take(text)) return; // danh sách Group UID → Packing List cấp vải (assistant-pl-script)
           addMsg("user", text);
           const parsed = parse(text);
           if (parsed.number) return startRead(parsed.number, parsed.copies);
@@ -12994,6 +13030,9 @@ async function rpc(name,args,retry=true){
           });
         }
 
+        // Cổng cho khối Packing List cấp vải (assistant-pl-script, 24/10/2026): dùng chung khung hội thoại, cờ bận và trạng thái Admin.
+        window.PrintSkuAssistant = Object.freeze({ say: addMsg, mount, admin: () => state.admin, busy: () => state.busy, setBusy });
+
         // ---- Điều hướng ----
         const active = () => location.hash.replace(/^#/, "").split("&")[0] === ROUTE;
         function route() {
@@ -13009,6 +13048,326 @@ async function rpc(name,args,retry=true){
         addEventListener("print-sku-admin-ready", refreshAdmin); addEventListener("print-sku-admin-logout", refreshAdmin);
         addEventListener("storage", paintChips); addEventListener("focus", paintChips);
         route();
+      })();
+    </script>
+    <script id="assistant-pl-script">
+      // TRỢ LÝ IN → PACKING LIST CẤP VẢI (24/10/2026, đợt 1 — docs/plans/2026-10-24-tro-ly-in-tao-pl.md).
+      // Dán / gõ / đính kèm (.xlsx, .csv, .txt) danh sách Group UID → RPC fabric_issue_lookup_uids (Admin) → thẻ xem trước →
+      // Tạo đợt (fabric_issue_import có sẵn, rồi đọc lại fabric_issue_get so tập UID đã ghép) hoặc Tải PL (.xlsx, khuôn CẤP VẢI đọc được).
+      // Số liệu lấy từ Supabase theo UID, không lấy từ chữ dán; mét = số lượng WMS đổi theo đuôi tên SKU (/mm, /cm, /m), giữ 3 chữ số.
+      // Group UID = 16 số bắt đầu 1028 (số phiếu IT cũng 16 số — không bắt). Ô Excel kiểu SỐ chỉ còn 15 chữ số đúng → không dùng làm UID.
+      // Khung hội thoại, cờ bận, Admin dùng chung với trợ lý qua window.PrintSkuAssistant (print-assistant-script): hai luồng loại trừ nhau
+      // vì mọi điểm vào kiểm cờ chung trước khi chạy; trợ lý gọi lại paint() khi cờ bận hoặc Admin đổi.
+      (() => {
+        const $ = id => document.getElementById(id), A = () => window.PrintSkuAssistant;
+        const input = $("pa-input"), attach = $("pa-attach"), fileInput = $("pa-file"), thread = $("pa-thread"), chat = document.querySelector("#assistant-screen .pa-chat");
+        if (!input || !attach || !fileInput || !thread) return;
+        const MAX_CODES = 1000, CHUNK = 500, MAX_FILE = 15 * 1024 * 1024, SOURCE = "Trợ lý in", PLAN_KEY = "cap-vai-dot";
+        // Sau lỗi "chưa rõ", chờ giao dịch xong rồi mới đối soát: statement_timeout 8 giây của vai authenticated + chờ kết nối pool PostgREST ≤ 10 giây
+        const SETTLE_MS = 20000;
+        const UID = /(?<!\d)1028\d{12}(?!\d)/g, IT_WORD = /(?:^|[^\p{L}\d])(it|phiếu|phieu)(?![\p{L}])/iu;
+        // Số bị làm tròn: dạng khoa học 1.02826E+15 (chữ dán, CSV) hoặc ô Excel kiểu số ≥ 10^15 (đánh dấu khi đọc tệp)
+        const SCI = /(?<![\d.,])\d(?:[.,]\d+)?e\+?1[56](?!\d)/gi, NUMERIC_MARK = "\u0000so";
+        const FACTOR = { mm: 0.001, cm: 0.01, m: 1, "mét": 1, met: 1 };
+        // Giới hạn của fabric_issue_import (fabric_issue_v2_no_double_issue): một dòng vượt là cả đợt bị từ chối
+        const LIMIT = { sku: 40, lot: 60, roll: 60, color: 120 };
+        const svg = body => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
+        const ICON = {
+          close: svg('<path d="M18 6 6 18"/><path d="m6 6 12 12"/>'),
+          download: svg('<path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/>'),
+          check: svg('<path d="M20 6 9 17l-5-5"/>'),
+          alert: svg('<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>'),
+          open: svg('<path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>'),
+        };
+        const esc = value => String(value ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+        const num = v => Number(v).toLocaleString("vi-VN", { maximumFractionDigits: 3 });
+        const r3 = v => Math.round(v * 1000) / 1000;
+        const cmp = (a, b) => String(a).localeCompare(String(b), "vi", { numeric: true });
+        const unique = list => [...new Set(list)];
+        const short = list => list.slice(0, 10).join(", ") + (list.length > 10 ? ` +${list.length - 10}` : "");
+        const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+        let card = null, busy = false; // card: { el, rows, missing, rounded, openPlans, src, name, styleNo, poNo, done: "" | "?" (chưa rõ) | id }
+
+        // ---- Tách Group UID ----
+        const sourceOf = text => ({ codes: [...String(text || "").matchAll(UID)].map(m => m[0]), rounded: (String(text || "").match(SCI) || []).length });
+        async function fromFile(file) {
+          if (file.size > MAX_FILE) throw new Error(`${file.name}: lớn hơn 15 MB`);
+          const bytes = new Uint8Array(await file.arrayBuffer());
+          if (/\.xlsx$/i.test(file.name)) {
+            if (!window.PrintSkuReadWorkbook) throw new Error("Bộ đọc Excel chưa sẵn sàng; tải lại trang.");
+            const numeric = v => Math.abs(Number(v)) >= 1e15 ? NUMERIC_MARK : v;
+            let sheets;
+            try { sheets = await window.PrintSkuReadWorkbook(bytes, { numeric, skipHidden: true }); }
+            catch (error) { throw new Error(`${file.name}: không đọc được tệp Excel (${error?.message || "lỗi"})`); }
+            const out = { codes: [], rounded: 0 };
+            for (const sheet of sheets) for (const row of sheet.rows) for (const cell of row) {
+              const text = String(cell ?? "");
+              if (text === NUMERIC_MARK) { out.rounded++; continue; }
+              const found = sourceOf(text); out.codes.push(...found.codes); out.rounded += found.rounded;
+            }
+            return out;
+          }
+          // CSV / TXT: UTF-8, hoặc UTF-16 (Excel "Unicode Text") khi có BOM
+          const enc = bytes[0] === 0xff && bytes[1] === 0xfe ? "utf-16le" : bytes[0] === 0xfe && bytes[1] === 0xff ? "utf-16be" : "utf-8";
+          return sourceOf(new TextDecoder(enc).decode(bytes));
+        }
+
+        // ---- Supabase (JWT Admin) ----
+        // Lỗi "chưa rõ" (unsure): không nhận được phản hồi đọc được (rớt mạng, quá thời gian, 2xx thân hỏng, 5xx của cổng không có `code`) —
+        // với lệnh ghi KHÔNG được coi là chưa ghi (RULES §9). Chỉ JSON lỗi của PostgREST/Postgres (có `code`, kể cả 57014) là giao dịch đã huỷ.
+        async function rpc(name, args, retry = true) {
+          const queue = window.PrintSkuQueue, token = await window.PrintSkuAdminAuth.accessToken();
+          let res;
+          try {
+            res = await fetch(`${queue.supabaseUrl}/rest/v1/rpc/${name}`, { method: "POST", headers: { apikey: queue.publishableKey, Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify(args), signal: AbortSignal.timeout(30000) });
+          } catch (error) { throw Object.assign(new Error(error?.name === "TimeoutError" ? "hết thời gian chờ" : "mất kết nối mạng"), { unsure: true }); }
+          // Phiên Admin: 401 hoặc 403 → gia hạn rồi thử lại một lần (RULES §9, như adminRpc của CẤP VẢI)
+          if ((res.status === 401 || res.status === 403) && retry) { await window.PrintSkuAdminAuth.accessToken(); return rpc(name, args, false); }
+          const body = await res.json().catch(() => null);
+          if (!body && (res.ok || res.status >= 500)) throw Object.assign(new Error(`máy chủ không phản hồi (HTTP ${res.status})`), { unsure: true });
+          if (res.status >= 500 && typeof body?.code !== "string") throw Object.assign(new Error(`máy chủ không phản hồi (HTTP ${res.status})`), { unsure: true });
+          if (name === "fabric_issue_lookup_uids" && (body?.code === "PGRST202" || body?.code === "42883")) throw new Error("máy chủ chưa có chức năng tra Group UID cho Packing List");
+          if (body?.code === "57014") throw new Error("máy chủ xử lý quá lâu — chia danh sách nhỏ hơn");
+          if (!res.ok || !body) throw new Error(body?.message || `Supabase HTTP ${res.status}`);
+          if (!body.ok) throw new Error(body.error?.message || "Supabase từ chối yêu cầu");
+          return body.data;
+        }
+        async function lookup(codes) {
+          const out = { items: [], missing: [], products: {}, inPlans: [], openPlans: [] };
+          for (let i = 0; i < codes.length; i += CHUNK) {
+            const d = await rpc("fabric_issue_lookup_uids", { p_codes: codes.slice(i, i + CHUNK) });
+            out.items.push(...(d.items || [])); out.missing.push(...(d.missing || [])); Object.assign(out.products, d.products || {});
+            out.inPlans.push(...(d.inPlans || []));
+            // skus của một đợt tính theo từng lô mã → hợp lại giữa các lô
+            for (const p of d.openPlans || []) { const o = out.openPlans.find(x => x.id === p.id); if (o) o.skus = unique([...o.skus, ...(p.skus || [])]); else out.openPlans.push({ ...p, skus: [...(p.skus || [])] }); }
+          }
+          return out;
+        }
+
+        // ---- Dòng Packing List: mét theo đuôi tên SKU; màu = đoạn trước đơn vị khi tên đủ khuôn (≥ 5 đoạn) ----
+        const unitOf = name => String(name || "").split("/").pop().trim().toLowerCase();
+        const colorOf = name => { const parts = String(name || "").split("/").map(s => s.trim()); return parts.length >= 5 ? parts[parts.length - 2] : ""; };
+        function buildRows(data) {
+          return data.items.map(item => {
+            const sku = String(item.sku ?? "").trim(), lot = String(item.lot ?? "").trim(), roll = String(item.roll ?? "").trim();
+            const name = data.products[sku] || "", unit = unitOf(name), factor = FACTOR[unit];
+            const qtyM = factor === undefined ? null : r3(Number(item.qty) * factor);
+            // locks: không gửi được (khoá tick); flags: gửi được nhưng bỏ tick mặc định
+            const locks = [], flags = [];
+            if (!sku) locks.push("Thiếu SKU");
+            if (!lot) locks.push("Thiếu Lot");
+            if (!roll) locks.push("Thiếu Roll");
+            if (sku.length > LIMIT.sku || lot.length > LIMIT.lot || roll.length > LIMIT.roll) locks.push("Mã quá dài");
+            if (qtyM === null) locks.push(`Đơn vị ${unit || "?"}, không đổi sang mét`);
+            else if (!(qtyM > 0)) locks.push("Số lượng 0");
+            if (String(item.status || "").trim().toLowerCase() !== "available") flags.push(item.status || "Không rõ trạng thái");
+            for (const p of data.inPlans.filter(p => p.uid === item.uid)) flags.push(`${p.scannedAt ? "Đã cấp" : "Đã có"} ở đợt ${p.planName}`);
+            return { uid: String(item.uid), sku, lot, roll, qty: Number(item.qty), unit, qtyM, location: String(item.location || ""), po: String(item.po || ""),
+              color: colorOf(name).slice(0, LIMIT.color), flags: [...locks, ...flags], ok: !locks.length, on: !locks.length && !flags.length };
+          }).sort((a, b) => cmp(a.sku, b.sku) || cmp(a.lot, b.lot) || cmp(a.roll, b.roll));
+        }
+        // Tên đợt: đợt đang mở có cùng SKU (bỏ qua đợt "bổ sung"; ưu tiên cùng PO, phủ nhiều SKU, cũ hơn) + " · bổ sung"; PO khi mọi cuộn cùng một PO
+        function suggest(rows, openPlans) {
+          const pick = rows.some(r => r.on) ? rows.filter(r => r.on) : rows.some(r => r.ok) ? rows.filter(r => r.ok) : rows;
+          const skus = new Set(pick.map(r => r.sku)), colors = unique(pick.map(r => r.color).filter(Boolean)), pos = unique(pick.map(r => r.po).filter(Boolean));
+          const cover = p => (p.skus || []).filter(s => skus.has(s)).length, samePo = p => pos.length === 1 && p.poNo === pos[0] ? 1 : 0;
+          const order = (a, b) => samePo(b) - samePo(a) || cover(b) - cover(a) || String(a.createdAt || "").localeCompare(String(b.createdAt || ""));
+          const base = openPlans.filter(p => cover(p) && !/bổ sung/i.test(p.name)).sort(order)[0] || openPlans.filter(cover).sort(order)[0];
+          let name = base ? `${String(base.name).replace(/\s*·\s*bổ sung.*$/i, "").trim() || base.name} · bổ sung` : `PL bổ sung · ${colors.join(", ") || "Group UID"}`;
+          if (openPlans.some(p => p.name === name)) { const d = new Date(), p2 = n => String(n).padStart(2, "0"); name = `${name} · ${p2(d.getDate())}/${p2(d.getMonth() + 1)} ${p2(d.getHours())}:${p2(d.getMinutes())}`; }
+          return { name: name.slice(0, 120), styleNo: String(base?.styleNo || ""), poNo: pos.length === 1 ? pos[0] : "" };
+        }
+
+        // ---- Thẻ xem trước ----
+        const picked = () => (card?.rows || []).filter(r => r.on && r.ok);
+        const fields = () => ({ name: $("pa-pl-name").value.trim().slice(0, 120), styleNo: $("pa-pl-style").value.trim().slice(0, 60), poNo: $("pa-pl-po").value.trim().slice(0, 60) });
+        const busyNow = () => busy || Boolean(A()?.busy());
+        function render(next) {
+          card?.el?.remove();
+          const { rows, missing, rounded, src } = next;
+          const el = document.createElement("div");
+          el.className = "pa-confirm pa-pl"; el.id = "pa-pl";
+          el.innerHTML = `<div class="pa-c-head"><b>Packing List cấp vải</b><span class="pa-pl-src">${esc(src)}</span></div>`
+            + `<div class="pa-pl-fields"><label class="pa-pl-f"><span>Tên đợt</span><input id="pa-pl-name" maxlength="120" autocomplete="off"></label>`
+            + `<label class="pa-pl-f"><span>Style</span><input id="pa-pl-style" maxlength="60" autocomplete="off"></label>`
+            + `<label class="pa-pl-f"><span>PO</span><input id="pa-pl-po" maxlength="60" autocomplete="off"></label></div>`
+            + (missing.length ? `<p class="pa-pl-missing">${ICON.alert}<span>${num(missing.length)} UID chưa có trong dữ liệu Group UID đồng bộ từ WMS: ${esc(short(missing))}</span></p>` : "")
+            + (rounded ? `<p class="pa-pl-missing">${ICON.alert}<span>${num(rounded)} ô số bị làm tròn (Excel chỉ giữ 15 chữ số), không đọc được UID</span></p>` : "")
+            + `<div class="pa-rows pa-pl-rows">${rows.map((r, i) => `<label class="pa-pl-row" data-i="${i}" data-uid="${esc(r.uid)}" data-off="${!r.on}">`
+              + `<input type="checkbox" data-pl-on aria-label="Chọn cuộn ${esc(r.uid)}"${r.on ? " checked" : ""}${r.ok ? "" : " disabled"}>`
+              + `<span class="pa-main"><b>${esc(r.uid)}</b><span class="pa-name">${esc([r.sku, `Lot ${r.lot || "—"}`, `Roll ${r.roll || "—"}`, r.location].filter(Boolean).join(" · "))}</span>`
+              + `${r.flags.length ? `<span class="pa-flag">${esc(r.flags.join(" · "))}</span>` : ""}</span>`
+              + `<span class="pa-pl-qty"><b class="pa-pl-m">${r.qtyM === null ? esc(num(r.qty)) : num(r.qtyM)}</b> ${esc(r.qtyM === null ? r.unit : "m")}</span></label>`).join("")}</div>`
+            + `<div class="pa-c-bar"><span class="pa-total" id="pa-pl-total"></span><span class="pa-pl-skus" id="pa-pl-skus"></span></div>`
+            + `<div class="pa-c-foot"><span></span><div class="pa-c-actions">`
+            + `<button class="ss-secondary pa-cancel" id="pa-pl-cancel" type="button">${ICON.close}<span>Huỷ</span></button>`
+            + `<button class="ss-secondary pa-pl-dl" id="pa-pl-xlsx" type="button">${ICON.download}<span>Tải PL</span></button>`
+            + `<button class="ss-primary pa-print" id="pa-pl-create" type="button">${ICON.check}<span>Tạo đợt</span></button></div></div>`;
+          card = { ...next, el, done: "" };
+          A().mount(el);
+          thread.scrollTop += el.getBoundingClientRect().top - thread.getBoundingClientRect().top - 8; // mount cuộn xuống đáy; thẻ cao → hiện từ tên đợt
+          $("pa-pl-name").value = next.name; $("pa-pl-style").value = next.styleNo; $("pa-pl-po").value = next.poNo;
+          paint();
+        }
+        function paint() {
+          if (!card?.el?.isConnected) return;
+          const on = picked(), sum = r3(on.reduce((s, r) => s + r.qtyM, 0)), done = Boolean(card.done), hold = busyNow(), admin = Boolean(A()?.admin());
+          card.el.dataset.state = card.done && card.done !== "?" ? "done" : card.done ? "unsure" : "";
+          card.el.querySelectorAll(".pa-pl-row").forEach(row => {
+            const r = card.rows[Number(row.dataset.i)];
+            row.dataset.off = String(!r.on); row.querySelector("[data-pl-on]").disabled = hold || done || !r.ok;
+          });
+          $("pa-pl-total").textContent = `${on.length} cuộn · ${num(sum)} m`;
+          const bySku = new Map();
+          for (const r of on) { const x = bySku.get(r.sku) || { n: 0, m: 0 }; x.n++; x.m += r.qtyM; bySku.set(r.sku, x); }
+          $("pa-pl-skus").textContent = bySku.size > 1 ? [...bySku].map(([sku, x]) => `${sku} · ${x.n} cuộn · ${num(r3(x.m))} m`).join("  ·  ") : "";
+          const create = $("pa-pl-create");
+          create.disabled = hold || done || !on.length || !admin;
+          create.lastElementChild.textContent = card.done && card.done !== "?" ? "Đã tạo" : "Tạo đợt";
+          $("pa-pl-xlsx").disabled = hold || !on.length || !admin;
+          $("pa-pl-cancel").disabled = hold;
+          for (const id of ["pa-pl-name", "pa-pl-style", "pa-pl-po"]) $(id).disabled = hold || done;
+        }
+        function setBusy(on) { busy = on; A()?.setBusy(on); paint(); }
+        function mountDone(id, label) {
+          const row = document.createElement("div");
+          row.className = "pa-sum pa-pl-done";
+          row.innerHTML = `${id ? ICON.check : ICON.alert}<b>${esc(label)}</b><button class="ss-secondary pa-pl-open" type="button" data-pl-open="${esc(id)}">${ICON.open}<span>Mở Cấp vải</span></button>`;
+          A().mount(row);
+        }
+
+        // ---- Luồng chính ----
+        async function start(label, src) {
+          const api = A(); if (!api?.admin()) return;
+          if (busyNow()) { api.say("bot", "Đang xử lý, thử lại sau.", "bad"); return; }
+          api.say("user", label);
+          const list = unique(src.codes);
+          if (!list.length) { api.say("bot", src.rounded ? `${num(src.rounded)} ô số bị làm tròn (Excel chỉ giữ 15 chữ số), không đọc được Group UID.` : "Không thấy Group UID (16 số, bắt đầu 1028).", "bad"); return; }
+          if (list.length > MAX_CODES) { api.say("bot", `Tối đa ${num(MAX_CODES)} Group UID mỗi lần (đang có ${num(list.length)}).`, "bad"); return; }
+          setBusy(true);
+          try {
+            const data = await lookup(list), rows = buildRows(data);
+            if (!rows.length) { api.say("bot", `Không Group UID nào có trong dữ liệu đồng bộ (${num(list.length)} mã).`, "bad"); return; }
+            render({ rows, missing: data.missing, rounded: src.rounded, openPlans: data.openPlans, src: label, ...suggest(rows, data.openPlans) });
+          } catch (error) { api.say("bot", `Không tra được Group UID: ${error.message}`, "bad"); }
+          finally { setBusy(false); }
+        }
+        async function fromFiles(files) {
+          const api = A();
+          if (!api?.admin()) { api?.say("bot", "Cần đăng nhập Admin.", "bad"); return; }
+          if (busyNow()) { api.say("bot", "Đang xử lý, thử lại sau.", "bad"); return; }
+          const label = files.map(f => f.name).join(", "), bad = files.filter(f => !/\.(xlsx|csv|txt)$/i.test(f.name));
+          if (bad.length) { api.say("user", label); api.say("bot", `Chỉ nhận .xlsx, .csv, .txt: ${bad.map(f => f.name).join(", ")}`, "bad"); return; }
+          const src = { codes: [], rounded: 0 };
+          setBusy(true);
+          try { for (const file of files) { const r = await fromFile(file); src.codes.push(...r.codes); src.rounded += r.rounded; } }
+          catch (error) { setBusy(false); api.say("user", label); api.say("bot", error.message, "bad"); return; }
+          setBusy(false);
+          start(label, src);
+        }
+        // Không nhận được phản hồi khi tạo đợt: chờ giao dịch xong (SETTLE_MS) rồi tìm đợt theo MÃ THAO TÁC trong sourceName (tên đợt không duy nhất,
+        // không dựa đồng hồ máy). Trả đợt / false (máy chủ không có) / null (chưa kiểm được)
+        async function findMade(token) {
+          await sleep(SETTLE_MS);
+          try { const d = await rpc("fabric_issue_list", {}); return (d.plans || []).find(p => p.sourceName === token) || false; }
+          catch (_) { return null; }
+        }
+        async function create() {
+          const api = A();
+          if (busyNow() || !card?.el?.isConnected || card.done) return;
+          if (!api.admin()) { api.say("bot", "Phiên Admin đã hết; đăng nhập lại.", "bad"); return; }
+          const f = fields(), on = picked(), mine = card;
+          if (!f.name) { api.say("bot", "Cần tên đợt.", "bad"); $("pa-pl-name").focus(); return; }
+          if (!on.length) return;
+          // Mã thao tác riêng mỗi lần bấm (cột source_name, không hiện trên giao diện) để đối soát khi rớt mạng
+          const token = `${SOURCE}:${crypto.randomUUID()}`;
+          const plan = { name: f.name, styleNo: f.styleNo, poNo: f.poNo, itemNo: "", sourceName: token, needs: [],
+            lines: on.map(r => ({ sku: r.sku, color: r.color, lotNo: r.lot, rollNo: r.roll, qtyM: r.qtyM, gw: null, nw: null })) };
+          setBusy(true);
+          try {
+            let made;
+            try { made = await rpc("fabric_issue_import", { p_plan: plan }); }
+            catch (error) {
+              if (!error.unsure) throw error;
+              // RULES §9: timeout / rớt mạng không chứng minh máy chủ chưa ghi → khoá thẻ, báo "chưa rõ", kiểm lại trên máy chủ
+              mine.done = "?"; paint();
+              api.say("bot", `Chưa rõ đợt đã được tạo chưa (${error.message}); đang kiểm trên máy chủ.`, "bad");
+              const found = await findMade(token);
+              if (found === false) { mine.done = ""; api.say("bot", "Máy chủ chưa ghi đợt này; bấm Tạo đợt để gửi lại.", "bad"); return; }
+              if (found === null) { api.say("bot", "Chưa kiểm được trên máy chủ; xem ở CẤP VẢI trước khi tạo lại.", "bad"); mountDone("", "Chưa rõ"); return; }
+              made = { plan: found, overlap: null };
+            }
+            const id = String(made?.plan?.id || "");
+            if (!id) throw new Error("không nhận được mã đợt mới");
+            mine.done = id; paint();
+            // fabric_issue_import ghép theo SKU + Lot + Roll: đọc lại đợt (dòng camelCase của fabric_issue_lines_json), so tập UID đã ghép với tập đã chọn
+            let got = null;
+            try { got = await rpc("fabric_issue_get", { p_plan_id: id }); } catch (_) { got = null; }
+            api.say("bot", `Đã tạo đợt "${f.name}": ghép ${made.plan.matched}/${made.plan.total} cuộn.`);
+            if (got) {
+              const lines = got.lines || [], matched = new Set(lines.filter(l => l.state === "matched" && l.groupUid).map(l => String(l.groupUid))), want = on.map(r => r.uid);
+              const lost = want.filter(u => !matched.has(u)), extra = [...matched].filter(u => !want.includes(u));
+              const states = Object.entries(lines.filter(l => !l.groupUid).reduce((m, l) => (m[l.state || "?"] = (m[l.state || "?"] || 0) + 1, m), {})).map(([k, n]) => `${k} ${n}`).join(", ");
+              if (lost.length || extra.length) api.say("bot", `Ghép lệch UID — chưa ghép: ${short(lost) || "—"}${extra.length ? `; ghép thay: ${short(extra)}` : ""}${states ? ` (${states})` : ""}.`, "bad");
+            } else api.say("bot", "Chưa đọc lại được đợt vừa tạo để so UID; kiểm ở CẤP VẢI.", "bad");
+            if (made.overlap?.shared) api.say("bot", `${made.overlap.shared} cuộn trùng đợt khác${made.overlap.issuedElsewhere ? ` (${made.overlap.issuedElsewhere} đã cấp)` : ""}.`, "bad");
+            mountDone(id, f.name);
+          } catch (error) { api.say("bot", `Không tạo được đợt: ${error.message}`, "bad"); }
+          finally { setBusy(false); }
+        }
+        function downloadPl() {
+          const ui = window.AdminSyncUI, on = picked(), f = fields();
+          if (!A()?.admin()) { A()?.say("bot", "Phiên Admin đã hết; đăng nhập lại.", "bad"); return; }
+          if (!ui?.xlsxBlob) { A().say("bot", "Bộ xuất Excel chưa sẵn sàng; tải lại trang.", "bad"); return; }
+          if (!on.length) return;
+          // Khuôn bộ đọc Packing List của CẤP VẢI: sheet "PACKING LIST", cột SKU / COLOR / LOT NO / ROLLS NO / QTY (M); dòng TOTAL bị bỏ qua khi nhập
+          const head = ["SKU", "COLOR", "LOT NO", "ROLLS NO", "QTY (M)", "GROUP UID", "LOCATION", "PO NO"];
+          const rows = on.map(r => [r.sku, r.color, r.lot, r.roll, r.qtyM, r.uid, r.location, r.po]);
+          rows.push(["TOTAL", "", "", `${on.length} cuộn`, r3(on.reduce((s, r) => s + r.qtyM, 0)), "", "", f.poNo]);
+          const blob = ui.xlsxBlob(head, rows, "PACKING LIST"), url = URL.createObjectURL(blob), a = document.createElement("a");
+          a.href = url; a.download = `${(f.name || "Packing List").replace(/[\\/:*?"<>|]+/g, "-")}.xlsx`;
+          document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1500);
+        }
+        function openCapVai(id) {
+          if (id) {
+            try { localStorage.setItem(PLAN_KEY, id); } catch (_) {}
+            dispatchEvent(new CustomEvent("print-sku-cap-vai-plan", { detail: { planId: id } }));
+          }
+          location.hash = "#cap-vai";
+        }
+
+        // ---- Sự kiện ----
+        // Có Group UID (1028…) mà không nhắc phiếu IT — trừ khi ≥ 2 UID (danh sách có cột "Phiếu …" vẫn là danh sách)
+        const wantsPl = (text, typed = "") => { const src = sourceOf(text), n = unique(src.codes).length; return (n || src.rounded) && !(n < 2 && IT_WORD.test(`${typed} ${text}`)) ? src : null; };
+        // Câu gõ rồi Enter (print-assistant-script gọi trước khi tách ý định in)
+        const take = text => { const src = wantsPl(text); if (!src?.codes.length) return false; start(text, src); return true; };
+        input.addEventListener("paste", event => {
+          if (!A()?.admin()) return;
+          const src = wantsPl(event.clipboardData?.getData("text/plain") || "", input.value);
+          if (!src) return; // số phiếu IT (cũng 16 số) / chữ thường → dán vào ô câu lệnh như cũ
+          event.preventDefault(); // danh sách dài không đổ vào ô câu lệnh (tối đa 300 ký tự)
+          start(`Dán danh sách · ${num(unique(src.codes).length)} Group UID`, src);
+        });
+        attach.addEventListener("click", () => { if (!attach.disabled) fileInput.click(); });
+        fileInput.addEventListener("change", () => { const files = [...fileInput.files]; fileInput.value = ""; if (files.length) fromFiles(files); });
+        if (chat) {
+          // Luôn chặn mặc định khi kéo tệp vào khung (không để trình duyệt mở tệp, rời trang)
+          chat.addEventListener("dragover", event => { if (![...(event.dataTransfer?.types || [])].includes("Files")) return; event.preventDefault(); if (A()?.admin()) chat.dataset.drop = "on"; });
+          chat.addEventListener("dragleave", event => { if (!chat.contains(event.relatedTarget)) delete chat.dataset.drop; });
+          chat.addEventListener("drop", event => { delete chat.dataset.drop; const files = [...(event.dataTransfer?.files || [])]; if (!files.length) return; event.preventDefault(); fromFiles(files); });
+        }
+        thread.addEventListener("click", event => {
+          const button = event.target.closest("button"); if (!button) return;
+          if (button.id === "pa-pl-cancel") { if (!busyNow()) { card?.el?.remove(); card = null; } }
+          else if (button.id === "pa-pl-xlsx") downloadPl();
+          else if (button.id === "pa-pl-create") create();
+          else if (button.hasAttribute("data-pl-open")) openCapVai(button.dataset.plOpen);
+        });
+        thread.addEventListener("change", event => {
+          const box = event.target.closest("[data-pl-on]"); if (!box || !card || busyNow() || card.done) return;
+          card.rows[Number(box.closest(".pa-pl-row").dataset.i)].on = box.checked; paint();
+        });
+        window.PrintSkuAssistantPl = Object.freeze({ take, paint });
       })();
     </script>
     <style id="uid-block-style">
@@ -13491,20 +13850,21 @@ async function rpc(name,args,retry=true){
         });
 
         // Đọc MỌI sheet theo đúng thứ tự + tên trong workbook (workbook.xml.rels → tệp sheet), chuỗi dùng chung, chuỗi trong ô, số.
-        const readWorkbook=async bytes=>{
+        // opts (24/10/2026, Trợ lý in PL): numeric(v) đổi giá trị ô kiểu số (Excel chỉ giữ 15 chữ số), skipHidden bỏ sheet ẩn; không truyền = như cũ
+        const readWorkbook=async(bytes,opts={})=>{
           const Z=window.PrintSkuZip,entries=Z.readZipEntries(bytes),dec=new TextDecoder(),parser=new DOMParser();
           const xml=async name=>{if(!entries[name])return null;const d=parser.parseFromString(dec.decode(await Z.inflateZipEntry(bytes,entries[name])),'application/xml');if(d.getElementsByTagName('parsererror').length)throw new Error(`tệp hỏng (${name})`);return d};
           const shared=[];const ss=await xml('xl/sharedStrings.xml');if(ss)[...ss.getElementsByTagName('si')].forEach(si=>shared.push([...si.getElementsByTagName('t')].filter(t=>t.parentNode.nodeName!=='rPh').map(t=>t.textContent).join('')));
           const wb=await xml('xl/workbook.xml'),rels=await xml('xl/_rels/workbook.xml.rels');
           const target=new Map(rels?[...rels.getElementsByTagName('Relationship')].map(r=>[r.getAttribute('Id'),r.getAttribute('Target')||'']):[]);
           const files=Object.keys(entries).filter(n=>/^xl\/worksheets\/sheet\d+\.xml$/.test(n)).sort((a,b)=>Number(a.match(/\d+/g).pop())-Number(b.match(/\d+/g).pop()));
-          const list=wb?[...wb.getElementsByTagName('sheet')].map((s,i)=>{const t=target.get(s.getAttribute('r:id'));return{name:s.getAttribute('name')||`Sheet ${i+1}`,path:t?(t.startsWith('/')?t.slice(1):`xl/${t.replace(/^\.\//,'')}`):files[i]}}):files.map((f,i)=>({name:`Sheet ${i+1}`,path:f}));
+          const list=wb?[...wb.getElementsByTagName('sheet')].map((s,i)=>{const t=target.get(s.getAttribute('r:id'));return{name:s.getAttribute('name')||`Sheet ${i+1}`,path:t?(t.startsWith('/')?t.slice(1):`xl/${t.replace(/^\.\//,'')}`):files[i],hidden:/hidden/i.test(s.getAttribute('state')||'')}}):files.map((f,i)=>({name:`Sheet ${i+1}`,path:f}));
           const col=ref=>{let n=0;for(const ch of ref.replace(/\d+$/,''))n=n*26+(ch.charCodeAt(0)-64);return n-1};
           const sheets=[];
-          for(const{name,path}of list){
+          for(const{name,path,hidden}of list){if(hidden&&opts.skipHidden)continue;
             const doc=path?await xml(path):null;if(!doc)continue;
             const rows=new Map();
-            [...doc.getElementsByTagName('row')].forEach(row=>{const r=Number(row.getAttribute('r'))-1;[...row.getElementsByTagName('c')].forEach((c,ci)=>{const ref=c.getAttribute('r')||'',t=c.getAttribute('t'),v=c.getElementsByTagName('v')[0];let val='';if(t==='inlineStr')val=[...c.getElementsByTagName('t')].map(x=>x.textContent).join('');else if(v)val=t==='s'?(shared[Number(v.textContent)]??''):v.textContent;if(!rows.has(r))rows.set(r,[]);rows.get(r)[ref?col(ref):ci]=String(val??'').trim()})});
+            [...doc.getElementsByTagName('row')].forEach(row=>{const r=Number(row.getAttribute('r'))-1;[...row.getElementsByTagName('c')].forEach((c,ci)=>{const ref=c.getAttribute('r')||'',t=c.getAttribute('t'),v=c.getElementsByTagName('v')[0];let val='';if(t==='inlineStr')val=[...c.getElementsByTagName('t')].map(x=>x.textContent).join('');else if(v)val=t==='s'?(shared[Number(v.textContent)]??''):(!t||t==='n')&&opts.numeric?opts.numeric(v.textContent):v.textContent;if(!rows.has(r))rows.set(r,[]);rows.get(r)[ref?col(ref):ci]=String(val??'').trim()})});
             sheets.push({name,rows:[...rows.keys()].sort((a,b)=>a-b).map(k=>rows.get(k))});
           }
           return sheets;
@@ -14541,6 +14901,7 @@ async function rpc(name,args,retry=true){
         const loadPlans=async()=>{
           const r=await rpc('fabric_issue_list');
           S.plans=r.data?.plans||[];
+          if(S.pendingPlan){const id=S.pendingPlan;S.pendingPlan='';if(id!==S.planId&&S.plans.some(p=>p.id===id)){S.planId=id;S.recent=[];S.touch.clear();paintRecent();paintResult(null)}}
           if(!S.plans.some(p=>p.id===S.planId)){const saved=store.get(K.plan);S.planId=(S.plans.find(p=>p.id===saved)||S.plans.find(p=>p.status==='open')||S.plans[0])?.id||''}
           syncCounts();
         };
@@ -14836,6 +15197,8 @@ async function rpc(name,args,retry=true){
         if(tile)tile.addEventListener('click',()=>{location.hash='#'+ROUTE});
         $('cap-vai-back').addEventListener('click',()=>{location.hash='#home'});
         document.addEventListener('visibilitychange',()=>{if(!document.hidden&&active()&&!S.busy&&!S.pumping)refresh()});
+        // Trợ lý in vừa tạo đợt (assistant-pl-script) → ghi khoá + đợt chờ; loadPlans kế tiếp chọn đợt đó (không bỏ khi đang bận).
+        addEventListener('print-sku-cap-vai-plan',e=>{const id=String(e.detail?.planId||'');if(!id)return;store.set(K.plan,id);S.pendingPlan=id});
         window.addEventListener('hashchange',route);
         renderAll();route();
       })();

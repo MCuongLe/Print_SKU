@@ -49,6 +49,7 @@ flowchart TB
 | Đồng bộ Group UID (WMS) | Extension `GET_GROUP_UID_PAGE` (đọc vào bộ nhớ, kiểm nhất quán) → Edge `group-uid-sync` prepare/ingest/preview/apply | `docs/THIET_KE_DONG_BO_GROUP_UID_VA_DASHBOARD.md` |
 | Đồng bộ tự động | Extension nền `auto-sync.js`, alarms 30 phút trong giờ làm, lease 15 phút, 4 loại `group_uid`/`sku`/`cut_adj`/`storage_risk` | `docs/plans/2026-10-22-extension-0107-tu-dong-mo-rong.md` |
 | Xưởng: cắt / lấy mẫu / cấp vải / xả vải / lựa UID blocked | RPC ghi qua `floor_access_check` (máy đã kích hoạt) | PROJECT_MAP mục 4 "Khoá máy" |
+| Trợ lý in → Packing List cấp vải | `#assistant` dán / gõ / đính kèm (.xlsx · .csv · .txt) Group UID → RPC `fabric_issue_lookup_uids` (Admin, chỉ đọc) → thẻ xem trước → `fabric_issue_import` → CẤP VẢI (khoá `cap-vai-dot` + sự kiện `print-sku-cap-vai-plan`); hoặc Tải PL .xlsx | `docs/plans/2026-10-24-tro-ly-in-tao-pl.md` |
 | Kiểm tra: kiểm kê, rủi ro lưu trữ, kiểm tra đầu vào, đối chiếu ADJ | bản chụp Supabase + đọc WMS qua Extension | PROJECT_MAP mục 2 |
 
 **Bẫy:** quyết định nghiệp vụ đã chốt (vd. không nạp bù SKU ngừng, Combo vẫn hiện Inactive, mỗi lot cắt + QC ≥ 30 %) nằm trong `RULES.md` — grep trước khi đề xuất lại.
@@ -67,6 +68,7 @@ flowchart TB
 | Tệp | Dùng để |
 |---|---|
 | `AGENTS.md` | Luật làm việc, kiểm chứng, bàn giao (áp cho mọi agent) |
+| `docs/CONTEXT_MAP.md` (tệp này) | Bản đồ 6 nguồn mức cao; cập nhật cùng commit khi thêm / bỏ Edge, Extension, agent hay hệ thống ngoài, khi có luồng nghiệp vụ mới đi qua từ 2 module trở lên, hoặc khi đổi cách gói repomix / công cụ tìm khối |
 | `docs/PROJECT_MAP.md` | Bản đồ chi tiết module ↔ khối ↔ Extension ↔ Edge ↔ SQL; cập nhật cùng commit khi đổi module |
 | `RULES.md` (chỉ trên máy, gitignored) | Đầu tệp: mục lục quyết định đang hiệu lực (12 chủ đề, "Đã bỏ", "Làm sau", trạng thái lên thật); dưới: nhật ký theo thời gian. Quyết định mới ghi vào CẢ hai. Ràng buộc mọi agent |
 | `docs/DOI_AGENT.md`, `.claude/agents/`, `.claude/skills/` | Đội agent (lead, trinh-sat, thuc-thi-logic, kiem-thu, co-van/Fable), quy trình review Codex + Claude |

@@ -455,6 +455,13 @@ async function printFlows(browser) {
   const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
   const pressPrint = async () => { const n = (await calls(page)).enqueue.length + 1; await page.locator("#pa-print").click(); await page.waitForFunction(n => window.__calls.enqueue.length >= n, n); };
 
+  // Trợ lý bận (luồng Packing List / Edge giữ cờ chung): thẻ phiếu IT khoá ô sửa để màn không lệch danh sách sẽ in (review PL vòng 2)
+  await send(page, `IT ${IT} 2 bản`); await waitCard(page);
+  await page.evaluate(() => window.PrintSkuAssistant.setBusy(true));
+  for (const sel of ["#pa-copies", "#pa-copies-inc", "#pa-cancel", "#pa-confirm [data-pa-on]", "#pa-confirm [data-pa-n]"]) assert.equal(await page.locator(sel).first().isDisabled(), true, `trợ lý bận: khoá ${sel}`);
+  await page.evaluate(() => window.PrintSkuAssistant.setBusy(false));
+  for (const sel of ["#pa-copies", "#pa-copies-inc", "#pa-cancel", "#pa-confirm [data-pa-on]", "#pa-confirm [data-pa-n]"]) assert.equal(await page.locator(sel).first().isDisabled(), false, `hết bận: mở ${sel}`);
+
   // Lỗi trước khi có lệnh nào: giữ thẻ, bấm lại cùng nonceBase; đổi số bản thì nonceBase mới
   await send(page, `IT ${IT} 2 bản`); await waitCard(page);
   await page.evaluate(() => { window.__enqueueFail = { message: "Mất kết nối hàng đợi", jobIds: [], labels: 0 }; });
