@@ -155,7 +155,8 @@
 
 ### Danh mục trên máy
 - Supabase luôn đúng; IndexedDB (`print-sku-cache`, `print-sku-find-sku`) chỉ để hiện nhanh, không ghi ngược; vào màn hỏi phiên bản một lần, tải toàn bộ mỗi 12 giờ; mất mạng báo "Bản lưu trên máy lúc …". (18/10 · N1033, N1035)
-- `window.PrintSkuCatalog` dùng chung Tìm SKU / In tem SKU / ô quét / Chuyển đổi đơn vị / Gán tự động; ghi IndexedDB đọc–so–ghi một giao dịch; vá tên khi in chỉ trong RAM; dựa `updated_at` do sku-sync đóng dấu. (18–19/10 · N1085, N1105)
+- `window.PrintSkuCatalog` dùng chung Tìm SKU / In tem SKU / ô quét / Chuyển đổi đơn vị / Gán tự động; ghi IndexedDB đọc–so–ghi một giao dịch; vá tên khi in chỉ trong RAM. (18–19/10 · N1085, N1105)
+- `SKU_Name.updated_at` do trigger `sku_name_touch` đóng dấu theo giờ database khi thêm / dữ liệu đổi (từ 25/10); hai đường ghi chạy đồng thời có thể làm máy sót tên tới lần tải toàn bộ 12 giờ — chấp nhận, tên tem vẫn đúng. (25/10 · N20261025-2156)
 
 ### Chuyển đổi đơn vị
 - Chỉ: trừ lõi `số cuộn × gram lõi`; cân cuộn nguyên thắng Tex, lệch > 5% = NG. Vải: không trừ lõi, g/m = gsm × khổ_cm/100; `mm/gr = 1000 ÷ g/m`. (08/10 · N0057)
@@ -299,7 +300,6 @@
 
 ### Chờ người dùng chốt
 - Mã kích hoạt máy in dùng được cho nhiều máy (max_uses): người dùng chốt ĐỂ SAU (23/10). Dọn lệnh SENT_UNCONFIRMED từ máy còn sống (không chờ cron ngày): làm ở đợt cài may-kho-02. Kiểm kê `readExact`: nếu sau Reload 0.10.8 báo "thay đổi trong lúc đọc" với cùng cặp số ở cả 3 lần → nới (lệch cố định). (23/10 · N1185)
-- Trigger `sku_name_touch` (commit df52180, chưa có trên DB; nhiều nguồn ghi đồng thời). (18/10 · N1068)
 - Lớp Edge "chỉ lưu trữ SKU thiếu 2 lượt toàn bộ liên tiếp": chỉ hỏi nếu còn lưu trữ nhầm. (22/10 · N1136)
 - Tem Phụ liệu có số lượng mà PO + ngày trống: có vẽ khung không (R5). (23/10 · N1160)
 - Ngoại lệ "SKU ngừng nhưng còn UID sống vẫn nạp" (3 SKU). (14/10 · N0665, N0666)
@@ -348,7 +348,7 @@
 
 ## Trạng thái lên thật (kiểm Supabase MCP chỉ đọc + git, 25/10/2026 tối)
 
-Kiểm lại: `python scripts/live_status.py` (chỉ đọc). Chạy 25/10/2026 21:41: 86/87 tệp migration đủ đối tượng; thiếu đúng `sku_name_touch_v1.sql`; Edge, agent, cron như dưới.
+Kiểm lại: `python scripts/live_status.py` (chỉ đọc). Chạy 25/10/2026 21:56: 87/87 tệp migration đủ đối tượng; Edge, agent, cron như dưới.
 
 Mục này thắng mọi ghi chú "CHƯA LÊN" trong nhật ký. Kiểm lại khi thêm migration / Edge / Extension / agent; ghi ngày kiểm ở tiêu đề.
 
@@ -370,6 +370,7 @@ Mục này thắng mọi ghi chú "CHƯA LÊN" trong nhật ký. Kiểm lại kh
 - Tem SKU một mẫu v3 + in lại tem PO: `print_sku_v3_v1` + `sku_po_receipts_v1` (23/10).
 - `backend_hygiene_v1` (Đợt B, 24/10 00:34: có `print_job_cancel`, index `uid_block_scans_device_idx` · N1194, N1195).
 - `vendor_return_v1` + `vendor_return_v2` (Trả NCC, 24/10: bảng `vendor_return_lists`, index `vendor_return_lists_one_active`, hàm `vendor_return_reconcile` · N1198, N1200).
+- `sku_name_touch_v1` (25/10: hàm + trigger `sku_name_touch` trên `SKU_Name` · N20261025-2156).
 
 **ĐÃ LÊN — Edge Function (bản đang chạy ↔ commit cuối của thư mục hàm)**
 - `sku-sync` bản 12, deploy 24/10 07:26 — sau commit 7f0791a (23/10 23:07).
@@ -383,7 +384,6 @@ Mục này thắng mọi ghi chú "CHƯA LÊN" trong nhật ký. Kiểm lại kh
 - Cron (giờ UTC, VN = +7): `print-jobs-purge` 03:00, `sync-history-purge` 03:30, `print-assistant-purge` 03:50, `floor-access-purge` 03:55 mỗi ngày; `group-uid-canceled-purge` 03:15 và `sku-inactive-archive` 03:45 sáng thứ Hai; `uid-block-refresh-wms` mỗi 30 phút.
 
 **CHƯA LÊN**
-- Trigger `sku_name_touch` (`sku_name_touch_v1.sql`, 20/10): không có hàm lẫn trigger trên DB (kiểm lại 25/10); danh mục SKU trên máy dựa `updated_at` do sku-sync đóng dấu; đang gác.
 - `Máy kho 02`: đã tạo trong `print_agents` (khai `sku:v1`, `group_uid:v1`, `location:*`) nhưng chưa từng kết nối — chưa cài agent.
 
 **Đã lên, CHƯA thử thật**
