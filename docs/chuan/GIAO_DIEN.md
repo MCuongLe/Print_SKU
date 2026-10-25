@@ -1,7 +1,7 @@
 # Chuẩn giao diện (25/10/2026)
 
 Áp cho: mọi màn trong `index.html`, kể cả CSS đè lên bundle React. Đọc khi: làm màn mới, sửa giao diện, chụp ảnh review.
-Gom từ mục lục `RULES.md` chủ đề 2, các mục "Chuẩn …" của `README.md`, `docs/DOI_AGENT.md` và các test chuẩn; không có luật mới. Luật nền (tiếng Việt, không CDN, sửa nhỏ nhất): `AGENTS.md`.
+Gom từ `docs/QUYET_DINH.md` chủ đề 2, các mục "Chuẩn …" của `README.md`, `docs/DOI_AGENT.md` và các test chuẩn; không có luật mới. Luật nền (tiếng Việt, không CDN, sửa nhỏ nhất): `AGENTS.md`.
 
 ## Nguyên tắc
 
@@ -57,5 +57,5 @@ Gom từ mục lục `RULES.md` chủ đề 2, các mục "Chuẩn …" của `R
 
 ## Chưa thống nhất (chờ chốt hoặc sửa ở đợt sau)
 
-- `README.md` mục "Header các màn hình" ghi header cao 64 px; mục lục `RULES.md` (12/10 · N0564) ghi máy tính cao 80. Tệp này theo `RULES.md`; README sửa ở đợt 4.
+- `README.md` mục "Header các màn hình" ghi header cao 64 px; `docs/QUYET_DINH.md` (12/10 · N0564) ghi máy tính cao 80. Tệp này theo `docs/QUYET_DINH.md`; README sửa ở đợt 4.
 - `docs/THIET_KE_HEADER_UI.md`, `docs/THIET_KE_BO_ICON_UI.md`, `docs/THIET_KE_BUTTON_IN_TEM_CHUYEN_DONG.md` là đặc tả gốc 03–07/10, đã đánh dấu lịch sử; luật hiện hành ở tệp này.

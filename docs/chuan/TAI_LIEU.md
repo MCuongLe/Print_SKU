@@ -13,7 +13,7 @@ Luật về cách viết tài liệu chỉ nằm ở tệp này; tệp khác tr�
 | Module ↔ khối `index.html` ↔ Extension ↔ Edge ↔ SQL ↔ test | `docs/PROJECT_MAP.md` |
 | Cách viết tài liệu, khuôn mẫu | tệp này |
 | Chuẩn kỹ thuật theo chủ đề | `docs/chuan/*.md` |
-| Quyết định đang hiệu lực | mục lục đầu `RULES.md` (chỉ trên máy) |
+| Quyết định đang hiệu lực | `docs/QUYET_DINH.md` |
 | Lịch sử, số đo, căn cứ | nhật ký `RULES.md` (chỉ trên máy) |
 | Kế hoạch nhiều bước | `docs/plans/` (khuôn ở `docs/plans/README.md`) |
 | Hướng dẫn vận hành | `README.md`, `workstation-agent/README.md`, `extension/inside-po-connector/README.md` |
@@ -36,7 +36,7 @@ Luật về cách viết tài liệu chỉ nằm ở tệp này; tệp khác tr�
 
 - Mỗi mục nhật ký mới mở bằng mã `[N<yyyymmdd>-<hhmm>]` theo giờ Việt Nam lúc ghi, vd. `[N20261025-2130]`. Trùng phút thì thêm `b`, `c`.
 - Dòng nhật ký cũ được trỏ tới mang mã `[N0965]`: 4 số là số dòng nhật ký gốc, đông cứng ngày 25/10/2026.
-- Mục lục và tài liệu khác trỏ bằng mã, không bằng số dòng: `(17/10 · N0965, N0966)`; đoạn liền: `N0106–N0130`.
+- `docs/QUYET_DINH.md` và tài liệu khác trỏ bằng mã, không bằng số dòng: `(17/10 · N0965, N0966)`; đoạn liền: `N0106–N0130`.
 - Tra: grep `[N0965]` trong `RULES.md`.
 
 ## 4. Khuôn mẫu
@@ -51,7 +51,7 @@ Luật về cách viết tài liệu chỉ nằm ở tệp này; tệp khác tr�
   - Chưa kiểm: <việc người dùng còn phải thử thật>
 ```
 
-**Dòng mục lục quyết định** (đúng chủ đề trong 12 chủ đề):
+**Dòng trong `docs/QUYET_DINH.md`** (đúng chủ đề trong 12 chủ đề):
 
 ```markdown
 - <luật đang hiệu lực, một câu>. (<ngày chốt> · <mã nhật ký>)
@@ -59,7 +59,7 @@ Luật về cách viết tài liệu chỉ nằm ở tệp này; tệp khác tr�
 
 Thay luật cũ thì sửa hoặc xoá dòng cũ; không để hai bản cùng hiệu lực. Luật đã bỏ chuyển sang mục "Đã bỏ hẳn".
 
-**Mục "Trạng thái lên thật"**:
+**Mục "Trạng thái lên thật"** (cuối `docs/QUYET_DINH.md`):
 - Tiêu đề ghi ngày kiểm và cách kiểm (Supabase MCP chỉ đọc, git).
 - Nhóm theo thứ tự: Web · Migration · Edge · Extension / agent / cron · CHƯA LÊN · Đã lên, CHƯA thử thật.
 - Mỗi dòng có bằng chứng: tên đối tượng trên DB, bản Edge và giờ deploy, commit.
@@ -111,10 +111,10 @@ README mô tả hành vi hiện tại; lịch sử thay đổi ghi nhật ký `R
 |---|---|
 | Module, khối `index.html`, lệnh Extension, action Edge, chuỗi migration | `docs/PROJECT_MAP.md` |
 | Thêm / bỏ Edge, Extension, agent, hệ thống ngoài; luồng nghiệp vụ mới qua ≥ 2 module; cách gói repomix, công cụ tìm khối | `docs/CONTEXT_MAP.md` |
-| Quy trình, đội agent, review | `docs/DOI_AGENT.md` + dòng mục lục `RULES.md` |
+| Quy trình, đội agent, review | `docs/DOI_AGENT.md` + dòng `docs/QUYET_DINH.md` |
 | Hành vi người dùng thấy | mục module trong `README.md` |
-| Quyết định mới | nhật ký `RULES.md` (mã mới) + dòng mục lục |
-| Lên thật migration / Edge / Extension / agent | mục "Trạng thái lên thật" |
+| Quyết định mới | nhật ký `RULES.md` (mã mới) + dòng `docs/QUYET_DINH.md` |
+| Lên thật migration / Edge / Extension / agent | `docs/QUYET_DINH.md` mục "Trạng thái lên thật" |
 | Cách viết tài liệu | tệp này |
 
 ## 6. Kiểm trước khi báo xong

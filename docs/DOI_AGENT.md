@@ -21,12 +21,12 @@ Xem `AGENTS.md` mục "Bốn luật cứng" (nguồn duy nhất từ 25/10/2026)
 | Cố vấn quyết định | Fable | `co-van` | Chỉ đọc. **Bước cố định của mọi vòng review mã (người dùng yêu cầu 22/10/2026):** sau khi Codex + `/review-claude` xong, Fable nhận phát hiện thô (không kèm kết luận của lead), gộp trùng, mở mã xác nhận, xếp nên sửa / làm sau / bỏ qua; lead đối chiếu với bản lọc của mình, lệch thì đọc lại mã rồi quyết (không áp dụng cho vòng ảnh giao diện). Ngoài ra gọi khi lead (Opus) **không tự quyết được**, ở 4 điểm: (1) chọn giữa ≥ 2 hướng thiết kế mà đọc mã/dữ liệu vẫn không rõ bên nào hơn, khi hướng đó chạm dữ liệu, in, quyền hay migration; (2) review chạm giới hạn 3 vòng, cần hướng tiếp cận khác; (3) Codex và `/review-claude` mâu thuẫn, hoặc không rõ một phát hiện có thật không; (4) đã thử 2 giả thuyết mà chưa ra nguyên nhân gốc. Bản hỏi ≤ 1 trang (câu hỏi, các hướng, bằng chứng, ràng buộc). Không gọi cho lựa chọn người dùng thấy (hỏi người dùng), lỗi đơn giản, thẩm mỹ giao diện. Lead vẫn quyết và báo người dùng "đã hỏi Fable: …". Lead là Fable thì không cần. Thêm 18/10/2026 theo yêu cầu người dùng |
 | Nghiệm thu | người dùng | | chốt thiết kế khi có lựa chọn, chạy thật trên Inside/WMS/máy in, duyệt ảnh |
 
-Agent được giao việc **không commit, không migration/deploy, không ghi `RULES.md`**, báo cáo kèm dòng test thật. `RULES.md` không vào git: đọc bằng đường dẫn tuyệt đối `C:\Users\HASAKI\Documents\GitHub\Print_SKU\RULES.md`. Agent làm trong worktree thì dùng cổng máy chủ riêng (8001, 8002, …) và `BASE=`.
+Agent được giao việc **không commit, không migration/deploy, không ghi `RULES.md`**, báo cáo kèm dòng test thật. Quyết định đang hiệu lực: `docs/QUYET_DINH.md`. Nhật ký `RULES.md` không vào git: đọc bằng đường dẫn tuyệt đối `C:\Users\HASAKI\Documents\GitHub\Print_SKU\RULES.md`. Agent làm trong worktree thì dùng cổng máy chủ riêng (8001, 8002, …) và `BASE=`.
 
 ## Một yêu cầu đi thế nào
 
 1. **Hiểu và quyết.** Lead tự làm; trinh sát / Fable chỉ theo điều kiện ở bảng "Ai làm gì".
-   - **Đọc:** theo thứ tự của `CLAUDE.md` — `docs/CONTEXT_MAP.md` → `docs/PROJECT_MAP.md` → mục lục "QUYẾT ĐỊNH ĐANG HIỆU LỰC" đầu `RULES.md` (grep theo tên module, trước khi hỏi hay tự quyết); grep xác minh neo; đo dữ liệu thật nếu cần (Supabase MCP chỉ đọc, DevTools trên tab Inside/WMS, không dùng `get_network_request` vì lộ token).
+   - **Đọc:** theo `AGENTS.md` — `docs/CONTEXT_MAP.md` → `docs/PROJECT_MAP.md` → `docs/QUYET_DINH.md` (grep theo tên module, trước khi hỏi hay tự quyết); grep xác minh neo; đo dữ liệu thật nếu cần (Supabase MCP chỉ đọc, DevTools trên tab Inside/WMS, không dùng `get_network_request` vì lộ token).
    - **Đúng loại sản phẩm:** yêu cầu "thiết kế", "đánh giá", "kiểm tra", "cảnh báo khi tôi nhờ" → giao đúng sản phẩm đó (bản vẽ, nhận xét, số đo, câu báo trong chat), không kèm danh sách build, luật mới hay mã chạy thường trực; làm tiếp chỉ khi người dùng gọi.
    - **Mẫu phản hồi thật:** mã mới đọc phản hồi RPC / Edge / WMS / Inside nào thì lấy một mẫu phản hồi thật của đúng lời gọi đó trước khi viết test (chỉ đọc: Supabase MCP, DevTools GET trên tab thật): ghi tên khoá, kiểu, định dạng mã — vd. `fabric_issue_get` trả dòng khoá camelCase `groupUid`; số phiếu IT cũng 16 số, tiền tố `1007`, còn Group UID tiền tố `1028`. Test giả dựng đúng theo mẫu đó, giá trị thay bằng dữ liệu giả chuẩn; mẫu thật không vào repo (người dùng chốt 25/10/2026, sau đợt Trợ lý in → Packing List: mock sai khoá `group_uid_code` che lỗi tới vòng review).
    - **Sửa hàm SQL / Edge đang chạy:** trước khi viết, so bản trên Supabase (`pg_get_functiondef`, mã Edge đã deploy — MCP chỉ đọc) với tệp mới nhất trong repo và kiểm tên cột thật; lệch thì xuất phát từ bản đang chạy, ghi `RULES.md` và nêu trong brief review.
@@ -67,7 +67,7 @@ Mọi lần vấp của agent 16–17/10 đều do thiếu một trong các dòn
 Việc: <một câu; kết quả nhìn thấy được>
 Tệp → neo: <tệp> → `<chuỗi neo nguyên văn, grep -c = 1>`; xuống dòng của tệp: <CRLF|LF>
 Ngoài phạm vi: <tệp/khối không chạm>
-Đã chốt (RULES.md, đọc ở C:\Users\HASAKI\Documents\GitHub\Print_SKU\RULES.md): <mỗi mục một câu>
+Đã chốt (`docs/QUYET_DINH.md`; căn cứ ở C:\Users\HASAKI\Documents\GitHub\Print_SKU\RULES.md): <mỗi mục một câu>
 Test: <tên test đỏ trước (nếu là logic/lỗi) + điều khẳng định; bộ chuẩn phải PASS>
 Môi trường: cây chính | worktree; máy chủ cổng <800N> + BASE=http://127.0.0.1:<800N>/; PLAYWRIGHT_MODULE=C:/Users/HASAKI/playwright-tools/node_modules/playwright
 Bàn giao: sửa thẳng (cây chính) | git diff > <scratchpad>/<việc>.patch (worktree); báo cáo kèm dòng FAIL/PASS thật; không commit, không RULES.md
@@ -90,7 +90,7 @@ Bàn giao: sửa thẳng (cây chính) | git diff > <scratchpad>/<việc>.patch 
 
 - Luật nền: `AGENTS.md` (trang tĩnh, sửa nhỏ nhất, không CDN / bí mật / dữ liệu thật, Supabase MCP chỉ đọc).
 - Chuẩn kỹ thuật (gom 25/10/2026 từ mục này và `RULES.md`): giao diện, kể cả cách dùng kỹ năng `frontend-design` → `docs/chuan/GIAO_DIEN.md`; sửa `index.html` → `docs/chuan/MA_WEB.md`; Supabase / Edge / Extension, kể cả nâng phiên bản Extension → `docs/chuan/DU_LIEU.md`; test, dữ liệu giả, commit khi nhiều phiên → `docs/chuan/KIEM_THU_GIT.md`.
-- Việc đã chốt là không làm trong `RULES.md` thì không ai được "sửa lại cho đúng".
+- Việc đã chốt là không làm trong `docs/QUYET_DINH.md` (mục 11) thì không ai được "sửa lại cho đúng".
 
 ## Chạy nhanh
 

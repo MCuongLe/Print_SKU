@@ -1,7 +1,7 @@
 # Chuẩn kiểm thử và git (25/10/2026)
 
 Áp cho: test trong `tests/`, commit, push. Đọc khi: viết / sửa test, chạy cả bộ, commit khi nhiều phiên cùng sửa.
-Gom từ mục lục `RULES.md` chủ đề 1, `docs/DOI_AGENT.md`, `docs/CONTEXT_MAP.md` mục 6; không có luật mới. Luật nền (bốn luật cứng, kiểm chứng, bàn giao): `AGENTS.md`. Lệnh chạy: `docs/PROJECT_MAP.md` mục 5.
+Gom từ `docs/QUYET_DINH.md` chủ đề 1, `docs/DOI_AGENT.md`, `docs/CONTEXT_MAP.md` mục 6; không có luật mới. Luật nền (bốn luật cứng, kiểm chứng, bàn giao): `AGENTS.md`. Lệnh chạy: `docs/PROJECT_MAP.md` mục 5.
 
 ## Viết test
 

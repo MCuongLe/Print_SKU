@@ -1,7 +1,7 @@
 # Chuẩn mã web `index.html` (25/10/2026)
 
 Áp cho: mã trong `index.html` (CSS, markup, script). Đọc khi: sửa hay thêm module, cổng dùng chung, script vá.
-Gom từ `docs/CONTEXT_MAP.md` mục 1, `docs/PROJECT_MAP.md` mục 2, mục lục `RULES.md` chủ đề 1–3, 9 và `docs/DOI_AGENT.md`; không có luật mới. Luật nền (trang tĩnh, không CDN / npm, sửa nhỏ nhất, grep giới hạn độ dài dòng): `AGENTS.md`. Giao diện: `docs/chuan/GIAO_DIEN.md`. Dữ liệu, RPC, Extension: `docs/chuan/DU_LIEU.md`.
+Gom từ `docs/CONTEXT_MAP.md` mục 1, `docs/PROJECT_MAP.md` mục 2, `docs/QUYET_DINH.md` chủ đề 1–3, 9 và `docs/DOI_AGENT.md`; không có luật mới. Luật nền (trang tĩnh, không CDN / npm, sửa nhỏ nhất, grep giới hạn độ dài dòng): `AGENTS.md`. Giao diện: `docs/chuan/GIAO_DIEN.md`. Dữ liệu, RPC, Extension: `docs/chuan/DU_LIEU.md`.
 
 ## Cấu trúc khối
 

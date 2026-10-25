@@ -18,7 +18,7 @@
   <rect class="card" x="40" y="40" width="640" height="150" rx="22"/>
   <g class="ic" transform="translate(344 58) scale(1.35)"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></g>
   <text class="h1" x="360" y="128" text-anchor="middle">Print SKU · AI Coding Assistant</text>
-  <text class="sub" x="360" y="160" text-anchor="middle">AGENTS.md → CONTEXT_MAP → PROJECT_MAP → RULES.md</text>
+  <text class="sub" x="360" y="160" text-anchor="middle">AGENTS.md → CONTEXT_MAP → PROJECT_MAP → QUYET_DINH</text>
 
   <g class="ic" transform="translate(348 202)"><path d="m21 16-4 4-4-4"/><path d="M17 20V4"/><path d="m3 8 4-4 4 4"/><path d="M7 4v16"/></g>
 
@@ -52,7 +52,7 @@
   <rect class="card" x="40" y="650" width="310" height="180" rx="20"/>
   <g class="ic" transform="translate(64 674)"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></g>
   <text class="h2" x="64" y="742">Documentation</text>
-  <text class="txt" x="64" y="772">PROJECT_MAP · RULES.md · docs/plans</text>
+  <text class="txt" x="64" y="772">PROJECT_MAP · QUYET_DINH · docs/plans</text>
   <text class="txt" x="64" y="796">DOI_AGENT · README từng phần</text>
 
   <rect class="card" x="370" y="650" width="310" height="180" rx="20"/>

@@ -14,14 +14,14 @@ Cách làm:
 1. Tìm bằng Grep theo id khối (`<script id="…">`, `<style id="…">`, `<section … id="…">`), tên hàm, tên RPC, lệnh Extension (`GET_…`).
 2. Với `index.html`, trả về CHUỖI NEO nguyên văn (một dòng duy nhất trong tệp, dài 60–160 ký tự, kiểm tra `grep -c` bằng 1) cho từng vị trí cần sửa. Không trả số dòng làm neo chính vì tệp đổi liên tục; số dòng chỉ để tham khảo.
 3. Liệt kê chỗ gọi: hàm nào gọi RPC nào, màn nào gọi lệnh Extension nào, test nào đụng tới selector/id đó.
-4. Trích các mục RULES.md và README.md liên quan (tên mục + 1 câu), đặc biệt các quyết định "KHÔNG làm", "cố ý", "đã chốt".
+4. Trích các mục `docs/QUYET_DINH.md` và README.md liên quan (tên mục + 1 câu), đặc biệt các quyết định "KHÔNG làm", "cố ý", "đã chốt".
 5. Ghi rõ tệp dùng CRLF hay LF (`file` hoặc `git ls-files --eol`), và phiên bản Extension hiện tại trong `manifest.json` cùng các test đang khẳng định số đó.
 
 Đầu ra, bằng tiếng Việt, gọn, theo đúng thứ tự:
 - **Tệp và vùng**: bảng tệp → vùng/khối → chuỗi neo (trong code block) → ghi chú.
 - **Chỗ gọi**: danh sách.
 - **Test liên quan**: tên tệp + điều test đang khẳng định có thể bị ảnh hưởng.
-- **Quyết định đã chốt liên quan**: gạch đầu dòng, mỗi dòng ghi nguồn (RULES.md mục …).
+- **Quyết định đã chốt liên quan**: gạch đầu dòng, mỗi dòng ghi nguồn (`docs/QUYET_DINH.md` mục …, mã nhật ký).
 - **Rủi ro đụng chạm**: chỗ nào nhiều khối cùng sửa, chỗ nào phiên khác có thể đang sửa (xem `git status`).
 
 Khi trinh sát cho **sửa lỗi**: vẽ đường dữ liệu từ nguồn (trang Inside/WMS, RPC, bảng) qua hàm parse/chuẩn hoá tới chỗ hiển thị, mỗi chặng một dòng có neo; ghi chặng nào không suy ra được từ mã (cần xem dữ liệu thật).

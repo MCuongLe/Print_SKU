@@ -4,13 +4,13 @@ Trang mở đầu cho mọi agent / phiên mới: 6 nguồn ngữ cảnh, mỗi 
 
 ![Bản đồ ngữ cảnh](context-map.svg)
 
-**Thứ tự đọc khi bắt đầu phiên:** `AGENTS.md` (luật làm việc) → tệp này → `docs/PROJECT_MAP.md` (module → id khối → Extension/Edge/SQL) → `RULES.md` (chỉ có trên máy: **đọc mục lục "QUYẾT ĐỊNH ĐANG HIỆU LỰC" ở đầu tệp** theo 12 chủ đề + trạng thái lên thật; nhật ký nguyên văn ở dưới, mục lục trỏ "dòng N") → `docs/plans/<ngày>-<tên>.md` của việc đang làm. Gói một tệp cho AI khác đọc: mục **Gói ngữ cảnh (repomix)** ở cuối.
+**Thứ tự đọc khi bắt đầu phiên:** `AGENTS.md` (luật làm việc) → tệp này → `docs/PROJECT_MAP.md` (module → id khối → Extension/Edge/SQL) → `docs/QUYET_DINH.md` (quyết định đang hiệu lực theo 12 chủ đề + trạng thái lên thật; căn cứ ở nhật ký `RULES.md` chỉ trên máy, trỏ bằng mã `[N0965]`) → `docs/plans/<ngày>-<tên>.md` của việc đang làm. Gói một tệp cho AI khác đọc: mục **Gói ngữ cảnh (repomix)** ở cuối.
 
 **Dự án là gì (một câu):** công cụ kho xưởng may Hasaki — trang tĩnh in tem SKU / Group UID / vị trí, cắt và kiểm UID, kiểm kê, đối chiếu với Inside + WMS; dữ liệu ở Supabase, lệnh in đi qua hàng đợi tới agent trên máy trạm `may-kho-01`.
 
 ```mermaid
 flowchart TB
-  A["Agent / phiên mới<br/>AGENTS.md → CONTEXT_MAP → PROJECT_MAP → RULES.md"]
+  A["Agent / phiên mới<br/>AGENTS.md → CONTEXT_MAP → PROJECT_MAP → QUYET_DINH"]
   A <--> S["Source Code<br/>index.html · Extension · agent in · Edge"]
   A <--> D["Database<br/>Supabase: bảng, RPC, cron"]
   A <--> B["Business Logic<br/>in tem · Group UID · đồng bộ"]
@@ -52,7 +52,7 @@ flowchart TB
 | Trợ lý in → Packing List cấp vải | `#assistant` dán / gõ / đính kèm (.xlsx · .csv · .txt) Group UID → RPC `fabric_issue_lookup_uids` (Admin, chỉ đọc) → thẻ xem trước → `fabric_issue_import` → CẤP VẢI (khoá `cap-vai-dot` + sự kiện `print-sku-cap-vai-plan`); hoặc Tải PL .xlsx | `docs/plans/2026-10-24-tro-ly-in-tao-pl.md` |
 | Kiểm tra: kiểm kê, rủi ro lưu trữ, kiểm tra đầu vào, đối chiếu ADJ | bản chụp Supabase + đọc WMS qua Extension | PROJECT_MAP mục 2 |
 
-**Bẫy:** quyết định nghiệp vụ đã chốt (vd. không nạp bù SKU ngừng, Combo vẫn hiện Inactive, mỗi lot cắt + QC ≥ 30 %) nằm trong `RULES.md` — grep trước khi đề xuất lại.
+**Bẫy:** quyết định nghiệp vụ đã chốt (vd. không nạp bù SKU ngừng, Combo vẫn hiện Inactive, mỗi lot cắt + QC ≥ 30 %) nằm trong `docs/QUYET_DINH.md` — grep trước khi đề xuất lại.
 
 ## 4. Dependencies — hệ thống bên ngoài
 - **Inside** (PO, SKU) và **WMS** (Group UID, phiếu IT, Import/Export, history): chỉ đọc qua content script Extension trong tab người dùng đã đăng nhập; không gọi thẳng từ web hay Edge.
@@ -70,7 +70,8 @@ flowchart TB
 | `AGENTS.md` | Luật làm việc, kiểm chứng, bàn giao (áp cho mọi agent) |
 | `docs/CONTEXT_MAP.md` (tệp này) | Bản đồ 6 nguồn mức cao; khi nào cập nhật: `docs/chuan/TAI_LIEU.md` mục 5 |
 | `docs/PROJECT_MAP.md` | Bản đồ chi tiết module ↔ khối ↔ Extension ↔ Edge ↔ SQL; khi nào cập nhật: `docs/chuan/TAI_LIEU.md` mục 5 |
-| `RULES.md` (chỉ trên máy, gitignored) | Đầu tệp: mục lục quyết định đang hiệu lực (12 chủ đề, "Đã bỏ", "Làm sau", trạng thái lên thật); dưới: nhật ký theo thời gian. Quyết định mới ghi vào CẢ hai. Ràng buộc mọi agent |
+| `docs/QUYET_DINH.md` | Quyết định đang hiệu lực (12 chủ đề, "Đã bỏ", "Làm sau", trạng thái lên thật). Ràng buộc mọi agent; quyết định mới ghi cả đây lẫn nhật ký `RULES.md` |
+| `RULES.md` (chỉ trên máy, gitignored) | Nhật ký quyết định nguyên văn theo thời gian, số đo, căn cứ; tra bằng mã `[N0965]` |
 | `docs/DOI_AGENT.md`, `.claude/agents/`, `.claude/skills/` | Đội agent (lead, trinh-sat, thuc-thi-logic, kiem-thu, co-van/Fable), quy trình review Codex + Claude |
 | `docs/chuan/` | Chuẩn viết tài liệu (`TAI_LIEU.md`) và chuẩn kỹ thuật: `GIAO_DIEN.md`, `MA_WEB.md`, `DU_LIEU.md`, `KIEM_THU_GIT.md` |
 | `docs/plans/` | Kế hoạch việc nhiều bước / có migration (mẫu `docs/plans/README.md`) |
@@ -78,13 +79,13 @@ flowchart TB
 | `README.md`, `workstation-agent/README.md`, README Extension | Hướng dẫn vận hành, cài đặt, lịch sử phiên bản |
 | Bộ nhớ Claude (`~/.claude/projects/<repo>/memory/`) | Ghi nhớ của lead theo phiên; không phải nguồn sự thật thay RULES.md |
 
-Quy ước chung: luật nền ở `AGENTS.md`; chuẩn kỹ thuật ở `docs/chuan/` (`GIAO_DIEN.md`, `MA_WEB.md`, `DU_LIEU.md`, `KIEM_THU_GIT.md`, cách viết tài liệu `TAI_LIEU.md`). Quyết định đã chốt nằm trong `RULES.md` — grep trước khi đề xuất lại.
+Quy ước chung: luật nền ở `AGENTS.md`; chuẩn kỹ thuật ở `docs/chuan/` (`GIAO_DIEN.md`, `MA_WEB.md`, `DU_LIEU.md`, `KIEM_THU_GIT.md`, cách viết tài liệu `TAI_LIEU.md`). Quyết định đã chốt nằm trong `docs/QUYET_DINH.md` — grep trước khi đề xuất lại.
 
 ## 6. Git History — lịch sử và thay đổi
 - Repo `MCuongLe/Print_SKU` (public), nhánh `main`, bắt đầu 31/08/2026. Commit theo **đợt**, thông điệp tiếng Việt không dấu tóm tắt việc + phiên bản (vd. `Extension 0.10.7: …`, `Tem SKU mot mau v3 (agent 0.10.2) …`).
 - Xem nhanh: `git log --oneline -20`; ai đổi khối nào: `git log -S "<id khối>" --oneline -- index.html`; lịch sử hàm SQL: `git log --oneline -- supabase/<tệp>.sql`.
 - Hook: `git commit` tự chạy `scripts/commit_gate.py` (bí mật, dữ liệu thật, mojibake, CRLF, phiên bản Extension). Kỹ năng `/commit-push` chỉ người dùng gọi.
-- Mốc phiên bản hiện hành: `extension/inside-po-connector/manifest.json`, `workstation-agent/VERSION`; trạng thái lên thật của từng đợt ghi trong `RULES.md`.
+- Mốc phiên bản hiện hành: `extension/inside-po-connector/manifest.json`, `workstation-agent/VERSION`; trạng thái lên thật ở `docs/QUYET_DINH.md` mục cuối.
 
 **Bẫy:** push `main` khi web cần hàm/Edge mới mà chưa chạy migration → web hỏng ngay; commit trước, chờ migration/deploy rồi mới push.
 
@@ -97,4 +98,4 @@ npx repomix@1.18.1
 
 Kết quả: `outputs/repomix/print-sku-context.xml` (thư mục `outputs/` không vào git — đừng chia sẻ ra ngoài nếu chưa xem). Không có gói riêng cho migration: thêm `--include` chỉ CỘNG vào danh sách của tệp cấu hình (thử 23/10: lõi + SQL = ~306.000 token, quá lớn). Hỏi về DB thì đọc tệp migration mới nhất theo PROJECT_MAP mục 4 hoặc hỏi Supabase (chỉ đọc).
 
-`RULES.md` và `.env` không vào gói (gitignored) — agent trên máy đọc `RULES.md` trực tiếp.
+`RULES.md` (nhật ký) và `.env` không vào gói (gitignored); `docs/QUYET_DINH.md` có trong gói. Agent trên máy đọc `RULES.md` trực tiếp khi cần căn cứ.

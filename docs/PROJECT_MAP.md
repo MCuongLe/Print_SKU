@@ -85,4 +85,4 @@ Chạy migration: `python scripts/apply_supabase_sql.py <tệp> [--dry-run] [--a
 - Đội agent: `docs/DOI_AGENT.md` (bản 3, 18/10/2026: lead tự làm, bốn luật, Codex một vòng kể cả giao diện, mẫu bản giao việc 7 dòng; 18/10 thêm `/review-claude` song song Codex, bỏ `thuc-thi-khuon`, `kiem-thu` lên Sonnet + chẩn đoán test hỏng), hồ sơ `.claude/agents/{trinh-sat,thuc-thi-logic,kiem-thu,co-van}.md` (`co-van` = Fable cố vấn quyết định khó).
 
 ## 6. Quy ước luôn đúng
-Quy ước chung: luật nền ở `AGENTS.md`; chuẩn kỹ thuật ở `docs/chuan/` (`GIAO_DIEN.md`, `MA_WEB.md`, `DU_LIEU.md`, `KIEM_THU_GIT.md`, cách viết tài liệu `TAI_LIEU.md`). Quyết định đã chốt nằm trong `RULES.md` — grep trước khi đề xuất lại.
+Quy ước chung: luật nền ở `AGENTS.md`; chuẩn kỹ thuật ở `docs/chuan/` (`GIAO_DIEN.md`, `MA_WEB.md`, `DU_LIEU.md`, `KIEM_THU_GIT.md`, cách viết tài liệu `TAI_LIEU.md`). Quyết định đã chốt nằm trong `docs/QUYET_DINH.md` — grep trước khi đề xuất lại.

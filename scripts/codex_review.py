@@ -16,7 +16,8 @@ Ba luật review (người dùng chốt 18/10/2026, docs/DOI_AGENT.md):
 
 Yêu cầu: Codex CLI đã cài (`npm install -g @openai/codex`) và đã đăng nhập. Không cần khoá API trong repo.
 Codex chạy với `--sandbox read-only`, không sửa được tệp. Script không gửi .env hay bất kỳ bí mật nào:
-chỉ gửi diff/ảnh được chỉ định, bản giao việc (nếu có) và phần "quyết định đã chốt" trích từ RULES.md theo từ khoá.
+chỉ gửi diff/ảnh được chỉ định, bản giao việc (nếu có) và phần "quyết định đã chốt" trích từ docs/QUYET_DINH.md
+rồi nhật ký RULES.md (chỉ trên máy) theo từ khoá.
 """
 from __future__ import annotations
 
@@ -33,6 +34,7 @@ if hasattr(sys.stdout, "reconfigure"):  # Windows mặc định cp1252, không i
 
 ROOT = Path(__file__).resolve().parents[1]
 RULES = ROOT / "RULES.md"
+DECISIONS = ROOT / "docs" / "QUYET_DINH.md"  # mục lục quyết định, tách khỏi RULES.md ngày 25/10/2026
 IMAGE_TYPES = {".png", ".jpg", ".jpeg", ".webp"}
 
 CONTEXT = """Bạn là reviewer độc lập cho repo Print_SKU: ứng dụng web tĩnh một tệp index.html (React bundle + nhiều khối
@@ -64,18 +66,22 @@ def git(*args: str) -> str:
 
 
 def rules_excerpt(keywords: list[str], limit: int = 40) -> str:
-    """Trích các dòng RULES.md chứa 'không', 'cố ý', 'đã chốt', 'quyết định' và một trong các từ khoá."""
-    if not RULES.exists():
-        return ""
+    """Trích quyết định có một trong các từ khoá: mọi dòng luật của docs/QUYET_DINH.md trước, rồi các dòng
+    nhật ký RULES.md chứa 'không', 'cố ý', 'đã chốt', 'quyết định'."""
     picked: list[str] = []
-    for line in RULES.read_text(encoding="utf-8", errors="replace").splitlines():
-        low = line.lower()
-        if not any(k.lower() in low for k in keywords):
+    for path, strict in ((DECISIONS, False), (RULES, True)):
+        if not path.exists():
             continue
-        if re.search(r"không |cố ý|đã chốt|quyết định|người dùng:", low):
-            picked.append(line.strip()[:400])
-        if len(picked) >= limit:
-            break
+        for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+            low = line.lower()
+            if (not strict and not line.lstrip().startswith("- ")) or not any(k.lower() in low for k in keywords):
+                continue
+            if strict and not re.search(r"không |cố ý|đã chốt|quyết định|người dùng:", low):
+                continue
+            if line.strip()[:400] not in picked:
+                picked.append(line.strip()[:400])
+            if len(picked) >= limit:
+                return "\n".join(picked)
     return "\n".join(picked)
 
 
@@ -221,7 +227,7 @@ def main() -> int:
     if keywords:
         excerpt = rules_excerpt(keywords)
         if excerpt:
-            parts.append("Quyết định đã chốt (trích RULES.md):\n" + excerpt)
+            parts.append("Quyết định đã chốt (trích docs/QUYET_DINH.md + RULES.md):\n" + excerpt)
     if args.focus:
         parts.append("Trọng tâm: " + args.focus)
     parts.append(output.format(max_findings=args.max))

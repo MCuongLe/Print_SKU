@@ -12,7 +12,7 @@
 1. Tệp này.
 2. `docs/CONTEXT_MAP.md` — 6 nguồn ngữ cảnh.
 3. `docs/PROJECT_MAP.md` — module ↔ khối ↔ Extension ↔ Edge ↔ SQL ↔ test.
-4. Mục lục "QUYẾT ĐỊNH ĐANG HIỆU LỰC" đầu `RULES.md` (chỉ trên máy). Quyết định đã chốt ở đó ràng buộc mọi agent.
+4. `docs/QUYET_DINH.md` — quyết định đang hiệu lực theo chủ đề, ràng buộc mọi agent. Căn cứ và số đo: nhật ký `RULES.md` (chỉ trên máy).
 5. Tệp trong `docs/plans/` nếu việc đang dở.
 6. Đọc thêm theo loại việc:
 
@@ -24,10 +24,10 @@
 | Mã web `index.html` | `docs/chuan/MA_WEB.md`; `docs/PROJECT_MAP.md` mục 2; `python scripts/index_outline.py [chuỗi lọc]` |
 | SQL, RPC, Edge, quyền, luồng dữ liệu | `docs/chuan/DU_LIEU.md`; `docs/PROJECT_MAP.md` mục 4 |
 | Extension, đồng bộ | `docs/chuan/DU_LIEU.md`; `docs/PROJECT_MAP.md` mục 3; `extension/inside-po-connector/README.md` |
-| In tem, agent máy trạm | mục lục `RULES.md` chủ đề 3; `workstation-agent/README.md`, `workstation-agent/RULES.md` |
+| In tem, agent máy trạm | `docs/QUYET_DINH.md` chủ đề 3; `workstation-agent/README.md`, `workstation-agent/RULES.md` |
 | Test, commit | `docs/chuan/KIEM_THU_GIT.md`; lệnh ở `docs/PROJECT_MAP.md` mục 5 |
 
-Quyết định riêng của từng module vẫn ở mục lục `RULES.md` theo chủ đề.
+Quyết định riêng của từng module ở `docs/QUYET_DINH.md` theo chủ đề.
 
 ## Bốn luật cứng
 
@@ -45,7 +45,7 @@ Quyết định riêng của từng module vẫn ở mục lục `RULES.md` theo
 - Không commit bí mật, khoá, endpoint riêng hay dữ liệu SKU / UID / PO thật; dùng dữ liệu giả chuẩn (SKU `9000000xx`, UID `1028260000000xxx`).
 - Hàm SQL `SECURITY DEFINER` mới: `revoke execute … from public, anon, authenticated`, rồi chỉ `grant` cho vai cần.
 - Supabase MCP chỉ để đọc. Migration, deploy và mọi lệnh ghi do người dùng chạy script, trừ khi người dùng cho phép rõ từng lần.
-- Agent được giao việc không commit, không chạy migration / deploy, không ghi `RULES.md`.
+- Agent được giao việc không commit, không chạy migration / deploy, không ghi `RULES.md` hay `docs/QUYET_DINH.md`.
 
 ## Kiểm chứng (làm phần áp dụng)
 

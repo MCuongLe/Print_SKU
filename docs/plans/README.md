@@ -12,7 +12,7 @@ Từ bản 3 (18/10/2026) chỉ việc có **migration nhiều bước hoặc k�
 ## Thiết kế
 - **Yêu cầu:** <câu của người dùng, nguyên văn ngắn>
 - **Kết quả nhìn thấy được:** <người dùng sẽ thấy/làm được gì>
-- **Đã chốt với người dùng:** <mỗi quyết định một dòng; ghi rõ nếu đổi quyết định cũ trong RULES.md>
+- **Đã chốt với người dùng:** <mỗi quyết định một dòng; ghi rõ nếu đổi quyết định cũ trong `docs/QUYET_DINH.md`>
 - **Số đo thật:** <dữ liệu đã đo trên Supabase/Inside/WMS, kèm thời điểm>
 - **Hợp đồng dữ liệu:** <RPC / action Edge / lệnh Extension: vào, ra, lỗi>
 - **Rủi ro và cách chặn:** <…>

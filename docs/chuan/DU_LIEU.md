@@ -1,7 +1,7 @@
 # Chuẩn dữ liệu: Supabase, RPC, Edge, Extension (25/10/2026)
 
 Áp cho: migration SQL, hàm RPC, Edge Function, lệnh Extension, luồng đồng bộ. Đọc khi: thêm / sửa hàm, bảng, Edge action, lệnh Extension, luồng dữ liệu mới.
-Gom từ mục lục `RULES.md` chủ đề 3, 5, 6, 8, 9, `docs/DOI_AGENT.md` và số đo trên 87 tệp `supabase/*.sql` (25/10); không có luật mới. Luật nền (`SECURITY DEFINER` revoke, Supabase MCP chỉ đọc, thứ tự lên bản): `AGENTS.md`. Hàm nào nằm ở tệp migration nào: `docs/PROJECT_MAP.md` mục 4.
+Gom từ `docs/QUYET_DINH.md` chủ đề 3, 5, 6, 8, 9, `docs/DOI_AGENT.md` và số đo trên 87 tệp `supabase/*.sql` (25/10); không có luật mới. Luật nền (`SECURITY DEFINER` revoke, Supabase MCP chỉ đọc, thứ tự lên bản): `AGENTS.md`. Hàm nào nằm ở tệp migration nào: `docs/PROJECT_MAP.md` mục 4.
 
 ## Nơi lưu và quyền
 

@@ -3,7 +3,7 @@
   "output": {
     "filePath": "outputs/repomix/print-sku-context.xml",
     "style": "xml",
-    "headerText": "Print_SKU — gói ngữ cảnh lõi (tài liệu, Extension, Edge, agent in, script, hồ sơ agent). Không có index.html, test, migration SQL, RULES.md: xem docs/CONTEXT_MAP.md.",
+    "headerText": "Print_SKU — gói ngữ cảnh lõi (tài liệu, Extension, Edge, agent in, script, hồ sơ agent). Không có index.html, test, migration SQL, nhật ký RULES.md; quyết định đang hiệu lực ở docs/QUYET_DINH.md: xem docs/CONTEXT_MAP.md.",
     "instructionFilePath": "docs/repomix-instruction.md",
     "includeFullDirectoryStructure": true,
     "topFilesLength": 10,
