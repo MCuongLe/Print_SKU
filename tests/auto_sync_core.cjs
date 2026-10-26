@@ -1,8 +1,22 @@
 // Bộ điều phối đồng bộ tự động (extension/inside-po-connector/auto-sync.js): hàm decide thuần + luồng chạy với tab/Edge giả.
 //   node tests/auto_sync_core.cjs
 const assert = require("node:assert/strict");
-const { createAutoSync, decide, inFullWindow, vnMinutes, assessHealth } = require("../extension/inside-po-connector/auto-sync.js");
+const fs = require("node:fs");
+const path = require("node:path");
+const { createAutoSync, decide, inFullWindow, vnMinutes, assessHealth, versionLess, parseMinFromMessage } = require("../extension/inside-po-connector/auto-sync.js");
 const { readGroupUidSnapshot } = require("../extension/inside-po-connector/group-uid-snapshot-core.js");
+
+// 0.10.10: bản Extension giả của máy trong ca cổng bản (dữ liệu ca, không phải số phiên bản của manifest).
+const OLD_EXT = "0.10.9";
+const NEW_EXT = "0.10.10";
+// Bảng ca so bản dùng chung với Edge: đoạn giữa hai dòng neo trong tests/sku_sync_function.mjs (chép giống hệt ở group_uid_sync_function.mjs).
+function versionCaseBlock(file) {
+  const text = fs.readFileSync(path.join(__dirname, file), "utf8").replace(/\r\n/g, "\n");
+  const start = text.indexOf("// >>> bảng ca so bản Extension"), end = text.indexOf("// <<< bảng ca so bản Extension");
+  assert.ok(start >= 0 && end > start, `${file}: thiếu bảng ca so bản Extension`);
+  return text.slice(start, end);
+}
+function versionCases() { return new Function(`${versionCaseBlock("sku_sync_function.mjs")}\nreturn VERSION_CASES;`)(); }
 
 const HOUR = 3600 * 1000;
 const NIGHT = Date.UTC(2026, 9, 16, 18, 0); // 01:00 giờ VN ngày 17/10
@@ -56,7 +70,7 @@ function memoryStorage(initial = {}) {
 const uid = index => ({ group_uid_code: String(1028260000000000 + index), updated_date: "2026-10-17T01:00:00.000Z", qty: 1, status: "New" });
 
 const HOLDER = "may-test-01#abc123";
-function harness({ now = DAY, wmsTab = true, insideTab = true, wmsError = null, insideError = null, edgeOverride = {}, applyHeld = null, storage: initial, onWmsPage = null, sessionOverride = {}, findWms = null, fetchOverride = null, edgeTimeoutMs, cutAdjCore, storageRiskCore } = {}) {
+function harness({ now = DAY, wmsTab = true, insideTab = true, wmsError = null, insideError = null, edgeOverride = {}, applyHeld = null, storage: initial, onWmsPage = null, sessionOverride = {}, findWms = null, fetchOverride = null, edgeTimeoutMs, cutAdjCore, storageRiskCore, version } = {}) {
   const storage = memoryStorage({ "auto.device": "may-test-01", "auto.enabled": true, "auto.instance": "abc123", ...initial });
   const calls = [], alarms = [], timers = [], signOuts = [], badges = [], protectedTabs = [];
   const clock = { now };
@@ -92,7 +106,7 @@ function harness({ now = DAY, wmsTab = true, insideTab = true, wmsError = null, 
     return { status: 200, ok: true, json: async () => ({ ok: true, data: result }) };
   };
   const sync = createAutoSync({
-    storage, fetch, now: () => clock.now, config: { url: "https://example.invalid", key: "test-key" }, edgeTimeoutMs, cutAdjCore, storageRiskCore,
+    storage, fetch, now: () => clock.now, config: { url: "https://example.invalid", key: "test-key" }, edgeTimeoutMs, cutAdjCore, storageRiskCore, version,
     badge: problems => badges.push(problems), protectTab: async tab => { protectedTabs.push(tab.id); },
     session: { getAccessToken: async () => "token-test", getSession: async () => ({ user: { email: "admin-test@example.com" } }), signOut: async () => { signOuts.push(1); }, signIn: async () => ({}), ...sessionOverride },
     snapshotCore: { readGroupUidSnapshot },
@@ -568,6 +582,309 @@ const actions = (calls, fn) => calls.filter(call => call.fn === fn).map(call => 
     }
     const bothSession = await storageRiskCore.run({ sendTab: async () => { throw Object.assign(new Error("Phiên WMS đã hết hạn"), { code: "SKU_COUNT_READ_FAILED", fromTab: true, reason: "session" }); }, rpc: async () => ({}) }).catch(error => error);
     assert.deepEqual([bothSession.fromTab, bothSession.reason], [true, "session"], "mọi bước hết phiên → bỏ qua được");
+  }
+
+  // ---- 0.10.10: khai báo bản Extension (extVersion) + tự dừng khi dưới mức tối thiểu (docs/plans/2026-10-26-nhieu-admin-khac-ban-extension.md) ----
+  // Mỗi ca chạy riêng và in PASS/FAIL; một ca hỏng thì cả tệp thoát 1.
+  {
+    const cases = [];
+    const add = (name, fn) => cases.push([name, fn]);
+    const ALL = ["group_uid", "sku", "cut_adj", "storage_risk"];
+    const edgeCalls = h => h.calls.filter(call => call.fn);
+    const outdatedText = (label, min = NEW_EXT) => `${label}: cần Extension ≥ ${min} (đang v${OLD_EXT}); Reload Extension`;
+    const skipText = `Cần Extension ≥ ${NEW_EXT} (đang v${OLD_EXT}): Reload Extension rồi tải lại tab`;
+    const serverText = tab => `Extension v${OLD_EXT} quá cũ, cần ≥ ${NEW_EXT}; hãy Reload Extension rồi tải lại tab ${tab}`;
+
+    add("(a) mọi lệnh Edge gửi extVersion = bản của máy; RPC Admin giữ nguyên tham số", async () => {
+      const cutAdjCore = { run: async ({ rpc }) => { await rpc("wms_cut_coverage", {}); return { total: 0, cutRows: 0, newRows: 0, changedRows: 0 }; } };
+      const storageRiskCore = { run: async () => ({ ok: true, skuCount: { rows: 0 }, uidTemp: { rows: 0 } }) };
+      const h = harness({ version: NEW_EXT, cutAdjCore, storageRiskCore, storage: { "auto.active": { kind: "group_uid", mode: "incremental", holder: HOLDER, runId: "44444444-4444-4444-8444-444444444444", startedAt: new Date(DAY - 40 * 60000).toISOString() } } });
+      await h.sync.recover();
+      await h.sync.tick();
+      await h.sync.runNow("sku", "full");
+      await h.sync.handleMessage({ type: "AUTO_STATUS" });
+      await h.sync.handleMessage({ type: "AUTO_SIGN_IN", email: "admin-test@example.com", password: "x" });
+      assert.deepEqual([...new Set(edgeCalls(h).map(call => call.action))].sort(), ["apply", "auto-config", "cancel", "history", "ingest", "lease", "prepare", "preview", "release"], "ca phủ mọi lệnh Edge");
+      assert.deepEqual(edgeCalls(h).filter(call => call.extVersion !== NEW_EXT).map(call => `${call.fn}:${call.action}`), [], "lệnh thiếu / sai extVersion");
+      const rpcs = h.calls.filter(call => call.rpc);
+      assert.ok(rpcs.length > 0 && rpcs.every(call => !("extVersion" in call.args)), "RPC Admin (PostgREST) không nhận khoá lạ");
+      // Không truyền deps.version → chrome.runtime.getManifest().version đọc lúc gọi; getManifest lỗi / không có chrome → bỏ khoá.
+      const saved = globalThis.chrome;
+      try {
+        let manifest = { version: NEW_EXT };
+        globalThis.chrome = { runtime: { getManifest: () => manifest } };
+        const m = harness({ wmsTab: false, insideTab: false });
+        await m.sync.tick();
+        manifest = { version: "9.9.9" };
+        await m.sync.handleMessage({ type: "AUTO_STATUS" });
+        assert.deepEqual(edgeCalls(m).map(call => call.extVersion), [NEW_EXT, "9.9.9"], "đọc bản lúc gọi (Reload đổi bản)");
+        globalThis.chrome = { runtime: { getManifest: () => { throw new Error("Extension context invalidated"); } } };
+        const broken = harness({ wmsTab: false, insideTab: false });
+        await broken.sync.tick();
+        assert.ok(edgeCalls(broken).length === 1 && !("extVersion" in edgeCalls(broken)[0]), "getManifest lỗi → không gửi khoá");
+      } finally {
+        if (saved === undefined) delete globalThis.chrome; else globalThis.chrome = saved;
+      }
+      const none = harness({ wmsTab: false, insideTab: false });
+      await none.sync.tick();
+      assert.ok(!("extVersion" in edgeCalls(none)[0]), "không chrome, không deps.version → không gửi khoá");
+    });
+
+    add("(b) versionLess khớp từng ca của bảng ca chung với Edge; đọc mức từ câu 409", () => {
+      const block = versionCaseBlock("sku_sync_function.mjs");
+      assert.equal(versionCaseBlock("group_uid_sync_function.mjs"), block, "hai tệp test Edge cùng một bảng ca");
+      const table = versionCases();
+      assert.ok(Array.isArray(table) && table.length >= 20, "bảng ca đủ dòng");
+      assert.ok(table.some(([have, min, blocked]) => have === OLD_EXT && min === NEW_EXT && blocked === true), "có ca 0.10.9 < 0.10.10");
+      for (const [have, min, blocked] of table) assert.equal(versionLess(have, min), blocked, `${JSON.stringify(have) ?? "không gửi"} / mức ${JSON.stringify(min)}`);
+      assert.equal(parseMinFromMessage(serverText("Inside")), NEW_EXT);
+      assert.equal(parseMinFromMessage(`Extension chưa khai báo bản, cần ≥ ${NEW_EXT}; hãy Reload Extension rồi tải lại tab WMS`), NEW_EXT);
+      assert.equal(parseMinFromMessage("Edge Function trả HTTP 409"), null);
+      assert.equal(parseMinFromMessage(undefined), null);
+    });
+
+    add("(c) decide: loại dưới mức → bỏ qua kèm outdated, không có việc; loại khác chạy; loại không có mức qua; không truyền version → không xét", () => {
+      const cfg = { ...CONFIG, minExtension: { sku: NEW_EXT, group_uid: null, cut_adj: NEW_EXT, storage_risk: NEW_EXT } };
+      const plan = decide({ ...base, now: DAY, config: cfg, kinds: ALL, version: OLD_EXT });
+      assert.deepEqual(jobs(plan), ["group_uid:incremental"]);
+      assert.deepEqual(plan.skipped.map(item => [item.kind, item.reason, item.log, item.outdated]), ["sku", "cut_adj", "storage_risk"].map(kind => [kind, skipText, true, { min: NEW_EXT, version: OLD_EXT }]));
+      // Dưới mức xét trước thiếu tab và khung giờ Rủi ro lưu trữ: cảnh báo không tắt bật theo giờ / tab.
+      const night = decide({ ...base, now: NIGHT, config: cfg, kinds: ALL, version: OLD_EXT, hasWms: false, hasInside: false });
+      assert.deepEqual(night.skipped.map(item => [item.kind, Boolean(item.outdated)]), [["group_uid", false], ["sku", true], ["cut_adj", true], ["storage_risk", true]]);
+      assert.equal(night.reason, `Không có tab WMS; ${skipText}`);
+      assert.deepEqual(jobs(decide({ ...base, now: DAY, config: cfg, kinds: ALL, version: NEW_EXT })), ALL.map(kind => `${kind}:incremental`), "bằng mức → chạy");
+      assert.deepEqual(jobs(decide({ ...base, now: DAY, config: cfg, kinds: ALL })), ALL.map(kind => `${kind}:incremental`), "không truyền version (test cũ) → không xét");
+      for (const minExtension of [undefined, null, {}, { sku: "" }, { sku: "x" }, [NEW_EXT], NEW_EXT]) {
+        assert.deepEqual(jobs(decide({ ...base, now: DAY, config: { ...CONFIG, minExtension }, kinds: ALL, version: OLD_EXT })), ALL.map(kind => `${kind}:incremental`), `không có mức hợp lệ: ${JSON.stringify(minExtension)}`);
+      }
+      // Cùng bảng ca với Edge (trừ "không gửi": decide không truyền version là test cũ, không xét).
+      for (const [have, min, blocked] of versionCases()) {
+        if (have === undefined) continue;
+        const one = decide({ ...base, now: DAY, config: { ...CONFIG, minExtension: { sku: min } }, kinds: ["sku"], version: have });
+        assert.equal(jobs(one).length === 0, blocked, `decide ${JSON.stringify(have)} / mức ${JSON.stringify(min)}`);
+      }
+    });
+
+    add("(d) tick: mức sku 0.10.10, máy 0.10.9 → không thuê khoá, không đọc Inside, '!' ngay; hạ mức → chạy lại; máy 0.10.10 chạy bình thường", async () => {
+      const cfg = { ...CONFIG, minExtension: { sku: NEW_EXT, group_uid: null, cut_adj: null, storage_risk: null } };
+      const h = harness({ version: OLD_EXT, edgeOverride: { "auto-config": () => cfg } });
+      const r1 = await h.sync.tick();
+      assert.deepEqual(r1.results.map(item => `${item.kind}:${item.status}`), ["group_uid:ok"]);
+      assert.deepEqual(actions(h.calls, "sku-sync"), ["auto-config"], "SKU: không lease / history / preview");
+      assert.equal(h.calls.some(call => call.tab === "inside"), false, "không đọc Inside");
+      assert.deepEqual(h.badges.at(-1), [outdatedText("SKU")], "báo ngay, không chờ 2 nhịp + 10 phút");
+      const skuLog = h.storage.data["auto.log"].find(row => row.kind === "sku");
+      assert.deepEqual([skuLog.status, skuLog.message], ["skipped", skipText]);
+      assert.deepEqual(h.storage.data["auto.health"].kinds.sku.outdated, { min: NEW_EXT, version: OLD_EXT, at: new Date(DAY).toISOString() });
+      const status = await h.sync.handleMessage({ type: "AUTO_STATUS" });
+      assert.deepEqual([status.version, status.minExtension, status.problems], [OLD_EXT, cfg.minExtension, [outdatedText("SKU")]], "Tùy chọn nhận bản máy + mức tối thiểu + thẻ đỏ");
+      h.clock.now += 30 * 60000;
+      await h.sync.tick();
+      assert.equal(h.storage.data["auto.log"].find(row => row.kind === "sku").repeat, 2, "dòng bỏ qua lặp tự gộp");
+      // Admin hạ mức lúc tab Inside đã đóng: SKU không chạy được nhưng dấu dưới mức (và lý do của nó) vẫn phải bỏ ngay ở lượt này.
+      const closed = harness({ version: OLD_EXT, insideTab: false, storage: JSON.parse(JSON.stringify(h.storage.data)), edgeOverride: { "auto-config": () => ({ ...CONFIG, minExtension: {} }) } });
+      await closed.sync.tick();
+      assert.deepEqual([closed.storage.data["auto.health"].kinds.sku.outdated, closed.storage.data["auto.health"].kinds.sku.reason], [null, "Không có tab Inside"]);
+      assert.deepEqual(closed.badges.at(-1), [], "hết dưới mức, chưa quá 2 nhịp");
+      cfg.minExtension.sku = null; // Admin hạ mức
+      h.clock.now += 30 * 60000;
+      const r3 = await h.sync.tick();
+      assert.deepEqual(r3.results.map(item => `${item.kind}:${item.status}`), ["group_uid:ok", "sku:ok"]);
+      assert.equal(h.storage.data["auto.health"].kinds.sku.outdated, null, "bỏ dấu dưới mức");
+      assert.deepEqual(h.badges.at(-1), []);
+      const up = harness({ version: NEW_EXT, edgeOverride: { "auto-config": () => ({ ...CONFIG, minExtension: { sku: NEW_EXT, group_uid: NEW_EXT } }) } });
+      const r4 = await up.sync.tick();
+      assert.deepEqual(r4.results.map(item => `${item.kind}:${item.status}`), ["group_uid:ok", "sku:ok"]);
+      assert.deepEqual(up.badges.at(-1), []);
+    });
+
+    add("(e) 409 EXTENSION_OUTDATED ở lease → bỏ qua kèm outdated, không chạm tab, không nhả khoá; Chạy ngay trả câu server", async () => {
+      const reject = body => ({ __error: { code: "EXTENSION_OUTDATED", message: serverText(body.kind === "sku" ? "Inside" : "WMS") }, status: 409 });
+      const coreRuns = [];
+      const cutAdjCore = { run: async () => { coreRuns.push("cut_adj"); return {}; } };
+      let gate = true;
+      const h = harness({ version: OLD_EXT, cutAdjCore, edgeOverride: { lease: body => (body.kind === "group_uid" || !gate ? { ok: true } : reject(body)) } });
+      const result = await h.sync.tick();
+      assert.deepEqual(result.results.map(item => `${item.kind}:${item.status}`), ["group_uid:ok", "sku:skipped", "cut_adj:skipped"]);
+      const sku = result.results.find(item => item.kind === "sku");
+      assert.deepEqual([sku.message, sku.outdated], [serverText("Inside"), { min: NEW_EXT, version: OLD_EXT }]);
+      assert.equal(h.calls.some(call => call.tab === "inside"), false, "không đọc Inside");
+      assert.deepEqual(coreRuns, [], "không chạy lõi Đối chiếu ADJ");
+      assert.deepEqual(h.calls.filter(call => call.fn === "sku-sync").map(call => `${call.action}:${call.kind ?? ""}`), ["auto-config:", "lease:sku", "lease:cut_adj"], "không history, không nhả khoá chưa giành");
+      assert.deepEqual(h.badges.at(-1), [outdatedText("SKU"), outdatedText("Đối chiếu ADJ")]);
+      assert.deepEqual(h.storage.data["auto.health"].kinds.sku.outdated, { min: NEW_EXT, version: OLD_EXT, at: new Date(DAY).toISOString() });
+      const skuLog = h.storage.data["auto.log"].find(row => row.kind === "sku");
+      assert.deepEqual([skuLog.status, skuLog.message], ["skipped", serverText("Inside")]);
+      assert.equal(h.storage.data["auto.last"].sku, undefined, "bỏ qua không tính là đã chạy");
+      const run = await h.sync.runNow("sku", "incremental");
+      assert.deepEqual([run.ok, run.error], [false, serverText("Inside")], "Chạy ngay: Tùy chọn hiện câu server");
+      gate = false; // Admin hạ mức: Chạy ngay thuê được khoá → bỏ dấu ngay, không chờ tick
+      assert.equal((await h.sync.runNow("sku", "incremental")).ok, true);
+      assert.equal(h.storage.data["auto.health"].kinds.sku.outdated, null);
+      assert.deepEqual(h.badges.at(-1), [outdatedText("Đối chiếu ADJ")]);
+      // Group UID: chỉ trang thử 1 dòng (có từ trước, trước khi thuê), không prepare, không nhả khoá.
+      const gu = harness({ version: OLD_EXT, insideTab: false, edgeOverride: { lease: reject } });
+      const r2 = await gu.sync.tick();
+      assert.deepEqual([r2.results[0].kind, r2.results[0].status, r2.results[0].message], ["group_uid", "skipped", serverText("WMS")]);
+      assert.deepEqual(actions(gu.calls, "group-uid-sync"), ["lease"]);
+      assert.deepEqual(gu.calls.filter(call => call.tab === "wms").map(call => call.payload.size), [1]);
+      // Câu server không có mức → vẫn bỏ qua + báo ngay, câu không số.
+      const odd = harness({ version: OLD_EXT, insideTab: false, edgeOverride: { lease: () => ({ __error: { code: "EXTENSION_OUTDATED", message: "Extension quá cũ" }, status: 409 }) } });
+      await odd.sync.tick();
+      assert.deepEqual(odd.badges.at(-1), [`Group UID: cần Extension mới hơn (đang v${OLD_EXT}); Reload Extension`]);
+    });
+
+    add("(f) assessHealth: dấu dưới mức của đúng bản này báo ngay thay câu 'ngừng'; dấu của bản khác (vừa Reload) không báo gì tới tick kế; tắt / tạm dừng không báo", async () => {
+      const recent = new Date(DAY - 60000).toISOString(), old = new Date(DAY - 3 * HOUR).toISOString();
+      const mark = { min: NEW_EXT, version: OLD_EXT, at: recent };
+      const health = { since: old, kinds: { group_uid: { aliveAt: old, reason: skipText, outdated: mark }, sku: { aliveAt: recent, reason: skipText, outdated: mark } } };
+      const args = { now: DAY, signedIn: true, device: "may-test-01", intervalMinutes: 30, health, kinds: ["group_uid", "sku"] };
+      assert.deepEqual(assessHealth({ ...args, version: OLD_EXT }), [outdatedText("Group UID"), outdatedText("SKU")], "một câu mỗi loại, không chờ 2 nhịp");
+      assert.deepEqual(assessHealth({ ...args, version: NEW_EXT }), [], "đã Reload: dấu của bản cũ = loại bị chặn chủ ý, không báo ngừng (tick kế dọn dấu)");
+      assert.deepEqual(assessHealth(args), [`Group UID ngừng 3 giờ: ${skipText}`], "không truyền version (test cũ) → như trước");
+      assert.deepEqual(assessHealth({ ...args, version: OLD_EXT, paused: true }), [], "Admin tạm dừng");
+      assert.deepEqual(assessHealth({ ...args, version: OLD_EXT, enabledLocal: false }), [], "máy tắt tự động");
+      // Reload thật: service worker bản mới đọc cùng storage → '!' tắt ngay, không chờ tick.
+      const before = harness({ version: OLD_EXT, insideTab: false, edgeOverride: { "auto-config": () => ({ ...CONFIG, minExtension: { group_uid: NEW_EXT } }) } });
+      await before.sync.tick();
+      assert.deepEqual(before.badges.at(-1), [outdatedText("Group UID")]);
+      const after = harness({ version: NEW_EXT, insideTab: false, storage: before.storage.data });
+      assert.deepEqual(await after.sync.refreshBadge(), []);
+      assert.deepEqual((await after.sync.handleMessage({ type: "AUTO_STATUS" })).problems, []);
+      after.clock.now += 3 * HOUR; // Reload sau 3 giờ bị chặn: vẫn không báo "ngừng" cho loại đó trước tick kế
+      assert.deepEqual(await after.sync.refreshBadge(), ["SKU ngừng 3 giờ: Không có tab Inside"]);
+      await after.sync.tick();
+      assert.equal(after.storage.data["auto.health"].kinds.group_uid.outdated, null, "tick kế dọn dấu");
+    });
+
+    add("(g) mức nâng giữa lượt: 409 ở prepare (Group UID) / preview (SKU) → bỏ qua kèm outdated, nhả khoá đã giành (không ghi mốc), không apply", async () => {
+      const reject = tab => () => ({ __error: { code: "EXTENSION_OUTDATED", message: serverText(tab) }, status: 409 });
+      const h = harness({ version: OLD_EXT, edgeOverride: { prepare: reject("WMS"), preview: reject("Inside") } });
+      const result = await h.sync.tick();
+      assert.deepEqual(result.results.map(item => [item.kind, item.status, item.message, item.outdated]), [["group_uid", "skipped", serverText("WMS"), { min: NEW_EXT, version: OLD_EXT }], ["sku", "skipped", serverText("Inside"), { min: NEW_EXT, version: OLD_EXT }]]);
+      assert.deepEqual(actions(h.calls, "group-uid-sync"), ["lease", "prepare", "release"], "chưa có lượt nên không hủy");
+      assert.deepEqual(actions(h.calls, "sku-sync"), ["auto-config", "lease", "history", "lease", "preview", "release"]);
+      assert.ok(h.calls.filter(call => call.action === "release").every(call => call.finished === undefined), "không ghi mốc giãn cách");
+      assert.deepEqual(h.badges.at(-1), [outdatedText("Group UID"), outdatedText("SKU")]);
+    });
+
+    // ---- review vòng 1 (nhóm E1): máy trạng thái outdated / guard ----
+    add("(h) gia hạn khoá trả 409 → dừng lượt ngay: Group UID hủy lượt, không ingest; ADJ / Rủi ro lưu trữ không ghi RPC; SKU không preview / apply; lỗi mạng vẫn chịu ≤ 14 phút", async () => {
+      const deny = tab => ({ __error: { code: "EXTENSION_OUTDATED", message: serverText(tab) }, status: 409 });
+      const thenDeny = tab => { let n = 0; return () => (++n === 1 ? { ok: true } : deny(tab)); };
+      const mark = { min: NEW_EXT, version: OLD_EXT };
+      // (a) Group UID: thuê đầu được, gia hạn sau khi đọc WMS (confirmLease) bị 409.
+      const gu = harness({ version: OLD_EXT, insideTab: false, edgeOverride: { lease: thenDeny("WMS") } });
+      const r1 = (await gu.sync.tick()).results[0];
+      assert.deepEqual([r1.kind, r1.status, r1.message, r1.outdated], ["group_uid", "skipped", serverText("WMS"), mark]);
+      assert.deepEqual(actions(gu.calls, "group-uid-sync"), ["lease", "prepare", "lease", "cancel", "release"], "hủy lượt đã prepare, không ingest / preview / apply");
+      assert.match(gu.calls.find(call => call.action === "cancel").message, /Extension dưới mức tối thiểu/);
+      assert.equal(gu.calls.find(call => call.action === "release").finished, undefined, "không ghi mốc giãn cách");
+      assert.deepEqual(gu.badges.at(-1), [outdatedText("Group UID")]);
+      // (a2) Group UID: gia hạn (alarm keepalive) bị 409 lúc đang xem trước → vẫn hủy lượt dù đã xem trước, không apply.
+      let lateLeases = 0;
+      const late = harness({ version: OLD_EXT, insideTab: false, edgeOverride: { lease: () => (++lateLeases <= 2 ? { ok: true } : deny("WMS")) }, fetchOverride: async (url, init) => {
+        if (JSON.parse(init.body).action === "preview" && url.includes("group-uid-sync")) { late.clock.now += 3 * 60000; await late.sync.onKeepAlive(); }
+        return null;
+      } });
+      const r1b = (await late.sync.tick()).results[0];
+      assert.deepEqual([r1b.status, r1b.message, r1b.outdated], ["skipped", serverText("WMS"), mark]);
+      assert.deepEqual(actions(late.calls, "group-uid-sync"), ["lease", "prepare", "lease", "ingest", "lease", "preview", "cancel", "release"], "đã xem trước vẫn hủy, không apply");
+      assert.match(late.calls.find(call => call.action === "cancel").message, /Extension dưới mức tối thiểu/);
+      // (b) Đối chiếu ADJ: gia hạn (alarm keepalive) bị 409 giữa đọc lịch sử và ghi → không gọi wms_group_uid_cut_import.
+      let adj;
+      const adjLease = thenDeny("WMS"), adjRenew = [];
+      const cutAdjCore = { run: async ({ sendTab, rpc }) => {
+        await rpc("wms_cut_coverage", {});
+        await sendTab("GET_GROUP_UID_HISTORY_PAGE", { page: 1, size: 500 });
+        adj.clock.now += 3 * 60000;
+        adjRenew.push(await adj.sync.onKeepAlive());
+        await rpc("wms_group_uid_cut_import", { p_rows: [] });
+        return { total: 0, cutRows: 0, newRows: 0, changedRows: 0 };
+      } };
+      adj = harness({ version: OLD_EXT, insideTab: false, cutAdjCore, edgeOverride: { lease: body => (body.kind === "cut_adj" ? adjLease() : { ok: true }) } });
+      const r2 = (await adj.sync.tick()).results.find(item => item.kind === "cut_adj");
+      assert.deepEqual([r2.status, r2.message, r2.outdated, adjRenew], ["skipped", serverText("WMS"), mark, [false]]);
+      assert.deepEqual(adj.calls.filter(call => call.rpc).map(call => call.rpc), ["wms_cut_coverage"], "không ghi sau 409");
+      // (c) Rủi ro lưu trữ: như lõi thật, bước lỗi vẫn chạy bước sau, lỗi gộp có thể mất mã → không RPC nào sau 409, vẫn là bỏ qua kèm outdated.
+      let sr;
+      const srLease = thenDeny("WMS");
+      const storageRiskCore = { run: async ({ sendTab, rpc }) => {
+        await sendTab("GET_SKU_COUNT_WAREHOUSES", {});
+        sr.clock.now += 3 * 60000;
+        await sr.sync.onKeepAlive();
+        const failures = [];
+        for (const name of ["sku_count_save_start", "uid_temp_save"]) { try { await rpc(name, {}); } catch (error) { failures.push(`${name}: ${error.message}`); } }
+        if (failures.length) throw new Error(failures.join(" · "));
+        return { ok: true, skuCount: { rows: 0 }, uidTemp: { rows: 0 } };
+      } };
+      sr = harness({ version: OLD_EXT, insideTab: false, storageRiskCore, edgeOverride: { lease: body => (body.kind === "storage_risk" ? srLease() : { ok: true }) } });
+      const r3 = (await sr.sync.tick()).results.find(item => item.kind === "storage_risk");
+      assert.deepEqual([r3.status, r3.message, r3.outdated], ["skipped", serverText("WMS"), mark]);
+      assert.deepEqual(sr.calls.filter(call => call.rpc), [], "không RPC ghi nào sau 409");
+      // (d) SKU: gia hạn sau khi đọc Inside bị 409 → không preview, không apply.
+      const sku = harness({ version: OLD_EXT, wmsTab: false, edgeOverride: { lease: thenDeny("Inside") } });
+      const r4 = (await sku.sync.tick()).results[0];
+      assert.deepEqual([r4.kind, r4.status, r4.message, r4.outdated], ["sku", "skipped", serverText("Inside"), mark]);
+      assert.deepEqual(actions(sku.calls, "sku-sync"), ["auto-config", "lease", "history", "lease", "release"]);
+      // Không đổi: lỗi mạng khi gia hạn chịu tới 14 phút (lượt chạy tiếp), quá 14 phút mới là mất khoá.
+      const netLease = () => { let n = 0; return () => { if (++n === 1) return { ok: true }; throw new TypeError("Failed to fetch"); }; };
+      const net = harness({ version: OLD_EXT, insideTab: false, edgeOverride: { lease: netLease() } });
+      assert.equal((await net.sync.tick()).results[0].status, "ok");
+      assert.deepEqual(actions(net.calls, "group-uid-sync").slice(-3), ["preview", "apply", "release"]);
+      const slow = harness({ version: OLD_EXT, insideTab: false, edgeOverride: { lease: netLease() }, onWmsPage: async (message, self) => { if (message.payload.size === 500) self.clock.now += 15 * 60000; } });
+      const r6 = (await slow.sync.tick()).results[0];
+      assert.deepEqual([r6.status, r6.message, r6.outdated], ["error", "Mất khoá thuê: không gia hạn được", undefined]);
+      assert.equal(slow.calls.find(call => call.action === "cancel").message, "Mất khoá thuê");
+    });
+
+    add("(i) dấu dưới mức không kẹt ở nhánh lỗi: Edge nhận lease → bỏ dấu ngay trong lượt; hạ mức rồi Chạy ngay SKU mà tab Inside lỗi; auto-config lỗi kéo dài", async () => {
+      const cfg = { ...CONFIG, minExtension: { sku: NEW_EXT, group_uid: NEW_EXT } };
+      let during = "chưa đọc";
+      const h = harness({
+        version: OLD_EXT, edgeOverride: { "auto-config": () => cfg },
+        insideError: { code: "SKU_SYNC_READ_FAILED", message: "Phiên Inside đã hết hạn; hãy đăng nhập lại", reason: "session" },
+        onWmsPage: async (message, self) => { if (message.payload.size === 500) during = self.storage.data["auto.health"].kinds.group_uid.outdated; },
+      });
+      await h.sync.tick();
+      assert.deepEqual(h.badges.at(-1), [outdatedText("Group UID"), outdatedText("SKU")]);
+      cfg.minExtension = {}; // Admin hạ mức
+      const run = await h.sync.runNow("sku", "incremental");
+      assert.deepEqual([run.result.status, run.result.message], ["skipped", "Phiên Inside đã hết hạn; hãy đăng nhập lại"]);
+      assert.equal(h.storage.data["auto.health"].kinds.sku.outdated, null, "bỏ qua (không do bản) cũng bỏ dấu");
+      assert.deepEqual(h.badges.at(-1), [outdatedText("Group UID")], "không còn câu 'cần Extension' cho SKU");
+      await h.sync.runNow("group_uid", "incremental");
+      assert.equal(during, null, "Edge nhận lease → bỏ dấu ngay, trước khi lượt xong");
+      // Lượt dừng trước cả lúc thuê khoá (tab WMS hết phiên ở trang thử) cũng bỏ dấu cũ.
+      const gcfg = { ...CONFIG, minExtension: { group_uid: NEW_EXT } };
+      const probe = harness({ version: OLD_EXT, insideTab: false, wmsError: { code: "GROUP_UID_READ_FAILED", message: "Phiên WMS đã hết hạn; hãy đăng nhập lại", reason: "session" }, edgeOverride: { "auto-config": () => gcfg } });
+      await probe.sync.tick();
+      assert.deepEqual(probe.badges.at(-1), [outdatedText("Group UID")]);
+      gcfg.minExtension = {};
+      const pr = await probe.sync.runNow("group_uid", "incremental");
+      assert.deepEqual([pr.result.status, actions(probe.calls, "group-uid-sync")], ["skipped", []]);
+      assert.equal(probe.storage.data["auto.health"].kinds.group_uid.outdated, null);
+      assert.deepEqual(probe.badges.at(-1), []);
+      // auto-config lỗi kéo dài: dấu cũ bị xoá, lý do là câu lỗi cấu hình.
+      let failing = false;
+      const down = harness({ version: OLD_EXT, insideTab: false, edgeOverride: { "auto-config": () => (failing ? { __error: { code: "SYNC_ERROR", message: "Edge lỗi" }, status: 503 } : { ...CONFIG, minExtension: { group_uid: NEW_EXT } }) } });
+      await down.sync.tick();
+      assert.deepEqual(down.badges.at(-1), [outdatedText("Group UID")]);
+      failing = true;
+      await down.sync.tick();
+      const gu = down.storage.data["auto.health"].kinds.group_uid;
+      assert.deepEqual([gu.outdated, gu.reason], [null, "Không đọc được cấu hình: Edge lỗi"]);
+      down.clock.now += 71 * 60000;
+      await down.sync.tick();
+      assert.deepEqual(down.badges.at(-1), ["Group UID ngừng 1,2 giờ: Không đọc được cấu hình: Edge lỗi", "SKU ngừng 1,2 giờ: Không đọc được cấu hình: Edge lỗi"]);
+    });
+
+    const failed = [];
+    for (const [name, fn] of cases) {
+      try { await fn(); console.log(`PASS 0.10.10 ${name}`); }
+      catch (error) { failed.push(name); console.error(`FAIL 0.10.10 ${name}: ${error.message}`); }
+    }
+    assert.deepEqual(failed, [], "ca 0.10.10 hỏng");
   }
 
   console.log("auto_sync_core: decide + orchestration passed");

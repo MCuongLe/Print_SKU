@@ -205,7 +205,16 @@ function comboRows(value: unknown, min = 1000): Json[] {
   });
 }
 async function insertRun(row: Json): Promise<Json> {
-  const response = await db("sku_sync_runs", { method: "POST", headers: { Prefer: "return=representation" }, body: JSON.stringify(row) });
+  const send = (value: Json) => db("sku_sync_runs", { method: "POST", headers: { Prefer: "return=representation" }, body: JSON.stringify(value) });
+  let response = await send(row);
+  // Cột ext_version có từ sync_auto_v3.sql: database chưa có cột (Edge / client lên trước migration) thì ghi lại không có cột.
+  if (!response.ok && "ext_version" in row) {
+    const text = await response.text();
+    if (!text.includes("ext_version")) throw new Error(`Lưu bản xem trước HTTP ${response.status}: ${text.slice(0, 260)}`);
+    const legacy = { ...row };
+    delete legacy.ext_version;
+    response = await send(legacy);
+  }
   return (await jsonResponse(response, "Lưu bản xem trước") as Json[])[0];
 }
 async function updateRun(id: string, patch: Json, status?: string): Promise<Json | null> {
@@ -214,6 +223,11 @@ async function updateRun(id: string, patch: Json, status?: string): Promise<Json
   return (await jsonResponse(response, "Cập nhật lượt đồng bộ") as Json[])[0] ?? null;
 }
 async function preview(request: Request, user: { id: string; username: string }, body: Json): Promise<Response> {
+  // Cổng bản Extension (sync_auto_v3.sql) cho mọi chế độ, lượt tự động lẫn lượt tay, trước mọi lần đọc database nặng.
+  await recordDevice("sku", body);
+  const outdated = extensionGate(request, "sku", body, await autoSettings());
+  if (outdated) return outdated;
+  const extVersion = extVersionOf(body.extVersion);
   const source = body.snapshot as Json;
   if (!source || !Array.isArray(source.categories) || source.categories.length !== CATEGORIES.size) return fail(request, 400, "INCOMPLETE_SOURCE", "Extension chưa lấy đủ 7 category SKU");
   const full = body.mode === "full" || source.mode === "full";
@@ -348,6 +362,8 @@ async function preview(request: Request, user: { id: string; username: string },
     missing_sku_codes: full ? skuMissingAll.map(row => String(row.sku)) : null,
     // Cột source cũ luôn "inside-extension" (check cứng); nguồn kích hoạt nằm ở run_source (sync_auto_v1.sql).
     run_source: runSource(body.source), device: deviceName(body.device),
+    // Bản Extension của lượt (sync_auto_v3.sql): chỉ có khoá khi khai báo hợp lệ.
+    ...(extVersion ? { ext_version: extVersion } : {}),
   });
   return reply(request, 200, { ok: true, data: { runId: run.id, status: run.status, mode: full ? "full" : "incremental", sourceCounts, changeCounts, changes, verification }, meta: { updatedAt: run.created_at, schemaVersion: 1 } });
 }
@@ -495,6 +511,74 @@ async function detail(request: Request, body: Json): Promise<Response> {
   const runs = await fetchAll(`sku_sync_runs?select=id,status,mode,cutoff,source_counts,change_counts,changes,verification,error_message,created_at,completed_at,run_source,device,auto_hold&id=eq.${encodeURIComponent(runId)}&limit=1`);
   return runs[0] ? reply(request, 200, { ok: true, data: runView(runs[0]), meta: { updatedAt: new Date().toISOString(), schemaVersion: 1 } }) : fail(request, 404, "NOT_FOUND", "Không thấy lượt đồng bộ");
 }
+// >>> cổng bản Extension (sync_auto_v3.sql): khối chép GIỐNG HỆT ở sku-sync/index.ts và group-uid-sync/index.ts (deploy gửi 1 tệp mỗi hàm); test *_sync_function.mjs so từng ký tự
+// extVersion = chrome.runtime.getManifest().version (Extension ≥ 0.10.10; web gửi bản đã PING). Mức tối thiểu theo loại ở
+// sync_auto_settings.min_extension, chỉ đặt bằng SQL tay; rỗng / thiếu khoá / sai dạng / thiếu cột (Edge lên trước migration) = không chặn.
+const VERSION_RE = /^\d{1,3}\.\d{1,3}\.\d{1,3}$/;
+const VERSION_KINDS = ["sku", "group_uid", "cut_adj", "storage_risk"];
+const DEVICE_LIST_LIMIT = 20;
+const DEVICE_LIST_DAYS = 14;
+// Chuỗi "x.y.z" (mỗi đoạn 1–3 chữ số, không khoảng trắng) hoặc null = chưa khai báo.
+function extVersionOf(value: unknown): string | null { return typeof value === "string" && VERSION_RE.test(value) ? value : null; }
+// So theo từng đoạn số (0.10.10 > 0.10.9, không so chuỗi); chưa khai báo (null) thấp hơn mọi mức.
+function versionLess(version: string | null, min: string): boolean {
+  if (version === null) return true;
+  const have = version.split(".").map(Number), need = min.split(".").map(Number);
+  for (let index = 0; index < 3; index += 1) if (have[index] !== need[index]) return have[index] < need[index];
+  return false;
+}
+function minExtensionFor(kind: string, settings: Json | null): string | null {
+  const all = settings?.min_extension;
+  return all && typeof all === "object" && !Array.isArray(all) ? extVersionOf((all as Json)[kind]) : null;
+}
+function minExtensionView(settings: Json | null): Json {
+  return Object.fromEntries(VERSION_KINDS.map(kind => [kind, minExtensionFor(kind, settings)]));
+}
+// 409 EXTENSION_OUTDATED khi có mức cho loại này mà bản thấp hơn hoặc chưa khai báo. Lượt tự động (lease, source "auto") → câu cho
+// Extension; lượt tay (web) → tải lại trang trước (tab web cũ chưa gửi extVersion), rồi mới Reload Extension.
+function extensionGate(request: Request, kind: string, body: Json, settings: Json | null): Response | null {
+  const min = minExtensionFor(kind, settings), version = extVersionOf(body.extVersion);
+  if (!min || !versionLess(version, min)) return null;
+  const head = version ? `Extension v${version} quá cũ` : "Extension chưa khai báo bản";
+  const tab = kind === "sku" ? "Inside" : "WMS";
+  const auto = clean(body.action, 30) === "lease" || body.source === "auto";
+  const next = auto ? `hãy Reload Extension rồi tải lại tab ${tab}` : `hãy tải lại trang (Ctrl+F5); nếu vẫn báo, Reload Extension rồi tải lại tab ${tab}`;
+  return fail(request, 409, "EXTENSION_OUTDATED", `${head}, cần ≥ ${min}; ${next}`);
+}
+// holder = tên máy + "#" + mã máy (auto-sync.js holderOf); không có hậu tố mã thì cả holder là tên máy.
+function holderParts(holder: string): { device: string; id: string } {
+  const match = holder.match(/^(.*)#([A-Za-z0-9]+)$/);
+  return match ? { device: clean(match[1], 60), id: match[2] } : { device: clean(holder, 60), id: "" };
+}
+// Ghi nhận máy TRƯỚC cổng (máy bị chặn vẫn hiện ở bảng Máy đồng bộ). Upsert theo holder và KHÔNG gửi first_seen_at: PostgREST chỉ
+// cập nhật cột có trong payload nên lần đầu thấy giữ nguyên. ext_version ghi đè cả khi null (máy hạ bản, bản cũ không khai báo).
+// Lỗi (bảng chưa có khi Edge lên trước migration, mạng) chỉ bỏ qua.
+async function recordDevice(kind: string, body: Json): Promise<void> {
+  const holder = clean(body.holder, 80);
+  if (!holder) return;
+  try {
+    const row = { holder, device: holderParts(holder).device, ext_version: extVersionOf(body.extVersion), last_seen_at: new Date().toISOString(), last_kind: kind };
+    const response = await db("sync_auto_devices?on_conflict=holder", { method: "POST", headers: { Prefer: "resolution=merge-duplicates,return=minimal" }, body: JSON.stringify(row) });
+    await jsonResponse(response, "Ghi nhận máy đồng bộ");
+  } catch {
+    // Bỏ qua: lượt vẫn chạy như trước khi có bảng máy.
+  }
+}
+// Bảng Máy đồng bộ (auto-config): tối đa 20 máy thấy trong 14 ngày, mới nhất trước; chỉ 4 ký tự đầu của mã máy, không trả holder.
+// Đọc lỗi → null: auto-config bỏ khoá devices (không trả [] giả như "chưa có máy nào"); bảng rỗng thật vẫn là [].
+async function deviceList(): Promise<Json[] | null> {
+  try {
+    const since = new Date(Date.now() - DEVICE_LIST_DAYS * 24 * 60 * 60 * 1000).toISOString();
+    const rows = await fetchAll(`sync_auto_devices?select=holder,device,ext_version,last_seen_at,last_kind&last_seen_at=gte.${encodeURIComponent(since)}&order=last_seen_at.desc&limit=${DEVICE_LIST_LIMIT}`);
+    return rows.slice(0, DEVICE_LIST_LIMIT).map(row => ({
+      device: clean(row.device, 60), id4: holderParts(clean(row.holder, 80)).id.slice(0, 4), version: extVersionOf(row.ext_version),
+      lastSeenAt: row.last_seen_at ?? null, lastKind: VERSION_KINDS.includes(String(row.last_kind)) ? String(row.last_kind) : null,
+    }));
+  } catch {
+    return null;
+  }
+}
+// <<< cổng bản Extension
 async function autoSettings(): Promise<Json | null> {
   return (await fetchAll("sync_auto_settings?select=*&singleton=eq.true&limit=1"))[0] ?? null;
 }
@@ -512,6 +596,8 @@ function configView(row: Json | null): Json {
     enabled: row ? row.enabled !== false : true, intervalMinutes: Number(row?.interval_minutes) || 30,
     fullWindow: { start: time(row?.full_window_start, "00:00"), end: time(row?.full_window_end, "05:00") },
     thresholds, updatedAt: row?.updated_at ?? null, updatedBy: row?.updated_by ?? null,
+    // sync_auto_v3.sql: mức tối thiểu theo loại (chuỗi "x.y.z" hoặc null = không chặn) để Extension / web biết trước khi chạy.
+    minExtension: minExtensionView(row),
   };
 }
 // Mốc lượt tự động gần nhất kết thúc (hoàn tất / giữ lại) của từng loại, mọi máy: Extension 0.10.7 dùng làm "còn sống" cho cảnh báo
@@ -546,7 +632,9 @@ async function autoConfig(request: Request, user: { id: string }, body: Json): P
     const response = await db("sync_auto_settings?on_conflict=singleton", { method: "POST", headers: { Prefer: "resolution=merge-duplicates,return=minimal" }, body: JSON.stringify({ singleton: true, ...patch }) });
     await jsonResponse(response, "Lưu cấu hình tự động");
   }
-  return reply(request, 200, { ok: true, data: { ...configView(await autoSettings()), lastFinishedAt: await lastFinishedByKind() }, meta: { updatedAt: new Date().toISOString(), schemaVersion: 1 } });
+  // devices chỉ có khi đọc được bảng máy (đọc lỗi → vắng khoá, web ẩn bảng thay vì báo "chưa có máy").
+  const devices = await deviceList();
+  return reply(request, 200, { ok: true, data: { ...configView(await autoSettings()), lastFinishedAt: await lastFinishedByKind(), ...(devices ? { devices } : {}) }, meta: { updatedAt: new Date().toISOString(), schemaVersion: 1 } });
 }
 // Giãn cách giữa các máy: lượt theo lịch gửi cooldownSeconds (nhịp − 2 phút); thiếu / sai → 0 (như cũ). Tối đa 180 phút.
 function cooldownOf(value: unknown): number { const seconds = Math.floor(Number(value)); return Number.isFinite(seconds) ? Math.min(Math.max(seconds, 0), 10800) : 0; }
@@ -560,6 +648,10 @@ function leaseInput(request: Request, body: Json): { kind: string; holder: strin
 async function lease(request: Request, body: Json): Promise<Response> {
   const input = leaseInput(request, body);
   if (input instanceof Response) return input;
+  // sync_auto_v3.sql: ghi nhận máy rồi mới xét bản tối thiểu (máy bị chặn vẫn hiện trong danh sách); bị chặn thì không thuê khoá.
+  await recordDevice(input.kind, body);
+  const outdated = extensionGate(request, input.kind, body, await autoSettings());
+  if (outdated) return outdated;
   const cooldown = cooldownOf(body.cooldownSeconds);
   // data = {ok:false, reason:"COOLDOWN", lastFinishedAt, retryAfter} khi lượt cùng loại vừa kết thúc chưa quá cooldown.
   const data = await rpc("sync_auto_lease", { p_kind: input.kind, p_holder: input.holder, p_ttl_seconds: LEASE_TTL_SECONDS, ...(cooldown > 0 ? { p_cooldown_seconds: cooldown } : {}) });

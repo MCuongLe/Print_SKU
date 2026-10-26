@@ -33,7 +33,12 @@ Gom từ `docs/QUYET_DINH.md` chủ đề 3, 5, 6, 8, 9, `docs/DOI_AGENT.md` và
 - Đọc nguồn qua Extension trong tab người dùng đã đăng nhập; token WMS / Inside không rời tab; Extension giữ phiên Admin Supabase riêng, không có service_role. Nguồn: (17/10 · N0923; N0134–N0144)
 - Đọc hết vào bộ nhớ, kiểm nhất quán (tổng, trùng mã) rồi mới ghi; ghi qua staging theo `run_id`, luôn xem trước (preview) rồi mới apply; không tự xoá bản ghi `missing`; giảm mạnh → dừng (SAFETY_LIMIT). Nguồn: (08–22/10 · N0059, N0004, N0740, N0746, N0657)
 - Dò API WMS / Inside chỉ bằng GET qua Chrome DevTools MCP; không dùng thao tác tạo job (export "By PO"); không dùng `get_network_request` (lộ token). Nguồn: (12/10 · N0003, N0004); `docs/DOI_AGENT.md` bước 1
-- Extension đổi hành vi thì nâng phiên bản `manifest.json`, cập nhật mọi test khẳng định số đó và ghi chú `extension/inside-po-connector/README.md`; Extension cũ phải tương thích hoặc bị màn Admin chặn. Giữ bởi: `commit_gate` (phiên bản Extension). Nguồn: `docs/DOI_AGENT.md` trước 25/10; (17/10, 21/10 · N0919, N1001, N1117)
+- Extension đổi hành vi thì nâng phiên bản `manifest.json`, cập nhật mọi test và fixture ghim số đó (`commit_gate` liệt kê dòng còn sót) và ghi chú `extension/inside-po-connector/README.md`; Extension cũ phải tương thích hoặc bị cổng bản chặn. Giữ bởi: `commit_gate` (phiên bản Extension). Nguồn: `docs/DOI_AGENT.md` trước 25/10; (17/10, 21/10 · N0919, N1001, N1117)
+- Mỗi thay đổi Extension / Edge / hợp đồng RPC phân loại trước khi lên: **tương thích ngược** (bản cũ vẫn chạy đúng, không nâng `min_extension`), **sửa sai dữ liệu** (bản cũ đọc sai mà vẫn ghi: nâng `min_extension` sau khi mọi máy đã Reload), **phá hợp đồng** (bản cũ không chạy được: nâng ngay khi lên, kèm thứ tự lên). Nguồn: (26/10 · N20261026-1102)
+- Cổng bản: Extension (từ 0.10.10) và web gửi `extVersion` dạng `x.y.z` ở mọi lệnh Edge `sku-sync` / `group-uid-sync`; Edge ghi nhận máy ở `sync_auto_devices` và trả 409 `EXTENSION_OUTDATED` ở `lease`, `preview` (SKU), `prepare` (Group UID) khi `sync_auto_settings.min_extension[loại]` cao hơn bản gửi lên.
+  - Mức rỗng = không chặn; chỉ đặt / hạ bằng SQL tay (Edge không cho đổi; CHECK từ chối giá trị sai dạng và khoá lạ).
+  - Giữ bởi: `tests/sku_sync_function.mjs`, `tests/group_uid_sync_function.mjs`, `tests/sync_auto_v3_sql.cjs`, `tests/auto_sync_core.cjs`. Nguồn: (26/10 · N20261026-1102)
+- Khối cổng bản chép giống hệt ở hai Edge (deploy gửi một tệp mỗi hàm); hàm so bản ở Extension và web cùng nghĩa, bảng ca so bản chung nằm trong `tests/sku_sync_function.mjs`. Edge lên trước migration phải vẫn chạy như cũ: ghi nhận máy bỏ qua lỗi, `ext_version` ghi lại không có cột. Nguồn: (26/10 · N20261026-1102)
 
 ## Dọn dữ liệu (cron, giờ Việt Nam)
 

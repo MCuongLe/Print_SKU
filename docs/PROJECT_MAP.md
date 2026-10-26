@@ -54,10 +54,11 @@ khung quét chuẩn `scan-field-std` (CSS) + `scan-field-std-script` (`window.Pr
 Khuôn hero `.ss-hero` (8 màn: thanh lệnh gọn, h2 sr-only, không Admin thì ẩn) + nút đọc nguồn `.src-read` (12 nút "Đọc WMS"/"Đọc Inside"/"Toàn bộ", `data-busy` = vòng xoay + "Đang đọc…", nhãn trong `.src-read__t`) nằm trong `<style id="hero-standard">` cuối tệp; test `src_read_style_browser`.
 Từ 18/10: nút đang chạy có vạch load `::after` dưới nút (biến `--p` 0–1 khi biết trang x/y), các thanh tiến độ rời (`#sku-sync-progress`, `#gu-progress`, `#ia-progress`, `#sc-progress`, `#uh-progress`) chỉ còn ẩn;
 hai màn đồng bộ có ô Tự động `#ss-strip-auto` / `#gu-strip-auto` trong dải mốc giờ (nút icon `#*-auto-toggle`; từ 22/10 `data-alert` đỏ "Ngừng" khi quá 2 nhịp + 10 phút không có lượt tự động).
+Từ 26/10 nút `#ss-dev-btn` / `#gu-dev-btn` mở pop-up "Máy đồng bộ" `#ss-dev-dialog` / `#gu-dev-dialog` từ `auto-config.devices` (khối chép giống hệt giữa `// >>> bảng Máy đồng bộ` và `// <<< bảng Máy đồng bộ` ở hai script); lượt tay gửi `extVersion` và chặn trước khi đọc theo `minExtension`.
 Đối chiếu ADJ: `#cut-adj-cov` = khoảng dữ liệu WMS (vàng khi chưa nạp / cũ hơn 24 giờ), `#cut-adj-upd` (23/10) = lần nạp gần nhất "Cập nhật HH:MM dd/mm · … trước · Tự động <máy> | Đọc WMS | Nạp file" từ `lastImport` của `cut_group_uid_reconcile`, nhãn đỏ `.cut-adj-stop` "Ngừng" khi quá 70 phút;
 Rủi ro lưu trữ: ô Cập nhật lúc / Đọc lúc đỏ theo `window.PrintSkuAutoStale.storageRisk` (250 phút trong khung 07:00–19:30).
 
-## 3. Extension `extension/inside-po-connector` (manifest 0.10.9)
+## 3. Extension `extension/inside-po-connector` (manifest 0.10.10)
 - `app-bridge.js`: content script trên trang Print SKU; allow-list lệnh; `window.postMessage` ↔ `chrome.runtime.sendMessage`.
 - `background.js`: service worker; kiểm `APP_URL_PATTERN`; `WMS_READ_TYPES`; tìm tab Inside/WMS; nhánh `AUTO_*` cho trang Options; alarms `auto-sync` / `auto-keepalive`; `chrome.storage.local.setAccessLevel(TRUSTED_CONTEXTS)`.
 - `inside-bridge.js`: `GET_PO` (danh sách + trang chi tiết PO; trả `lastModified` = cột LastModified, `deliveryDate`, `items[{sku, orderedQty}]`), `GET_SKU_SYNC_DATA` ({full}|{cutoff}), đọc 7 nhóm hàng `SKU_CATEGORIES`, Combo theo Modified; `sku-sync-core.js` (cutoffKey, comboStampsOrdered).
@@ -66,24 +67,27 @@ Rủi ro lưu trữ: ô Cập nhật lúc / Đọc lúc đỏ theo `window.Print
   - `group-uid-sync-core.js` (`normalizeRow` có `qc_status`), `inventory-audit-core.js`.
 - `hcm-bridge.js`: app xây dựng (Cloudflare Access + Bearer) cho Kiểm soát công trình.
 - Nền tự động: `auto-sync.js` (`decide`, `tick`, `runNow`, lease/cooldown, held; 0.10.7: 4 loại `group_uid` / `sku` / `cut_adj` / `storage_risk`, tab ghim cả lượt, `auto.active` + `recover()` khi worker khởi động, `assessHealth` → dấu "!" trên icon, `rpc()` PostgREST bằng phiên Admin),
+  - 0.10.10 (cổng bản): `extVersion` ở mọi lệnh Edge, `versionLess`; loại có `minExtension` cao hơn bản của máy bị `decide` bỏ (dấu `outdated`, `outdatedOutcome`, `firstLease`); 409 ở lần gia hạn khoá dừng lượt,
   - `group-uid-snapshot-core.js` (đọc WMS chống lệch, chép từ `readWmsSnapshot` của web), `cut-adj-core.js` (chép `syncFromWms` của `cut-adj-reconcile`, test `cut_adj_core` so với mã web), `storage-risk-core.js` (chép luồng `sr-run`: Kiểm kê + UID tạm, test `storage_risk_core` so với mã web), `supabase-session.js` (đăng nhập/gia hạn phiên Admin),
   - `supabase-config.js`, `options.html/js` (thẻ lý do ngừng, Phiên Admin, Tên máy, Trạng thái, Lượt gần nhất 4 loại, Nhật ký).
-- Nâng phiên bản: đổi `manifest.json` + `tests/inside_po_connector.cjs` + `tests/sku_sync_extension.cjs` + README Extension; sau Reload phải tải lại tab Inside/WMS.
+- Nâng phiên bản: đổi `manifest.json` + `tests/inside_po_connector.cjs` + `tests/sku_sync_extension.cjs` + README Extension + các fixture ghim bản (`commit_gate` mục 5 liệt kê dòng còn sót); sau Reload phải tải lại tab Inside/WMS.
 
 ## 4. Supabase
 Edge (`supabase/functions/*/index.ts`, deploy một tệp bằng `scripts/deploy_<tên>.py`, `verify_jwt` false, tự kiểm JWT Admin qua `/auth/v1/user` + `user_roles`):
-- `sku-sync`: preview (full|incremental, source/device) · apply (auto → ngưỡng/held, lưu trữ SKU rời nhóm sau completed) · history (lastSnapshotAt, lastAutoFullAt) · detail · lease · release (từ `sync_auto_v2` nhận cả `cut_adj`, `storage_risk`) · auto-config (từ 0.10.7 trả `lastFinishedAt` theo loại cho cảnh báo ngừng).
-- `group-uid-sync`: prepare · ingest · preview · apply · history · detail · cancel · lease · release · auto-config; RPC `group_uid_sync_prepare/preview/apply`.
+- `sku-sync`: preview (full|incremental, source/device) · apply (auto → ngưỡng/held, lưu trữ SKU rời nhóm sau completed) · history (lastSnapshotAt, lastAutoFullAt) · detail · lease · release (từ `sync_auto_v2` nhận cả `cut_adj`, `storage_risk`) · auto-config (từ 0.10.7 trả `lastFinishedAt` theo loại cho cảnh báo ngừng; từ `sync_auto_v3` thêm `minExtension` và `devices`).
+  - Từ 0.10.10: `lease` (4 loại) và `preview` qua cổng bản, 409 `EXTENSION_OUTDATED` khi `min_extension` cao hơn `extVersion` gửi lên.
+- `group-uid-sync`: prepare · ingest · preview · apply · history · detail · cancel · lease · release · auto-config; RPC `group_uid_sync_prepare/preview/apply`. Từ 0.10.10: `prepare` và `lease` qua cổng bản (cùng khối chép với `sku-sync`), `auto-config` thêm `minExtension` và `devices`.
 - `print-assistant`: tách ý định in tem phiếu IT (Anthropic nếu có khoá, không thì Gemini; `output_config.format` / `responseSchema`), log `print_assistant_log`.
 - `sku-vision`: Gemini đọc ảnh tem cho Tìm SKU.
 
 Bảng chính: `SKU_Name`, `sku_combo_links`, `sku_archive`, `sku_sync_runs`; `group_uid_details` (từ 21/10 có `purchase_order`), `group_uid_products`, `group_uid_sync_runs/staging/pages/changes/state`; `cut_group_uids` (từ 21/10 có `po`), `cut_sample_*`; `print_jobs`, `print_events`, `print_devices`, `print_activation_codes`;
-`sync_auto_settings`, `sync_auto_leases`; `print_assistant_log`; `user_roles`.
+`sync_auto_settings` (+ `min_extension`), `sync_auto_leases`, `sync_auto_devices` (máy đồng bộ + bản Extension); `print_assistant_log`; `user_roles`.
 
 Migration là chuỗi tệp `supabase/*.sql` (idempotent, `notify pgrst`); **bản mới nhất của một hàm nằm ở tệp mới nhất đụng nó**:
-- Đồng bộ tự động: `sync_auto_v1` → `sync_auto_window_morning_v1` → `sync_auto_v2`.
+- Đồng bộ tự động: `sync_auto_v1` → `sync_auto_window_morning_v1` → `sync_auto_v2` → `sync_auto_v3`.
   - `sync_auto_window_morning_v1` (17/10): khung đối chiếu toàn bộ **07:30–11:00** giờ VN, một lần/ngày khi lượt toàn bộ cuối > 20 giờ; nhịp gia tăng 30 phút; đọc từ `sync_auto_settings`, comment "mỗi đêm" trong `auto-sync.js` là cũ.
   - `sync_auto_v2` (22/10/2026): check `sync_auto_leases.kind` + `sync_auto_lease/release` nhận 4 loại; `wms_cut_coverage()` Admin = trường `coverage` của `cut_group_uid_reconcile`; chạy kèm `--allow-destructive` vì DROP CONSTRAINT check `kind`.
+  - `sync_auto_v3` (26/10/2026, chưa chạy): bảng `sync_auto_devices`, cột `ext_version` ở `sku_sync_runs` / `group_uid_sync_runs`, `sync_auto_settings.min_extension` (CHECK: giá trị `x.y.z`, khoá chỉ 4 loại); không đổi hàm; không cần `--allow-destructive`.
 - SKU sync: `sku_sync_admin_v1` → `sku_sync_full_v1` → `sync_auto_v1` → `sku_missing_archive_v1` (RPC `sku_archive_missing`, `sync_history_purge` mới nhất) → `sku_name_touch_v1` (trigger: `SKU_Name.updated_at` = `clock_timestamp()` khi thêm / dữ liệu đổi, ghi y nguyên giữ mốc — danh mục SKU trên máy dựa vào mốc này).
 - Group UID sync: `group_uid_sync_v1` (prepare gốc) → … → `group_uid_sync_v7_apply_guard` → `group_uid_qc_status_v1` (preview v6, apply v8, reconcile) → `sync_auto_v1` (prepare 5 tham số, lease) → `group_uid_rfid_v1` → `cut_group_uid_po_v1`.
   - `group_uid_rfid_v1` (preview/apply): cột `group_rfid_mapping` ở staging + details, index một phần không unique, `staging.group_rfid_known` = Edge thấy khoá → chỉ khi đó so/ghi RFID, Extension cũ giữ RFID cũ; `group_uid_by_rfid(p_codes)` anon ≤ 100 mã → `{rfid, groupUid, status}`; `uid_block_snapshot` bản mới nhất thêm `rfid` mỗi item.

@@ -75,12 +75,34 @@
     if (start === end) return false;
     return start < end ? minute >= start && minute < end : minute >= start || minute < end;
   }
+  // 0.10.10: so bản Extension cùng nghĩa với Edge (khối "cổng bản Extension" của sku-sync / group-uid-sync; bảng ca chung trong
+  // tests/sku_sync_function.mjs): chỉ chuỗi x.y.z (mỗi đoạn 1–3 chữ số, không khoảng trắng) là bản; so theo từng đoạn số (0.10.10 > 0.10.9).
+  const VERSION_RE = /^\d{1,3}\.\d{1,3}\.\d{1,3}$/;
+  function extVersionOf(value) { return typeof value === "string" && VERSION_RE.test(value) ? value : null; }
+  // true = bản `version` thấp hơn mức `min`. Mức rỗng / sai dạng = không có mức → false; bản chưa khai báo / sai dạng → thấp hơn mọi mức.
+  function versionLess(version, min) {
+    const need = extVersionOf(min);
+    if (!need) return false;
+    const have = extVersionOf(version);
+    if (!have) return true;
+    const a = have.split(".").map(Number), b = need.split(".").map(Number);
+    for (let index = 0; index < 3; index += 1) if (a[index] !== b[index]) return a[index] < b[index];
+    return false;
+  }
+  // Mức tối thiểu trong câu 409 EXTENSION_OUTDATED của Edge ("…, cần ≥ 0.10.10; …"); không đọc được → null.
+  function parseMinFromMessage(message) {
+    const match = String(message ?? "").match(/≥\s*(\d{1,3}\.\d{1,3}\.\d{1,3})(?!\d)/);
+    return match ? match[1] : null;
+  }
+  function shownVersion(version) { return extVersionOf(version) ? `v${version}` : "chưa rõ bản"; }
 
   // Hàm thuần: quyết định việc cần chạy ở lượt alarm này. Trả {jobs:[{kind,mode}], skipped:[{kind,reason,log}], reason}.
   // last[kind] = {at, status, fullAt, autoFullAt, fullHeldAt}: at = lần chạy thật gần nhất; fullAt = lượt toàn bộ hoàn tất gần nhất (Edge history);
   // autoFullAt = lượt toàn bộ tự động gần nhất đã hoàn tất hoặc bị giữ, của BẤT KỲ máy nào (Edge history lastAutoFullAt) — không đọc lại
   // toàn bộ trong 20 giờ để khỏi dồn WMS/Inside; fullHeldAt chỉ để hiển thị trên trang Tùy chọn.
-  function decide({ now = Date.now(), config, last, hasWms, hasInside, enabledLocal, signedIn, device, kinds = BASE_KINDS } = {}) {
+  // 0.10.10: version = bản của máy này; loại có mức config.minExtension[kind] mà bản thấp hơn → skipped kèm outdated {min, version}, không có
+  // việc (không thuê khoá, không đọc tab). version không truyền → không xét.
+  function decide({ now = Date.now(), config, last, hasWms, hasInside, enabledLocal, signedIn, device, kinds = BASE_KINDS, version } = {}) {
     const stop = reason => ({ jobs: [], skipped: [], reason });
     if (!signedIn) return stop("Chưa đăng nhập Admin trong Extension");
     if (device !== undefined && !clean(device, 60)) return stop("Chưa đặt tên máy");
@@ -91,6 +113,12 @@
     const windowOpen = inFullWindow(now, config.fullWindow);
     const jobs = [], skipped = [];
     for (const kind of kinds) {
+      // Dưới mức tối thiểu xét trước khung giờ / tab: cảnh báo không tắt bật theo giờ hay theo tab.
+      const min = version === undefined ? null : extVersionOf(config.minExtension?.[kind]);
+      if (min && versionLess(version, min)) {
+        skipped.push({ kind, reason: `Cần Extension ≥ ${min} (đang ${shownVersion(version)}): Reload Extension rồi tải lại tab`, log: true, outdated: { min, version } });
+        continue;
+      }
       // Rủi ro lưu trữ ngoài khung 07:00–19:30: không chạy, không ghi nhật ký.
       if (kind === "storage_risk" && !inStorageWindow(now)) continue;
       const hasTab = NEEDS_WMS.has(kind) ? hasWms : hasInside;
@@ -125,7 +153,10 @@
     return /_TAB_MISSING$|_BRIDGE_ERROR$/.test(String(error.code || "")) || error.reason === "session";
   }
   // Danh sách lý do cảnh báo (rỗng = ổn). Máy tắt tự động hoặc Admin tạm dừng là chủ ý → không cảnh báo.
-  function assessHealth({ now = Date.now(), signedIn, device, enabledLocal, paused, intervalMinutes, health, kinds = BASE_KINDS } = {}) {
+  // 0.10.10: health.kinds[kind].outdated ghi khi đúng bản `version` này dưới mức tối thiểu → báo ngay (không chờ 2 nhịp), thay câu "ngừng"
+  // của loại đó. Dấu ghi khi máy còn bản khác (vừa Reload): loại đó bị chặn chủ ý tới lúc này, không phải ngừng → không báo gì cho tới
+  // tick kế (vòng dọn đầu tick bỏ dấu). version không truyền → không xét dấu.
+  function assessHealth({ now = Date.now(), signedIn, device, enabledLocal, paused, intervalMinutes, health, kinds = BASE_KINDS, version } = {}) {
     if (!signedIn) return ["Chưa đăng nhập Admin trong Extension"];
     if (!clean(device, 60)) return ["Chưa đặt tên máy"];
     if (enabledLocal === false || paused === true) return [];
@@ -134,6 +165,13 @@
     const problems = [];
     for (const kind of kinds) {
       const info = health?.kinds?.[kind] || {};
+      const outdated = version !== undefined && info.outdated && typeof info.outdated === "object" ? info.outdated : null;
+      if (outdated) {
+        if (outdated.version !== version) continue;
+        const min = extVersionOf(outdated.min);
+        problems.push(`${LABEL[kind]}: cần Extension ${min ? `≥ ${min}` : "mới hơn"} (đang ${shownVersion(version)}); Reload Extension`);
+        continue;
+      }
       const alive = Date.parse(info.aliveAt || "") || since;
       if (!Number.isFinite(alive)) continue;
       if (kind === "storage_risk" ? storageWorkMinutes(alive, now) <= STORAGE_STALE_WORK_MINUTES : now - alive <= limit) continue;
@@ -156,6 +194,14 @@
     const snapshotCore = () => deps.snapshotCore || root.GroupUidSnapshotCore;
     const alarms = deps.alarms || (typeof chrome !== "undefined" ? chrome.alarms : null);
     const timers = deps.timers || { set: (fn, ms) => setInterval(fn, ms), clear: id => clearInterval(id) };
+    // 0.10.10: bản của máy này = deps.version (test) hoặc manifest, đọc lúc gọi; không đọc được → undefined (không gửi, không xét).
+    const extVersion = () => {
+      if (deps.version !== undefined) return deps.version;
+      try {
+        const value = typeof chrome !== "undefined" ? chrome.runtime?.getManifest?.()?.version : undefined;
+        return typeof value === "string" ? value : undefined;
+      } catch { return undefined; }
+    };
     let running = null;
     let guard = null;
     // 0.10.7 (G4): tab WMS/Inside chọn một lần đầu lượt và dùng cho cả lượt (trước đây chọn lại mỗi trang → mở thêm tab giữa lượt là hỏng lượt).
@@ -170,17 +216,20 @@
       } catch { /* không có icon thì thôi */ }
     } : null);
 
+    // 0.10.10: mọi lệnh Edge (lease, release, prepare, ingest, preview, apply, cancel, history, auto-config) gửi extVersion = bản của máy
+    // để Edge ghi nhận máy và chặn bản dưới mức tối thiểu (409 EXTENSION_OUTDATED); không đọc được bản thì bỏ khoá (Edge coi chưa khai báo).
     async function edge(kind, action, payload = {}, retried = false) {
       const target = config();
       if (!target?.url || !target?.key) throw edgeError("NO_CONFIG", "Extension thiếu cấu hình Supabase");
       const token = await session.getAccessToken({ force: retried });
       const controller = typeof AbortController === "function" ? new AbortController() : null;
       const timer = controller ? setTimeout(() => controller.abort(), deps.edgeTimeoutMs ?? (EDGE_TIMEOUT_MS[action] || EDGE_DEFAULT_TIMEOUT_MS)) : null;
+      const version = extVersion();
       let response, result;
       try {
         try {
           response = await fetchImpl(`${target.url.replace(/\/$/, "")}/functions/v1/${FN[kind]}`, {
-            method: "POST", headers: { apikey: target.key, Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ action, ...payload }),
+            method: "POST", headers: { apikey: target.key, Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ action, ...payload, ...(typeof version === "string" && version ? { extVersion: version } : {}) }),
             ...(controller ? { signal: controller.signal } : {}),
           });
         } catch {
@@ -334,10 +383,33 @@
       if (finished) payload.finished = true;
       await edge(kind, "release", payload).catch(() => {});
     }
+    // 0.10.10: Edge từ chối bản Extension (409 EXTENSION_OUTDATED; máy lệch giữa lúc đọc cấu hình và lúc thuê / xem trước) → bỏ qua kèm
+    // outdated (cảnh báo ngay trên icon + Tùy chọn), không phải lỗi chung. Lỗi khác → null.
+    function outdatedOutcome(error, runId = null) {
+      if (error?.code !== "EXTENSION_OUTDATED") return null;
+      const version = extVersion();
+      return { status: "skipped", runId, message: clean(error.message, 300) || "Extension quá cũ; Reload Extension", outdated: { min: parseMinFromMessage(error.message), version: typeof version === "string" ? version : null } };
+    }
+    // Thuê khoá đầu lượt: null = đã giành khoá; ngược lại kết quả "bỏ qua" (máy khác đang giữ / vừa chạy, hoặc bản dưới mức tối thiểu).
+    // Chưa giành khoá nên không nhả. Edge trả lời được (giành được hoặc máy khác đang giữ / vừa chạy) = máy đã qua cổng bản → bỏ dấu
+    // dưới mức ngay (giữ lý do), không đợi lượt kết thúc.
+    async function firstLease(kind, device, cooldownSeconds) {
+      let busy;
+      try { busy = await lease(kind, device, cooldownSeconds); }
+      catch (error) {
+        const outdated = outdatedOutcome(error);
+        if (outdated) return outdated;
+        throw error;
+      }
+      // Lỗi ghi storage ở đây không được làm rơi khoá vừa giành (chưa có guard / finally nhả khoá).
+      try { if ((await storage.get(KEYS.health))?.kinds?.[kind]?.outdated) await noteHealth(kind, { outdated: null }); } catch { /* chỉ là dấu cảnh báo */ }
+      return busy ? { status: "skipped", message: busy, covered: true } : null;
+    }
 
-    // Giữ khoá thuê suốt lượt. lost = câu lý do khi đã mất khoá (máy khác giành được hoặc không gia hạn được quá lâu).
+    // Giữ khoá thuê suốt lượt. lost = câu lý do khi đã mất khoá (máy khác giành được hoặc không gia hạn được quá lâu);
+    // error = lỗi 409 EXTENSION_OUTDATED khi gia hạn (0.10.10), ném lại nguyên lỗi này để lượt kết thúc là "bỏ qua kèm outdated".
     function startGuard(kind, device) {
-      const g = { kind, device, lost: "", lastOkAt: now(), pending: null, timer: null };
+      const g = { kind, device, lost: "", error: null, lastOkAt: now(), pending: null, timer: null };
       g.timer = timers.set(() => { renewLease(g).catch(() => {}); }, LEASE_RENEW_EVERY_MS);
       guard = g;
       return g;
@@ -357,7 +429,9 @@
             if (busy) { g.lost = `Mất khoá thuê: ${busy}`; return false; }
             g.lastOkAt = now();
             return true;
-          } catch {
+          } catch (error) {
+            // 0.10.10: Edge từ chối bản Extension khi gia hạn (Admin nâng mức giữa lượt) → dừng lượt ngay, không chịu 14 phút như lỗi mạng.
+            if (error?.code === "EXTENSION_OUTDATED") { g.lost = clean(error.message, 300); g.error = error; return false; }
             if (now() - g.lastOkAt > LEASE_SAFE_MS) { g.lost = "Mất khoá thuê: không gia hạn được"; return false; }
             return true;
           } finally {
@@ -367,8 +441,8 @@
       }
       return g.pending;
     }
-    function checkLease(g) { if (g.lost) throw edgeError("LEASE_LOST", g.lost); }
-    async function confirmLease(g) { if (!(await renewLease(g, true))) throw edgeError("LEASE_LOST", g.lost); }
+    function checkLease(g) { if (g.lost) throw g.error || edgeError("LEASE_LOST", g.lost); }
+    async function confirmLease(g) { if (!(await renewLease(g, true))) throw g.error || edgeError("LEASE_LOST", g.lost); }
     // alarm "auto-keepalive" (30 giây) đánh thức service worker: tiện gia hạn khoá của lượt đang chạy.
     async function onKeepAlive() { return guard ? renewLease(guard) : true; }
     // Nhịp alarm "auto-sync" theo cấu hình Admin (15–180 phút); đổi thì tạo lại alarm.
@@ -407,11 +481,13 @@
     }
 
     // startedAt: giờ bắt đầu lượt → last.at (decide so nhịp với mốc này; lượt dài không đẩy lượt kế sang nhịp sau).
+    // 0.10.10: outcome.outdated (409 EXTENSION_OUTDATED) → ghi dấu dưới mức cho cảnh báo ngay; bỏ qua / lỗi khác → bỏ dấu (vd. Chạy ngay
+    // sau khi Admin hạ mức mà tab lỗi). Hoàn tất / giữ lại / máy khác đang lo đều đã qua lease nên firstLease đã bỏ dấu.
     async function finish(kind, mode, outcome, startedAt = null) {
       const at = new Date(now()).toISOString();
       await addLog({ kind, mode, ...outcome });
       if (["ok", "held"].includes(outcome.status) || outcome.covered) await noteHealth(kind, { aliveAt: at, reason: outcome.covered ? clean(outcome.message, 120) : "" });
-      else await noteHealth(kind, { reason: clean(outcome.message, 120) });
+      else await noteHealth(kind, { reason: clean(outcome.message, 120), outdated: outcome.outdated ? { ...outcome.outdated, at } : null });
       if (outcome.status === "skipped") return outcome;
       const patch = { at: startedAt || at, status: outcome.status, runId: outcome.runId || null, message: clean(outcome.message, 300), mode };
       if (mode === "full" && outcome.status === "ok") patch.fullAt = at;
@@ -429,8 +505,8 @@
         if (tabUnavailable(error)) return { status: "skipped", message: error.message };
         throw error;
       }
-      const busy = await lease("group_uid", device, cooldownSeconds);
-      if (busy) return { status: "skipped", message: busy, covered: true };
+      const skip = await firstLease("group_uid", device, cooldownSeconds);
+      if (skip) return skip;
       const g = startGuard("group_uid", device), holder = await holderOf(device);
       let prepared = null, previewed = false, finished = false;
       try {
@@ -438,7 +514,7 @@
         catch (error) {
           if (error.code === "ACTIVE_RUN") return { status: "skipped", message: "Đang có lượt khác (Admin đang xem trước)", covered: true };
           if (error.code === "FULL_REQUIRED") return { status: "skipped", message: "Cần đối chiếu toàn bộ lần đầu" };
-          throw error;
+          throw error; // 409 EXTENSION_OUTDATED ở prepare: khối catch ngoài trả "bỏ qua kèm outdated" (chưa có lượt nên không hủy)
         }
         await markActive({ runId: prepared.runId });
         const snapshot = await snapshotCore().readGroupUidSnapshot({
@@ -461,11 +537,15 @@
         const c = report?.changeCounts || {};
         return { status: "ok", runId: prepared.runId, message: `Đã cập nhật ${num(Number(c.added || 0) + Number(c.updated || 0))} UID · ${num(snapshot.total)} UID đã đọc` };
       } catch (error) {
-        // Mất khoá: hủy cả khi đã xem trước, để lượt này không chặn máy đang giữ khoá (ACTIVE_RUN).
-        const lost = error.code === "LEASE_LOST";
-        if (prepared?.runId && (!previewed || lost)) {
-          await edge("group_uid", "cancel", { runId: prepared.runId, message: lost ? "Mất khoá thuê" : clean(`Tự động: ${error.message}`, 500) }).catch(() => {});
+        // Mất khoá hoặc Edge từ chối bản khi gia hạn (0.10.10: checkLease / confirmLease ném lại lỗi 409): hủy cả khi đã xem trước, để
+        // lượt này không chặn máy đang giữ khoá (ACTIVE_RUN) / máy đủ bản.
+        const lost = error.code === "LEASE_LOST", outdated = error.code === "EXTENSION_OUTDATED";
+        if (prepared?.runId && (!previewed || lost || outdated)) {
+          const message = lost ? "Mất khoá thuê" : outdated ? clean(`Extension dưới mức tối thiểu: ${error.message}`, 500) : clean(`Tự động: ${error.message}`, 500);
+          await edge("group_uid", "cancel", { runId: prepared.runId, message }).catch(() => {});
         }
+        const skip = outdatedOutcome(error, prepared?.runId || null);
+        if (skip) return skip;
         if (tabUnavailable(error) && !previewed) return { status: "skipped", runId: prepared?.runId, message: error.message };
         return { status: "error", runId: prepared?.runId || null, message: error.message || "Không đồng bộ được Group UID" };
       } finally {
@@ -475,8 +555,8 @@
     }
 
     async function runSku(mode, device, cooldownSeconds = 0) {
-      const busy = await lease("sku", device, cooldownSeconds);
-      if (busy) return { status: "skipped", message: busy, covered: true };
+      const skip = await firstLease("sku", device, cooldownSeconds);
+      if (skip) return skip;
       const g = startGuard("sku", device), holder = await holderOf(device);
       let runId = null, finished = false;
       try {
@@ -506,7 +586,8 @@
         const changes = ["skuAdded", "skuUpdated", "comboAdded", "comboUpdated"].reduce((sum, key) => sum + Number(c[key] || 0), 0);
         return { status: "ok", runId, message: `Đã cập nhật ${num(changes)} thay đổi · ${num(snapshot.normalRows.length)} SKU đã đọc` };
       } catch (error) {
-        return { status: "error", runId, message: error.message || "Không đồng bộ được SKU" };
+        // preview và gia hạn khoá (confirmLease ném lại lỗi 409) cũng qua cổng bản Extension (mức nâng giữa lượt): bỏ qua kèm outdated.
+        return outdatedOutcome(error, runId) || { status: "error", runId, message: error.message || "Không đồng bộ được SKU" };
       } finally {
         stopGuard(g);
         await releaseLease("sku", device, finished);
@@ -521,8 +602,8 @@
     async function runCore(kind, device, cooldownSeconds = 0) {
       const core = cores[kind]?.();
       if (typeof core?.run !== "function") return { status: "error", message: `Extension thiếu bộ đọc ${LABEL[kind]}; hãy Reload Extension` };
-      const busy = await lease(kind, device, cooldownSeconds);
-      if (busy) return { status: "skipped", message: busy, covered: true };
+      const skip = await firstLease(kind, device, cooldownSeconds);
+      if (skip) return skip;
       const g = startGuard(kind, device);
       let finished = false, serverAt = NaN;
       try {
@@ -537,6 +618,9 @@
         finished = true;
         return { status: "ok", message: summaryOf(kind, result) };
       } catch (error) {
+        // Gia hạn khoá bị 409 (g.error): lõi có thể bọc lỗi (Rủi ro lưu trữ gộp lỗi hai bước) → xét theo khoá đã mất, không theo mã lỗi bọc.
+        const skip = outdatedOutcome(g.error || error);
+        if (skip) return skip;
         if (tabUnavailable(error)) return { status: "skipped", message: error.message };
         return { status: "error", message: error.message || `Không đồng bộ được ${LABEL[kind]}` };
       } finally {
@@ -596,7 +680,7 @@
 
     async function healthNow() {
       const [state, paused, interval, health] = await Promise.all([readState(), storage.get(KEYS.paused), storage.get(KEYS.interval), storage.get(KEYS.health)]);
-      return assessHealth({ now: now(), signedIn: Boolean(state.session), device: state.device, enabledLocal: state.enabled, paused: paused === true, intervalMinutes: interval, health, kinds: activeKinds() });
+      return assessHealth({ now: now(), signedIn: Boolean(state.session), device: state.device, enabledLocal: state.enabled, paused: paused === true, intervalMinutes: interval, health, kinds: activeKinds(), version: extVersion() });
     }
     async function refreshBadge() {
       try { const problems = await healthNow(); badge?.(problems); return problems; } catch { return []; }
@@ -631,7 +715,8 @@
         try { autoConfig = await edge("sku", "auto-config"); }
         catch (error) {
           await addLog({ status: "error", message: `Không đọc được cấu hình: ${error.message}` });
-          for (const kind of activeKinds()) await noteHealth(kind, { reason: clean(`Không đọc được cấu hình: ${error.message}`, 120) });
+          // 0.10.10: không đọc được mức tối thiểu → bỏ dấu dưới mức cũ (không treo "cần Extension" mãi); lý do là câu lỗi cấu hình.
+          for (const kind of activeKinds()) await noteHealth(kind, { reason: clean(`Không đọc được cấu hình: ${error.message}`, 120), outdated: null });
           return { ok: false, reason: error.message };
         }
         await syncAlarm(autoConfig?.intervalMinutes);
@@ -642,9 +727,18 @@
         if (autoConfig?.enabled !== false && inFullWindow(now(), autoConfig?.fullWindow)) {
           for (const kind of BASE_KINDS) if (kind === "group_uid" ? hasWms : hasInside) await refreshFullAt(kind).catch(() => {});
         }
-        const plan = decide({ ...base, config: autoConfig, last: (await storage.get(KEYS.last)) || {}, hasWms, hasInside, kinds: activeKinds() });
+        const plan = decide({ ...base, config: autoConfig, last: (await storage.get(KEYS.last)) || {}, hasWms, hasInside, kinds: activeKinds(), version: extVersion() });
         if (autoConfig?.enabled === false) await addLog({ status: "skipped", message: plan.reason });
-        for (const item of plan.skipped) if (item.log) { await addLog({ kind: item.kind, status: "skipped", message: item.reason }); await noteHealth(item.kind, { reason: item.reason }); }
+        // 0.10.10: loại không còn dưới mức ở lượt này (Admin hạ mức / máy đã lên bản) → bỏ dấu và lý do cũ của nó trước khi ghi lý do mới / chạy.
+        const outdatedNow = new Set(plan.skipped.filter(item => item.outdated).map(item => item.kind));
+        const healthBefore = (await storage.get(KEYS.health)) || {};
+        for (const kind of activeKinds()) if (!outdatedNow.has(kind) && healthBefore.kinds?.[kind]?.outdated) await noteHealth(kind, { outdated: null, reason: "" });
+        const checkedAt = new Date(now()).toISOString();
+        for (const item of plan.skipped) {
+          if (!item.log) continue;
+          await addLog({ kind: item.kind, status: "skipped", message: item.reason });
+          await noteHealth(item.kind, item.outdated ? { reason: item.reason, outdated: { ...item.outdated, at: checkedAt } } : { reason: item.reason });
+        }
         const results = [];
         // Nhịp − 2 phút (cùng độ lệch với decide): máy khác vừa chạy cùng loại trong chu kỳ này thì server từ chối khoá.
         const cooldownSeconds = Math.max(0, intervalOf(autoConfig?.intervalMinutes) * 60 - COOLDOWN_SLACK_S);
@@ -673,7 +767,9 @@
         if (!state.session) return { ok: false, error: "Chưa đăng nhập Admin" };
         if (!state.device) return { ok: false, error: "Chưa đặt tên máy" };
         const result = await runJob(kind, mode, state.device);
-        return { ok: result.status !== "error", result, ...(result.status === "error" ? { error: result.message } : {}) };
+        // 0.10.10: Edge từ chối bản Extension (bỏ qua kèm outdated) → trang Tùy chọn hiện câu của Edge như lỗi.
+        const failed = result.status === "error" || Boolean(result.outdated);
+        return { ok: !failed, result, ...(failed ? { error: result.message } : {}) };
       } finally {
         if (running === mine) running = null;
         await refreshBadge();
@@ -692,10 +788,13 @@
       let nextAlarmAt = null;
       try { nextAlarmAt = (await alarms?.get("auto-sync"))?.scheduledTime || null; } catch { /* không có alarm */ }
       const problems = await refreshBadge();
+      const version = extVersion();
       return {
         signedIn: Boolean(state.session), email: state.session?.user?.email || "", device: state.device, enabled: state.enabled,
         last: state.last, log: state.log, tabs: await tabs(), nextAlarmAt, config: autoConfig, running: running?.kind ? { kind: running.kind, mode: running.mode } : null,
         problems, kinds: activeKinds(),
+        // 0.10.10: bản của máy + mức tối thiểu theo loại (auto-config) cho trang Tùy chọn; thẻ đỏ đã nằm trong problems.
+        version: typeof version === "string" ? version : null, minExtension: autoConfig?.minExtension ?? null,
       };
     }
 
@@ -749,7 +848,7 @@
     return { tick, runNow, status, handleMessage, edge, onKeepAlive, recover, refreshBadge, isRunning: () => Boolean(running) };
   }
 
-  const api = { createAutoSync, decide, inFullWindow, vnMinutes, tabUnavailable, assessHealth, storageWorkMinutes, MESSAGE_TYPES: ["AUTO_STATUS", "AUTO_SIGN_IN", "AUTO_SIGN_OUT", "AUTO_SET_DEVICE", "AUTO_SET_ENABLED", "AUTO_RUN_NOW"] };
+  const api = { createAutoSync, decide, inFullWindow, vnMinutes, tabUnavailable, assessHealth, storageWorkMinutes, versionLess, parseMinFromMessage, MESSAGE_TYPES: ["AUTO_STATUS", "AUTO_SIGN_IN", "AUTO_SIGN_OUT", "AUTO_SET_DEVICE", "AUTO_SET_ENABLED", "AUTO_RUN_NOW"] };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.AutoSyncModule = api;
 })(typeof self !== "undefined" ? self : globalThis);

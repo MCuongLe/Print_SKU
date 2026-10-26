@@ -20,7 +20,7 @@ const CATEGORIES = [
   ["961", "Thực phẩm"], ["962", "Mẫu Thời Trang"], ["963", "Nhận hàng gia công"], ["964", "Nguyên liệu nhận Gia công"],
 ].map(([id, name]) => ({ id, name }));
 
-let runs, skus, links, settings, leases, handler, archiveRpc, archiveCalls;
+let runs, skus, links, settings, leases, devices, handler, archiveRpc, archiveCalls;
 
 function iso(offsetMs) { return new Date(Date.now() + offsetMs).toISOString(); }
 function makeRun(over = {}) {
@@ -37,6 +37,7 @@ function same(left, op, right) {
   const dates = Number.isFinite(a) && Number.isFinite(b) && /\d{4}-\d{2}-\d{2}T/.test(String(left));
   if (op === "eq") return dates ? a === b : String(left) === String(right);
   if (op === "gt") return dates ? a > b : String(left) > String(right);
+  if (op === "gte") return dates ? a >= b : String(left) >= String(right);
   throw new Error(`toán tử chưa giả lập: ${op}`);
 }
 function select(rows, params) {
@@ -77,18 +78,19 @@ function install() {
     }
     if (table.startsWith("rpc/")) return json(rpcCall(table.slice(4), JSON.parse(init.body)));
     const leaseRows = [...leases].map(([kind, row]) => ({ kind, ...row }));
-    const store = { sku_sync_runs: runs, SKU_Name: skus, sku_combo_links: links, sync_auto_settings: settings, sync_auto_leases: leaseRows }[table];
+    const store = { sku_sync_runs: runs, SKU_Name: skus, sku_combo_links: links, sync_auto_settings: settings, sync_auto_leases: leaseRows, sync_auto_devices: devices }[table];
     if (!store) throw new Error(`fetch không được giả lập: ${url}`);
     if (method === "HEAD") return new Response(null, { status: 200, headers: { "content-range": `0-0/${store.length}` } });
     if (method === "GET") return json(select(store, params));
     const body = JSON.parse(init.body);
     if (method === "POST") {
-      const key = table === "SKU_Name" ? ["sku"] : table === "sku_combo_links" ? ["combo_sku", "normal_sku"] : table === "sync_auto_settings" ? ["singleton"] : null;
+      const key = table === "SKU_Name" ? ["sku"] : table === "sku_combo_links" ? ["combo_sku", "normal_sku"] : table === "sync_auto_settings" ? ["singleton"] : table === "sync_auto_devices" ? ["holder"] : null;
       const rows = (Array.isArray(body) ? body : [body]).map(row => ({ ...row }));
       for (const row of rows) {
         const existing = key && store.find(item => key.every(field => item[field] === row[field]));
+        // Upsert PostgREST (merge-duplicates) chỉ cập nhật cột có trong payload; chèn mới thì cột vắng lấy mặc định (sync_auto_devices: now()).
         if (existing) Object.assign(existing, row);
-        else store.push(table === "sku_sync_runs" ? makeRun({ ...row, id: RUN_B, created_at: iso(0) }) : row);
+        else store.push(table === "sku_sync_runs" ? makeRun({ ...row, id: RUN_B, created_at: iso(0) }) : table === "sync_auto_devices" ? { first_seen_at: iso(0), last_seen_at: iso(0), ...row } : row);
       }
       return json(table === "sku_sync_runs" ? [store[store.length - 1]] : null, 201);
     }
@@ -106,7 +108,7 @@ fs.writeFileSync(file, SOURCE);
 install();
 await import(pathToFileURL(file).href);
 
-beforeEach(() => { runs = []; skus = []; links = []; settings = []; leases = new Map(); archiveRpc = null; archiveCalls = []; install(); });
+beforeEach(() => { runs = []; skus = []; links = []; settings = []; leases = new Map(); devices = []; archiveRpc = null; archiveCalls = []; install(); });
 
 // Giả lập RPC sync_auto_lease / sync_auto_release (sync_auto_v1.sql): hết hạn hoặc cùng máy thì giành được;
 // p_cooldown_seconds > 0 và lượt cùng loại vừa kết thúc (last_finished_at, ghi khi nhả khoá với p_finished) → COOLDOWN.
@@ -881,4 +883,268 @@ test("auto-config: đọc mặc định khi chưa có dòng; Admin tắt đượ
   leases.set("cut_adj", { holder: "may-test-01#abc", leased_until: iso(10 * MIN), last_finished_at: null });
   const withLeases = await call({ action: "auto-config" });
   assert.deepEqual(withLeases.body.data.lastFinishedAt, { group_uid: finishedAt }, "chỉ loại đã có lượt kết thúc");
+});
+
+// ---- Cổng bản Extension + ghi nhận máy (sync_auto_v3.sql, Extension 0.10.10; kế hoạch docs/plans/2026-10-26-nhieu-admin-khac-ban-extension.md) ----
+// >>> bảng ca so bản Extension: chép giống hệt giữa hai dòng này ở tests/sku_sync_function.mjs và tests/group_uid_sync_function.mjs
+// [extVersion gửi lên (undefined = không gửi khoá), min_extension[loại], bị chặn?] — so từng đoạn số, không so chuỗi; extVersion sai dạng
+// = chưa khai báo (bị chặn khi có mức); mức sai dạng / rỗng = không chặn.
+const VERSION_CASES = [
+  [undefined, "0.10.10", true],
+  ["0.10.9", "0.10.10", true],
+  ["0.10.10", "0.10.10", false],
+  ["0.10.11", "0.10.10", false],
+  ["0.11.0", "0.10.10", false],
+  ["1.0.0", "0.10.10", false],
+  ["0.9.99", "0.10.10", true],
+  ["0.10.10", "0.10.9", false],
+  ["0.10.8", "0.10.9", true],
+  ["0.10.9.1", "0.10.10", true],
+  ["abc", "0.10.10", true],
+  ["", "0.10.10", true],
+  [null, "0.10.10", true],
+  [10, "0.10.10", true],
+  [" 0.10.10", "0.10.10", true],
+  ["0.10.9", "x", false],
+  ["0.10.9", 10, false],
+  ["0.10.9", { v: "0.10.10" }, false],
+  [undefined, "", false],
+  [undefined, null, false],
+];
+// <<< bảng ca so bản Extension
+const DAY = 24 * 60 * MIN;
+function setMin(minExtension) { settings.length = 0; settings.push({ singleton: true, enabled: true, interval_minutes: 30, min_extension: minExtension }); }
+function versioned(body, version) { return version === undefined ? body : { ...body, extVersion: version }; }
+function label(version, min) { return `${JSON.stringify(version) ?? "không gửi"} / mức ${JSON.stringify(min)}`; }
+
+test("cổng bản: mức rỗng hoặc thiếu cột min_extension (Edge lên trước migration) → lease và preview đi qua như cũ dù không gửi extVersion", async () => {
+  const states = [
+    ["chưa có dòng cấu hình", () => { settings.length = 0; }],
+    ["dòng cấu hình chưa có cột min_extension", () => { settings.length = 0; settings.push({ singleton: true, enabled: true }); }],
+    ["min_extension = {}", () => setMin({})],
+  ];
+  for (const [name, setup] of states) {
+    setup(); leases.clear(); runs.length = 0;
+    const lease = await call({ action: "lease", kind: "sku", holder: HOLDER });
+    assert.deepEqual([lease.status, lease.body.data?.ok], [200, true], name);
+    const manual = await call({ action: "preview", snapshot: snapshot(iso(-1 * MIN)) });
+    assert.equal(manual.status, 200, `${name}: ${JSON.stringify(manual.body)}`);
+    const auto = await call({ action: "preview", snapshot: snapshot(iso(-1 * MIN)), source: "auto", device: "may-test-01", holder: HOLDER });
+    assert.equal(auto.status, 200, `${name}: ${JSON.stringify(auto.body)}`);
+    assert.ok(runs.length === 2 && runs.every(row => !("ext_version" in row)), `${name}: không gửi bản thì dòng lượt không có khoá ext_version`);
+  }
+});
+
+test("cổng bản: bảng ca chung — lease sku và preview (tay, tự động) trả 409 EXTENSION_OUTDATED đúng ca; bị chặn thì không thuê khoá, không tạo lượt, không đọc SKU_Name", async () => {
+  const reads = [];
+  const inner = globalThis.fetch;
+  globalThis.fetch = async (url, init = {}) => {
+    if ((init.method ?? "GET") === "GET") reads.push(new URL(String(url)).pathname.replace("/rest/v1/", ""));
+    return inner(url, init);
+  };
+  for (const [version, min, blocked] of VERSION_CASES) {
+    const name = label(version, min);
+    setMin({ sku: min }); leases.clear(); runs.length = 0;
+    const lease = await call(versioned({ action: "lease", kind: "sku", holder: HOLDER }, version));
+    if (blocked) {
+      assert.deepEqual([lease.status, lease.body.error?.code], [409, "EXTENSION_OUTDATED"], `lease ${name}`);
+      assert.equal(leases.has("sku"), false, `lease ${name}: không thuê khoá`);
+    } else assert.deepEqual([lease.status, lease.body.data?.ok], [200, true], `lease ${name}: ${JSON.stringify(lease.body)}`);
+    for (const extra of [{}, { source: "auto", device: "may-test-01", holder: HOLDER }]) {
+      const how = `preview ${extra.source ?? "tay"} ${name}`;
+      reads.length = 0; runs.length = 0;
+      const preview = await call(versioned({ action: "preview", snapshot: snapshot(iso(-1 * MIN)), ...extra }, version));
+      if (blocked) {
+        assert.deepEqual([preview.status, preview.body.error?.code], [409, "EXTENSION_OUTDATED"], how);
+        assert.equal(runs.length, 0, `${how}: không tạo lượt`);
+        assert.equal(reads.includes("SKU_Name"), false, `${how}: chặn trước khi đọc database`);
+      } else assert.equal(preview.status, 200, `${how}: ${JSON.stringify(preview.body)}`);
+    }
+  }
+});
+
+test("cổng bản: mức theo loại — sku chỉ chặn lease kind=sku và preview; loại khác vẫn qua; release / apply / history / detail / auto-config không qua cổng", async () => {
+  setMin({ sku: "0.10.10" });
+  assert.equal((await call({ action: "lease", kind: "sku", holder: HOLDER })).body.error?.code, "EXTENSION_OUTDATED");
+  assert.equal((await call({ action: "preview", snapshot: snapshot(iso(-1 * MIN)) })).body.error?.code, "EXTENSION_OUTDATED");
+  for (const kind of ["group_uid", "cut_adj", "storage_risk"]) {
+    const got = await call({ action: "lease", kind, holder: HOLDER });
+    assert.deepEqual([got.status, got.body.data?.ok], [200, true], kind);
+  }
+  setMin({ cut_adj: "0.10.10" });
+  const cut = await call({ action: "lease", kind: "cut_adj", holder: "may-test-02#zz9999", extVersion: "0.10.9" });
+  assert.deepEqual([cut.status, cut.body.error?.code], [409, "EXTENSION_OUTDATED"], "mức cut_adj chặn lease cut_adj");
+  assert.equal((await call({ action: "preview", snapshot: snapshot(iso(-1 * MIN)) })).status, 200, "mức cut_adj không chặn preview SKU");
+  setMin({ sku: "0.10.10", group_uid: "0.10.10", cut_adj: "0.10.10", storage_risk: "0.10.10" });
+  const invalid = await call({ action: "lease", kind: "khac", holder: HOLDER });
+  assert.deepEqual([invalid.status, invalid.body.error?.code], [400, "INVALID_KIND"], "kind sai vẫn INVALID_KIND như cũ");
+  const released = await call({ action: "release", kind: "group_uid", holder: HOLDER, finished: true });
+  assert.deepEqual([released.status, released.body.data?.released], [200, true], "máy bị chặn vẫn nhả được khoá đang giữ");
+  runs.length = 0;
+  runs.push(makeRun());
+  const applied = await call({ action: "apply", runId: RUN_A });
+  assert.deepEqual([applied.status, applied.body.data?.status], [200, "completed"], "apply không qua cổng");
+  for (const body of [{ action: "history" }, { action: "detail", runId: RUN_A }, { action: "auto-config" }]) {
+    assert.equal((await call(body)).status, 200, body.action);
+  }
+});
+
+test("ghi nhận máy: lease bị chặn vẫn ghi sync_auto_devices kèm ext_version (trước cổng); gửi lại giữ first_seen_at; lỗi ghi không làm hỏng lượt", async () => {
+  setMin({ sku: "0.10.10" });
+  const sent = [];
+  const inner = globalThis.fetch;
+  globalThis.fetch = async (url, init = {}) => {
+    if (String(url).includes("/rest/v1/sync_auto_devices") && init.method === "POST") sent.push({ url: String(url), prefer: init.headers?.Prefer, body: JSON.parse(init.body) });
+    return inner(url, init);
+  };
+  const blocked = await call({ action: "lease", kind: "sku", holder: HOLDER, extVersion: "0.10.9" });
+  assert.deepEqual([blocked.status, blocked.body.error?.code], [409, "EXTENSION_OUTDATED"]);
+  assert.equal(devices.length, 1, "máy bị chặn vẫn được ghi nhận");
+  assert.deepEqual([devices[0].holder, devices[0].device, devices[0].ext_version, devices[0].last_kind], [HOLDER, "may-test-01", "0.10.9", "sku"]);
+  assert.match(sent[0].url, /\/sync_auto_devices\?on_conflict=holder$/);
+  assert.equal(sent[0].prefer, "resolution=merge-duplicates,return=minimal");
+  assert.deepEqual(Object.keys(sent[0].body).sort(), ["device", "ext_version", "holder", "last_kind", "last_seen_at"], "không gửi first_seen_at (giữ lần đầu thấy)");
+  const firstSeen = iso(-3 * DAY);
+  Object.assign(devices[0], { first_seen_at: firstSeen, last_seen_at: firstSeen });
+  const again = await call({ action: "lease", kind: "cut_adj", holder: HOLDER });
+  assert.deepEqual([again.status, again.body.data?.ok], [200, true]);
+  assert.equal(devices.length, 1, "cùng holder → một dòng");
+  assert.equal(devices[0].first_seen_at, firstSeen, "gửi lần hai không đổi first_seen_at");
+  assert.ok(Date.parse(devices[0].last_seen_at) > Date.now() - MIN, "cập nhật last_seen_at");
+  assert.deepEqual([devices[0].ext_version, devices[0].last_kind], [null, "cut_adj"], "không khai báo bản → ghi đè null; loại gần nhất");
+  await call({ action: "lease", kind: "storage_risk", holder: "may-test-02", extVersion: "0.10.10" });
+  assert.deepEqual(devices.find(row => row.holder === "may-test-02")?.device, "may-test-02", "holder không có hậu tố mã → tên máy = holder");
+  // Preview tự động có holder cũng ghi nhận trước cổng; lượt tay (không holder) và holder rỗng thì không ghi.
+  const blockedPreview = await call({ action: "preview", snapshot: snapshot(iso(-1 * MIN)), source: "auto", device: "may-test-03", holder: "may-test-03#k7p2q9", extVersion: "0.10.9" });
+  assert.equal(blockedPreview.body.error?.code, "EXTENSION_OUTDATED");
+  assert.deepEqual(["device", "ext_version", "last_kind"].map(key => devices.find(row => row.holder === "may-test-03#k7p2q9")?.[key]), ["may-test-03", "0.10.9", "sku"]);
+  const count = devices.length;
+  await call({ action: "preview", snapshot: snapshot(iso(-1 * MIN)), extVersion: "0.10.10" });
+  assert.equal((await call({ action: "lease", kind: "sku", holder: "   ", extVersion: "0.10.10" })).body.error?.code, "INVALID_HOLDER");
+  assert.equal(devices.length, count, "không holder → không ghi");
+  // Bảng chưa có (Edge lên trước migration) hoặc mạng lỗi → bỏ qua, lượt vẫn chạy.
+  setMin({});
+  globalThis.fetch = async (url, init = {}) => String(url).includes("/rest/v1/sync_auto_devices") ? json({ code: "42P01", message: "relation \"public.sync_auto_devices\" does not exist" }, 404) : inner(url, init);
+  leases.clear();
+  assert.deepEqual(await call({ action: "lease", kind: "sku", holder: HOLDER, extVersion: "0.10.10" }).then(result => [result.status, result.body.data?.ok]), [200, true], "HTTP lỗi");
+  globalThis.fetch = async (url, init = {}) => { if (String(url).includes("/rest/v1/sync_auto_devices")) throw new TypeError("fetch failed"); return inner(url, init); };
+  leases.clear();
+  assert.deepEqual(await call({ action: "lease", kind: "sku", holder: HOLDER }).then(result => [result.status, result.body.data?.ok]), [200, true], "mạng lỗi");
+});
+
+test("ext_version của lượt: có bản → ghi vào sku_sync_runs; không có / sai dạng → không có khoá; database chưa có cột → ghi lại không có cột", async () => {
+  const ok = await call({ action: "preview", snapshot: snapshot(iso(-1 * MIN)), extVersion: "0.10.10" });
+  assert.equal(ok.status, 200, JSON.stringify(ok.body));
+  assert.equal(runs[0].ext_version, "0.10.10");
+  for (const version of [undefined, "abc", null, "0.10.9.1"]) {
+    runs.length = 0;
+    const result = await call(versioned({ action: "preview", snapshot: snapshot(iso(-1 * MIN)) }, version));
+    assert.equal(result.status, 200, label(version, null));
+    assert.equal("ext_version" in runs[0], false, label(version, null));
+  }
+  const inner = globalThis.fetch, posted = [];
+  globalThis.fetch = async (url, init = {}) => {
+    if (new URL(String(url)).pathname === "/rest/v1/sku_sync_runs" && init.method === "POST") {
+      const body = JSON.parse(init.body);
+      posted.push("ext_version" in body);
+      if ("ext_version" in body) return json({ code: "PGRST204", message: "Could not find the 'ext_version' column of 'sku_sync_runs' in the schema cache" }, 400);
+    }
+    return inner(url, init);
+  };
+  runs.length = 0;
+  const legacy = await call({ action: "preview", snapshot: snapshot(iso(-1 * MIN)), extVersion: "0.10.10" });
+  assert.equal(legacy.status, 200, JSON.stringify(legacy.body));
+  assert.deepEqual(posted, [true, false], "thử có cột, báo thiếu cột thì ghi lại không có cột");
+  assert.ok(runs.length === 1 && !("ext_version" in runs[0]));
+  globalThis.fetch = async (url, init = {}) => new URL(String(url)).pathname === "/rest/v1/sku_sync_runs" && init.method === "POST" ? json({ message: "boom" }, 500) : inner(url, init);
+  runs.length = 0;
+  const broken = await call({ action: "preview", snapshot: snapshot(iso(-1 * MIN)), extVersion: "0.10.10" });
+  assert.deepEqual([broken.status, broken.body.error?.code], [500, "SYNC_ERROR"], "lỗi khác vẫn báo như cũ");
+  assert.match(broken.body.error.message, /Lưu bản xem trước HTTP 500/);
+});
+
+test("auto-config: minExtension đủ 4 loại (chuỗi hợp lệ hoặc null); devices ≤ 20, 14 ngày, mới nhất trước, chỉ 4 ký tự mã máy; bảng rỗng → [], đọc lỗi → vắng khoá devices; set min_extension bị từ chối", async () => {
+  const empty = await call({ action: "auto-config" });
+  assert.equal(empty.status, 200);
+  assert.deepEqual(empty.body.data.minExtension, { sku: null, group_uid: null, cut_adj: null, storage_risk: null });
+  assert.deepEqual(empty.body.data.devices, [], "bảng máy rỗng thật → devices: []");
+  setMin({ sku: "0.10.10", group_uid: "0.10.9", cut_adj: "x", storage_risk: 10 });
+  for (let index = 0; index < 25; index += 1) {
+    const name = `may-test-${String(index + 1).padStart(2, "0")}`;
+    devices.push({ holder: `${name}#${(index + 10).toString(36)}p7q2`, device: name, ext_version: index % 2 ? "0.10.10" : null, first_seen_at: iso(-30 * DAY), last_seen_at: iso(-index * 15 * 60 * MIN), last_kind: index % 2 ? "sku" : "storage_risk" });
+  }
+  devices.reverse();
+  const config = await call({ action: "auto-config" });
+  assert.equal(config.status, 200);
+  assert.deepEqual(config.body.data.minExtension, { sku: "0.10.10", group_uid: "0.10.9", cut_adj: null, storage_risk: null });
+  const list = config.body.data.devices;
+  assert.deepEqual(list.map(row => row.device), Array.from({ length: 20 }, (_, index) => `may-test-${String(index + 1).padStart(2, "0")}`), "20 máy, mới nhất trước");
+  const seen = name => devices.find(row => row.device === name).last_seen_at;
+  assert.deepEqual(list[0], { device: "may-test-01", id4: "ap7q", version: null, lastSeenAt: seen("may-test-01"), lastKind: "storage_risk" });
+  assert.deepEqual(list[1], { device: "may-test-02", id4: "bp7q", version: "0.10.10", lastSeenAt: seen("may-test-02"), lastKind: "sku" });
+  assert.equal(JSON.stringify(config.body).includes("p7q2"), false, "không trả holder / mã máy đầy đủ");
+  devices.length = 0;
+  devices.push(
+    { holder: "may-test-01#k7p2q9", device: "may-test-01", ext_version: "0.10.10", first_seen_at: iso(-20 * DAY), last_seen_at: iso(-13 * DAY), last_kind: "group_uid" },
+    { holder: "may-test-02#m3n4b5", device: "may-test-02", ext_version: "0.10.9", first_seen_at: iso(-20 * DAY), last_seen_at: iso(-15 * DAY), last_kind: "sku" },
+  );
+  assert.deepEqual((await call({ action: "auto-config" })).body.data.devices.map(row => [row.device, row.id4, row.version, row.lastKind]), [["may-test-01", "k7p2", "0.10.10", "group_uid"]], "máy không thấy trong 14 ngày bị bỏ");
+  const inner = globalThis.fetch;
+  globalThis.fetch = async (url, init = {}) => String(url).includes("/rest/v1/sync_auto_devices") ? json({ code: "42P01", message: "relation does not exist" }, 404) : inner(url, init);
+  const failed = await call({ action: "auto-config" });
+  assert.equal(failed.status, 200, "đọc bảng máy lỗi: cấu hình vẫn dùng được");
+  assert.equal("devices" in failed.body.data, false, "đọc bảng máy lỗi (HTTP) → vắng khoá devices, không trả [] giả");
+  assert.equal(failed.body.data.minExtension.sku, "0.10.10");
+  globalThis.fetch = async (url, init = {}) => { if (String(url).includes("/rest/v1/sync_auto_devices")) throw new TypeError("fetch failed"); return inner(url, init); };
+  const offline = await call({ action: "auto-config" });
+  assert.deepEqual([offline.status, "devices" in offline.body.data], [200, false], "mạng lỗi khi đọc bảng máy → vắng khoá devices");
+  globalThis.fetch = inner;
+  for (const set of [{ min_extension: { sku: "0.10.10" } }, { minExtension: { sku: "0.10.10" } }, { enabled: true, min_extension: {} }]) {
+    const rejected = await call({ action: "auto-config", set });
+    assert.deepEqual([rejected.status, rejected.body.error?.code], [400, "INVALID_CONFIG"], JSON.stringify(set));
+  }
+  assert.deepEqual(settings[0].min_extension, { sku: "0.10.10", group_uid: "0.10.9", cut_adj: "x", storage_risk: 10 }, "mức tối thiểu không đổi qua Edge");
+});
+
+test("cổng bản: câu báo — tự động (lease hoặc source auto) bảo Reload Extension + tab Inside / WMS; lượt tay bảo tải lại trang trước", async () => {
+  setMin({ sku: "0.10.10", cut_adj: "0.10.10" });
+  const cases = [
+    [{ action: "lease", kind: "sku", holder: HOLDER, extVersion: "0.10.9" }, "Extension v0.10.9 quá cũ, cần ≥ 0.10.10; hãy Reload Extension rồi tải lại tab Inside"],
+    [{ action: "lease", kind: "sku", holder: HOLDER }, "Extension chưa khai báo bản, cần ≥ 0.10.10; hãy Reload Extension rồi tải lại tab Inside"],
+    [{ action: "lease", kind: "cut_adj", holder: HOLDER, extVersion: "abc" }, "Extension chưa khai báo bản, cần ≥ 0.10.10; hãy Reload Extension rồi tải lại tab WMS"],
+    [{ action: "preview", snapshot: snapshot(iso(-1 * MIN)), source: "auto", device: "may-test-01", holder: HOLDER, extVersion: "0.9.99" }, "Extension v0.9.99 quá cũ, cần ≥ 0.10.10; hãy Reload Extension rồi tải lại tab Inside"],
+    [{ action: "preview", snapshot: snapshot(iso(-1 * MIN)), extVersion: "0.10.9" }, "Extension v0.10.9 quá cũ, cần ≥ 0.10.10; hãy tải lại trang (Ctrl+F5); nếu vẫn báo, Reload Extension rồi tải lại tab Inside"],
+    [{ action: "preview", snapshot: snapshot(iso(-1 * MIN)) }, "Extension chưa khai báo bản, cần ≥ 0.10.10; hãy tải lại trang (Ctrl+F5); nếu vẫn báo, Reload Extension rồi tải lại tab Inside"],
+  ];
+  for (const [body, message] of cases) {
+    const result = await call(body);
+    assert.deepEqual([result.status, result.body.ok, result.body.error?.code, result.body.error?.message], [409, false, "EXTENSION_OUTDATED", message], JSON.stringify({ ...body, snapshot: undefined }));
+  }
+});
+
+const GATE_OPEN = "// >>> cổng bản Extension", GATE_CLOSE = "// <<< cổng bản Extension";
+function gateBlock(source) {
+  const text = source.replace(/\r\n/g, "\n"), start = text.indexOf(GATE_OPEN), end = text.indexOf(GATE_CLOSE);
+  assert.ok(start >= 0 && end > start, "có khối cổng bản Extension giữa hai dòng chú thích mở / đóng");
+  assert.equal(text.indexOf(GATE_OPEN, start + 1), -1, "chỉ một khối");
+  return text.slice(start, end + GATE_CLOSE.length);
+}
+
+test("cổng bản: khối hàm chép GIỐNG HỆT từng ký tự ở sku-sync và group-uid-sync (deploy gửi 1 tệp mỗi hàm); sửa một ký tự ở một bản thì bị bắt", () => {
+  const other = fs.readFileSync(new URL("../supabase/functions/group-uid-sync/index.ts", import.meta.url), "utf8");
+  const same = (left, right) => assert.equal(gateBlock(left), gateBlock(right), "khối cổng bản Extension phải giống hệt ở hai Edge");
+  same(SOURCE, other);
+  const block = gateBlock(SOURCE);
+  for (const name of ["const VERSION_RE = /^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$/;", "function extVersionOf(", "function versionLess(", "function minExtensionFor(", "function extensionGate(", "async function recordDevice(", "async function deviceList("]) {
+    assert.ok(block.includes(name), `khối có ${name}`);
+  }
+  const mutants = [
+    other.replace("/^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$/", "/^\\d{1,3}\\.\\d{1,3}\\.\\d{1,4}$/"),
+    other.replace("cần ≥ ", "cần >= "),
+    other.replace("const DEVICE_LIST_LIMIT = 20;", "const DEVICE_LIST_LIMIT = 21;"),
+  ];
+  for (const [index, mutant] of mutants.entries()) {
+    assert.notEqual(mutant, other, `đột biến ${index + 1} phải đổi được tệp`);
+    assert.throws(() => same(SOURCE, mutant), undefined, `đột biến ${index + 1} phải bị bắt`);
+  }
 });

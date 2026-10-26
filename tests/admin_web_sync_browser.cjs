@@ -30,9 +30,12 @@ const mockRoutes = (page, failOn = null) => page.route('**/*', async route => {
   if (url.includes('/rest/v1/user_roles')) return json([{ username: 'Test Admin', role: 'admin' }]);
   const body = JSON.parse(route.request().postData() || '{}');
   const fn = url.match(/\/functions\/v1\/([a-z-]+)/)?.[1];
-  if (fn) page.calls.push(`${fn}:${body.action}`);
+  if (fn) { page.calls.push(`${fn}:${body.action}`); (page.bodies = page.bodies || []).push({ fn, ...body }); }
   if (fn && failOn && failOn.fn === fn && failOn.actions.includes(body.action)) return json({ ok: false, error: { message: 'Không đọc được bảng nguồn (HTTP 500)' } }, 500);
   const ok = data => json({ ok: true, data });
+  // sync_auto_v3 (26/10/2026): page.autoConfig = data của auto-config (minExtension, devices) hoặc 'fail' → HTTP 500; không đặt = như cũ.
+  if (fn && body.action === 'auto-config' && page.autoConfig === 'fail') return json({ ok: false, error: { message: 'Không đọc được cấu hình (HTTP 500)' } }, 500);
+  if (fn && body.action === 'auto-config' && page.autoConfig) return ok(page.autoConfig);
   if (fn === 'sku-sync') {
     if (body.action === 'history') return ok({ runs: [{ id: 'run-done', status: 'completed', created_at: ago(120), completed_at: ago(119), change_counts: {} }], lastSuccessAt: ago(119), lastSnapshotAt: ago(120) });
     if (body.action === 'preview') return ok({ runId: 'run-fresh', status: 'previewed', sourceCounts: SKU_SOURCE, changeCounts: SKU_COUNTS, changes: SKU_CHANGES });
@@ -51,10 +54,11 @@ const mockRoutes = (page, failOn = null) => page.route('**/*', async route => {
   if (url.includes('/rest/v1/') && !rpc) return json([]);
   return ok({ agents: [], jobs: [], items: [] });
 });
-// Extension giả (PING / PING_WMS / lấy dữ liệu)
-const fakeExtension = () => addEventListener('message', event => {
+// Extension giả (PING / PING_WMS / lấy dữ liệu); o.ping = bản PING trả về (mặc định 0.3.3), window.__extCalls = loại lệnh đã nhận
+const fakeExtension = (o = {}) => addEventListener('message', event => {
   const r = event.data; if (!r || r.source !== 'PRINT_SKU_APP') return;
-  const data = r.type === 'PING' ? { version: '0.3.3' } : r.type === 'PING_WMS' ? { version: '0.10.9' } : r.type === 'GET_GROUP_UID_PAGE' ? { page: 1, size: 500, total: 0, totalPages: 1, rows: [] } : { generatedAt: new Date().toISOString(), cutoff: 'x', categories: [], normalRows: [], comboRows: [], sourceCounts: {} };
+  (window.__extCalls = window.__extCalls || []).push(r.type);
+  const data = r.type === 'PING' ? { version: o && 'ping' in o ? o.ping : '0.3.3' } : r.type === 'PING_WMS' ? { version: '0.10.10' } : r.type === 'GET_GROUP_UID_PAGE' ? { page: 1, size: 500, total: 0, totalPages: 1, rows: [] } : { generatedAt: new Date().toISOString(), cutoff: 'x', categories: [], normalRows: [], comboRows: [], sourceCounts: {} };
   postMessage({ source: 'HASAKI_INSIDE_CONNECTOR', requestId: r.requestId, ok: true, data }, location.origin);
 });
 
@@ -76,12 +80,15 @@ const textMetrics = function (sel) {
   return out;
 };
 
-const open = async (browser, { width = 1280, ext = true, failOn = null } = {}) => {
-  const context = await browser.newContext({ viewport: { width, height: 900 } });
+const open = async (browser, { width = 1280, height = 900, ext = true, failOn = null, ping, autoConfig } = {}) => {
+  const context = await browser.newContext({ viewport: { width, height } });
   await context.addInitScript(key => sessionStorage.setItem(key, JSON.stringify({ access_token: 'test-admin-token', refresh_token: 'test-refresh-token' })), SESSION_KEY);
-  if (ext) await context.addInitScript(fakeExtension);
+  if (ext) await context.addInitScript(fakeExtension, ping === undefined ? {} : { ping });
   const page = await context.newPage();
   page.errors = []; page.on('pageerror', error => page.errors.push(error.message));
+  // Lỗi console (trừ dòng "Failed to load resource" của phản hồi HTTP 500 giả lập)
+  page.consoleErrors = []; page.on('console', m => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) page.consoleErrors.push(m.text()); });
+  page.autoConfig = autoConfig;
   await mockRoutes(page, failOn);
   return { context, page };
 };
@@ -234,5 +241,159 @@ const navItems = page => page.evaluate(() => {
       }
       console.log(`PASS ${width}px: khung đồng bộ (thanh trái chung 264/thanh trên 64/menu Admin cùng thứ tự), thanh trên + tiêu đề bảng dính, tương phản/cỡ chữ, Cấu hình gọn + nhóm, dải lỗi + Extension thống nhất, thanh trên (icon, tiêu đề đậm, dòng phụ, chip, làm mới)`);
     }
+
+    // ---------- 6) Cổng bản Extension + bảng Máy đồng bộ (sync_auto_v3, 26/10/2026) ----------
+    // Hợp đồng Edge auto-config: minExtension {sku, group_uid, cut_adj, storage_risk} = "x.y.z" | null; devices [{device, id4, version, lastSeenAt, lastKind}].
+    // Lượt tay gửi extVersion (chỉ khi PING trả đúng dạng x.y.z); dưới mức thì dừng trước khi đọc Inside; bảng máy: đỏ dưới mức, vàng chưa khai báo khi chưa có mức.
+    const MIN = v => ({ sku: v, group_uid: v, cut_adj: v, storage_risk: v });
+    // Hai bản giả của bảng ca so bản (0.10.10 > 0.10.9 theo từng đoạn số): hằng riêng để commit_gate mục 5 không coi là dòng ghim bản manifest
+    const NEW = '0.10.10', OLD = '0.10.9';
+    const autoCfg = (minExtension, devices = []) => ({ enabled: true, intervalMinutes: 30, fullWindow: { start: '00:00', end: '05:00' }, thresholds: {}, updatedAt: ago(1), updatedBy: null, minExtension, lastFinishedAt: {}, devices });
+    // Máy giả (tên / mã không có thật); holder thừa để kiểm web chỉ hiện #id4
+    const DEVICES = [
+      { device: 'may-a', id4: 'ab12', version: OLD, lastSeenAt: ago(5), lastKind: 'sku', holder: 'may-a#ab12zz99yy' },
+      { device: 'may-b', id4: 'cd34', version: null, lastSeenAt: ago(90), lastKind: 'group_uid' },
+      { device: 'may-c', id4: 'ef56', version: NEW, lastSeenAt: ago(1500), lastKind: 'cut_adj' },
+    ];
+    const skuReady = async page => { await go(page, '#admin/sku-sync'); await page.waitForFunction(() => document.getElementById('sku-sync-connection').dataset.state === 'ok'); await page.waitForFunction(() => !document.getElementById('sku-sync-preview').disabled); };
+    const skuRun = async (opts, button = '#sku-sync-preview') => {
+      const { context, page } = await open(browser, opts);
+      await skuReady(page); await page.evaluate(() => { window.__extCalls = []; });
+      await page.locator(button).click();
+      await page.waitForFunction(() => { const s = document.getElementById('sku-sync-status'); return s.dataset.tone === 'error' || /Đối chiếu xong/.test(s.textContent); });
+      await page.waitForFunction(() => !document.getElementById('sku-sync-preview').disabled);
+      const s = page.locator('#sku-sync-status');
+      return { context, page, status: (await s.innerText()).trim(), tone: await s.getAttribute('data-tone'), calls: await page.evaluate(() => window.__extCalls), body: (page.bodies || []).filter(b => b.fn === 'sku-sync' && b.action === 'preview').at(-1), errs: () => [...page.errors, ...page.consoleErrors] };
+    };
+    {
+      // (a) preview gửi extVersion = bản PING; PING sai dạng / rỗng → không có khoá
+      let r = await skuRun({ ping: '0.10.10', autoConfig: autoCfg(MIN(null)) });
+      assert.equal(r.body?.extVersion, '0.10.10', 'preview gửi extVersion = bản PING'); assert.ok(r.calls.includes('GET_SKU_SYNC_DATA'), 'đọc Inside như cũ');
+      assert.deepEqual(r.errs(), []); await r.context.close();
+      for (const bad of [' 0.10.10', '', '0.10']) {
+        r = await skuRun({ ping: bad, autoConfig: autoCfg(MIN(null)) });
+        assert.ok(r.body, `PING "${bad}": chưa có mức thì vẫn đối chiếu`); assert.equal('extVersion' in r.body, false, `PING "${bad}": không gửi khoá extVersion`);
+        await r.context.close();
+      }
+      // (b) dưới mức → dừng trước khi đọc Inside, không gọi preview (cả Đọc Inside lẫn Toàn bộ)
+      for (const button of ['#sku-sync-preview', '#sku-sync-full']) {
+        r = await skuRun({ ping: '0.10.9', autoConfig: autoCfg(MIN('0.10.10')) }, button);
+        assert.equal(r.status, 'Cần Extension ≥ 0.10.10 (đang v0.10.9): Reload Extension rồi tải lại tab Inside.', `${button}: câu báo dưới mức`); assert.equal(r.tone, 'error');
+        assert.equal(r.body, undefined, `${button}: dưới mức không gọi preview`); assert.equal(r.calls.includes('GET_SKU_SYNC_DATA'), false, `${button}: dưới mức không đọc Inside`);
+        assert.deepEqual(r.errs(), []); await r.context.close();
+      }
+      for (const [ping, min, label] of [['0.10.10', '0.10.10', 'bằng mức'], ['0.10.10', '0.10.9', '0.10.10 > 0.10.9 (so từng đoạn số, không so chuỗi)'], ['0.11.0', '0.10.10', 'đoạn giữa lớn hơn'], ['0.10.9', null, 'mức null = không chặn']]) {
+        r = await skuRun({ ping, autoConfig: autoCfg(MIN(min)) });
+        assert.equal(r.body?.extVersion, ping, `${label}: chạy như cũ, gửi extVersion`); assert.ok(r.calls.includes('GET_SKU_SYNC_DATA'), `${label}: đọc Inside`);
+        await r.context.close();
+      }
+      r = await skuRun({ ping: '0.9.99', autoConfig: autoCfg(MIN('0.10.10')) });
+      assert.match(r.status, /^Cần Extension ≥ 0\.10\.10 \(đang v0\.9\.99\)/, '0.9.99 < 0.10.10 (chuỗi "0.9.99" > "0.10.10" nhưng số nhỏ hơn)'); assert.equal(r.body, undefined); await r.context.close();
+      r = await skuRun({ ping: '', autoConfig: autoCfg(MIN('0.10.10')) });
+      assert.match(r.status, /^Cần Extension ≥ 0\.10\.10 /, 'có mức mà bản không đọc được → dừng'); assert.equal(r.body, undefined); await r.context.close();
+      r = await skuRun({ ping: '0.10.9', autoConfig: autoCfg({ sku: null, group_uid: '0.10.10', cut_adj: null, storage_risk: null }) });
+      assert.equal(r.body?.extVersion, '0.10.9', 'mức chỉ đặt cho Group UID: Đồng bộ SKU không chặn'); await r.context.close();
+      // auto-config lỗi: không chặn trước (Edge vẫn chặn), nút Máy đồng bộ ẩn, không lỗi console
+      r = await skuRun({ ping: '0.10.9', autoConfig: 'fail' });
+      assert.equal(r.body?.extVersion, '0.10.9', 'auto-config lỗi: vẫn đối chiếu'); assert.equal(await r.page.locator('#ss-dev-btn').isVisible(), false, 'auto-config lỗi: ẩn nút Máy đồng bộ');
+      assert.deepEqual(r.errs(), []); await r.context.close();
+    }
+    {
+      // Review vòng 1 (nhóm W): Admin hạ min_extension bằng SQL lúc tab đang mở. Lượt lỗi nạp lại lịch sử + auto-config (như Group UID):
+      // lần bấm đầu còn bị chặn theo cấu hình đã nạp, lần bấm sau dùng mức mới; lỗi khác cũng chỉ nạp lại đúng một lần, không lặp.
+      const pressOnce = async page => {
+        await page.evaluate(() => { window.__extCalls = []; }); await page.locator('#sku-sync-preview').click();
+        await page.waitForFunction(() => { const s = document.getElementById('sku-sync-status'); return (s.dataset.tone === 'error' || /Đối chiếu xong/.test(s.textContent)) && !document.getElementById('sku-sync-preview').disabled; });
+        return { status: (await page.locator('#sku-sync-status').innerText()).trim(), calls: await page.evaluate(() => window.__extCalls) };
+      };
+      const countOf = (page, action) => (page.bodies || []).filter(b => b.fn === 'sku-sync' && b.action === action).length;
+      let { context, page } = await open(browser, { ping: OLD, autoConfig: autoCfg(MIN(NEW)) });
+      await skuReady(page);
+      page.autoConfig = autoCfg(MIN(null)); // SQL hạ mức sau khi trang đã nạp cấu hình
+      const before = { preview: countOf(page, 'preview'), cfg: countOf(page, 'auto-config') };
+      let p = await pressOnce(page);
+      assert.equal(p.status, 'Cần Extension ≥ 0.10.10 (đang v0.10.9): Reload Extension rồi tải lại tab Inside.', 'lần 1: còn chặn theo cấu hình đã nạp');
+      assert.equal(countOf(page, 'preview'), before.preview, 'lần 1: không gọi preview'); assert.equal(p.calls.includes('GET_SKU_SYNC_DATA'), false, 'lần 1: không đọc Inside');
+      const reloadsAfterBlock = countOf(page, 'auto-config') - before.cfg;
+      p = await pressOnce(page);
+      assert.match(p.status, /^Đối chiếu xong/, 'lần 2: dùng mức mới (null) nên chạy như cũ'); assert.ok(p.calls.includes('GET_SKU_SYNC_DATA'), 'lần 2: đọc Inside');
+      assert.equal(countOf(page, 'preview'), before.preview + 1, 'lần 2: gọi preview'); assert.equal(page.bodies.filter(b => b.fn === 'sku-sync' && b.action === 'preview').at(-1).extVersion, OLD);
+      assert.equal(reloadsAfterBlock, 1, 'lần 1 bị chặn: nạp lại auto-config đúng một lần');
+      assert.deepEqual([...page.errors, ...page.consoleErrors], []); await context.close();
+      // Lỗi khác (preview HTTP 500): nạp lại lịch sử + auto-config đúng một lần rồi dừng
+      ({ context, page } = await open(browser, { ping: NEW, autoConfig: autoCfg(MIN(null)), failOn: { fn: 'sku-sync', actions: ['preview'] } }));
+      await skuReady(page);
+      const base = [countOf(page, 'history'), countOf(page, 'auto-config')];
+      p = await pressOnce(page); await page.waitForTimeout(1500);
+      assert.match(p.status, /HTTP 500/, 'lỗi preview vẫn hiện câu lỗi gốc sau khi nạp lại');
+      assert.deepEqual([countOf(page, 'history') - base[0], countOf(page, 'auto-config') - base[1]], [1, 1], 'lỗi preview: nạp lại lịch sử + auto-config đúng một lần, không lặp');
+      assert.deepEqual(page.errors, []); await context.close();
+    }
+    {
+      // (d) bảng Máy đồng bộ: nút gọn trong ô Tự động → pop-up .as-dialog; bàn phím Enter / Space mở, Esc đóng, tiêu điểm về nút
+      const { context, page } = await open(browser, { ping: '0.10.10', autoConfig: autoCfg(MIN('0.10.10'), DEVICES) });
+      await skuReady(page);
+      const btn = page.locator('#ss-strip-auto #ss-dev-btn'), dlg = page.locator('#ss-dev-dialog');
+      const rowsOf = () => page.locator('#ss-dev-body tr').evaluateAll(trs => trs.map(tr => ({ state: tr.dataset.dev || '', cells: [...tr.cells].map(td => td.innerText.replace(/\s+/g, ' ').trim()), icons: [...tr.cells].map(td => td.querySelectorAll('svg').length) })));
+      const chipsOf = () => page.locator('#ss-dev-mins .as-chip').allInnerTexts().then(a => a.map(t => t.trim()));
+      const reload = async (cfg, tone, n = 3) => { page.autoConfig = cfg; await page.locator('#sku-top-refresh').click(); await page.waitForFunction(([t, n]) => { const b = document.getElementById('ss-dev-btn'); return b?.dataset.tone === t && b.querySelector('.as-dev-n')?.textContent === String(n); }, [tone, n]); };
+      await btn.waitFor({ state: 'visible' });
+      assert.equal(await btn.getAttribute('data-tone'), 'bad', 'có máy dưới mức: nút đỏ'); assert.equal((await btn.locator('.as-dev-n').innerText()).trim(), '3', 'số máy'); assert.equal((await btn.locator('.as-dev-badge').innerText()).trim(), '2', 'huy hiệu: số máy dưới mức');
+      assert.equal(await btn.getAttribute('aria-label'), 'Máy đồng bộ: 3 máy, 2 dưới mức tối thiểu'); assert.equal(await btn.getAttribute('aria-haspopup'), 'dialog'); assert.equal(await btn.locator('svg').count(), 1, 'icon máy tính');
+      assert.equal(await page.evaluate(() => document.querySelector('#ss-strip-auto button').id), 'ss-auto-toggle', 'nút Tạm dừng vẫn là nút đầu của ô Tự động');
+      await btn.focus(); await page.keyboard.press('Enter'); await dlg.waitFor({ state: 'visible' });
+      assert.equal(await dlg.evaluate(d => d.tagName === 'DIALOG' && d.classList.contains('as-dialog') && d.open), true, 'pop-up .as-dialog');
+      assert.equal(await dlg.getAttribute('aria-labelledby'), 'ss-dev-title'); assert.equal((await page.locator('#ss-dev-title').innerText()).trim(), 'Máy đồng bộ');
+      assert.deepEqual(await chipsOf(), ['Tối thiểu ≥ 0.10.10'], 'cùng một mức cho mọi loại: một chip');
+      assert.deepEqual((await page.locator('#ss-dev-dialog thead th').allInnerTexts()).map(t => t.trim()), ['Máy', 'Bản', 'Lần cuối', 'Loại']);
+      let rows = await rowsOf();
+      assert.deepEqual(rows.map(r => r.state), ['bad', 'bad', 'ok'], 'đỏ: dưới mức hoặc chưa khai báo khi có mức');
+      assert.equal(rows[0].cells[0], 'may-a #ab12'); assert.equal(rows[0].cells[1], 'v0.10.9'); assert.equal(rows[0].cells[3], 'SKU'); assert.match(rows[0].cells[2], /^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2} \d+ phút trước$/);
+      assert.equal(rows[1].cells[1], 'Chưa khai báo'); assert.equal(rows[1].cells[3], 'Group UID'); assert.equal(rows[2].cells[1], 'v0.10.10'); assert.equal(rows[2].cells[3], 'ADJ');
+      assert.deepEqual(rows.map(r => r.icons[1]), [1, 1, 0], 'hàng đỏ có icon ở cột Bản (không chỉ màu)');
+      assert.equal(/zz99|yy/.test(await dlg.innerText()), false, 'chỉ hiện #id4, không lộ holder');
+      const red = await page.locator('#ss-dev-body tr[data-dev="bad"] .as-dev-ver').first().evaluate(v => ({ color: getComputedStyle(v).color, bg: getComputedStyle(v.closest('td')).backgroundColor }));
+      assert.equal(red.color, 'rgb(180, 35, 24)', 'chữ bản hàng đỏ = --wms-danger'); assert.notEqual(red.bg, 'rgba(0, 0, 0, 0)', 'hàng đỏ có nền');
+      let m = await page.evaluate(textMetrics, '#ss-dev-dialog'); assert.deepEqual(m.low, [], 'pop-up: tương phản'); assert.deepEqual(m.small, [], 'pop-up: chữ ≥ 12 px');
+      await page.keyboard.press('Escape'); await dlg.waitFor({ state: 'hidden' });
+      assert.equal(await page.evaluate(() => document.activeElement?.id), 'ss-dev-btn', 'Esc đóng: tiêu điểm về nút');
+      await page.keyboard.press('Space'); await dlg.waitFor({ state: 'visible' }); await page.locator('#ss-dev-dialog [data-as-close]').click(); await dlg.waitFor({ state: 'hidden' });
+      assert.equal(await page.evaluate(() => document.activeElement?.id), 'ss-dev-btn', 'nút Đóng: tiêu điểm về nút');
+      // Chưa có mức nào (giai đoạn ghi nhận): chưa khai báo = vàng, không chip mức
+      await reload(autoCfg(MIN(null), DEVICES), 'warn');
+      assert.equal((await btn.locator('.as-dev-badge').innerText()).trim(), '1'); assert.equal(await btn.getAttribute('aria-label'), 'Máy đồng bộ: 3 máy, 1 chưa khai báo bản');
+      await btn.click(); await dlg.waitFor({ state: 'visible' }); rows = await rowsOf();
+      assert.deepEqual(rows.map(r => r.state), ['ok', 'warn', 'ok'], 'chưa có mức: chưa khai báo = vàng, còn lại thường'); assert.deepEqual(rows.map(r => r.icons[1]), [0, 1, 0]); assert.equal(rows[1].cells[1], 'Chưa khai báo');
+      assert.equal(await page.locator('#ss-dev-body tr[data-dev="warn"] .as-dev-ver').evaluate(v => getComputedStyle(v).color), 'rgb(138, 90, 0)', 'vàng = --wms-warning');
+      assert.deepEqual(await chipsOf(), [], 'chưa có mức: không chip');
+      m = await page.evaluate(textMetrics, '#ss-dev-dialog'); assert.deepEqual(m.low, [], 'pop-up vàng: tương phản');
+      await page.keyboard.press('Escape'); await dlg.waitFor({ state: 'hidden' });
+      // Mức khác nhau theo loại: áp mức của loại gần nhất, loại không có mức → mức cao nhất; chip liệt kê theo loại
+      await reload(autoCfg({ sku: NEW, group_uid: null, cut_adj: '0.10.8', storage_risk: null }, DEVICES.map(d => ({ ...d, version: OLD }))), 'bad');
+      await btn.click(); await dlg.waitFor({ state: 'visible' }); rows = await rowsOf();
+      assert.deepEqual(rows.map(r => r.state), ['bad', 'bad', 'ok'], 'SKU 0.10.9 < 0.10.10; Group UID không có mức → mức cao nhất 0.10.10; ADJ 0.10.9 ≥ 0.10.8');
+      assert.deepEqual(await chipsOf(), ['SKU ≥ 0.10.10', 'ADJ ≥ 0.10.8'], 'mức khác nhau: liệt kê theo loại');
+      await page.keyboard.press('Escape'); await dlg.waitFor({ state: 'hidden' });
+      // Đủ bản: nút thường, không huy hiệu
+      await reload(autoCfg(MIN(NEW), DEVICES.map(d => ({ ...d, version: NEW }))), '');
+      assert.equal(await btn.locator('.as-dev-badge').count(), 0); assert.equal(await btn.getAttribute('aria-label'), 'Máy đồng bộ: 3 máy');
+      // Không có máy: nút "0" (không mờ bằng opacity), pop-up có trạng thái rỗng
+      await reload(autoCfg(MIN(null), []), '', 0);
+      assert.equal((await btn.locator('.as-dev-n').innerText()).trim(), '0'); assert.equal(await btn.getAttribute('data-zero'), 'true'); assert.equal(await btn.evaluate(b => getComputedStyle(b).opacity), '1');
+      await btn.click(); await dlg.waitFor({ state: 'visible' }); assert.equal((await page.locator('#ss-dev-body').innerText()).trim(), 'Chưa có máy trong 14 ngày');
+      await page.keyboard.press('Escape'); await dlg.waitFor({ state: 'hidden' });
+      assert.deepEqual([...page.errors, ...page.consoleErrors], []); await context.close();
+    }
+    // Khối dùng chung chép giống hệt ở hai màn (hai khối script riêng)
+    {
+      const html = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'index.html'), 'utf8');
+      const copies = [...html.matchAll(/\/\/ >>> bảng Máy đồng bộ[\s\S]*?\/\/ <<< bảng Máy đồng bộ/g)];
+      assert.equal(copies.length, 2, 'khối "bảng Máy đồng bộ" có đúng 2 bản (Đồng bộ SKU + Đồng bộ Group UID)');
+      assert.equal(copies[0][0], copies[1][0], 'hai bản khối "bảng Máy đồng bộ" phải giống hệt từng ký tự');
+      const inside = (id, at) => { const start = html.indexOf(`<script id="${id}">`); return start >= 0 && at > start && at < html.indexOf('</script>', start); };
+      assert.ok(inside('sku-sync-admin-script', copies[0].index), 'bản 1 nằm trong sku-sync-admin-script');
+      assert.ok(inside('group-uid-sync-admin-script', copies[1].index), 'bản 2 nằm trong group-uid-sync-admin-script');
+    }
+    console.log('PASS cổng bản Extension (Đồng bộ SKU: extVersion trong preview, dừng trước khi đọc Inside khi dưới mức, so từng đoạn số) + bảng Máy đồng bộ (đỏ / vàng / thường, bàn phím, chỉ #id4) + khối dùng chung giống hệt hai màn');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

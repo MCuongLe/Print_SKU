@@ -8,7 +8,8 @@
 - supabase/*.sql theo thứ tự tệp vào git: đối tượng public mỗi tệp tạo / xoá (hàm, bảng, index, trigger, việc cron),
   suy ra đối tượng phải có trên DB; tệp có đối tượng còn thiếu là dấu hiệu migration chưa chạy.
 - Supabase qua Management API: một câu SELECT (pg_proc, pg_class, pg_indexes, pg_trigger, cron.job, print_agents,
-  sync_auto_leases) và danh sách Edge Function. Mọi câu SQL phải qua `select_only`.
+  sync_auto_leases), một câu SELECT riêng cho máy đồng bộ + mức Extension tối thiểu (sync_auto_devices, sync_auto_settings;
+  lỗi → "chưa có bảng") và danh sách Edge Function. Mọi câu SQL phải qua `select_only`.
 
 In Markdown theo khuôn mục "Trạng thái lên thật" (docs/chuan/TAI_LIEU.md) để lead chép vào docs/QUYET_DINH.md;
 phần "Đã lên, CHƯA thử thật" vẫn ghi tay. Không ghi tệp nào, không ghi Supabase.
@@ -154,6 +155,15 @@ def render(data: dict) -> str:
         state = "" if a["enabled"] else " (đang tắt)"
         caps = ", ".join(f"`{c}`" for c in a["capabilities"] or [])
         lines.append(f"- Agent `{a['name']}`{state}: {a['version'] or 'chưa báo phiên bản'}, khai {caps or 'không'}; lần thấy cuối {a['last_seen'] or 'chưa từng'}.")
+    dev = data.get("devices")
+    if dev and dev.get("missing"):
+        lines.append("- Máy đồng bộ: chưa có bảng `sync_auto_devices` hoặc cột `min_extension` (migration `sync_auto_v3` chưa chạy).")
+    elif dev:
+        mins = {k: v for k, v in (dev.get("min") or {}).items() if isinstance(v, str) and EXT_VERSION.match(v)}
+        lines.append("- Mức Extension tối thiểu (`min_extension`): "
+                     + (", ".join(f"{k} ≥ {v}" for k, v in sorted(mins.items())) or "chưa đặt (không chặn)") + ".")
+        rows = dev.get("rows") or []
+        lines.append("- Máy đồng bộ (14 ngày): " + ("; ".join(device_line(r, mins) for r in rows) if rows else "chưa máy nào gọi Edge từ bản có cổng") + ".")
     if data["cron"]:
         lines.append("- Cron (giờ VN): " + "; ".join(f"`{c['name']}` {cron_vn(c['schedule'])}{'' if c['active'] else ' (tắt)'}" for c in data["cron"]) + ".")
     if data["leases"]:
@@ -201,6 +211,47 @@ STATUS_SQL = """select json_build_object(
   'agents', (select coalesce(json_agg(json_build_object('name', name, 'enabled', enabled, 'version', state->>'version', 'capabilities', capabilities, 'last_seen', last_seen_at) order by name), '[]') from public.print_agents),
   'leases', (select coalesce(json_agg(json_build_object('kind', kind, 'last_finished', last_finished_at) order by kind), '[]') from public.sync_auto_leases)
 ) as status"""
+
+
+# Máy đồng bộ + mức Extension tối thiểu (sync_auto_v3.sql, 26/10/2026). Câu riêng: trước migration bảng / cột chưa có thì câu này lỗi,
+# không được làm hỏng cả báo cáo (main() bắt SystemExit và ghi "chưa có bảng").
+DEVICES_SQL = """select json_build_object(
+  'devices', (select coalesce(json_agg(json_build_object('device', device, 'id4', left(split_part(holder, '#', 2), 4), 'version', ext_version, 'last_seen', last_seen_at, 'last_kind', last_kind) order by last_seen_at desc), '[]') from public.sync_auto_devices where last_seen_at > now() - interval '14 days'),
+  'min_extension', (select min_extension from public.sync_auto_settings where singleton limit 1)
+) as status"""
+EXT_VERSION = re.compile(r"^\d{1,3}\.\d{1,3}\.\d{1,3}$")
+EXT_KIND = {"sku": "SKU", "group_uid": "Group UID", "cut_adj": "ADJ", "storage_risk": "Rủi ro lưu trữ"}
+
+
+def ext_less(version, minimum) -> bool:
+    """Bản Extension thấp hơn mức tối thiểu? Cùng nghĩa với `versionLess` của Edge: chỉ chuỗi x.y.z là bản; thiếu / sai dạng
+    thấp hơn mọi mức; so từng đoạn số (0.10.10 > 0.10.9); mức sai dạng = không có mức."""
+    if not isinstance(minimum, str) or not EXT_VERSION.match(minimum):
+        return False
+    if not isinstance(version, str) or not EXT_VERSION.match(version):
+        return True
+    return [int(p) for p in version.split(".")] < [int(p) for p in minimum.split(".")]
+
+
+def device_need(mins: dict, kind) -> str | None:
+    """Mức áp cho một máy như bảng Máy đồng bộ trên web: mức của loại gần nhất nếu có, không thì mức cao nhất."""
+    if kind in mins:
+        return mins[kind]
+    top = None
+    for value in mins.values():
+        if top is None or ext_less(top, value):
+            top = value
+    return top
+
+
+def device_line(row: dict, mins: dict) -> str:
+    version = row.get("version")
+    declared = isinstance(version, str) and bool(EXT_VERSION.match(version))
+    need = device_need(mins, row.get("last_kind"))
+    flag = " — dưới mức tối thiểu" if need and ext_less(version, need) else ("" if declared else " — chưa khai báo bản")
+    code = f" #{row['id4']}" if row.get("id4") else ""
+    return (f"`{row.get('device') or '—'}`{code} {f'v{version}' if declared else 'chưa khai báo'} "
+            f"({EXT_KIND.get(str(row.get('last_kind')), '—')}, {row.get('last_seen') or '—'}){flag}")
 
 
 def edge_functions(ref: str, token: str, timeout: int) -> list[dict]:
@@ -265,6 +316,14 @@ def main() -> int:
     data["agents"] = [{**a, "last_seen": vn_time(a.get("last_seen"))} for a in status.get("agents") or []]
     data["cron"] = status.get("cron") or []
     data["leases"] = [{"kind": l["kind"], "last_finished": vn_time(l.get("last_finished"))} for l in status.get("leases") or []]
+    try:
+        found = supa.run_query(ref, token, select_only(DEVICES_SQL), args.timeout)
+        info = found[0]["status"] if isinstance(found, list) and found else {}
+        info = json.loads(info) if isinstance(info, str) else info
+        data["devices"] = {"min": info.get("min_extension") or {},
+                           "rows": [{**r, "last_seen": vn_time(r.get("last_seen"))} for r in info.get("devices") or []]}
+    except SystemExit:
+        data["devices"] = {"missing": True}  # bảng / cột chưa có (chưa chạy sync_auto_v3) hoặc lỗi gọi API
     print(render(data))
     return 0
 

@@ -313,6 +313,8 @@ Vào từ ô QUẢN TRỊ; chưa có phiên thì đăng nhập Supabase bằng t
 
 **Đồng bộ SKU** (Inside → Supabase) và **Đồng bộ Group UID** (WMS → Supabase): **Đọc** (gia tăng) hoặc **Toàn bộ** (đối chiếu) → xem trước → **Cập nhật** (hỏi xác nhận). Ô số liệu mở popup danh sách thay đổi (tìm không dấu, lọc, xuất Excel); Lịch sử ở dải mốc giờ. Ô **Tự động** cho tạm dừng / tiếp tục lượt nền của Extension; lượt vượt ngưỡng chờ Admin chạy tay.
 
+Nút **Máy đồng bộ** trong ô Tự động liệt kê máy chạy tự động và bản Extension của từng máy (14 ngày): hàng đỏ khi bản thấp hơn mức tối thiểu đang chặn, vàng khi chưa khai báo bản mà chưa có mức. Extension dưới mức tối thiểu không đọc được nguồn và không ghi được, cả lượt bấm tay.
+
 **Cấu hình**: nhóm Thiết bị này (tên máy, quyền in, mẫu tem, sổ tay SKU) và Hệ thống (danh mục SKU, trần một lệnh in, chỉ đọc).
 
 ## Dữ liệu và đồng bộ
@@ -351,6 +353,8 @@ python scripts/import_group_uid_xlsx.py "C:\path\to\GROUP_UID_DETAIL.xlsx" --app
 ### Đồng bộ tự động
 
 Extension chạy nền trên máy đã đăng nhập Admin (trang Options): Group UID và SKU gia tăng mỗi 30 phút trong giờ làm, Toàn bộ một lần mỗi ngày trong khung 07:30–11:00; Đối chiếu ADJ và Rủi ro lưu trữ mỗi 2 giờ 07:00–19:30. Mỗi loại có lease 15 phút; lượt vượt ngưỡng bị giữ chờ Admin; tự động ngừng quá 70 phút thì Extension và màn Admin cảnh báo (ngừng buổi tối do tắt máy là bình thường).
+
+Bản Extension: từ 0.10.10 Extension khai báo bản cho server. Mức tối thiểu đặt bằng SQL (`sync_auto_settings.min_extension`, rỗng = không chặn); máy dưới mức không thuê khoá, không đọc, hiện dấu "!" và thẻ đỏ "cần Extension ≥ x" ở Options. Quy trình nâng mức: `docs/chuan/DU_LIEU.md`.
 
 ## Agent máy trạm
 

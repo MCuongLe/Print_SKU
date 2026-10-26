@@ -9,6 +9,8 @@ const changes = [
 const counts = { added: 1, updated: 1, unchanged: 0, missing: 0, issues: 0, totalChanges: 2 };
 const warnCounts = { ...counts, missing: 3, issues: 1, skippedCanceled: 7 };
 let scenario = "normal", cancelCalls = 0, ingestBodies = [], autoEnabled = true, autoBodies = [], prepareCount = 0;
+// sync_auto_v3 (26/10/2026): autoExtra gộp vào phản hồi auto-config (minExtension, devices); autoFail = auto-config trả HTTP 500; prepareBodies = body các lần prepare.
+let autoExtra = {}, autoFail = false, prepareBodies = [];
 // Giữ phản hồi prepare của Edge để chặn được pha "đang đọc" (nút đổi nhãn, icon vòng xoay); đặt lại null để thả.
 let hold = null;
 // Giữ phản hồi apply (ghi Supabase) để chặn được pha "đang cập nhật": nút Cập nhật mang data-busy + vạch load dưới nút; đặt lại null để thả.
@@ -176,7 +178,7 @@ const fakeExtension = () => addEventListener("message", async event => {
     return payload.page === 1 ? { page: 1, size: 500, total: 3, totalPages: 2, rows: [r(3), r(2)] } : { page: 2, size: 500, total: leaving ? 2 : 3, totalPages: 2, rows: [r(1)] };
   };
   if (window.__guHold2 && request.type === "GET_GROUP_UID_PAGE" && (request.payload || {}).page === 2) await window.__guHold2; // giữ trang 2 để đo tiến độ sau trang 1
-  const data = request.type === "PING" || request.type === "PING_WMS" ? { version: window.__guExtVersion || "0.10.9" } : request.type === "GET_GROUP_UID_PAGE" ? pageData(request.payload || {}) : null;
+  const data = request.type === "PING" || request.type === "PING_WMS" ? { version: window.__guExtVersion !== undefined ? window.__guExtVersion : "0.10.10" } :request.type === "GET_GROUP_UID_PAGE" ? pageData(request.payload || {}) : null;
   postMessage({ source: "HASAKI_INSIDE_CONNECTOR", requestId: request.requestId, ok: Boolean(data), data, error: data ? null : { message: "Loại yêu cầu chưa giả lập" } }, location.origin);
 });
 
@@ -191,8 +193,9 @@ async function mock(page) {
     if (url.includes("/functions/v1/group-uid-sync")) {
       const body = JSON.parse(route.request().postData() || "{}"), ok = data => json({ ok: true, data });
       if (body.action === "history") return ok({ state: { last_successful_incremental_at: "2026-10-08T00:00:00Z", last_successful_full_at: guFullAt }, runs: [{ id: "44444444-4444-4444-8444-444444444444", mode: "full", status: "failed", error_message: "Admin hủy bản xem trước", created_at: "2026-10-08T01:00:00Z", source_count: 2, change_counts: {}, range_to: "2026-10-08T01:00:00Z" }, { id: "55555555-5555-4555-8555-555555555555", mode: "incremental", status: "previewed", created_at: "2026-10-08T01:30:00Z", source: "auto", device: "may-test", autoHold: "Giữ lại: 3.512 thay đổi vượt ngưỡng 3.000", source_count: 3512, change_counts: { added: 3000, updated: 512 }, range_from: "2026-10-08T00:00:00Z", range_to: "2026-10-08T01:30:00Z" }] });
-      if (body.action === "auto-config") { if (body.set && typeof body.set.enabled === "boolean") autoEnabled = body.set.enabled; autoBodies.push(body); return ok({ enabled: autoEnabled, intervalMinutes: 30, fullWindow: { start: "00:00", end: "05:00" }, thresholds: {}, updatedAt: "2026-10-08T01:00:00Z" }); }
-      if (body.action === "prepare") prepareCount++;
+      if (body.action === "auto-config" && autoFail) return json({ ok: false, error: { message: "Không đọc được cấu hình (HTTP 500)" } }, 500);
+      if (body.action === "auto-config") { if (body.set && typeof body.set.enabled === "boolean") autoEnabled = body.set.enabled; autoBodies.push(body); return ok({ enabled: autoEnabled, intervalMinutes: 30, fullWindow: { start: "00:00", end: "05:00" }, thresholds: {}, updatedAt: "2026-10-08T01:00:00Z", ...autoExtra }); }
+      if (body.action === "prepare") { prepareCount++; prepareBodies.push(body); }
       if (body.action === "prepare" && hold) await hold;
       if (body.action === "prepare") return ok({ runId: RUN, mode: body.mode, status: "running", rangeFrom: body.mode === "incremental" ? "2026-10-07T23:30:00Z" : null, rangeTo: "2026-10-08T02:00:00Z" });
       if (body.action === "ingest") { ingestBodies.push(body); return ok({ runId: RUN, page: body.page, pageCount: 1, totalPages: body.totalPages }); }
@@ -381,6 +384,62 @@ async function mock(page) {
       assert.deepEqual(await layoutAudit(page,["gu-strip"],width>=1360?"gu-strip":null),[],`${width} px sau khi đọc: dải 6 ô không ô lẻ`);
       assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,"không tràn ngang");
       await context.close();console.log(`PASS ${width}px: hero một hàng, dải phẳng, ô số liệu phân tầng, dải 6 ô (có ô Tự động) không ô lẻ, không tràn ngang`);
+    }
+    // Cổng bản Extension + bảng Máy đồng bộ (sync_auto_v3, 26/10/2026): mức của server (auto-config.minExtension.group_uid) thắng hằng MIN_EXT 0.10.4,
+    // auto-config lỗi → MIN_EXT; prepare gửi extVersion chỉ khi PING đúng dạng x.y.z; dưới mức thì dừng trước prepare + đọc WMS.
+    // Bảng máy: đỏ = dưới mức (loại gần nhất, không có thì mức cao nhất) hoặc chưa khai báo khi có mức; vàng = chưa khai báo khi chưa có mức nào.
+    {
+      const MIN=v=>({sku:v,group_uid:v,cut_adj:v,storage_risk:v}),ago=m=>new Date(Date.now()-m*60000).toISOString();
+      // Hai bản giả của bảng ca so bản (0.10.10 > 0.10.9 theo từng đoạn số): hằng riêng để commit_gate mục 5 không coi là dòng ghim bản manifest
+      const NEW="0.10.10",OLD="0.10.9";
+      const DEVICES=[{device:"may-a",id4:"ab12",version:OLD,lastSeenAt:ago(5),lastKind:"group_uid"},{device:"may-b",id4:"cd34",version:null,lastSeenAt:ago(90),lastKind:"sku"},{device:"may-c",id4:"ef56",version:NEW,lastSeenAt:ago(1500),lastKind:"storage_risk"}];
+      const openGu=async(ver,extra={},fail=false,width=1280)=>{
+        autoExtra=extra;autoFail=fail;const context=await browser.newContext({viewport:{width,height:800}});
+        await context.addInitScript(key=>sessionStorage.setItem(key,JSON.stringify({access_token:"test-admin-token",refresh_token:"test-refresh-token"})),SESSION_KEY);
+        await context.addInitScript(v=>{window.__guExtVersion=v},ver);await context.addInitScript(fakeExtension);
+        const page=await context.newPage(),errors=[];page.on("pageerror",e=>errors.push(e.message));page.on("console",m=>{if(m.type()==="error"&&!/Failed to load resource/.test(m.text()))errors.push(m.text())});await mock(page);
+        await page.goto(BASE+"#admin/group-uid-sync");await page.locator("#group-uid-sync-screen").waitFor({state:"visible"});
+        await page.waitForFunction(()=>document.getElementById("gu-connection").dataset.state==="ok");await page.waitForFunction(()=>!document.getElementById("gu-run-full").disabled);
+        return{context,page,errors};
+      };
+      const runFull=async page=>{const before=prepareCount;await page.evaluate(()=>{window.__guReads=[]});await page.locator("#gu-run-full").click();
+        await page.waitForFunction(()=>{const s=document.getElementById("gu-status");return s.dataset.tone==="error"||/Đối chiếu xong/.test(s.textContent)});await page.waitForFunction(()=>!document.getElementById("gu-run-full").disabled);
+        return{status:(await page.locator("#gu-status").innerText()).trim(),prepared:prepareCount>before,body:prepareCount>before?prepareBodies.at(-1):undefined,reads:await page.evaluate(()=>window.__guReads.length)}};
+      const rowsOf=page=>page.locator("#gu-dev-body tr").evaluateAll(trs=>trs.map(tr=>({state:tr.dataset.dev||"",cells:[...tr.cells].map(td=>td.innerText.replace(/\s+/g," ").trim()),icons:[...tr.cells].map(td=>td.querySelectorAll("svg").length)})));
+      // (b)+(c) mức server 0.10.10 thắng MIN_EXT: 0.10.9 (≥ 0.10.4) vẫn bị chặn trước prepare và trước khi đọc WMS; bảng máy đỏ
+      {const {context,page,errors}=await openGu("0.10.9",{minExtension:MIN("0.10.10"),devices:DEVICES});const r=await runFull(page);
+       assert.equal(r.status,"Cần Extension ≥ 0.10.10 (đang v0.10.9): Reload Extension rồi tải lại tab WMS.","mức server thắng MIN_EXT");assert.equal(r.prepared,false,"dưới mức: không gọi prepare");assert.equal(r.reads,0,"dưới mức: không đọc WMS");
+       const btn=page.locator("#gu-strip-auto #gu-dev-btn"),dlg=page.locator("#gu-dev-dialog");await btn.waitFor({state:"visible"});
+       assert.equal(await btn.getAttribute("data-tone"),"bad");assert.equal((await btn.locator(".as-dev-n").innerText()).trim(),"3");assert.equal((await btn.locator(".as-dev-badge").innerText()).trim(),"2");assert.equal(await btn.getAttribute("aria-label"),"Máy đồng bộ: 3 máy, 2 dưới mức tối thiểu");
+       assert.deepEqual(await autoCellAudit(page,"gu-strip","gu-strip-auto"),[],"ô Tự động có nút Máy đồng bộ: nút Tạm dừng 36×36, không che chữ");assert.deepEqual(await layoutAudit(page,["gu-strip"],null),[],"dải 6 ô không lệch");
+       await btn.focus();await page.keyboard.press("Enter");await dlg.waitFor({state:"visible"});assert.equal(await dlg.evaluate(d=>d.classList.contains("as-dialog")&&d.open),true);assert.equal(await dlg.getAttribute("aria-labelledby"),"gu-dev-title");
+       assert.deepEqual((await page.locator("#gu-dev-mins .as-chip").allInnerTexts()).map(t=>t.trim()),["Tối thiểu ≥ 0.10.10"]);
+       const rows=await rowsOf(page);assert.deepEqual(rows.map(x=>x.state),["bad","bad","ok"]);assert.deepEqual(rows.map(x=>x.cells[0]),["may-a #ab12","may-b #cd34","may-c #ef56"]);assert.deepEqual(rows.map(x=>x.cells[1]),["v0.10.9","Chưa khai báo","v0.10.10"]);assert.deepEqual(rows.map(x=>x.cells[3]),["Group UID","SKU","Rủi ro"]);assert.deepEqual(rows.map(x=>x.icons[1]),[1,1,0]);
+       await page.keyboard.press("Escape");await dlg.waitFor({state:"hidden"});assert.equal(await page.evaluate(()=>document.activeElement?.id),"gu-dev-btn","Esc đóng: tiêu điểm về nút");
+       await page.keyboard.press("Space");await dlg.waitFor({state:"visible"});await page.keyboard.press("Escape");await dlg.waitFor({state:"hidden"});
+       assert.deepEqual(errors,[]);await context.close();}
+      // Chạy như cũ + prepare gửi extVersion; chưa có mức: chưa khai báo = vàng
+      for(const [ver,min,label,tone] of [[NEW,NEW,"bằng mức","bad"],[NEW,OLD,"0.10.10 > 0.10.9 (so từng đoạn số)","bad"],[OLD,null,"mức null → dự phòng MIN_EXT 0.10.4","warn"]]){
+        const {context,page,errors}=await openGu(ver,{minExtension:MIN(min),devices:DEVICES});const r=await runFull(page);
+        assert.match(r.status,/^Đối chiếu xong/,label);assert.equal(r.body.extVersion,ver,`${label}: prepare gửi extVersion`);assert.ok(r.reads>0,`${label}: đọc WMS`);
+        assert.equal(await page.locator("#gu-dev-btn").getAttribute("data-tone"),tone,`${label}: màu nút Máy đồng bộ`);
+        if(tone==="warn"){await page.locator("#gu-dev-btn").click();await page.locator("#gu-dev-dialog").waitFor({state:"visible"});const rows=await rowsOf(page);assert.deepEqual(rows.map(x=>x.state),["ok","warn","ok"],"chưa có mức: chưa khai báo = vàng");assert.equal(await page.locator("#gu-dev-mins .as-chip").count(),0,"chưa có mức: không chip");await page.keyboard.press("Escape")}
+        assert.deepEqual(errors,[]);await context.close();
+      }
+      // PING sai dạng: không có khoá extVersion (Edge coi là chưa khai báo)
+      {const {context,page}=await openGu(" 0.10.10",{minExtension:MIN(null)});const r=await runFull(page);assert.match(r.status,/^Đối chiếu xong/);assert.equal("extVersion" in r.body,false,"PING sai dạng: không gửi khoá extVersion");await context.close();}
+      // (c) auto-config lỗi → hằng MIN_EXT 0.10.4; nút Máy đồng bộ ẩn; không lỗi console
+      {const {context,page,errors}=await openGu("0.10.3",{},true);let r=await runFull(page);
+       assert.equal(r.status,"Cần Extension ≥ 0.10.4 (đang v0.10.3): Reload Extension rồi tải lại tab WMS.","auto-config lỗi: dùng MIN_EXT");assert.equal(r.prepared,false);assert.equal(r.reads,0);assert.equal(await page.locator("#gu-dev-btn").isVisible(),false,"auto-config lỗi: ẩn nút Máy đồng bộ");
+       await page.evaluate(()=>{window.__guExtVersion="0.10.9"});r=await runFull(page);assert.match(r.status,/^Đối chiếu xong/);assert.equal(r.body.extVersion,"0.10.9");
+       assert.deepEqual(errors,[]);await context.close();}
+      // 1440 px (dải 6 ô một hàng, ô ~180 px): nút Máy đồng bộ không che chữ, không tràn
+      {const {context,page}=await openGu("0.10.10",{minExtension:MIN("0.10.10"),devices:DEVICES},false,1440);await page.locator("#gu-dev-btn").waitFor({state:"visible"});
+       assert.deepEqual(await autoCellAudit(page,"gu-strip","gu-strip-auto"),[],"1440 px: ô Tự động có nút Máy đồng bộ");assert.deepEqual(await layoutAudit(page,["gu-strip"],"gu-strip"),[],"1440 px: dải 6 ô một hàng");
+       assert.equal(await page.evaluate(()=>{const c=document.getElementById("gu-strip-auto").getBoundingClientRect(),b=document.getElementById("gu-dev-btn").getBoundingClientRect();return b.left>=c.left&&b.right<=c.right+0.5&&b.bottom<=c.bottom+0.5}),true,"nút Máy đồng bộ nằm trong ô Tự động");
+       await context.close();}
+      autoExtra={};autoFail=false;
+      console.log("PASS cổng bản Extension Group UID (mức server thắng MIN_EXT, auto-config lỗi → MIN_EXT, extVersion trong prepare, dừng trước khi đọc WMS) + bảng Máy đồng bộ (đỏ / vàng / thường, bàn phím)");
     }
   }finally{await browser.close()}
 })().catch(error=>{console.error(error);process.exitCode=1});

@@ -255,14 +255,19 @@
 - `#site-control`: chỉ Admin bấm Đối chiếu; kết quả chỉ trong trình duyệt (không Supabase); đối chiếu tồn app xây dựng với kho WMS 1151, phạm vi = SKU của app; kỳ tính từ 02/07/2026. (15/10 · N0006)
 
 ## 8. Extension & đồng bộ tự động
-- Thứ tự lên: migration → deploy Edge → Reload Extension (+ tải lại tab Inside/WMS); Extension cũ phải tương thích hoặc bị màn Admin chặn (vd. < 0.10.4). (17/10, 21/10 · N0919, N1001, N1117)
+- Thứ tự lên: migration → deploy Edge → Reload Extension (+ tải lại tab Inside/WMS) → push web; Extension cũ phải tương thích hoặc bị chặn (web Group UID dưới 0.10.4 từ 21/10; Edge theo `min_extension` từ 0.10.10, xem dòng cổng bản). (17/10, 21/10, 26/10 · N0919, N1001, N1117, N20261026-1102)
 - Token WMS/Inside không rời tab; Extension giữ phiên Admin Supabase riêng (Options, `chrome.storage.local`, tự gia hạn), không có service_role; trang web giữ token trong `sessionStorage`. (17/10 · N0923; [?] N0134–N0144)
 - `PrintSkuBridgeReady` PING ≤ 1,8 s trước mọi helper `extensionRequest`; Reload mà chưa F5 → báo tải lại trang; `tests/bridge_ready.cjs` đếm số helper (8 tính tới 15/10). (10/10, 15/10 · N0179, N0789)
 - Tự động: gia tăng 30 phút, toàn bộ 1 lần/ngày trong khung 07:30–11:00 (`sync_auto_settings`); vượt ngưỡng "Vừa" → `held` (Admin chạy tay); lease 15 phút + cooldown. (17/10 · N0923–N0939, N0985)
 - Thêm Đối chiếu ADJ và Rủi ro lưu trữ tự động mỗi 2 giờ 07:00–19:30 VN (`sync_auto_v2`, giãn cách = nhịp − 10 phút). (22/10 · N1140)
 - Cảnh báo khi tự động ngừng > 70 phút (dấu "!" icon, thẻ đỏ Options, ô Tự động đỏ, mốc giờ đỏ); ngừng buổi tối = máy tắt sau giờ làm, không phải lỗi. (22–23/10 · N1140, N1178)
 - Lượt Rủi ro lưu trữ chỉ "bỏ qua" khi mọi bước lỗi là phiên/thiếu tab và chưa lưu gì; nút Cập nhật cho lượt held luôn "chạy lại"; "Failed to fetch" → báo WMS ngắt kết nối, tải lại tab WMS. (16–22/10 · N1146, N0942, N0944, N0905)
-- Extension hiện hành 0.10.8 (Đợt B, người dùng Reload 24/10); từ 0.10.7: ghim tab cả lượt, timeout edge/rpc 60 s. (22–24/10 · N1133, N1149, N1196)
+- Extension trong repo 0.10.10 (cổng bản, chưa Reload); máy CUONG-PC đang chạy 0.10.9 (Pending = ngừng, Reload 26/10); từ 0.10.7: ghim tab cả lượt, timeout edge/rpc 60 s. (22–26/10 · N1133, N1149, N1196, N20261026-0837, N20261026-1102)
+- Cổng bản Extension (từ 0.10.10): Extension và web gửi `extVersion` ở mọi lệnh Edge; `sku-sync` / `group-uid-sync` ghi nhận máy (`sync_auto_devices`, khoá `holder`) rồi trả 409 `EXTENSION_OUTDATED` ở `lease` (4 loại), `preview` (SKU), `prepare` (Group UID) khi `sync_auto_settings.min_extension[loại]` có mà bản thấp hơn hoặc chưa khai báo; lượt tay cũng bị chặn. (26/10 · N20261026-1102)
+- Cổng bản không chặn `apply`, `ingest`, `release`, `history`, `detail`, `cancel`, `auto-config` (Extension phải đọc được mức); mức rỗng = không chặn gì; đọc `sync_auto_settings` lỗi → 500, không cho qua; so bản theo từng đoạn số, `extVersion` kiểm chặt dạng `x.y.z`. (26/10 · N20261026-1102)
+- Hai bước: ghi nhận (mức rỗng), rồi nâng bằng SQL tay một số chung `0.10.10` khi bảng "Máy đồng bộ" cho thấy mọi máy thấy trong 7 ngày đã khai báo, rồi một lượt toàn bộ SKU và Group UID bằng máy bản mới; rút lui `min_extension = '{}'`. Edge không cho đổi mức; CHECK ở DB từ chối giá trị sai dạng và khoá lạ. (26/10 · N20261026-1102)
+- Nâng mức giữa lúc có lượt chạy: Extension coi 409 ở lần gia hạn khoá là mất khoá, lượt dừng (Group UID huỷ lượt đã `prepare`); lỗi mạng khi gia hạn vẫn chịu ≤ 14 phút. Máy bản thấp thấy "cần Extension ≥ x" ngay ở icon "!", thẻ đỏ Options và nhật ký. (26/10 · N20261026-1102)
+- Bảng "Máy đồng bộ" ở Admin SKU + Group UID (`auto-config.devices`, ≤ 20 máy, 14 ngày, chỉ máy tự động): đỏ khi dưới mức đang chặn, vàng khi chưa khai báo mà chưa có mức; web Group UID dùng mức cao hơn giữa server và hằng `MIN_EXT` 0.10.4. (26/10 · N20261026-1102)
 
 ## 9. Supabase, quyền, bảo mật, migration
 - RLS bật mọi bảng; client chỉ qua RPC SECURITY DEFINER / Edge service_role; anon chỉ SELECT `SKU_Name` (`status='1'`); 37 bảng không policy và 35 hàm anon là CỐ Ý; Edge `verify_jwt false` đúng thiết kế. (08/10, 17/10 · N0047, N0983, N0984)
@@ -350,6 +355,7 @@
 - Trợ lý in: log lượt lỗi AI, giới hạn CORS origin, ý định in lại tem; duyệt lệnh bằng agent TẠM DỪNG; AI đọc PO từ ảnh tem = đợt sau. (17/10, 23/10 · N0950, N0954, N1154)
 - `floor_access_v2` drop bản cũ không token (khi hết lượt gọi cũ). (17/10 · N0996)
 - Web hiện riêng LEASE_LOST; báo cáo tuần UID sống mất SKU; ép kiểu thô ở `sku_count_save_chunk`. (17–18/10 · N0934, N0945, N1026)
+- Cổng bản Extension: `ext_version` ở dòng lịch sử lượt (cần đường lùi khi Edge lên trước migration); `holder` trong `auto-config` để máy bị chặn mọi loại không rơi khỏi bảng sau 14 ngày; `recordDevice` ghi log lỗi; bốn góp ý chuỗi bảng Máy đồng bộ ("Chưa báo bản", nhãn "Bị chặn", chữ "máy" cạnh số, vị trí chip) chờ người dùng quyết. (26/10 · N20261026-1102)
 - Giao diện còn nợ: thẻ Kiểm kê đỏ/vàng khi chưa có bản chụp, "Nhập Excel" cạnh Đọc WMS trông bị khoá, dải lọc Rủi ro lưu trữ / tab Kiểm kê ở 390 px; popup còn lại (chi tiết một dòng, chip "N cảnh báo", Cấu hình máy in). (08/10, 18/10 · N0042, N1004, N1009, N1019)
 - Header còn nợ: pill máy in cho Cắt UID/TÌM SKU/Vị trí, Back cố định một vị trí, tab Cắt UID/Xả vải 375 px; Cấu hình React còn "Link cấp quyền cho máy khác"; mã chết `#fsk-cd`. (07/10, 10/10 · N0075, N0037, N0029)
 - Quét camera liên tục (in hàng loạt) ở IN TEM GROUP UID / Cắt UID / Xả vải — chờ yêu cầu. (07/10 · N0063, N0065)
@@ -357,6 +363,7 @@
 
 ### Chưa kiểm thật (cần thiết bị/dữ liệu thật)
 - Điện thoại/camera/máy quét Honeywell/RFID thật; in thật tem vị trí, tem v3 có số lượng. (nhiều ngày · N0030, N0063, N0070, N0465, N1073)
+- Cổng bản Extension 0.10.10 trên máy thật: 409 `EXTENSION_OUTDATED` ở `lease` và ở lần gia hạn, thẻ đỏ Options, bảng Máy đồng bộ, upsert `sync_auto_devices` giữ `first_seen_at`, câu lỗi PostgREST khi thiếu cột `ext_version`; kiểu TypeScript hai Edge (máy không có Deno). (26/10 · N20261026-1102)
 - Extension thật: dấu "!" trên icon, WMS 401 hay 403 khi hết token; Admin đọc WMS thật lần đầu (Kiểm kê, Kiểm soát công trình); Combo sắp Modified giảm dần (`comboRows` ≈ 5.800 = đọc toàn bộ). (15–23/10 · N0006, N0866, N1030, N1144)
 - Nonce "Thử lại" ở IN TEM SKU / IN TEM GROUP UID (03/10 sinh nonce mới mỗi lần bấm) — chưa kiểm đã sửa. (03/10 · N0079)
 - Giả định NCC Kiểm tra đầu vào: hậu tố ` - người liên hệ` luôn có. (10/10 · N0178)
@@ -364,13 +371,13 @@
 
 ---
 
-## Trạng thái lên thật (kiểm Supabase MCP chỉ đọc + git, 26/10/2026 08:50)
+## Trạng thái lên thật (kiểm live_status.py + Supabase MCP chỉ đọc + git, 26/10/2026 14:33)
 
-Kiểm lại: `python scripts/live_status.py` (chỉ đọc). Chạy 26/10/2026 08:50: 88/88 tệp migration đủ đối tượng; Edge, agent, cron như dưới.
+Kiểm lại: `python scripts/live_status.py` (chỉ đọc). Chạy 26/10/2026 14:33: 88 tệp migration đủ đối tượng, thiếu `sync_auto_v3.sql` (chưa chạy); Edge, agent, cron như dưới.
 
 Mục này thắng mọi ghi chú "CHƯA LÊN" trong nhật ký. Kiểm lại khi thêm migration / Edge / Extension / agent; ghi ngày kiểm ở tiêu đề.
 
-**Web:** `main` = `origin/main` = `ba14cf8` (26/10 08:50). GitHub Pages phục vụ bản này.
+**Web:** `origin/main` = `11ccb25` (GitHub Pages phục vụ bản này); `main` local = `166b6ff` (Extension 0.10.9), đi trước 1 commit chưa push (26/10 14:33).
 
 **ĐÃ LÊN — migration (có đối tượng trên DB)**
 - `sku_missing_archive_v1` (SKU rời 7 nhóm tự lưu trữ).
@@ -398,13 +405,14 @@ Mục này thắng mọi ghi chú "CHƯA LÊN" trong nhật ký. Kiểm lại kh
 - `sku-vision` bản 5, deploy 21/10 11:31 — trước commit dff8e35 (11:40) nhưng nội dung đang chạy đã có thay đổi của commit đó (bỏ giới hạn theo máy, `DEVICE_DAILY … || null`).
 
 **ĐÃ LÊN — Extension / agent / cron**
-- Extension 0.10.8: người dùng xác nhận Reload 24/10 (N1196). Lượt tự động cuối cùng ghi trong `sync_auto_leases`: 24/10 16:24 (group_uid, cut_adj), `storage_risk` xong 24/10 15:25.
+- Extension 0.10.9 (Pending = ngừng) đã Reload trên CUONG-PC: Options hiện v0.10.9, lượt SKU tự động 26/10 10:26 và lượt tay 10:53 hoàn tất (N20261026-0837). Lượt tự động xong cuối trong `sync_auto_leases`: 26/10 14:26 (group_uid, sku, cut_adj), `storage_risk` 12:30.
 - Agent `Máy kho 01` 0.10.2, khai `sku:v1/v2/v3`, `group_uid:v1`, `location:v1`, `location:name-optional`; máy in TSC PE200 READY; lần thấy cuối 24/10 16:30.
 - Cron (giờ UTC, VN = +7): `print-jobs-purge` 03:00, `sync-history-purge` 03:30, `print-assistant-purge` 03:50, `floor-access-purge` 03:55 mỗi ngày; `group-uid-canceled-purge` 03:15 và `sku-inactive-archive` 03:45 sáng thứ Hai; `uid-block-refresh-wms` mỗi 30 phút.
 
 **CHƯA LÊN**
 - `Máy kho 02`: đã tạo trong `print_agents` (khai `sku:v1`, `group_uid:v1`, `location:*`) nhưng chưa từng kết nối — chưa cài agent.
-- Extension 0.10.9 (Pending = ngừng): chưa Reload; đồng bộ SKU tự động dừng từ 24/10 12:27 cho tới khi Reload bản này và tải lại tab Inside (N20261026-0837).
+- Extension 0.10.9 trên máy Quynh-pc (nếu còn đồng bộ): chưa rõ đã Reload chưa; chưa có lượt tự động của máy này từ 24/10 12:27 (N20261026-0837). Commit `166b6ff` (0.10.9) chưa push.
+- `sync_auto_v3` (bảng `sync_auto_devices`, cột `ext_version`, `min_extension` + CHECK), Edge `sku-sync` + `group-uid-sync` có cổng bản, Extension 0.10.10 và bảng Máy đồng bộ trên web: đã viết, CHƯA commit / migration / deploy / Reload / push. Thứ tự lên: commit → migration → deploy hai Edge → Reload 0.10.10 mọi máy → push. (N20261026-1102)
 
 **Đã lên, CHƯA thử thật**
 - Trả NCC: Admin nạp Excel thật, Đối chiếu thật, xoá đợt thật chưa thử — đừng xoá đợt thật chỉ để thử (234 dòng + 209 lượt quét, 26/10) (N20261026-0126).

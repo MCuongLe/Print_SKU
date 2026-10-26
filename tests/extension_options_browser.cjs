@@ -2,6 +2,7 @@
 // Chạy với python -m http.server 8000 (đổi bằng biến BASE). `chrome` được giả lập bằng addInitScript; không gọi mạng thật.
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const assert = require('node:assert/strict');
+const { assessHealth } = require('../extension/inside-po-connector/auto-sync.js');
 
 const BASE = process.env.BASE || 'http://127.0.0.1:8000/';
 const URL = BASE + 'extension/inside-po-connector/options.html';
@@ -29,7 +30,7 @@ const fakeChrome = initial => {
   window.chrome = {
     runtime: {
       id: 'test-extension',
-      getManifest: () => ({ version: '0.10.9' }),
+      getManifest: () => ({ version: '0.10.10' }),
       sendMessage: async message => {
         window.__msgs.push(JSON.parse(JSON.stringify(message)));
         if (window.__failSend) throw new Error('Could not establish connection');
@@ -65,7 +66,7 @@ const fakeChrome = initial => {
       await page.goto(URL);
       await page.locator('#log tr').first().waitFor();
 
-      assert.equal((await page.locator('#ver').innerText()).trim(), 'v0.10.9');
+      assert.equal((await page.locator('#ver').innerText()).trim(), 'v0.10.10');
       assert.equal((await page.locator('h1').innerText()).trim(), 'Đồng bộ tự động');
       assert.equal(await page.locator('#signin').isVisible(), true, 'chưa đăng nhập hiện form');
       assert.equal(await page.locator('#signed').isVisible(), false);
@@ -213,6 +214,31 @@ const fakeChrome = initial => {
       assert.deepEqual(errors, []);
       await context.close();
       console.log('PASS options: sendMessage lỗi hiện dòng Reload Extension');
+    }
+
+    // 5) 0.10.10: máy dưới mức tối thiểu → thẻ đỏ có sẵn hiện câu "cần Extension ≥ x … Reload Extension" ngay (câu do assessHealth thật dựng,
+    // lượt vừa chạy 1 phút trước nên không phải cảnh báo "ngừng"); trang không thêm khối / chữ mới cho bản và mức tối thiểu.
+    {
+      const OLD_EXT = '0.10.9', NEW_EXT = '0.10.10';
+      const at = new Date(Date.now() - 60000).toISOString();
+      const problems = assessHealth({ now: Date.now(), signedIn: true, device: 'may-test', intervalMinutes: 30, version: OLD_EXT, kinds: ['sku', 'group_uid'], health: { since: at, kinds: { sku: { aliveAt: at, reason: 'x', outdated: { min: NEW_EXT, version: OLD_EXT, at } } } } });
+      const expected = `SKU: cần Extension ≥ ${NEW_EXT} (đang v${OLD_EXT}); Reload Extension`;
+      assert.deepEqual(problems, [expected], 'assessHealth báo ngay khi dưới mức tối thiểu');
+      const context = await browser.newContext({ viewport: { width: 760, height: 1100 } });
+      await context.addInitScript(fakeChrome, { signedIn: true, email: 'admin-test@example.com', device: 'may-test', problems, version: OLD_EXT, minExtension: { sku: NEW_EXT, group_uid: null, cut_adj: null, storage_risk: null } });
+      const page = await context.newPage();
+      const errors = [];
+      page.on('pageerror', error => errors.push(error.message));
+      await page.goto(URL);
+      await page.locator('#problems').waitFor({ state: 'visible' });
+      assert.deepEqual(await page.locator('#problems-list li').allInnerTexts(), [expected]);
+      assert.equal(await page.locator('#problems').evaluate(node => getComputedStyle(node).color), 'rgb(180, 35, 24)', 'thẻ đỏ có sẵn');
+      assert.equal(await page.locator('header svg, .card h2 svg').count(), 6, 'không thêm khối mới');
+      const outside = await page.evaluate(() => { const copy = document.body.cloneNode(true); copy.querySelectorAll('#problems, #ver').forEach(node => node.remove()); return copy.textContent; });
+      assert.equal(outside.includes(NEW_EXT) || outside.includes('≥') || outside.includes(OLD_EXT), false, 'bản / mức tối thiểu chỉ hiện ở thẻ đỏ (và #ver có sẵn)');
+      assert.deepEqual(errors, []);
+      await context.close();
+      console.log('PASS options: dưới mức tối thiểu hiện thẻ đỏ "cần Extension ≥ x … Reload Extension" ngay');
     }
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });
