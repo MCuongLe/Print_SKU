@@ -32,6 +32,9 @@ sku-refresh-snippet.js
 # Nhật ký thay đổi nội bộ: giữ trên máy, không đưa lên repo public
 /RULES.md
 
+# Kiến thức nội bộ về WMS / Inside Mastige / Inside Garment: giữ trên máy, không đưa lên repo public (26/10/2026)
+/docs/local/
+
 # Kết quả chạy script và export (chứa dữ liệu SKU, Group UID thật) cùng thư mục nháp: giữ trên máy
 /outputs/
 /tmp/
