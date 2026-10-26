@@ -23,7 +23,7 @@ const fakeExtension = slip => {
     if (!request || request.source !== "PRINT_SKU_APP") return;
     window.__extCalls.push({ type: request.type, payload: request.payload });
     const reply = (ok, body, error) => postMessage({ source: "HASAKI_INSIDE_CONNECTOR", requestId: request.requestId, ok, data: body, error }, location.origin);
-    if (/^PING/.test(request.type)) return reply(true, { version: "0.10.8" });
+    if (/^PING/.test(request.type)) return reply(true, { version: "0.10.9" });
     if (request.type === "GET_INTERNAL_TRANSFER") return request.payload.number === slip.number ? reply(true, slip) : reply(false, null, { code: "INTERNAL_TRANSFER_READ_FAILED", message: `Không tìm thấy phiếu IT ${request.payload.number}` });
     reply(false, null, { message: "Loại yêu cầu chưa giả lập" });
   });

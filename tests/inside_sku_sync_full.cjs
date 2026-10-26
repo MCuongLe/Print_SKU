@@ -86,5 +86,11 @@ function runFull({ total = 1300, moveAt = 1250, mutateOnPage = 7, statusOf = () 
   assert.equal(mixed.result.ok, true, JSON.stringify(mixed.result.error));
   assert.equal(mixed.result.data.normalRows.find(row => row.sku === "900000044").status, "0");
   assert.equal(new Set(mixed.result.data.normalRows.map(row => row.sku)).size, 1300);
-  console.log("inside_sku_sync_full: SKU sửa giữa lượt toàn bộ vẫn có trong ảnh chụp; nhãn trạng thái lạ → lỗi đọc");
+  // 0.10.9: SKU "Pending" (mới tạo, chưa kích hoạt) không làm lượt lỗi; đọc là ngừng "0" như trước 0.10.8. Mọi dòng khác vẫn "1".
+  const pending = await runFull({ mutateOnPage: 999, filler: true, statusOf: row => (row.sku === "900000045" ? "Pending" : "Active") });
+  assert.equal(pending.result.ok, true, JSON.stringify(pending.result.error));
+  assert.equal(pending.result.data.normalRows.find(row => row.sku === "900000045").status, "0");
+  assert.equal(pending.result.data.normalRows.filter(row => row.status === "0").length, 1);
+  assert.equal(new Set(pending.result.data.normalRows.map(row => row.sku)).size, 1300);
+  console.log("inside_sku_sync_full: SKU sửa giữa lượt toàn bộ vẫn có trong ảnh chụp; nhãn trạng thái lạ → lỗi đọc; Pending → ngừng");
 })().catch(error => { console.error(error); process.exit(1); });

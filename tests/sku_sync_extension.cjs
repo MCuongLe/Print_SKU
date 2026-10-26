@@ -26,12 +26,15 @@ assert.deepEqual(
 assert.equal(core.parseComboDescription("không có quan hệ"), null);
 assert.equal(core.statusCode(" Active "), "1");
 assert.equal(core.statusCode("In-Active"), "0");
-// D7 (0.10.8, review 23/10/2026): chỉ nhận hai nhãn Inside "Active" / "In-Active" (không phân biệt hoa thường, nhận cả "Inactive");
+// D7 (0.10.8, review 23/10/2026): chỉ nhận nhãn Inside đã biết "Active" / "In-Active" (không phân biệt hoa thường, nhận cả "Inactive");
 // nhãn lạ hoặc ô trống phải ném lỗi đọc (lượt lỗi, không ghi) thay vì coi là "0" → ẩn + chặn in SKU hàng loạt.
 assert.equal(core.statusCode("ACTIVE"), "1");
 assert.equal(core.statusCode(" in-active "), "0");
 assert.equal(core.statusCode("Inactive"), "0");
-for (const odd of ["", "   ", null, undefined, "Hoạt động", "Active (web)", "1", "0"]) {
+// 0.10.9: "Pending" (SKU mới tạo chưa kích hoạt, Inside có 4 trạng thái) đọc là ngừng như trước 0.10.8, không phân biệt hoa thường.
+assert.equal(core.statusCode("Pending"), "0");
+assert.equal(core.statusCode(" PENDING "), "0");
+for (const odd of ["", "   ", null, undefined, "Hoạt động", "Active (web)", "Pending (web)", "Pend", "Approved", "1", "0"]) {
   assert.throws(() => core.statusCode(odd), /Inside đổi nhãn Trạng thái sản phẩm/, `nhãn lạ ${JSON.stringify(odd)} phải ném lỗi`);
 }
 assert.match(core.cutoffKey("2026-10-07T01:02:03+07:00"), /^26-10-07 01:02:03$/);
@@ -60,7 +63,7 @@ assert.deepEqual(detail("Mô tả tự do"), { matched: false, relations: [], re
 assert.deepEqual(detail(""), { matched: false, relations: [], rejected: [] });
 
 const manifest = JSON.parse(fs.readFileSync("extension/inside-po-connector/manifest.json", "utf8"));
-assert.equal(manifest.version, "0.10.8");
+assert.equal(manifest.version, "0.10.9");
 assert.deepEqual(manifest.content_scripts[1].js, ["sku-sync-core.js", "inside-bridge.js"]);
 assert.deepEqual(manifest.content_scripts[2].js, ["group-uid-sync-core.js", "inventory-audit-core.js", "wms-bridge.js"]);
 assert.ok(manifest.host_permissions.includes("https://wms-gw.inshasaki.com/*"));

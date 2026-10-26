@@ -57,7 +57,7 @@ hai màn đồng bộ có ô Tự động `#ss-strip-auto` / `#gu-strip-auto` tr
 Đối chiếu ADJ: `#cut-adj-cov` = khoảng dữ liệu WMS (vàng khi chưa nạp / cũ hơn 24 giờ), `#cut-adj-upd` (23/10) = lần nạp gần nhất "Cập nhật HH:MM dd/mm · … trước · Tự động <máy> | Đọc WMS | Nạp file" từ `lastImport` của `cut_group_uid_reconcile`, nhãn đỏ `.cut-adj-stop` "Ngừng" khi quá 70 phút;
 Rủi ro lưu trữ: ô Cập nhật lúc / Đọc lúc đỏ theo `window.PrintSkuAutoStale.storageRisk` (250 phút trong khung 07:00–19:30).
 
-## 3. Extension `extension/inside-po-connector` (manifest 0.10.8)
+## 3. Extension `extension/inside-po-connector` (manifest 0.10.9)
 - `app-bridge.js`: content script trên trang Print SKU; allow-list lệnh; `window.postMessage` ↔ `chrome.runtime.sendMessage`.
 - `background.js`: service worker; kiểm `APP_URL_PATTERN`; `WMS_READ_TYPES`; tìm tab Inside/WMS; nhánh `AUTO_*` cho trang Options; alarms `auto-sync` / `auto-keepalive`; `chrome.storage.local.setAccessLevel(TRUSTED_CONTEXTS)`.
 - `inside-bridge.js`: `GET_PO` (danh sách + trang chi tiết PO; trả `lastModified` = cột LastModified, `deliveryDate`, `items[{sku, orderedQty}]`), `GET_SKU_SYNC_DATA` ({full}|{cutoff}), đọc 7 nhóm hàng `SKU_CATEGORIES`, Combo theo Modified; `sku-sync-core.js` (cutoffKey, comboStampsOrdered).

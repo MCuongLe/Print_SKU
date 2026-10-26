@@ -176,7 +176,8 @@
 ### Index
 - `SKU_Name` có GIN `sku_name_ten_trgm` và đúng 1 unique trên `sku` (`ON CONFLICT(sku)` hợp lệ). (08/10 · N0047)
 
-- Lưu trữ SKU (rời nhóm / ngừng lâu) giữ SKU còn UID Available/New/Processing/**Blocked** hoặc là SKU thành phần (`group_uid_products`) của UID còn sống. Trạng thái SKU Inside lạ/rỗng → lượt đồng bộ lỗi (Extension 0.10.8, cố ý). (23/10 · N1185)
+- Lưu trữ SKU (rời nhóm / ngừng lâu) giữ SKU còn UID Available/New/Processing/**Blocked** hoặc là SKU thành phần (`group_uid_products`) của UID còn sống. (23/10 · N1185)
+- Trạng thái SKU Inside: Active → 1; In-Active / Inactive / Pending (SKU mới tạo chưa kích hoạt) → 0; nhãn lạ hoặc ô trống → lượt đồng bộ lỗi, không ghi (Extension 0.10.9). (23/10, 26/10 · N1185, N20261026-0837)
 ## 5. Group UID
 
 ### Đồng bộ WMS
@@ -403,6 +404,7 @@ Mục này thắng mọi ghi chú "CHƯA LÊN" trong nhật ký. Kiểm lại kh
 
 **CHƯA LÊN**
 - `Máy kho 02`: đã tạo trong `print_agents` (khai `sku:v1`, `group_uid:v1`, `location:*`) nhưng chưa từng kết nối — chưa cài agent.
+- Extension 0.10.9 (Pending = ngừng): chưa Reload; đồng bộ SKU tự động dừng từ 24/10 12:27 cho tới khi Reload bản này và tải lại tab Inside (N20261026-0837).
 
 **Đã lên, CHƯA thử thật**
 - Trả NCC: Admin nạp Excel thật, Đối chiếu thật, xoá đợt thật chưa thử — đừng xoá đợt thật chỉ để thử (234 dòng + 209 lượt quét, 26/10) (N20261026-0126).
