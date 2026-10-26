@@ -92,9 +92,9 @@ Thứ tự chạy: Việc 1 + Việc 2 (một khối cho `thuc-thi-logic`) → V
 - [x] Codex + `/review-claude` một vòng (chạm token, SQL, quy trình lên thật); `co-van` lọc; sửa nhóm nên sửa; cả bộ `run_tests.py` + `commit_gate.py`.
   - Bằng chứng: Codex 7 nhóm, A 6 nhóm, BC 8 nhóm → Fable lọc 15 vấn đề gốc; sửa 9 mục (`test_release.py` 67 → 100 test, đột biến 21 → 48); cả bộ `run_tests.py` 128/128 PASS 1156 s (không chập chờn); `commit_gate` 7 mục ĐẠT. Phần sửa chưa review lại (người dùng chỉ yêu cầu một vòng).
 
-### Việc 5 — Nghiệm thu · lead + người dùng · [ ]
-- [ ] Lead chạy `python scripts/release.py --plan` thật (chỉ đọc) và so với `live_status.py`; dán kết quả cho người dùng.
-- [ ] Người dùng chạy `--init` một lần; lead kiểm chỉ đọc bảng `release_ledger` (88 tệp migration + `release_ledger_v1.sql` = 89 dòng, loại `*.example.sql`; 4 Edge).
+### Việc 5 — Nghiệm thu · lead + người dùng · [ ] (2/3: còn lần `--apply` thật)
+- [x] Lead chạy `python scripts/release.py --plan` thật (chỉ đọc) và so với `live_status.py`; dán kết quả cho người dùng. Bằng chứng: trước `--init` thoát 3 "Chưa có sổ"; sau `--init` (26/10 18:18) thoát 0: Migration chờ không, Edge chờ không, Extension cổng Reload, Web không.
+- [x] Người dùng chạy `--init` một lần; lead kiểm chỉ đọc bảng `release_ledger` (88 tệp migration + `release_ledger_v1.sql` = 89 dòng, loại `*.example.sql`; 4 Edge). Bằng chứng: kiểm 26/10 18:18: 89 migration + 4 Edge + 0 extension, khoá đã nhả; biên bản `release-20261026-1812.md` ĐẠT.
 - [ ] Lần phát hành thật kế tiếp chạy bằng `--apply`; ghi số đo vào `RULES.md`.
 
 ## Phát sinh
