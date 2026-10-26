@@ -239,7 +239,9 @@ Bố cục như UID blocked: dải tiến độ, tab Còn thiếu (thẻ theo v�
 
 **Xoá đợt** (tab Danh sách, Admin): hộp xác nhận nêu tên tệp và số Group UID đã quét; xoá luôn danh sách và lượt quét của đợt, không khôi phục được.
 
-Máy chủ chỉ cho Admin và chỉ xoá đúng đợt đang hiện: Admin khác vừa nạp đợt mới thì báo "danh sách vừa đổi", không xoá gì. Máy quét còn giữ đợt đã xoá báo "Chưa có danh sách" rồi tải lại. Nạp Excel mới vẫn chỉ tắt đợt cũ.
+Máy chủ chỉ cho Admin và chỉ xoá đúng đợt đang hiện: Admin khác vừa nạp đợt mới thì báo "danh sách vừa đổi", không xoá gì. Máy quét còn giữ đợt đã xoá báo "Chưa có danh sách" rồi tải lại; có đợt mới thì quét lại ngay. Nạp Excel mới vẫn chỉ tắt đợt cũ.
+
+Mất mạng hoặc hết giờ chờ lúc xoá thì màn báo "Chưa rõ kết quả xoá" kèm tên đợt còn hay không còn, có nút Thử lại. Đối chiếu, Nạp và Xoá khoá lẫn nhau khi một việc đang chạy.
 
 ## KIỂM TRA ĐẦU VÀO (`#inspection`)
 

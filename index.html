@@ -14229,7 +14229,7 @@ async function rpc(name,args,retry=true){
     </script>
     <script id="vendor-return-script">
       // TRẢ NHÀ CUNG CẤP (24/10/2026, docs/plans/2026-10-24-tra-nha-cung-cap.md, supabase/vendor_return_v1.sql). Phần thứ 3 của TÌM GROUP UID.
-      // Admin nạp Excel (sheet tên chứa "navy" / "black" → màu) → Supabase (danh sách tạm, người dùng báo thì dọn). Máy đã kích hoạt quét
+      // Admin nạp Excel (sheet tên chứa "navy" / "black" → màu) → Supabase (danh sách tạm; Admin tự xoá đợt đang dùng, v3 26/10). Máy đã kích hoạt quét
       // Group UID: đúng danh sách → đánh dấu (lưu Supabase dùng chung, giữ lần đầu); ngoài danh sách → báo đỏ; trùng → báo máy + giờ đã quét.
       // Quét dồn xếp hàng tuần tự trong bộ nhớ (không bỏ lượt); không có hàng chờ khi mất mạng (lỗi → báo, quét lại).
       (()=>{
@@ -14242,7 +14242,7 @@ async function rpc(name,args,retry=true){
         const fmtAt=v=>{const d=new Date(v);return Number.isNaN(d.getTime())?'':new Intl.DateTimeFormat('vi-VN',{timeZone:'Asia/Ho_Chi_Minh',hour:'2-digit',minute:'2-digit',day:'2-digit',month:'2-digit'}).format(d)};
         const fmtTime=v=>{const d=new Date(v);return Number.isNaN(d.getTime())?'':new Intl.DateTimeFormat('vi-VN',{timeZone:'Asia/Ho_Chi_Minh',hour:'2-digit',minute:'2-digit',second:'2-digit'}).format(d)};
         // local: lượt quét máy này vừa ghi (mã → {listId, scannedAt, device}) — gộp vào bản chụp chụp trước khi lượt quét kịp lưu
-        const S={list:null,items:[],byCode:new Map(),local:new Map(),view:'left',color:'all',filter:'',openLocs:new Set(),admin:false,saving:false,recent:[],preview:null,loadP:null,loadState:'idle',queue:Promise.resolve()};
+        const S={list:null,items:[],byCode:new Map(),local:new Map(),view:'left',color:'all',filter:'',openLocs:new Set(),admin:false,saving:false,busy:'',recent:[],preview:null,loadP:null,loadState:'idle',queue:Promise.resolve()};
         const tell=(t,tone='',src='')=>{const m=$('vr-message');m.textContent=t||'';m.dataset.tone=tone;m.dataset.src=src};
         const cue=tone=>window.PrintSkuScanCue?.play?.(tone,{sound:true});
         const CODE=/^[0-9]{10,40}$/,TARGET='F0-VR-00-00-00-00';
@@ -14371,13 +14371,18 @@ async function rpc(name,args,retry=true){
           if(!S.list){paint({tone:'bad',title:'Chưa có danh sách',code});cue('bad');return}
           let it=S.byCode.get(code);
           if(!it&&!retried&&!fresh()){if(!await refresh()){paint({tone:'bad',title:'Không tải được danh sách',code,note:'Chưa kiểm được mã'});cue('bad');return}it=S.byCode.get(code)}
+          if(!S.list){paint({tone:'bad',title:'Chưa có danh sách',code});cue('bad');return}   // tải lại thấy đợt đã bị xoá
           if(!it){paint({tone:'bad',title:'Không thuộc danh sách trả',code});cue('bad');return}
           if(it.scannedAt){paint({tone:'dup',title:`Đã quét · ${colorName(it)}`,code,note:dupNote(it)});cue('dup');return}
           try{
             const listId=S.list.id,{res,body}=await post('vendor_return_scan',{p_access_token:window.PrintSkuFloorAccess?.token?.()||'public',p_list_id:listId,p_group_uid:code},'',10000);
             if(body&&typeof body==='object')window.PrintSkuFloorAccess?.check?.(body);
             if(body?.error?.code==='STALE_LIST'&&!retried){if(await load())return checkOne(code,true);paint({tone:'bad',title:'Không tải được danh sách',code,note:'Danh sách vừa đổi'});cue('bad');return}
-            if(body?.error?.code==='NO_LIST'){await load();paint({tone:'bad',title:'Chưa có danh sách',code,note:'Danh sách đã bị xoá'});cue('bad');return}   // Admin vừa xoá đợt: tải lại → màn rỗng
+            if(body?.error?.code==='NO_LIST'){   // Admin vừa xoá đợt: tải lại → có đợt mới thì quét lại; tải lại lỗi thì bỏ bản chụp của đợt đã xoá (máy chủ đã khẳng định)
+              const ok=await load();
+              if(!ok&&S.list?.id===listId)apply({list:null,items:[]});
+              if(ok&&S.list&&!retried)return checkOne(code,true);
+              paint({tone:'bad',title:'Chưa có danh sách',code,note:ok?'Danh sách đã bị xoá':'Danh sách đã bị xoá · chưa tải lại được'});cue('bad');return}
             if(!res.ok||!body?.ok)throw fail(body,res);
             const d=body.data||{};
             if(d.result==='not_in_list'){paint({tone:'bad',title:'Không thuộc danh sách trả',code});cue('bad');return}
@@ -14421,6 +14426,10 @@ async function rpc(name,args,retry=true){
           return{items,stat,dups};
         };
         const closePreview=()=>{S.preview=null;$('vr-preview').hidden=true;$('vr-preview').innerHTML=''};
+        // Một cờ bận chung cho nhóm Admin (nạp / đối chiếu / xoá): đang chạy một việc thì khoá nút của các việc kia (review c9e790d G5)
+        const LOCKS=['vr-delete','vr-reconcile','vr-pick','vr-save'];
+        const busyOn=who=>{S.busy=who;for(const id of LOCKS){const b=$(id);if(b)b.disabled=true}};
+        const busyOff=()=>{S.busy='';for(const id of LOCKS){const b=$(id);if(b)b.disabled=false}};
         $('vr-pick').addEventListener('click',()=>$('vr-file-input').click());
         $('vr-file-input').addEventListener('change',async e=>{
           const file=e.target.files?.[0];e.target.value='';if(!file)return;
@@ -14439,9 +14448,10 @@ async function rpc(name,args,retry=true){
           }catch(err){S.preview=null;box.hidden=false;box.textContent=`Không đọc được tệp: ${err.message}`}
         });
         async function save(){
-          const p=S.preview;if(!p||S.saving)return;
+          const p=S.preview;if(!p||S.saving||S.busy)return;
           if(S.list&&!await window.WhDialog?.confirm?.({tone:'warning',title:'Thay danh sách đang dùng?',facts:[p.fileName,`${num(p.items.length)} Group UID`],confirmText:'Thay',cancelText:'Huỷ'}))return;
-          S.saving=true;$('vr-save').disabled=true;
+          if(S.busy)return;
+          S.saving=true;busyOn('save');
           try{
             let token='';try{token=await window.PrintSkuAdminAuth.accessToken()}catch(_){/* hết phiên: báo bên dưới */}
             if(!token)throw new Error('Phiên Admin đã hết hạn, đăng nhập lại');
@@ -14451,14 +14461,14 @@ async function rpc(name,args,retry=true){
             tell(`Đã lưu ${num(body.data?.itemCount)} Group UID${body.data?.carriedScans?` · giữ ${num(body.data.carriedScans)} lượt đã quét`:''}.`,'ok');
             await load();
           }catch(err){tell(`Chưa lưu được danh sách: ${err.message}`,'error');const b=$('vr-save');if(b)b.disabled=false}
-          finally{S.saving=false}
+          finally{S.saving=false;busyOff()}
         }
 
         // ---- Đối chiếu (Admin): đọc trực tiếp WMS qua Extension các Group UID cập nhật từ 1 ngày trước lần đối chiếu trước (chưa có: lúc nạp danh sách) → mã thuộc
         // danh sách → vendor_return_reconcile (lưu cho mọi máy). Vị trí hiện tại = bản mới hơn giữa đối chiếu và đồng bộ tự động (SQL).
         const reconcile=async()=>{
-          const btn=$('vr-reconcile');if(!S.list||btn.disabled)return;
-          btn.disabled=true;const label=btn.querySelector('span'),old=label.textContent;
+          const btn=$('vr-reconcile');if(!S.list||S.busy)return;
+          busyOn('reconcile');const label=btn.querySelector('span'),old=label.textContent;
           try{
             if(!window.PrintSkuAdminAccess?.peekToken?.())throw new Error('Phiên Admin đã hết hạn, đăng nhập lại');
             const core=window.GroupUidSnapshotCore;if(!core)throw new Error('Thiếu bộ đọc Group UID, tải lại trang');
@@ -14478,27 +14488,44 @@ async function rpc(name,args,retry=true){
             const at=S.items.filter(it=>where(it)===TARGET).length,out=S.items.filter(isOut).length;
             tell(`Đối chiếu xong: ${num(body.data?.updated)} Group UID cập nhật · ${num(at)}/${num(S.items.length)} đã ở ${TARGET}${out?` · ${num(out)} đã rời kho`:''}.`,'ok');
           }catch(e){tell(`Chưa đối chiếu được: ${e.message}`,'error')}
-          finally{btn.disabled=false;label.textContent=old}
+          finally{busyOff();label.textContent=old}
         };
         $('vr-reconcile').addEventListener('click',reconcile);
 
         // ---- Xoá đợt (Admin, 26/10/2026, supabase/vendor_return_v3.sql): hỏi xác nhận rồi vendor_return_delete xoá danh sách đang dùng KÈM lượt quét; máy chủ kiểm Admin + đúng đợt ----
         const removeList=async()=>{
-          const btn=$('vr-delete'),l=S.list;if(!l||S.deleting||S.saving||btn.disabled)return;
-          const scanned=S.items.filter(it=>it.scannedAt).length;
+          const btn=$('vr-delete'),l=S.list;if(!l||S.busy||btn.disabled)return;
+          const scanned=S.items.filter(it=>it.scannedAt).length,name=l.fileName||'';
           if(!await window.WhDialog?.confirm?.({tone:'danger',title:'Xoá đợt trả NCC?',facts:[l.fileName||'—',`${num(S.items.length)} Group UID · ${num(scanned)} đã quét`,'Lượt quét cũng bị xoá'],confirmText:'Xoá',cancelText:'Giữ'}))return;
-          S.deleting=true;btn.disabled=true;
+          if(S.busy)return;
+          S.deleting=true;busyOn('delete');
+          // tell() ghi đè nội dung nên nút Thử lại (tải lại danh sách) gắn lại sau mỗi lần báo
+          const sayRetry=text=>{tell(text,'error');window.PrintSkuNotice?.retry?.(()=>load(),$('vr-message'))};
           try{
             let token='';try{token=await window.PrintSkuAdminAuth.accessToken()}catch(_){/* hết phiên: báo bên dưới */}
-            if(!token)throw new Error('Phiên Admin đã hết hạn, đăng nhập lại');
+            if(!token)throw Object.assign(new Error('Phiên Admin đã hết hạn, đăng nhập lại'),{code:'NO_TOKEN'});
             const{res,body}=await post('vendor_return_delete',{p_list_id:l.id},token);
             if(!res.ok||!body?.ok)throw fail(body,res);
-            if(!await load())apply({list:null,items:[]});   // tải lại sau lượt đang chạy; không tải được thì hiện rỗng (đã xoá thật)
-            tell(`Đã xoá đợt ${l.fileName||''} · ${num(body.data?.items)} Group UID · ${num(body.data?.scans)} lượt quét.`,'ok');
+            const ok=await load();
+            if(!ok)apply({list:null,items:[]});   // đã xoá thật: bỏ đợt cũ khỏi màn; chưa biết có đợt mới hay chưa nên báo "chưa tải lại được"
+            const done=`Đã xoá đợt ${name} · ${num(body.data?.items)} Group UID · ${num(body.data?.scans)} lượt quét`;
+            if(ok)tell(`${done}.`,'ok');else sayRetry(`${done} · chưa tải lại được danh sách.`);
           }catch(e){
-            if(e.code==='STALE_LIST'||e.code==='NO_LIST'){await load();tell(e.code==='NO_LIST'?'Đợt này đã được xoá trước đó.':'Danh sách vừa đổi sang đợt khác, chưa xoá gì. Kiểm tra rồi xoá lại.','error')}
-            else tell(`Chưa xoá được: ${e.message}`,'error');
-          }finally{S.deleting=false;btn.disabled=false}
+            // Mã nghiệp vụ là CHUỖI (FORBIDDEN, NO_LIST…); TimeoutError của AbortSignal mang code SỐ 23 nên không tính là đã có phản hồi nghiệp vụ
+            const code=typeof e.code==='string'?e.code:'';
+            if(code==='STALE_LIST'||code==='NO_LIST'){
+              const ok=await load(),text=code==='NO_LIST'?'Đợt này đã được xoá trước đó.':'Danh sách vừa đổi sang đợt khác, chưa xoá gì. Kiểm tra rồi xoá lại.';
+              if(ok)tell(text,'error');else sayRetry(`${text} Chưa tải lại được danh sách.`);
+            }else if(code)tell(`Chưa xoá được: ${e.message}`,'error');
+            else{
+              // Không có phản hồi nghiệp vụ (mất mạng, hết giờ chờ, cổng 502 / 504, thân hỏng): máy chủ có thể ĐÃ xoá → tải lại rồi đối soát đợt,
+              // không báo "Chưa xoá được" (docs/chuan/DU_LIEU.md "Ghi an toàn và lỗi"; review c9e790d G1)
+              const ok=await load(),cur=S.list;
+              if(!ok)sayRetry('Chưa rõ kết quả xoá · chưa tải lại được danh sách.');
+              else if(cur&&cur.id===l.id)sayRetry(`Chưa rõ kết quả xoá · đợt ${name} vẫn đang hiện.`);
+              else sayRetry(`Chưa rõ kết quả xoá · đợt ${name} không còn trên máy chủ (có thể đã xoá)${cur?` · đang hiện ${cur.fileName||'đợt mới'}`:''}.`);
+            }
+          }finally{S.deleting=false;busyOff()}
         };
         $('vr-delete').addEventListener('click',removeList);
 

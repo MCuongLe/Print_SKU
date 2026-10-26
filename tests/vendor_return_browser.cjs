@@ -30,6 +30,10 @@ const backend = srv => route => {
   if (rpc === "vendor_return_scan") {
     if (srv.scanDelay) return new Promise(r => setTimeout(r, srv.scanDelay)).then(() => { srv.scanDelay = 0; return backend(srv)(route); });
     if (srv.deny) return json({ ok: false, error: { code: "ACCESS_DENIED", message: "Máy chưa kích hoạt" } });
+    if (srv.noListOnce) {   // Admin vừa xoá đợt: lượt quét nhận NO_LIST; nextList / nextItems = đợt Admin khác nạp ngay sau đó (nếu có)
+      srv.noListOnce = false; srv.list = srv.nextList || null; srv.items = srv.nextItems || [];
+      return json({ ok: false, error: { code: "NO_LIST", message: "Chưa có danh sách trả nhà cung cấp" } });
+    }
     if (!srv.list) return json({ ok: false, error: { code: "NO_LIST", message: "Chưa có danh sách trả nhà cung cấp" } });
     if (args.p_list_id !== srv.list.id) return json({ ok: false, error: { code: "STALE_LIST", message: "Danh sách đã đổi", data: { listId: srv.list.id } } });
     const it = srv.items.find(x => x.groupUid === args.p_group_uid);
@@ -45,6 +49,16 @@ const backend = srv => route => {
     return json({ ok: true, data: { updated: args.p_rows.length, reconciledAt: srv.list.reconciledAt } });
   }
   if (rpc === "vendor_return_delete") {   // máy chủ giả: Admin + đúng đợt đang dùng → xoá cả danh sách lẫn lượt quét
+    if (srv.deleteDelay) { const ms = srv.deleteDelay; srv.deleteDelay = 0; return new Promise(r => setTimeout(r, ms)).then(() => backend(srv)(route)); }
+    // Lỗi bất định (review c9e790d G1): máy chủ XOÁ rồi phản hồi mới mất / chậm / cổng 502 (lose-after*, gateway-after, slow-after); lose-before = chưa xoá gì
+    if (["lose-after", "lose-after-new", "gateway-after", "slow-after"].includes(srv.deleteMode)) {
+      srv.list = null; srv.items = [];
+      if (srv.deleteMode === "lose-after-new") { srv.list = { ...LIST, id: "55555555-5555-4555-8555-555555555555", fileName: "tra-ncc-khac.xlsx" }; srv.items = ITEMS(); }   // Admin khác nạp đợt mới ngay sau đó
+      if (srv.deleteMode === "gateway-after") return route.fulfill({ status: 502, contentType: "text/html", body: "<html>Bad gateway</html>" });
+      if (srv.deleteMode === "slow-after") return new Promise(r => setTimeout(r, 1500)).then(() => route.abort("failed")).catch(() => {});
+      return route.abort("failed");
+    }
+    if (srv.deleteMode === "lose-before") return route.abort("failed");
     if (srv.deleteMode === "forbidden") return json({ ok: false, error: { code: "FORBIDDEN", message: "Chỉ Admin được xoá đợt trả nhà cung cấp" } });
     if (srv.deleteMode === "stale") {   // Admin khác vừa nạp danh sách mới trong lúc máy này còn giữ đợt cũ
       srv.list = { ...LIST, id: "55555555-5555-4555-8555-555555555555", fileName: "tra-ncc-khac.xlsx" }; srv.items = ITEMS();
@@ -80,15 +94,18 @@ const mockExtension = () => addEventListener("message", event => {
       { group_uid_code: "1028260000000103", location: null, status: "Closed", updated_date: "2026-10-24T02:20:00.000Z" },
       { group_uid_code: "1028260000000888", location: "F0-VR-00-00-00-00", status: "Blocked", updated_date: "2026-10-24T02:31:00.000Z" },
     ], ids = [75, 70, 60, 50];
-    return reply({ page: 1, size: 500, total: window.__extDrift ? 5 : 4, totalPages: 1, rows, ids, rowIds: ids, codes: rows.map(x => x.group_uid_code) });
+    const send = () => reply({ page: 1, size: 500, total: window.__extDrift ? 5 : 4, totalPages: 1, rows, ids, rowIds: ids, codes: rows.map(x => x.group_uid_code) });
+    return window.__extSlow ? setTimeout(send, window.__extSlow) : send();   // __extSlow: giữ Đối chiếu đang chạy để kiểm cờ bận chung
   }
   return reply({ version: "0.10.8" });
 });
-const open = async (browser, { width = 1280, admin = false } = {}) => {
+const open = async (browser, { width = 1280, admin = false, fastTimeout = false } = {}) => {
   const context = await browser.newContext({ viewport: { width, height: 900 }, isMobile: width < 800, hasTouch: width < 800 });
   await context.addInitScript(() => localStorage.setItem("tb-khoa", "khoa-may-gia"));
   if (admin) await context.addInitScript(key => sessionStorage.setItem(key, JSON.stringify({ access_token: "test-admin-token", refresh_token: "r" })), SESSION_KEY);
   if (admin) await context.addInitScript(mockExtension);
+  // Hết giờ chờ nhanh: AbortSignal.timeout → TimeoutError (DOMException mang code SỐ 23, không phải mã nghiệp vụ chuỗi)
+  if (fastTimeout) await context.addInitScript(() => { const t = AbortSignal.timeout.bind(AbortSignal); AbortSignal.timeout = ms => t(Math.min(ms, 300)); });
   const page = await context.newPage(), errors = [], srv = { calls: [], list: { ...LIST }, items: ITEMS() };
   page.on("pageerror", e => errors.push(e.message));
   await page.route("**/*", backend(srv));
@@ -353,6 +370,108 @@ const locHeads = page => page.locator("#vr-locs .vr-loc__head").allInnerTexts().
       await context.close();
     }
 
+    // Review c9e790d vòng 1 (26/10/2026), G1: mất phản hồi / hết giờ chờ / cổng 502 sau khi máy chủ ĐÃ xoá → "Chưa rõ" + đối soát bằng tải lại, KHÔNG báo "Chưa xoá được";
+    // đợt còn nguyên → "vẫn đang hiện"; đợt mới do Admin khác nạp → nêu tên đợt đang hiện (chặn bấm xoá nhầm theo thông báo sai)
+    for (const [mode, fast, expect, total] of [
+      ["lose-after", false, /Chưa rõ kết quả xoá · đợt tra-ncc-gia\.xlsx không còn trên máy chủ \(có thể đã xoá\)\.$/, "—"],
+      ["gateway-after", false, /Chưa rõ kết quả xoá · đợt tra-ncc-gia\.xlsx không còn trên máy chủ/, "—"],
+      ["slow-after", true, /Chưa rõ kết quả xoá · đợt tra-ncc-gia\.xlsx không còn trên máy chủ/, "—"],   // TimeoutError mang code số 23
+      ["lose-after-new", false, /không còn trên máy chủ \(có thể đã xoá\) · đang hiện tra-ncc-khac\.xlsx\.$/, "5"],
+      ["lose-before", false, /Chưa rõ kết quả xoá · đợt tra-ncc-gia\.xlsx vẫn đang hiện\.$/, "5"],
+    ]) {
+      const { context, page, errors, srv } = await open(browser, { admin: true, fastTimeout: fast });
+      await page.locator('[data-vr-tab="list"]').click();
+      srv.deleteMode = mode;
+      await page.locator("#vr-delete").click(); await page.locator("dialog.whd .whd-ok").click();
+      await page.waitForFunction(() => /Chưa rõ kết quả xoá|Chưa xoá được/.test(document.getElementById("vr-message").textContent), null, { timeout: 10000 });
+      const msg = (await page.locator("#vr-message").innerText()).trim();
+      assert.doesNotMatch(msg, /Chưa xoá được/, `${mode}: lỗi bất định không được báo chắc là chưa xoá`);
+      assert.match(msg, expect, mode);
+      assert.equal(await page.locator("#vr-message .ps-retry").count(), 1, `${mode}: có nút Thử lại (tải lại để kiểm)`);
+      assert.equal(await page.locator("#vr-delete").isDisabled(), false, `${mode}: nút mở lại`);
+      assert.equal(await page.locator("#vr-total").innerText(), total, `${mode}: màn theo máy chủ sau khi tải lại`);
+      if (mode === "lose-after-new") assert.equal(await page.locator("#vr-file").innerText(), "tra-ncc-khac.xlsx");
+      assert.deepEqual(errors, [], mode);
+      await context.close();
+    }
+
+    // G2: xoá thành công nhưng tải lại lỗi → "Đã xoá…" kèm "chưa tải lại được danh sách", GIỮ nút Thử lại, màn bỏ đợt cũ; Thử lại → tải lại thật
+    {
+      const { context, page, errors, srv } = await open(browser, { admin: true });
+      await page.locator('[data-vr-tab="list"]').click();
+      await page.locator("#vr-delete").click();
+      srv.snapFail = true;
+      await page.locator("dialog.whd .whd-ok").click();
+      await page.waitForFunction(() => /Đã xoá đợt/.test(document.getElementById("vr-message").textContent));
+      assert.match((await page.locator("#vr-message").innerText()).trim(), /Đã xoá đợt tra-ncc-gia\.xlsx · 5 Group UID · 1 lượt quét · chưa tải lại được danh sách\.$/);
+      assert.equal(await page.locator("#vr-message .ps-retry").count(), 1, "giữ nút Thử lại sau khi báo đã xoá");
+      assert.equal(await page.locator("#vr-file").innerText(), "Chưa có danh sách", "không còn hiện đợt đã xoá");
+      srv.snapFail = false;
+      const snaps = () => srv.calls.filter(c => c.rpc === "vendor_return_snapshot").length, before = snaps();
+      await page.locator("#vr-message .ps-retry").click();
+      await page.waitForTimeout(600);
+      assert.ok(snaps() > before, "Thử lại tải lại danh sách");
+      assert.deepEqual(errors, []);
+      await context.close();
+    }
+
+    // G3a: bản chụp đã cũ (> 3 s), đợt bị xoá trên máy chủ → mã lạ → tải lại thấy không còn đợt → "Chưa có danh sách" (không phải "Không thuộc danh sách trả")
+    {
+      const { context, page, errors, srv } = await open(browser);
+      await page.waitForTimeout(3300);
+      srv.list = null; srv.items = [];
+      await scan(page, "1028260000000999");
+      await page.waitForFunction(() => document.getElementById("vr-result").dataset.tone === "bad");
+      assert.equal((await result(page)).title, "Chưa có danh sách");
+      assert.deepEqual(errors, []);
+      await context.close();
+    }
+
+    // G3c: máy quét nhận NO_LIST nhưng tải lại thấy đợt mới (Admin xoá rồi nạp lại) → quét lại ngay với đợt mới, không báo "Chưa có danh sách"
+    {
+      const { context, page, errors, srv } = await open(browser);
+      const NEXT = "66666666-6666-4666-8666-666666666666";
+      srv.noListOnce = true; srv.nextList = { ...LIST, id: NEXT, fileName: "tra-ncc-nap-lai.xlsx" }; srv.nextItems = ITEMS();
+      await scan(page, "1028260000000102");
+      await page.waitForFunction(() => document.getElementById("vr-result").dataset.tone === "ok", null, { timeout: 10000 });
+      assert.equal((await result(page)).title, "Đúng · Navy");
+      assert.deepEqual(srv.calls.filter(c => c.rpc === "vendor_return_scan").map(c => c.args.p_list_id), [LIST.id, NEXT], "NO_LIST → tải lại → quét lại với đợt mới");
+      assert.deepEqual(errors, []);
+      await context.close();
+    }
+
+    // G3d (Codex): NO_LIST + tải lại lỗi → máy chủ đã nói không còn đợt cũ → bỏ bản chụp cũ (không giữ màn đợt đã xoá), báo "chưa tải lại được"
+    {
+      const { context, page, errors, srv } = await open(browser);
+      srv.list = null; srv.items = []; srv.snapFail = true;
+      await scan(page, "1028260000000102");
+      await page.waitForFunction(() => document.getElementById("vr-result").dataset.tone === "bad");
+      assert.deepEqual(await result(page), { tone: "bad", title: "Chưa có danh sách", note: "Danh sách đã bị xoá · chưa tải lại được" });
+      assert.equal(await page.locator("#vr-total").innerText(), "—", "bỏ bản chụp của đợt đã bị xoá");
+      assert.deepEqual(errors, []);
+      await context.close();
+    }
+
+    // G5: một cờ bận chung cho nhóm Admin — Đối chiếu đang đọc WMS thì Xoá / Nạp bị khoá; xoá đang chờ máy chủ thì Đối chiếu bị khoá (không thoát im lặng, không đè thông báo nhau)
+    {
+      const { context, page, errors, srv } = await open(browser, { admin: true });
+      await page.locator('[data-vr-tab="list"]').click();
+      await page.evaluate(() => { window.__extSlow = 1500; });
+      await page.locator("#vr-reconcile").click();
+      await page.waitForFunction(() => document.getElementById("vr-reconcile").disabled);
+      for (const id of ["vr-delete", "vr-pick"]) assert.equal(await page.locator(`#${id}`).isDisabled(), true, `${id}: khoá khi Đối chiếu đang chạy`);
+      await page.waitForFunction(() => /Đối chiếu xong/.test(document.getElementById("vr-message").textContent), null, { timeout: 15000 });
+      for (const id of ["vr-delete", "vr-pick", "vr-reconcile"]) assert.equal(await page.locator(`#${id}`).isDisabled(), false, `${id}: mở lại khi xong`);
+      srv.deleteDelay = 1200;
+      await page.locator("#vr-delete").click(); await page.locator("dialog.whd .whd-ok").click();
+      await page.waitForFunction(() => document.getElementById("vr-delete").disabled);
+      assert.equal(await page.locator("#vr-reconcile").isDisabled(), true, "Đối chiếu bị khoá khi đang xoá");
+      await page.waitForFunction(() => /Đã xoá đợt/.test(document.getElementById("vr-message").textContent), null, { timeout: 10000 });
+      assert.equal(await page.locator("#vr-reconcile").isDisabled(), false, "xoá xong: mở lại");
+      assert.deepEqual(errors, []);
+      await context.close();
+    }
+
     // Máy quét còn giữ đợt vừa bị Admin xoá: lượt quét → NO_LIST → tải lại → "Chưa có danh sách" (không báo đã lưu)
     {
       const { context, page, errors, srv } = await open(browser);
@@ -364,6 +483,6 @@ const locHeads = page => page.locator("#vr-locs .vr-loc__head").allInnerTexts().
       assert.deepEqual(errors, []);
       await context.close();
     }
-    console.log("vendor_return_browser: thẻ Navy/Black, đánh dấu dòng đã quét, ngoài danh sách đỏ, trùng báo máy, mã mới gửi khoá máy + chuyển tab, bị từ chối không đánh dấu, Admin nạp Excel (sheet navy/black, bỏ pivot), Admin xoá đợt (xác nhận, Giữ, bị từ chối, đợt đã đổi / đã xoá, máy quét thấy NO_LIST); 1280 / 390 — passed");
+    console.log("vendor_return_browser: thẻ Navy/Black, đánh dấu dòng đã quét, ngoài danh sách đỏ, trùng báo máy, mã mới gửi khoá máy + chuyển tab, bị từ chối không đánh dấu, Admin nạp Excel (sheet navy/black, bỏ pivot), Admin xoá đợt (xác nhận, Giữ, bị từ chối, đợt đã đổi / đã xoá, mất phản hồi / hết giờ / 502 báo \"chưa rõ\" + đối soát, xoá xong tải lại lỗi giữ Thử lại, cờ bận chung), máy quét thấy NO_LIST (tải lại thấy đợt mới thì quét lại, tải lại lỗi thì bỏ bản chụp cũ, bản chụp cũ thấy hết đợt); 1280 / 390 — passed");
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

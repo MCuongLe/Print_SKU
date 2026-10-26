@@ -1,6 +1,6 @@
 # TÌM GROUP UID · Trả nhà cung cấp (24/10/2026)
 
-Trạng thái: ĐÃ BUILD + review 3 vòng (24/10/2026), chưa commit — chờ người dùng; lên: migration vendor_return_v1 → push → Admin nạp Excel.
+Trạng thái: v1 + v2 + bố cục ĐÃ LÊN (24/10/2026); v3 Admin xoá đợt ĐÃ LÊN 26/10/2026 (`c9e790d`, migration chạy 01:25); sửa review vòng 1 làm 26/10, chưa commit. Chưa thử thật: Admin nạp Excel, Đối chiếu, xoá đợt.
 
 ## Yêu cầu (người dùng 24/10/2026)
 "Tạo modul trong tìm group UID tên Trả nhà cung cấp gồm màu navy và black. Người dùng scan group UID, các group được scan sẽ đánh dấu. Danh sách theo file excel tôi cung cấp." — "Danh sách tạm thời lưu trên database, tôi sẽ báo dọn dẹp sau."
@@ -12,7 +12,7 @@ File mẫu (KHÔNG vào git, dữ liệu thật): PKL return vendor — sheet `n
 - C2 Chỉ máy đã kích hoạt được ghi lượt quét (`floor_access_check`, như Lựa UID blocked / Cấp vải); ai cũng xem tiến độ.
 - C3 UID ngoài danh sách → báo đỏ "Không thuộc danh sách trả"; quét trùng → báo "Đã quét" + máy + giờ, giữ lần đầu.
 - C4 Hiển thị: thẻ đếm đã quét / tổng mỗi màu (Navy x/118, Black y/116) + danh sách theo tab màu, dòng đã quét được đánh dấu.
-- Danh sách tạm, người dùng báo thì dọn (không cron dọn).
+- Danh sách tạm, người dùng báo thì dọn (không cron dọn). Đã thay ở v3 (26/10/2026): Admin tự xoá đợt đang dùng trên màn.
 - C5 (24/10 chiều) "cần phân theo vị trí hiện tại của group" + "nút đối chiếu… mục đích làm tất cả các group được chuyển về F0-VR-00-00-00-00": Đối chiếu = Admin đọc WMS TRỰC TIẾP qua Extension, lưu Supabase cho mọi máy; hai mốc riêng Đã quét + Về F0-VR.
 - C6 UID WMS báo đã rời kho (Canceled / Closed / Transferred, hoặc không còn vị trí) → nhóm riêng "Đã rời kho", không tính Về F0-VR.
 - C7 "các thông báo group UID khi scan dạng pop-up" → pop-up không modal như Cấp vải.
@@ -53,11 +53,17 @@ v2: migration `vendor_return_v2.sql` (chỉ thêm cột + create or replace, kh�
 - Người dùng (ảnh UID blocked): "tôi cần thiết kế tương tự tìm group UID Blocked" + "phần danh sách cũng tương tự" → dải tiến độ, tab Còn thiếu (thẻ vị trí mở/đóng, lọc chữ + màu) | Đã quét (bảng chung, SL, Xuất Excel ngày đủ năm) | Danh sách (như UID blocked); bỏ thẻ màu và bảng nhóm cũ. Codex (mã + ảnh): thêm SL, ngày giờ đủ năm, nút lọc màu 44 px; giữ danh sách vừa quét / nút Kiểm / ô quét như UID blocked.
 
 ## v3 — Admin xoá đợt (26/10/2026)
-Trạng thái: ĐÃ BUILD + test (`vendor_return_v3_sql`, `vendor_return_browser`), chưa commit, chưa chạy migration — chờ người dùng.
+Trạng thái: ĐÃ LÊN 26/10/2026 (commit `c9e790d`, migration `vendor_return_v3.sql` chạy 01:25, push); chưa xoá thử bằng Admin thật.
 - Người dùng: "đăng nhập admin cho phép xóa đợt return vendor". Thay quyết định 24/10 "chưa có chức năng xoá, báo thì lead dọn tay": nay Admin tự xoá trên màn.
 - "Đợt" = một danh sách Admin nạp bằng Excel. Màn chỉ hiện đợt đang dùng (`active`), nên chỉ xoá đợt đó. Số liệu thật 26/10: 1 đợt (234 dòng, 209 lượt quét), chưa có danh sách tắt nào.
 - Dữ liệu quét xoá THEO đợt (có chủ ý): `vendor_return_items` / `vendor_return_scans` khoá ngoại `ON DELETE CASCADE`; lượt quét không thể sống thiếu dòng danh sách và không có màn xem lại.
 - `supabase/vendor_return_v3.sql`: `vendor_return_delete(p_list_id)`, SECURITY DEFINER + `search_path = ''`, `group_uid_admin_allowed()` đầu tiên, khoá độc quyền chung với nạp / quét / đối chiếu, `STALE_LIST` (không xoá) / `NO_LIST`, chỉ `authenticated`.
 - Web: nút `#vr-delete` (Admin + có danh sách) → `WhDialog.confirm` danger (tên tệp, số UID đã quét) → RPC bằng phiên Admin; máy quét gặp `NO_LIST` thì tải lại và hiện "Chưa có danh sách".
-- Thứ tự lên: migration `vendor_return_v3.sql` → push web (web gọi hàm mới).
+- Thứ tự lên: migration `vendor_return_v3.sql` → push web (web gọi hàm mới) — đã làm đúng thứ tự.
 - Không làm (chưa ai yêu cầu): xoá các danh sách đã tắt (`active = false`) từ lần nạp thay thế; hiện chưa có dòng nào.
+- Hợp đồng dữ liệu `vendor_return_delete(p_list_id uuid)`: vào = mã đợt web đang hiện; ra `{ok:true, data:{deleted, listId, items, scans}, meta}`; lỗi `{ok:false, error:{code, message}}` với `FORBIDDEN` (không Admin), `INVALID_LIST` (thiếu mã), `NO_LIST` (không còn đợt nào), `STALE_LIST` (đợt đã đổi, kèm `data.listId` hiện hành, không xoá gì).
+- Lên thật 26/10/2026: commit `c9e790d`, migration chạy 01:25 (kiểm: SECURITY DEFINER, `search_path` rỗng, anon không execute, authenticated execute; dữ liệu nguyên 1 đợt / 234 dòng / 209 lượt quét), push. Chưa thử xoá bằng Admin thật.
+- Review vòng 1 (Codex + Claude A + BC + Fable, 26/10/2026; báo cáo `outputs/claude-review/review-20261026-0825.md`): NÊN SỬA G1 (lỗi bất định báo chắc "Chưa xoá được") và G6 (tài liệu lệch); LÀM SAU G2, G3, G5; BỎ QUA G4 (báo "Đã quét" từ bản chụp trên máy là thiết kế đã chốt).
+- Sửa review (26/10/2026, chưa commit): G1 — lỗi không có mã nghiệp vụ dạng chuỗi (mất mạng, hết giờ chờ — `TimeoutError` mang code số 23 —, cổng 502, thân hỏng) thì tải lại rồi báo "Chưa rõ kết quả xoá" kèm đợt còn / không còn / đợt mới, có nút Thử lại.
+- G2 — xoá xong mà tải lại lỗi: "Đã xoá… chưa tải lại được danh sách", giữ nút Thử lại. G3 — `NO_LIST` tải lại thấy đợt mới thì quét lại, tải lại lỗi thì bỏ bản chụp cũ; sau tải lại không còn đợt thì "Chưa có danh sách". G5 — một cờ bận chung khoá nút Xoá / Đối chiếu / Nạp khi một việc đang chạy.
+- Test: `tests/vendor_return_browser.cjs` thêm 10 tình huống (5 kiểu mất phản hồi, G2, G3a / G3c / G3d, G5 hai chiều); trên `index.html` cũ cả 5 nhóm đỏ (bản sao assert mềm), trên bản sửa xanh.

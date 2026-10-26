@@ -363,13 +363,13 @@
 
 ---
 
-## Trạng thái lên thật (kiểm Supabase MCP chỉ đọc + git, 25/10/2026 tối)
+## Trạng thái lên thật (kiểm Supabase MCP chỉ đọc + git, 26/10/2026 08:50)
 
-Kiểm lại: `python scripts/live_status.py` (chỉ đọc). Chạy 25/10/2026 21:56: 87/87 tệp migration đủ đối tượng; Edge, agent, cron như dưới.
+Kiểm lại: `python scripts/live_status.py` (chỉ đọc). Chạy 26/10/2026 08:50: 88/88 tệp migration đủ đối tượng; Edge, agent, cron như dưới.
 
 Mục này thắng mọi ghi chú "CHƯA LÊN" trong nhật ký. Kiểm lại khi thêm migration / Edge / Extension / agent; ghi ngày kiểm ở tiêu đề.
 
-**Web:** `main` = `origin/main` = `9373788` (25/10). GitHub Pages phục vụ bản này.
+**Web:** `main` = `origin/main` = `ba14cf8` (26/10 08:50). GitHub Pages phục vụ bản này.
 
 **ĐÃ LÊN — migration (có đối tượng trên DB)**
 - `sku_missing_archive_v1` (SKU rời 7 nhóm tự lưu trữ).
@@ -405,6 +405,7 @@ Mục này thắng mọi ghi chú "CHƯA LÊN" trong nhật ký. Kiểm lại kh
 - `Máy kho 02`: đã tạo trong `print_agents` (khai `sku:v1`, `group_uid:v1`, `location:*`) nhưng chưa từng kết nối — chưa cài agent.
 
 **Đã lên, CHƯA thử thật**
+- Trả NCC: Admin nạp Excel thật, Đối chiếu thật, xoá đợt thật chưa thử — đừng xoá đợt thật chỉ để thử (234 dòng + 209 lượt quét, 26/10) (N20261026-0126).
 - Trợ lý in → Packing List cấp vải: dán / đính kèm UID bằng Admin → Tạo đợt / Tải PL; tệp Excel Group UID thật từ WMS (cột UID chữ hay số) (N1215).
 - Tem SKU v3: tem có số lượng (đã in thật v1/v3 ngày 23/10).
 - "Chạy ngay" Rủi ro lưu trữ trong giờ làm (G9) sau Reload 0.10.8 — `sync_auto_leases` không phân biệt lượt tay hay tự động (N1196).
