@@ -16,6 +16,7 @@ Người dùng gọi `/commit-push` (tương đương câu "commit và push"). P
 - Đợt có đổi hành vi / mã: phải có kết quả `python scripts/run_tests.py --no-server` (cả bộ) của chính trạng thái này trong phiên. Chưa có thì chạy nền, chờ xong. Test hỏng thật → dừng, báo người dùng, không commit. Mục CHẬP CHỜN → ghi vào thông điệp commit và báo cáo.
 - Đợt chỉ tài liệu / cấu hình: bỏ qua bộ test, nói rõ vì sao.
 - **Migration trước push**: web cần hàm SQL / cột / action Edge mới mà migration hoặc deploy Edge chưa chạy → commit nhưng KHÔNG push; nhắc người dùng chạy `python scripts/apply_supabase_sql.py <tệp>` / `python scripts/deploy_<tên>.py` rồi mới push.
+- **Có `scripts/release.py`:** trước khi push chạy `python scripts/release.py --plan` (chỉ đọc). Còn việc chờ (migration, Edge, Extension) thì dừng ở commit và gợi ý người dùng chạy `python scripts/release.py --apply` (script giữ thứ tự và là bên push); không tự push.
 
 ## 3. Commit
 - `git add <đúng từng tệp>` (không `git add -A`), rồi `python scripts/commit_gate.py --cached` phải in "Đủ điều kiện commit". (Hook PreToolUse trong `.claude/settings.json` cũng tự chạy cổng này khi gặp `git commit` và chặn nếu KHÔNG ĐẠT.)

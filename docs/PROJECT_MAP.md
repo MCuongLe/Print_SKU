@@ -81,7 +81,7 @@ Edge (`supabase/functions/*/index.ts`, deploy một tệp bằng `scripts/deploy
 - `sku-vision`: Gemini đọc ảnh tem cho Tìm SKU.
 
 Bảng chính: `SKU_Name`, `sku_combo_links`, `sku_archive`, `sku_sync_runs`; `group_uid_details` (từ 21/10 có `purchase_order`), `group_uid_products`, `group_uid_sync_runs/staging/pages/changes/state`; `cut_group_uids` (từ 21/10 có `po`), `cut_sample_*`; `print_jobs`, `print_events`, `print_devices`, `print_activation_codes`;
-`sync_auto_settings` (+ `min_extension`), `sync_auto_leases`, `sync_auto_devices` (máy đồng bộ + bản Extension); `print_assistant_log`; `user_roles`.
+`sync_auto_settings` (+ `min_extension`), `sync_auto_leases`, `sync_auto_devices` (máy đồng bộ + bản Extension), `release_ledger` (sổ phát hành); `print_assistant_log`; `user_roles`.
 
 Migration là chuỗi tệp `supabase/*.sql` (idempotent, `notify pgrst`); **bản mới nhất của một hàm nằm ở tệp mới nhất đụng nó**:
 - Đồng bộ tự động: `sync_auto_v1` → `sync_auto_window_morning_v1` → `sync_auto_v2` → `sync_auto_v3`.
@@ -125,12 +125,15 @@ Migration là chuỗi tệp `supabase/*.sql` (idempotent, `notify pgrst`); **b�
   - RPC Admin mới `print_job_cancel` (nút "Huỷ lệnh" `#pj-d-cancel` ở popup Lệnh in); default privileges schema public không còn grant RIÊNG cho anon/authenticated — nhưng EXECUTE mặc định toàn cục của PUBLIC vẫn còn, hàm mới VẪN phải `revoke … from public, anon, authenticated` rồi grant rõ;
   - Claimed/rendering hết lease giữ `agent_id` nếu lệnh từng có sự kiện sending/spooling; `print_job_cancel` trả UID queued của lệnh Group UID về failed. Extension 0.10.8: Kiểm kê so `total` + đọc lại ≤ 2 lần (`readExact`, cả web `inventory-audit-script`), trạng thái SKU lạ → lỗi đọc, ADJ `data_until` theo giờ server + chia phần (R7, cả web `cut-adj-reconcile`);
   - Edge `sku-sync` fetch `sku_combo_links` có `order`.
+- Phát hành: `release_ledger_v1` (26/10/2026, chưa chạy): bảng `release_ledger(kind, name, sha256, commit_sha, applied_at, applied_by, note)`, `kind` ∈ migration | edge | extension | lock; RLS bật, chỉ `service_role`; tạo bằng `release.py --init`.
 - Cron: `print-jobs-purge` 20:00, `sync-history-purge` 20:30, `print-assistant-purge` 20:50, `floor-access-purge` 20:55, `sku-inactive-archive` CN 20:45, `group-uid-canceled-purge` CN 20:15, `uid-block-refresh-wms` mỗi 30 phút (UTC).
 
 Chạy migration: `python scripts/apply_supabase_sql.py <tệp> [--dry-run] [--allow-destructive]` (token Management trong `.env`, gitignored). Thứ tự lên luôn là migration → deploy Edge → Reload Extension.
+Phát hành một lệnh: `python scripts/release.py [--plan | --apply | --status | --init | --accept <tệp>] [--only migrations|edge] [--rerun <tệp>]` (kế hoạch `docs/plans/2026-10-26-release-script.md`): sổ `release_ledger`, thứ tự migration → Edge → cổng Reload Extension → push; gọi lại `apply_supabase_sql.py`, `live_status.py` và `deploy_*.py`.
 
 ## 5. Kiểm thử và công cụ
 - `python scripts/run_tests.py [--no-server] [--only <tên>] [--no-retry]` chạy mọi `tests/*.cjs|*.mjs` và `tests/test_*.py` (unittest) (≈ 70 tệp, ~8–10 phút); test hỏng được chạy lại một lần tuần tự, in mục CHẬP CHỜN.
+- `python scripts/release.py` (26/10/2026): phát hành migration → Edge → Reload → push có cổng, `--plan` chỉ đọc. Test: `tests/test_release.py` (unittest, bản giả mọi lối ra ngoài), `tests/release_ledger_sql.cjs`.
 - Hook Claude Code (`.claude/settings.json` → `scripts/claude_hooks.py`, 18/10/2026): mọi lệnh Bash có `git commit` tự chạy `commit_gate.py` (`--cached`, hoặc cả cây khi cùng lệnh có `git add`) và chặn khi KHÔNG ĐẠT; chặn Write ghi đè cả `index.html` và mọi sửa `.env`. Kỹ năng `/commit-push` (chỉ người dùng gọi): chọn tệp của đợt, test, cổng, commit, push, ghi RULES.md.
 - `python scripts/commit_gate.py [--cached | --commit <sha>]`: cổng trước commit bằng máy (bí mật, dữ liệu thật, mojibake, CRLF cả tệp, phiên bản Extension, CDN/npm, cảnh báo bản đồ). Máy chủ tĩnh cổng 8000 cho cây chính (`.claude/launch.json` → `print-sku-test-8000`); worktree của agent dùng cổng khác + `BASE=`.
 - `commit_gate` mục 8–11 (25/10/2026, cảnh báo, chưa chặn): dòng tài liệu > 400 ký tự, `SECURITY DEFINER` thiếu `search_path` / `revoke`, mã nhật ký không có thẻ trong `RULES.md`, thông điệp có dấu (`--message-file`). `python scripts/live_status.py [--offline]` (chỉ đọc) in mục "Trạng thái lên thật" cho `docs/QUYET_DINH.md`. `codex_review.py` nạp `docs/chuan/*.md` theo loại tệp đổi.

@@ -44,7 +44,7 @@ Quyết định riêng của từng module ở `docs/QUYET_DINH.md` theo chủ �
 - Giữ chữ giao diện tiếng Việt, mã hoá Unicode, kiểu in và bố cục điện thoại.
 - Không commit bí mật, khoá, endpoint riêng hay dữ liệu SKU / UID / PO thật; dùng dữ liệu giả chuẩn (SKU `9000000xx`, UID `1028260000000xxx`).
 - Hàm SQL `SECURITY DEFINER` mới: `revoke execute … from public, anon, authenticated`, rồi chỉ `grant` cho vai cần.
-- Supabase MCP chỉ để đọc. Migration, deploy và mọi lệnh ghi do người dùng chạy script, trừ khi người dùng cho phép rõ từng lần.
+- Supabase MCP chỉ để đọc. Migration, deploy và mọi lệnh ghi do người dùng chạy script, trừ khi người dùng cho phép rõ từng lần. Một lệnh phát hành: `python scripts/release.py` (xem `docs/chuan/DU_LIEU.md`).
 - Agent được giao việc không commit, không chạy migration / deploy, không ghi `RULES.md` hay `docs/QUYET_DINH.md`.
 
 ## Kiểm chứng (làm phần áp dụng)
