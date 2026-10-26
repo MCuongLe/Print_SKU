@@ -5,7 +5,9 @@
 | Object | Field | Value source | Rule | Result |
 | --- | --- | --- | --- | --- |
 | PO | `poCode` | Người dùng nhập/quét | 3–50 ký tự; chỉ chữ, số và `._/-` | Sai định dạng → NG |
-| PO | `warehouse` | Inside | Phải chứa `WH - MATERIAL - MTG` | Khác kho → NG |
+| PO | `site` | Tên miền của tab (`inside.mastige.vn` → mastige, `garment.inshasaki.com` → garment) | Khớp `payload.site` (thiếu = mastige); khác hoặc tên miền lạ → `SITE_MISMATCH`, không gọi mạng; background chỉ nhận mastige / garment (`INVALID_SITE`) | Khác site → NG |
+| PO | `vendor` | Inside (cột Vendor) | Bỏ "- " ở đầu chuỗi (dòng Garment không có phần trước dấu gạch); dạng `<tên> - <liên hệ>` giữ nguyên, web cắt phần liên hệ | Rỗng → web dùng NCC trong tên SKU |
+| PO | `warehouse` | Inside | Web kiểm theo nguồn: MTG chứa `WH - MATERIAL - MTG`, GARMENT chứa `WH - MATERIAL - GARMENT` | Khác kho → NG |
 | PO item | `sku` | Inside | Không rỗng | Rỗng → bỏ dòng |
 | PO item | `name` | Inside | Không rỗng | Rỗng → bỏ dòng |
 | PO item | `orderedQty` | Inside | Số lớn hơn 0 | Không hợp lệ → bỏ dòng |
@@ -32,6 +34,7 @@
 - `http://127.0.0.1/*`
 - `https://mcuongle.github.io/Print_SKU/*`
 - `https://inside.mastige.vn/*`
+- `https://garment.inshasaki.com/*` (chỉ đọc PO)
 - `https://wms.inshasaki.com/*`
 - `https://wms-gw.inshasaki.com/*`
 
@@ -42,6 +45,7 @@ Origin khác bị từ chối ở cả manifest, app bridge và background servi
 - Connector chỉ đọc; không có thao tác ghi vào Inside hoặc WMS.
 - App không nhận cookie, token hoặc HTML gốc.
 - Background chỉ chuyển các yêu cầu đọc `PING`, `PING_WMS`, `GET_PO`, `GET_SKU_SYNC_DATA`, `GET_GROUP_UID_PAGE`, `GET_GROUP_UID_HISTORY_PAGE`, `GET_GROUP_UID_MOVES_PAGE`, `GET_GROUP_UID_NEW_PAGE` và `GET_PACKING_LIST_PAGE`, `GET_INTERNAL_TRANSFER`, `GET_PO_GROUP_UID_PAGE`, `GET_PO_ASN_PAGE` (cùng các lệnh kiểm kê `GET_SKU_COUNT_*`).
+- Đồng bộ SKU chỉ đọc Inside Mastige: tab Garment bị từ chối (`SKU_SYNC_SITE_FORBIDDEN`), đồng bộ tự động chỉ tìm tab Mastige.
 - Access token WMS chỉ đi giữa tab WMS và extension, không được gửi tới ứng dụng hoặc Supabase.
 - Extension không chứa Supabase secret/service-role key. Dữ liệu được gửi tới Edge Function bằng phiên Supabase Admin đang đăng nhập.
 - Không tự xóa SKU hoặc quan hệ Combo vắng mặt trong nguồn.
@@ -53,6 +57,7 @@ Origin khác bị từ chối ở cả manifest, app bridge và background servi
 ## Khi nào xem lại
 
 - Inside đổi URL, HTML, bảng PO hoặc thứ tự cột SKU.
+- Inside Garment đổi cột danh sách PO hoặc cách xác thực (hiện cookie `ws_token`).
 - WMS đổi URL API, tên header xác thực hoặc cấu trúc `products`.
 - App chuyển sang domain khác.
 - Cho phép ghi kết quả ngược về Inside.

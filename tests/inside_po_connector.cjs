@@ -8,7 +8,7 @@ const manifest = JSON.parse(fs.readFileSync(path.join(extensionDir, "manifest.js
 const background = fs.readFileSync(path.join(extensionDir, "background.js"), "utf8");
 
 assert.equal(manifest.manifest_version, 3);
-assert.equal(manifest.version, "0.10.10");
+assert.equal(manifest.version, "0.11.0");
 // Đồng bộ tự động (0.10.0): alarm + storage cho phiên Admin riêng, gọi Edge Supabase, trang Tùy chọn.
 assert.ok(manifest.permissions.includes("alarms"));
 assert.ok(manifest.permissions.includes("storage"));
@@ -46,6 +46,14 @@ for (const type of ["GET_STOCK_IMPORT_EXPORT_PAGE", "GET_HCM_DATA", "PING_HCM"])
 assert.ok(manifest.host_permissions.includes("https://apps-mastige.inshasaki.com/*"));
 const hcmEntry = manifest.content_scripts.find(entry => entry.js.includes("hcm-bridge.js"));
 assert.deepEqual(hcmEntry?.matches, ["https://apps-mastige.inshasaki.com/apps/hasaki-construction-management*"], "cầu nối app xây dựng chỉ chạy trong đúng app đó");
+// 0.11.0: Inside Garment (garment.inshasaki.com) cùng phần mềm Inside — cầu nối đọc PO chạy ở đó, bộ đọc SKU thì không.
+assert.ok(manifest.host_permissions.includes("https://garment.inshasaki.com/*"));
+const mastigeInsideEntry = manifest.content_scripts.find(entry => entry.matches.includes("https://inside.mastige.vn/*"));
+assert.deepEqual(mastigeInsideEntry?.matches, ["https://inside.mastige.vn/*"], "bộ đọc SKU chỉ chạy ở Inside Mastige");
+assert.deepEqual(mastigeInsideEntry?.js, ["sku-sync-core.js", "inside-bridge.js"]);
+const garmentInsideEntry = manifest.content_scripts.find(entry => entry.matches.includes("https://garment.inshasaki.com/*"));
+assert.deepEqual(garmentInsideEntry?.matches, ["https://garment.inshasaki.com/*"]);
+assert.deepEqual(garmentInsideEntry?.js, ["inside-bridge.js"], "Garment không nạp bộ đọc SKU");
 const hcmPattern = background.match(/^const HCM_URL_PATTERN = .*;$/m)?.[0];
 assert.ok(hcmPattern, "Không tìm thấy HCM_URL_PATTERN");
 const hcmBox = { result: null };
@@ -110,16 +118,26 @@ const settle = () => new Promise(resolve => setImmediate(resolve));
   assert.equal(unknown.posted.length, 0, "yêu cầu lạ không được chuyển tiếp");
 
   // background.js thật trong vm: lệnh AUTO_* chỉ nhận từ trang của Extension; trang web / content script không gọi được.
-  const runBackground = ({ withAccessLevel = true, initial = {} } = {}) => {
+  const globToRegExp = pattern => new RegExp("^" + pattern.split("*").map(part => part.replace(/[.+?^${}()|[\]\\]/g, "\\$&")).join(".*") + "$");
+  const runBackground = ({ withAccessLevel = true, initial = {}, tabs = [], failFirst = false } = {}) => {
     let onMessage, onAlarm, onInstalled, alarmsCreated = [];
-    const stored = { ...initial }, order = [];
+    const stored = { ...initial }, order = [], sent = [], injected = [], attempted = new Set();
     const chromeStub = {
       runtime: {
         id: "ext-id", getURL: p => `chrome-extension://ext-id/${p}`, getManifest: () => manifest,
         onMessage: { addListener: fn => { onMessage = fn; } }, onInstalled: { addListener: fn => { onInstalled = fn; } }, onStartup: { addListener: () => {} },
       },
       alarms: { get: async () => null, create: (name, info) => { alarmsCreated.push([name, info]); }, clear: async () => true, onAlarm: { addListener: fn => { onAlarm = fn; } } },
-      tabs: { query: async () => [] },
+      tabs: {
+        query: async ({ url }) => tabs.filter(tab => globToRegExp(String(url)).test(tab.url)),
+        // failFirst: lần gửi đầu tới mỗi tab lỗi như tab mở trước khi Reload Extension (chưa có bridge) → background bơm lại bằng executeScript.
+        sendMessage: async (id, message) => {
+          if (failFirst && !attempted.has(id)) { attempted.add(id); throw new Error("Could not establish connection. Receiving end does not exist."); }
+          sent.push({ id, message: JSON.parse(JSON.stringify(message)) });
+          return { ok: true, data: { echoedFromTab: id } };
+        },
+      },
+      scripting: { executeScript: async ({ target, files }) => { injected.push({ tabId: target.tabId, files: [...files] }); } },
       storage: { local: { get: async key => { order.push("get"); return { [key]: stored[key] }; }, set: async value => Object.assign(stored, value), remove: async key => { delete stored[key]; } } },
     };
     if (withAccessLevel) chromeStub.storage.local.setAccessLevel = async info => { order.push(`access:${info.accessLevel}`); };
@@ -129,7 +147,7 @@ const settle = () => new Promise(resolve => setImmediate(resolve));
     vm.runInContext(background, context, { filename: "background.js" });
     // Đối tượng tạo trong vm khác realm: chuyển qua JSON để deepEqual so được.
     const send = (message, sender) => new Promise(resolve => onMessage(message, sender, value => resolve(JSON.parse(JSON.stringify(value)))));
-    return { send, stored, alarmsCreated, order, alarm: name => onAlarm({ name }), installed: () => onInstalled() };
+    return { send, stored, sent, injected, context, alarmsCreated, order, alarm: name => onAlarm({ name }), installed: () => onInstalled() };
   };
   const bg = runBackground();
   await settle();
@@ -162,15 +180,71 @@ const settle = () => new Promise(resolve => setImmediate(resolve));
   assert.equal((await bg.send({ type: "AUTO_SIGN_OUT" }, evilTab)).error.code, "FORBIDDEN_ORIGIN");
   assert.equal(bg.stored["auto.device"], "may-test-01");
 
+  // 0.11.0: GET_PO chọn tab theo site (mastige | garment, mặc định mastige); đồng bộ SKU luôn đọc tab Inside Mastige, không bao giờ tab Garment.
+  {
+    const mastigeTab = { id: 11, url: "https://inside.mastige.vn/purchase/order", status: "complete" };
+    const garmentTab = { id: 12, url: "https://garment.inshasaki.com/purchase/order", status: "complete" };
+    const web = { id: "ext-id", url: "http://localhost:8000/#inspection", tab: { id: 3, url: "http://localhost:8000/#inspection" } };
+    const run = async (tabs, message, options = {}) => { const target = runBackground({ tabs, ...options }); await settle(); const reply = await target.send(message, web); return { reply, sent: target.sent, injected: target.injected }; };
+    const po = (payload = {}) => ({ type: "GET_PO", payload: { poCode: "100000001", ...payload } });
+
+    const garment = await run([mastigeTab, garmentTab], po({ site: "garment" }));
+    assert.equal(garment.reply.ok, true, JSON.stringify(garment.reply));
+    assert.deepEqual(garment.sent, [{ id: 12, message: { type: "GET_PO", payload: { poCode: "100000001", site: "garment" } } }], "site garment → tab Garment, bridge nhận kèm site");
+    const mastige = await run([mastigeTab, garmentTab], po());
+    assert.deepEqual(mastige.sent, [{ id: 11, message: { type: "GET_PO", payload: { poCode: "100000001", site: "mastige" } } }], "không có site (web cũ) → Inside Mastige như trước");
+    const noGarmentTab = await run([mastigeTab], po({ site: "garment" }));
+    assert.deepEqual([noGarmentTab.reply.ok, noGarmentTab.reply.error.code, noGarmentTab.sent.length], [false, "INSIDE_TAB_MISSING", 0], "chỉ có tab Mastige: không đọc nhầm PO Mastige cho yêu cầu Garment");
+    assert.match(noGarmentTab.reply.error.message, /Inside Garment/);
+    const noMastigeTab = await run([garmentTab], po());
+    assert.deepEqual([noMastigeTab.reply.error.code, noMastigeTab.sent.length], ["INSIDE_TAB_MISSING", 0], "chỉ có tab Garment: yêu cầu Mastige không rơi sang Garment");
+    assert.match(noMastigeTab.reply.error.message, /Inside Mastige/);
+    const asleep = await run([{ ...garmentTab, discarded: true }], po({ site: "garment" }));
+    assert.equal(asleep.reply.error.code, "INSIDE_TAB_MISSING", "tab Garment đang ngủ bị bỏ như các tab khác");
+    for (const site of ["evil", "GARMENT", "", null, 7, ["garment"]]) {
+      const bad = await run([mastigeTab, garmentTab], po({ site }));
+      assert.deepEqual([bad.reply.ok, bad.reply.error.code, bad.sent.length], [false, "INVALID_SITE", 0], `site ${JSON.stringify(site)} không hợp lệ`);
+    }
+
+    const sync = await run([mastigeTab, garmentTab], { type: "GET_SKU_SYNC_DATA", payload: { full: true, site: "garment" } });
+    assert.deepEqual(sync.sent.map(item => item.id), [11], "đồng bộ SKU luôn đọc tab Mastige, kể cả khi payload xin site garment");
+    const syncOnlyGarment = await run([garmentTab], { type: "GET_SKU_SYNC_DATA", payload: { full: true } });
+    assert.deepEqual([syncOnlyGarment.reply.error.code, syncOnlyGarment.sent.length], ["INSIDE_TAB_MISSING", 0], "chỉ có tab Garment: không đọc SKU từ đó");
+    // Bơm lại cầu nối (tab mở trước khi Reload): Garment chỉ nạp inside-bridge.js, bộ đọc SKU chỉ vào tab Mastige.
+    const reinjectGarment = await run([mastigeTab, garmentTab], po({ site: "garment" }), { failFirst: true });
+    assert.equal(reinjectGarment.reply.ok, true, JSON.stringify(reinjectGarment.reply));
+    assert.deepEqual(reinjectGarment.injected, [{ tabId: 12, files: ["inside-bridge.js"] }], "bơm lại vào tab Garment không kèm sku-sync-core.js");
+    const reinjectMastige = await run([mastigeTab, garmentTab], po(), { failFirst: true });
+    assert.deepEqual(reinjectMastige.injected, [{ tabId: 11, files: ["sku-sync-core.js", "inside-bridge.js"] }], "tab Mastige giữ danh sách cũ");
+    const reinjectSync = await run([mastigeTab, garmentTab], { type: "GET_SKU_SYNC_DATA", payload: { full: true, site: "garment" } }, { failFirst: true });
+    assert.deepEqual(reinjectSync.injected.map(item => item.tabId), [11], "đồng bộ SKU chỉ bơm vào tab Mastige");
+    // Payload đồng bộ SKU chỉ giữ full / cutoff (bridge chỉ đọc hai khoá này); site và khoá lạ bị bỏ.
+    assert.deepEqual(sync.sent.map(item => item.message), [{ type: "GET_SKU_SYNC_DATA", payload: { full: true } }], "full + site garment → chỉ { full: true }");
+    const syncCutoff = await run([mastigeTab], { type: "GET_SKU_SYNC_DATA", payload: { cutoff: "2026-10-25T00:00:00.000Z", site: "garment", extra: 1 } });
+    assert.deepEqual(syncCutoff.sent.map(item => item.message.payload), [{ cutoff: "2026-10-25T00:00:00.000Z" }]);
+    const syncEmpty = await run([mastigeTab], { type: "GET_SKU_SYNC_DATA" });
+    assert.deepEqual(syncEmpty.sent.map(item => item.message.payload), [{}], "không payload → {}");
+    // Đồng bộ tự động gọi findInsideTab() không đối số = Inside Mastige, không bao giờ tab Garment.
+    const autoGarmentOnly = runBackground({ tabs: [garmentTab] });
+    await settle();
+    assert.equal(await autoGarmentOnly.context.findInsideTab(), null, "findInsideTab() không thấy tab Garment");
+    const autoBoth = runBackground({ tabs: [garmentTab, mastigeTab] });
+    await settle();
+    assert.equal((await autoBoth.context.findInsideTab()).id, 11);
+    assert.equal((await autoBoth.context.findInsideTab("garment")).id, 12);
+    assert.equal(await autoBoth.context.findInsideTab("evil"), null);
+  }
+
   // GET_PO (0.10.1): inside-bridge.js thật trong vm với DOM giả theo cột danh sách PO đã đo trên Inside 17/10/2026:
   // # | Code | Vendor | Stock | LastModified | Delivery | Due Date | Status. Rcvd date của biên bản = LastModified (cells[4]).
   const insideBridge = fs.readFileSync(path.join(extensionDir, "inside-bridge.js"), "utf8");
-  const runGetPo = ({ listDelivery = "27-02-08|13:46", detailDelivery = "2027-02-08", lastModified = "26-10-15|14:35" } = {}) => {
+  const runGetPo = ({ listDelivery = "27-02-08|13:46", detailDelivery = "2027-02-08", lastModified = "26-10-15|14:35", vendor = "CÔNG TY MẪU - Ms Test", host = "inside.mastige.vn", type = "GET_PO", payload = { poCode: "PO-TEST-001" }, fetched = [] } = {}) => {
     let listener;
     const node = (textContent, extra = {}) => ({ textContent, querySelector: () => null, querySelectorAll: () => [], ...extra });
-    const editLink = { textContent: "PO-TEST-001", href: "https://inside.example/purchase/order/77/edit" };
+    const poCode = payload.poCode || "PO-TEST-001";
+    const editLink = { textContent: poCode, href: "https://inside.example/purchase/order/77/edit" };
     const listRow = {
-      cells: ["1", "PO-TEST-001", "CÔNG TY MẪU - Ms Test", "WH - TEST", lastModified, listDelivery, "2026-11-05", "approved"].map(value => node(value)),
+      cells: ["1", poCode, vendor, "WH - TEST", lastModified, listDelivery, "2026-11-05", "approved"].map(value => node(value)),
       querySelectorAll: () => [editLink],
     };
     const skuLink = { href: "https://inside.example/product/detail-sku?sku=SKU-TEST-1" };
@@ -185,14 +259,14 @@ const settle = () => new Promise(resolve => setImmediate(resolve));
     };
     const win = {};
     const context = {
-      window: win, URL, location: { origin: "https://inside.example" },
+      window: win, URL, location: { hostname: host, origin: `https://${host}` },
       chrome: { runtime: { id: "ext-id", onMessage: { addListener: fn => { listener = fn; } } } },
-      fetch: async url => ({ ok: true, text: async () => String(url).includes("/edit") ? "detail" : "list" }),
+      fetch: async url => { fetched.push(String(url)); return { ok: true, text: async () => String(url).includes("/edit") ? "detail" : "list" }; },
       DOMParser: class { parseFromString(html) { return docs[html]; } },
     };
     context.globalThis = context;
     vm.runInNewContext(insideBridge, context);
-    return new Promise(resolve => listener({ type: "GET_PO", payload: { poCode: "PO-TEST-001" } }, { id: "ext-id" }, value => resolve(JSON.parse(JSON.stringify(value)))));
+    return new Promise(resolve => listener({ type, payload }, { id: "ext-id" }, value => resolve(JSON.parse(JSON.stringify(value)))));
   };
   const po = await runGetPo();
   assert.equal(po.ok, true, JSON.stringify(po));
@@ -202,6 +276,39 @@ const settle = () => new Promise(resolve => setImmediate(resolve));
   assert.equal((await runGetPo({ lastModified: "2026-10-15 14:35:00" })).data.lastModified, "2026-10-15", "dạng ISO có giờ cũng cắt về ngày");
   assert.equal((await runGetPo({ lastModified: "" })).data.lastModified, "", "ô trống → chuỗi rỗng để web rơi về deliveryDate");
   assert.equal((await runGetPo({ detailDelivery: "" })).data.deliveryDate, "2027-02-08", "thiếu ô delivery_date ở chi tiết → dùng cột Delivery của danh sách");
+
+  // 0.11.0: Inside Garment — cùng bridge, site nhận diện theo tên miền của tab và trả kèm trong dữ liệu PO.
+  // Cột danh sách PO Garment đã đo 26/10/2026 trùng vị trí Mastige (Code, Vendor, Stock, LastModified, Delivery, Due Date, Status).
+  const garmentHost = "garment.inshasaki.com";
+  assert.equal(po.data.site, "mastige", "tab Inside Mastige → site mastige");
+  const garmentPo = await runGetPo({ host: garmentHost, payload: { poCode: "100000001", site: "garment" } });
+  assert.equal(garmentPo.ok, true, JSON.stringify(garmentPo));
+  assert.deepEqual([garmentPo.data.site, garmentPo.data.poId, garmentPo.data.lastModified, garmentPo.data.items.length], ["garment", "77", "2026-10-15", 1]);
+  assert.equal((await runGetPo({ payload: { poCode: "PO-TEST-001", site: "mastige" } })).data.site, "mastige", "payload site mastige trên tab Mastige");
+  assert.equal((await runGetPo({ payload: { poCode: "PO-TEST-001" } })).ok, true, "thiếu site = mastige (web cũ)");
+  const mismatches = [
+    { host: garmentHost, payload: { poCode: "100000001", site: "mastige" } },
+    { host: garmentHost, payload: { poCode: "100000001" } },
+    { payload: { poCode: "PO-TEST-001", site: "garment" } },
+    { host: "inside.example", payload: { poCode: "PO-TEST-001", site: "mastige" } },
+  ];
+  for (const options of mismatches) {
+    const fetched = [];
+    const reply = await runGetPo({ ...options, fetched });
+    assert.deepEqual([reply.ok, reply.error?.code, fetched.length], [false, "SITE_MISMATCH", 0], `tab ${options.host || "mastige"} + ${JSON.stringify(options.payload)}: bridge không đọc PO của site khác`);
+  }
+  // Đồng bộ SKU chỉ ở Inside Mastige: tab Garment từ chối trước khi gọi mạng.
+  const garmentFetched = [];
+  const garmentSync = await runGetPo({ host: garmentHost, type: "GET_SKU_SYNC_DATA", payload: { full: true }, fetched: garmentFetched });
+  assert.deepEqual([garmentSync.ok, garmentSync.error?.code, garmentFetched.length], [false, "SKU_SYNC_SITE_FORBIDDEN", 0]);
+  const mastigeSync = await runGetPo({ type: "GET_SKU_SYNC_DATA", payload: { full: true } });
+  assert.equal(mastigeSync.error?.code, "SKU_SYNC_READ_FAILED", "tab Mastige không bị cổng site chặn (vm không nạp sku-sync-core nên lỗi ở bộ đọc)");
+  // Ô NCC: Inside Garment có dòng "- <tên>" (không có phần trước dấu gạch, 3/50 dòng đo 26/10) → bỏ "- " đầu; dạng "<tên> - <liên hệ>" giữ nguyên.
+  assert.equal((await runGetPo({ host: garmentHost, payload: { poCode: "100000001", site: "garment" }, vendor: "- Hộ kinh doanh Mẫu" })).data.vendor, "Hộ kinh doanh Mẫu");
+  assert.equal((await runGetPo({ vendor: "  -   Công ty B  " })).data.vendor, "Công ty B");
+  assert.equal((await runGetPo({ vendor: "Công ty C - Ms Test" })).data.vendor, "Công ty C - Ms Test");
+  assert.equal((await runGetPo({ vendor: "Công ty - D" })).data.vendor, "Công ty - D", "chỉ bỏ dấu gạch ở ĐẦU chuỗi");
+  assert.equal((await runGetPo({ vendor: "-Công ty E" })).data.vendor, "-Công ty E", "gạch dính liền chữ không phải dạng '- <tên>'");
 
   console.log("inside_po_connector: manifest, allowed origins and app bridge replies passed");
 })().catch(error => { console.error(error); process.exit(1); });

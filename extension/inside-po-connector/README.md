@@ -23,6 +23,7 @@ Sau khi repository được cập nhật, mở `chrome://extensions` và bấm *
    - `http://127.0.0.1:<port>/#inspection`
    - `https://mcuongle.github.io/Print_SKU/#inspection`
 3. Nhập mã PO và bấm **Lấy từ Inside**.
+4. Nguồn GARMENT (từ 0.11.0): mở thêm tab `https://garment.inshasaki.com/` và đăng nhập, chọn **GARMENT** cạnh ô Mã PO rồi bấm **Đọc Inside**.
 
 Đồng bộ SKU dành cho Admin:
 
@@ -36,6 +37,15 @@ Extension chỉ đọc Inside. Mọi ghi dữ liệu chạy trong Edge Function 
 Phiên bản 0.6.1 đọc đầy đủ Combo nhiều thành phần, Group UID hiện tại, lịch sử cắt Group UID và dữ liệu kiểm kê SKU từ WMS theo lô 500 dòng. Tồn kho kiểm kê dùng báo cáo `Stock Location` đã gộp theo SKU/vị trí và chỉ giữ `count_inbin > 0`, tránh tải hàng trăm nghìn dòng UID. Bản này hỗ trợ phản hồi WMS dạng `records/count`, Group UID trạng thái `New` chưa có SKU và Group UID chứa nhiều SKU. Các SKU thành phần được lưu trong `group_uid_products`.
 
 Phiên bản 0.7.1 thêm lệnh chỉ đọc `GET_GROUP_UID_MOVES_PAGE` cho ô LỊCH SỬ GROUP UID: lịch sử `Transfer location` của mọi kho tài khoản được xem, 500 dòng/trang (WMS không lọc endpoint này theo `company-ids` nên chỉ cần một lượt đọc). Sau khi cập nhật extension phải Reload trong `chrome://extensions` và tải lại trang Print SKU.
+
+Phiên bản 0.11.0 (26/10/2026): đọc PO của Inside Garment (`https://garment.inshasaki.com`, cùng phần mềm Inside, xác thực bằng cookie). Cần Reload Extension rồi tải lại tab Inside / Garment; không cần migration, deploy Edge hay đổi agent.
+- Web chọn nguồn bằng nút MTG | GARMENT ở KIỂM TRA ĐẦU VÀO; Extension mới vẫn chạy với web cũ (không gửi `site` = Inside Mastige), web mới chặn Extension < 0.11.0 ở nguồn GARMENT.
+- `GET_PO` nhận thêm `payload.site` = `mastige` (mặc định khi không gửi) hoặc `garment`. Background chọn tab theo site (`INSIDE_SITES`); thiếu tab báo "Hãy mở một tab Inside Garment và đăng nhập trước"; site lạ → `INVALID_SITE`. Dữ liệu PO trả thêm `site` để web kiểm khớp site đã hỏi.
+- `inside-bridge.js` nhận diện site theo tên miền của tab và từ chối khi `payload.site` khác (`SITE_MISMATCH`, không gọi mạng). Extension cũ không có `site` nên web phải kiểm phiên bản ≥ 0.11.0 trước khi hỏi Garment.
+- `GET_SKU_SYNC_DATA` chỉ đọc Inside Mastige: tab Garment trả `SKU_SYNC_SITE_FORBIDDEN`, background luôn dùng tab Mastige và chỉ chuyển `full` / `cutoff` (bỏ `site`); đồng bộ tự động chỉ tìm tab Mastige. SKU / Combo của Garment không vào `SKU_Name`.
+- Tab mở trước khi Reload Extension chưa có bridge: background bơm lại; tab Garment chỉ được bơm `inside-bridge.js`, tab Mastige bơm thêm `sku-sync-core.js`.
+- Ô NCC dạng "- <tên>" (không có phần trước dấu gạch; 3/50 PO Garment đo 26/10) bỏ "- " ở đầu; dạng "<tên> - <liên hệ>" giữ nguyên.
+- Đo thật 26/10/2026 trên tab Garment đã đăng nhập (chỉ GET): cột danh sách PO trùng vị trí Mastige, trang chi tiết có `#po_detail_table_tbody`, `getPo` đọc đúng 4/4 dòng; kho `WH - MATERIAL - GARMENT`; mã PO 14 chữ số.
 
 Phiên bản 0.10.10 (26/10/2026): khai báo bản Extension và tự dừng khi dưới mức tối thiểu (cần `supabase/sync_auto_v3.sql` + deploy hai Edge `sku-sync`, `group-uid-sync`). Chưa đặt mức (mặc định) thì mọi hành vi như 0.10.9. Sau khi cập nhật: Reload Extension, tải lại tab Inside / WMS.
 - Mọi lệnh Edge của đồng bộ tự động (thuê / nhả khoá, `prepare`, `ingest`, `preview`, `apply`, `cancel`, `history`, `auto-config`) gửi thêm `extVersion` = bản trong manifest, để Edge ghi nhận máy và chặn bản dưới mức `sync_auto_settings.min_extension`.

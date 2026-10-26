@@ -58,14 +58,14 @@ flowchart TB
 **Bẫy:** quyết định nghiệp vụ đã chốt (vd. không nạp bù SKU ngừng, Combo vẫn hiện Inactive, mỗi lot cắt + QC ≥ 30 %) nằm trong `docs/QUYET_DINH.md` — grep trước khi đề xuất lại.
 
 ## 4. Dependencies — hệ thống bên ngoài
-- **Inside** (PO, SKU) và **WMS** (Group UID, phiếu IT, Import/Export, history): chỉ đọc qua content script Extension trong tab người dùng đã đăng nhập; không gọi thẳng từ web hay Edge.
+- **Inside Mastige** (PO, SKU), **Inside Garment** (`garment.inshasaki.com`, chỉ PO, Extension ≥ 0.11.0) và **WMS** (Group UID, phiếu IT, Import/Export, history): chỉ đọc qua content script Extension trong tab người dùng đã đăng nhập; không gọi thẳng từ web hay Edge.
 - **App xây dựng** (Kiểm soát công trình): `hcm-bridge.js`, Cloudflare Access + Bearer.
 - **Máy in TSC** (USB, `may-kho-01`; `may-kho-02` đã tạo agent, chưa cài): chỉ qua agent.
 - **AI:** Edge `print-assistant` (Claude nếu có khoá, không thì Gemini), `sku-vision` (Gemini). Khoá ở Supabase Secrets.
 - **Hosting:** GitHub Pages — push `main` = web lên ngay.
 - **Thư viện:** web không CDN/npm runtime (cấm thêm khi chưa được duyệt); agent: `sharp`, `qrcode-generator`; test: Playwright (ngoài repo, `PLAYWRIGHT_MODULE`), `axe-core`.
 
-**Bẫy:** thứ tự lên luôn **migration → deploy Edge → Reload Extension (tải lại tab Inside/WMS) → cài agent nếu có → push web**.
+**Bẫy:** thứ tự lên luôn **migration → deploy Edge → Reload Extension (tải lại tab Inside/Garment/WMS) → cài agent nếu có → push web**.
 
 ## 5. Documentation — yêu cầu và quy tắc
 | Tệp | Dùng để |

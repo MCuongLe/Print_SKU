@@ -3655,6 +3655,7 @@ Error generating stack: `+y.message+`
           <div class="uid-card uid-add">
             <div class="uid-panel__head"><b class="uid-panel__num">1</b><h2>Lấy PO phụ liệu</h2><span class="ins-connector" id="ins-connector" data-state="checking">Đang kiểm tra kết nối…</span></div>
             <div class="ins-po-lookup">
+              <div class="ins-site" id="ins-site" role="group" aria-label="Nguồn PO"><button class="ins-sitebtn" id="ins-site-mastige" type="button" data-site="mastige" aria-pressed="true" title="PO của Inside Mastige (kho WH - MATERIAL - MTG)">MTG</button><button class="ins-sitebtn" id="ins-site-garment" type="button" data-site="garment" aria-pressed="false" title="PO của Inside Garment (kho WH - MATERIAL - GARMENT)">GARMENT</button></div>
               <label for="ins-po-lookup">Mã PO</label>
               <div class="ins-po-lookup__row">
                 <input id="ins-po-lookup" autocomplete="off" inputmode="text" placeholder="Mã PO">
@@ -3672,7 +3673,7 @@ Error generating stack: `+y.message+`
               <label>Rcvd date / Ngày nhập<input id="ins-date" autocomplete="off" placeholder="dd/mm/yyyy"></label>
               <label>Tổng số lượng<input id="ins-total" readonly></label>
             </div>
-            <p class="uid-help" style="margin-top: 8px;">Insp date (ngày kiểm) để trống — QC tự điền trên biên bản. Buyer mặc định MASTIGE.</p>
+            <p class="uid-help" id="ins-buyer-help" style="margin-top: 8px;">Insp date (ngày kiểm) để trống — QC tự điền trên biên bản. Buyer mặc định MASTIGE.</p>
           </div>
           <div class="uid-card uid-panel" id="ins-list" style="min-height: 0;" hidden>
             <div class="uid-panel__head"><b class="uid-panel__num">3</b><h2>Danh sách phụ liệu</h2><span class="uid-badge" id="ins-count">0</span></div>
@@ -3697,6 +3698,10 @@ Error generating stack: `+y.message+`
       .ins-po-lookup .uid-help a { color: #005f41; font-weight: 600; text-underline-offset: 2px; }
       .ins-po-lookup__row .uid-add__btn { min-height: 52px; padding: 0 22px; border-radius: 999px; white-space: nowrap; }
       .ins-po-lookup__row .uid-add__btn[disabled] { cursor: wait; opacity: .62; }
+      .ins-site { display: flex; gap: 2px; padding: 3px; border: 1px solid var(--wms-border,#d9e2de); border-radius: 12px; background: var(--wms-bg,#f4f7f6); }
+      .ins-sitebtn { flex: 1 1 0; min-height: 44px; padding: 0 8px; border: 0; border-radius: 9px; background: transparent; color: var(--wms-muted,#60736b); font: 600 14px var(--wms-font); cursor: pointer; }
+      .ins-sitebtn[aria-pressed="true"] { background: #fff; color: var(--wms-brand,#005f41); box-shadow: 0 1px 3px rgba(23,37,31,.14); }
+      .ins-sitebtn[disabled] { cursor: wait; }
       .ins-import-fallback { display: flex; align-items: center; gap: 12px; margin: 15px 0 11px; color: #82928c; font-size: 12px; font-weight: 600; text-transform: none; }
       .ins-import-fallback::before, .ins-import-fallback::after { height: 1px; flex: 1; background: #e1e9e6; content: ""; }
       .ins-import-secondary { color: #315b4d !important; background: #f6f9f8 !important; border: 1.5px solid #d6e2de !important; box-shadow: none !important; }
@@ -3721,6 +3726,8 @@ Error generating stack: `+y.message+`
         const countBadge = document.getElementById("ins-count");
         const exportButton = document.getElementById("ins-export");
         const status = document.getElementById("ins-status");
+        const siteGroup = document.getElementById("ins-site");
+        const buyerHelp = document.getElementById("ins-buyer-help");
         const fields = {
           po: document.getElementById("ins-po"),
           date: document.getElementById("ins-date"),
@@ -3730,6 +3737,41 @@ Error generating stack: `+y.message+`
         const DATA_ROW_LAST = 49;
         let items = [];
         let connectorReady = false;
+
+        // Nguồn PO (Đợt 2 Garment, 26/10/2026): hai Inside cùng phần mềm, khác công ty. Kho cho phép, nhãn và Buyer của biên bản theo nguồn.
+        // Extension < 0.11.0 bỏ qua `site` và sẽ trả PO Mastige trùng mã, nên nguồn Garment chặn theo bản Extension và kiểm po.site trả về.
+        const SITES = {
+          mastige: { label: "Inside", short: "MTG", warehouse: "WH - MATERIAL - MTG", buyer: "MASTIGE", help: "Insp date (ngày kiểm) để trống — QC tự điền trên biên bản. Buyer mặc định MASTIGE." },
+          garment: { label: "Inside Garment", short: "GARMENT", warehouse: "WH - MATERIAL - GARMENT", buyer: "", help: "Insp date (ngày kiểm) và Buyer để trống — QC tự điền trên biên bản." }
+        };
+        const GARMENT_MIN_EXT = "0.11.0";
+        const SITE_KEY = "ins-site-v1";
+        const versionAtLeast = (have, min) => {
+          const parts = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(String(have || "")), need = min.split(".").map(Number);
+          if (!parts) return false;
+          for (let index = 0; index < 3; index += 1) if (Number(parts[index + 1]) !== need[index]) return Number(parts[index + 1]) > need[index];
+          return true;
+        };
+        const readSite = () => { try { const value = localStorage.getItem(SITE_KEY); return Object.hasOwn(SITES, value) ? value : "mastige"; } catch { return "mastige"; } };
+        let site = readSite(); // nguồn đang chọn
+        let loadedSite = site; // nguồn của PO đã nạp: Buyer biên bản theo đây, không theo nút bấm sau đó
+        const paintSite = () => {
+          siteGroup.querySelectorAll(".ins-sitebtn").forEach(button => button.setAttribute("aria-pressed", String(button.dataset.site === site)));
+          fetchPoButton.title = `Lấy PO phụ liệu từ ${SITES[site].label}`;
+        };
+        siteGroup.addEventListener("click", event => {
+          const button = event.target.closest(".ins-sitebtn");
+          if (!button || button.disabled || !Object.hasOwn(SITES, button.dataset.site)) return;
+          site = button.dataset.site;
+          try { localStorage.setItem(SITE_KEY, site); } catch { /* chỉ để tiện: lỗi lưu không ảnh hưởng */ }
+          paintSite();
+        });
+        paintSite();
+        let siteLocks = 0; // số việc đang đọc (Inside / file): nút nguồn chỉ mở khi hết việc
+        const lockSite = on => {
+          siteLocks = Math.max(0, siteLocks + (on ? 1 : -1));
+          siteGroup.querySelectorAll(".ins-sitebtn").forEach(button => { button.disabled = siteLocks > 0; });
+        };
         const connectorRequests = new Map();
 
         const setStatus = (message, tone = "") => { status.textContent = message; status.dataset.tone = tone; };
@@ -4162,10 +4204,11 @@ Error generating stack: `+y.message+`
         // diện nhiều nhà thật → dùng NCC trong tên SKU như trước.
         const stripVendorContact = value => { const text = String(value || "").trim(); const cut = text.lastIndexOf(" - "); return cut > 0 ? text.slice(0, cut).trim() : text; };
         const usableVendor = value => { const text = String(value || "").trim(); return text && !/nhỏ lẻ/i.test(text) ? text : ""; };
-        const applyPoData = (po, sourceLabel) => {
+        const applyPoData = (po, sourceLabel, fromSite = site) => {
           if (!po || !Array.isArray(po.items)) throw new Error("Dữ liệu PO không đúng định dạng");
-          if (po.warehouse && !String(po.warehouse).toUpperCase().includes("WH - MATERIAL - MTG")) {
-            throw new Error(`PO thuộc kho ${po.warehouse}, không phải WH - MATERIAL - MTG`);
+          const wantedWarehouse = SITES[fromSite].warehouse;
+          if (po.warehouse && !String(po.warehouse).toUpperCase().includes(wantedWarehouse)) {
+            throw new Error(`PO thuộc kho ${po.warehouse}, không phải ${wantedWarehouse}`);
           }
           const poVendor = usableVendor(po.vendor);
           const normalized = po.items.map(raw => {
@@ -4186,6 +4229,8 @@ Error generating stack: `+y.message+`
           normalized.forEach(item => { item.poName = item.name; item.poSupplier = item.supplier; item.poColour = item.colour; item.supplierFromVendor = Boolean(poVendor); });
           lookupGeneration += 1;
           items = normalized;
+          loadedSite = fromSite;
+          buyerHelp.textContent = SITES[fromSite].help;
           fields.po.value = String(po.poCode || po.invoice || "").trim();
           // Rcvd date = LastModified của PO (Extension 0.10.1+); Excel dùng ngày trên phiếu; Extension cũ chưa có lastModified → Delivery Date.
           fields.date.value = formatInsideDate(po.lastModified || po.rcvdDate || po.deliveryDate);
@@ -4237,22 +4282,33 @@ Error generating stack: `+y.message+`
         };
 
         const fetchPoFromInside = async () => {
+          if (fetchPoButton.dataset.busy === "true") return; // phím Enter gọi thẳng hàm này, không qua nút đã khoá
           const poCode = poLookupInput.value.trim();
           if (!/^[A-Za-z0-9._/-]{3,50}$/.test(poCode)) {
             poLookupInput.focus();
             return setStatus("Nhập mã PO hợp lệ trước khi lấy dữ liệu.", "error");
           }
+          const fromSite = site, info = SITES[fromSite]; // nguồn lúc bấm; nút nguồn bị khoá trong lúc đọc
           fetchPoButton.disabled = true;
+          lockSite(true);
           fetchPoButton.dataset.busy = "true";
           fetchPoButton.querySelector(".src-read__t").textContent = "Đang đọc…";
-          setStatus(`Đang lấy PO ${poCode} từ Inside…`);
+          setStatus(`Đang lấy PO ${poCode} từ ${info.label}…`);
           try {
             // Luôn hỏi lại trước khi lấy PO: sau khi extension Reload/cập nhật, cầu nối trong tab này mồ côi nhưng huy hiệu cũ vẫn xanh.
             const wasReady = connectorReady;
-            await callInsideConnector("PING", {}, 1800).catch(() => { throw new Error(wasReady ? "Tiện ích vừa được cập nhật — tải lại trang (F5)" : "Không tìm thấy tiện ích kết nối Inside"); });
+            const ping = await callInsideConnector("PING", {}, 1800).catch(error => {
+              const reason = String(error?.message || error);
+              throw new Error(/tải lại trang/i.test(reason) ? reason : wasReady ? "Tiện ích vừa được cập nhật — tải lại trang (F5)" : "Không tìm thấy tiện ích kết nối Inside");
+            });
             setConnectorState("ready", "Tiện ích đã kết nối");
-            const po = await callInsideConnector("GET_PO", { poCode });
-            applyPoData({ ...po, vendor: stripVendorContact(po.vendor) }, "Inside");
+            if (fromSite === "garment" && !versionAtLeast(ping?.version, GARMENT_MIN_EXT)) {
+              throw new Error(`Extension${/^\d+(\.\d+){2}$/.test(String(ping?.version)) ? ` v${ping.version}` : ""} cần ≥ ${GARMENT_MIN_EXT} để đọc ${info.label}; Reload Extension rồi tải lại trang`);
+            }
+            const po = await callInsideConnector("GET_PO", { poCode, site: fromSite });
+            // Garment bắt buộc po.site khớp; Mastige chấp nhận Extension cũ chưa trả site.
+            if (po?.site === undefined ? fromSite !== "mastige" : po.site !== fromSite) throw new Error(`PO trả về không thuộc ${info.label}; Reload Extension rồi tải lại trang`);
+            applyPoData({ ...po, vendor: stripVendorContact(po.vendor) }, info.label, fromSite);
           } catch (error) {
             const message = String(error?.message || error);
             if (/tải lại trang/i.test(message)) setConnectorState("error", "Tải lại trang");
@@ -4261,6 +4317,7 @@ Error generating stack: `+y.message+`
             setStatus(`${message}. Bạn vẫn có thể chọn file PO bên dưới.`, "error");
           } finally {
             fetchPoButton.disabled = false;
+            lockSite(false);
             fetchPoButton.dataset.busy = "false";
             fetchPoButton.querySelector(".src-read__t").textContent = "Đọc Inside";
           }
@@ -4291,6 +4348,8 @@ Error generating stack: `+y.message+`
         fileInput.addEventListener("change", async () => {
           const file = fileInput.files && fileInput.files[0];
           if (!file) return;
+          const fromSite = site; // file không mang thông tin nguồn: theo nút đang chọn lúc chọn file; nút nguồn khoá trong lúc đọc
+          lockSite(true);
           setStatus(`Đang đọc ${file.name}…`);
           try {
             const bytes = new Uint8Array(await file.arrayBuffer());
@@ -4298,11 +4357,12 @@ Error generating stack: `+y.message+`
             if (bytes[0] === 0x50 && bytes[1] === 0x4b) rows = await readXlsxRows(bytes);
             else rows = readXlsRows(bytes);
             const po = parsePo(rows);
-            applyPoData({ poCode: po.invoice, rcvdDate: po.rcvdDate, vendor: po.vendor, items: po.items }, "file");
+            applyPoData({ poCode: po.invoice, rcvdDate: po.rcvdDate, vendor: po.vendor, items: po.items }, `file · ${SITES[fromSite].short}`, fromSite);
           } catch (error) {
             setStatus(`Không đọc được file: ${String(error?.message || error)}`, "error");
           } finally {
             fileInput.value = "";
+            lockSite(false);
           }
         });
 
@@ -4394,7 +4454,7 @@ Error generating stack: `+y.message+`
             const reportSkuOf = item => (item.normals?.length ? item.normals : [String(item.sku ?? "").trim()]).filter(Boolean).join("\n");
             const reportNameOf = item => item.names?.length && item.name === item.names.join(" + ") ? item.names.join("\n") : item.name; // Combo 2 Normal: mỗi tên một dòng
             const noteOf = item => comboNote(item) || null;
-            setCell("C5", "MASTIGE");
+            setCell("C5", SITES[loadedSite].buyer || null);
             setCell("C6", null);
             setCell("C7", null);
             writeText("C8", fields.po.value);

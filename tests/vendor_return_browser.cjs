@@ -97,7 +97,7 @@ const mockExtension = () => addEventListener("message", event => {
     const send = () => reply({ page: 1, size: 500, total: window.__extDrift ? 5 : 4, totalPages: 1, rows, ids, rowIds: ids, codes: rows.map(x => x.group_uid_code) });
     return window.__extSlow ? setTimeout(send, window.__extSlow) : send();   // __extSlow: giữ Đối chiếu đang chạy để kiểm cờ bận chung
   }
-  return reply({ version: "0.10.10" });
+  return reply({ version: "0.11.0" });
 });
 const open = async (browser, { width = 1280, admin = false, fastTimeout = false } = {}) => {
   const context = await browser.newContext({ viewport: { width, height: 900 }, isMobile: width < 800, hasTouch: width < 800 });

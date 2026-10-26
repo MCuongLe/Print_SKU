@@ -246,12 +246,17 @@ Mất mạng hoặc hết giờ chờ lúc xoá thì màn báo "Chưa rõ kết 
 ## KIỂM TRA ĐẦU VÀO (`#inspection`)
 
 - Dùng để: biên bản kiểm phụ liệu nhận theo PO (AQL) và in tem Phụ liệu có PO + ngày nhận.
-- Ai dùng: QC kho · máy tính (Đọc Inside cần Extension).
+- Ai dùng: QC kho · máy tính (Đọc Inside cần Extension; nguồn GARMENT cần Extension ≥ 0.11.0).
 - Màn: `#ins-screen`, `inspection-script`, `ins-print-style` / `ins-print-script`.
-- Dữ liệu: Extension đọc PO trên Inside; `sku_combo_lookup`; `print_enqueue` (tem SKU v2).
-- Test: `inspection_print_browser`, `inspection_normal_sku_browser`, `inspection_vendor_browser`, `inspection_export_xlsx`, `inspection_name_parser`, `inside_po_connector`, `print_sku_po_sql`.
+- Dữ liệu: Extension đọc PO trên Inside Mastige hoặc Inside Garment; `sku_combo_lookup`; `print_enqueue` (tem SKU v2).
+- Test: `inspection_print_browser`, `inspection_normal_sku_browser`, `inspection_vendor_browser`, `inspection_garment_browser`, `inspection_export_xlsx`, `inspection_name_parser`, `inside_po_connector`, `print_sku_po_sql`.
 
 Lấy PO bằng **Đọc Inside** (tab Inside đã đăng nhập, Extension chỉ đọc) hoặc nhập `.xls` / `.xlsx`. Màn hiện SKU Normal; số lượng và đơn vị giữ theo PO; NCC là pháp nhân trên PO; Rcvd date là ngày LastModified của PO; số lượng kiểm theo AQL 0.4; xuất biên bản theo template.
+
+**Nguồn PO**: nút **MTG | GARMENT** cạnh ô Mã PO chọn Inside Mastige hoặc Inside Garment (nhớ theo máy, khoá trong lúc đang đọc).
+MTG nhận PO kho `WH - MATERIAL - MTG`; GARMENT nhận PO kho `WH - MATERIAL - GARMENT` và chỉ khi Extension ≥ 0.11.0 trả đúng `site` (Extension cũ bị chặn trước khi hỏi).
+Buyer của biên bản theo nguồn của PO đã nạp: MASTIGE cho PO MTG, để trống cho PO Garment (QC tự điền).
+Nhập Excel (file không ghi công ty): Buyer theo nút đang chọn lúc chọn file; trạng thái ghi `file · MTG` hoặc `file · GARMENT`; nút nguồn khoá trong lúc đọc Inside hoặc file.
 
 **In tem**: mỗi SKU Normal một dòng (Combo đổi sang Normal, SKU ngừng bị bỏ), mặc định 1 tem, ô số lượng từng dòng (trống thì không in); PO = ô P/O, ngày nhận = Rcvd date. Lỗi khi gửi thì **Gửi lại** dùng cùng nonce. Cần agent khai `sku:v2` hoặc `sku:v3`.
 

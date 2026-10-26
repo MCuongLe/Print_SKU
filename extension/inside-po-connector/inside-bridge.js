@@ -30,15 +30,22 @@
   // 0.10.7: reason cho đồng bộ tự động (session = hết phiên → bỏ qua; network → lỗi), xem wms-bridge.js.
   const withReason = (error, reason) => { error.reason = reason; return error; };
 
+  // 0.11.0: hai Inside cùng phần mềm, khác công ty; site nhận theo tên miền của tab (lạ → "", mọi yêu cầu đều SITE_MISMATCH).
+  const SITE_BY_HOST = { "inside.mastige.vn": "mastige", "garment.inshasaki.com": "garment" };
+  const SITE = Object.hasOwn(SITE_BY_HOST, location.hostname) ? SITE_BY_HOST[location.hostname] : "";
+  const NAME = SITE === "garment" ? "Inside Garment" : "Inside";
+  // Ô NCC của Inside Garment có dòng "- <tên>" (không có phần trước dấu gạch); bỏ "- " đầu, dạng "<tên> - <liên hệ>" giữ nguyên.
+  const cleanVendor = value => clean(value).replace(/^-\s+/, "");
+
   async function fetchDocument(url) {
     let response;
     try { response = await fetch(url, { credentials: "include" }); }
-    catch (error) { throw withReason(new Error(`Không kết nối được Inside (${clean(error?.message || error)})`), "network"); }
-    if (!response.ok) throw withReason(new Error(`Inside trả mã ${response.status}`), response.status === 401 ? "session" : "network");
+    catch (error) { throw withReason(new Error(`Không kết nối được ${NAME} (${clean(error?.message || error)})`), "network"); }
+    if (!response.ok) throw withReason(new Error(`${NAME} trả mã ${response.status}`), response.status === 401 ? "session" : "network");
     const html = await response.text();
     const doc = new DOMParser().parseFromString(html, "text/html");
     const loginForm = doc.querySelector('input[type="password"], form[action*="login"], #login-form');
-    if (loginForm || /login|sign in/i.test(doc.title || "")) throw withReason(new Error("Phiên Inside đã hết hạn; hãy đăng nhập lại"), "session");
+    if (loginForm || /login|sign in/i.test(doc.title || "")) throw withReason(new Error(`Phiên ${NAME} đã hết hạn; hãy đăng nhập lại`), "session");
     return doc;
   }
 
@@ -291,7 +298,8 @@
     return {
       poId: editLink.href.match(/\/purchase\/order\/(\d+)\/edit/)?.[1] || "",
       poCode,
-      vendor: text(cells[2]),
+      site: SITE,
+      vendor: cleanVendor(text(cells[2])),
       warehouse,
       deliveryDate: normalizeDate(detailDoc.querySelector('input[name="delivery_date"]')?.value || text(cells[5])),
       // Cột LastModified của danh sách PO ("26-10-15|14:35"); trang chi tiết không có ô này. Rcvd date của biên bản lấy từ đây.
@@ -304,10 +312,21 @@
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (sender.id !== chrome.runtime.id || !["GET_PO", "GET_SKU_SYNC_DATA"].includes(message?.type)) return false;
     if (message.type === "GET_SKU_SYNC_DATA") {
+      // Đồng bộ SKU chỉ đọc Inside Mastige: nhóm hàng / Combo của Garment không được vào danh mục.
+      if (SITE !== "mastige") {
+        sendResponse({ ok: false, error: { code: "SKU_SYNC_SITE_FORBIDDEN", message: "Đồng bộ SKU chỉ đọc Inside Mastige" } });
+        return false;
+      }
       getSkuSyncData(message.payload || {})
         .then(data => sendResponse({ ok: true, data }))
         .catch(error => sendResponse({ ok: false, error: { code: "SKU_SYNC_READ_FAILED", message: clean(error?.message || error), ...(error?.reason ? { reason: error.reason } : {}) } }));
       return true;
+    }
+    // Thiếu site = mastige (web cũ). Tab không khớp site được hỏi thì không đọc gì (không đọc nhầm PO trùng mã của công ty khác).
+    const wantedSite = message.payload?.site === undefined ? "mastige" : message.payload.site;
+    if (wantedSite !== SITE) {
+      sendResponse({ ok: false, error: { code: "SITE_MISMATCH", message: "Tab Inside đang mở không khớp nguồn PO được yêu cầu" } });
+      return false;
     }
     const poCode = clean(message.payload?.poCode);
     if (!/^[A-Za-z0-9._/-]{3,50}$/.test(poCode)) {

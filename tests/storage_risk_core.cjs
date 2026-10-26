@@ -135,7 +135,7 @@ async function runWeb(opts = {}) {
     if (opts.rpcFail?.[name]) throw new Error(opts.rpcFail[name]);
     return rpcResult(name, args);
   };
-  const ext = (type, payload) => (type === "PING_WMS" ? Promise.resolve({ version: "0.10.10" }) : wms.send(type, payload));
+  const ext = (type, payload) => (type === "PING_WMS" ? Promise.resolve({ version: "0.11.0" }) : wms.send(type, payload));
   const num = v => Number(v || 0).toLocaleString("vi-VN");
   const audit = vm.runInContext(`const DAY=86400000;const state={busy:false,admin:true};
     ${WEB_AUDIT}; run`, vm.createContext({

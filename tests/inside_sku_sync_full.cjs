@@ -54,7 +54,7 @@ function runFull({ total = 1300, moveAt = 1250, mutateOnPage = 7, statusOf = () 
   };
   let listener;
   Object.assign(context, {
-    window: {}, location: { origin: "https://inside.example" }, fetch: fetchImpl,
+    window: {}, location: { hostname: "inside.mastige.vn", origin: "https://inside.mastige.vn" }, fetch: fetchImpl,
     chrome: { runtime: { id: "ext-id", onMessage: { addListener: fn => { listener = fn; } } } },
     DOMParser: class { parseFromString(html) { return html === "combo" ? comboDoc : productDoc(JSON.parse(html)); } },
   });

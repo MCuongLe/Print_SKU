@@ -148,6 +148,7 @@
 
 ### Đồng bộ từ Inside
 - Nguồn `SKU_Name` = Inside qua Extension + Edge `sku-sync`: gia tăng theo Modified và "Đối chiếu toàn bộ" (`mode=full`, cần `snapshot.full`); giảm ≥ 20% → 409 SAFETY_LIMIT; nhóm `missing` chỉ báo. (14/10 · N0657)
+- Đồng bộ SKU chỉ đọc Inside Mastige: bridge từ chối ở tab Garment (`SKU_SYNC_SITE_FORBIDDEN`), `findInsideTab()` không đối số = Mastige; SKU Garment không vào `SKU_Name`. (26/10 · N20261026-1514)
 - Đối chiếu toàn bộ mỗi ngày, không lọc Active ở nguồn; `#ss-strip-full` cảnh báo > 36 giờ. (14/10 · N0667)
 - Bỏ qua SKU MỚI đang ngừng (`skippedInactive`) ở mọi chế độ; SKU đã có chuyển ngừng vẫn cập nhật. (14/10 · N0665)
 - SKU rời 7 nhóm đồng bộ → tự lưu trữ `sku_archive` (`left_sync_scope`, RPC `sku_archive_missing`, chạy sau lượt completed, tự động held khi > 20 mã); chấp nhận race hiếm với đồng bộ Group UID. (17/10 · N0942, N0945)
@@ -246,6 +247,9 @@
 
 ### Kiểm tra đầu vào
 - `#inspection` (chỉ phụ liệu): SL kiểm theo AQL 0.4, xuất theo template nhúng (chỉ ghi giá trị ô); hiện SKU Normal, số lượng + đơn vị GIỮ theo PO; NCC = pháp nhân trên PO; Rcvd date = LastModified của PO. (06/10, 10/10, 17/10 · N0176, N0177, N0178, N0969, N0970)
+- PO Garment (Extension 0.11.0): `GET_PO` + `payload.site` (mastige | garment, thiếu = mastige) đọc `garment.inshasaki.com` (cùng phần mềm Inside, cookie) và trả `site`; bridge từ chối khi site không khớp. (26/10 · N20261026-1514)
+- PO Garment ở web (KIỂM TRA ĐẦU VÀO): nút nguồn MTG | GARMENT (nhớ theo máy), kho theo nguồn (`WH - MATERIAL - MTG` / `WH - MATERIAL - GARMENT`), Garment chỉ nhận khi Extension ≥ 0.11.0 và `po.site` khớp (MTG chấp nhận Extension cũ), Buyer biên bản MASTIGE cho PO MTG và để trống cho PO Garment (chờ tên Buyer); tem dùng nguyên luồng `sku:v2/v3`, `SKU_Name` dùng chung. (26/10 · N20261026-1602)
+- PO Garment, nhập Excel (file không có thông tin nguồn): Buyer theo nút đang chọn lúc chọn file, trạng thái ghi `file · MTG` / `file · GARMENT`; nút nguồn khoá trong lúc đọc Inside hoặc file (bộ đếm); không mở rộng nhãn "Inside Mastige" ra Options / `TAB_NAME.sku` / Admin SKU; giữ hai câu trợ giúp Buyer theo nguồn. (26/10 · N20261026-1711)
 
 ### Đối chiếu ADJ
 - ADJ = dòng `Action=Cut` của Group UID History, chỉ ghép Cut có giờ ≥ giờ quét app; chuẩn số lượng `computeCutQty`; có trạng thái Đã xử lý (tick cho UID lệch); "Tick giúp" chỉ dòng Quên tick; xem = anon, nạp = Admin. (05/10, 10/10 · N0344, N0345, N0346, N0021)
@@ -262,7 +266,7 @@
 - Thêm Đối chiếu ADJ và Rủi ro lưu trữ tự động mỗi 2 giờ 07:00–19:30 VN (`sync_auto_v2`, giãn cách = nhịp − 10 phút). (22/10 · N1140)
 - Cảnh báo khi tự động ngừng > 70 phút (dấu "!" icon, thẻ đỏ Options, ô Tự động đỏ, mốc giờ đỏ); ngừng buổi tối = máy tắt sau giờ làm, không phải lỗi. (22–23/10 · N1140, N1178)
 - Lượt Rủi ro lưu trữ chỉ "bỏ qua" khi mọi bước lỗi là phiên/thiếu tab và chưa lưu gì; nút Cập nhật cho lượt held luôn "chạy lại"; "Failed to fetch" → báo WMS ngắt kết nối, tải lại tab WMS. (16–22/10 · N1146, N0942, N0944, N0905)
-- Extension trong repo 0.10.10 (cổng bản, chưa Reload); máy CUONG-PC đang chạy 0.10.9 (Pending = ngừng, Reload 26/10); từ 0.10.7: ghim tab cả lượt, timeout edge/rpc 60 s. (22–26/10 · N1133, N1149, N1196, N20261026-0837, N20261026-1102)
+- Extension trong repo 0.11.0 (gồm cổng bản 0.10.10 + PO Garment, chưa Reload); máy CUONG-PC đang chạy 0.10.9 (Pending = ngừng, Reload 26/10); từ 0.10.7: ghim tab cả lượt, timeout edge/rpc 60 s. (22–26/10 · N1133, N1149, N1196, N20261026-0837, N20261026-1102)
 - Cổng bản Extension (từ 0.10.10): Extension và web gửi `extVersion` ở mọi lệnh Edge; `sku-sync` / `group-uid-sync` ghi nhận máy (`sync_auto_devices`, khoá `holder`) rồi trả 409 `EXTENSION_OUTDATED` ở `lease` (4 loại), `preview` (SKU), `prepare` (Group UID) khi `sync_auto_settings.min_extension[loại]` có mà bản thấp hơn hoặc chưa khai báo; lượt tay cũng bị chặn. (26/10 · N20261026-1102)
 - Cổng bản không chặn `apply`, `ingest`, `release`, `history`, `detail`, `cancel`, `auto-config` (Extension phải đọc được mức); mức rỗng = không chặn gì; đọc `sync_auto_settings` lỗi → 500, không cho qua; so bản theo từng đoạn số, `extVersion` kiểm chặt dạng `x.y.z`. (26/10 · N20261026-1102)
 - Hai bước: ghi nhận (mức rỗng), rồi nâng bằng SQL tay một số chung `0.10.10` khi bảng "Máy đồng bộ" cho thấy mọi máy thấy trong 7 ngày đã khai báo, rồi một lượt toàn bộ SKU và Group UID bằng máy bản mới; rút lui `min_extension = '{}'`. Edge không cho đổi mức; CHECK ở DB từ chối giá trị sai dạng và khoá lạ. (26/10 · N20261026-1102)
@@ -418,7 +422,7 @@ Mục này thắng mọi ghi chú "CHƯA LÊN" trong nhật ký. Kiểm lại kh
 - `Máy kho 02`: đã tạo trong `print_agents` (khai `sku:v1`, `group_uid:v1`, `location:*`) nhưng chưa từng kết nối — chưa cài agent.
 - `release_ledger_v1` (bảng `release_ledger`) và `scripts/release.py`: đã viết + test, CHƯA commit; sổ chưa tạo (`release.py --init` do người dùng chạy, cần commit và cây làm việc sạch). (N20261026-1548)
 - Extension 0.10.9 trên máy Quynh-pc (nếu còn đồng bộ): chưa rõ đã Reload chưa; chưa có lượt tự động của máy này từ 24/10 12:27 (N20261026-0837). Commit `166b6ff` (0.10.9) chưa push.
-- Extension 0.10.10 và bảng Máy đồng bộ trên web: CHƯA Reload / push. Còn lại: Reload 0.10.10 mọi máy Admin (tải lại tab Inside / WMS) → push web. `min_extension` còn `{}` (không chặn gì). (N20261026-1102)
+- Extension 0.11.0 (gồm cổng bản 0.10.10 + PO Garment) và bảng Máy đồng bộ trên web: CHƯA Reload / push. Còn lại: Reload 0.11.0 mọi máy Admin (tải lại tab Inside / Garment / WMS) → push web. `min_extension` còn `{}` (không chặn gì). (N20261026-1102)
 
 **Đã lên, CHƯA thử thật**
 - Cổng bản trên Edge thật (`sku-sync` 13, `group-uid-sync` 12, deploy 26/10 14:56–14:57): lúc kiểm 14:58 chưa lượt nào gọi bản mới (log Edge sau 14:56 trống, `sync_auto_devices` 0 dòng); chờ lượt tự động kế của CUONG-PC (Extension 0.10.9 chưa khai báo bản → dòng `ext_version` null). (N20261026-1102)

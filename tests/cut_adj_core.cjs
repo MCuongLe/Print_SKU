@@ -75,7 +75,7 @@ async function runWeb(source, opts, cov) {
     AbortSignal, crypto: globalThis.crypto, TextEncoder, Date: FixedDate, console,
     tell: (text, tone) => told.push({ text, tone }), fmt: value => String(value), syncTick: () => {}, load: async () => {},
     adminToken: async () => "test-admin-token",
-    extensionRequest: async (type, payload) => (type === "PING_WMS" ? { version: "0.10.10" } : wms.send(type, payload)),
+    extensionRequest: async (type, payload) => (type === "PING_WMS" ? { version: "0.11.0" } : wms.send(type, payload)),
     __cov: cov,
   });
   const fn = vm.runInContext(`let uploading=false,pendingWms=false,cov=__cov;

@@ -6,7 +6,11 @@ try { chrome.storage.local.setAccessLevel?.({ accessLevel: "TRUSTED_CONTEXTS" })
 importScripts("supabase-config.js", "supabase-session.js", "group-uid-snapshot-core.js", "cut-adj-core.js", "storage-risk-core.js", "auto-sync.js");
 
 const APP_URL_PATTERN = /^(?:http:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?\/|https:\/\/mcuongle\.github\.io\/Print_SKU(?:\/|$))/i;
-const INSIDE_URL_PATTERN = /^https:\/\/inside\.mastige\.vn\//i;
+// 0.11.0: hai Inside cùng phần mềm, khác công ty. PO đọc theo site (không nói thì mastige); đồng bộ SKU luôn Inside Mastige.
+const INSIDE_SITES = {
+  mastige: { query: "https://inside.mastige.vn/*", pattern: /^https:\/\/inside\.mastige\.vn\//i, label: "Inside Mastige" },
+  garment: { query: "https://garment.inshasaki.com/*", pattern: /^https:\/\/garment\.inshasaki\.com\//i, label: "Inside Garment" },
+};
 const WMS_URL_PATTERN = /^https:\/\/wms\.inshasaki\.com\//i;
 const HCM_URL_PATTERN = /^https:\/\/apps-mastige\.inshasaki\.com\/apps\/hasaki-construction-management(?:[/?#]|$)/i;
 const WMS_READ_TYPES = ["GET_GROUP_UID_PAGE", "GET_GROUP_UID_HISTORY_PAGE", "GET_GROUP_UID_MOVES_PAGE", "GET_GROUP_UID_NEW_PAGE", "GET_PACKING_LIST_PAGE", "GET_PO_GROUP_UID_PAGE", "GET_PO_ASN_PAGE", "GET_INTERNAL_TRANSFER", "GET_SKU_COUNT_WAREHOUSES", "GET_SKU_COUNT_APPROVED_PAGE", "GET_SKU_COUNT_INVENTORY_PAGE", "GET_STOCK_IMPORT_EXPORT_PAGE"];
@@ -22,15 +26,19 @@ function pickTab(tabs, pattern) {
     .sort((a, b) => Number(b.status === "complete") - Number(a.status === "complete") || Number(b.lastAccessed || 0) - Number(a.lastAccessed || 0))[0] || null;
 }
 
-async function findInsideTab() {
-  return pickTab(await chrome.tabs.query({ url: "https://inside.mastige.vn/*" }), INSIDE_URL_PATTERN);
+// Không đối số = Inside Mastige (đồng bộ tự động và đồng bộ SKU gọi như vậy).
+async function findInsideTab(site = "mastige") {
+  const info = typeof site === "string" && Object.hasOwn(INSIDE_SITES, site) ? INSIDE_SITES[site] : null;
+  return info ? pickTab(await chrome.tabs.query({ url: info.query }), info.pattern) : null;
 }
 
+// Tab mở trước khi Reload Extension chưa có bridge: bơm lại. Tab Garment chỉ nhận inside-bridge.js (bộ đọc SKU chỉ ở Inside Mastige).
 async function sendToInside(tab, message) {
   try {
     return await chrome.tabs.sendMessage(tab.id, message);
   } catch {
-    await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["sku-sync-core.js", "inside-bridge.js"] });
+    const files = INSIDE_SITES.garment.pattern.test(tab.url || "") ? ["inside-bridge.js"] : ["sku-sync-core.js", "inside-bridge.js"];
+    await chrome.scripting.executeScript({ target: { tabId: tab.id }, files });
     return chrome.tabs.sendMessage(tab.id, message);
   }
 }
@@ -163,18 +171,24 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   (async () => {
-    const insideTab = await findInsideTab();
+    // GET_SKU_SYNC_DATA luôn Inside Mastige và chỉ chuyển full / cutoff (bridge chỉ đọc hai khoá này): site và khoá lạ bị bỏ; SKU của Garment không được vào danh mục.
+    const site = message.type === "GET_PO" && message.payload?.site !== undefined ? message.payload.site : "mastige";
+    if (typeof site !== "string" || !Object.hasOwn(INSIDE_SITES, site)) return errorResponse("INVALID_SITE", "Nguồn PO không hợp lệ");
+    const insideTab = await findInsideTab(site);
     if (!insideTab) {
-      return errorResponse("INSIDE_TAB_MISSING", "Hãy mở một tab Inside và đăng nhập trước");
+      return errorResponse("INSIDE_TAB_MISSING", `Hãy mở một tab ${INSIDE_SITES[site].label} và đăng nhập trước`);
     }
     try {
       if (message.type === "GET_PO") {
         const poCode = String(message.payload?.poCode || "").trim();
         if (!/^[A-Za-z0-9._/-]{3,50}$/.test(poCode)) return errorResponse("INVALID_PO", "Mã PO không hợp lệ");
-        const result = await sendToInside(insideTab, { type: "GET_PO", payload: { poCode } });
+        const result = await sendToInside(insideTab, { type: "GET_PO", payload: { poCode, site } });
         return result?.ok ? result : errorResponse(result?.error?.code || "INSIDE_ERROR", result?.error?.message || "Inside không trả dữ liệu PO");
       }
-      const result = await sendToInside(insideTab, { type: "GET_SKU_SYNC_DATA", payload: message.payload || {} });
+      const syncPayload = {};
+      if (message.payload?.full === true) syncPayload.full = true;
+      if (message.payload?.cutoff !== undefined) syncPayload.cutoff = message.payload.cutoff;
+      const result = await sendToInside(insideTab, { type: "GET_SKU_SYNC_DATA", payload: syncPayload });
       return result?.ok ? result : errorResponse(result?.error?.code || "INSIDE_ERROR", result?.error?.message || "Inside không trả dữ liệu SKU");
     } catch {
       return errorResponse("INSIDE_BRIDGE_ERROR", "Không kết nối được tab Inside; hãy tải lại tab Inside rồi thử lại");
