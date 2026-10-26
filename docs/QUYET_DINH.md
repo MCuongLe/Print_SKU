@@ -379,13 +379,13 @@
 
 ---
 
-## Trạng thái lên thật (kiểm live_status.py + Supabase MCP chỉ đọc + git, 26/10/2026 15:00)
+## Trạng thái lên thật (kiểm live_status.py + git + trang công khai, chỉ đọc, 26/10/2026 18:02)
 
-Kiểm lại: `python scripts/live_status.py` (chỉ đọc). Chạy 26/10/2026 14:58: 89 tệp migration đủ đối tượng; Edge, agent, cron như dưới.
+Kiểm lại: `python scripts/live_status.py` (chỉ đọc). Chạy 26/10/2026 17:59 (trước push): 89 tệp migration đủ đối tượng, còn `release_ledger_v1.sql` thiếu bảng `release_ledger` (chưa chạy, phiên release); Edge, agent, cron như dưới.
 
 Mục này thắng mọi ghi chú "CHƯA LÊN" trong nhật ký. Kiểm lại khi thêm migration / Edge / Extension / agent; ghi ngày kiểm ở tiêu đề.
 
-**Web:** `origin/main` = `11ccb25` (GitHub Pages phục vụ bản này); `main` local = `b4c522d` (cổng bản Extension 0.10.10), đi trước 2 commit (`166b6ff`, `b4c522d`) chưa push (26/10 14:56).
+**Web:** `origin/main` = `main` = `d6f0467` — đã push khoảng 18:00 26/10 (`11ccb25..d6f0467`: `166b6ff` Extension 0.10.9, `b4c522d` cổng bản 0.10.10 + bảng Máy đồng bộ, `43574e1` `release.py`, `d6f0467` PO Garment). GitHub Pages đã phục vụ: trang công khai có `ins-site-v1`, `#inspection` có công tắc MTG | GARMENT, không lỗi trang, không phản hồi 4xx (Playwright, N20261026-1802).
 
 **ĐÃ LÊN — migration (có đối tượng trên DB)**
 - `sku_missing_archive_v1` (SKU rời 7 nhóm tự lưu trữ).
@@ -414,18 +414,19 @@ Mục này thắng mọi ghi chú "CHƯA LÊN" trong nhật ký. Kiểm lại kh
 - `sku-vision` bản 5, deploy 21/10 11:31 — trước commit dff8e35 (11:40) nhưng nội dung đang chạy đã có thay đổi của commit đó (bỏ giới hạn theo máy, `DEVICE_DAILY … || null`).
 
 **ĐÃ LÊN — Extension / agent / cron**
-- Extension 0.10.9 (Pending = ngừng) đã Reload trên CUONG-PC: Options hiện v0.10.9, lượt SKU tự động 26/10 10:26 và lượt tay 10:53 hoàn tất (N20261026-0837). Lượt tự động xong cuối trong `sync_auto_leases`: 26/10 14:26 (group_uid, sku, cut_adj), `storage_risk` 12:30.
-- Agent `Máy kho 01` 0.10.2, khai `sku:v1/v2/v3`, `group_uid:v1`, `location:v1`, `location:name-optional`; máy in TSC PE200 READY; lần thấy cuối 24/10 16:30.
+- Extension 0.11.0 (gồm 0.10.9 Pending = ngừng + cổng bản 0.10.10 + PO Garment): người dùng báo đã Reload trên các máy và tải lại tab Inside / Garment / WMS (26/10, sau commit `d6f0467`). `min_extension` còn `{}` (không chặn gì). (N20261026-0837, N20261026-1102, N20261026-1514)
+- Máy đồng bộ: `live_status` 17:59: `sync_auto_devices` có `CUONG-PC` #ffjp khai báo v0.11.0, lượt xong cuối 17:31 cho cả bốn loại (cut_adj, group_uid, sku, storage_risk); chưa thấy máy khác trong bảng 14 ngày. (N20261026-1802)
+- Agent `Máy kho 01` 0.10.2, khai `sku:v1/v2/v3`, `group_uid:v1`, `location:v1`, `location:name-optional`; máy in TSC PE200 READY; lần thấy cuối 26/10 17:54 (live_status).
 - Cron (giờ UTC, VN = +7): `print-jobs-purge` 03:00, `sync-history-purge` 03:30, `print-assistant-purge` 03:50, `floor-access-purge` 03:55 mỗi ngày; `group-uid-canceled-purge` 03:15 và `sku-inactive-archive` 03:45 sáng thứ Hai; `uid-block-refresh-wms` mỗi 30 phút.
 
 **CHƯA LÊN**
 - `Máy kho 02`: đã tạo trong `print_agents` (khai `sku:v1`, `group_uid:v1`, `location:*`) nhưng chưa từng kết nối — chưa cài agent.
-- `release_ledger_v1` (bảng `release_ledger`) và `scripts/release.py`: đã viết + test, CHƯA commit; sổ chưa tạo (`release.py --init` do người dùng chạy, cần commit và cây làm việc sạch). (N20261026-1548)
-- Extension 0.10.9 trên máy Quynh-pc (nếu còn đồng bộ): chưa rõ đã Reload chưa; chưa có lượt tự động của máy này từ 24/10 12:27 (N20261026-0837). Commit `166b6ff` (0.10.9) chưa push.
-- Extension 0.11.0 (gồm cổng bản 0.10.10 + PO Garment) và bảng Máy đồng bộ trên web: CHƯA Reload / push. Còn lại: Reload 0.11.0 mọi máy Admin (tải lại tab Inside / Garment / WMS) → push web. `min_extension` còn `{}` (không chặn gì). (N20261026-1102)
+- `release_ledger_v1` (bảng `release_ledger`) và `scripts/release.py`: đã commit `43574e1` và push; sổ CHƯA tạo (`release.py --init` do người dùng chạy tại terminal thật); web không phụ thuộc bảng này. (N20261026-1548)
+- Extension trên máy Quynh-pc (nếu còn đồng bộ): chưa rõ đã Reload chưa; không có trong `sync_auto_devices` 14 ngày, chưa có lượt tự động của máy này từ 24/10 12:27 (N20261026-0837).
 
 **Đã lên, CHƯA thử thật**
-- Cổng bản trên Edge thật (`sku-sync` 13, `group-uid-sync` 12, deploy 26/10 14:56–14:57): lúc kiểm 14:58 chưa lượt nào gọi bản mới (log Edge sau 14:56 trống, `sync_auto_devices` 0 dòng); chờ lượt tự động kế của CUONG-PC (Extension 0.10.9 chưa khai báo bản → dòng `ext_version` null). (N20261026-1102)
+- Cổng bản trên Edge thật (`sku-sync` 13, `group-uid-sync` 12, deploy 26/10 14:56–14:57): đã chạy với Extension khai báo bản (`sync_auto_devices` có CUONG-PC v0.11.0, lượt 17:31); CHƯA thử nhánh 409 `EXTENSION_OUTDATED` vì `min_extension` = `{}`, và chưa thử máy dưới mức. (N20261026-1102)
+- PO Garment: đọc PO thật qua web + Extension 0.11.0 (nút GARMENT), in tem Phụ liệu thật PO Garment, mở biên bản Garment bằng Excel (Buyer để trống, chờ tên Buyer); chưa thử. (N20261026-1514, N20261026-1602, N20261026-1802)
 - Trả NCC: Admin nạp Excel thật, Đối chiếu thật, xoá đợt thật chưa thử — đừng xoá đợt thật chỉ để thử (234 dòng + 209 lượt quét, 26/10) (N20261026-0126).
 - Trợ lý in → Packing List cấp vải: dán / đính kèm UID bằng Admin → Tạo đợt / Tải PL; tệp Excel Group UID thật từ WMS (cột UID chữ hay số) (N1215).
 - Tem SKU v3: tem có số lượng (đã in thật v1/v3 ngày 23/10).
