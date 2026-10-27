@@ -431,7 +431,7 @@ Mục này thắng mọi ghi chú "CHƯA LÊN" trong nhật ký. Kiểm lại kh
 - `sku-vision` bản 5, deploy 21/10 11:31 — trước commit dff8e35 (11:40) nhưng nội dung đang chạy đã có thay đổi của commit đó (bỏ giới hạn theo máy, `DEVICE_DAILY … || null`).
 
 **ĐÃ LÊN — Extension / agent / cron**
-- Extension trong repo 0.12.2 (gồm cổng bản 0.10.10, PO Garment, nguồn phiếu Cut, pop-up nguồn Rủi ro lưu trữ, danh sách rỗng `{page,size}`): người dùng đã Reload 0.12.1 sáng 27/10 (CUONG-PC và quynh-pc đều khai 0.12.1 lúc 10:45–11:14); 0.12.2 CHƯA Reload. `min_extension` còn `{}` (không chặn gì). (N20261027-1140)
+- Extension trong repo 0.12.2 (gồm cổng bản 0.10.10, PO Garment, nguồn phiếu Cut, pop-up nguồn Rủi ro lưu trữ, danh sách rỗng `{page,size}`): người dùng đã Reload 0.12.2 trưa 27/10 (máy lead đo thật 12:33; CUONG-PC và quynh-pc còn khai 0.12.1 ở lượt tự động gần nhất, trước Reload). `min_extension` còn `{}` (không chặn gì). (N20261027-1140)
 - Máy đồng bộ: `live_status` 27/10 08:01: `sync_auto_devices` có `CUONG-PC` #ffjp khai v0.11.0, lượt cut_adj xong cuối 26/10 19:31 (trước migration và Reload 0.12.x; chưa có lượt nào với Extension mới); chưa thấy máy khác trong bảng 14 ngày.
 - Agent `Máy kho 01` 0.10.2, khai `sku:v1/v2/v3`, `group_uid:v1`, `location:v1`, `location:name-optional`; máy in TSC PE200 READY; lần thấy cuối 26/10 17:54 (live_status).
 - Cron (giờ UTC, VN = +7): `print-jobs-purge` 03:00, `sync-history-purge` 03:30, `print-assistant-purge` 03:50, `floor-access-purge` 03:55 mỗi ngày; `group-uid-canceled-purge` 03:15 và `sku-inactive-archive` 03:45 sáng thứ Hai; `uid-block-refresh-wms` mỗi 30 phút.
@@ -443,7 +443,7 @@ Mục này thắng mọi ghi chú "CHƯA LÊN" trong nhật ký. Kiểm lại kh
 
 **Đã lên, CHƯA thử thật**
 - Nguồn phiếu Cut + pop-up nguồn UID tạm đã chạy thật (đo 27/10 11:25, lượt tự động 11:13): Cut 351/1.025 có nguồn (226 ADJ + 125 IT; trong khoảng đọc từ 28/09 còn 341 chưa nguồn, 325 là một sự kiện 10/10 gồm 4 SKU × Cut đúng 1.000, ngoài sự kiện đó ≈ 96 %); UID tạm 5/5 có phiếu gốc (mã hiện là 1004… của dòng xuất, chưa phải số phiếu IT 1007… / ADJ 1008…). (N20261027-1140)
-- Hàng chưa lên kệ: mới 1/35 cặp có nguồn vì `{page,size}` rỗng (đã sửa ở Extension 0.12.2, chờ Reload); sau Reload và một lượt Rủi ro lưu trữ cần đo lại số cặp có `sources`. (N20261027-1140)
+- Hàng chưa lên kệ: 38/38 cặp có nguồn sau khi sửa `{page,size}` rỗng ở Extension 0.12.2 (trước 1/35; lượt tay 27/10 12:33, 15 cặp có dòng chuyển vị trí, 34 cặp có phiếu nhập, 9 cặp tra được mã Group UID, pop-up mở thử đạt). (N20261027-1235)
 - Cổng bản trên Edge thật (`sku-sync` 13, `group-uid-sync` 12, deploy 26/10 14:56–14:57): đã chạy với Extension khai báo bản (`sync_auto_devices` có CUONG-PC v0.11.0, lượt 17:31); CHƯA thử nhánh 409 `EXTENSION_OUTDATED` vì `min_extension` = `{}`, và chưa thử máy dưới mức. (N20261026-1102)
 - PO Garment: đọc PO thật qua web + Extension 0.11.0 (nút GARMENT), in tem Phụ liệu thật PO Garment, mở biên bản Garment bằng Excel (Buyer để trống, chờ tên Buyer); chưa thử. (N20261026-1514, N20261026-1602, N20261026-1802)
 - Trả NCC: Admin nạp Excel thật, Đối chiếu thật, xoá đợt thật chưa thử — đừng xoá đợt thật chỉ để thử (234 dòng + 209 lượt quét, 26/10) (N20261026-0126).
