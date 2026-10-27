@@ -38,6 +38,12 @@ Phiên bản 0.6.1 đọc đầy đủ Combo nhiều thành phần, Group UID hi
 
 Phiên bản 0.7.1 thêm lệnh chỉ đọc `GET_GROUP_UID_MOVES_PAGE` cho ô LỊCH SỬ GROUP UID: lịch sử `Transfer location` của mọi kho tài khoản được xem, 500 dòng/trang (WMS không lọc endpoint này theo `company-ids` nên chỉ cần một lượt đọc). Sau khi cập nhật extension phải Reload trong `chrome://extensions` và tải lại trang Print SKU.
 
+Phiên bản 0.12.2 (27/10/2026): WMS trả HTTP 200 chỉ `{page, size}` (không `count`, không `records`) khi danh sách rỗng; đo thật ở `transfer-bins` (cặp SKU × vị trí không có dòng chuyển) và `group-uid-infos` (khoảng ngày không có thay đổi).
+- `getJson` (`wms-bridge.js`) nhận tham số `{ emptyPage: true }` và chỉ hai lệnh đó dùng: `GET_TRANSFER_BIN_PAGE` và `GET_GROUP_UID_PAGE`; dạng này được coi là danh sách rỗng như 204.
+- Trước đó Hàng chưa lên kệ chỉ đọc nguồn 1/35 cặp (dừng ở cặp rỗng đầu tiên) và 4 lượt đồng bộ Group UID gia tăng tự động (24 và 26/10) báo Lỗi "WMS đổi dạng dữ liệu Group UID" khi khoảng đọc không có thay đổi.
+- Tồn kho (`bins/count/v3`) cũng trả `{page, size}` khi kho / công ty không khớp, nên Kiểm kê, kết quả kiểm kê và Import/Export KHÔNG được nới và vẫn báo "WMS đổi dạng"; dạng lạ khác (thừa khoá, `count` không kèm danh sách) không đổi.
+- Phân loại thay đổi: tương thích ngược với web và Extension cũ (bản cũ chỉ báo lỗi "đổi dạng", không ghi sai dữ liệu); không nâng `min_extension`. Cần Reload Extension ở mọi máy đồng bộ (CUONG-PC, quynh-pc) rồi tải lại tab WMS; không migration, không deploy Edge, không đổi web.
+
 Phiên bản 0.12.1 so với 0.12.0 (đã Reload 26/10): bước nguồn Cut kiểm đủ dòng Import/Export và chỉ ghép phiếu trước mốc đọc 2 phút; lỗi tạm thời ở chi tiết phiếu ADJ không còn ghi nguồn thiếu PO; bước nguồn Rủi ro lưu trữ báo "nguồn x/y cặp" và web kiểm phiên bản Extension trước. Máy đang chạy 0.12.0 cần Reload lại trước lượt tự động kế tiếp (07:00).
 
 Phiên bản 0.12.1 (26/10/2026), phần Cắt UID: nguồn phiếu ADJ / IT cho từng lần Cut (web chờ Extension ≥ 0.12.0). Cần trước: `supabase/cut_source_v1.sql`, rồi Reload Extension và tải lại tab WMS.

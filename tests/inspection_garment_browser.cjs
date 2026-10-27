@@ -32,7 +32,7 @@ const TEXT = { garmentHelp: 'Buyer để trống', mtgHelp: 'Buyer mặc định
     page.on('pageerror', e => errors.push(e.message));
     // Extension giả: PING trả window.__ext.version; GET_PO trả POS[mã] bất kể site (để kiểm phía web), ghi lại mọi yêu cầu.
     await page.addInitScript(cfg => {
-      window.__ext = { version: '0.12.1', delay: 0, requests: [], pos: cfg.pos };
+      window.__ext = { version: '0.12.2', delay: 0, requests: [], pos: cfg.pos };
       window.addEventListener('message', event => {
         const request = event.data;
         if (event.source !== window || !request || request.source !== 'PRINT_SKU_APP') return;

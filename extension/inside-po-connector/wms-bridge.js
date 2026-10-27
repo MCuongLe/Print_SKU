@@ -41,7 +41,7 @@
     return headers;
   }
 
-  async function getJson(url, deniedMessage, companyIds = "") {
+  async function getJson(url, deniedMessage, companyIds = "", { emptyPage = false } = {}) {
     // Lấy phiên trước vòng thử lại: hết phiên phải báo "đăng nhập lại" ngay, không bị coi là lỗi mạng rồi thử lại.
     const headers = requestHeaders(companyIds);
     for (let attempt = 0; attempt < 3; attempt += 1) {
@@ -60,10 +60,20 @@
       }
       // status: để người gọi phân biệt "không có" (404) với lỗi tạm (5xx, 429 sau thử lại) — vd. chi tiết ADJ của readDocInfo.
       if (!response.ok) throw Object.assign(withReason(new Error(`WMS trả mã ${response.status}`), "network"), { status: response.status });
-      return response.json();
+      const body = await response.json();
+      return emptyPage ? emptyPageAsList(body) : body;
     }
     throw withReason(new Error("WMS tạm ngắt kết nối; hãy thử lại"), "network");
   }
+
+  // 27/10/2026: danh sách rỗng WMS có khi trả HTTP 200 chỉ {page, size} (không count, không records) thay vì 204 — đo ở transfer-bins và
+  // group-uid-infos (khoảng ngày không có thay đổi). Chỉ bật `emptyPage` cho hai nơi đó: tồn kho (bins/count/v3) cũng trả {page, size} khi
+  // kho / công ty không khớp, nên ở đó dạng này vẫn phải báo "WMS đổi dạng" (chặn R8a, 0.10.7). Dạng lạ khác (thừa khoá, count không kèm danh sách) không đổi.
+  const emptyPageAsList = body => {
+    const keys = body && typeof body === "object" && !Array.isArray(body) ? Object.keys(body) : [];
+    if (keys.length !== 2 || !keys.includes("page") || !keys.includes("size") || !Number.isFinite(body.page) || !Number.isFinite(body.size)) return body;
+    return { count: 0, page: body.page, size: body.size, records: [] };
+  };
 
   async function readPage(payload) {
     if (!core) throw new Error("Extension chưa tải bộ đọc Group UID; hãy Reload extension");
@@ -75,7 +85,7 @@
     url.searchParams.set("size", String(size));
     if (payload?.from) url.searchParams.set("from_updated_at", String(new Date(payload.from).getTime()));
     if (payload?.to) url.searchParams.set("to_updated_at", String(new Date(payload.to).getTime()));
-    const normalized = core.normalizePage(await getJson(url, "Phiên WMS không còn quyền đọc Group UID; hãy đăng nhập lại"));
+    const normalized = core.normalizePage(await getJson(url, "Phiên WMS không còn quyền đọc Group UID; hãy đăng nhập lại", "", { emptyPage: true }));
     return {
       page, size, total: normalized.total,
       totalPages: Math.max(1, Math.ceil(normalized.total / size)),
@@ -363,7 +373,7 @@
     url.searchParams.set("keywords", sku);
     url.searchParams.set("page", String(page));
     url.searchParams.set("size", String(size));
-    const normalized = auditCore.normalizeTransferBinPage(await getJson(url, "Phiên WMS không còn quyền đọc lịch sử chuyển vị trí; hãy đăng nhập lại", companyId), { binIn, sku });
+    const normalized = auditCore.normalizeTransferBinPage(await getJson(url, "Phiên WMS không còn quyền đọc lịch sử chuyển vị trí; hãy đăng nhập lại", companyId, { emptyPage: true }), { binIn, sku });
     // Tra mã Group UID: gộp các mốc giờ gần nhau thành một khoảng, tối đa UID_LOOKUPS lần gọi.
     const need = normalized.rows.filter(row => row.uidId).map(row => wmsTime(row.at)).filter(Number.isFinite).sort((a, b) => b - a), windows = [];
     for (const time of need) {

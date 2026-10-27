@@ -377,5 +377,35 @@ const ROW = {
     assert.equal(result.ok, false, "WMS đổi khoá danh sách → lỗi, không coi là 0 dòng");
   }
 
+  // ---- 27/10/2026: WMS trả HTTP 200 {page, size} (không count, không records) khi danh sách rỗng — đo thật ở transfer-bins và group-uid-infos
+  // (khoảng ngày không có thay đổi). Trước đây bị coi là "WMS đổi dạng" → Hàng chưa lên kệ dừng ở cặp rỗng đầu tiên (1/35 cặp có nguồn), đồng bộ Group UID gia tăng báo Lỗi.
+  // Chỉ hai lệnh đó được nới; tồn kho cũng trả {page, size} khi kho / công ty không khớp nên Kiểm kê và Import/Export vẫn phải báo lỗi (R8a). ----
+  {
+    const EMPTY = { page: 1, size: 20 };
+    const BIN = "F0-A0-00-00-00-00", SKU = "900000051", from = "2026-10-01T00:00:00+07:00", to = "2026-10-02T00:00:00+07:00";
+    const bodyFetch = body => async () => reply(200, body);
+    const TRANSFER = ["GET_TRANSFER_BIN_PAGE", { warehouseId: 1177, binIn: BIN, sku: SKU }], GROUP = ["GET_GROUP_UID_PAGE", {}];
+    for (const [type, payload] of [TRANSFER, GROUP]) {
+      result = await ask(load({ fetchImpl: bodyFetch(EMPTY) }), type, payload);
+      assert.equal(result.ok, true, `${type}: {page,size} là danh sách rỗng, không phải lỗi · ${JSON.stringify(result.error || "")}`);
+      assert.deepEqual([result.data.rows.length, result.data.total], [0, 0], `${type}: 0 dòng`);
+      // Chỉ đúng dạng {page, size} số: khoá thừa, count (kể cả 0) không kèm danh sách, page / size chuỗi, thiếu khoá, thân rỗng / null / mảng vẫn là WMS đổi dạng
+      for (const drift of [{ page: 1, size: 20, items: [{ sku: SKU }] }, { page: 1, size: 20, count: 5 }, { page: 1, size: 20, count: 0 }, { page: "1", size: "20" }, { page: "x", size: 20 }, { page: 1 }, {}, null, []]) {
+        result = await ask(load({ fetchImpl: bodyFetch(drift) }), type, payload);
+        assert.equal(result.ok, false, `${type}: dạng lạ ${JSON.stringify(drift)} vẫn là lỗi`);
+      }
+    }
+    // Không nới ở nơi khác: tồn kho / kết quả kiểm kê / Import/Export nhận {page, size} vẫn báo "WMS đổi dạng"
+    for (const [type, payload] of [
+      ["GET_SKU_COUNT_INVENTORY_PAGE", { warehouseIds: [1177], companyId: 1002 }],
+      ["GET_SKU_COUNT_APPROVED_PAGE", { warehouseIds: [1177], companyId: 1002 }],
+      ["GET_STOCK_IMPORT_EXPORT_PAGE", { warehouseIds: [1151], from, to }],
+    ]) {
+      result = await ask(load({ fetchImpl: bodyFetch(EMPTY) }), type, payload);
+      assert.equal(result.ok, false, `${type}: {page,size} không được coi là danh sách rỗng`);
+      assert.match(result.error.message, /đổi dạng dữ liệu/, type);
+    }
+  }
+
   console.log("wms_bridge_reads: thử lại 429/5xx/lỗi mạng, 204, 401/403 và hết phiên cho Group UID, lịch sử Cắt, lịch sử chuyển vị trí, nhập xuất kho, đọc Group UID/ASN theo PO và số phiếu ADJ / IT (GET_WMS_DOC_INFO; chi tiết ADJ 404 / rỗng → po null, lỗi tạm 500 / mất mạng / thân hỏng → detailFailed, 401/403 → lỗi cả lệnh), Transfer Location History (lọc vị trí + SKU, tra mã Group UID) passed");
 })().catch(error => { console.error(error); process.exit(1); });

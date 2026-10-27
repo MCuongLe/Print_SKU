@@ -59,7 +59,7 @@ Từ 26/10 nút `#ss-dev-btn` / `#gu-dev-btn` mở pop-up "Máy đồng bộ" `#
 Rủi ro lưu trữ: ô Cập nhật lúc / Đọc lúc đỏ theo `window.PrintSkuAutoStale.storageRisk` (250 phút trong khung 07:00–19:30).
 KIỂM TRA ĐẦU VÀO (26/10): công tắc nguồn `#ins-site` MTG | GARMENT (`SITES`, khoá `ins-site-v1`); `GET_PO {poCode, site}`; Garment chỉ nhận khi PING ≥ 0.11.0 và `po.site` khớp; kho và Buyer (C5) theo nguồn của PO đã nạp (`loadedSite`); Excel theo nút đang chọn (`file · MTG|GARMENT`), nút nguồn khoá bằng bộ đếm `lockSite`; test `inspection_garment_browser`.
 
-## 3. Extension `extension/inside-po-connector` (manifest 0.12.1)
+## 3. Extension `extension/inside-po-connector` (manifest 0.12.2)
 - `app-bridge.js`: content script trên trang Print SKU; allow-list lệnh; `window.postMessage` ↔ `chrome.runtime.sendMessage`.
 - `background.js`: service worker; kiểm `APP_URL_PATTERN`; `WMS_READ_TYPES`; tìm tab Inside (`INSIDE_SITES` mastige | garment, `findInsideTab(site)`; đồng bộ SKU và đồng bộ tự động luôn Mastige) / WMS; nhánh `AUTO_*` cho trang Options; alarms `auto-sync` / `auto-keepalive`; `chrome.storage.local.setAccessLevel(TRUSTED_CONTEXTS)`.
 - `inside-bridge.js`: `GET_PO` (danh sách + trang chi tiết PO; trả `lastModified` = cột LastModified, `deliveryDate`, `items[{sku, orderedQty}]`), `GET_SKU_SYNC_DATA` ({full}|{cutoff}), đọc 7 nhóm hàng `SKU_CATEGORIES`, Combo theo Modified; `sku-sync-core.js` (cutoffKey, comboStampsOrdered).

@@ -506,7 +506,7 @@ test("auto-config (group-uid-sync): minExtension đủ 4 loại; devices ≤ 20,
   setMin({ group_uid: "0.10.10", sku: ["0.10.10"], storage_risk: "0.10.9" });
   for (let index = 0; index < 22; index += 1) {
     const name = `may-test-${String(index + 1).padStart(2, "0")}`;
-    devices.push({ holder: `${name}#${(index + 10).toString(36)}x4y5`, device: name, ext_version: index ? "0.12.1" : "abc", first_seen_at: ago(30 * DAY), last_seen_at: ago(index * 10 * MINUTE), last_kind: index ? "group_uid" : "khac" });
+    devices.push({ holder: `${name}#${(index + 10).toString(36)}x4y5`, device: name, ext_version: index ? "0.12.2" : "abc", first_seen_at: ago(30 * DAY), last_seen_at: ago(index * 10 * MINUTE), last_kind: index ? "group_uid" : "khac" });
   }
   devices.reverse();
   const config = await call({ action: "auto-config" });
@@ -514,12 +514,12 @@ test("auto-config (group-uid-sync): minExtension đủ 4 loại; devices ≤ 20,
   assert.deepEqual(config.body.data.minExtension, { sku: null, group_uid: "0.10.10", cut_adj: null, storage_risk: "0.10.9" });
   const list = config.body.data.devices;
   assert.equal(list.length, 20, "tối đa 20 máy");
-  assert.deepEqual(list.slice(0, 2).map(row => [row.device, row.id4, row.version, row.lastKind]), [["may-test-01", "ax4y", null, null], ["may-test-02", "bx4y", "0.12.1", "group_uid"]], "mới nhất trước; bản / loại lạ → null");
+  assert.deepEqual(list.slice(0, 2).map(row => [row.device, row.id4, row.version, row.lastKind]), [["may-test-01", "ax4y", null, null], ["may-test-02", "bx4y", "0.12.2", "group_uid"]], "mới nhất trước; bản / loại lạ → null");
   assert.ok(list.every(row => Object.keys(row).sort().join() === "device,id4,lastKind,lastSeenAt,version"), "chỉ 5 trường, không có holder");
   assert.equal(JSON.stringify(config.body).includes("x4y5"), false, "không lộ mã máy đầy đủ");
   devices.length = 0;
   devices.push(
-    { holder: "may-test-01#k7p2q9", device: "may-test-01", ext_version: "0.12.1", first_seen_at: ago(20 * DAY), last_seen_at: ago(13 * DAY), last_kind: "group_uid" },
+    { holder: "may-test-01#k7p2q9", device: "may-test-01", ext_version: "0.12.2", first_seen_at: ago(20 * DAY), last_seen_at: ago(13 * DAY), last_kind: "group_uid" },
     { holder: "may-test-02#m3n4b5", device: "may-test-02", ext_version: "0.10.9", first_seen_at: ago(20 * DAY), last_seen_at: ago(15 * DAY), last_kind: "sku" },
   );
   assert.deepEqual((await call({ action: "auto-config" })).body.data.devices.map(row => [row.device, row.id4]), [["may-test-01", "k7p2"]], "máy không thấy trong 14 ngày bị bỏ");
