@@ -392,13 +392,13 @@
 
 ---
 
-## Trạng thái lên thật (kiểm live_status.py + git + trang công khai, chỉ đọc, 26/10/2026 18:02)
+## Trạng thái lên thật (kiểm live_status.py + git + trang công khai, chỉ đọc, 27/10/2026 08:01)
 
-Kiểm lại: `python scripts/live_status.py` (chỉ đọc). Chạy 26/10/2026 17:59 (trước push): 89 tệp migration đủ đối tượng, còn `release_ledger_v1.sql` thiếu bảng `release_ledger` (chưa chạy, phiên release); Edge, agent, cron như dưới.
+Kiểm lại: `python scripts/live_status.py` (chỉ đọc). Chạy 27/10/2026 08:01 (sau push): 92 tệp migration đủ đối tượng, không tệp nào chưa lên; Edge, agent, cron như dưới.
 
 Mục này thắng mọi ghi chú "CHƯA LÊN" trong nhật ký. Kiểm lại khi thêm migration / Edge / Extension / agent; ghi ngày kiểm ở tiêu đề.
 
-**Web:** `origin/main` = `main` = `d6f0467` — đã push khoảng 18:00 26/10 (`11ccb25..d6f0467`: `166b6ff` Extension 0.10.9, `b4c522d` cổng bản 0.10.10 + bảng Máy đồng bộ, `43574e1` `release.py`, `d6f0467` PO Garment). GitHub Pages đã phục vụ: trang công khai có `ins-site-v1`, `#inspection` có công tắc MTG | GARMENT, không lỗi trang, không phản hồi 4xx (Playwright, N20261026-1802).
+**Web:** `origin/main` = `main` = `174f6d7` — đã push 27/10 khoảng 08:00 (`4ce219a..174f6d7`: nguồn phiếu ADJ / IT cho Cắt UID, pop-up nguồn Rủi ro lưu trữ / UID tạm, Extension 0.12.1, luật lead tự chạy migration / deploy, `record_ledger.py`; cả bộ test 133/133 · N20261027-0800). GitHub Pages: xem dòng kiểm trang công khai cuối mục này.
 
 **ĐÃ LÊN — migration (có đối tượng trên DB)**
 - `sku_missing_archive_v1` (SKU rời 7 nhóm tự lưu trữ).
@@ -419,6 +419,8 @@ Mục này thắng mọi ghi chú "CHƯA LÊN" trong nhật ký. Kiểm lại kh
 - `vendor_return_v3` (Trả NCC, 26/10 01:25: hàm `vendor_return_delete`, kiểm: SECURITY DEFINER, anon không execute · N20261026-0126).
 - `sku_name_touch_v1` (25/10: hàm + trigger `sku_name_touch` trên `SKU_Name` · N20261025-2156).
 - `sync_auto_v3` (26/10 14:55: bảng `sync_auto_devices` RLS bật, 0 policy, chỉ service_role như `sync_auto_leases`; cột `ext_version` ở `sku_sync_runs` / `group_uid_sync_runs`; `sync_auto_settings.min_extension` = `{}` với CHECK 3 vế, kiểm `pg_get_constraintdef` · N20261026-1102).
+- `cut_source_v1` (26/10 ~22:20, chạy bằng `apply_supabase_sql.py`): 5 cột nguồn ở `wms_group_uid_cuts`; `wms_group_uid_cut_set_source` / `wms_group_uid_cut_unresolved` anon không execute; `cut_group_uid_reconcile` còn che email; `wms_group_uid_cut_import` còn chặn mốc tương lai; Tick giúp bỏ Cut IT (kiểm chỉ đọc · N20261027-0800).
+- `uid_temp_origin_v1` (26/10 ~22:20): cột `uid_temp_rows.origin`, `uid_temp_save` / `uid_temp_overview` bản mới (che `origin.by` cho người ngoài Admin). Sổ `release_ledger` ghi cả hai tệp 27/10 08:00 bằng `record_ledger.py` (N20261027-0800).
 
 **ĐÃ LÊN — Edge Function (bản đang chạy ↔ commit cuối của thư mục hàm)**
 - `sku-sync` bản 13, deploy 26/10 14:56 — sau commit b4c522d (14:52); nội dung đang chạy = tệp repo từng ký tự (so qua `get_edge_function`, N20261026-1102).
@@ -427,20 +429,23 @@ Mục này thắng mọi ghi chú "CHƯA LÊN" trong nhật ký. Kiểm lại kh
 - `sku-vision` bản 5, deploy 21/10 11:31 — trước commit dff8e35 (11:40) nhưng nội dung đang chạy đã có thay đổi của commit đó (bỏ giới hạn theo máy, `DEVICE_DAILY … || null`).
 
 **ĐÃ LÊN — Extension / agent / cron**
-- Extension 0.11.0 (gồm 0.10.9 Pending = ngừng + cổng bản 0.10.10 + PO Garment): người dùng báo đã Reload trên các máy và tải lại tab Inside / Garment / WMS (26/10, sau commit `d6f0467`). `min_extension` còn `{}` (không chặn gì). (N20261026-0837, N20261026-1102, N20261026-1514)
-- Máy đồng bộ: `live_status` 17:59: `sync_auto_devices` có `CUONG-PC` #ffjp khai báo v0.11.0, lượt xong cuối 17:31 cho cả bốn loại (cut_adj, group_uid, sku, storage_risk); chưa thấy máy khác trong bảng 14 ngày. (N20261026-1802)
+- Extension trong repo 0.12.1 (gồm cổng bản 0.10.10, PO Garment, nguồn phiếu Cut, pop-up nguồn Rủi ro lưu trữ): người dùng Reload 0.12.0 tối 26/10; 0.12.1 CHƯA Reload (cần Reload lại trước lượt tự động kế tiếp). `min_extension` còn `{}` (không chặn gì). (N20261027-0800)
+- Máy đồng bộ: `live_status` 27/10 08:01: `sync_auto_devices` có `CUONG-PC` #ffjp khai v0.11.0, lượt cut_adj xong cuối 26/10 19:31 (trước migration và Reload 0.12.x; chưa có lượt nào với Extension mới); chưa thấy máy khác trong bảng 14 ngày.
 - Agent `Máy kho 01` 0.10.2, khai `sku:v1/v2/v3`, `group_uid:v1`, `location:v1`, `location:name-optional`; máy in TSC PE200 READY; lần thấy cuối 26/10 17:54 (live_status).
 - Cron (giờ UTC, VN = +7): `print-jobs-purge` 03:00, `sync-history-purge` 03:30, `print-assistant-purge` 03:50, `floor-access-purge` 03:55 mỗi ngày; `group-uid-canceled-purge` 03:15 và `sku-inactive-archive` 03:45 sáng thứ Hai; `uid-block-refresh-wms` mỗi 30 phút.
 
 **CHƯA LÊN**
 - `Máy kho 02`: đã tạo trong `print_agents` (khai `sku:v1`, `group_uid:v1`, `location:*`) nhưng chưa từng kết nối — chưa cài agent.
-- `release_ledger_v1` (bảng `release_ledger`) và `scripts/release.py`: đã commit `43574e1` và push; sổ CHƯA tạo (`release.py --init` do người dùng chạy tại terminal thật); web không phụ thuộc bảng này. (N20261026-1548)
+- Đã sửa ghi chú cũ về `release_ledger`: sổ đã tạo 26/10 18:18 (`--init`: 89 migration + 4 Edge), 91 migration sau khi ghi `cut_source_v1` + `uid_temp_origin_v1` (27/10 08:00); Extension chưa ghi sổ (cổng Reload do người dùng). (N20261027-0800)
 - Extension trên máy Quynh-pc (nếu còn đồng bộ): chưa rõ đã Reload chưa; không có trong `sync_auto_devices` 14 ngày, chưa có lượt tự động của máy này từ 24/10 12:27 (N20261026-0837).
 
 **Đã lên, CHƯA thử thật**
+- Nguồn phiếu Cut + pop-up nguồn Rủi ro lưu trữ / UID tạm (Extension 0.12.1, migration đã chạy): CHƯA có lượt đọc WMS thật nào sau migration (Cut 693/1.025 chưa nguồn, 5/5 dòng UID tạm chưa có phiếu gốc, đo 27/10 07:40).
+- Việc cần để thử thật: Reload 0.12.1, bấm Đọc WMS ở Đối chiếu ADJ (đủ dòng Import/Export nhiều trang, `GET_WMS_DOC_INFO` nhiều mã, tỉ lệ ghép thật), chạy Rủi ro lưu trữ (`GET_TRANSFER_BIN_PAGE`, định dạng giờ, tra mã Group UID). (N20261027-0800)
 - Cổng bản trên Edge thật (`sku-sync` 13, `group-uid-sync` 12, deploy 26/10 14:56–14:57): đã chạy với Extension khai báo bản (`sync_auto_devices` có CUONG-PC v0.11.0, lượt 17:31); CHƯA thử nhánh 409 `EXTENSION_OUTDATED` vì `min_extension` = `{}`, và chưa thử máy dưới mức. (N20261026-1102)
 - PO Garment: đọc PO thật qua web + Extension 0.11.0 (nút GARMENT), in tem Phụ liệu thật PO Garment, mở biên bản Garment bằng Excel (Buyer để trống, chờ tên Buyer); chưa thử. (N20261026-1514, N20261026-1602, N20261026-1802)
 - Trả NCC: Admin nạp Excel thật, Đối chiếu thật, xoá đợt thật chưa thử — đừng xoá đợt thật chỉ để thử (234 dòng + 209 lượt quét, 26/10) (N20261026-0126).
 - Trợ lý in → Packing List cấp vải: dán / đính kèm UID bằng Admin → Tạo đợt / Tải PL; tệp Excel Group UID thật từ WMS (cột UID chữ hay số) (N1215).
 - Tem SKU v3: tem có số lượng (đã in thật v1/v3 ngày 23/10).
 - "Chạy ngay" Rủi ro lưu trữ trong giờ làm (G9) sau Reload 0.10.8 — `sync_auto_leases` không phân biệt lượt tay hay tự động (N1196).
+- Trang công khai (GitHub Pages, kiểm bằng curl 27/10/2026 ~08:10, sau push 174f6d7 khoảng 10 phút): đã phục vụ bản mới (có khối `cut-source-core` và `sr-dialog`); lần kiểm đầu ~08:01 chưa thấy do Pages build trễ, không phải lỗi. (N20261027-0800)
