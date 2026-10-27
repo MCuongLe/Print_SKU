@@ -61,7 +61,7 @@ const mockExtension = () => {
     if (!r || r.source !== "PRINT_SKU_APP") return;
     window.__extCalls.push({ type: r.type, payload: r.payload });
     const now = Date.now(), wmsTime = ms => new Date(ms + 7 * 3600000).toISOString().slice(0, 19).replace("T", " "), p = r.payload || {};
-    let data = { version: window.__extVersion || "0.12.2" }; // PING / PING_WMS; __extVersion giả lập Extension cũ
+    let data = { version: window.__extVersion || "0.12.3" }; // PING / PING_WMS; __extVersion giả lập Extension cũ
     if (r.type === "GET_SKU_COUNT_WAREHOUSES") data = { warehouses: [{ warehouseId: 1177, warehouseName: "WH - MATERIAL - MTG", companyId: 1002, companyName: "Cty Mastige" }], missingNames: [] };
     else if (r.type === "GET_SKU_COUNT_APPROVED_PAGE") data = { page: 1, size: 500, total: 0, totalPages: 1, rows: [] };
     else if (r.type === "GET_SKU_COUNT_INVENTORY_PAGE") data = { page: 1, size: 500, total: 1, totalPages: 1, rows: [{ warehouseId: 1177, warehouseName: "WH - MATERIAL - MTG", sku: "900000071", productName: "Vải đọc nguồn", location: "F0-A0-00-00-00-00", qty: 4, total: 4, modified: wmsTime(now - 12 * 86400000), created: wmsTime(now - 30 * 86400000), uom: "m" }] };

@@ -48,6 +48,15 @@ assert.equal(core.normalizeMovesPage({ records: [] }).total, 0);
 assert.throws(() => core.normalizeMovesPage({ records: [transfer(0)] }), /thiếu mã dòng/);
 assert.throws(() => core.normalizeMovesPage({ records: [transfer(5, { group_uid_code: "abc" })] }), /Group UID không hợp lệ/);
 assert.throws(() => core.normalizeMovesPage({ records: [transfer(5, { updated_at_tz: "sai-ngày", updated_at: undefined, created_at_tz: undefined })] }), /Ngày cập nhật/);
+// 0.12.3 (27/10/2026): không thấy khoá danh sách = WMS đổi dạng (như normalizePage) — trước đây ra 0 dòng với tổng = count.
+// Thân {page, size} rỗng thật đã được wms-bridge (emptyPage) đổi thành {count:0, records:[]}.
+for (const drift of [{ page: 1, size: 500, count: 5 }, { count: 3, results: [transfer(7)] }, { count: 0 }, { page: 1, size: 500 }, {}, null, []]) {
+  assert.throws(() => core.normalizeMovesPage(drift), /đổi dạng dữ liệu/, `dạng lạ ${JSON.stringify(drift)}`);
+}
+for (const empty of [{ records: [] }, { count: 0, page: 1, size: 500, records: [] }, { data: [] }]) {
+  const out = core.normalizeMovesPage(empty);
+  assert.deepEqual([out.rows.length, out.total, out.sourceRows], [0, 0, 0], `rỗng hợp lệ ${JSON.stringify(empty)}`);
+}
 
 // --- Bộ đọc trong wms-bridge ---
 const calls = [];

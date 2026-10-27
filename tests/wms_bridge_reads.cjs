@@ -379,7 +379,8 @@ const ROW = {
 
   // ---- 27/10/2026: WMS trả HTTP 200 {page, size} (không count, không records) khi danh sách rỗng — đo thật ở transfer-bins và group-uid-infos
   // (khoảng ngày không có thay đổi). Trước đây bị coi là "WMS đổi dạng" → Hàng chưa lên kệ dừng ở cặp rỗng đầu tiên (1/35 cặp có nguồn), đồng bộ Group UID gia tăng báo Lỗi.
-  // Chỉ hai lệnh đó được nới; tồn kho cũng trả {page, size} khi kho / công ty không khớp nên Kiểm kê và Import/Export vẫn phải báo lỗi (R8a). ----
+  // 0.12.2 nới hai lệnh đó; 0.12.3 thêm lịch sử Cắt / chuyển vị trí (group-uid-info-histories) và Import/Export (đối chiếu lệnh đếm).
+  // Tồn kho cũng trả {page, size} khi kho / công ty không khớp nên Kiểm kê (tồn kho, APPROVED) vẫn phải báo lỗi (R8a). ----
   {
     const EMPTY = { page: 1, size: 20 };
     const BIN = "F0-A0-00-00-00-00", SKU = "900000051", from = "2026-10-01T00:00:00+07:00", to = "2026-10-02T00:00:00+07:00";
@@ -395,11 +396,91 @@ const ROW = {
         assert.equal(result.ok, false, `${type}: dạng lạ ${JSON.stringify(drift)} vẫn là lỗi`);
       }
     }
-    // Không nới ở nơi khác: tồn kho / kết quả kiểm kê / Import/Export nhận {page, size} vẫn báo "WMS đổi dạng"
+    // 0.12.3: lịch sử Cắt (Đối chiếu ADJ tự động mỗi 30 phút) và lịch sử chuyển vị trí cùng endpoint group-uid-info-histories cũng trả {page, size}
+    // khi khoảng rỗng → 0 dòng. Bộ chuẩn hoá hai lệnh này nay đòi có danh sách: count không kèm danh sách, khoá danh sách lạ, page / size chuỗi,
+    // thiếu khoá, {}, null, mảng là "WMS đổi dạng" — trước đây thành 0 dòng (count thành tổng) và lượt Cắt tiến mốc phủ qua khoảng chưa đọc.
+    const HISTORY = ["GET_GROUP_UID_HISTORY_PAGE", { from, to }], MOVES = ["GET_GROUP_UID_MOVES_PAGE", { companyId: 1002, from, to }];
+    const listedRow = {
+      GET_GROUP_UID_HISTORY_PAGE: { group_uid_code: "1028260000000901", note: "Cut 2 out of group 1028260000000901 (remaining 8)", warehouse_name: "WH - MATERIAL - MTG", updated_at_tz: "2026-10-01T10:00:00+07:00" },
+      GET_GROUP_UID_MOVES_PAGE: { id: 901, group_uid_code: "1028260000000902", action: 4, action_name: "Transfer location", warehouse_id: 1177, updated_at_tz: "2026-10-01T10:00:00+07:00" },
+    };
+    for (const [type, payload] of [HISTORY, MOVES]) {
+      result = await ask(load({ fetchImpl: bodyFetch(EMPTY) }), type, payload);
+      assert.equal(result.ok, true, `${type}: {page,size} là danh sách rỗng, không phải lỗi · ${JSON.stringify(result.error || "")}`);
+      assert.deepEqual([result.data.rows.length, result.data.total, result.data.sourceRows], [0, 0, 0], `${type}: 0 dòng`);
+      for (const drift of [{ page: 1, size: 20, count: 5 }, { page: 1, size: 20, count: 0 }, { page: 1, size: 20, results: [listedRow[type]] }, { page: "1", size: "20" }, { page: "x", size: 20 }, { page: 1 }, {}, null, []]) {
+        result = await ask(load({ fetchImpl: bodyFetch(drift) }), type, payload);
+        assert.equal(result.ok, false, `${type}: dạng lạ ${JSON.stringify(drift)} vẫn là lỗi`);
+        assert.match(result.error.message, /đổi dạng dữ liệu/, `${type}: ${JSON.stringify(drift)} → ${result.error.message}`);
+      }
+      // {page, size} kèm khoá thừa không bị đổi thành rỗng: `items` là khoá danh sách bộ chuẩn hoá vẫn đọc (dùng chung với normalizePage) → dòng vẫn được đọc
+      result = await ask(load({ fetchImpl: bodyFetch({ page: 1, size: 20, items: [listedRow[type]] }) }), type, payload);
+      assert.deepEqual([result.ok, result.data?.rows.length], [true, 1], `${type}: {page,size,items:[…]} không bị coi là rỗng · ${JSON.stringify(result.error || "")}`);
+      // 204 và {count:0, records:[]} vẫn hợp lệ
+      for (const empty of [reply(204, null), reply(200, { count: 0, records: [] })]) {
+        result = await ask(load({ fetchImpl: async () => empty }), type, payload);
+        assert.deepEqual([result.ok, result.data?.rows.length, result.data?.total], [true, 0, 0], `${type}: ${empty.status} rỗng vẫn là 0 dòng`);
+      }
+      // Có danh sách nhưng rỗng mà count báo còn dòng ở trang này là mâu thuẫn (cùng luật với Import/Export): lỗi mạng, không thành 0 dòng + tiến mốc phủ
+      result = await ask(load({ fetchImpl: async () => reply(200, { count: 5, page: 1, size: 500, records: [] }) }), type, { ...payload, page: 1, size: 500 });
+      assert.deepEqual([result.ok, result.error?.reason], [false, "network"], `${type}: records rỗng mà count 5 là mâu thuẫn · ${JSON.stringify(result.data || "")}`);
+      assert.match(result.error.message, /mâu thuẫn/, type);
+      // Trang vượt cuối hợp lệ: 1.000 dòng, trang 3 × 500 → 0 dòng, tổng giữ 1.000
+      result = await ask(load({ fetchImpl: async () => reply(200, { count: 1000, page: 3, size: 500, records: [] }) }), type, { ...payload, page: 3, size: 500 });
+      assert.deepEqual([result.ok, result.data?.rows.length, result.data?.total], [true, 0, 1000], `${type}: trang vượt cuối là 0 dòng`);
+    }
+    // Lệnh chuyển vị trí vẫn gửi công ty yêu cầu (tham số thứ ba của getJson) khi bật emptyPage
+    {
+      const seen = [];
+      result = await ask(load({ fetchImpl: async (url, init) => { seen.push(init.headers["company-ids"]); return reply(200, EMPTY); } }), ...MOVES);
+      assert.deepEqual([result.ok, seen], [true, ["1002"]], "GET_GROUP_UID_MOVES_PAGE: header company-ids = công ty yêu cầu");
+    }
+
+    // 0.12.3: Import/Export — cả lệnh dòng (config_query=1) lẫn lệnh đếm (config_query=2) trả {page, size} khi khoảng ngày rỗng → 0 dòng.
+    // Danh sách {page, size} chỉ là rỗng khi lệnh đếm cũng không còn dòng ở trang này: đếm > (page − 1) × size mà danh sách rỗng → lỗi (reason network).
+    {
+      const IE = "GET_STOCK_IMPORT_EXPORT_PAGE", iePayload = { warehouseIds: [1151], companyId: 1002, from, to };
+      const ieFetch = (listBody, countBody) => {
+        const fn = async url => { fn.queries.push(new URL(url).searchParams.get("config_query")); return reply(200, new URL(url).searchParams.get("config_query") === "2" ? countBody : listBody); };
+        fn.queries = [];
+        return fn;
+      };
+      let ief = ieFetch({ page: 1, size: 500 }, { page: 1, size: 500 });
+      result = await ask(load({ fetchImpl: ief }), IE, iePayload);
+      assert.equal(result.ok, true, `${IE}: hai lệnh {page,size} là khoảng rỗng · ${JSON.stringify(result.error || "")}`);
+      assert.deepEqual([result.data.rows.length, result.data.total, result.data.totalPages], [0, 0, 1], `${IE}: 0 dòng`);
+      assert.deepEqual(ief.queries.sort(), ["1", "2"]);
+      result = await ask(load({ fetchImpl: ieFetch({ page: 1, size: 500 }, { count: 1200, page: 1, size: 500 }) }), IE, iePayload);
+      assert.deepEqual([result.ok, result.error?.code, result.error?.reason], [false, "IMPORT_EXPORT_READ_FAILED", "network"], `${IE}: danh sách rỗng mà lệnh đếm 1.200 dòng là mâu thuẫn`);
+      assert.match(result.error.message, /mâu thuẫn/);
+      result = await ask(load({ fetchImpl: ieFetch({ page: 1, size: 500 }, { count: 3, page: 1, size: 500 }) }), IE, iePayload);
+      assert.deepEqual([result.ok, result.error?.reason], [false, "network"], `${IE}: lệnh đếm 3 dòng mà trang 1 rỗng → lỗi`);
+      // Trang vượt cuối hợp lệ: 1.000 dòng, trang 3 × 500 → 0 dòng
+      result = await ask(load({ fetchImpl: ieFetch({ page: 3, size: 500 }, { count: 1000, page: 3, size: 500 }) }), IE, { ...iePayload, page: 3, size: 500 });
+      assert.equal(result.ok, true, `${IE}: trang vượt cuối · ${JSON.stringify(result.error || "")}`);
+      assert.deepEqual([result.data.rows.length, result.data.total, result.data.totalPages], [0, 1000, 2], `${IE}: trang vượt cuối là 0 dòng`);
+      // Danh sách có dòng thật: như cũ (tổng theo lệnh đếm)
+      result = await ask(load({ fetchImpl: ieFetch({ page: 1, size: 500, records: [movement] }, { count: 1200, page: 1, size: 500 }) }), IE, iePayload);
+      assert.deepEqual([result.ok, result.data?.rows.length, result.data?.total, result.data?.totalPages], [true, 1, 1200, 3], `${IE}: danh sách có dòng chạy như cũ`);
+      // Căn cứ an toàn của việc nới (đo 27/10/2026): company-ids lệch kho trả HTTP 400, kho không tồn tại trả 404 — lỗi, không thành 0 dòng
+      for (const status of [400, 404]) {
+        result = await ask(load({ fetchImpl: async () => reply(status, { message: "khong co quyen kho" }) }), IE, iePayload);
+        assert.deepEqual([result.ok, result.error?.reason, result.error?.code], [false, "network", "IMPORT_EXPORT_READ_FAILED"], `${IE}: HTTP ${status} là lỗi, không phải 0 dòng`);
+        assert.match(result.error.message, new RegExp(`mã ${status}`), `${IE}: ${status}`);
+      }
+      // Danh sách dạng lạ khác {page, size} vẫn là WMS đổi dạng
+      for (const drift of [{ page: 1, size: 500, count: 5 }, { page: 1, size: 500, items: [movement] }, { page: "1", size: "500" }, {}, null, []]) {
+        result = await ask(load({ fetchImpl: ieFetch(drift, { page: 1, size: 500 }) }), IE, iePayload);
+        assert.equal(result.ok, false, `${IE}: danh sách dạng lạ ${JSON.stringify(drift)} vẫn là lỗi`);
+        assert.match(result.error.message, /đổi dạng dữ liệu/, `${IE}: ${JSON.stringify(drift)}`);
+      }
+    }
+
+    // Không nới ở nơi khác: tồn kho / kết quả kiểm kê nhận {page, size} vẫn báo "WMS đổi dạng"
+    // (0.12.3 bỏ Import/Export khỏi danh sách này có chủ ý — ca Import/Export ở khối trên)
     for (const [type, payload] of [
       ["GET_SKU_COUNT_INVENTORY_PAGE", { warehouseIds: [1177], companyId: 1002 }],
       ["GET_SKU_COUNT_APPROVED_PAGE", { warehouseIds: [1177], companyId: 1002 }],
-      ["GET_STOCK_IMPORT_EXPORT_PAGE", { warehouseIds: [1151], from, to }],
     ]) {
       result = await ask(load({ fetchImpl: bodyFetch(EMPTY) }), type, payload);
       assert.equal(result.ok, false, `${type}: {page,size} không được coi là danh sách rỗng`);
@@ -407,5 +488,5 @@ const ROW = {
     }
   }
 
-  console.log("wms_bridge_reads: thử lại 429/5xx/lỗi mạng, 204, 401/403 và hết phiên cho Group UID, lịch sử Cắt, lịch sử chuyển vị trí, nhập xuất kho, đọc Group UID/ASN theo PO và số phiếu ADJ / IT (GET_WMS_DOC_INFO; chi tiết ADJ 404 / rỗng → po null, lỗi tạm 500 / mất mạng / thân hỏng → detailFailed, 401/403 → lỗi cả lệnh), Transfer Location History (lọc vị trí + SKU, tra mã Group UID) passed");
+  console.log("wms_bridge_reads: thử lại 429/5xx/lỗi mạng, 204, 401/403 và hết phiên cho Group UID, lịch sử Cắt, lịch sử chuyển vị trí, nhập xuất kho, đọc Group UID/ASN theo PO và số phiếu ADJ / IT (GET_WMS_DOC_INFO; chi tiết ADJ 404 / rỗng → po null, lỗi tạm 500 / mất mạng / thân hỏng → detailFailed, 401/403 → lỗi cả lệnh), Transfer Location History (lọc vị trí + SKU, tra mã Group UID), thân {page,size} rỗng (Group UID, chuyển vị trí, lịch sử Cắt / chuyển vị trí, Import/Export đối chiếu lệnh đếm; tồn kho / APPROVED vẫn lỗi) passed");
 })().catch(error => { console.error(error); process.exit(1); });

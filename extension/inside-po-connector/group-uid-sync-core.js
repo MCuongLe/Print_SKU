@@ -141,6 +141,9 @@
   }
 
   function normalizeHistoryPage(payload) {
+    // 0.12.3 (27/10/2026, như normalizePage): không thấy khoá danh sách = WMS đổi dạng. Trước đây ra 0 dòng (count thành tổng) nên lượt
+    // Đối chiếu ADJ tự động nạp rỗng và tiến mốc phủ qua khoảng chưa đọc. 204 và thân {page, size} rỗng (wms-bridge emptyPage) là {count:0, records:[]}.
+    if (!hasRowList(payload)) throw new Error("WMS đổi dạng dữ liệu lịch sử Group UID (không thấy danh sách); hãy báo để cập nhật Extension");
     const source = responseRows(payload);
     const unique = new Map();
     let rangeFrom = "", rangeTo = "";
@@ -183,6 +186,8 @@
   const TRANSFER_ACTION = 4;
 
   function normalizeMovesPage(payload) {
+    // 0.12.3 (27/10/2026, như normalizeHistoryPage): không thấy khoá danh sách = WMS đổi dạng, không phải 0 dòng.
+    if (!hasRowList(payload)) throw new Error("WMS đổi dạng dữ liệu lịch sử chuyển vị trí (không thấy danh sách); hãy báo để cập nhật Extension");
     const source = responseRows(payload);
     const unique = new Map();
     source.forEach((raw, index) => {

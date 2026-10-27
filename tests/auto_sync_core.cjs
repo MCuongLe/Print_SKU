@@ -70,7 +70,7 @@ function memoryStorage(initial = {}) {
 const uid = index => ({ group_uid_code: String(1028260000000000 + index), updated_date: "2026-10-17T01:00:00.000Z", qty: 1, status: "New" });
 
 const HOLDER = "may-test-01#abc123";
-function harness({ now = DAY, wmsTab = true, insideTab = true, wmsError = null, insideError = null, edgeOverride = {}, applyHeld = null, storage: initial, onWmsPage = null, sessionOverride = {}, findWms = null, fetchOverride = null, edgeTimeoutMs, cutAdjCore, storageRiskCore, version } = {}) {
+function harness({ now = DAY, wmsTab = true, insideTab = true, wmsError = null, insideError = null, edgeOverride = {}, applyHeld = null, storage: initial, onWmsPage = null, sessionOverride = {}, findWms = null, fetchOverride = null, edgeTimeoutMs, cutAdjCore, storageRiskCore, version, wmsReply = null } = {}) {
   const storage = memoryStorage({ "auto.device": "may-test-01", "auto.enabled": true, "auto.instance": "abc123", ...initial });
   const calls = [], alarms = [], timers = [], signOuts = [], badges = [], protectedTabs = [];
   const clock = { now };
@@ -118,6 +118,8 @@ function harness({ now = DAY, wmsTab = true, insideTab = true, wmsError = null, 
       calls.push({ tab: "wms", tabId: tab.id, ...message });
       if (onWmsPage) await onWmsPage(message, h);
       if (wmsError) return { ok: false, error: wmsError };
+      const custom = wmsReply ? wmsReply(message) : null; // dữ liệu trang riêng cho một ca; null = dữ liệu mặc định
+      if (custom) return { ok: true, data: custom };
       const page = message.payload.page, size = message.payload.size;
       return { ok: true, data: { page, size, total: wmsRows.length, totalPages: Math.max(1, Math.ceil(wmsRows.length / size)), rows: wmsRows.slice((page - 1) * size, page * size) } };
     },
@@ -302,6 +304,36 @@ const actions = (calls, fn) => calls.filter(call => call.fn === fn).map(call => 
     assert.deepEqual(actions(h.calls, "group-uid-sync"), [], "không lease, không prepare khi WMS đăng xuất");
     assert.ok(!actions(h.calls, "sku-sync").includes("preview"));
     assert.equal(h.storage.data["auto.last"], undefined, "bỏ qua không tính là đã chạy");
+  }
+
+  // 0.12.3 (27/10/2026): trang thử Group UID (không lọc ngày) báo tổng 0 = WMS không thấy UID nào cho tài khoản (vd. mất quyền kho; company-ids không lọc; từ 0.12.2 thân
+  // {page, size} của group-uid-infos là 0 dòng) → bỏ qua TRƯỚC khi thuê khoá / tạo lượt, mọi mode; mốc không tiến. Tổng > 0 hoặc thiếu tổng → như cũ.
+  {
+    const probeOnly = data => message => (message.type === "GET_GROUP_UID_PAGE" && message.payload.size === 1 ? data : null);
+    const none = probeOnly({ page: 1, size: 1, total: 0, totalPages: 1, rows: [] });
+    const h = harness({ insideTab: false, wmsReply: none });
+    const result = await h.sync.tick();
+    assert.deepEqual(result.results.map(item => `${item.kind}:${item.mode}:${item.status}`), ["group_uid:incremental:skipped"]);
+    assert.match(result.results[0].message, /không thấy UID/);
+    assert.deepEqual(actions(h.calls, "group-uid-sync"), [], "không lease / prepare / ingest / release khi WMS không thấy UID");
+    assert.deepEqual(h.calls.filter(call => call.tab === "wms").map(call => call.payload), [{ page: 1, size: 1 }], "chỉ gọi trang thử");
+    assert.equal(h.storage.data["auto.last"]?.group_uid, undefined, "bỏ qua không tiến mốc");
+    assert.deepEqual([h.storage.data["auto.log"][0].kind, h.storage.data["auto.log"][0].status], ["group_uid", "skipped"]);
+    assert.match(h.storage.data["auto.log"][0].message, /không thấy UID/);
+    assert.match(h.storage.data["auto.health"].kinds.group_uid.reason, /không thấy UID/, "lý do hiện ở Tùy chọn / cảnh báo ngừng");
+    // Đối chiếu toàn bộ (Chạy ngay) cũng bỏ qua
+    const full = harness({ insideTab: false, wmsReply: none });
+    const run = await full.sync.runNow("group_uid", "full");
+    assert.deepEqual([run.result.status, actions(full.calls, "group-uid-sync")], ["skipped", []]);
+    assert.match(run.result.message, /không thấy UID/);
+    // Tổng > 0: chạy như cũ
+    const some = harness({ insideTab: false, wmsReply: probeOnly({ page: 1, size: 1, total: 1, totalPages: 1, rows: [uid(1)] }) });
+    assert.deepEqual((await some.sync.tick()).results.map(item => `${item.kind}:${item.status}`), ["group_uid:ok"]);
+    assert.deepEqual(actions(some.calls, "group-uid-sync"), ["lease", "prepare", "lease", "ingest", "preview", "apply", "release"]);
+    // Thiếu tổng (không phải số 0): không đoán, chạy như cũ
+    const noTotal = harness({ insideTab: false, wmsReply: probeOnly({ page: 1, size: 1, rows: [] }) });
+    assert.deepEqual((await noTotal.sync.tick()).results.map(item => `${item.kind}:${item.status}`), ["group_uid:ok"]);
+    assert.ok(actions(noTotal.calls, "group-uid-sync").includes("prepare"));
   }
 
   // Máy khác giữ khoá; Admin đang xem trước (ACTIVE_RUN); lỗi giữa chừng thì hủy lượt và nhả khoá.

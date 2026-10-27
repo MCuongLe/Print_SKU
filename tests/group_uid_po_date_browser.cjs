@@ -17,7 +17,7 @@ const fakeExtension = data => {
     const request = event.data;
     if (!request || request.source !== 'PRINT_SKU_APP') return;
     const reply = (ok, body, error) => postMessage({ source: 'HASAKI_INSIDE_CONNECTOR', requestId: request.requestId, ok, data: body, error }, location.origin);
-    if (request.type === 'PING' || request.type === 'PING_WMS') return reply(true, { version: '0.12.2' });
+    if (request.type === 'PING' || request.type === 'PING_WMS') return reply(true, { version: '0.12.3' });
     if (request.type === 'GET_PACKING_LIST_PAGE') {
       const { purchaseOrders, page, size } = request.payload;
       const rows = purchaseOrders.flatMap(po => window.__packing[po] || []);

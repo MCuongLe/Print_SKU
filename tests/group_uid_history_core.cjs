@@ -32,4 +32,14 @@ assert.throws(() => core.normalizeHistoryPage({ records: [{
   group_uid_code: '1028260000000999', note: 'Cut 1 out of group 1028260000000214 (remaining 2)', updated_at: '2026-10-08T13:47:00+07:00'
 }] }), /mã Cut không khớp/);
 
-console.log('PASS Group UID history core: lọc Cut, chuẩn hóa số lượng/ngày, chặn dữ liệu nguồn sai');
+// 0.12.3 (27/10/2026): không thấy khoá danh sách = WMS đổi dạng (như normalizePage, chặn G13/R8a) — trước đây ra 0 dòng với tổng = count
+// nên lượt Cắt tự động nạp rỗng và tiến mốc phủ. Thân {page, size} rỗng thật đã được wms-bridge (emptyPage) đổi thành {count:0, records:[]}.
+for (const drift of [{ page: 1, size: 500, count: 5 }, { count: 3, results: [payload.data.records[0]] }, { count: 0 }, { page: 1, size: 500 }, {}, null, []]) {
+  assert.throws(() => core.normalizeHistoryPage(drift), /đổi dạng dữ liệu/, `dạng lạ ${JSON.stringify(drift)}`);
+}
+for (const empty of [{ records: [] }, { count: 0, page: 1, size: 500, records: [] }, { data: [] }, { data: { count: 0, records: [] } }]) {
+  const out = core.normalizeHistoryPage(empty);
+  assert.deepEqual([out.rows.length, out.total, out.sourceRows], [0, 0, 0], `rỗng hợp lệ ${JSON.stringify(empty)}`);
+}
+
+console.log('PASS Group UID history core: lọc Cut, chuẩn hóa số lượng/ngày, chặn dữ liệu nguồn sai, thiếu danh sách = đổi dạng');

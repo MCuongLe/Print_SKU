@@ -500,11 +500,16 @@
 
     async function runGroupUid(mode, device, cooldownSeconds = 0) {
       // Thử 1 trang nhỏ trước khi thuê khoá / tạo lượt: tab WMS đăng xuất thì bỏ qua lặng lẽ.
-      try { await sendTab("group_uid", "GET_GROUP_UID_PAGE", { page: 1, size: 1 }, WMS_PAGE_TIMEOUT_MS); }
+      let probe;
+      try { probe = await sendTab("group_uid", "GET_GROUP_UID_PAGE", { page: 1, size: 1 }, WMS_PAGE_TIMEOUT_MS); }
       catch (error) {
         if (tabUnavailable(error)) return { status: "skipped", message: error.message };
         throw error;
       }
+      // 0.12.3: trang thử không lọc ngày nên tổng 0 = WMS không thấy UID nào cho tài khoản này (mất quyền kho, phiên lệch; `company-ids` không lọc
+      // group-uid-infos — đo 27/10/2026). Từ 0.12.2 thân {page, size} là danh sách rỗng, nên không chặn ở đây thì lượt thành "ok · 0 UID" im lặng. Bỏ qua
+      // trước khi thuê khoá / tạo lượt (mốc không tiến), mọi mode; chỉ khi tổng là số 0 — thiếu tổng thì chạy như cũ.
+      if (probe?.total === 0) return { status: "skipped", message: "WMS không thấy UID nào (kiểm quyền kho và phiên đăng nhập của tab WMS)" };
       const skip = await firstLease("group_uid", device, cooldownSeconds);
       if (skip) return skip;
       const g = startGuard("group_uid", device), holder = await holderOf(device);

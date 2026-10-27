@@ -66,8 +66,9 @@
     throw withReason(new Error("WMS tạm ngắt kết nối; hãy thử lại"), "network");
   }
 
-  // 27/10/2026: danh sách rỗng WMS có khi trả HTTP 200 chỉ {page, size} (không count, không records) thay vì 204 — đo ở transfer-bins và
-  // group-uid-infos (khoảng ngày không có thay đổi). Chỉ bật `emptyPage` cho hai nơi đó: tồn kho (bins/count/v3) cũng trả {page, size} khi
+  // 27/10/2026: danh sách rỗng WMS có khi trả HTTP 200 chỉ {page, size} (không count, không records) thay vì 204 — đo ở transfer-bins,
+  // group-uid-infos, group-uid-info-histories (lịch sử Cắt / chuyển vị trí, 0.12.3) và stock-import-exports (cả config_query=1 lẫn 2, 0.12.3:
+  // readImportExportPage còn đối chiếu lệnh đếm). Chỉ bật `emptyPage` ở các lệnh đã đo: tồn kho (bins/count/v3) cũng trả {page, size} khi
   // kho / công ty không khớp, nên ở đó dạng này vẫn phải báo "WMS đổi dạng" (chặn R8a, 0.10.7). Dạng lạ khác (thừa khoá, count không kèm danh sách) không đổi.
   const emptyPageAsList = body => {
     const keys = body && typeof body === "object" && !Array.isArray(body) ? Object.keys(body) : [];
@@ -108,7 +109,9 @@
     url.searchParams.set("warehouse_ids", CUT_WAREHOUSE_ID);
     if (payload?.from) url.searchParams.set("from_updated_at", String(new Date(payload.from).getTime()));
     if (payload?.to) url.searchParams.set("to_updated_at", String(new Date(payload.to).getTime()));
-    const normalized = core.normalizeHistoryPage(await getJson(url, "Phiên WMS không còn quyền đọc lịch sử Group UID; hãy đăng nhập lại bằng tài khoản Admin"));
+    const normalized = core.normalizeHistoryPage(await getJson(url, "Phiên WMS không còn quyền đọc lịch sử Group UID; hãy đăng nhập lại bằng tài khoản Admin", "", { emptyPage: true }));
+    // 0.12.3: như Import/Export — danh sách rỗng mà count báo còn dòng ở trang này là WMS tự mâu thuẫn → lỗi, không thành 0 dòng + tiến mốc phủ.
+    if (normalized.sourceRows === 0 && normalized.total > (page - 1) * size) throw withReason(new Error("WMS trả trang lịch sử rỗng mâu thuẫn với tổng; hãy thử lại"), "network");
     return {
       page, size, total: normalized.total,
       totalPages: Math.max(1, Math.ceil(normalized.total / size)),
@@ -134,7 +137,8 @@
     url.searchParams.set("actions", MOVE_ACTION);
     if (payload?.from) url.searchParams.set("from_updated_at", String(new Date(payload.from).getTime()));
     if (payload?.to) url.searchParams.set("to_updated_at", String(new Date(payload.to).getTime()));
-    const normalized = core.normalizeMovesPage(await getJson(url, "Phiên WMS không còn quyền đọc lịch sử chuyển vị trí; hãy đăng nhập lại", companyId));
+    const normalized = core.normalizeMovesPage(await getJson(url, "Phiên WMS không còn quyền đọc lịch sử chuyển vị trí; hãy đăng nhập lại", companyId, { emptyPage: true }));
+    if (normalized.sourceRows === 0 && normalized.total > (page - 1) * size) throw withReason(new Error("WMS trả trang lịch sử rỗng mâu thuẫn với tổng; hãy thử lại"), "network");
     return {
       page, size, total: normalized.total,
       totalPages: Math.max(1, Math.ceil(normalized.total / size)),
@@ -339,8 +343,11 @@
       return url;
     };
     const denied = "Phiên WMS không còn quyền đọc báo cáo Import/Export; hãy đăng nhập lại";
-    const [list, count] = await Promise.all([getJson(build(1), denied, payload?.companyId), getJson(build(2), denied, payload?.companyId)]);
+    // 0.12.3: lệnh danh sách trả {page, size} khi khoảng ngày rỗng (đo 27/10/2026) → {count:0, records:[]}; lệnh đếm không cần cờ (thiếu count = 0). Danh sách rỗng chỉ được tin khi lệnh
+    // đếm cũng không còn dòng ở trang này; đếm > (page − 1) × size mà danh sách rỗng là mâu thuẫn → lỗi, không thành 0 dòng im lặng.
+    const [list, count] = await Promise.all([getJson(build(1), denied, payload?.companyId, { emptyPage: true }), getJson(build(2), denied, payload?.companyId)]);
     const normalized = auditCore.normalizeImportExportPage(list);
+    if (normalized.sourceRows === 0 && Number(count?.count) > (page - 1) * size) throw withReason(new Error("WMS trả trang nhập xuất rỗng mâu thuẫn với tổng; hãy thử lại"), "network");
     const total = Math.max(normalized.sourceRows, Number(count?.count) || 0);
     return { ...normalized, total, totalPages: Math.max(1, Math.ceil(total / size)), warehouseIds: ids, from, to, generatedAt: new Date().toISOString() };
   }
