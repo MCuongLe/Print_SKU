@@ -500,6 +500,30 @@ const actions = (calls, fn) => calls.filter(call => call.fn === fn).map(call => 
     assert.deepEqual(r3.results.map(item => `${item.kind}:${item.status}`), ["group_uid:skipped", "storage_risk:skipped"]);
   }
 
+  // Review 26/10/2026: câu tóm tắt nêu kết quả bước nguồn (không im lặng) — Đối chiếu ADJ (vòng 2: đúng đại lượng, cùng cụm chữ với web
+  // syncFromWms): "nguồn phiếu: đã gán <adj + it> · còn chưa nguồn <unresolved − adj − it>" + phiếu chưa tra được số + danh sách Cut bị cắt
+  // (matched gồm cả Cut ghép được phiếu nhưng phiếu chưa tra được số — không được ghi, không phải "đã gán"); Rủi ro lưu trữ: số cặp
+  // SKU × vị trí ảo có nguồn / tổng cặp + lý do khi dừng sớm. Lõi cũ không trả → câu cũ.
+  {
+    const cutAdjCore = { run: async () => ({ total: 1234, cutRows: 12, newRows: 10, changedRows: 2,
+      source: { unresolved: 40, docs: 9, matched: 25, written: 22, skipped: 0, adj: 20, it: 2, notFound: 3, truncated: true } }) };
+    const storageRiskCore = { run: async () => ({ ok: true, skuCount: { rows: 641, sources: { done: 58, total: 64, reason: "dừng đọc chuyển vị trí: WMS trả mã 500" } }, uidTemp: { rows: 5 } }) };
+    const h = harness({ insideTab: false, cutAdjCore, storageRiskCore });
+    const result = await h.sync.tick();
+    assert.deepEqual(result.results.map(item => `${item.kind}:${item.status}`), ["group_uid:ok", "cut_adj:ok", "storage_risk:ok"]);
+    assert.deepEqual(result.results.slice(1).map(item => item.message), [
+      "Nạp 12 dòng Cut: 10 mới, 2 đổi · 1.234 dòng lịch sử đã đọc · nguồn phiếu: đã gán 22 · còn chưa nguồn 18 · 3 phiếu chưa tra được số · danh sách Cut bị cắt",
+      "Kiểm kê 641 SKU · nguồn 58/64 cặp: dừng đọc chuyển vị trí: WMS trả mã 500 · UID tạm 5 dòng",
+    ]);
+    const full = harness({ insideTab: false,
+      cutAdjCore: { run: async () => ({ total: 5, cutRows: 1, newRows: 1, changedRows: 0, source: { unresolved: 4, matched: 4, written: 4, adj: 3, it: 1, notFound: 0, truncated: false } }) },
+      storageRiskCore: { run: async () => ({ ok: true, skuCount: { rows: 3, sources: { done: 2, total: 2, reason: "" } }, uidTemp: { rows: 0 } }) } });
+    assert.deepEqual((await full.sync.tick()).results.slice(1).map(item => item.message), [
+      "Nạp 1 dòng Cut: 1 mới, 0 đổi · 5 dòng lịch sử đã đọc · nguồn phiếu: đã gán 4 · còn chưa nguồn 0",
+      "Kiểm kê 3 SKU · nguồn 2/2 cặp · UID tạm 0 dòng",
+    ]);
+  }
+
   // 0.10.8 (D8): auto-sync đưa giờ server (meta.updatedAt của RPC; thiếu thì header Date) cho lõi Cắt/ADJ qua serverNow.
   {
     const seen = [];

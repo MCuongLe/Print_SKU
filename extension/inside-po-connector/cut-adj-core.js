@@ -21,6 +21,11 @@
 //   Lỗi đọc (trang lặp, tổng đổi giữa trang, đọc thiếu dòng, ngoài kho 1177, quá 400 trang, tab lỗi) → ném TRƯỚC mọi lần nạp.
 //   Lỗi nạp ở phần i > 1 thì các phần trước đã nạp (như web; nạp lại chồng không nhân đôi: khoá UID + giờ Cut); từ 0.10.8 (R7) phần
 //   i < cuối gửi p_data_until = cut_at dòng cuối của phần nên mốc phủ không nhảy qua phần chưa nạp.
+//   Nguồn phiếu (26/10/2026): nạp xong thì gọi CutSourceCore.assignSources (cut-source-core.js, cùng hàm nút Đọc WMS của web gọi):
+//   rpc wms_group_uid_cut_unresolved → sendTab GET_STOCK_IMPORT_EXPORT_PAGE (tới mốc to của lượt đọc lịch sử) / GET_WMS_DOC_INFO → rpc wms_group_uid_cut_set_source;
+//   kết quả trả thêm `source` {unresolved, docs, matched, written, skipped, adj, it, notFound, truncated}. Bước này lỗi thì Cut đã nạp
+//   vẫn giữ (lượt sau ghép lại vì Cut còn chưa có nguồn) nhưng run() NÉM "Đã nạp N dòng Cut; chưa gán được nguồn phiếu: …" (giữ
+//   code / reason / fromTab của lỗi gốc, error.result = phần đã nạp) để auto-sync ghi Lỗi. sourceCore (tuỳ chọn) để test thay bộ ghép.
 (function (root) {
   const WAREHOUSE_ID = "1177";
   const PAGE_SIZE = 500;
@@ -48,7 +53,7 @@
     return Number.isFinite(b) && (!Number.isFinite(a) || b < a) ? new Date(b).toISOString() : iso;
   }
 
-  async function run({ sendTab, rpc, device = "", now = () => Date.now(), serverNow, onProgress } = {}) {
+  async function run({ sendTab, rpc, device = "", now = () => Date.now(), serverNow, onProgress, sourceCore } = {}) {
     if (typeof sendTab !== "function" || typeof rpc !== "function") throw new Error("Thiếu hàm gửi lệnh tab WMS hoặc gọi Supabase");
     const show = info => { if (onProgress) { try { onProgress(info); } catch { /* chỉ để hiển thị */ } } };
     const cov = await rpc("wms_cut_coverage", {});
@@ -102,7 +107,21 @@
       });
       for (const key of Object.keys(out)) out[key] += Number(saved?.[key] || 0);
     }
-    return { total, ...out, from: sentFrom, until: sentUntil, readFrom: from, to, full: !from, parts: parts.length };
+    const result = { total, ...out, from: sentFrom, until: sentUntil, readFrom: from, to, full: !from, parts: parts.length };
+    // Nguồn phiếu ADJ / IT chạy SAU khi nạp: lỗi ở đây không làm mất phần nạp, nhưng vẫn báo lỗi (không im lặng).
+    const matcher = sourceCore || root.CutSourceCore || (typeof require === "function" ? require("./cut-source-core.js") : null);
+    try {
+      if (typeof matcher?.assignSources !== "function") throw new Error("Extension thiếu bộ ghép nguồn phiếu (cut-source-core.js); hãy Reload Extension");
+      // Khung giờ (review 26/10/2026): Import/Export chỉ đọc tới mốc to của lượt đọc lịch sử Cut vừa nạp (như web syncFromWms) — phiếu tạo sau
+      // mốc mà Cut của nó chưa nạp không được lấy Cut cũ đang tự do; lượt sau ghép tiếp.
+      result.source = await matcher.assignSources({ sendTab, rpc, now: () => Date.parse(to), onProgress: show });
+    } catch (error) {
+      const wrapped = new Error(`Đã nạp ${out.cutRows} dòng Cut; chưa gán được nguồn phiếu: ${error?.message || "lỗi không rõ"}`);
+      for (const key of ["code", "reason", "fromTab"]) if (error?.[key]) wrapped[key] = error[key];
+      wrapped.result = result;
+      throw wrapped;
+    }
+    return result;
   }
 
   const api = { run, fileName, WAREHOUSE_ID, MAX_PAGES, PART_ROWS };

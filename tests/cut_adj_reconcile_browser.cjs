@@ -67,10 +67,13 @@ const HISTORY = [
   cutRow('UID-L', 'SKU-G', 306, 4694, '2026-10-03 09:08:00'), // UID da QC Passed: lenh Cut thu hai la cat mau, khong phai cat trung
   cutRow('UID-L', 'SKU-G', 20, 4674, '2026-10-04 09:00:00'),
   cutRow('UID-X', 'SKU-G', 50, 100, '2026-10-03 09:07:00'), // UID khong quet cat tren app
+  cutRow('UID-M', 'SKU-G', 20, 4980, '2026-10-03 09:09:00'), // Cut nguon IT (chuyen noi bo) -> nhom Chuyen noi bo, khong phai lech
+  cutRow('UID-N', 'SKU-G', 306, 4694, '2026-10-03 09:10:00'), // Cut nguon ADJ ...
+  cutRow('UID-N', 'SKU-G', 25, 4669, '2026-10-04 09:30:00'), // ... + Cut nguon IT: khong tinh Cut nhieu lan -> Khop
   historyRow('Create', 'UID-H', 'SKU-G', 5000, '', '2026-08-01 07:58:09'),
   historyRow('Transfer location', 'UID-A', 'SKU-G', 0, '', '2026-10-05 14:03:46')
 ];
-const CUT_ROWS = 12;
+const CUT_ROWS = 15;
 const G = 'Vải thử nghiệm/AB_Test/60% Cotton/180cm-170gsm/Đỏ/g'; // chuan 1 m = 180cm x 170gsm = 306 g
 const M = 'Vải thử nghiệm/Beige/mm'; // chuan 1000 mm
 const N = 'Phụ liệu thử nghiệm/Size M'; // khong tinh duoc chuan
@@ -88,10 +91,19 @@ const syntheticItems = () => [
   appItem('UID-I', 'SKU-G', G), // Cut cu truoc lan quet bi bo qua -> chua ADJ
   appItem('UID-J', 'SKU-N', N, '2026-10-03T02:05:00.000Z'), // khong co chuan -> khop
   appItem('UID-K', 'SKU-G', G, '2026-10-03T02:06:00.000Z'), // lech 1 trong dung sai -> khop
-  appItem('UID-L', 'SKU-G', G, '2026-10-03T02:08:00.000Z', 'Passed') // 2 lenh Cut, QC Passed -> Cat mau QC (khong phai loi)
+  appItem('UID-L', 'SKU-G', G, '2026-10-03T02:08:00.000Z', 'Passed'), // 2 lenh Cut, QC Passed -> Cat mau QC (khong phai loi)
+  appItem('UID-M', 'SKU-G', G), // chi co Cut nguon IT -> Chuyen noi bo
+  appItem('UID-N', 'SKU-G', G, '2026-10-03T02:10:00.000Z') // Cut ADJ 306 + Cut IT 25 -> Khop (Cut IT khong tinh)
 ];
-const EXPECTED_STATES = { 'UID-A': 'ok', 'UID-B': 'forgot', 'UID-C': 'wrong', 'UID-D': 'ok', 'UID-E': 'multi', 'UID-F': 'missing', 'UID-G': 'wait', 'UID-H': 'pending', 'UID-I': 'pending', 'UID-J': 'ok', 'UID-K': 'ok', 'UID-L': 'qc' };
-const STATE_ORDER = ['wrong', 'missing', 'multi', 'forgot', 'done', 'qc', 'pending', 'wait', 'ok'];
+// Nguon phieu tung Cut (cut_source_v1, may chu tra trong wmsCuts[]); khoa = UID | gio Cut (UTC). Ma phieu / PO gia.
+const SOURCES = {
+  'UID-A|2026-10-03T02:00:00.000Z': { sourceType: 'ADJ', sourceCode: '1008260000000001', sourceReason: 'Xuất test', sourceNote: '10012600000001' },
+  'UID-M|2026-10-03T02:09:00.000Z': { sourceType: 'IT', sourceCode: '1007260000000002', sourceReason: null, sourceNote: 'WH - SEMI PRODUCT - TEST · NPL may mẫu giả' },
+  'UID-N|2026-10-03T02:10:00.000Z': { sourceType: 'ADJ', sourceCode: '1008260000000003', sourceReason: 'Xuất test', sourceNote: null },
+  'UID-N|2026-10-04T02:30:00.000Z': { sourceType: 'IT', sourceCode: '1007260000000004', sourceReason: null, sourceNote: 'WH - SEMI PRODUCT - TEST' },
+};
+const EXPECTED_STATES = { 'UID-A': 'ok', 'UID-B': 'forgot', 'UID-C': 'wrong', 'UID-D': 'ok', 'UID-E': 'multi', 'UID-F': 'missing', 'UID-G': 'wait', 'UID-H': 'pending', 'UID-I': 'pending', 'UID-J': 'ok', 'UID-K': 'ok', 'UID-L': 'qc', 'UID-M': 'it', 'UID-N': 'ok' };
+const STATE_ORDER = ['wrong', 'missing', 'multi', 'forgot', 'done', 'qc', 'it', 'pending', 'wait', 'ok'];
 
 // Nút đọc nguồn một kiểu .src-read (17/10/2026, khối #hero-standard): lớp, nhãn, icon mask ở ::before (không còn svg / act-icon--load), cùng màu / cỡ / bo với nút đọc ở các màn khác.
 // spec: id, text, mate? (id nút/ô cùng hàng phải cao bằng). Trả danh sách điểm lệch (rỗng = đạt).
@@ -125,7 +137,7 @@ const srcReadAudit = (page, specs, width) => page.evaluate(async ({ specs, width
     for (const width of [1280, 375]) {
       const page = await browser.newPage({ viewport: { width, height: 900 }, acceptDownloads: true });
       const errors = [], items = syntheticItems();
-      const store = { rows: [], imports: [], importCalls: [], tickCalls: [], reconcileBodies: [], resolveCalls: [], importedAgoMs: 0, lastFileName: null };
+      const store = { rows: [], imports: [], importCalls: [], tickCalls: [], reconcileBodies: [], resolveCalls: [], sourceCalls: [], importedAgoMs: 0, lastFileName: null };
       page.on('pageerror', error => errors.push(error.message));
       page.on('console', message => { if (message.type() === 'error' && !/Failed to load resource/.test(message.text())) errors.push(message.text()); });
       // 08/10/2026: xac nhan dung hop WhDialog trong trang; hop confirm() cua trinh duyet khong duoc hien nua.
@@ -140,7 +152,7 @@ const srcReadAudit = (page, specs, width) => page.evaluate(async ({ specs, width
         if (rpc === 'cut_group_uid_reconcile') {
           store.reconcileBodies.push(body);
           const wmsCutsOf = item => store.rows.filter(r => r.group_uid_code === item.groupUid && Date.parse(r.cut_at) >= Date.parse(item.cutAt))
-            .sort((a, b) => Date.parse(a.cut_at) - Date.parse(b.cut_at)).map(r => ({ cutAt: r.cut_at, qty: Number(r.qty), remaining: Number(r.remaining_qty), by: r.cut_by }));
+            .sort((a, b) => Date.parse(a.cut_at) - Date.parse(b.cut_at)).map(r => ({ cutAt: r.cut_at, qty: Number(r.qty), remaining: Number(r.remaining_qty), by: r.cut_by, sourceType: null, sourceCode: null, sourceReason: null, sourceNote: null, ...(SOURCES[`${r.group_uid_code}|${new Date(r.cut_at).toISOString()}`] || {}) }));
           const imports = store.imports;
           result = { ok: true, data: {
             items: items.map(item => ({ ...item, wmsCuts: wmsCutsOf(item) })),
@@ -154,6 +166,12 @@ const srcReadAudit = (page, specs, width) => page.evaluate(async ({ specs, width
           for (const row of body.p_rows) if (!have.has(rowKey(row))) { store.rows.push(row); have.add(rowKey(row)); added += 1; }
           store.imports.push({ from: body.p_data_from, until: body.p_data_until, fileName: body.p_file_name });
           result = { ok: true, data: { importId: 'x', cutRows: body.p_rows.length, newRows: added, changedRows: 0, unchangedRows: body.p_rows.length - added, previousImports: 0 } };
+        } else if (rpc === 'wms_group_uid_cut_unresolved' || rpc === 'wms_group_uid_cut_set_source') {
+          // Buoc nguon phieu sau khi Doc WMS (cut-source-core): mot Cut chua nguon, khong co phieu nao -> khong ghi
+          store.sourceCalls.push({ name: rpc, authorization: request.headers().authorization, body });
+          result = rpc === 'wms_group_uid_cut_unresolved'
+            ? { ok: true, data: { cuts: [{ groupUid: 'UID-C', cutAt: '2026-10-03T02:02:00+00:00', qty: 100, sku: 'SKU-G' }], used: [], truncated: false } }
+            : { ok: true, data: { updated: 0, skipped: body.p_rows.length } };
         } else if (rpc === 'cut_group_uid_adj_from_wms') {
           store.tickCalls.push(body.p_codes);
           let updated = 0;
@@ -242,11 +260,16 @@ const srcReadAudit = (page, specs, width) => page.evaluate(async ({ specs, width
       // Extension giả lập chia trang như thật. noTotal: API không trả tổng → extension lấy số dòng của trang làm tổng
       // (totalPages = 1). repeat: API bỏ qua tham số page, trang nào cũng trả trang 1.
       await page.evaluate(source => {
-        window.__wms = { source, noTotal: false, repeat: false, pages: [] };
+        window.__wms = { source, noTotal: false, repeat: false, pages: [], moves: [] };
         window.addEventListener('message', async event => {
           const req = event.data;
           if (event.source !== window || req?.source !== 'PRINT_SKU_APP') return;
-          if (req.type === 'PING' || req.type === 'PING_WMS') window.postMessage({ source: 'HASAKI_INSIDE_CONNECTOR', requestId: req.requestId, ok: true, data: { version: '0.5.0' } }, location.origin);
+          if (req.type === 'PING' || req.type === 'PING_WMS') window.postMessage({ source: 'HASAKI_INSIDE_CONNECTOR', requestId: req.requestId, ok: true, data: { version: '0.12.0' } }, location.origin);
+          // Bao cao Import/Export cua buoc nguon phieu: khong co dong xuat nao
+          if (req.type === 'GET_STOCK_IMPORT_EXPORT_PAGE') {
+            window.__wms.moves.push(req.payload);
+            window.postMessage({ source: 'HASAKI_INSIDE_CONNECTOR', requestId: req.requestId, ok: true, data: { rows: [], sourceRows: 0, total: 0, totalPages: 1, page: req.payload.page, size: req.payload.size, warehouseIds: req.payload.warehouseIds } }, location.origin);
+          }
           if (window.__hold && req.type === 'GET_GROUP_UID_HISTORY_PAGE') await window.__hold; // giữ phản hồi để chặn được pha "đang đọc"
           if (req.type === 'GET_GROUP_UID_HISTORY_PAGE') {
             const wms = window.__wms, size = req.payload.size || 500, pageNo = req.payload.page || 1, at = wms.repeat ? 1 : pageNo;
@@ -284,9 +307,14 @@ const srcReadAudit = (page, specs, width) => page.evaluate(async ({ specs, width
       assert.match(store.importCalls[1].body.p_file_name, /^WMS_API_WH_MATERIAL_/);
       assert.equal(store.importCalls[1].body.p_total_rows, HISTORY.length - 1);
       assert.equal(store.importCalls[1].body.p_rows.length, CUT_ROWS);
+      // 26/10/2026: nap xong thi ghep nguon phieu (phien Admin; Import/Export kho 1177), bao so Cut ADJ / IT da gan
+      assert.deepEqual(store.sourceCalls.map(c => [c.name, c.authorization, JSON.stringify(c.body)]), [['wms_group_uid_cut_unresolved', 'Bearer test-admin-token', '{"p_days":30}']]);
+      const moves = await page.evaluate(() => window.__wms.moves);
+      assert.deepEqual(moves.map(m => [JSON.stringify(m.warehouseIds), m.page, m.size]), [['[1177]', 1, 500]], 'doc Import/Export kho 1177 mot trang');
+      assert.match(await message(), /Nguồn phiếu: đã gán 0 · còn chưa nguồn 1\.$/, 'cùng cụm chữ với tóm tắt tự động: đã gán / còn chưa nguồn');
 
       // Phan loai trang thai.
-      assert.deepEqual(await counts(), { all: 12, wrong: 1, missing: 1, multi: 1, forgot: 1, done: 0, qc: 1, pending: 2, wait: 1, ok: 4 });
+      assert.deepEqual(await counts(), { all: 14, wrong: 1, missing: 1, multi: 1, forgot: 1, done: 0, qc: 1, it: 1, pending: 2, wait: 1, ok: 5 });
       assert.equal(await page.locator('#cut-adj-issues').textContent(), '4');
       const rows = await states();
       assert.deepEqual(Object.fromEntries(rows), EXPECTED_STATES);
@@ -299,6 +327,29 @@ const srcReadAudit = (page, specs, width) => page.evaluate(async ({ specs, width
       assert.match(wrongRow, /306 g/);
       assert.match(wrongRow, /100 g/);
       assert.match(await page.locator('#cut-adj-rows tr[data-code="UID-D"]').innerText(), /1\.000 mm/);
+      // Chip nguon tung Cut: ADJ · <ly do> + so phieu + PO; IT + kho nhan · mo ta; Chua ro. Cut IT khong to do (khong tinh lech).
+      const chips = code => page.locator(`#cut-adj-rows tr[data-code="${code}"] .cut-adj-src`).allTextContents();
+      assert.deepEqual(await chips('UID-A'), ['ADJ · Xuất test']);
+      assert.match(await page.locator('#cut-adj-rows tr[data-code="UID-A"]').innerText(), /1008260000000001[\s\S]*PO 10012600000001/);
+      assert.deepEqual(await chips('UID-N'), ['ADJ · Xuất test', 'IT']);
+      assert.match(await page.locator('#cut-adj-rows tr[data-code="UID-N"]').innerText(), /1008260000000003[\s\S]*1007260000000004[\s\S]*WH - SEMI PRODUCT - TEST/);
+      assert.deepEqual(await chips('UID-C'), ['Chưa rõ']);
+      assert.deepEqual(await chips('UID-E'), ['Chưa rõ', 'Chưa rõ']);
+      assert.equal(await page.locator('#cut-adj-rows tr[data-code="UID-C"] .cut-adj-q[data-bad="true"]').count(), 1);
+      assert.equal(await page.locator('#cut-adj-rows tr[data-code="UID-N"] .cut-adj-q[data-bad="true"]').count(), 0);
+      assert.equal(await page.locator('#cut-adj-rows tr[data-code="UID-A"] .cut-adj-src').getAttribute('data-src'), 'ADJ');
+
+      // Chuyen noi bo (UID-M: chi co Cut IT) la thong tin: khong vao #cut-adj-issues, khong o chon, khong nut xu ly
+      await tile('it');
+      assert.deepEqual((await states()).map(([code]) => code), ['UID-M']);
+      assert.equal((await page.locator('#cut-adj-d-title').textContent()).trim(), 'Chuyển nội bộ');
+      assert.equal(await page.locator('#cut-adj-d-mark').getAttribute('data-tone'), 'it');
+      assert.equal(await page.locator('#cut-adj-rows input[type=checkbox]').count(), 0);
+      assert.equal(await page.locator('#cut-adj-foot').isHidden(), true, 'nhóm Chuyển nội bộ không có nút xử lý');
+      assert.deepEqual(await chips('UID-M'), ['IT']);
+      assert.match(await page.locator('#cut-adj-rows tr[data-code="UID-M"]').innerText(), /1007260000000002[\s\S]*WH - SEMI PRODUCT - TEST · NPL may mẫu giả/);
+      assert.match(await page.locator('#cut-adj-rows tr[data-code="UID-M"]').innerText(), /Chuyển nội bộ/);
+      await closeAdj();
 
       // Cat mau QC (UID-L: 2 lenh Cut, qcStatus Passed) la thong tin: khong tinh vao #cut-adj-issues, khong co o chon; UID-E (qcStatus null) van la Cut nhieu lan.
       await tile('qc');
@@ -326,8 +377,8 @@ const srcReadAudit = (page, specs, width) => page.evaluate(async ({ specs, width
       await page.waitForFunction(() => document.querySelector('#cut-message').textContent.includes('Đã tick 1 UID'));
       assert.deepEqual(store.tickCalls, [['UID-B']]);
       assert.equal(items.find(x => x.groupUid === 'UID-B').adjExportedAt, '2026-10-03T09:01:00+07:00');
-      await page.waitForFunction(() => document.querySelector('.cut-adj-kpi[data-st="ok"] b').textContent === '5');
-      assert.deepEqual(await counts(), { all: 12, wrong: 1, missing: 1, multi: 1, forgot: 0, done: 0, qc: 1, pending: 2, wait: 1, ok: 5 });
+      await page.waitForFunction(() => document.querySelector('.cut-adj-kpi[data-st="ok"] b').textContent === '6');
+      assert.deepEqual(await counts(), { all: 14, wrong: 1, missing: 1, multi: 1, forgot: 0, done: 0, qc: 1, it: 1, pending: 2, wait: 1, ok: 6 });
       assert.equal(await page.locator('#cut-adj-issues').textContent(), '3');
 
       // Da xu ly: chon UID lech -> luu kem kieu lech; sang nhom Da xu ly, bot 1 lech. Bo xu ly tra lai nhom cu.
@@ -343,7 +394,7 @@ const srcReadAudit = (page, specs, width) => page.evaluate(async ({ specs, width
       await page.waitForFunction(() => document.querySelector('#cut-message').textContent.includes('Đã đánh dấu 1 UID đã xử lý'));
       assert.deepEqual(store.resolveCalls, [{ p_codes: ['UID-F'], p_state: 'missing', p_done: true }]);
       await page.waitForFunction(() => document.querySelector('.cut-adj-kpi[data-st="done"] b').textContent === '1');
-      assert.deepEqual(await counts(), { all: 12, wrong: 1, missing: 0, multi: 1, forgot: 0, done: 1, qc: 1, pending: 2, wait: 1, ok: 5 });
+      assert.deepEqual(await counts(), { all: 14, wrong: 1, missing: 0, multi: 1, forgot: 0, done: 1, qc: 1, it: 1, pending: 2, wait: 1, ok: 6 });
       assert.equal(await page.locator('#cut-adj-issues').textContent(), '2');
       await tile('done');
       assert.match(await page.locator('#cut-adj-rows tr[data-code="UID-F"]').innerText(), /Đã xử lý[\s\S]*Tick, WMS không có/);
@@ -365,6 +416,18 @@ const srcReadAudit = (page, specs, width) => page.evaluate(async ({ specs, width
       await page.waitForTimeout(200);
       assert.deepEqual([(await counts()).missing, (await counts()).done], [1, 0]);
       Object.assign(items.find(x => x.groupUid === 'UID-F'), { adjResolvedAt: null, adjResolvedState: null });
+      // Chỉ có Cut nguồn IT nhưng ĐÃ tick ADJ (review 26/10/2026): chỉ Cut ADJ là xuất test → Tick mà WMS không có Cut ADJ là lệch "Tick, WMS
+      // không có"; tick sau mốc dữ liệu WMS → "Chờ dữ liệu WMS"; bỏ tick → lại "Chuyển nội bộ" (trung tính).
+      const reloadAdj = async () => { const n = store.reconcileBodies.length; await page.locator('#cut-adj-reload').click(); while (store.reconcileBodies.length === n) await page.waitForTimeout(50); await page.waitForTimeout(200); };
+      const uidM = items.find(x => x.groupUid === 'UID-M');
+      await tile('');
+      await closeAdj();
+      for (const [tick, want] of [['2026-10-03T02:09:30.000Z', 'missing'], ['2026-10-06T03:00:00.000Z', 'wait'], [null, 'it']]) {
+        uidM.adjExportedAt = tick;
+        await reloadAdj();
+        assert.equal(Object.fromEntries(await states())['UID-M'], want, `UID-M chỉ có Cut IT, tick ${tick} → ${want}`);
+      }
+      assert.deepEqual(await counts(), { all: 14, wrong: 1, missing: 1, multi: 1, forgot: 0, done: 0, qc: 1, it: 1, pending: 2, wait: 1, ok: 6 });
       // 22/10/2026: lần nạp WMS gần nhất quá 70 phút (Extension 0.10.7 tự nạp mỗi 30 phút) → ô Cập nhật đỏ "Ngừng"; vừa nạp thì không.
       assert.notEqual(await page.locator('#cut-adj-upd').getAttribute('data-tone'), 'alert');
       assert.equal(await page.locator('#cut-adj-upd .cut-adj-stop').count(), 0, 'vừa nạp: không có nhãn Ngừng');
@@ -388,7 +451,7 @@ const srcReadAudit = (page, specs, width) => page.evaluate(async ({ specs, width
       assert.equal(await page.locator('#cut-adj-tick').isVisible(), false, 'chỉ Quên tick và Tất cả có nút Tick giúp');
       assert.deepEqual((await states()).map(([code]) => code).sort(), ['UID-H', 'UID-I']);
       await tile('');
-      assert.equal((await states()).length, 12);
+      assert.equal((await states()).length, 14);
       await closeAdj();
       await page.locator('#cut-adj-sku').fill('SKU-G');
       await page.locator('#cut-adj-date-from').fill('2026-10-01');
@@ -433,18 +496,23 @@ const srcReadAudit = (page, specs, width) => page.evaluate(async ({ specs, width
       assert.deepEqual(await syncWms({ noTotal: true, repeat: true }, 'trả lặp lại cùng một trang'), [1, 2]);
       assert.equal(store.importCalls.length, importsBefore);
 
-      // Xuat Excel: dung dong dang loc, du 9 cot, A4 ngang.
-      await tile('wrong');
-      const downloadPromise = page.waitForEvent('download');
-      await page.locator('#cut-adj-export').click();
-      const download = await downloadPromise, path = await download.path();
-      assert.match(download.suggestedFilename(), /^Doi_chieu_ADJ_\d{8}\.xlsx$/);
-      const xlsx = fs.readFileSync(path);
-      for (const text of ['Trạng thái', 'UID', 'SKU', 'Lot', 'Cắt lúc', 'SL chuẩn', 'SL WMS', 'Giờ Cut WMS', 'Tick ADJ', 'Sai số lượng', 'UID-C', '306 g', '100']) assert.equal(xlsx.includes(Buffer.from(text)), true, text);
+      // Xuat Excel: dung dong dang loc, du 11 cot (them Nguon, So phieu truoc Tick ADJ), A4 ngang.
+      const exportXlsx = async st => {
+        await tile(st);
+        const downloadPromise = page.waitForEvent('download');
+        await page.locator('#cut-adj-export').click();
+        const download = await downloadPromise;
+        assert.match(download.suggestedFilename(), /^Doi_chieu_ADJ_\d{8}\.xlsx$/);
+        return fs.readFileSync(await download.path());
+      };
+      const xlsx = await exportXlsx('wrong');
+      for (const text of ['Trạng thái', 'UID', 'SKU', 'Lot', 'Cắt lúc', 'SL chuẩn', 'SL WMS', 'Giờ Cut WMS', 'Nguồn', 'Số phiếu', 'Tick ADJ', 'Sai số lượng', 'UID-C', '306 g', '100', 'Chưa rõ']) assert.equal(xlsx.includes(Buffer.from(text)), true, text);
       assert.equal(xlsx.includes(Buffer.from('UID-A')), false, 'chi xuat dong dang loc');
-      assert.equal(xlsx.includes(Buffer.from('ref="A1:I2"')), true);
+      assert.equal(xlsx.includes(Buffer.from('ref="A1:K2"')), true);
       assert.equal(xlsx.includes(Buffer.from('orientation="landscape"')), true);
-      assert.equal(xlsx.includes(Buffer.from('<col min="9" max="9" width="18" customWidth="1"/>')), true);
+      assert.equal(xlsx.includes(Buffer.from('<col min="11" max="11" width="18" customWidth="1"/>')), true);
+      const itXlsx = await exportXlsx('it');
+      for (const text of ['Chuyển nội bộ', 'UID-M', 'IT', '1007260000000002']) assert.equal(itXlsx.includes(Buffer.from(text)), true, text);
 
       // Bo cuc: khong tran ngang, du 4 tab trong khung.
       const layout = await page.evaluate(() => {
@@ -455,7 +523,7 @@ const srcReadAudit = (page, specs, width) => page.evaluate(async ({ specs, width
       assert.equal(layout.tabs.length, 4);
       assert.equal(layout.tabs.every(right => right <= layout.innerWidth), true);
       assert.deepEqual(errors, []);
-      console.log(`PASS ${width}px: file zip/xlsx, loi file, Admin truoc khi nap, 8 trang thai, Cat mau QC, Cut cu truoc lan quet, tick giup, loc, nap lai, doc WMS nhieu trang (co/khong tong, lap trang), da xu ly/bo xu ly, XLSX, no overflow/errors`);
+      console.log(`PASS ${width}px: file zip/xlsx, loi file, Admin truoc khi nap, 10 trang thai, Cat mau QC, Chuyen noi bo + chip nguon phieu, chi Cut IT ma da tick -> lech/cho WMS, buoc nguon sau Doc WMS, Cut cu truoc lan quet, tick giup, loc, nap lai, doc WMS nhieu trang (co/khong tong, lap trang), da xu ly/bo xu ly, XLSX them Nguon/So phieu, no overflow/errors`);
       await page.close();
     }
   } finally { await browser.close(); }

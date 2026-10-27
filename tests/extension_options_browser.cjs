@@ -30,7 +30,7 @@ const fakeChrome = initial => {
   window.chrome = {
     runtime: {
       id: 'test-extension',
-      getManifest: () => ({ version: '0.11.0' }),
+      getManifest: () => ({ version: '0.12.1' }),
       sendMessage: async message => {
         window.__msgs.push(JSON.parse(JSON.stringify(message)));
         if (window.__failSend) throw new Error('Could not establish connection');
@@ -66,7 +66,7 @@ const fakeChrome = initial => {
       await page.goto(URL);
       await page.locator('#log tr').first().waitFor();
 
-      assert.equal((await page.locator('#ver').innerText()).trim(), 'v0.11.0');
+      assert.equal((await page.locator('#ver').innerText()).trim(), 'v0.12.1');
       assert.equal((await page.locator('h1').innerText()).trim(), 'Đồng bộ tự động');
       assert.equal(await page.locator('#signin').isVisible(), true, 'chưa đăng nhập hiện form');
       assert.equal(await page.locator('#signed').isVisible(), false);

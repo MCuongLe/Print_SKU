@@ -595,9 +595,21 @@
     }
 
     // Đối chiếu ADJ / Rủi ro lưu trữ: thuê khoá → lõi đọc WMS qua tab đã ghim rồi ghi bằng RPC Admin (cùng luồng nút trên web) → nhả khoá.
+    // Review 26/10/2026: nêu kết quả bước nguồn để không im lặng — Đối chiếu ADJ (vòng 2, cùng đại lượng + cụm chữ với web syncFromWms):
+    // "nguồn phiếu: đã gán <adj + it> · còn chưa nguồn <unresolved − đã gán>" (+ phiếu chưa tra được số, danh sách Cut bị cắt); không dùng
+    // matched (gồm cả Cut ghép được phiếu mà phiếu chưa tra được số — không được ghi). Rủi ro lưu trữ: số cặp SKU × vị trí ảo đã đọc nguồn /
+    // tổng cặp (+ lý do khi thiếu). Lõi cũ không trả → câu cũ.
     function summaryOf(kind, result) {
-      if (kind === "cut_adj") return `Nạp ${num(result?.cutRows)} dòng Cut: ${num(result?.newRows)} mới, ${num(result?.changedRows)} đổi · ${num(result?.total)} dòng lịch sử đã đọc`;
-      return `Kiểm kê ${num(result?.skuCount?.rows)} SKU · UID tạm ${num(result?.uidTemp?.rows)} dòng`;
+      if (kind === "cut_adj") {
+        const s = result?.source && typeof result.source === "object" ? result.source : null;
+        const assigned = s ? (Number(s.adj) || 0) + (Number(s.it) || 0) : 0, left = s ? Math.max(0, (Number(s.unresolved) || 0) - assigned) : 0;
+        const source = s ? ` · nguồn phiếu: đã gán ${num(assigned)} · còn chưa nguồn ${num(left)}${Number(s.notFound) > 0 ? ` · ${num(s.notFound)} phiếu chưa tra được số` : ""}${s.truncated === true ? " · danh sách Cut bị cắt" : ""}` : "";
+        return `Nạp ${num(result?.cutRows)} dòng Cut: ${num(result?.newRows)} mới, ${num(result?.changedRows)} đổi · ${num(result?.total)} dòng lịch sử đã đọc${source}`;
+      }
+      const s = result?.skuCount?.sources && typeof result.skuCount.sources === "object" ? result.skuCount.sources : null;
+      const reason = s && typeof s.reason === "string" ? s.reason.trim().slice(0, 200) : "";
+      const source = s && (Number(s.total) > 0 || reason) ? ` · nguồn ${num(s.done)}/${num(s.total)} cặp${reason ? `: ${reason}` : ""}` : "";
+      return `Kiểm kê ${num(result?.skuCount?.rows)} SKU${source} · UID tạm ${num(result?.uidTemp?.rows)} dòng`;
     }
     async function runCore(kind, device, cooldownSeconds = 0) {
       const core = cores[kind]?.();

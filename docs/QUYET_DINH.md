@@ -52,8 +52,12 @@
 - Dữ liệu giả bắt buộc trong test/repo: SKU `9000000xx`, UID `1028260000000xxx`, `100000001`; không đưa SKU/UID thật vào repo. (17/10 · N0920, N1001)
 
 ### Công cụ
-- Supabase MCP chỉ để ĐỌC (project `ikzhitdqkoatlmkrxuuh`); migration/deploy/ghi qua `scripts/apply_supabase_sql.py` / `deploy_*.py` do người dùng chạy, hoặc khi người dùng cho phép rõ từng lần. Token `print-sku-schema` hẹp quyền (không đọc Log Explorer). (10/10, 17/10 · N0028, N0982, N0983, N1054)
+- Supabase MCP chỉ để ĐỌC (project `ikzhitdqkoatlmkrxuuh`). Migration và deploy do lead tự chạy bằng `scripts/apply_supabase_sql.py` / `deploy_*.py` (dry-run trước, theo thứ tự luật 4, sau test + review). (26/10 · N20261026-2220; đổi chốt 10/10 và 17/10 "do người dùng chạy")
+  - Lệnh phá huỷ (`--allow-destructive`, DROP / DELETE / TRUNCATE) vẫn cần người dùng cho phép rõ từng lần; Reload Extension do người dùng làm. (26/10 · N20261026-2220)
+  - Migration lead đã chạy trực tiếp (không qua `release.py --apply`) phải ghi vào sổ `release_ledger` sau khi commit: `python scripts/record_ledger.py supabase/<tệp>.sql [...]` (không ghi thì `release.py --plan` báo migration còn chờ). (26/10 · N20261026-2142)
+  - Token `print-sku-schema` hẹp quyền (không đọc Log Explorer). (10/10, 17/10 · N0028, N0982, N0983, N1054)
 - Dò WMS chỉ bằng GET qua Chrome DevTools MCP; không dùng export "By PO" (tạo job = ghi). (12/10 · N0003, N0004)
+- Kiến thức hệ thống WMS, Inside Mastige, Inside Garment (endpoint, khoá dòng, mã chứng từ, số đo) chỉ lưu ở `docs/local/KIEN_THUC_WMS_INSIDE.md` (trên máy, `.gitignore`); không chép chi tiết vào tài liệu trong git; agent trong worktree được đưa đường dẫn tuyệt đối. (26/10 · N20261026-2142)
 - Plugin: `frontend-design` được dùng nhưng chuẩn dự án thắng; không cài wiki (reef), code-review Anthropic, playwright; sơ đồ bằng Mermaid. (17/10 · N0965, N0981, N1000)
 
 ## 2. Giao diện chung
@@ -244,6 +248,8 @@
 ### Hàng chưa lên kệ và UID tạm
 - `#storage-risk-screen` = "Hàng chưa lên kệ": vị trí `F0-<vùng>-00-00-00-\d+`, mốc theo Modified date, mốc 7/30 ngày, dữ liệu `sku_count_overview`. (12/10 · N0012)
 - Tab UID tạm: lọc reason ở app, nút `#srt-run` (không dùng `#sr-run`); kết quả lưu `uid_temp_*` (giữ 10 lượt), ai cũng xem, Admin đọc WMS. (16/10, 18/10 · N0901, N1025)
+- Pop-up nguồn khi bấm dòng: Hàng chưa lên kệ (kể cả ô SKU; nút sao chép SKU nằm trong pop-up) = các lần chuyển vào vị trí từ màn WMS Transfer Location History + phiếu nhập gần nhất của SKU, lưu cùng bản chụp Kiểm kê; UID tạm = phiếu gốc (IT / ADJ / lệnh sản xuất) lưu ở `uid_temp_rows.origin`; người thao tác che phần sau `@` cho người ngoài Admin. (26/10 · N20261026-2142)
+- Nguồn của Hàng chưa lên kệ lưu người thao tác chỉ phần trước `@` cho mọi người kể cả Admin (bản chụp Kiểm kê trả nguyên văn cho người xem nên che lúc lưu); UID tạm che ở máy chủ nên Admin thấy đầy đủ. (26/10 · N20261026-2142)
 
 ### Kiểm tra đầu vào
 - `#inspection` (chỉ phụ liệu): SL kiểm theo AQL 0.4, xuất theo template nhúng (chỉ ghi giá trị ô); hiện SKU Normal, số lượng + đơn vị GIỮ theo PO; NCC = pháp nhân trên PO; Rcvd date = LastModified của PO. (06/10, 10/10, 17/10 · N0176, N0177, N0178, N0969, N0970)
@@ -252,7 +258,9 @@
 - PO Garment, nhập Excel (file không có thông tin nguồn): Buyer theo nút đang chọn lúc chọn file, trạng thái ghi `file · MTG` / `file · GARMENT`; nút nguồn khoá trong lúc đọc Inside hoặc file (bộ đếm); không mở rộng nhãn "Inside Mastige" ra Options / `TAB_NAME.sku` / Admin SKU; giữ hai câu trợ giúp Buyer theo nguồn. (26/10 · N20261026-1711)
 
 ### Đối chiếu ADJ
-- ADJ = dòng `Action=Cut` của Group UID History, chỉ ghép Cut có giờ ≥ giờ quét app; chuẩn số lượng `computeCutQty`; có trạng thái Đã xử lý (tick cho UID lệch); "Tick giúp" chỉ dòng Quên tick; xem = anon, nạp = Admin. (05/10, 10/10 · N0344, N0345, N0346, N0021)
+- Đối chiếu đọc dòng `Action=Cut` của Group UID History (nguồn từng Cut: dòng dưới), chỉ ghép Cut có giờ ≥ giờ quét app; chuẩn số lượng `computeCutQty`; có trạng thái Đã xử lý (tick cho UID lệch); "Tick giúp" chỉ dòng Quên tick; xem = anon, nạp = Admin. (05/10, 10/10 · N0344, N0345, N0346, N0021)
+- Mỗi lần Cut có nguồn phiếu: `ADJ` (xuất test khi lý do là Xuất test), `IT` (chuyển nội bộ) hoặc chưa rõ; Cut chỉ là "xuất test" khi nguồn là phiếu ADJ. Chỉ Cut ADJ và chưa rõ vào luật lệch số lượng, nhóm `qc` và "Tick giúp"; Cut IT thành nhóm "Chuyển nội bộ", riêng UID chỉ có Cut IT mà đã có Tick ADJ là lệch ("Tick mà WMS không có"). (26/10 · N20261026-2142; thay chốt 05/10 "mọi Cut = ADJ")
+- Nguồn suy ra từ SKU + tổng số lượng + giờ của phiếu xuất vì WMS không ghi phiếu trên dòng Cut: mơ hồ hoặc không ghép được thì "Chưa rõ", vẫn đi qua luật cũ; chỉ ghi nguồn khi tra được số phiếu và không đè nguồn đã có; web chờ Extension ≥ 0.12.0. (26/10 · N20261026-2142)
 - Đọc từ WMS phân trang 500 tới hết (trang lặp → lỗi); `#cut-adj-upd` hiện giờ cập nhật + nguồn; nhóm `qc` "Cắt mẫu QC" (cắt > 1 lần + QC Passed/Failed) không tính là lỗi. (08/10, 16/10, 22/10 · N0043, N0915, N1151)
 
 ### Kiểm soát công trình
@@ -266,7 +274,7 @@
 - Thêm Đối chiếu ADJ và Rủi ro lưu trữ tự động mỗi 2 giờ 07:00–19:30 VN (`sync_auto_v2`, giãn cách = nhịp − 10 phút). (22/10 · N1140)
 - Cảnh báo khi tự động ngừng > 70 phút (dấu "!" icon, thẻ đỏ Options, ô Tự động đỏ, mốc giờ đỏ); ngừng buổi tối = máy tắt sau giờ làm, không phải lỗi. (22–23/10 · N1140, N1178)
 - Lượt Rủi ro lưu trữ chỉ "bỏ qua" khi mọi bước lỗi là phiên/thiếu tab và chưa lưu gì; nút Cập nhật cho lượt held luôn "chạy lại"; "Failed to fetch" → báo WMS ngắt kết nối, tải lại tab WMS. (16–22/10 · N1146, N0942, N0944, N0905)
-- Extension trong repo 0.11.0 (gồm cổng bản 0.10.10 + PO Garment, chưa Reload); máy CUONG-PC đang chạy 0.10.9 (Pending = ngừng, Reload 26/10); từ 0.10.7: ghim tab cả lượt, timeout edge/rpc 60 s. (22–26/10 · N1133, N1149, N1196, N20261026-0837, N20261026-1102)
+- Extension trong repo 0.12.1 (gồm cổng bản 0.10.10, PO Garment, nguồn phiếu Cut, pop-up nguồn Rủi ro lưu trữ); máy CUONG-PC đã Reload 0.12.0 ngày 26/10 và cần Reload lại để lấy 0.12.1; từ 0.10.7: ghim tab cả lượt, timeout edge/rpc 60 s. (22–26/10 · N1133, N1149, N1196, N20261026-0837, N20261026-1102)
 - Cổng bản Extension (từ 0.10.10): Extension và web gửi `extVersion` ở mọi lệnh Edge; `sku-sync` / `group-uid-sync` ghi nhận máy (`sync_auto_devices`, khoá `holder`) rồi trả 409 `EXTENSION_OUTDATED` ở `lease` (4 loại), `preview` (SKU), `prepare` (Group UID) khi `sync_auto_settings.min_extension[loại]` có mà bản thấp hơn hoặc chưa khai báo; lượt tay cũng bị chặn. (26/10 · N20261026-1102)
 - Cổng bản không chặn `apply`, `ingest`, `release`, `history`, `detail`, `cancel`, `auto-config` (Extension phải đọc được mức); mức rỗng = không chặn gì; đọc `sync_auto_settings` lỗi → 500, không cho qua; so bản theo từng đoạn số, `extVersion` kiểm chặt dạng `x.y.z`. (26/10 · N20261026-1102)
 - Hai bước: ghi nhận (mức rỗng), rồi nâng bằng SQL tay một số chung `0.10.10` khi bảng "Máy đồng bộ" cho thấy mọi máy thấy trong 7 ngày đã khai báo, rồi một lượt toàn bộ SKU và Group UID bằng máy bản mới; rút lui `min_extension = '{}'`. Edge không cho đổi mức; CHECK ở DB từ chối giá trị sai dạng và khoá lạ. (26/10 · N20261026-1102)
@@ -278,7 +286,8 @@
 - Hàm Admin chỉ `authenticated` + kiểm `group_uid_admin_allowed()` / `print_admin_allowed()` / `user_roles`; tắt đăng ký tự do (thêm Admin qua Dashboard + `user_roles`); secret không vào `index.html`. ([?], 17/10 · N0134–N0144, N0989, N0999)
 - Phiên Admin web gia hạn khi 401 HOẶC 403 và khi JWT còn < 1 phút; lỗi mạng giữ phiên. (16/10 · N0895)
 - Migration: `scripts/apply_supabase_sql.py` (DROP/DELETE cấp cao nhất cần `--allow-destructive`); UPDATE dữ liệu đặt trong migration; đổi chữ ký hàm phải `drop` bản cũ (PostgREST không chọn overload); sau migration lead kiểm chỉ đọc rồi mới báo lên thật. (10–18/10 · N0034, N0036, N0993, N1030)
-- Phát hành bằng `python scripts/release.py` (mô hình A, người dùng chọn 26/10): sổ `release_ledger` ở database; thứ tự cố định migration → Edge → Reload Extension (người) → push; cổng gõ tay, không `--yes`; DROP / DELETE gõ nguyên tên tệp; chỉ phát hành từ commit sạch. Claude chưa được chạy hộ `--apply` (mô hình C để sau); `--plan` chỉ đọc thì chạy được. (26/10 · N20261026-1548)
+- Phát hành bằng `python scripts/release.py` (mô hình A, người dùng chọn 26/10): sổ `release_ledger` ở database; thứ tự cố định migration → Edge → Reload Extension (người) → push; cổng gõ tay, không `--yes`; DROP / DELETE gõ nguyên tên tệp; chỉ phát hành từ commit sạch.
+  - Claude không chạy `release.py --apply` (cổng gõ tay) mà chạy trực tiếp `apply_supabase_sql.py` / `deploy_*.py` (dòng Công cụ); `--plan` chỉ đọc thì chạy được. (26/10 · N20261026-1548)
 - Migration mới có dòng `-- kiem:` và khối `-- Rút lui` ở đầu tệp (tệp cũ không bắt buộc); `supabase/*.example.sql` không phải migration. (26/10 · N20261026-1548)
 - `release.py`: tệp migration đã sửa sau khi chạy (sha ở `HEAD` khác sổ) làm `--apply` dừng mã 3 trước Edge / Extension / push, in `git diff --stat` từ commit trong sổ; lối thoát `--rerun <tệp>` (chạy lại) và `--accept <tệp>` (chỉ cập nhật sha trong sổ, gõ nguyên tên tệp, không chạy SQL). Người dùng đổi chốt 26/10: trước đó chỉ cảnh báo. (26/10 · N20261026-1548)
 - Push `main` = deploy web: web cần hàm/Edge mới → commit chưa push → migration/deploy → push. (17/10 · N1001)
@@ -345,6 +354,8 @@
 - Rà revoke `authenticated` cho từng hàm. (17/10 · N0984)
 
 ### Làm sau (đã ghi nhận)
+- Ghép Cut ↔ phiếu xuyên lượt: phiếu đến ở hai lượt khác nhau chốt theo thứ tự đến (luật "mơ hồ" chỉ áp trong cùng lượt); cân nhắc siết "hai dãy ứng viên rời nhau → Chưa rõ" sau khi đo thật 1–2 tuần (số Cut Chưa rõ, ca nghi sai).
+  - Chưa làm: cộng dòng cùng phiếu theo mapping, phân trang RPC `wms_group_uid_cut_unresolved` (> 5.000 Cut), `min_extension` cho `cut_adj` / `storage_risk` khi có máy thứ hai. (26/10 · N20261026-2142)
 - `release.py` làm sau: sổ Edge đối chiếu bản đang chạy, hash thư mục Extension, fencing holder khi ghi sổ, chuyển cổng DO / EXECUTE sang `apply_supabase_sql.py`, mẫu phản hồi thật `insert … returning` (lấy ở lần `--init` đầu). (26/10 · N20261026-1548)
 - D1 lưu trữ SKU rời nhóm khi Extension bỏ dòng; nút Huỷ lệnh in Admin; lượt SKU held 17/10 (`error_message` rỗng). (23/10 · N1178)
 - `print_queue_status` trả `availableCapabilities` theo heartbeat (nếu cần chặn lệnh `sku:v3`). (23/10 · N1162)
@@ -370,6 +381,8 @@
 - Kiểm tra đầu vào cho vải: build riêng sau; tách source React chỉ khi có source gốc hoặc người dùng duyệt. (17/10, 11/10 · N0970, N0532)
 
 ### Chưa kiểm thật (cần thiết bị/dữ liệu thật)
+- Nguồn phiếu Cut và pop-up nguồn trên WMS thật: `GET_WMS_DOC_INFO` (nhiều mã cách dấu phẩy, `from_date` / `to_date`), `GET_TRANSFER_BIN_PAGE` (khoá danh sách, định dạng giờ, tra mã Group UID), tỉ lệ ghép thật sau một lượt Đọc WMS. (26/10 · N20261026-2142)
+- Phép kiểm đủ dòng Import/Export của bước nguồn Cut (số dòng đọc = `total` qua nhiều trang) trên WMS thật: nếu tổng lệch khi dữ liệu không đổi, mọi lượt Đối chiếu ADJ báo Lỗi và không ghi nguồn. (26/10 · N20261026-2142)
 - Điện thoại/camera/máy quét Honeywell/RFID thật; in thật tem vị trí, tem v3 có số lượng. (nhiều ngày · N0030, N0063, N0070, N0465, N1073)
 - Cổng bản Extension 0.10.10 trên máy thật: 409 `EXTENSION_OUTDATED` ở `lease` và ở lần gia hạn, thẻ đỏ Options, bảng Máy đồng bộ, upsert `sync_auto_devices` giữ `first_seen_at`, câu lỗi PostgREST khi thiếu cột `ext_version`; kiểu TypeScript hai Edge (máy không có Deno). (26/10 · N20261026-1102)
 - Extension thật: dấu "!" trên icon, WMS 401 hay 403 khi hết token; Admin đọc WMS thật lần đầu (Kiểm kê, Kiểm soát công trình); Combo sắp Modified giảm dần (`comboRows` ≈ 5.800 = đọc toàn bộ). (15–23/10 · N0006, N0866, N1030, N1144)

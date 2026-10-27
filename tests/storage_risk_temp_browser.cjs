@@ -19,6 +19,11 @@ const mockExtension = ({ options }) => {
       { ...base, id: 2, warehouseId: 1177, sku: "900000011", productName: "Vải mẫu một/Cuộn", qty: 25.5, sourceCode: "1001260000000001", mappingId: "1001260000000003", createdAt: ago(1) },
       { ...base, id: 3, warehouseId: 1177, sku: "900000019", productName: "Nhiễu: xuất", kind: "out", qty: 3, sourceCode: "1001260000000019", createdAt: ago(2) },
       { ...base, id: 4, warehouseId: 1177, sku: "900000018", productName: "Nhiễu: nguồn khác", sourceType: "PURCHASE_ORDER", qty: 4, sourceCode: "1001260000000018", createdAt: ago(2) },
+      // Phiếu gốc (26/10/2026): dòng xuất có sourceCode = mappingId của dòng UID tạm — IT (2 dòng), ADJ, lệnh sản xuất (đặt ở MTG để số dòng Garment giữ nguyên)
+      { kind: "out", sourceType: "INTERNAL_TRANSFER", reason: "", id: 30, warehouseId: 1177, sku: "900000011", qty: 25.5, sourceCode: "1001260000000003", mappingId: "10022600000003", fromWarehouse: "WH - MATERIAL - MTG", toWarehouse: "KHO NHẬN GIẢ", createdBy: "it@example.test", approvedBy: "duyet@example.test", createdAt: ago(1.1) },
+      { kind: "out", sourceType: "INTERNAL_TRANSFER", reason: "", id: 31, warehouseId: 1177, sku: "900000014", qty: 3, sourceCode: "1001260000000003", mappingId: "10022600000003", fromWarehouse: "WH - MATERIAL - MTG", toWarehouse: "KHO NHẬN GIẢ", createdBy: "it@example.test", approvedBy: "duyet@example.test", createdAt: ago(1.1) },
+      { kind: "out", sourceType: "ADJUSTMENT", reason: "Xuất test", id: 32, warehouseId: 1177, sku: "900000012", qty: 8, sourceCode: "1001260000000002", mappingId: "100052600000032", fromWarehouse: "WH - MATERIAL - MTG", toWarehouse: "", createdBy: "kho@example.test", createdAt: ago(20.1) },
+      { kind: "out", sourceType: "WORK_ORDER", reason: "", id: 33, warehouseId: 1177, sku: "900000013", qty: 2, sourceCode: "1001260000000004", mappingId: "1601260000000004-1", fromWarehouse: "WH - MATERIAL - GARMENT", toWarehouse: "XƯỞNG GIẢ", createdBy: "sx@example.test", createdAt: ago(5.2) },
     ],
     1339: [
       { ...base, id: 5, warehouseId: 1339, sku: "900000013", productName: "Sợi mẫu ba/Cuộn", qty: 2, sourceCode: "1001260000000013", mappingId: "1001260000000004", createdAt: ago(5) },
@@ -217,7 +222,7 @@ const expectBar = (info, tag) => {
       assert.deepEqual(await skus(page), ["900000011", "900000013", "900000012"], "mới nhất trước; dòng nhiễu bị loại");
       assert.equal(await page.locator("#srt-run").isDisabled(), false, "đọc xong dùng lại được nút");
       assert.equal(await page.locator("#srt-wh-main").innerText(), "MTG + GARMENT");
-      assert.equal(await page.locator("#srt-scan-main").innerText(), "6 dòng", "số dòng đã quét gồm cả dòng nhiễu");
+      assert.equal(await page.locator("#srt-scan-main").innerText(), "10 dòng", "số dòng đã quét gồm cả dòng nhiễu và dòng xuất của phiếu gốc");
       assert.equal(await page.locator("#srt-warn").isHidden(), true);
       const calls = await page.evaluate(() => window.__extCalls.filter(c => c.type === "GET_STOCK_IMPORT_EXPORT_PAGE"));
       assert.equal(calls.length, 2, "mỗi kho một lượt đọc");
@@ -229,10 +234,16 @@ const expectBar = (info, tag) => {
       const saved = ctrl.saved;
       assert.equal(saved.p_rows.length, 3, "lưu đủ 3 dòng UID tạm (không lưu dòng nhiễu)");
       assert.deepEqual(saved.p_rows.map(r => r.sku), ["900000011", "900000013", "900000012"]);
-      assert.deepEqual(Object.keys(saved.p_rows[0]).sort(), ["createdAt", "createdBy", "mappingId", "productName", "qty", "sku", "sourceCode", "warehouseName", "wh"]);
+      assert.deepEqual(Object.keys(saved.p_rows[0]).sort(), ["createdAt", "createdBy", "mappingId", "origin", "productName", "qty", "sku", "sourceCode", "warehouseName", "wh"], "26/10/2026: thêm origin (phiếu gốc)");
       assert.ok(saved.p_rows.every(r => r.createdAt === null || !Number.isNaN(Date.parse(r.createdAt))), "ngày tạo dạng ISO");
+      // Phiếu gốc ba loại: IT (2 dòng, người duyệt, kho đến), ADJ (lý do), lệnh sản xuất
+      const origin = Object.fromEntries(saved.p_rows.map(r => [r.sku, r.origin]));
+      assert.deepEqual([origin["900000011"].type, origin["900000011"].code, origin["900000011"].by, origin["900000011"].to, origin["900000011"].lines], ["INTERNAL_TRANSFER", "1001260000000003", "duyet@example.test", "KHO NHẬN GIẢ", [{ sku: "900000011", qty: 25.5 }, { sku: "900000014", qty: 3 }]]);
+      assert.deepEqual([origin["900000012"].type, origin["900000012"].reason, origin["900000012"].by], ["ADJUSTMENT", "Xuất test", "kho@example.test"]);
+      assert.deepEqual([origin["900000013"].type, origin["900000013"].from, origin["900000013"].to], ["WORK_ORDER", "WH - MATERIAL - GARMENT", "XƯỞNG GIẢ"]);
+      assert.ok(Object.values(origin).every(o => !Number.isNaN(Date.parse(o.at))), "giờ phiếu gốc dạng ISO");
       assert.deepEqual(saved.p_run.warehouses.map(w => w.warehouseName), ["WH - MATERIAL - MTG", "WH - MATERIAL - GARMENT"]);
-      assert.equal(saved.p_run.scanned, 6); assert.equal(saved.p_run.rangeDays, 90);
+      assert.equal(saved.p_run.scanned, 10); assert.equal(saved.p_run.rangeDays, 90);
       assert.equal(Date.parse(saved.p_run.readAt), calls[0].payload.to, "giờ đọc = mốc cuối khoảng truy vấn WMS (không phải lúc đọc xong)");
       const text = await page.locator("#srt-body").innerText();
       assert.match(text, /1001260000000001/, "Mã ADJ"); assert.match(text, /1001260000000003/, "Phiếu gốc"); assert.match(text, /api@hasaki\.vn/);
@@ -386,10 +397,12 @@ const expectBar = (info, tag) => {
 
     // ---- 6) Ngưỡng tuổi theo mili giây: 3 ngày 23 giờ không tính "Trong 3 ngày", 2 ngày 23 giờ có tính ----
     {
-      const { context, page, errors } = await open(browser, { admin: true, view: "temp", options: { edge: true } });
+      const { context, page, errors, ctrl } = await open(browser, { admin: true, view: "temp", options: { edge: true } });
       await page.locator("#srt-run").click();
       await page.waitForFunction(() => document.getElementById("srt-total").textContent === "5");
       assert.deepEqual(await metricsOf(page), ["5", "4", "1", "2"], "Trong 3 ngày = dòng 1 ngày + dòng 2 ngày 23 giờ");
+      await page.waitForFunction(() => /đã lưu/.test(document.getElementById("srt-status").textContent));
+      assert.deepEqual(ctrl.saved.p_rows.filter(r => r.sku === "900000021" || r.sku === "900000022").map(r => r.origin), [null, null], "không có dòng xuất cùng mã: không tìm thấy phiếu gốc → origin null");
       await page.locator('[data-srt-level="recent"]').click();
       assert.deepEqual(await skus(page), ["900000011", "900000022"], "dòng 3 ngày 23 giờ không nằm trong Trong 3 ngày");
       const chipOf = sku => page.locator("#srt-body tr").filter({ hasText: sku }).locator("td:nth-child(9) .as-chip");
@@ -454,10 +467,12 @@ const expectBar = (info, tag) => {
       await page.locator("#sr-run").click();
       await page.waitForFunction(() => /^Đã đồng bộ\./.test(document.getElementById("sr-status").textContent));
       await page.waitForFunction(() => !document.getElementById("sr-run").disabled && !document.getElementById("srt-run").disabled, null, { timeout: 15000 });
-      assert.match(await page.locator("#sr-status").innerText(), /^Đã đồng bộ\. (Không có hàng chưa lên kệ\.|\d+ dòng chưa lên kệ\.)$/, "tab cũ giữ câu kết quả của nó");
-      assert.equal(await page.locator("#sr-status").getAttribute("data-tone") || "", "", "tab cũ không bị báo lỗi");
+      // Extension giả trả 0.9.1 (< 0.12.0, chưa có GET_TRANSFER_BIN_PAGE): bước nguồn bỏ ngay, câu kết quả nêu số cặp + lý do (review 26/10/2026)
+      assert.match(await page.locator("#sr-status").innerText(), /^Đã đồng bộ\. (Không có hàng chưa lên kệ|\d+ dòng chưa lên kệ) · nguồn 0\/2 cặp: cần Extension ≥ 0\.12\.0\.$/, "tab cũ giữ câu kết quả của nó + số cặp có nguồn");
+      assert.equal(await page.locator("#sr-status").getAttribute("data-tone"), "warn", "tab cũ chỉ cảnh báo thiếu nguồn, không báo lỗi");
       assert.ok(rpcs.includes("sku_count_save_start") && rpcs.includes("sku_count_save_finish"), "Kiểm kê đã lưu bản chụp như cũ");
       const order = await page.evaluate(() => window.__extCalls.map(c => c.type));
+      assert.equal(order.includes("GET_TRANSFER_BIN_PAGE"), false, "Extension cũ: không gửi lệnh đọc chuyển vị trí (không chờ hết giờ)");
       assert.ok(order.indexOf("GET_SKU_COUNT_INVENTORY_PAGE") < order.indexOf("GET_STOCK_IMPORT_EXPORT_PAGE"), "Kiểm kê trước, UID tạm nối tiếp");
       await page.locator("#srt-tab-temp").click();
       if (!failing) {

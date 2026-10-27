@@ -15,7 +15,8 @@ Người dùng gọi `/commit-push` (tương đương câu "commit và push"). P
 ## 2. Điều kiện trước khi commit
 - Đợt có đổi hành vi / mã: phải có kết quả `python scripts/run_tests.py --no-server` (cả bộ) của chính trạng thái này trong phiên. Chưa có thì chạy nền, chờ xong. Test hỏng thật → dừng, báo người dùng, không commit. Mục CHẬP CHỜN → ghi vào thông điệp commit và báo cáo.
 - Đợt chỉ tài liệu / cấu hình: bỏ qua bộ test, nói rõ vì sao.
-- **Migration trước push**: web cần hàm SQL / cột / action Edge mới mà migration hoặc deploy Edge chưa chạy → commit nhưng KHÔNG push; nhắc người dùng chạy `python scripts/apply_supabase_sql.py <tệp>` / `python scripts/deploy_<tên>.py` rồi mới push.
+- **Migration trước push**: web cần hàm SQL / cột / action Edge mới mà migration hoặc deploy Edge chưa chạy → chạy theo luật `AGENTS.md` (lead được tự chạy `python scripts/apply_supabase_sql.py <tệp>` / `python scripts/deploy_<tên>.py`, dry-run trước; lệnh phá huỷ hỏi người dùng) rồi mới push; không chạy được thì commit nhưng KHÔNG push và nhắc người dùng.
+  - Migration đã chạy trực tiếp: sau commit ghi sổ bằng `python scripts/record_ledger.py supabase/<tệp>.sql`.
 - **Có `scripts/release.py`:** trước khi push chạy `python scripts/release.py --plan` (chỉ đọc). Còn việc chờ (migration, Edge, Extension) thì dừng ở commit và gợi ý người dùng chạy `python scripts/release.py --apply` (script giữ thứ tự và là bên push); không tự push.
 
 ## 3. Commit

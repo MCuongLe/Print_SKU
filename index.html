@@ -2331,6 +2331,14 @@ Error generating stack: `+y.message+`
           </section>
         </div>
       </div>
+      <dialog class="as-dialog" id="sr-dialog" data-size="sm" aria-labelledby="sr-d-title">
+        <div class="as-d-head"><span class="as-d-mark" id="sr-d-mark" aria-hidden="true"></span><div class="as-d-title"><h2 id="sr-d-title">SKU</h2><p id="sr-d-sub"></p></div><button type="button" class="pj-icon" id="sr-d-copy" aria-label="Sao chép SKU" title="Sao chép SKU"><svg class="pj-svg" viewBox="0 0 24 24" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg></button><button type="button" class="pj-icon" data-as-close aria-label="Đóng" title="Đóng"><svg class="pj-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>
+        <div class="as-d-body ia-d-body sr-d-body" id="sr-d-body" tabindex="0"></div>
+      </dialog>
+      <dialog class="as-dialog" id="srt-dialog" data-size="sm" aria-labelledby="srt-d-title">
+        <div class="as-d-head"><span class="as-d-mark" id="srt-d-mark" aria-hidden="true"></span><div class="as-d-title"><h2 id="srt-d-title">SKU</h2><p id="srt-d-sub"></p></div><button type="button" class="pj-icon" data-as-close aria-label="Đóng" title="Đóng"><svg class="pj-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>
+        <div class="as-d-body ia-d-body sr-d-body" id="srt-d-body" tabindex="0"></div>
+      </dialog>
     </section>
     <section class="uid-screen" id="uid-screen" aria-labelledby="uid-title" hidden>
       <header class="uid-topbar">
@@ -8812,6 +8820,17 @@ var FSK_CORE = (function () {
       .cut-adj-st[data-st="qc"]{background:#e3f5ec;color:#0f6a49}
       .cut-adj-kpi[data-tone="new"]{color:#0f6a49}
       .cut-adj-kpi[data-tone="done"]{color:#1f4e78}
+      /* 26/10/2026 nguồn phiếu: Chuyển nội bộ (UID chỉ có Cut IT) tông trung tính; chip nguồn từng Cut ở cột WMS của popup */
+      .cut-adj-kpi[data-tone="it"]{color:var(--wms-text-2)}
+      .cut-adj-st[data-st="it"]{padding:3px 7px;border:1px solid var(--wms-border);background:var(--wms-bg);color:var(--wms-text-2)}
+      .as-d-mark[data-tone="it"]{background:var(--wms-bg);color:var(--wms-text-2)}
+      #cut-adj-rows .cut-adj-cut{display:block}
+      #cut-adj-rows .cut-adj-cut+.cut-adj-cut{margin-top:var(--space-1);padding-top:var(--space-1);border-top:1px dashed var(--wms-border)}
+      .cut-adj-src{display:inline-block;margin-left:var(--space-1);padding:0 var(--space-2);border:1px solid currentColor;border-radius:var(--radius-pill);font-size:var(--fs-12);font-weight:var(--fw-semibold);white-space:nowrap}
+      .cut-adj-src[data-src="ADJ"]{color:var(--wms-info)}
+      .cut-adj-src[data-src="IT"]{color:var(--wms-text-2)}
+      .cut-adj-src[data-src=""]{color:var(--wms-muted);border-style:dashed}
+      .cut-adj-doc{margin-left:var(--space-1);font-weight:var(--fw-semibold);font-variant-numeric:tabular-nums}
       .as-d-mark[data-tone="done"]{background:#e5eefb;color:#1f4e78}
       #cut-adj-foot .cut-secondary{flex:1 1 auto;min-height:52px}
       #cut-adj-foot [hidden]{display:none}
@@ -8887,9 +8906,225 @@ var FSK_CORE = (function () {
       if (typeof window !== "undefined") window.CutSampleCore = CUT_SAMPLE_CORE;
       /* ===== CUT-SAMPLE-CORE (ket thuc) ===== */
     </script>
+    <script id="cut-source-core">
+// Nguồn phiếu của từng lần Cut (Đối chiếu ADJ · CẮT GROUP UID, 26/10/2026, kế hoạch docs/plans/2026-10-26-nguon-phieu-cat-uid-rui-ro.md).
+// Dòng Cut của WMS không mang số phiếu: ghép bằng SKU + tổng số lượng + giờ với dòng XUẤT (type 2) của báo cáo Import/Export kho
+// WH - MATERIAL - MTG có nguồn ADJUSTMENT (phiếu ADJ, "xuất test" khi lý do Xuất test) hoặc INTERNAL_TRANSFER (phiếu IT, chuyển nội bộ).
+// Dùng chung: Extension (cut-adj-core.js, lượt tự động) và web (index.html chép NGUYÊN VĂN tệp này vào khối script id "cut-source-core",
+// nút Đọc WMS của tab Đối chiếu ADJ). Test: tests/cut_source_core.cjs (gồm so khớp hai bản), tests/cut_adj_core.cjs.
+//
+// matchCutsToDocs(cuts, docs) → mảng cùng độ dài cuts: phần tử i = phiếu (chính đối tượng trong docs) hoặc null (Chưa rõ).
+//   cuts: [{ sku, at, qty }], docs: [{ sku, at, qty, type: "ADJ" | "IT" }]; at = mili giây hoặc chuỗi ngày (không múi giờ = giờ VN).
+//   Theo từng SKU: Cut sắp theo giờ, phiếu duyệt theo giờ; mỗi phiếu lấy dãy Cut liền kề CHƯA gán có tổng = số lượng phiếu (thử dãy
+//   cuối trước, rồi dãy đầu) trong khung giờ phiếu − 14 ngày ≤ Cut ≤ giờ phiếu + 2 phút. Mơ hồ: nhả dãy của phiếu P mà phiếu Q khác
+//   (kể cả khác loại) lấy được một Cut của P → cả dãy của P lẫn dãy của Q đều null (không ghi nửa dãy: lượt sau P đã dùng bị bỏ qua
+//   nên Q sẽ lấy đúng Cut đang tranh chấp). Phiếu đến sau không xét lại Cut đã ghi nguồn ở lượt trước.
+//
+// assignSources({ sendTab, rpc, now, onProgress }) → Promise<{ unresolved, docs, matched, written, skipped, adj, it, notFound, truncated }>
+//   1. rpc wms_group_uid_cut_unresolved {p_days: 30} → { cuts:[{groupUid,cutAt,qty,sku}], used:[{sku,type,at}], truncated }.
+//   2. Không có Cut chưa nguồn → dừng, không đọc WMS.
+//   3. sendTab GET_STOCK_IMPORT_EXPORT_PAGE {warehouseIds:[1177], from: Cut sớm nhất − 1 ngày, to: now, page, size: 500} tới hết trang
+//      (phiếu luôn sau Cut nên không cần đọc trước đó); mọi trang cùng total / totalPages, không trang lặp, số dòng không trùng = total.
+//   4. Bỏ phiếu đã gán cho Cut khác (used: SKU + loại + giờ phiếu) và phiếu sau to − 2 phút (để lượt sau) rồi ghép.
+//   5. sendTab GET_WMS_DOC_INFO {adj:[mapping…], it:[mapping…]} (≤ 20 mỗi loại / lần) → số phiếu 1008… / 1007…, lý do, PO / kho nhận + mô tả;
+//      phiếu ADJ có detailFailed (chi tiết lỗi tạm, chưa biết PO) coi như chưa tra được.
+//   6. rpc wms_group_uid_cut_set_source {p_rows} (≤ 5.000 dòng / lần), chỉ Cut có phiếu tra được số; phiếu chưa tra được để lượt sau.
+//   Lỗi đọc / ghi → ném nguyên lỗi (giữ code / reason của lỗi tab).
+(function (root) {
+  const DAY = 86400000, MINUTE = 60000;
+  const BEFORE_MS = 14 * DAY, AFTER_MS = 2 * MINUTE;
+  const SOURCE_DAYS = 30, READ_BACK_MS = DAY, WAREHOUSE_ID = 1177, PAGE_SIZE = 500, MAX_PAGES = 100;
+  const INFO_CHUNK = 20, WRITE_CHUNK = 5000, NOTE_MAX = 200, EPS = 1e-6;
+  const TYPES = { ADJUSTMENT: "ADJ", INTERNAL_TRANSFER: "IT" };
+  const CODE = /^\d{6,40}$/;
+
+  const clean = (value, max) => String(value ?? "").replace(/\s+/g, " ").trim().slice(0, max);
+  function timeOf(value) {
+    if (typeof value === "number") return Number.isFinite(value) ? value : NaN;
+    const raw = String(value ?? "").trim();
+    if (!raw) return NaN;
+    return Date.parse(/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(:\d{2}(\.\d+)?)?$/.test(raw) ? `${raw.replace(" ", "T")}+07:00` : raw);
+  }
+  const fits = (cutAt, docAt) => cutAt >= docAt - BEFORE_MS && cutAt <= docAt + AFTER_MS;
+
+  // Dãy Cut liền kề (trong các Cut free của khung phiếu) có tổng = số lượng phiếu: dãy cuối trước, rồi dãy đầu. Trả chỉ số trong cs.
+  function findRun(cs, d, free) {
+    const pick = [];
+    for (let k = 0; k < cs.length; k += 1) if (fits(cs[k].at, d.at) && free(k)) pick.push(k);
+    let sum = 0;
+    for (let n = pick.length - 1; n >= 0; n -= 1) {
+      sum += cs[pick[n]].qty;
+      if (Math.abs(sum - d.qty) < EPS) return pick.slice(n);
+      if (sum > d.qty) break;
+    }
+    sum = 0;
+    for (let n = 0; n < pick.length; n += 1) {
+      sum += cs[pick[n]].qty;
+      if (Math.abs(sum - d.qty) < EPS) return pick.slice(0, n + 1);
+      if (sum > d.qty) break;
+    }
+    return null;
+  }
+
+  function matchCutsToDocs(cuts, docs) {
+    const list = Array.isArray(cuts) ? cuts : [], result = list.map(() => null), groups = new Map();
+    list.forEach((cut, index) => {
+      const sku = clean(cut?.sku, 80), at = timeOf(cut?.at), qty = Number(cut?.qty);
+      if (!sku || !Number.isFinite(at) || !Number.isFinite(qty) || qty <= 0) return;
+      if (!groups.has(sku)) groups.set(sku, { cs: [], ds: [] });
+      groups.get(sku).cs.push({ index, at, qty });
+    });
+    (Array.isArray(docs) ? docs : []).forEach((doc, index) => {
+      const sku = clean(doc?.sku, 80), at = timeOf(doc?.at), qty = Number(doc?.qty);
+      if (!groups.has(sku) || (doc.type !== "ADJ" && doc.type !== "IT") || !Number.isFinite(at) || !Number.isFinite(qty) || qty <= 0) return;
+      groups.get(sku).ds.push({ index, at, qty, doc });
+    });
+    for (const { cs, ds } of groups.values()) {
+      if (!ds.length) continue;
+      cs.sort((a, b) => a.at - b.at || a.index - b.index);
+      ds.sort((a, b) => a.at - b.at || a.index - b.index);
+      const owner = cs.map(() => -1), runs = new Map();
+      ds.forEach((d, p) => {
+        const run = findRun(cs, d, k => owner[k] < 0);
+        if (run) { runs.set(p, run); run.forEach(k => { owner[k] = p; }); }
+      });
+      const dropDocs = new Set();
+      for (const [p, run] of runs) {
+        const mine = new Set(run);
+        ds.forEach((d, q) => {
+          if (q === p || !run.some(k => fits(cs[k].at, d.at))) return;
+          const alt = findRun(cs, d, k => owner[k] < 0 || owner[k] === p || owner[k] === q);
+          if (alt && alt.some(k => mine.has(k))) { dropDocs.add(p); dropDocs.add(q); }
+        });
+      }
+      for (const [p, run] of runs) if (!dropDocs.has(p)) for (const k of run) result[cs[k].index] = ds[p].doc;
+    }
+    return result;
+  }
+
+  // Dòng Import/Export (đã chuẩn hoá bởi wms-bridge normalizeImportExportPage) → phiếu xuất ADJ / IT của kho 1177, hoặc null.
+  function docOf(row) {
+    if (!row || typeof row !== "object" || row.kind !== "out" || Number(row.warehouseId) !== WAREHOUSE_ID) return null;
+    const type = TYPES[clean(row.sourceType, 40).toUpperCase()], sku = clean(row.sku, 80), at = timeOf(row.createdAt), qty = Number(row.qty);
+    if (!type || !sku || !Number.isFinite(at) || !Number.isFinite(qty) || qty <= 0) return null;
+    const mapping = clean(row.mappingId, 60);
+    return { type, sku, at, qty, mapping: CODE.test(mapping) ? mapping : "", reason: clean(row.reason, 120) };
+  }
+  const usedKey = (sku, type, at) => `${sku}|${type}|${at}`;
+
+  // Đọc đủ dòng (review 26/10/2026): mọi trang cùng total / totalPages; trang có cùng danh sách khoá dòng với trang trước = WMS bỏ qua tham số
+  // page → ném; cuối vòng số dòng không trùng = tổng sourceRows (số dòng WMS trả ở trang, trước khi lọc; thiếu thì số dòng đã chuẩn hoá)
+  // trừ dòng trùng khoá phải bằng total — thiếu một dòng phiếu ADJ mà dòng IT còn thì Cut bị ghép sai và không bao giờ sửa.
+  // Khoá dòng = id; dòng không có id (normalizeImportExportPage cho id null) dùng khoá ghép từ các trường (vòng 2). Nhiều trang có dòng không
+  // id mà trang thiếu sourceRows (dòng bị lọc không đếm được) thì không chắc đủ dòng → ném (fail-closed).
+  const rowKey = row => {
+    if (!row || typeof row !== "object") return "";
+    if (row.id != null && String(row.id) !== "") return `id:${row.id}`;
+    return `f:${["kind", "sourceType", "sourceCode", "mappingId", "sku", "qty", "createdAt", "warehouseId"].map(k => String(row[k] ?? "")).join("|")}`;
+  };
+  async function readMoves(sendTab, from, to, show) {
+    const rows = [], seen = new Set();
+    let pages = 1, total = NaN, read = 0, lastSig = "", noId = false, counted = true;
+    for (let page = 1; page <= pages; page += 1) {
+      show({ phase: "source", step: "moves", page, pages });
+      const data = await sendTab("GET_STOCK_IMPORT_EXPORT_PAGE", { warehouseIds: [WAREHOUSE_ID], from, to, page, size: PAGE_SIZE });
+      if (!data || typeof data !== "object" || !Array.isArray(data.rows)) throw new Error(`WMS trả trang Import/Export ${page} không hợp lệ`);
+      const count = Math.max(1, Number(data.totalPages) || 1);
+      if (page === 1) {
+        pages = count; total = Number(data.total);
+        if (pages > MAX_PAGES) throw new Error(`Báo cáo Import/Export vượt ${MAX_PAGES} trang; dừng ghép nguồn phiếu`);
+      } else if (count !== pages || Number(data.total) !== total) throw new Error("Báo cáo Import/Export thay đổi trong lúc đọc; hãy chạy lại");
+      const keys = data.rows.map(rowKey), sig = keys.filter(Boolean).join(",");
+      if (page > 1 && sig && sig === lastSig) throw new Error("WMS trả lặp lại cùng một trang Import/Export; hãy chạy lại");
+      lastSig = sig;
+      if (keys.some(k => k.startsWith("f:"))) noId = true;
+      if (Number.isInteger(data.sourceRows) && data.sourceRows >= 0) read += data.sourceRows;
+      else { read += data.rows.length; counted = false; }
+      data.rows.forEach((row, i) => {
+        if (keys[i] && seen.has(keys[i])) { read -= 1; return; }
+        if (keys[i]) seen.add(keys[i]);
+        rows.push(row);
+      });
+    }
+    if (pages > 1 && noId && !counted) throw new Error("Báo cáo Import/Export có dòng không có mã dòng mà trang thiếu số dòng gốc: không kiểm được đủ dòng; hãy chạy lại");
+    if (Number.isFinite(total) && read !== total) throw new Error(`Đọc được ${read}/${total} dòng Import/Export (${read < total ? "đọc thiếu" : "đọc thừa"}); hãy chạy lại`);
+    return rows;
+  }
+
+  async function readDocInfo(sendTab, docs, show) {
+    const info = { ADJ: new Map(), IT: new Map() };
+    const adj = [...new Set(docs.filter(d => d.type === "ADJ" && d.mapping).map(d => d.mapping))];
+    const it = [...new Set(docs.filter(d => d.type === "IT" && d.mapping).map(d => d.mapping))];
+    const rounds = Math.max(Math.ceil(adj.length / INFO_CHUNK), Math.ceil(it.length / INFO_CHUNK));
+    for (let i = 0; i < rounds; i += 1) {
+      show({ phase: "source", step: "docs", part: i + 1, parts: rounds });
+      const ask = { adj: adj.slice(i * INFO_CHUNK, (i + 1) * INFO_CHUNK), it: it.slice(i * INFO_CHUNK, (i + 1) * INFO_CHUNK) };
+      const data = await sendTab("GET_WMS_DOC_INFO", ask);
+      if (!data || typeof data !== "object" || !Array.isArray(data.adj) || !Array.isArray(data.it)) throw new Error("WMS trả thông tin phiếu ADJ / IT không hợp lệ");
+      for (const row of data.adj) {
+        const key = clean(row?.mappingCode, 60), number = clean(row?.number, 40);
+        // detailFailed (vòng 2): chi tiết ADJ lỗi tạm nên chưa biết PO → coi như chưa tra được (không ghi, đếm notFound), lượt sau thử lại;
+        // set_source chỉ ghi Cut chưa nguồn nên ghi PO rỗng bây giờ là mất PO vĩnh viễn.
+        if (ask.adj.includes(key) && CODE.test(number) && row?.detailFailed !== true) info.ADJ.set(key, { number, reason: clean(row?.reason, 120), po: clean(row?.po, NOTE_MAX) });
+      }
+      for (const row of data.it) {
+        const key = clean(row?.mappingId, 60), number = clean(row?.number, 40);
+        if (ask.it.includes(key) && CODE.test(number)) info.IT.set(key, { number, reason: "", toWarehouse: clean(row?.toWarehouse, 160), description: clean(row?.description, 500) });
+      }
+    }
+    return info;
+  }
+  const noteOf = (type, found) => (type === "ADJ" ? found.po : [found.toWarehouse, found.description].filter(Boolean).join(" · ").slice(0, NOTE_MAX)) || null;
+
+  async function assignSources({ sendTab, rpc, now = () => Date.now(), onProgress } = {}) {
+    if (typeof sendTab !== "function" || typeof rpc !== "function") throw new Error("Thiếu hàm gửi lệnh tab WMS hoặc gọi Supabase");
+    const show = info => { if (typeof onProgress === "function") { try { onProgress(info); } catch { /* chỉ để hiển thị */ } } };
+    const open = await rpc("wms_group_uid_cut_unresolved", { p_days: SOURCE_DAYS });
+    if (!open || typeof open !== "object" || !Array.isArray(open.cuts) || (open.used != null && !Array.isArray(open.used))) {
+      throw new Error("Danh sách Cut chưa có nguồn phiếu không hợp lệ");
+    }
+    const cuts = open.cuts.map(c => ({ code: clean(c?.groupUid, 40), cutAt: typeof c?.cutAt === "string" ? c.cutAt : "", sku: clean(c?.sku, 80), qty: Number(c?.qty), at: timeOf(c?.cutAt) }))
+      .filter(c => c.code && c.cutAt && c.sku && Number.isFinite(c.at) && Number.isFinite(c.qty) && c.qty > 0);
+    const out = { unresolved: cuts.length, docs: 0, matched: 0, written: 0, skipped: 0, adj: 0, it: 0, notFound: 0, truncated: open.truncated === true };
+    if (!cuts.length) return out;
+    const to = Number(now()), from = Math.min(to, Math.min(...cuts.map(c => c.at)) - READ_BACK_MS);
+    const used = new Set((open.used || []).map(u => usedKey(clean(u?.sku, 80), u?.type, timeOf(u?.at))));
+    // Phiếu sát mốc đọc (vòng 2): Cut được ghép khi ≤ giờ phiếu + AFTER_MS, nên phiếu trong (to − AFTER_MS, to] có thể có Cut thật sau to (chưa
+    // nạp) mà lấy nhầm một Cut cũ đang tự do → chỉ ghép phiếu at ≤ to − AFTER_MS; phiếu bị loại ghép ở lượt sau.
+    const docs = (await readMoves(sendTab, from, to, show)).map(docOf).filter(d => d && d.at <= to - AFTER_MS && !used.has(usedKey(d.sku, d.type, d.at)));
+    out.docs = docs.length;
+    const matches = matchCutsToDocs(cuts, docs), picked = [...new Set(matches.filter(Boolean))];
+    out.matched = matches.filter(Boolean).length;
+    if (!picked.length) return out;
+    const info = await readDocInfo(sendTab, picked, show), found = doc => (doc.mapping ? info[doc.type].get(doc.mapping) : null);
+    out.notFound = picked.filter(doc => !found(doc)).length;
+    const rows = [];
+    matches.forEach((doc, i) => {
+      const hit = doc && found(doc);
+      if (!hit) return;
+      rows.push({ group_uid_code: cuts[i].code, cut_at: cuts[i].cutAt, source_type: doc.type, source_code: hit.number,
+        source_reason: hit.reason || doc.reason || null, source_at: new Date(doc.at).toISOString(), source_note: noteOf(doc.type, hit) });
+    });
+    out.adj = rows.filter(r => r.source_type === "ADJ").length;
+    out.it = rows.length - out.adj;
+    for (let i = 0; i < rows.length; i += WRITE_CHUNK) {
+      show({ phase: "source", step: "save", done: i, total: rows.length });
+      const saved = await rpc("wms_group_uid_cut_set_source", { p_rows: rows.slice(i, i + WRITE_CHUNK) });
+      out.written += Number(saved?.updated) || 0;
+      out.skipped += Number(saved?.skipped) || 0;
+    }
+    return out;
+  }
+
+  const api = { matchCutsToDocs, assignSources, docOf, SOURCE_DAYS, BEFORE_MS, AFTER_MS, WAREHOUSE_ID };
+  if (typeof module !== "undefined" && module.exports) module.exports = api;
+  else root.CutSourceCore = api;
+})(typeof self !== "undefined" ? self : globalThis);
+    </script>
     <script id="cut-adj-reconcile">
       // Đối chiếu UID đã cắt với history WMS kho WH - MATERIAL - MTG (supabase/cut_group_uid_v6_wms_reconcile.sql).
-      // Note "Cut ... out of group ..." chính là lệnh ADJ; so với adj_exported_at (tick) và số lượng chuẩn 1 m.
+      // Note "Cut ... out of group ..." là một lần Cut; so với adj_exported_at (tick) và số lượng chuẩn 1 m.
+      // 26/10/2026 (cut_source_v1): mỗi Cut có nguồn phiếu ADJ / IT / Chưa rõ; Cut nguồn IT (chuyển nội bộ) không tính lệch, không vào Cắt mẫu QC.
       // Extension đọc tự động; ZIP/XLSX là luồng toàn bộ/dự phòng. Chỉ Admin được nạp; mọi người được xem.
       (()=>{
         const ui=window.PrintSkuCutUi;if(!ui)return;
@@ -8905,6 +9140,7 @@ var FSK_CORE = (function () {
           forgot:{label:'Quên tick',tone:'warn',icon:'<path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"/>'},
           done:{label:'Đã xử lý',tone:'done',icon:'<path d="M18 6 7 17l-5-5"/><path d="m22 10-7.5 7.5L13 16"/>'},
           qc:{label:'Cắt mẫu QC',tone:'new',icon:'<path d="M14 2v6a2 2 0 0 0 .245.96l5.51 10.08A2 2 0 0 1 18 22H6a2 2 0 0 1-1.755-2.96l5.51-10.08A2 2 0 0 0 10 8V2"/><path d="M6.453 15h11.094"/><path d="M8.5 2h7"/>'},
+          it:{label:'Chuyển nội bộ',tone:'it',icon:'<path d="m16 3 4 4-4 4"/><path d="M20 7H4"/><path d="m8 21-4-4 4-4"/><path d="M4 17h16"/>'},
           pending:{label:'Chưa ADJ',tone:'mute',icon:'<circle cx="12" cy="12" r="10"/><path d="M8 12h8"/>'},
           wait:{label:'Chờ dữ liệu WMS',tone:'mute',icon:'<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>'},
           ok:{label:'Khớp',tone:'good',icon:'<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>'}
@@ -8923,18 +9159,21 @@ var FSK_CORE = (function () {
         const picked=new Set(),resolveBtn=$('cut-adj-resolve'),unresolveBtn=$('cut-adj-unresolve');
 
         // Trạng thái của một UID đã cắt, so với các dòng Cut của WMS.
+        // Cut nguồn IT (chuyển nội bộ) không vào luật lệch số lượng / Cắt mẫu QC; Cut ADJ và Cut chưa rõ nguồn theo luật cũ.
         const classify=(item,until)=>{
-          const cuts=item.wmsCuts||[],std=computeCutQty(item.productName),tick=item.adjExportedAt?Date.parse(item.adjExportedAt):NaN;
+          const all=item.wmsCuts||[],cuts=all.filter(c=>c.sourceType!=='IT'),std=computeCutQty(item.productName),tick=item.adjExportedAt?Date.parse(item.adjExportedAt):NaN;
           let state;
-          if(!cuts.length)state=!item.adjExportedAt?'pending':(Number.isFinite(until)&&tick>until?'wait':'missing');
+          // Chỉ có Cut nguồn IT: chưa tick → Chuyển nội bộ (trung tính); đã tick mà WMS không có Cut ADJ → lệch như UID không có Cut nào (review 26/10/2026).
+          if(!cuts.length&&all.length)state=!item.adjExportedAt?'it':(Number.isFinite(until)&&tick>until?'wait':'missing');
+          else if(!cuts.length)state=!item.adjExportedAt?'pending':(Number.isFinite(until)&&tick>until?'wait':'missing');
           else if(cuts.length>1&&/^(passed|failed)$/i.test(String(item.qcStatus||'')))state='qc';
           else if(cuts.length>1)state='multi';
           else if(std&&Math.abs(Number(cuts[0].qty)-std.value)>QTY_TOLERANCE)state='wrong';
           else state=item.adjExportedAt?'ok':'forgot';
           // "Đã xử lý" (supabase/cut_group_uid_v8_adj_resolved.sql) chỉ áp cho đúng kiểu lệch lúc tick; WMS đổi làm UID
           // lệch kiểu khác thì UID hiện lại ở nhóm lệch mới.
-          if(ISSUES.includes(state)&&item.adjResolvedAt&&item.adjResolvedState===state)return {item,state:'done',issue:state,std,cuts};
-          return {item,state,std,cuts};
+          if(ISSUES.includes(state)&&item.adjResolvedAt&&item.adjResolvedState===state)return {item,state:'done',issue:state,std,cuts:all};
+          return {item,state,std,cuts:all};
         };
         const visible=()=>rows.filter(r=>!filter||r.state===filter);
 
@@ -8944,9 +9183,15 @@ var FSK_CORE = (function () {
           const info=filter?STATES[filter]:{label:'Tất cả',tone:'mute',icon:ALL_ICON};
           dTitle.textContent=info.label;dMark.dataset.tone=info.tone;dMark.innerHTML=svg(info.icon,20);foot.hidden=filter!==''&&!SELECTABLE.includes(filter);
         };
+        // Nguồn phiếu từng Cut: chip ADJ · <lý do> / IT / Chưa rõ, số phiếu, PO (ADJ) hoặc kho nhận · mô tả (IT).
+        const srcOf=c=>c.sourceType==='ADJ'?{key:'ADJ',label:c.sourceReason?`ADJ · ${c.sourceReason}`:'ADJ'}:c.sourceType==='IT'?{key:'IT',label:'IT'}:{key:'',label:'Chưa rõ'};
+        const cutHtml=(c,bad,unit)=>{
+          const s=srcOf(c),note=c.sourceType==='ADJ'&&c.sourceNote?`PO ${c.sourceNote}`:c.sourceNote||'';
+          return `<span class="cut-adj-cut"><span class="cut-adj-q" data-bad="${bad}">${num(c.qty)}${esc(unit)}</span><span class="cut-adj-src" data-src="${s.key}"${s.key?' title="Suy ra từ SKU + số lượng + giờ"':''}>${esc(s.label)}</span>${c.sourceCode?`<b class="cut-adj-doc">${esc(c.sourceCode)}</b>`:''}<small>${esc(fmt(c.cutAt))}</small>${note?`<small class="cut-adj-note">${esc(note)}</small>`:''}</span>`;
+        };
         const rowHtml=r=>{
           const {item,state,issue,std,cuts}=r,unit=std?` ${std.unit}`:'';
-          const wms=cuts.length?cuts.map(c=>`<span class="cut-adj-q" data-bad="${state==='wrong'}">${num(c.qty)}${esc(unit)}</span><small>${esc(fmt(c.cutAt))}</small>`).join(''):'—';
+          const wms=cuts.length?cuts.map(c=>cutHtml(c,state==='wrong'&&c.sourceType!=='IT',unit)).join(''):'—';
           const tick=item.adjExportedAt?`<span class="cut-adj-chip">Đã xuất ADJ</span><small>${esc(fmt(item.adjExportedAt))}</small>`:'<span class="cut-adj-none">Chưa</span>';
           const box=SELECTABLE.includes(state)?`<input type="checkbox" ${picked.has(item.groupUid)?'checked':''} aria-label="Chọn ${esc(item.groupUid)}">`:'';
           const stCell=`<span class="cut-adj-st" data-st="${state}">${esc(STATES[state].label)}</span>${issue?`<small>${esc(STATES[issue].label)} · ${esc(fmt(item.adjResolvedAt))}</small>`:''}`;
@@ -9097,6 +9342,17 @@ var FSK_CORE = (function () {
           if(!data.ok)throw new Error(data.error?.message||'Không nạp được file');
           return data.data;
         };
+        // RPC Admin cho bước nguồn phiếu (wms_group_uid_cut_unresolved / wms_group_uid_cut_set_source): như sendImport, trả data hoặc ném câu lỗi.
+        const adminRpc=async(name,args,token)=>{
+          const q=window.PrintSkuQueue;
+          const response=await fetch(`${q.supabaseUrl}/rest/v1/rpc/${name}`,{method:'POST',headers:{apikey:q.publishableKey,Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify(args),signal:AbortSignal.timeout(60000)});
+          const data=await response.json().catch(()=>null);
+          if(!response.ok||!data)throw new Error(data?.message||`Supabase HTTP ${response.status}`);
+          if(!data.ok)throw new Error(data.error?.message||'Supabase từ chối');
+          return data.data;
+        };
+        const SOURCE_EXT='0.12.0'; // bản Extension đầu tiên có GET_WMS_DOC_INFO; bản cũ: cầu nối bỏ qua lệnh lạ, trang chờ tới hết giờ
+        const versionBelow=(version,min)=>{const a=String(version||'').split('.'),b=min.split('.');for(let i=0;i<3;i+=1){const x=Number(a[i])||0,y=Number(b[i])||0;if(x!==y)return x<y}return false};
         const extensionRequest=(type,payload={},timeout=90000)=>window.PrintSkuBridgeReady(type).then(()=>new Promise((resolve,reject)=>{
           const requestId=`cut-adj-${Date.now()}-${Math.random().toString(36).slice(2)}`;
           const timer=setTimeout(()=>{removeEventListener('message',listener);reject(new Error('Extension phản hồi quá lâu; kiểm tra tab WMS rồi thử lại'))},timeout);
@@ -9112,7 +9368,7 @@ var FSK_CORE = (function () {
           pendingWms=false;
           uploading=true;wmsBtn.disabled=true;uploadBtn.disabled=true;wmsBusy(true);syncTick();
           try{
-            await extensionRequest('PING_WMS',{},6000);
+            const ping=await extensionRequest('PING_WMS',{},6000);
             const to=new Date().toISOString(),from=cov?.until?new Date(Date.parse(cov.until)-30*60000).toISOString():null;
             const params={size:500,to,...(from?{from}:{})};
             tell(from?`Đang đọc thay đổi WMS từ ${fmt(from)} · kho WH - MATERIAL - MTG…`:'Đang đọc toàn bộ lịch sử kho WH - MATERIAL - MTG…');
@@ -9148,7 +9404,22 @@ var FSK_CORE = (function () {
               const saved=await sendImport({fileName:`WMS_API_WH_MATERIAL_${stamp}${parts.length>1?`_${i+1}`:''}.json`,sha256:await sha256(body),totalRows:total,cuts:part,from:dataFrom||from||to,until:i<parts.length-1?String(part[part.length-1].cut_at):(dataUntil||to)},token);
               for(const key of Object.keys(result))result[key]+=Number(saved[key]||0);
             }
-            tell(`Đã đọc ${total.toLocaleString('vi-VN')} dòng lịch sử kho WH - MATERIAL - MTG; nạp ${result.cutRows.toLocaleString('vi-VN')} dòng Cut: ${result.newRows} mới, ${result.changedRows} đổi, ${result.unchangedRows} giữ nguyên.`,'ok');
+            // Nguồn phiếu ADJ / IT (26/10/2026): cùng hàm lõi Extension gọi (cut-source-core; tests/cut_adj_core.cjs so payload), chạy SAU khi nạp
+            // nên lỗi ở đây không làm mất phần nạp. Extension cũ chưa có GET_WMS_DOC_INFO thì bỏ bước. Import/Export chỉ đọc tới mốc to của lượt đọc lịch sử
+            // vừa nạp (review 26/10/2026): phiếu tạo sau mốc mà Cut của nó chưa nạp không được lấy Cut cũ đang tự do.
+            let source='',tone='ok';
+            if(versionBelow(ping?.version,SOURCE_EXT)){source=` Nguồn phiếu: cần Extension ≥ ${SOURCE_EXT}.`;tone='warn'}
+            else try{
+              if(!window.CutSourceCore?.assignSources)throw new Error('trang thiếu bộ ghép nguồn phiếu, hãy tải lại trang');
+              tell('Đang ghép nguồn phiếu ADJ / IT…');
+              const s=await window.CutSourceCore.assignSources({sendTab:(type,payload)=>extensionRequest(type,payload),rpc:(name,args)=>adminRpc(name,args,token),now:()=>Date.parse(to)});
+              // Vòng 2: cùng đại lượng + cụm chữ với tóm tắt tự động (auto-sync summaryOf): đã gán = adj + it, còn chưa nguồn = unresolved − đã gán;
+              // còn phiếu chưa tra được số hoặc danh sách Cut chưa nguồn bị cắt (5.000 dòng) thì cảnh báo.
+              const assigned=(Number(s.adj)||0)+(Number(s.it)||0),vn=v=>Number(v).toLocaleString('vi-VN');
+              source=` Nguồn phiếu: đã gán ${vn(assigned)} · còn chưa nguồn ${vn(Math.max(0,(Number(s.unresolved)||0)-assigned))}${Number(s.notFound)>0?` · ${vn(s.notFound)} phiếu chưa tra được số`:''}${s.truncated===true?' · danh sách Cut bị cắt':''}.`;
+              if(Number(s.notFound)>0||s.truncated===true)tone='warn';
+            }catch(e){source=` Chưa gán được nguồn phiếu: ${e.message}`;tone='warn'}
+            tell(`Đã đọc ${total.toLocaleString('vi-VN')} dòng lịch sử kho WH - MATERIAL - MTG; nạp ${result.cutRows.toLocaleString('vi-VN')} dòng Cut: ${result.newRows} mới, ${result.changedRows} đổi, ${result.unchangedRows} giữ nguyên.${source}`,tone);
             await load();
           }catch(e){tell(`Không đồng bộ được lịch sử WMS: ${e.message}`,'error')}
           finally{uploading=false;wmsBtn.disabled=false;uploadBtn.disabled=false;wmsBusy(false);syncTick()}
@@ -9241,9 +9512,9 @@ var FSK_CORE = (function () {
         dlg.addEventListener('click',event=>{if(event.target===dlg||event.target.closest('[data-adj-close]'))dlg.close()});
         exportBtn.addEventListener('click',()=>{
           const shown=visible();if(!shown.length)return;
-          const head=['Trạng thái','UID','SKU','Lot','Cắt lúc','SL chuẩn','SL WMS','Giờ Cut WMS','Tick ADJ'];
-          const data=shown.map(({item,state,issue,std,cuts})=>[issue?`${STATES[state].label} (${STATES[issue].label})`:STATES[state].label,item.groupUid,item.sku,item.lot,fmt(item.cutAt),std?fmtQty(std):'',cuts.map(c=>num(c.qty)).join(' + '),cuts.map(c=>fmt(c.cutAt)).join(' + '),item.adjExportedAt?fmt(item.adjExportedAt):'Chưa']);
-          const bytes=workbook([head,...data],[20,22,14,10,18,14,14,22,18]),blob=new Blob([bytes],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),a=document.createElement('a'),now=new Date(),pad=n=>String(n).padStart(2,'0');
+          const head=['Trạng thái','UID','SKU','Lot','Cắt lúc','SL chuẩn','SL WMS','Giờ Cut WMS','Nguồn','Số phiếu','Tick ADJ'];
+          const data=shown.map(({item,state,issue,std,cuts})=>[issue?`${STATES[state].label} (${STATES[issue].label})`:STATES[state].label,item.groupUid,item.sku,item.lot,fmt(item.cutAt),std?fmtQty(std):'',cuts.map(c=>num(c.qty)).join(' + '),cuts.map(c=>fmt(c.cutAt)).join(' + '),cuts.map(c=>srcOf(c).label).join(' + '),cuts.map(c=>c.sourceCode||'—').join(' + '),item.adjExportedAt?fmt(item.adjExportedAt):'Chưa']);
+          const bytes=workbook([head,...data],[20,22,14,10,18,14,14,22,20,22,18]),blob=new Blob([bytes],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),a=document.createElement('a'),now=new Date(),pad=n=>String(n).padStart(2,'0');
           a.href=URL.createObjectURL(blob);a.download=`Doi_chieu_ADJ_${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}.xlsx`;
           document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),10000);
           tell(`Đã xuất ${shown.length} UID.`,'ok');
@@ -11258,6 +11529,9 @@ async function rpc(name,args,retry=true){
         // Đợt B (23/10/2026): UID tạm đổi khoá sang "uid_temp:v2" — bản cũ lưu trước khi che email (khoá "uid_temp" / "uid_temp:admin")
         // xoá một lần khi trang mở (không xoá trong mỗi lượt tải: thêm thao tác IndexedDB làm lệch thứ tự lượt tải).
         drop("uid_temp"); drop("uid_temp:admin");
+        // 26/10/2026: dòng UID tạm có thêm origin (phiếu gốc) → khoá "uid_temp:v3"; bản v2 chưa có phiếu gốc mà máy chủ vẫn xác nhận
+        // "unchanged" theo run id nên xoá một lần như trên.
+        drop("uid_temp:v2"); drop("uid_temp:v2:admin");
       })();
     </script>
     <script id="inventory-audit-script">
@@ -11377,7 +11651,7 @@ async function rpc(name,args,retry=true){
           }catch(error){say(error.message?`Không tải được dữ liệu kiểm kê: ${error.message}`:"Không tải được dữ liệu kiểm kê.","error");window.PrintSkuNotice?.retry(()=>load(),$("ia-status"))}finally{state.loading=false;window.PrintSkuNotice?.busy(screen,false)}
         }
         // Admin: đọc WMS qua Extension, đối chiếu rồi lưu bản chụp (start → chunk ≤ 500 dòng → finish); người xem chỉ thấy sau khi finish.
-        async function run(){
+        async function run(opts){
           if(state.busy||!state.admin)return;setBusy(true);
           try{
             await checkExtension();say("Đang xác định hai kho theo từng pháp nhân…");
@@ -11389,6 +11663,10 @@ async function rpc(name,args,retry=true){
             const result=reconcile(inventory.rows,approved.rows);
             if(!result.rows.length)throw new Error("WMS không trả SKU nào có tồn kho; giữ nguyên bản đồng bộ cũ.");
             const payload=result.rows.map(r=>{const t=parseDate(r.lastApprovedAt);return{warehouse_id:r.warehouseId,warehouse_name:r.warehouseName,sku:r.sku,product_name:r.productName||null,qty:r.qty,uom:r.uom||null,locations:r.locations,last_approved_at:Number.isFinite(t)?new Date(t).toISOString():null,last_approved_by:r.lastApprovedBy||null}});
+            // 26/10/2026: sr-run / srt-run (RỦI RO LƯU TRỮ) truyền opts.enrich = HasakiStorageRiskTemp.sources → ghép nguồn Hàng chưa lên kệ vào
+            // locations[] trước khi lưu. Nút Đọc WMS của màn này gọi run(event): không có enrich, như cũ. Lỗi lệnh WMS khi đọc nguồn không chặn lưu
+            // (sources tự bắt và trả lý do); lỗi lập trình không bị nuốt — báo lỗi như lõi Extension (review 26/10/2026).
+            if(typeof opts?.enrich==="function"){say("Đang đọc nguồn hàng chưa lên kệ…");await opts.enrich(payload,warehouses)}
             say(`Đang lưu ${num(payload.length)} SKU…`);progress(0,payload.length);
             try{
             const started=await adminRpc("sku_count_save_start",{p_warehouses:warehouses.map(w=>({warehouseId:w.warehouseId,warehouseName:w.warehouseName,companyName:w.companyName||""})),p_missing:missing,p_source_counts:{stockRows:inventory.rows.length,approvedRows:approved.rows.length,heldTotal:result.held.length,held:result.held.slice(0,500)}});
@@ -11446,6 +11724,14 @@ async function rpc(name,args,retry=true){
       #storage-risk-screen .as-hero-actions[hidden]{display:none}
       #sr-admin-tools{display:flex;flex-wrap:wrap;align-items:center;gap:12px}#sr-run{display:inline-flex;align-items:center;gap:8px}
       .sr-table td:nth-child(1){white-space:nowrap}.sr-table th.n,.sr-table td.n{text-align:right}.sr-table th.n .as-th{flex-direction:row-reverse}.sr-table td.n{font-variant-numeric:tabular-nums}
+      /* Pop-up nguồn (26/10/2026): bấm dòng hai bảng mở #sr-dialog / #srt-dialog (khuôn #ia-dialog). */
+      :is(.sr-table tr[data-sr-key],.srt-table tr[data-srt-key]){cursor:pointer}:is(.sr-table tr[data-sr-key],.srt-table tr[data-srt-key]):hover{background:var(--wms-brand-subtle)}
+      :is(.sr-table tr[data-sr-key],.srt-table tr[data-srt-key]):focus-visible{outline:2px solid var(--wms-focus-ring);outline-offset:-2px}
+      .sr-d-body .ia-fact strong,.sr-d-body code{overflow-wrap:anywhere}.sr-d-body .ia-d-h .as-chip{margin-left:auto}.sr-d-body .is-self{background:var(--wms-brand-subtle)}
+      .sr-srcs{border-top:1px solid var(--wms-border)}.sr-src{display:grid;gap:4px;padding:10px 2px;border-bottom:1px solid var(--wms-border)}
+      .sr-src-top{display:flex;align-items:center;justify-content:space-between;gap:8px}.sr-src-top b{color:var(--wms-text);font-size:var(--fs-14);font-variant-numeric:tabular-nums;white-space:nowrap}
+      .sr-src-meta{color:var(--wms-text-2);font-size:var(--fs-12);overflow-wrap:anywhere}.sr-d-empty{margin:12px 0 0;color:var(--wms-text-2);font-size:var(--fs-13)}
+      .sr-d-body .ia-fact .as-chip{display:inline-flex;margin-top:3px}.sr-d-body .ia-fact .as-chip:not([data-tone]){color:var(--wms-text-2)}
       @media(max-width:760px){
         #storage-risk-screen .ia-content{display:flex;flex-direction:column;width:calc(100% - 28px);padding-top:14px}
         #storage-risk-screen .ia-content>.ss-hero>div:first-child{display:none}
@@ -11545,7 +11831,7 @@ async function rpc(name,args,retry=true){
               out.cover.locations++;out.cover[c.kind]++;
               if(c.kind==="shelf")continue;
               const qty=Number(l.qty)||0;
-              out.rows.push({warehouseId:Number(r.warehouseId),warehouseName:r.warehouseName||"—",sku:String(r.sku),productName:r.productName||"",uom:r.uom||"",location:c.code||String(l.location||"—"),kind:c.kind,zone:c.zone,qty,total:Math.max(Number(l.total)||0,qty),modified:l.modified||"",created:l.created||l.since||"",held:false,shelfQty:Number(shelfQty.toFixed(6))});
+              out.rows.push({warehouseId:Number(r.warehouseId),warehouseName:r.warehouseName||"—",sku:String(r.sku),productName:r.productName||"",uom:r.uom||"",location:c.code||String(l.location||"—"),kind:c.kind,zone:c.zone,qty,total:Math.max(Number(l.total)||0,qty),modified:l.modified||"",created:l.created||l.since||"",held:false,shelfQty:Number(shelfQty.toFixed(6)),sources:Array.isArray(l.sources)?l.sources:null,movesTotal:Number(l.movesTotal)||0});
             }
           }
           const held=Array.isArray(sc.held)?sc.held:[],heldTotal=Math.max(Number(sc.heldTotal)||0,held.length);
@@ -11571,14 +11857,14 @@ async function rpc(name,args,retry=true){
         }
         function say(text,tone=""){const el=$("sr-status");el.textContent=text;el.dataset.tone=tone;el.setAttribute("aria-live",tone==="error"?"assertive":"polite")}
         function setBusy(on){state.busy=on;$("sr-run").disabled=on;$("sr-run").dataset.busy=String(on);$("sr-run").querySelector(".src-read__t").textContent=on?"Đang đọc…":"Đọc WMS"}
-        const rowsOf=tab=>state.rows.filter(r=>tab==="all"||r.level===tab);
+        const rowsOf=tab=>state.rows.filter(r=>tab==="all"||r.level===tab),keyOf=r=>`${r.warehouseId}|${r.sku}|${r.location}|${r.held?1:0}`;
         function rowFor(r){
           const lv=LEVELS[r.level],parts=String(r.productName||"").split("/").map(p=>p.trim()),head=parts.shift()||"Chưa có tên",t=stampOf(r),dated=Number.isFinite(t),tc=parseDate(r.created);
           const shown=r.held?r.total:r.qty,reserve=r.held?"giữ chỗ":r.total>r.qty?`+${num(r.total-r.qty)} giữ chỗ`:"",sub=[r.uom,reserve,r.shelfQty>0?`${num(r.shelfQty)} trên kệ`:""].filter(Boolean).join(" · ");
           const levelText=r.kind==="unknown"?"Vị trí lạ":r.level==="mid"&&!dated?"Chưa rõ ngày":lv.text,zoneLabel=r.kind==="unknown"?"Vị trí lạ":r.zone;
           const date=dated?`<b class="ia-date">${esc(dt(t))}</b><span class="as-run-meta" title="${Number.isFinite(tc)?`Ngày tạo ${esc(dt(tc))}`:""}">${esc(num(r.days))} ngày${r.modified?"":" · ngày tạo"}</span>`:'<span class="as-empty">—</span>';
-          return{cells:[`<code data-copy="${esc(r.sku)}" title="Bấm để sao chép">${esc(r.sku)}</code>`,`<span class="as-chip" title="${esc(r.warehouseName)}">${esc(shortWh(r.warehouseName))}</span>`,`<div class="as-name ia-pname" title="${esc(r.productName||"")}"><b>${esc(head)}</b>${parts.length?`<span> / ${esc(parts.join(" / "))}</span>`:""}</div>`,`<div class="ia-qty"><b>${num(shown)}</b><small>${esc(sub)}</small></div>`,`<div class="ia-locs"><span class="ia-loc">${esc(r.location)}</span></div>`,date,chip(levelText,lv.tone,lv.icon)],
-            text:[r.sku,r.productName,r.warehouseName,r.location,r.zone].join(" "),facets:{wh:r.warehouseName,zone:zoneLabel},sort:{sr_sku:r.sku,sr_wh:r.warehouseName,sr_qty:shown,sr_loc:r.location,sr_days:r.days??undefined,sr_level:lv.order},
+          return{cells:[`<code>${esc(r.sku)}</code>`,`<span class="as-chip" title="${esc(r.warehouseName)}">${esc(shortWh(r.warehouseName))}</span>`,`<div class="as-name ia-pname" title="${esc(r.productName||"")}"><b>${esc(head)}</b>${parts.length?`<span> / ${esc(parts.join(" / "))}</span>`:""}</div>`,`<div class="ia-qty"><b>${num(shown)}</b><small>${esc(sub)}</small></div>`,`<div class="ia-locs"><span class="ia-loc">${esc(r.location)}</span></div>`,date,chip(levelText,lv.tone,lv.icon)],
+            text:[r.sku,r.productName,r.warehouseName,r.location,r.zone].join(" "),facets:{wh:r.warehouseName,zone:zoneLabel},attrs:`data-sr-key="${esc(keyOf(r))}" tabindex="0"`,sort:{sr_sku:r.sku,sr_wh:r.warehouseName,sr_qty:shown,sr_loc:r.location,sr_days:r.days??undefined,sr_level:lv.order},
             csv:[r.sku,r.warehouseName,r.productName,r.qty,r.total,r.uom,r.location,zoneLabel,r.held||r.total>r.qty?"Có":"",r.modified&&dated?dt(t):"",Number.isFinite(tc)?dt(tc):"",r.days??"",levelText,r.shelfQty]};
         }
         function renderList(keep=true){$("sr-list-title").textContent=TABS[state.tab];list.show({columns:COLS,rows:rowsOf(state.tab).map(rowFor),facets:[{id:"wh",label:"Kho",icon:"database"},{id:"zone",label:"Vùng",icon:"pin"}],filename:"hang-chua-len-ke",csvHead:CSVH,sheet:"Hàng chưa lên kệ",empty:state.run?"Không có hàng chưa lên kệ.":"Chưa có dữ liệu."},{keep})}
@@ -11638,12 +11924,17 @@ async function rpc(name,args,retry=true){
           if(!audit?.refresh||!ia){say("Chưa tải được bộ đồng bộ kiểm kê; hãy tải lại trang.","error");return}
           setBusy(true);say("Đang đọc WMS qua Extension…");ia.textContent="";ia.dataset.tone="";
           try{
-            await audit.refresh();
+            // Bước nguồn trả {done,total,reason} (review 26/10/2026): câu kết quả nêu " · nguồn x/y cặp"; thiếu cặp hoặc có lý do thì cảnh báo.
+            const temp=window.HasakiStorageRiskTemp;let src=null;
+            await audit.refresh({enrich:temp?.sources?async(payload,warehouses)=>(src=await temp.sources(payload,warehouses)):undefined});
             const message=ia.textContent,failed=ia.dataset.tone==="error";
             if(!message){say("Chưa chạy được đồng bộ; hãy đăng nhập Admin rồi thử lại.","error");return}
             await load({quiet:true});
             if(failed)say(message,"error");
-            else say(state.rows.length?`Đã đồng bộ. ${num(state.rows.length)} dòng chưa lên kệ.`:"Đã đồng bộ. Không có hàng chưa lên kệ.");
+            else{
+              const reason=src&&typeof src.reason==="string"?src.reason.trim().replace(/[.\s]+$/,""):"",tail=src&&(Number(src.total)>0||reason)?` · nguồn ${num(src.done)}/${num(src.total)} cặp${reason?`: ${reason}`:""}`:"";
+              say(`${state.rows.length?`Đã đồng bộ. ${num(state.rows.length)} dòng chưa lên kệ`:"Đã đồng bộ. Không có hàng chưa lên kệ"}${tail}.`,src&&(Number(src.done)<Number(src.total)||reason)?"warn":"");
+            }
             // Một lần đồng bộ cho cả hai tab: đọc tiếp UID tạm; lỗi của bước này chỉ hiện ở #srt-status, không đổi kết quả tab này.
             if(withTemp){try{await window.HasakiStorageRiskTemp?.run?.()}catch{}}
           }finally{setBusy(false)}
@@ -11666,12 +11957,42 @@ async function rpc(name,args,retry=true){
         let wasOn=false;
         function route(){
           const on=active();screen.hidden=!on;
-          if(!on){wasOn=false;return}
+          if(!on){UI.closeDialogs(screen);wasOn=false;return}
           if(root)root.inert=true;
           if(!wasOn){wasOn=true;syncAdmin();load({quiet:state.loaded})}
         }
         UI.hydrate(screen);
         screen.addEventListener("click",e=>{const t=e.target.closest("[data-sr-tab],button.ss-metric[data-sr-level]");if(t&&t.dataset.zero!=="true")setTab(t.dataset.srTab||t.dataset.srLevel)});
+        // ---- Pop-up nguồn (26/10/2026, Đ2): bấm dòng (kể cả ô SKU) / Enter / Space mở nguồn của cặp SKU × vị trí; sao chép SKU nằm trong pop-up ----
+        const MOVE_TYPE={"":"Chuyển tay",EDIT_UID_GROUP:"Cắt / sửa Group UID",PUSH_MASTER:"Đẩy vị trí",PUSH_MASTER_FULL_LOCATION:"Đẩy vị trí đầy",RE_PO:"Nhập PO",RE_IT:"Nhận phiếu IT",DISSOLVE_UID_GROUP:"Giải tán Group UID",OUTBOUND_ORDER:"Lấy hàng cho phiếu xuất"};
+        const DOC_TYPE={INTERNAL_TRANSFER:"IT",ADJUSTMENT:"ADJ",WORK_ORDER:"Lệnh sản xuất",PURCHASE_ORDER:"PO",VENDOR_RETURN:"Trả NCC",INTERNAL_TRANSFER_RETURN:"IT trả về"};
+        const moveType=t=>{const k=String(t??"").trim().toUpperCase();return Object.hasOwn(MOVE_TYPE,k)?MOVE_TYPE[k]:k};
+        const docType=t=>DOC_TYPE[String(t||"").toUpperCase()]||String(t||"")||"Chưa rõ";
+        const fact=(label,value,sub="")=>`<div class="ia-fact"><span>${esc(label)}</span><strong>${value}</strong>${sub?`<em>${esc(sub)}</em>`:""}</div>`;
+        let detailSku="";
+        function openSource(key){
+          const r=state.rows.find(x=>keyOf(x)===key);if(!r)return;
+          const lv=LEVELS[r.level],t=stampOf(r),dated=Number.isFinite(t),levelText=r.kind==="unknown"?"Vị trí lạ":r.level==="mid"&&!dated?"Chưa rõ ngày":lv.text,unit=r.uom?` ${r.uom}`:"",shown=r.held?r.total:r.qty;
+          detailSku=r.sku;const mark=$("sr-d-mark");mark.dataset.tone=lv.tone;mark.innerHTML=ico(lv.icon);
+          $("sr-d-title").textContent=r.sku;$("sr-d-sub").textContent=r.productName||"Chưa có tên";
+          const head=`<div class="ia-facts">${fact("Kho",esc(shortWh(r.warehouseName)),r.warehouseName)}${fact("Vị trí",`<code>${esc(r.location)}</code>`,r.held?"Giữ chỗ":"")}${fact("Số lượng",esc(`${num(shown)}${unit}`),!r.held&&r.total>r.qty?`+${num(r.total-r.qty)} giữ chỗ`:"")}${fact("Modified date",dated?esc(dt(t)):"—",r.days!=null?`${num(r.days)} ngày`:"")}${fact("Mức",chip(levelText,lv.tone,lv.icon))}</div>`;
+          const src=Array.isArray(r.sources)?r.sources.filter(s=>s&&typeof s==="object"):null,moves=(src||[]).filter(s=>s.kind==="move"),inbound=(src||[]).find(s=>s.kind==="in");
+          let body;
+          if(!src)body=`<p class="sr-d-empty">Chưa có dữ liệu nguồn</p>`;
+          else if(!moves.length&&!inbound)body=`<p class="sr-d-empty">Không có nguồn trong lịch sử đọc được</p>`;
+          else{
+            const list=moves.length?`<div class="sr-srcs">${moves.map(m=>{const at=Date.parse(m.at||""),uid=m.uid?`Group UID <code>${esc(m.uid)}</code>`:m.uidId?`Group UID #${esc(m.uidId)}`:"";return`<div class="sr-src"><div class="sr-src-top">${chip(moveType(m.type))}<b>${esc(`${num(m.qty)}${unit}`)}</b></div><div class="sr-src-meta">Từ <code>${esc(m.from||"—")}</code>${uid?` · ${uid}`:""}</div><div class="sr-src-meta">${esc([m.by||"—",Number.isFinite(at)?dt(at):""].filter(Boolean).join(" · "))}</div></div>`}).join("")}</div>`:`<p class="sr-d-empty">Không có lần chuyển vào</p>`;
+            const inAt=Date.parse(inbound?.at||""),inType=inbound?docType(inbound.type):"";
+            const inBox=inbound?`<div class="ia-facts">${fact("Loại",chip(inType))}${fact("Phiếu nhập",`<code>${esc(inbound.code||"—")}</code>`)}${inbound.mapping?fact(inType==="PO"?"Số PO":"Mã nguồn",`<code>${esc(inbound.mapping)}</code>`):""}${inbound.reason?fact("Lý do",esc(inbound.reason)):""}${fact("Người",esc(inbound.by||"—"))}${fact("Giờ",Number.isFinite(inAt)?esc(dt(inAt)):"—")}${fact("Số lượng",esc(`${num(inbound.qty)}${unit}`))}</div>`:`<p class="sr-d-empty">Không có phiếu nhập trong 90 ngày</p>`;
+            body=`<h3 class="ia-d-h"><span>${ico("arrow")}Chuyển vào vị trí</span><b class="as-chip">${num(moves.length)}${r.movesTotal>moves.length?` / ${num(r.movesTotal)}`:""}</b></h3>${list}<h3 class="ia-d-h"><span>${ico("box")}Phiếu nhập gần nhất</span></h3>${inBox}`;
+          }
+          $("sr-d-body").innerHTML=head+body;
+          UI.openDialog($("sr-dialog"));
+        }
+        $("sr-d-copy").onclick=()=>{const b=$("sr-d-copy");if(!detailSku||!navigator.clipboard)return;navigator.clipboard.writeText(detailSku).then(()=>{b.title="Đã sao chép";b.setAttribute("aria-label","Đã sao chép");setTimeout(()=>{b.title="Sao chép SKU";b.setAttribute("aria-label","Sao chép SKU")},1200)}).catch(()=>{})};
+        screen.addEventListener("click",e=>{const row=e.target.closest("#sr-body tr[data-sr-key]");if(row)openSource(row.dataset.srKey)});
+        screen.addEventListener("keydown",e=>{if(e.key!=="Enter"&&e.key!==" ")return;const row=e.target.closest?.("#sr-body tr[data-sr-key]");if(row&&e.target===row){e.preventDefault();openSource(row.dataset.srKey)}});
+        UI.bindDialogs(screen);
         $("sr-run").onclick=run;
         addEventListener("hashchange",route);
         addEventListener("print-sku-admin-ready",syncAdmin);addEventListener("print-sku-admin-logout",syncAdmin);
@@ -11706,7 +12027,7 @@ async function rpc(name,args,retry=true){
         };
         function applySaved(data){
           const run=data&&data.run;if(!run)return false;
-          const now=Date.now(),rows=(Array.isArray(data.rows)?data.rows:[]).map(r=>({wh:r.wh,warehouseName:r.warehouseName||"",sku:String(r.sku||""),productName:r.productName||"",qty:Number(r.qty)||0,sourceCode:r.sourceCode||"",mappingId:r.mappingId||"",createdBy:r.createdBy||"",at:r.createdAt?Date.parse(r.createdAt):NaN}));
+          const now=Date.now(),rows=(Array.isArray(data.rows)?data.rows:[]).map(r=>({wh:r.wh,warehouseName:r.warehouseName||"",sku:String(r.sku||""),productName:r.productName||"",qty:Number(r.qty)||0,sourceCode:r.sourceCode||"",mappingId:r.mappingId||"",createdBy:r.createdBy||"",at:r.createdAt?Date.parse(r.createdAt):NaN,origin:r.origin&&typeof r.origin==="object"&&!Array.isArray(r.origin)?r.origin:null}));
           rows.forEach(r=>{r.ageMs=Number.isFinite(r.at)?Math.max(0,now-r.at):null;r.days=daysOf(r,now)});
           Object.assign(state,{rows,warehouses:Array.isArray(run.warehouses)?run.warehouses:[],warn:Array.isArray(run.warn)?run.warn:[],scanned:Number(run.scanned)||0,pages:Number(run.pages)||0,readAt:Date.parse(run.readAt)||0,filter:"all",loaded:true,runId:run.id||null});
           render(false);
@@ -11716,12 +12037,12 @@ async function rpc(name,args,retry=true){
         async function load(){
           if(fetched||state.busy||(state.loaded&&!fromSaved)||screen.dataset.view!=="temp"||readFailed||location.hash.replace(/^#/,"").split("&")[0]!==ROUTE)return;
           fetched=true;const gen=++loadGen,shown=state.loaded;let fromCache=false;window.PrintSkuNotice?.busy(screen,true);
-          // Cache trên máy + kiểm phiên bản (snapshot-cache-script, khoá "uid_temp:v2" / Admin "uid_temp:v2:admin" — 23/10/2026 đổi khoá vì
+          // Cache trên máy + kiểm phiên bản (snapshot-cache-script, khoá "uid_temp:v3" / Admin "uid_temp:v3:admin"; v3 từ 26/10/2026 vì dòng có origin — 23/10/2026 đổi khoá vì
           // bản lưu trước khi che email (khoá "uid_temp") còn email đầy đủ mà máy chủ vẫn xác nhận "unchanged" theo run id): hiện ngay bản trên máy, máy chủ xác nhận / gửi bản mới.
           const live=()=>gen===loadGen&&!state.busy&&(!state.loaded||fromCache||fromSaved);
           try{
             const snap=window.PrintSkuSnapshotCache,viewer=window.PrintSkuAdminAccess?.peekToken?.()?await window.PrintSkuAdminAccess.viewerToken()||"":"";
-            const got=snap?await snap.load({key:viewer?"uid_temp:v2:admin":"uid_temp:v2",rpc:"uid_temp_snapshot",fallback:"uid_temp_overview",call:(name,args)=>rpcCall(name,args,viewer),onCached:shown?null:data=>{if(live()&&applySaved(data)){fromCache=true;fromSaved=true}}}):{data:await rpcCall("uid_temp_overview",{},viewer),source:"server"};
+            const got=snap?await snap.load({key:viewer?"uid_temp:v3:admin":"uid_temp:v3",rpc:"uid_temp_snapshot",fallback:"uid_temp_overview",call:(name,args)=>rpcCall(name,args,viewer),onCached:shown?null:data=>{if(live()&&applySaved(data)){fromCache=true;fromSaved=true}}}):{data:await rpcCall("uid_temp_overview",{},viewer),source:"server"};
             if(!live())return;
             const same=state.loaded&&state.runId&&got.data?.run?.id===state.runId;
             // Mất mạng mà màn đã có dữ liệu (vd. Admin vừa lưu lượt mới, hoặc vừa vẽ từ cache): giữ màn, luôn báo chưa nối được máy chủ.
@@ -11736,7 +12057,7 @@ async function rpc(name,args,retry=true){
           let token="";try{token=await window.PrintSkuAdminAuth.accessToken()}catch(_){/* hết phiên: báo bên dưới */}
           if(!token)throw new Error("Phiên Admin đã hết hạn, đăng nhập lại rồi bấm Đọc WMS");
           return rpcCall("uid_temp_save",{p_run:{readAt:new Date(now).toISOString(),warehouses:state.warehouses.map(w=>({warehouseId:w.warehouseId,warehouseName:w.warehouseName,companyName:w.companyName||""})),warn:state.warn,scanned:state.scanned,pages:state.pages,rangeDays:RANGE_DAYS},
-            p_rows:state.rows.map(r=>({wh:r.wh,warehouseName:r.warehouseName,sku:r.sku,productName:r.productName,qty:r.qty,sourceCode:r.sourceCode,mappingId:r.mappingId,createdBy:r.createdBy,createdAt:Number.isFinite(r.at)?new Date(r.at).toISOString():null}))},token);
+            p_rows:state.rows.map(r=>({wh:r.wh,warehouseName:r.warehouseName,sku:r.sku,productName:r.productName,qty:r.qty,sourceCode:r.sourceCode,mappingId:r.mappingId,createdBy:r.createdBy,createdAt:Number.isFinite(r.at)?new Date(r.at).toISOString():null,origin:r.origin||null}))},token);
         }
         const list=UI.createList({tools:$("srt-tools"),tagsBox:$("srt-tags"),head:$("srt-head"),body:$("srt-body"),pager:$("srt-pager"),note:$("srt-note")});
         const shortWh=n=>String(n||"").replace(/^WH\s*-\s*MATERIAL\s*-\s*/i,"")||String(n||"—");
@@ -11776,6 +12097,85 @@ async function rpc(name,args,retry=true){
           }
           return{rows,pages,total:Number(first.total)||rows.length};
         }
+        // ---- Nguồn phiếu (26/10/2026), bản chép ở extension/inside-po-connector/storage-risk-core.js (tests/storage_risk_core.cjs so khớp) ----
+        // Import/Export 90 ngày đọc MỘT lần cho cả lượt Đọc WMS: bước Kiểm kê gọi sources() trước khi lưu (nguồn Hàng chưa lên kệ), run() dùng lại.
+        // Chỉ mục: dòng XUẤT theo mã phiếu (source_code) để tra phiếu gốc UID tạm; dòng NHẬP mới nhất theo kho + SKU.
+        function indexMove(m,warehouseId,outs,ins){
+          if(m.kind==="out"&&m.sourceCode){const list=outs.get(m.sourceCode);if(list)list.push(m);else outs.set(m.sourceCode,[m])}
+          else if(m.kind==="in"&&m.sku){const k=`${warehouseId}|${m.sku}`,t=timeOf(m.createdAt),old=ins.get(k);if(!old||(Number.isFinite(t)&&!(old.t>=t)))ins.set(k,{m,t})}
+        }
+        // Phiếu gốc UID tạm: các dòng xuất có source_code = source_mapping_id của dòng "Tạo UID Temp" (IT / ADJ / lệnh sản xuất), gộp theo SKU.
+        const MAX_LINES=30;
+        function originOf(code,outs){
+          const list=code?outs.get(code):null;if(!list||!list.length)return null;
+          const head=list[0],lines=[];
+          for(const m of list){const sku=String(m.sku||""),qty=Number(m.qty)||0,line=lines.find(l=>l.sku===sku);if(line)line.qty=Number((line.qty+qty).toFixed(6));else if(lines.length<MAX_LINES)lines.push({sku,qty})}
+          const t=timeOf(head.createdAt);
+          return{type:head.sourceType||"",code,reason:head.reason||"",by:head.approvedBy||head.createdBy||"",at:Number.isFinite(t)?new Date(t).toISOString():null,from:head.fromWarehouse||head.warehouseName||"",to:head.toWarehouse||"",lines};
+        }
+        // Nguồn Hàng chưa lên kệ: cặp SKU × vị trí ảo F0-<vùng>-00-00-00-<n>, cặp cũ nhất trước, tối đa 60 cặp/lượt, ≤ 20 lần chuyển/cặp.
+        // Bản chụp Kiểm kê ai cũng xem và sku_count_overview trả nguyên văn → chỉ lưu phần trước @ của người thao tác (N1185).
+        const VIRTUAL=/^F0-[^-]+-00-00-00-\d+$/,MAX_PAIRS=60,MOVES=20;
+        const who=v=>String(v||"").split("@")[0].trim();
+        const isoOf=v=>{const t=timeOf(v);return Number.isFinite(t)?new Date(t).toISOString():null};
+        const moveSource=r=>({kind:"move",type:String(r.type||""),qty:Number(r.qty)||0,by:who(r.by),at:isoOf(r.at),from:String(r.from||""),uid:String(r.uid||""),uidId:Number.isSafeInteger(r.uidId)?r.uidId:null});
+        const inSource=m=>({kind:"in",type:m.sourceType||"",code:m.sourceCode||"",mapping:m.mappingId||"",reason:m.reason||"",by:who(m.approvedBy||m.createdBy),at:isoOf(m.createdAt),qty:Number(m.qty)||0});
+        async function readMoves(){
+          say("Đang xác định kho WMS…");
+          const meta=await ext("GET_SKU_COUNT_WAREHOUSES",{warehouseNames:WANT.map(w=>w.name)});
+          const found=WANT.map(w=>({w,wh:(meta.warehouses||[]).find(x=>w.test.test(x.warehouseName||""))}));
+          const missing=found.filter(f=>!f.wh).map(f=>f.w.name);
+          if(missing.length===found.length)throw new Error(`Tài khoản WMS không thấy kho: ${missing.join(", ")}`);
+          const to=Date.now(),from=to-RANGE_DAYS*DAY,rows=[],seen=new Set(),warehouses=[],gaps=[],outs=new Map(),ins=new Map();let scanned=0,pages=0;
+          for(const {w,wh} of found){
+            if(!wh)continue;
+            const moves=await readPages("GET_STOCK_IMPORT_EXPORT_PAGE",{warehouseIds:[wh.warehouseId],companyId:wh.companyId,from,to},`${shortWh(wh.warehouseName)} nhập xuất`);
+            scanned+=moves.rows.length;pages+=moves.pages;warehouses.push(wh);
+            if(moves.total>moves.rows.length)gaps.push(`${wh.warehouseName}: WMS báo ${num(moves.total)} dòng, đọc được ${num(moves.rows.length)}`);
+            for(const m of moves.rows){
+              if(!m||typeof m!=="object")continue;
+              const key=m.id?`${wh.warehouseId}|${m.id}`:"";if(key&&seen.has(key))continue;if(key)seen.add(key);
+              indexMove(m,wh.warehouseId,outs,ins);
+              if(isTempUid(m))rows.push({wh:w.key,warehouseName:wh.warehouseName,sku:String(m.sku||""),productName:m.productName||"",qty:Number(m.qty)||0,sourceCode:m.sourceCode||"",mappingId:m.mappingId||"",createdBy:m.createdBy||"",at:timeOf(m.createdAt)});
+            }
+          }
+          for(const r of rows)r.origin=originOf(r.mappingId,outs);
+          return{missing,to,rows,warehouses,gaps,scanned,pages,ins};
+        }
+        // Lượt đọc Import/Export chạy sẵn trong bước Kiểm kê (sources); run() của cùng lần bấm dùng lại (≤ 10 phút), không đọc lần hai.
+        // Chỉ nhớ lượt đọc THÀNH CÔNG (review 26/10/2026, như movesRead của storage-risk-core.js): lỗi thì xoá để run() đọc lại một lần.
+        let pre=null;
+        function prefetch(){const p=readMoves();pre={at:Date.now(),p};p.catch(()=>{if(pre&&pre.p===p)pre=null});return p}
+        // opts.enrich của run Kiểm kê: ghép nguồn vào locations[] của payload. Lệnh lỗi / sai dạng (tab WMS chưa tải lại, WMS lỗi) → dừng;
+        // cặp chưa đọc không có khoá sources (pop-up hiện "Chưa có dữ liệu nguồn").
+        // Trả {done,total,reason} như storage-risk-core.js (review 26/10/2026, không im lặng): sr-run nêu " · nguồn x/y cặp" + lý do. Chỉ bắt lỗi của
+        // lệnh WMS / xác minh Admin; lỗi lập trình ném lên để run Kiểm kê báo lỗi. Extension < SOURCE_EXT (cầu nối cũ im lặng với GET_TRANSFER_BIN_PAGE
+        // tới hết 30 giây) → kiểm PING_WMS (như cut-adj-reconcile) rồi bỏ bước ngay.
+        const SOURCE_EXT="0.12.0"; // bản Extension đầu tiên có GET_TRANSFER_BIN_PAGE
+        const versionBelow=(version,min)=>{const a=String(version||"").split("."),b=min.split(".");for(let i=0;i<3;i+=1){const x=Number(a[i])||0,y=Number(b[i])||0;if(x!==y)return x<y}return false};
+        const why=(label,error)=>`${label}: ${String(error?.message||"lỗi không rõ").slice(0,160)}`;
+        async function sources(payload,warehouses){
+          const company=new Map((warehouses||[]).map(w=>[Number(w.warehouseId),w.companyId??null])),pairs=[];
+          for(const row of payload)for(const loc of row.locations||[]){if(VIRTUAL.test(String(loc.location||"").trim().toUpperCase()))pairs.push({row,loc,t:timeOf(loc.modified||loc.created)})}
+          pairs.sort((a,b)=>(Number.isFinite(a.t)?a.t:-Infinity)-(Number.isFinite(b.t)?b.t:-Infinity));
+          const out={done:0,total:pairs.length,reason:""};
+          // Như run(): xác minh Admin qua mạng trước khi đọc Import/Export (Admin chưa xác minh → không đọc, Kiểm kê vẫn lưu như cũ).
+          let token="";try{token=await window.PrintSkuAdminAccess?.getToken?.()}catch(_){/* báo bên dưới */}
+          if(!token){out.reason="chưa xác minh Admin";return out}
+          let ping;try{ping=await ext("PING_WMS",{},6000)}catch(error){out.reason=why("chưa kiểm được phiên bản Extension",error);return out}
+          if(versionBelow(ping?.version,SOURCE_EXT)){out.reason=`cần Extension ≥ ${SOURCE_EXT}`;return out}
+          let read;try{read=await prefetch()}catch(error){out.reason=why("không đọc được nhập xuất",error);return out}
+          for(const {row,loc} of pairs.slice(0,MAX_PAIRS)){
+            let page;try{page=await ext("GET_TRANSFER_BIN_PAGE",{warehouseId:row.warehouse_id,companyId:company.get(Number(row.warehouse_id))??null,binIn:loc.location,sku:row.sku,page:1,size:MOVES},30000)}catch(error){out.reason=why("dừng đọc chuyển vị trí",error);break}
+            if(!page||typeof page!=="object"||!Array.isArray(page.rows)){out.reason="lịch sử chuyển vị trí trả sai dạng";break}
+            const moves=page.rows.filter(r=>r&&typeof r==="object").slice(0,MOVES).map(moveSource),inbound=read.ins.get(`${row.warehouse_id}|${row.sku}`);
+            loc.sources=inbound?[...moves,inSource(inbound.m)]:moves;
+            const total=Number(page.total);if(Number.isFinite(total)&&total>moves.length)loc.movesTotal=total;
+            out.done+=1;
+          }
+          if(!out.reason&&pairs.length>MAX_PAIRS)out.reason=`mỗi lượt chỉ đọc ${MAX_PAIRS} cặp cũ nhất`;
+          return out;
+        }
         // ---- Hiển thị ----
         const daysOf=(r,now)=>Number.isFinite(r.at)?Math.floor(Math.max(0,now-r.at)/DAY):null;
         const countOf=f=>state.rows.filter(r=>passes(r,f)).length;
@@ -11796,12 +12196,12 @@ async function rpc(name,args,retry=true){
             `<span class="srt-k">Mã ADJ</span>${copyCode(r.sourceCode)}`,`<span class="srt-k">Phiếu gốc</span>${copyCode(r.mappingId)}`,
             `<span class="srt-k">Người tạo</span>${r.createdBy?esc(r.createdBy):'<span class="as-empty">—</span>'}`,
             ageChip(r)],
-            text:[r.sku,r.productName,r.warehouseName,r.sourceCode,r.mappingId,r.createdBy].join(" "),facets:{wh:r.warehouseName},
+            text:[r.sku,r.productName,r.warehouseName,r.sourceCode,r.mappingId,r.createdBy].join(" "),facets:{wh:r.warehouseName},attrs:`data-srt-key="${esc(r.key)}" tabindex="0"`,
             sort:{srt_wh:r.warehouseName,srt_at:Number.isFinite(r.at)?r.at:undefined,srt_sku:r.sku,srt_qty:r.qty,srt_age:r.days??undefined},
             csv:[r.warehouseName,Number.isFinite(r.at)?dt(r.at):"",r.sku,r.productName,r.qty,r.sourceCode,r.mappingId,r.createdBy,r.days??""]};
         }
         function renderList(keep=true){
-          $("srt-list-title").textContent=FILTERS[state.filter];
+          $("srt-list-title").textContent=FILTERS[state.filter];state.rows.forEach((r,i)=>{r.key=String(i)});
           list.show({columns:COLS,rows:state.rows.filter(r=>passes(r,state.filter)).map(rowFor),facets:[{id:"wh",label:"Kho",icon:"database"}],filename:"uid-tam",csvHead:CSVH,sheet:"UID tạm",empty:state.loaded?"Không có dòng tạo UID tạm trong 90 ngày.":"Chưa có dữ liệu."},{keep});
         }
         function metrics(){
@@ -11818,6 +12218,7 @@ async function rpc(name,args,retry=true){
         function reset(){Object.assign(state,{rows:[],warehouses:[],warn:[],scanned:0,pages:0,readAt:0,filter:"all",loaded:false});render(false)}
         // ---- Đọc từ WMS ----
         async function run(){
+          const ready=pre&&Date.now()-pre.at<600000?pre.p:null;pre=null;
           if(state.busy||!state.admin)return;setBusy(true);
           try{
             say("Đang đọc UID tạm…");
@@ -11827,23 +12228,7 @@ async function rpc(name,args,retry=true){
             if(!state.admin)return;
             loadGen++;readFailed=false;fromSaved=false; // từ đây mới chắc chắn đọc WMS: bỏ kết quả nạp bản lưu đang chờ
             reset();
-            say("Đang xác định kho WMS…");
-            const meta=await ext("GET_SKU_COUNT_WAREHOUSES",{warehouseNames:WANT.map(w=>w.name)});
-            const found=WANT.map(w=>({w,wh:(meta.warehouses||[]).find(x=>w.test.test(x.warehouseName||""))}));
-            const missing=found.filter(f=>!f.wh).map(f=>f.w.name);
-            if(missing.length===found.length)throw new Error(`Tài khoản WMS không thấy kho: ${missing.join(", ")}`);
-            const to=Date.now(),from=to-RANGE_DAYS*DAY,rows=[],seen=new Set(),warehouses=[],gaps=[];let scanned=0,pages=0;
-            for(const {w,wh} of found){
-              if(!wh)continue;
-              const moves=await readPages("GET_STOCK_IMPORT_EXPORT_PAGE",{warehouseIds:[wh.warehouseId],companyId:wh.companyId,from,to},`${shortWh(wh.warehouseName)} nhập xuất`);
-              scanned+=moves.rows.length;pages+=moves.pages;warehouses.push(wh);
-              if(moves.total>moves.rows.length)gaps.push(`${wh.warehouseName}: WMS báo ${num(moves.total)} dòng, đọc được ${num(moves.rows.length)}`);
-              for(const m of moves.rows){
-                if(!isTempUid(m))continue;
-                const key=m.id?`${wh.warehouseId}|${m.id}`:"";if(key&&seen.has(key))continue;if(key)seen.add(key);
-                rows.push({wh:w.key,warehouseName:wh.warehouseName,sku:String(m.sku||""),productName:m.productName||"",qty:Number(m.qty)||0,sourceCode:m.sourceCode||"",mappingId:m.mappingId||"",createdBy:m.createdBy||"",at:timeOf(m.createdAt)});
-              }
-            }
+            const {missing,to,rows:read,warehouses,gaps,scanned,pages}=await(ready||readMoves()),rows=[...read];
             if(!state.admin)return;
             const now=Date.now();
             rows.forEach(r=>{r.ageMs=Number.isFinite(r.at)?Math.max(0,now-r.at):null;r.days=daysOf(r,now)});
@@ -11893,12 +12278,36 @@ async function rpc(name,args,retry=true){
           setView(next.dataset.srtView);next.focus();
         });
         screen.addEventListener("click",e=>{const b=e.target.closest("button.ss-metric[data-srt-level]");if(b&&b.dataset.zero!=="true")setFilter(b.dataset.srtLevel)});
+        // ---- Pop-up phiếu gốc (26/10/2026): bấm dòng / Enter / Space; mã trên bảng vẫn bấm để sao chép ----
+        const DOC_TYPE={INTERNAL_TRANSFER:"IT",ADJUSTMENT:"ADJ",WORK_ORDER:"Lệnh sản xuất",PURCHASE_ORDER:"PO",VENDOR_RETURN:"Trả NCC",INTERNAL_TRANSFER_RETURN:"IT trả về"};
+        const docType=t=>DOC_TYPE[String(t||"").toUpperCase()]||String(t||"")||"Chưa rõ";
+        function openOrigin(key){
+          const r=state.rows.find(x=>x.key===key);if(!r)return;
+          const o=r.origin&&typeof r.origin==="object"?r.origin:null,type=o?docType(o.type):"";
+          const fact=(label,value,sub="")=>`<div class="ia-fact"><span>${esc(label)}</span><strong>${value}</strong>${sub?`<em>${esc(sub)}</em>`:""}</div>`;
+          const code=v=>v?`<code data-copy="${esc(v)}" title="Bấm để sao chép">${esc(v)}</code>`:"—";
+          const mark=$("srt-d-mark");mark.dataset.tone=o?"new":"warn";mark.innerHTML=ico("layers");
+          $("srt-d-title").textContent=r.sku||"—";$("srt-d-sub").textContent=r.productName||"Chưa có tên";
+          const head=`<div class="ia-facts">${fact("Kho",esc(shortWh(r.warehouseName)),r.warehouseName)}${fact("Ngày tạo",Number.isFinite(r.at)?esc(dt(r.at)):"—")}${fact("Số lượng",esc(num(r.qty)))}${fact("Mã ADJ",code(r.sourceCode))}${fact("Người tạo",esc(r.createdBy||"—"))}</div>`;
+          let body;
+          if(!o)body=`<h3 class="ia-d-h"><span>${ico("link")}Phiếu gốc</span></h3><p class="sr-d-empty">Không tìm thấy phiếu gốc</p>${r.mappingId?`<div class="ia-facts">${fact("Mã phiếu gốc",code(r.mappingId))}</div>`:""}`;
+          else{
+            const lines=Array.isArray(o.lines)?o.lines.filter(l=>l&&typeof l==="object"):[],at=Date.parse(o.at||"");
+            body=`<h3 class="ia-d-h"><span>${ico("link")}Phiếu gốc</span>${chip(type)}</h3><div class="ia-facts">${fact("Phiếu xuất",code(o.code))}${o.reason?fact("Lý do",esc(o.reason)):""}${fact("Người duyệt",esc(o.by||"—"))}${fact("Giờ",Number.isFinite(at)?esc(dt(at)):"—")}${fact("Kho xuất",esc(o.from||"—"))}${fact("Kho đến",esc(o.to||"—"))}</div>`
+              +(lines.length?`<h3 class="ia-d-h"><span>${ico("box")}Các dòng cùng phiếu</span><b class="as-chip">${num(lines.length)}</b></h3><div class="ia-d-list">${lines.map(l=>`<div class="ia-locrow${String(l.sku)===r.sku?" is-self":""}"><code>${esc(l.sku)}</code><b>${esc(num(l.qty))}</b></div>`).join("")}</div>`:"");
+          }
+          $("srt-d-body").innerHTML=head+body;
+          UI.openDialog($("srt-dialog"));
+        }
+        screen.addEventListener("click",e=>{const row=e.target.closest("#srt-body tr[data-srt-key]");if(row&&!e.target.closest("code[data-copy]"))openOrigin(row.dataset.srtKey)});
+        screen.addEventListener("keydown",e=>{if(e.key!=="Enter"&&e.key!==" ")return;const row=e.target.closest?.("#srt-body tr[data-srt-key]");if(row&&e.target===row){e.preventDefault();openOrigin(row.dataset.srtKey)}});
+        UI.bindDialogs(screen);UI.bindCopy($("srt-d-body"));
         $("srt-run").onclick=sync;
         UI.hydrate(screen);
         addEventListener("print-sku-admin-ready",syncAdmin);addEventListener("print-sku-admin-logout",syncAdmin);
         let onRoute=location.hash.replace(/^#/,"").split("&")[0]===ROUTE;
         addEventListener("hashchange",()=>{const on=location.hash.replace(/^#/,"").split("&")[0]===ROUTE;if(on&&!onRoute)recheck(true);onRoute=on;if(on)syncAdmin()});
-        window.HasakiStorageRiskTemp=Object.freeze({isTempUid,run,get busy(){return state.busy}});
+        window.HasakiStorageRiskTemp=Object.freeze({isTempUid,run,sources,get busy(){return state.busy}});
         setView(savedView(),false);metrics();renderList(false);syncAdmin();
       })();
     </script>

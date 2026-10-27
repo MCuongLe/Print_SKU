@@ -45,7 +45,10 @@ const ratio = sel => {
       // Mỗi nhóm dựng mẫu trong đúng màn thật (màu chữ thừa hưởng từ màn), mở màn đó rồi mới đo
       const GROUPS = [
         ['cut-group-uid', '#cut-group-uid-screen', '<div id="t-adj" class="cut-adj-kpis"><button class="cut-adj-kpi" type="button" data-st="wrong" data-tone="bad" data-zero="true"><span>Sai số lượng</span><b>0</b></button><button class="cut-adj-kpi" type="button" data-st="" data-tone="" data-zero="true"><span>Tất cả</span><b>0</b></button></div>'
-          + '<p id="t-st-wrong"><span class="cut-adj-st" data-st="wrong">Sai số lượng</span></p><p id="t-st-pending"><span class="cut-adj-st" data-st="pending">Chờ</span></p>'],
+          + '<p id="t-st-wrong"><span class="cut-adj-st" data-st="wrong">Sai số lượng</span></p><p id="t-st-pending"><span class="cut-adj-st" data-st="pending">Chờ</span></p>'
+          // 26/10/2026 nguồn phiếu: nhóm Chuyển nội bộ (chip + ô lọc) và chip nguồn từng Cut ở popup Đối chiếu ADJ
+          + '<p id="t-st-it"><span class="cut-adj-st" data-st="it">Chuyển nội bộ</span></p><div id="t-adj2" class="cut-adj-kpis"><button class="cut-adj-kpi" type="button" data-st="it" data-tone="it" data-zero="false"><span>Chuyển nội bộ</span><b>1</b></button></div>'
+          + '<table class="cut-table"><tbody id="cut-adj-rows-t"><tr><td id="t-src"><span class="cut-adj-cut"><span class="cut-adj-q" data-bad="false">1.000 mm</span><span class="cut-adj-src" data-src="ADJ">ADJ · Xuất test</span><b class="cut-adj-doc">1008260000000001</b></span><span class="cut-adj-src" data-src="IT">IT</span><span class="cut-adj-src" data-src="">Chưa rõ</span></td></tr></tbody></table>'],
         ['cut-group-uid', '#cs-scan', '<div class="cs-filters"><button class="cs-filter" id="t-cs-filter">Tất cả <b>3</b></button></div><button class="cs-chip" data-role="cut" id="t-cs-chip">Cắt 2</button><table class="cs-table"><tr><td>A<small id="t-cs-small">ghi chú</small></td></tr></table>'],
         ['find-sku', '#find-sku-screen', '<p><span id="t-badge" class="fsk-badge">Combo</span></p>'
           + '<div class="cut-row" data-status="queued"><div class="cut-row__body"><strong>900000821</strong><span>Băng giả</span><small id="t-queued">1 tem · đang chờ</small></div></div>'
@@ -58,7 +61,9 @@ const ratio = sel => {
           + ['#e1ede9', '#f0e8e7', '#f4f7f6', '#f0f5f4', '#ffffff'].map((bg, i) => `<div style="background:${bg}"><b id="t-ok-${i}" style="color:var(--wms-success)">Đã lưu</b><b id="t-bad-${i}" style="color:var(--wms-danger)">Lỗi</b><b id="t-warn-${i}" style="color:var(--wms-warning)">Chờ</b></div>`).join('')],
       ];
       const want = { '#t-adj [data-st="wrong"] span': 'ô lọc 0 dòng (Sai số lượng)', '#t-adj [data-st=""] span': 'ô lọc 0 dòng (Tất cả)', '#t-adj [data-st=""] b': 'số 0 của ô lọc',
-        '#t-st-wrong .cut-adj-st': 'chip Sai số lượng', '#t-st-pending .cut-adj-st': 'chip Chờ', '#t-badge': 'nhãn Combo', '#t-queued': 'dòng chờ in: đang chờ',
+        '#t-st-wrong .cut-adj-st': 'chip Sai số lượng', '#t-st-pending .cut-adj-st': 'chip Chờ',
+        '#t-st-it .cut-adj-st': 'chip Chuyển nội bộ', '#t-adj2 [data-st="it"] span': 'ô lọc Chuyển nội bộ', '#t-adj2 [data-st="it"] b': 'số của ô Chuyển nội bộ',
+        '#t-src [data-src="ADJ"]': 'chip nguồn ADJ', '#t-src [data-src="IT"]': 'chip nguồn IT', '#t-src [data-src=""]': 'chip nguồn Chưa rõ', '#t-src .cut-adj-doc': 'số phiếu', '#t-badge': 'nhãn Combo', '#t-queued': 'dòng chờ in: đang chờ',
         '#t-gone-sku': 'dòng SKU không còn: mã', '#t-gone-name': 'dòng SKU không còn: tên', '#t-failed': 'dòng SKU không còn: lỗi', '#t-gone-tag': 'nhãn SKU không còn',
         '#t-expired': 'Admin chip hết hạn', '#t-ins-conn': 'Kiểm tra đầu vào: trạng thái kết nối', '#t-uc-small': 'Nhận diện hàng: tóm tắt', '#t-ub-via': 'UID blocked: Đã scan lúc', '#t-ub-dt': 'UID blocked: nhãn ô dữ kiện', '#t-ub-via2': 'UID blocked (trùng): Đã scan lúc', '#t-ub-dt2': 'UID blocked (trùng): nhãn ô dữ kiện' };
       for (let i = 0; i < 5; i++) Object.assign(want, { [`#t-ok-${i}`]: `màu đạt (nền ${i})`, [`#t-bad-${i}`]: `màu lỗi (nền ${i})`, [`#t-warn-${i}`]: `màu cảnh báo (nền ${i})` });

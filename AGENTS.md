@@ -44,7 +44,9 @@ Quyết định riêng của từng module ở `docs/QUYET_DINH.md` theo chủ �
 - Giữ chữ giao diện tiếng Việt, mã hoá Unicode, kiểu in và bố cục điện thoại.
 - Không commit bí mật, khoá, endpoint riêng hay dữ liệu SKU / UID / PO thật; dùng dữ liệu giả chuẩn (SKU `9000000xx`, UID `1028260000000xxx`).
 - Hàm SQL `SECURITY DEFINER` mới: `revoke execute … from public, anon, authenticated`, rồi chỉ `grant` cho vai cần.
-- Supabase MCP chỉ để đọc. Migration, deploy và mọi lệnh ghi do người dùng chạy script, trừ khi người dùng cho phép rõ từng lần. Một lệnh phát hành: `python scripts/release.py` (xem `docs/chuan/DU_LIEU.md`).
+- Supabase MCP chỉ để đọc (kiểm sau khi chạy). Lead được tự chạy migration (`python scripts/apply_supabase_sql.py <tệp> --dry-run` trước, rồi chạy thật) và deploy Edge (`python scripts/deploy_<tên>.py --dry-run` trước, rồi chạy thật) theo thứ tự luật 4, sau khi đợt đã qua test + review (người dùng cho phép 26/10/2026).
+- Lệnh phá huỷ (`--allow-destructive`, DROP / DELETE / TRUNCATE) vẫn cần người dùng cho phép rõ từng lần. Chạy xong kiểm bằng truy vấn chỉ đọc, ghi `RULES.md`, rồi sau commit ghi sổ `release_ledger` bằng `python scripts/record_ledger.py supabase/<tệp>.sql`. Reload Extension và mọi thao tác trên trình duyệt của người dùng do người dùng làm.
+- Phát hành có cổng gõ tay: `python scripts/release.py` (xem `docs/chuan/DU_LIEU.md`).
 - Agent được giao việc không commit, không chạy migration / deploy, không ghi `RULES.md` hay `docs/QUYET_DINH.md`.
 
 ## Kiểm chứng (làm phần áp dụng)

@@ -58,7 +58,8 @@
         await new Promise(resolve => setTimeout(resolve, 350 * (attempt + 1)));
         continue;
       }
-      if (!response.ok) throw withReason(new Error(`WMS trả mã ${response.status}`), "network");
+      // status: để người gọi phân biệt "không có" (404) với lỗi tạm (5xx, 429 sau thử lại) — vd. chi tiết ADJ của readDocInfo.
+      if (!response.ok) throw Object.assign(withReason(new Error(`WMS trả mã ${response.status}`), "network"), { status: response.status });
       return response.json();
     }
     throw withReason(new Error("WMS tạm ngắt kết nối; hãy thử lại"), "network");
@@ -334,6 +335,69 @@
     return { ...normalized, total, totalPages: Math.max(1, Math.ceil(total / size)), warehouseIds: ids, from, to, generatedAt: new Date().toISOString() };
   }
 
+  // Transfer Location History (RỦI RO LƯU TRỮ · Hàng chưa lên kệ, 26/10/2026): các lần chuyển VÀO một vị trí của một SKU, mới nhất trước,
+  // tối đa 50 dòng/trang. Lọc `warehouse_id` (số ít), `bin_in`, `keywords` (SKU); chưa biết tham số lọc ngày nên không lọc ngày.
+  // Mã Group UID: source_id của dòng chuyển tay / EDIT_UID_GROUP là group_uid_id → tra lịch sử Group UID cùng kho, ±2 phút quanh giờ
+  // chuyển (tối đa 3 lần gọi, mốc gần nhất trước); không ra hoặc lỗi thì uid = "" (web hiện "Group UID #id"), lệnh vẫn thành công.
+  const TRANSFER_BIN_API = "https://wms-gw.inshasaki.com/api/v1/wms/transfer-bins";
+  const UID_WINDOW_MS = 2 * 60000, UID_LOOKUPS = 3;
+  const wmsTime = value => {
+    const raw = String(value ?? "").trim();
+    if (!raw) return NaN;
+    return Date.parse(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}/.test(raw) && !/[zZ]|[+-]\d{2}:?\d{2}$/.test(raw) ? `${raw.replace(" ", "T")}+07:00` : raw);
+  };
+  async function readTransferBinPage(payload) {
+    if (!auditCore?.normalizeTransferBinPage) throw new Error("Extension chưa tải bộ đọc chuyển vị trí; hãy Reload extension");
+    const warehouseId = Number(payload?.warehouseId);
+    if (!Number.isSafeInteger(warehouseId) || warehouseId <= 0) throw new Error("Kho cần đọc lịch sử chuyển vị trí không hợp lệ");
+    const binIn = String(payload?.binIn ?? "").trim(), sku = String(payload?.sku ?? "").trim();
+    // Mã vị trí có thể mang chữ tiếng Việt (vd. vùng ĐG): nhận chữ / số Unicode, khoảng trắng và . _ ( ) -
+    if (!/^[\p{L}\p{N}][\p{L}\p{N} ._()-]{0,79}$/u.test(binIn)) throw new Error("Vị trí cần đọc lịch sử chuyển không hợp lệ");
+    if (!/^[A-Za-z0-9._-]{1,80}$/.test(sku)) throw new Error("SKU cần đọc lịch sử chuyển không hợp lệ");
+    const companyId = payload?.companyId == null || payload.companyId === "" ? "" : Number(payload.companyId);
+    if (companyId !== "" && (!Number.isSafeInteger(companyId) || companyId <= 0)) throw new Error("Công ty cần đọc lịch sử chuyển không hợp lệ");
+    const page = Math.max(1, Number(payload?.page) || 1), size = Math.min(50, Math.max(1, Number(payload?.size) || 20));
+    const url = new URL(TRANSFER_BIN_API);
+    url.searchParams.set("warehouse_id", String(warehouseId));
+    url.searchParams.set("bin_in", binIn);
+    url.searchParams.set("keywords", sku);
+    url.searchParams.set("page", String(page));
+    url.searchParams.set("size", String(size));
+    const normalized = auditCore.normalizeTransferBinPage(await getJson(url, "Phiên WMS không còn quyền đọc lịch sử chuyển vị trí; hãy đăng nhập lại", companyId), { binIn, sku });
+    // Tra mã Group UID: gộp các mốc giờ gần nhau thành một khoảng, tối đa UID_LOOKUPS lần gọi.
+    const need = normalized.rows.filter(row => row.uidId).map(row => wmsTime(row.at)).filter(Number.isFinite).sort((a, b) => b - a), windows = [];
+    for (const time of need) {
+      const last = windows[windows.length - 1];
+      if (last && time + UID_WINDOW_MS >= last.from) last.from = Math.min(last.from, time - UID_WINDOW_MS);
+      else if (windows.length < UID_LOOKUPS) windows.push({ from: time - UID_WINDOW_MS, to: time + UID_WINDOW_MS });
+    }
+    const codes = new Map();
+    for (const window of windows) {
+      const historyUrl = new URL(HISTORY_API);
+      historyUrl.searchParams.set("active_tab", "group-history");
+      historyUrl.searchParams.set("page", "1");
+      historyUrl.searchParams.set("size", "500");
+      historyUrl.searchParams.set("warehouse_ids", String(warehouseId));
+      historyUrl.searchParams.set("from_updated_at", String(window.from));
+      historyUrl.searchParams.set("to_updated_at", String(window.to));
+      let data;
+      try { data = await getJson(historyUrl, "", companyId); } catch { break; }
+      for (const raw of Array.isArray(data?.records) ? data.records : Array.isArray(data?.data) ? data.data : []) {
+        const id = Number(raw?.group_uid_id), code = auditCore.clean(raw?.group_uid_code, 40);
+        if (Number.isSafeInteger(id) && /^\d{6,40}$/.test(code) && !codes.has(id)) codes.set(id, code);
+      }
+    }
+    for (const row of normalized.rows) if (row.uidId && codes.has(row.uidId)) row.uid = codes.get(row.uidId);
+    return {
+      page, size, total: normalized.total,
+      totalPages: Math.max(1, Math.ceil(normalized.total / size)),
+      rows: normalized.rows,
+      sourceRows: normalized.sourceRows,
+      warehouseId, binIn, sku,
+      generatedAt: new Date().toISOString(),
+    };
+  }
+
   // Phiếu IT theo số phiếu (cho IN TEM SKU): tìm đúng số phiếu (không cần khoảng ngày), rồi đọc các dòng của phiếu
   async function readInternalTransfer(payload) {
     if (!core?.normalizeInternalTransfer) throw new Error("Extension chưa tải bộ đọc phiếu IT; hãy Reload extension");
@@ -353,8 +417,65 @@
     return { ...core.normalizeInternalTransfer(head, await getJson(itemsUrl, denied)), generatedAt: new Date().toISOString() };
   }
 
+  // Số phiếu cho nguồn Cut (Đối chiếu ADJ, 26/10/2026): `source_mapping_id` của dòng Import/Export → phiếu ADJ (`adjustments?mapping_codes=`
+  // rồi chi tiết lấy `reference_code` = số PO) / phiếu IT (`internal-transfers?mapping_ids=`). Chỉ GET; tối đa 20 mã mỗi loại một lần;
+  // WMS bỏ qua bộ lọc thì phiếu khác mã bị loại. Trả { adj:[{mappingCode, number, reason, po, detailFailed?}], it:[{mappingId, number, toWarehouse,
+  // description, status}] } — mã không tìm thấy thì không có trong kết quả.
+  const ADJ_API = "https://wms-gw.inshasaki.com/api/v1/wms/adjustments";
+  const ADJ_DETAIL_API = "https://wms-gw.inshasaki.com/api/v1/wms/adjustment/adjustments/detail";
+  async function readDocInfo(payload) {
+    if (!core?.responseRows) throw new Error("Extension chưa tải bộ đọc phiếu ADJ / IT; hãy Reload extension");
+    const codes = value => [...new Set((Array.isArray(value) ? value : []).map(item => String(item ?? "").trim()).filter(item => /^\d{6,40}$/.test(item)))];
+    if ((Array.isArray(payload?.adj) && payload.adj.length > 20) || (Array.isArray(payload?.it) && payload.it.length > 20)) throw new Error("Mỗi lần tra tối đa 20 phiếu ADJ và 20 phiếu IT");
+    const adj = codes(payload?.adj), it = codes(payload?.it), out = { adj: [], it: [], generatedAt: "" };
+    if (!adj.length && !it.length) throw new Error("Chưa có mã phiếu ADJ / IT hợp lệ cần tra");
+    if (adj.length) {
+      const deniedAdj = "Phiên WMS không còn quyền đọc phiếu ADJ; hãy đăng nhập lại";
+      const url = new URL(ADJ_API);
+      url.searchParams.set("page", "1");
+      url.searchParams.set("size", "100");
+      url.searchParams.set("mapping_codes", adj.join(","));
+      const heads = new Map();
+      for (const row of core.responseRows(await getJson(url, deniedAdj))) {
+        const mapping = core.clean(row?.mapping_code, 60), id = Number(row?.adjustment_id), number = core.clean(row?.adjustment_number, 40);
+        if (adj.includes(mapping) && !heads.has(mapping) && Number.isSafeInteger(id) && id > 0 && /^\d{6,40}$/.test(number)) heads.set(mapping, { id, number, reason: core.clean(row?.reason_name, 120) });
+      }
+      for (const [mapping, head] of heads) {
+        const detailUrl = new URL(ADJ_DETAIL_API);
+        detailUrl.searchParams.set("adjustment_id", String(head.id));
+        // Chi tiết chỉ để lấy PO (review 26/10/2026): lỗi riêng một phiếu không làm hỏng cả lệnh, vẫn trả số phiếu + lý do của danh sách;
+        // hết phiên / mất quyền là lỗi chung → ném cả lệnh như trước. Vòng 2: chỉ 404 / thân rỗng (204) là chắc chắn không có chi tiết → po null;
+        // lỗi tạm (5xx / 429 sau thử lại, mất mạng, thân hỏng) → detailFailed: true để bộ ghép (cut-source-core) coi là chưa tra được, thử lại
+        // lượt sau (set_source chỉ ghi Cut chưa nguồn: ghi PO rỗng lúc lỗi tạm là mất PO vĩnh viễn).
+        let raw = null, detailFailed = false;
+        try { raw = await getJson(detailUrl, deniedAdj); } catch (error) {
+          if (error?.reason === "session" || error?.reason === "denied") throw error;
+          detailFailed = error?.status !== 404;
+        }
+        const detail = raw?.data && typeof raw.data === "object" && !Array.isArray(raw.data) ? raw.data : core.responseRows(raw)[0] || raw;
+        const same = detail?.adjustment_number == null || core.clean(detail.adjustment_number, 40) === head.number;
+        out.adj.push({ mappingCode: mapping, number: head.number, reason: head.reason || null, po: same ? core.clean(detail?.reference_code, 60) || null : null, ...(detailFailed ? { detailFailed: true } : {}) });
+      }
+    }
+    if (it.length) {
+      const url = new URL(IT_API);
+      url.searchParams.set("page", "1");
+      url.searchParams.set("size", "100");
+      url.searchParams.set("mapping_ids", it.join(","));
+      const seen = new Set();
+      for (const row of core.responseRows(await getJson(url, "Phiên WMS không còn quyền đọc phiếu IT; hãy đăng nhập lại"))) {
+        const mapping = core.clean(row?.mapping_id, 60), number = core.clean(row?.internal_transfer_number, 40);
+        if (!it.includes(mapping) || seen.has(mapping) || !/^\d{6,40}$/.test(number)) continue;
+        seen.add(mapping);
+        out.it.push({ mappingId: mapping, number, toWarehouse: core.clean(row?.to_warehouse_name, 160) || null, description: core.clean(row?.description, 500) || null, status: core.clean(row?.status_name, 60) || null });
+      }
+    }
+    out.generatedAt = new Date().toISOString();
+    return out;
+  }
+
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    if (sender.id !== chrome.runtime.id || !["GET_GROUP_UID_PAGE", "GET_GROUP_UID_HISTORY_PAGE", "GET_GROUP_UID_MOVES_PAGE", "GET_GROUP_UID_NEW_PAGE", "GET_PACKING_LIST_PAGE", "GET_PO_GROUP_UID_PAGE", "GET_PO_ASN_PAGE", "GET_INTERNAL_TRANSFER", "GET_SKU_COUNT_WAREHOUSES", "GET_SKU_COUNT_APPROVED_PAGE", "GET_SKU_COUNT_INVENTORY_PAGE", "GET_STOCK_IMPORT_EXPORT_PAGE"].includes(message?.type)) return false;
+    if (sender.id !== chrome.runtime.id || !["GET_GROUP_UID_PAGE", "GET_GROUP_UID_HISTORY_PAGE", "GET_GROUP_UID_MOVES_PAGE", "GET_GROUP_UID_NEW_PAGE", "GET_PACKING_LIST_PAGE", "GET_PO_GROUP_UID_PAGE", "GET_PO_ASN_PAGE", "GET_INTERNAL_TRANSFER", "GET_SKU_COUNT_WAREHOUSES", "GET_SKU_COUNT_APPROVED_PAGE", "GET_SKU_COUNT_INVENTORY_PAGE", "GET_STOCK_IMPORT_EXPORT_PAGE", "GET_WMS_DOC_INFO", "GET_TRANSFER_BIN_PAGE"].includes(message?.type)) return false;
     const readers = {
       GET_GROUP_UID_PAGE: readPage,
       GET_GROUP_UID_HISTORY_PAGE: readHistoryPage,
@@ -368,8 +489,10 @@
       GET_SKU_COUNT_APPROVED_PAGE: readApprovedCountPage,
       GET_SKU_COUNT_INVENTORY_PAGE: readInventoryPage,
       GET_STOCK_IMPORT_EXPORT_PAGE: readImportExportPage,
+      GET_WMS_DOC_INFO: readDocInfo,
+      GET_TRANSFER_BIN_PAGE: readTransferBinPage,
     };
-    const failure = message.type === "GET_STOCK_IMPORT_EXPORT_PAGE" ? "IMPORT_EXPORT_READ_FAILED" : message.type === "GET_INTERNAL_TRANSFER" ? "INTERNAL_TRANSFER_READ_FAILED" : message.type.startsWith("GET_SKU_COUNT_") ? "SKU_COUNT_READ_FAILED" : "GROUP_UID_READ_FAILED";
+    const failure = message.type === "GET_WMS_DOC_INFO" ? "WMS_DOC_READ_FAILED" : message.type === "GET_TRANSFER_BIN_PAGE" ? "TRANSFER_BIN_READ_FAILED" : message.type === "GET_STOCK_IMPORT_EXPORT_PAGE" ? "IMPORT_EXPORT_READ_FAILED" : message.type === "GET_INTERNAL_TRANSFER" ? "INTERNAL_TRANSFER_READ_FAILED" : message.type.startsWith("GET_SKU_COUNT_") ? "SKU_COUNT_READ_FAILED" : "GROUP_UID_READ_FAILED";
     readers[message.type](message.payload || {})
       .then(data => sendResponse({ ok: true, data }))
       .catch(error => sendResponse({ ok: false, error: { code: failure, message: (auditCore || core)?.clean(error?.message || error, 300) || "Không đọc được dữ liệu WMS", ...(error?.reason ? { reason: error.reason } : {}) } }));

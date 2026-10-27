@@ -102,10 +102,38 @@
         toWarehouse: clean(row.stock_in, 160),
         createdAt: clean(row.created_at_tz ?? row.created_at, 40),
         createdBy: clean(row.created_user_name, 120),
+        // 26/10/2026: người duyệt (RỦI RO LƯU TRỮ: phiếu gốc UID tạm, phiếu nhập của Hàng chưa lên kệ); thiếu thì rỗng.
+        approvedBy: clean(row.approved_user_name, 120),
       };
     }).filter(row => Number.isInteger(row.warehouseId) && row.sku && row.kind);
     return { rows, sourceRows: sourceRows.length, total: Math.max(sourceRows.length, finite(payload?.count)), page: Math.max(1, finite(payload?.page) || 1), size: Math.max(1, finite(payload?.size) || 500) };
   }
 
-  globalThis.HasakiInventoryAuditCore = Object.freeze({ DEFAULT_WAREHOUSES, clean, fold, selectWarehouses, normalizeApprovedPage, normalizeInventoryPage, normalizeImportExportPage });
+  // Transfer Location History của WMS (transfer-bins, 26/10/2026, Hàng chưa lên kệ): mỗi dòng một lần chuyển vị trí, mới nhất trước.
+  // Chỉ giữ dòng đúng vị trí đến + SKU đã hỏi (WMS bỏ qua bộ lọc lạ thì không trộn dòng khác); khi đó count không còn tin được → total = số dòng giữ.
+  // source_id là id Group UID khi loại chuyển trống (chuyển tay) hoặc EDIT_UID_GROUP; loại khác là id phiếu khác (ASN, phiếu xuất…) → uidId null.
+  const UID_MOVE_TYPES = new Set(["", "EDIT_UID_GROUP"]);
+  function normalizeTransferBinPage(payload, wanted = {}) {
+    requireList(payload, "chuyển vị trí");
+    const sourceRows = recordsOf(payload), bin = clean(wanted.binIn, 160).toUpperCase(), sku = clean(wanted.sku, 80);
+    const rows = sourceRows.map(row => {
+      const type = clean(row.transfer_type, 60).toUpperCase(), sourceId = Number(row.source_id);
+      return {
+        id: Number(row.id) || null,
+        sku: clean(row.sku, 80),
+        qty: finite(row.quantity),
+        from: clean(row.bin_out, 160),
+        to: clean(row.bin_in, 160),
+        type,
+        by: clean(row.created_user_name, 120) || clean(row.created_by, 120),
+        at: clean(row.created_at_tz ?? row.created_at, 40),
+        uidId: UID_MOVE_TYPES.has(type) && Number.isSafeInteger(sourceId) && sourceId > 0 ? sourceId : null,
+        uid: "",
+      };
+    }).filter(row => row.sku && (!sku || row.sku === sku) && (!bin || row.to.toUpperCase() === bin));
+    const exact = rows.length === sourceRows.length;
+    return { rows, sourceRows: sourceRows.length, total: exact ? Math.max(rows.length, finite(payload?.count)) : rows.length, page: Math.max(1, finite(payload?.page) || 1), size: Math.max(1, finite(payload?.size) || 20) };
+  }
+
+  globalThis.HasakiInventoryAuditCore = Object.freeze({ DEFAULT_WAREHOUSES, clean, fold, selectWarehouses, normalizeApprovedPage, normalizeInventoryPage, normalizeImportExportPage, normalizeTransferBinPage });
 })();

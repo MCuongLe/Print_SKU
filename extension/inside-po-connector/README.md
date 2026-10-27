@@ -38,6 +38,28 @@ Phiên bản 0.6.1 đọc đầy đủ Combo nhiều thành phần, Group UID hi
 
 Phiên bản 0.7.1 thêm lệnh chỉ đọc `GET_GROUP_UID_MOVES_PAGE` cho ô LỊCH SỬ GROUP UID: lịch sử `Transfer location` của mọi kho tài khoản được xem, 500 dòng/trang (WMS không lọc endpoint này theo `company-ids` nên chỉ cần một lượt đọc). Sau khi cập nhật extension phải Reload trong `chrome://extensions` và tải lại trang Print SKU.
 
+Phiên bản 0.12.1 so với 0.12.0 (đã Reload 26/10): bước nguồn Cut kiểm đủ dòng Import/Export và chỉ ghép phiếu trước mốc đọc 2 phút; lỗi tạm thời ở chi tiết phiếu ADJ không còn ghi nguồn thiếu PO; bước nguồn Rủi ro lưu trữ báo "nguồn x/y cặp" và web kiểm phiên bản Extension trước. Máy đang chạy 0.12.0 cần Reload lại trước lượt tự động kế tiếp (07:00).
+
+Phiên bản 0.12.1 (26/10/2026), phần Cắt UID: nguồn phiếu ADJ / IT cho từng lần Cut (web chờ Extension ≥ 0.12.0). Cần trước: `supabase/cut_source_v1.sql`, rồi Reload Extension và tải lại tab WMS.
+- Lệnh chỉ đọc `GET_WMS_DOC_INFO` `{ adj: [mapping…], it: [mapping…] }` (mỗi loại ≤ 20 mã mapping của dòng Import/Export): ADJ trả số phiếu, lý do và số PO; IT trả số phiếu, kho nhận và mô tả. Cách tra từng phiếu: kiến thức WMS cục bộ (không trong git).
+- Trả `{ adj: [{mappingCode, number, reason, po}], it: [{mappingId, number, toWarehouse, description, status}] }`; WMS trả phiếu khác mã thì bỏ, mã không thấy thì không có trong kết quả; lỗi `WMS_DOC_READ_FAILED` kèm `reason` (session / denied / network). Có ở `app-bridge.js`, `WMS_READ_TYPES` (`background.js`) và bảng `readers` (`wms-bridge.js`).
+- `cut-source-core.js` (service worker nạp trước `cut-adj-core.js`; web chép nguyên văn vào khối `cut-source-core`): ghép Cut ↔ dòng xuất ADJ / IT của Import/Export kho 1177 theo SKU + tổng số lượng + giờ (giờ phiếu − 14 ngày ≤ Cut ≤ giờ phiếu + 2 phút); mơ hồ thì để Chưa rõ.
+- Lượt Đối chiếu ADJ (tự động và nút Đọc WMS): nạp Cut như cũ, rồi `wms_group_uid_cut_unresolved` (30 ngày) → `GET_STOCK_IMPORT_EXPORT_PAGE` (từ Cut chưa nguồn sớm nhất − 1 ngày) → `GET_WMS_DOC_INFO` → `wms_group_uid_cut_set_source`.
+- Bước nguồn lỗi thì Cut đã nạp vẫn giữ: lượt tự động ghi Lỗi "Đã nạp N dòng Cut; chưa gán được nguồn phiếu: …", web báo vàng; lượt sau ghép lại. Web với Extension cũ bỏ bước này và báo cần Extension mới.
+- Phân loại thay đổi: tương thích ngược với web và Extension cũ; so với 0.12.0 là sửa sai dữ liệu (0.12.0 có thể ghi nguồn sai hoặc thiếu PO vĩnh viễn trong các ca hiếm). Chưa nâng `min_extension` vì chỉ một máy tự động; Reload 0.12.1 trước lượt tự động kế tiếp.
+
+Phiên bản 0.12.1 (26/10/2026), phần RỦI RO LƯU TRỮ (cần trước: migration `supabase/uid_temp_origin_v1.sql`): có pop-up nguồn cho Hàng chưa lên kệ và UID tạm. Sau khi cập nhật: Reload Extension, tải lại tab WMS.
+- Lệnh chỉ đọc mới `GET_TRANSFER_BIN_PAGE` (màn WMS Transfer Location History): `{ warehouseId, companyId?, binIn, sku, page, size ≤ 50 (mặc định 20) }` → các lần chuyển VÀO vị trí `binIn` của `sku`, mới nhất trước.
+  - Mỗi dòng `id, sku, qty, from, to, type, by, at, uidId, uid`; lọc theo kho, vị trí đến và SKU, chưa lọc ngày. Lỗi `TRANSFER_BIN_READ_FAILED`. Tham số WMS: kiến thức cục bộ.
+  - Dòng khác vị trí / SKU (WMS bỏ qua bộ lọc) bị loại, khi đó `total` = số dòng giữ lại.
+- `uidId` = mã Group UID nội bộ của lần chuyển (chỉ với một số loại chuyển); `uid` tra từ lịch sử Group UID cùng kho ±2 phút quanh giờ chuyển (tối đa 3 lần gọi trong một lệnh), không ra hoặc lỗi thì rỗng, lệnh vẫn thành công.
+- `GET_STOCK_IMPORT_EXPORT_PAGE` trả thêm `approvedBy` (người duyệt; thiếu thì rỗng).
+- Lõi tự động `storage-risk-core.js` (như nút `sr-run` / `srt-run`): Import/Export 90 ngày đọc một lần cho cả lượt.
+  - Trước khi lưu Kiểm kê ghép `sources` vào `locations[]` của cặp SKU × vị trí ảo `F0-<vùng>-00-00-00-<n>`: cũ nhất trước, tối đa 60 cặp, mỗi cặp ≤ 20 lần chuyển + phiếu nhập gần nhất; người chỉ lưu phần trước @. Lệnh đọc chuyển lỗi thì dừng đọc nguồn, Kiểm kê vẫn lưu.
+  - Dòng UID tạm gửi thêm `origin` (phiếu gốc: loại, mã phiếu xuất, lý do, người duyệt, giờ, kho xuất / đến, các dòng cùng phiếu).
+- Extension cũ với web mới: Kiểm kê và UID tạm vẫn lưu như trước; không có nguồn Hàng chưa lên kệ (web chờ tối đa 30 giây ở lần gọi đầu rồi bỏ qua); phiếu gốc UID tạm vẫn có nhưng người duyệt thay bằng người tạo.
+- Phân loại thay đổi: tương thích ngược với web và Extension cũ; so với 0.12.0 là sửa sai dữ liệu (0.12.0 có thể ghi nguồn sai hoặc thiếu PO vĩnh viễn trong các ca hiếm). Chưa nâng `min_extension` vì chỉ một máy tự động; Reload 0.12.1 trước lượt tự động kế tiếp.
+
 Phiên bản 0.11.0 (26/10/2026): đọc PO của Inside Garment (`https://garment.inshasaki.com`, cùng phần mềm Inside, xác thực bằng cookie). Cần Reload Extension rồi tải lại tab Inside / Garment; không cần migration, deploy Edge hay đổi agent.
 - Web chọn nguồn bằng nút MTG | GARMENT ở KIỂM TRA ĐẦU VÀO; Extension mới vẫn chạy với web cũ (không gửi `site` = Inside Mastige), web mới chặn Extension < 0.11.0 ở nguồn GARMENT.
 - `GET_PO` nhận thêm `payload.site` = `mastige` (mặc định khi không gửi) hoặc `garment`. Background chọn tab theo site (`INSIDE_SITES`); thiếu tab báo "Hãy mở một tab Inside Garment và đăng nhập trước"; site lạ → `INVALID_SITE`. Dữ liệu PO trả thêm `site` để web kiểm khớp site đã hỏi.

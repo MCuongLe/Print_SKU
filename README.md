@@ -146,7 +146,11 @@ Bốn tab: **Quét** · **Tra cứu** · **Tem chờ in** · **Đối chiếu**.
 
 Tra cứu lọc SKU, Lot, PO (khớp đúng), ngày cắt; xuất Excel A4 ngang. Bấm UID mở barcode để quét vào phiếu ADJ rồi tick **Đã xuất ADJ**. Admin (nút khiên) xoá UID đã cắt; mỗi lần xoá được ghi nhật ký. Tab Tem chờ in có ô Số PO + Ngày nhận như IN TEM GROUP UID.
 
-**Đối chiếu** (kho WH - MATERIAL - MTG): đọc lịch sử WMS (lệnh Cut) qua Extension hoặc nạp ZIP / XLSX. Nhóm: Khớp, Quên tick, Sai số lượng, Tick mà WMS không có, Cut nhiều lần, Chưa ADJ, Chờ dữ liệu WMS. Có **Tick giúp** và **Đã xử lý**; nhóm Cắt mẫu QC chỉ để xem.
+**Đối chiếu** (kho WH - MATERIAL - MTG): đọc lịch sử WMS (lệnh Cut) qua Extension hoặc nạp ZIP / XLSX. Nhóm: Khớp, Quên tick, Sai số lượng, Tick mà WMS không có, Cut nhiều lần, Chưa ADJ, Chuyển nội bộ, Chờ dữ liệu WMS. Có **Tick giúp** và **Đã xử lý**; nhóm Cắt mẫu QC chỉ để xem.
+
+**Nguồn phiếu** của từng lần Cut: ADJ (xuất test khi lý do là Xuất test), IT (chuyển nội bộ) hoặc Chưa rõ. Chỉ Cut ADJ và Chưa rõ vào luật lệch số lượng và nhóm Cắt mẫu QC; Cut IT thành nhóm Chuyển nội bộ (UID đã tick ADJ thì vẫn là lệch).
+
+Pop-up hiện chip nguồn, số phiếu, PO (ADJ) hoặc kho nhận + mô tả (IT); Excel có cột Nguồn, Số phiếu. WMS không ghi phiếu trên dòng Cut nên nguồn suy ra từ SKU + số lượng + giờ của phiếu xuất, một phần Cut luôn Chưa rõ. Cần Extension ≥ 0.12.0 và migration `cut_source_v1`.
 
 **Theo PO** (công tắc ở tab Quét): Admin đọc UID của PO từ WMS → tạo phiên; quét báo Cắt / QC / Chuyển kho lưu trữ; mỗi lot cắt + QC ≥ 30% (máy chủ ép); **Chuyển sang Cắt UID** đẩy UID cắt đã quét vào luồng thường. UID ngoài phiên báo đỏ, không tự rơi sang Cắt tự do.
 
@@ -270,7 +274,11 @@ Nhập Excel (file không ghi công ty): Buyer theo nút đang chọn lúc chọ
 
 **Hàng chưa lên kệ** (kho MTG + GARMENT): mọi dòng tồn được phân loại kệ thật / vùng ảo / vị trí lạ, chỉ kệ thật bị loại. Mức theo Modified date: ≤ 7 ngày Theo dõi, 8–30 Cần xử lý, > 30 ngày hoặc vị trí lạ Rủi ro cao. Màn báo khi thiếu một kho, bản chụp quá 24 giờ hoặc số dòng lệch.
 
+Bấm một dòng (kể cả ô SKU) mở pop-up nguồn: các lần chuyển vào vị trí đó (loại chuyển, số lượng, người, giờ, Group UID nếu tra được) và phiếu nhập gần nhất của SKU; không có thì hiện "Không có nguồn trong lịch sử đọc được". Nguồn lưu cùng bản chụp Kiểm kê ở lượt đọc kế tiếp của Rủi ro lưu trữ (Extension ≥ 0.12.0).
+
 **UID tạm**: dòng nhập ADJUSTMENT có lý do "uid temp" trong 90 ngày, mới nhất trước; tuổi ≤ 3 ngày là Mới. Lần đọc lưu Supabase (giữ 10 lượt) nên ai mở cũng thấy. Cả hai tab hiện ngay bản lưu trên máy rồi hỏi máy chủ một lần xem có lần đọc mới không.
+
+Bấm một dòng UID tạm mở pop-up phiếu gốc: loại (IT, ADJ hoặc Lệnh sản xuất), mã phiếu xuất, lý do, người duyệt, giờ, kho xuất / đến và các dòng cùng phiếu. Cần migration `uid_temp_origin_v1`; dòng lưu trước đó chưa có phiếu gốc.
 
 ## KIỂM KÊ SKU (`#inventory-audit`)
 

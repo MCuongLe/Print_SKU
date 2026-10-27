@@ -3,7 +3,8 @@
 // Print SKU / Inside / WMS / app xây dựng thì không (mặc định Chrome mở cho cả content script). Không content script nào dùng chrome.storage.
 try { chrome.storage.local.setAccessLevel?.({ accessLevel: "TRUSTED_CONTEXTS" })?.catch?.(() => {}); } catch { /* Chrome cũ: giữ mặc định */ }
 // 0.10.7: cut-adj-core.js / storage-risk-core.js = lõi đọc Đối chiếu ADJ và Rủi ro lưu trữ (chép luồng nút web) cho đồng bộ tự động.
-importScripts("supabase-config.js", "supabase-session.js", "group-uid-snapshot-core.js", "cut-adj-core.js", "storage-risk-core.js", "auto-sync.js");
+// 26/10/2026: cut-source-core.js (ghép nguồn phiếu ADJ / IT cho Cut, cut-adj-core.js gọi sau khi nạp Cut) nạp trước cut-adj-core.js.
+importScripts("supabase-config.js", "supabase-session.js", "group-uid-snapshot-core.js", "cut-source-core.js", "cut-adj-core.js", "storage-risk-core.js", "auto-sync.js");
 
 const APP_URL_PATTERN = /^(?:http:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?\/|https:\/\/mcuongle\.github\.io\/Print_SKU(?:\/|$))/i;
 // 0.11.0: hai Inside cùng phần mềm, khác công ty. PO đọc theo site (không nói thì mastige); đồng bộ SKU luôn Inside Mastige.
@@ -13,7 +14,7 @@ const INSIDE_SITES = {
 };
 const WMS_URL_PATTERN = /^https:\/\/wms\.inshasaki\.com\//i;
 const HCM_URL_PATTERN = /^https:\/\/apps-mastige\.inshasaki\.com\/apps\/hasaki-construction-management(?:[/?#]|$)/i;
-const WMS_READ_TYPES = ["GET_GROUP_UID_PAGE", "GET_GROUP_UID_HISTORY_PAGE", "GET_GROUP_UID_MOVES_PAGE", "GET_GROUP_UID_NEW_PAGE", "GET_PACKING_LIST_PAGE", "GET_PO_GROUP_UID_PAGE", "GET_PO_ASN_PAGE", "GET_INTERNAL_TRANSFER", "GET_SKU_COUNT_WAREHOUSES", "GET_SKU_COUNT_APPROVED_PAGE", "GET_SKU_COUNT_INVENTORY_PAGE", "GET_STOCK_IMPORT_EXPORT_PAGE"];
+const WMS_READ_TYPES = ["GET_GROUP_UID_PAGE", "GET_GROUP_UID_HISTORY_PAGE", "GET_GROUP_UID_MOVES_PAGE", "GET_GROUP_UID_NEW_PAGE", "GET_PACKING_LIST_PAGE", "GET_PO_GROUP_UID_PAGE", "GET_PO_ASN_PAGE", "GET_INTERNAL_TRANSFER", "GET_SKU_COUNT_WAREHOUSES", "GET_SKU_COUNT_APPROVED_PAGE", "GET_SKU_COUNT_INVENTORY_PAGE", "GET_STOCK_IMPORT_EXPORT_PAGE", "GET_WMS_DOC_INFO", "GET_TRANSFER_BIN_PAGE"];
 
 function errorResponse(code, message) {
   return { ok: false, error: { code, message } };

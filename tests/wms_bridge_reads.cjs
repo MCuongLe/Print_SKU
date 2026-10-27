@@ -206,5 +206,176 @@ const ROW = {
   result = await ask(load({ fetchImpl: sequence(reply(204, null)) }), "GET_PO_ASN_PAGE", { purchaseOrder: PO });
   assert.deepEqual([result.ok, result.data.rows.length, result.data.total], [true, 0, 0], "PO chưa có ASN là 0 dòng, không phải lỗi");
 
-  console.log("wms_bridge_reads: thử lại 429/5xx/lỗi mạng, 204, 401/403 và hết phiên cho Group UID, lịch sử Cắt, lịch sử chuyển vị trí, nhập xuất kho và đọc Group UID/ASN theo PO passed");
+  // Số phiếu cho nguồn Cut (GET_WMS_DOC_INFO, 26/10/2026): mapping trên dòng Import/Export → phiếu ADJ (danh sách + chi tiết lấy PO) / IT.
+  // Chỉ GET, ≤ 20 mã mỗi loại, WMS bỏ qua bộ lọc (trả phiếu khác mã) thì không nhận. Lệnh lạ thì listener không trả lời → coi là chưa hỗ trợ.
+  const askDoc = (listener, payload) => new Promise(resolve => {
+    if (listener({ type: "GET_WMS_DOC_INFO", payload }, { id: "ext" }, resolve) !== true) resolve({ ok: false, error: { code: "NOT_HANDLED", message: "wms-bridge chưa nhận GET_WMS_DOC_INFO" } });
+  });
+  const ADJ_MAP = "100052600000001", ADJ_MAP2 = "100052600000003", IT_MAP = "10022600000002";
+  const docFetch = (over = {}) => {
+    const fn = async (url, init) => {
+      fn.calls.push({ url: new URL(String(url)), init });
+      const p = new URL(String(url)).pathname;
+      if (p in over) return typeof over[p] === "function" ? over[p](new URL(String(url))) : over[p];
+      if (p === "/api/v1/wms/adjustments") return reply(200, { count: 2, records: [
+        { adjustment_id: 501, adjustment_number: "1008260000000001", reason_name: "Xuất test", mapping_code: ADJ_MAP, status_name: "Closed" },
+        { adjustment_id: 599, adjustment_number: "1008260000000099", reason_name: "Xuất sử dụng", mapping_code: "100052600000099" }, // WMS trả thêm phiếu khác mã
+      ] });
+      if (p === "/api/v1/wms/adjustment/adjustments/detail") return reply(200, { data: { adjustment_id: 501, adjustment_number: "1008260000000001", reference_code: "10012600000001", description: "https://work.example.test/tasks?task_id=1" } });
+      if (p === "/api/v1/wms/internal-transfers") return reply(200, { records: [{ internal_transfer_id: 77, internal_transfer_number: "1007260000000002", mapping_id: Number(IT_MAP), to_warehouse_name: "WH - SEMI PRODUCT - TEST", description: "NPL may mẫu giả", status_name: "Closed" }] });
+      return reply(404, {});
+    };
+    fn.calls = [];
+    return fn;
+  };
+  fetchImpl = docFetch();
+  result = await askDoc(load({ fetchImpl }), { adj: [ADJ_MAP, ` ${ADJ_MAP2} `, "abc"], it: [IT_MAP] });
+  assert.equal(result.ok, true, JSON.stringify(result));
+  const plain = value => JSON.parse(JSON.stringify(value)); // đối tượng tạo trong vm khác realm
+  assert.deepEqual(plain(result.data.adj), [{ mappingCode: ADJ_MAP, number: "1008260000000001", reason: "Xuất test", po: "10012600000001" }], "ADJ: số phiếu + lý do + số PO; phiếu khác mã bị bỏ, mã không có phiếu thì không trả");
+  assert.deepEqual(plain(result.data.it), [{ mappingId: IT_MAP, number: "1007260000000002", toWarehouse: "WH - SEMI PRODUCT - TEST", description: "NPL may mẫu giả", status: "Closed" }]);
+  const byPath = p => fetchImpl.calls.filter(c => c.url.pathname === p);
+  assert.equal(byPath("/api/v1/wms/adjustments")[0].url.searchParams.get("mapping_codes"), `${ADJ_MAP},${ADJ_MAP2}`, "lọc mapping_codes (bỏ mã sai dạng)");
+  assert.deepEqual(byPath("/api/v1/wms/adjustment/adjustments/detail").map(c => c.url.searchParams.get("adjustment_id")), ["501"], "chỉ đọc chi tiết phiếu đúng mã");
+  assert.equal(byPath("/api/v1/wms/internal-transfers")[0].url.searchParams.get("mapping_ids"), IT_MAP);
+  assert.ok(fetchImpl.calls.every(c => !c.init.method && !c.init.body && c.init.credentials === "omit"), "chỉ GET, không gửi cookie");
+  // Chỉ IT → không gọi ADJ; chi tiết ADJ trả số phiếu khác → không lấy PO
+  fetchImpl = docFetch();
+  result = await askDoc(load({ fetchImpl }), { it: [IT_MAP] });
+  assert.deepEqual(plain([result.ok, result.data.adj, fetchImpl.calls.map(c => c.url.pathname)]), [true, [], ["/api/v1/wms/internal-transfers"]]);
+  fetchImpl = docFetch({ "/api/v1/wms/adjustment/adjustments/detail": reply(200, { data: { adjustment_number: "1008260000000777", reference_code: "10012600000777" } }) });
+  result = await askDoc(load({ fetchImpl }), { adj: [ADJ_MAP] });
+  assert.equal(result.data.adj[0].po, null, "chi tiết lệch số phiếu → không lấy PO");
+  // Chi tiết ADJ lỗi riêng một phiếu: vẫn trả số phiếu + lý do của danh sách và các phiếu còn lại (review 26/10/2026: một chi tiết lỗi làm hỏng
+  // cả lô). Vòng 2: chỉ 404 / thân rỗng (204) là chắc chắn không có chi tiết → po null; lỗi tạm (WMS 500 sau 3 lần thử, mất mạng, thân hỏng)
+  // → detailFailed: true để bộ ghép coi phiếu là chưa tra được và thử lại lượt sau (set_source chỉ ghi Cut chưa nguồn: ghi PO rỗng là mất
+  // PO vĩnh viễn). Hết phiên (401) / mất quyền (403) ở chi tiết → lỗi cả lệnh.
+  const twoAdj = { "/api/v1/wms/adjustments": reply(200, { records: [
+    { adjustment_id: 501, adjustment_number: "1008260000000001", reason_name: "Xuất test", mapping_code: ADJ_MAP },
+    { adjustment_id: 503, adjustment_number: "1008260000000003", reason_name: "Xuất test", mapping_code: ADJ_MAP2 },
+  ] }) };
+  const detailBy = reply501 => url => (url.searchParams.get("adjustment_id") === "501" ? reply501()
+    : reply(200, { data: { adjustment_id: 503, adjustment_number: "1008260000000003", reference_code: "10012600000003" } }));
+  for (const [label, reply501, extra] of [
+    ["500", () => reply(500, {}), { detailFailed: true }],
+    ["mất mạng", () => { throw new TypeError("Failed to fetch"); }, { detailFailed: true }],
+    ["thân hỏng", () => ({ status: 200, ok: true, json: async () => { throw new SyntaxError("Unexpected token <"); } }), { detailFailed: true }],
+    ["404", () => reply(404, {}), {}],
+    ["204 thân rỗng", () => reply(204, null), {}],
+  ]) {
+    fetchImpl = docFetch({ ...twoAdj, "/api/v1/wms/adjustment/adjustments/detail": detailBy(reply501) });
+    result = await askDoc(load({ fetchImpl }), { adj: [ADJ_MAP, ADJ_MAP2], it: [IT_MAP] });
+    assert.equal(result.ok, true, `chi tiết ${label}: ${JSON.stringify(result)}`);
+    assert.deepEqual(plain(result.data.adj), [
+      { mappingCode: ADJ_MAP, number: "1008260000000001", reason: "Xuất test", po: null, ...extra },
+      { mappingCode: ADJ_MAP2, number: "1008260000000003", reason: "Xuất test", po: "10012600000003" },
+    ], `chi tiết ${label}: ${extra.detailFailed ? "đánh dấu detailFailed (thử lại lượt sau)" : "chắc chắn không có chi tiết → po null, không cờ"}, giữ các phiếu còn lại`);
+    assert.equal(result.data.it.length, 1, `chi tiết ${label}: vẫn trả phiếu IT`);
+  }
+  for (const [status, reason] of [[403, "denied"], [401, "session"]]) {
+    fetchImpl = docFetch({ ...twoAdj, "/api/v1/wms/adjustment/adjustments/detail": detailBy(() => reply(status, {})) });
+    result = await askDoc(load({ fetchImpl }), { adj: [ADJ_MAP, ADJ_MAP2], it: [IT_MAP] });
+    assert.deepEqual([result.ok, result.error.code, result.error.reason], [false, "WMS_DOC_READ_FAILED", reason], `chi tiết ${status}: lỗi cả lệnh`);
+    assert.match(result.error.message, /phiếu ADJ/);
+  }
+  // Tham số sai: không gọi WMS
+  for (const bad of [{}, { adj: [], it: [] }, { adj: ["abc"] }, { adj: Array.from({ length: 21 }, (_, i) => String(100052600000100 + i)) }, { it: Array.from({ length: 21 }, (_, i) => String(10022600000100 + i)) }]) {
+    fetchImpl = docFetch();
+    result = await askDoc(load({ fetchImpl }), bad);
+    assert.equal(result.ok, false, JSON.stringify(bad).slice(0, 80));
+    assert.equal(result.error.code, "WMS_DOC_READ_FAILED");
+    assert.equal(fetchImpl.calls.length, 0, "tham số sai thì không gọi WMS");
+  }
+  // 403 / hết phiên / mất mạng
+  fetchImpl = docFetch({ "/api/v1/wms/adjustments": reply(403, {}) });
+  result = await askDoc(load({ fetchImpl }), { adj: [ADJ_MAP] });
+  assert.deepEqual([result.ok, result.error.reason], [false, "denied"]);
+  assert.match(result.error.message, /phiếu ADJ/);
+  result = await askDoc(load({ token: "", fetchImpl: docFetch() }), { it: [IT_MAP] });
+  assert.match(result.error.message, /đăng nhập lại/);
+  result = await askDoc(load({ fetchImpl: sequence(new TypeError("Failed to fetch")) }), { it: [IT_MAP] });
+  assert.deepEqual([result.ok, result.error.reason], [false, "network"]);
+
+  // ---- RỦI RO LƯU TRỮ · Hàng chưa lên kệ (26/10/2026): Transfer Location History theo vị trí đến + SKU (GET_TRANSFER_BIN_PAGE) ----
+  for (const file of ["app-bridge.js", "background.js"]) assert.match(fs.readFileSync(DIR + file, "utf8"), /"GET_TRANSFER_BIN_PAGE"/, `${file}: allow-list có GET_TRANSFER_BIN_PAGE`);
+  {
+    // Cầu nối chưa có lệnh thì im lặng: chặn bằng hạn chờ để test báo đỏ thay vì thoát lặng lẽ.
+    const within = (promise, ms = 3000) => { let timer; return Promise.race([promise, new Promise((_, reject) => { timer = setTimeout(() => reject(new Error("wms-bridge không trả lời GET_TRANSFER_BIN_PAGE")), ms); })]).finally(() => clearTimeout(timer)); };
+    const BIN = "F0-A0-00-00-00-00", SKU = "900000051";
+    const tb = (over = {}) => ({ id: 11, warehouse_id: 1177, sku: SKU, quantity: 1.5, bin_out: "F0-KHO-01-01-01-01", bin_in: BIN, cart_code: "", status: 1, created_by: 99, created_user_name: "cat@example.test", created_at: "2026-10-20 10:00:00", transfer_type: "EDIT_UID_GROUP", source_id: 7001, ...over });
+    const vnMs = text => Date.parse(`${text.replace(" ", "T")}+07:00`);
+    const makeFetch = ({ records, count, history = "ok" }) => {
+      const fetchImpl = async (url, init) => {
+        fetchImpl.calls.push({ url: String(url), init });
+        const u = new URL(url);
+        if (u.pathname.endsWith("/transfer-bins")) return records === 204 ? reply(204, null) : records === 403 ? reply(403, {}) : reply(200, { count, page: 1, size: 20, records });
+        if (u.pathname.endsWith("/group-uid-info-histories")) return history === "fail" ? reply(403, {}) : reply(200, { count: 2, records: [
+          { id: 1, group_uid_id: 7001, group_uid_code: "1028260000000701", action: 9, warehouse_id: 1177 },
+          { id: 2, group_uid_id: 8888, group_uid_code: "1028260000000888", action: 10, warehouse_id: 1177 },
+        ] });
+        return reply(404, {});
+      };
+      fetchImpl.calls = [];
+      return fetchImpl;
+    };
+    const rows = [
+      tb(),
+      tb({ id: 12, transfer_type: "", source_id: 7002, created_at: "2026-10-19 09:00:00", created_user_name: "chuyen@example.test" }),
+      tb({ id: 13, transfer_type: "RE_PO", source_id: 555, created_at: "2026-10-18 08:00:00", created_user_name: "" }),
+      tb({ id: 14, bin_in: "F0-KHO-01-01-01-01" }),
+      tb({ id: 15, sku: "900000099" }),
+    ];
+    let tf = makeFetch({ records: rows, count: 30 });
+    result = await within(ask(load({ fetchImpl: tf }), "GET_TRANSFER_BIN_PAGE", { warehouseId: 1177, companyId: 1002, binIn: BIN, sku: ` ${SKU} `, page: 1, size: 999 }));
+    assert.equal(result.ok, true, JSON.stringify(result));
+    const d = result.data;
+    assert.deepEqual(JSON.parse(JSON.stringify(d.rows[0])), { id: 11, sku: SKU, qty: 1.5, from: "F0-KHO-01-01-01-01", to: BIN, type: "EDIT_UID_GROUP", by: "cat@example.test", at: "2026-10-20 10:00:00", uidId: 7001, uid: "1028260000000701" }, "dòng chuẩn hoá + mã Group UID tra từ lịch sử cùng giờ");
+    assert.deepEqual(d.rows.map(r => [r.id, r.type, r.uidId, r.uid, r.by]), [[11, "EDIT_UID_GROUP", 7001, "1028260000000701", "cat@example.test"], [12, "", 7002, "", "chuyen@example.test"], [13, "RE_PO", null, "", "99"]], "source_id chỉ là Group UID khi loại trống / EDIT_UID_GROUP; thiếu tên thì lấy created_by");
+    assert.deepEqual([d.sourceRows, d.total, d.size, d.warehouseId, d.binIn, d.sku], [5, 3, 50, 1177, BIN, SKU], "dòng khác vị trí / SKU (WMS bỏ qua bộ lọc) bị loại và không tin count; tối đa 50 dòng/trang");
+    const sent = new URL(tf.calls[0].url);
+    assert.equal(sent.pathname, "/api/v1/wms/transfer-bins");
+    assert.deepEqual(["warehouse_id", "bin_in", "keywords", "page", "size"].map(k => sent.searchParams.get(k)), ["1177", BIN, SKU, "1", "50"], "lọc kho (số ít), vị trí đến, SKU");
+    assert.deepEqual([tf.calls[0].init.headers["company-ids"], tf.calls[0].init.credentials], ["1002", "omit"], "đọc đúng pháp nhân của kho, không gửi cookie");
+    const hist = tf.calls.map(c => new URL(c.url)).filter(u => u.pathname.endsWith("/group-uid-info-histories"));
+    assert.equal(hist.length, 2, "hai mốc giờ cách xa nhau → hai lần tra lịch sử (tối đa 3)");
+    for (const u of hist) assert.deepEqual([u.searchParams.get("active_tab"), u.searchParams.get("warehouse_ids")], ["group-history", "1177"]);
+    const t11 = vnMs("2026-10-20 10:00:00");
+    assert.ok(hist.some(u => Number(u.searchParams.get("from_updated_at")) <= t11 - 60000 && Number(u.searchParams.get("to_updated_at")) >= t11 + 60000), "khoảng tra quanh giờ chuyển (giờ WMS là giờ VN)");
+    // Kho Garment: header công ty của kho đó; không có dòng thì không tra lịch sử
+    const seen = [];
+    const headerFetch = async (url, init) => { seen.push({ url: String(url), init }); return reply(200, { count: 0, records: [] }); };
+    result = await within(ask(load({ fetchImpl: headerFetch }), "GET_TRANSFER_BIN_PAGE", { warehouseId: 1339, companyId: 1005, binIn: "F0-AJ-00-00-00-00", sku: SKU }));
+    assert.deepEqual([result.ok, result.data.rows.length, result.data.total, result.data.size], [true, 0, 0, 20], "mặc định 20 dòng; không có dòng là 0");
+    assert.equal(seen[0].init.headers["company-ids"], "1005", "đọc đúng pháp nhân của kho");
+    assert.equal(seen[0].init.credentials, "omit");
+    assert.equal(seen.length, 1, "không có dòng cần tra thì không gọi lịch sử");
+    // Mã vị trí có chữ tiếng Việt vẫn đọc được (không làm dừng cả lượt đọc nguồn)
+    seen.length = 0;
+    result = await within(ask(load({ fetchImpl: headerFetch }), "GET_TRANSFER_BIN_PAGE", { warehouseId: 1177, binIn: "F0-ĐG-00-00-00-01", sku: SKU }));
+    assert.equal(result.ok, true, JSON.stringify(result));
+    assert.equal(new URL(seen[0].url).searchParams.get("bin_in"), "F0-ĐG-00-00-00-01");
+    // Lịch sử lỗi (403): vẫn trả dòng, mã Group UID để trống
+    tf = makeFetch({ records: rows.slice(0, 1), count: 1, history: "fail" });
+    result = await within(ask(load({ fetchImpl: tf }), "GET_TRANSFER_BIN_PAGE", { warehouseId: 1177, binIn: BIN, sku: SKU }));
+    assert.deepEqual([result.ok, result.data.rows[0].uid, result.data.rows[0].uidId, result.data.total], [true, "", 7001, 1], "tra lịch sử lỗi không làm hỏng lệnh");
+    // Tham số sai: không gọi WMS
+    for (const bad of [{ warehouseId: 0, binIn: BIN, sku: SKU }, { warehouseId: 1177, binIn: "", sku: SKU }, { warehouseId: 1177, binIn: BIN, sku: "" }, { warehouseId: 1177, binIn: BIN, sku: "900 000" }, { warehouseId: 1177, binIn: "F0&A0", sku: SKU }]) {
+      tf = makeFetch({ records: [], count: 0 });
+      result = await within(ask(load({ fetchImpl: tf }), "GET_TRANSFER_BIN_PAGE", bad));
+      assert.equal(result.ok, false, JSON.stringify(bad));
+      assert.equal(result.error.code, "TRANSFER_BIN_READ_FAILED");
+      assert.equal(tf.calls.length, 0, "tham số sai thì không gọi WMS");
+    }
+    result = await within(ask(load({ fetchImpl: makeFetch({ records: 403 }) }), "GET_TRANSFER_BIN_PAGE", { warehouseId: 1177, binIn: BIN, sku: SKU }));
+    assert.deepEqual([result.ok, result.error.code, result.error.reason], [false, "TRANSFER_BIN_READ_FAILED", "denied"]);
+    assert.match(result.error.message, /chuyển vị trí/);
+    result = await within(ask(load({ token: "", fetchImpl: makeFetch({ records: [] }) }), "GET_TRANSFER_BIN_PAGE", { warehouseId: 1177, binIn: BIN, sku: SKU }));
+    assert.match(result.error.message, /đăng nhập lại/);
+    result = await within(ask(load({ fetchImpl: makeFetch({ records: 204 }) }), "GET_TRANSFER_BIN_PAGE", { warehouseId: 1177, binIn: BIN, sku: SKU }));
+    assert.deepEqual([result.ok, result.data.rows.length, result.data.total], [true, 0, 0], "204 là 0 dòng");
+    result = await within(ask(load({ fetchImpl: async () => reply(200, { count: 1, items: [tb()] }) }), "GET_TRANSFER_BIN_PAGE", { warehouseId: 1177, binIn: BIN, sku: SKU }));
+    assert.equal(result.ok, false, "WMS đổi khoá danh sách → lỗi, không coi là 0 dòng");
+  }
+
+  console.log("wms_bridge_reads: thử lại 429/5xx/lỗi mạng, 204, 401/403 và hết phiên cho Group UID, lịch sử Cắt, lịch sử chuyển vị trí, nhập xuất kho, đọc Group UID/ASN theo PO và số phiếu ADJ / IT (GET_WMS_DOC_INFO; chi tiết ADJ 404 / rỗng → po null, lỗi tạm 500 / mất mạng / thân hỏng → detailFailed, 401/403 → lỗi cả lệnh), Transfer Location History (lọc vị trí + SKU, tra mã Group UID) passed");
 })().catch(error => { console.error(error); process.exit(1); });

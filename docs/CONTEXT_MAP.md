@@ -40,7 +40,7 @@ flowchart TB
 - **Mô hình quyền (gần như RPC-only):** bảng nội bộ bật RLS **không policy** (chỉ service_role) — web/Extension/agent gọi hàm `SECURITY DEFINER` `search_path = ''` tự kiểm quyền: Admin (`group_uid_admin_allowed()` / `user_roles`), khoá máy (`floor_access_check`, `print_device_by_token`), token agent (`print_agent_*`); hàm đọc cho anon chỉ ở các màn xem.
   - **Ngoại lệ:** `SKU_Name` có policy SELECT SKU đang hoạt động (`sku_name_read_active`, `sku_inactive_v1`) — web và agent đọc thẳng qua PostgREST.
 - **Migration = chuỗi tệp** `supabase/*.sql` (idempotent, `notify pgrst`); **bản mới nhất của một hàm nằm ở tệp mới nhất đụng nó** — chuỗi từng nhóm ở PROJECT_MAP mục 4.
-- Hỏi DB: Supabase MCP **chỉ đọc** (SELECT trên catalog / đếm). Ghi, migration, deploy: người dùng chạy `python scripts/apply_supabase_sql.py <tệp>`.
+- Hỏi DB: Supabase MCP **chỉ đọc** (SELECT trên catalog / đếm). Migration, deploy: lead tự chạy `python scripts/apply_supabase_sql.py <tệp>` / `deploy_*.py` (dry-run trước; lệnh phá huỷ hỏi người dùng, `AGENTS.md`); ghi sổ `python scripts/record_ledger.py`.
 
 **Bẫy:** default privileges của schema `public` vẫn cấp EXECUTE cho anon/authenticated — hàm mới phải `revoke` đích danh `anon, authenticated` (không chỉ `public`). `print_jobs` chỉ giữ 3–6 ngày (không dùng làm lịch sử).
 

@@ -35,7 +35,7 @@ const mockExtension = () => {
     if (r.type === "GET_STOCK_IMPORT_EXPORT_PAGE") return reply(true, { page: p.page, size: 500, total: 0, totalPages: 1, rows: [] });
     if (r.type === "GET_SKU_COUNT_APPROVED_PAGE") return reply(true, { page: 1, size: 500, total: 0, totalPages: 1, rows: [] });
     if (r.type === "GET_SKU_COUNT_INVENTORY_PAGE") return reply(true, { page: 1, size: 500, total: 1, totalPages: 1, rows: [{ warehouseId: 1177, warehouseName: "WH - MATERIAL - MTG", sku: "900000010", productName: "Vải giả 0", location: "F0-A0-00-00-00-00", qty: 5, total: 5, modified: "2026-10-16 08:00:00", created: "2026-09-01 08:00:00", uom: "m" }] });
-    return reply(true, { version: "0.11.0" });
+    return reply(true, { version: "0.12.1" });
   });
 };
 
@@ -136,7 +136,7 @@ const step = async (name, fn) => {
       try {
         await page.goto(BASE + "#storage-risk"); await waitText(page, "srt-total", "4");
         await settle(300);
-        await idbPut(page, "print-sku-cache", "uid_temp:v2", { schema: 1, savedAt: Date.now() - 3600000, data: tempRun("tmp-a", 2) });
+        await idbPut(page, "print-sku-cache", "uid_temp:v3", { schema: 1, savedAt: Date.now() - 3600000, data: tempRun("tmp-a", 2) });
         await hash(page, "#home"); srv.offline = true; await hash(page, "#storage-risk");
         await waitLabel(page, "srt-status");
         assert.equal(await page.locator("#srt-total").innerText(), "4", "mất mạng: giữ dữ liệu đang hiện (4), không vẽ đè bản trên máy (2)");

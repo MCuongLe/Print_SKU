@@ -8,7 +8,7 @@ const manifest = JSON.parse(fs.readFileSync(path.join(extensionDir, "manifest.js
 const background = fs.readFileSync(path.join(extensionDir, "background.js"), "utf8");
 
 assert.equal(manifest.manifest_version, 3);
-assert.equal(manifest.version, "0.11.0");
+assert.equal(manifest.version, "0.12.1");
 // Đồng bộ tự động (0.10.0): alarm + storage cho phiên Admin riêng, gọi Edge Supabase, trang Tùy chọn.
 assert.ok(manifest.permissions.includes("alarms"));
 assert.ok(manifest.permissions.includes("storage"));
@@ -34,8 +34,9 @@ assert.match(background, /chrome\.action\?\.onClicked\?\.addListener/);
 }
 assert.equal(manifest.minimum_chrome_version, "120", "alarm keepalive 30 giây cần Chrome 120+");
 assert.match(background, /AUTO_STATUS/);
-assert.match(background, /importScripts\("supabase-config.js", "supabase-session.js", "group-uid-snapshot-core.js", "cut-adj-core.js", "storage-risk-core.js", "auto-sync.js"\)/);
-for (const file of ["supabase-config.js", "supabase-session.js", "group-uid-snapshot-core.js", "cut-adj-core.js", "storage-risk-core.js", "auto-sync.js"]) assert.ok(fs.existsSync(path.join(extensionDir, file)), file);
+// 26/10/2026: cut-source-core.js (ghép nguồn phiếu ADJ / IT cho Cut) nạp trước cut-adj-core.js, lõi Đối chiếu ADJ gọi nó sau khi nạp Cut.
+assert.match(background, /importScripts\("supabase-config.js", "supabase-session.js", "group-uid-snapshot-core.js", "cut-source-core.js", "cut-adj-core.js", "storage-risk-core.js", "auto-sync.js"\)/);
+for (const file of ["supabase-config.js", "supabase-session.js", "group-uid-snapshot-core.js", "cut-source-core.js", "cut-adj-core.js", "storage-risk-core.js", "auto-sync.js"]) assert.ok(fs.existsSync(path.join(extensionDir, file)), file);
 const wmsBridge = fs.readFileSync(path.join(extensionDir, "wms-bridge.js"), "utf8");
 assert.match(wmsBridge, /stock-locations\/bins\/count\/v3/);
 assert.match(wmsBridge, /ignore_zero_total/);
@@ -43,6 +44,8 @@ assert.ok(manifest.content_scripts.some(entry => entry.js.includes("inventory-au
 for (const type of ["GET_SKU_COUNT_WAREHOUSES", "GET_SKU_COUNT_APPROVED_PAGE", "GET_SKU_COUNT_INVENTORY_PAGE"]) assert.match(background, new RegExp(type));
 // Kiểm soát công trình: đọc nhập xuất kho qua WMS và tồn app xây dựng qua tab app đã đăng nhập (cùng nguồn gốc, chỉ đọc).
 for (const type of ["GET_STOCK_IMPORT_EXPORT_PAGE", "GET_HCM_DATA", "PING_HCM"]) assert.match(background, new RegExp(type));
+// Số phiếu ADJ / IT cho nguồn Cut (GET_WMS_DOC_INFO): cùng có ở WMS_READ_TYPES (background), allow-list app-bridge và bảng readers của wms-bridge.
+assert.match(background.match(/^const WMS_READ_TYPES = \[.*\];$/m)?.[0] || "", /"GET_WMS_DOC_INFO"/);
 assert.ok(manifest.host_permissions.includes("https://apps-mastige.inshasaki.com/*"));
 const hcmEntry = manifest.content_scripts.find(entry => entry.js.includes("hcm-bridge.js"));
 assert.deepEqual(hcmEntry?.matches, ["https://apps-mastige.inshasaki.com/apps/hasaki-construction-management*"], "cầu nối app xây dựng chỉ chạy trong đúng app đó");
@@ -65,7 +68,8 @@ assert.equal(hcmBox.result.test("https://apps-mastige.inshasaki.com/apps/hasaki-
 assert.equal(hcmBox.result.test("https://evil.example/apps/hasaki-construction-management/"), false);
 assert.equal(hcmBox.result.test("https://hasaki-zt.cloudflareaccess.com/cdn-cgi/access/login/apps-mastige.inshasaki.com?redirect_url=%2Fapps%2Fhasaki-construction-management%2F"), false, "trang đăng nhập Cloudflare không phải tab app");
 const appBridgeSource = fs.readFileSync(path.join(extensionDir, "app-bridge.js"), "utf8");
-for (const type of ["GET_STOCK_IMPORT_EXPORT_PAGE", "GET_HCM_DATA", "PING_HCM"]) assert.match(appBridgeSource, new RegExp(type));
+for (const type of ["GET_STOCK_IMPORT_EXPORT_PAGE", "GET_HCM_DATA", "PING_HCM", "GET_WMS_DOC_INFO"]) assert.match(appBridgeSource, new RegExp(`"${type}"`));
+assert.match(wmsBridge, /GET_WMS_DOC_INFO: readDocInfo,/);
 
 const appMatches = manifest.content_scripts.find(entry => entry.js.includes("app-bridge.js"))?.matches || [];
 assert.ok(appMatches.includes("http://localhost/*"));

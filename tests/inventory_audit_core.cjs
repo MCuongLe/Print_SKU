@@ -67,9 +67,13 @@ assert.equal(movements.rows[0].createdAt, "2026-10-15T07:41:14+07:00", "ưu tiê
 assert.equal(movements.rows[1].createdAt, "2026-10-13 12:48:03", "thiếu created_at_tz thì dùng created_at");
 assert.equal(movements.rows[1].reason, "Xuất sử dụng");
 assert.equal(movements.sourceRows, 6, "sourceRows là số dòng WMS trả về, không phải số dòng đã lọc");
+// 26/10/2026 (RỦI RO LƯU TRỮ: người duyệt phiếu gốc UID tạm / phiếu nhập): approved_user_name → approvedBy, thiếu thì rỗng.
+const approvedMove = core.normalizeImportExportPage({ records: [{ id: 5, warehouse_id: 1177, sku: "900000011", quantity: 3, type: 2, source_type: "INTERNAL_TRANSFER", source_code: "1004260000000003", approved_user_name: " duyet@example.test ", created_user_name: "it@example.test" }] });
+assert.equal(approvedMove.rows[0].approvedBy, "duyet@example.test");
+assert.equal(movements.rows[1].approvedBy, "", "thiếu người duyệt → rỗng");
 
 // 0.10.7 (review R8a): WMS đổi khoá danh sách → lỗi, không lưu bản chụp 0 dòng; 204 ({records: []}) vẫn hợp lệ.
-for (const fn of ["normalizeApprovedPage", "normalizeInventoryPage", "normalizeImportExportPage"]) {
+for (const fn of ["normalizeApprovedPage", "normalizeInventoryPage", "normalizeImportExportPage", "normalizeTransferBinPage"]) {
   assert.throws(() => core[fn]({ count: 3, items: [{ sku: "900000001" }] }), /WMS đổi dạng dữ liệu/, fn);
   assert.equal(core[fn]({ count: 0, page: 1, size: 500, records: [] }).rows.length, 0, `${fn}: 204 vẫn hợp lệ`);
 }

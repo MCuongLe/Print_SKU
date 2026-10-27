@@ -5,16 +5,21 @@
 // "Tạo UID Temp" → uid_temp_save). Như web: Kiểm kê lỗi thì UID tạm VẪN chạy; mỗi bước lỗi thì không ghi phần của bước đó.
 // Khác web (cố ý): không PING_WMS (auto-sync tự tìm/ghim tab); kiểm kiểu dữ liệu trang trước khi dùng; hết hai bước mà có bước lỗi
 // thì NÉM (error.result giữ kết quả từng bước) để auto-sync ghi "Lỗi". Test: tests/storage_risk_core.cjs so với chính mã web.
+// 26/10/2026 (pop-up nguồn): Import/Export 90 ngày đọc MỘT lần cho cả lượt (readMoves). Kiểm kê đọc xong thì trước khi lưu ghép nguồn cho
+// cặp SKU × vị trí ảo (sources = sources() của storage-risk-temp-script, web gọi qua opts.enrich của run Kiểm kê): GET_TRANSFER_BIN_PAGE
+// + phiếu nhập gần nhất; UID tạm dùng lại lượt đọc đó (chỉ khi đọc thành công; lỗi thì đọc lại một lần) và gửi thêm origin (phiếu gốc).
+// Lỗi đọc nguồn không chặn lưu Kiểm kê.
 //
 // Hợp đồng (người gọi = auto-sync.js):
 //   run({ sendTab, rpc, now, onProgress }) → Promise<{ ok:true, skuCount, uidTemp }>
 //     skuCount = { ok:true, runId, rows, summary:{total,never,overdue,recent,qty}, warehouses:[tên kho], missing:[tên kho],
-//                  stockRows, approvedRows, held }
+//                  stockRows, approvedRows, held, sources:{done,total,reason} }  (sources: số cặp SKU × vị trí ảo đã đọc nguồn / tổng
+//                  cặp / lý do khi thiếu — auto-sync.js summaryOf cộng " · nguồn x/y cặp")
 //     uidTemp  = { ok:true, runId, rows, scanned, pages, warn:[…], readAt }
 //   Có bước lỗi → ném Error(message = "Kiểm kê: … · UID tạm: …"), error.result = { ok:false, skuCount, uidTemp } (bước lỗi là
 //   { ok:false, error, code }), error.code / error.fromTab = của lỗi đầu tiên.
 //   * sendTab(type, payload) → Promise<data> tới tab WMS (GET_SKU_COUNT_WAREHOUSES, GET_SKU_COUNT_APPROVED_PAGE,
-//     GET_SKU_COUNT_INVENTORY_PAGE, GET_STOCK_IMPORT_EXPORT_PAGE); lỗi / không có tab / quá giờ thì NÉM.
+//     GET_SKU_COUNT_INVENTORY_PAGE, GET_STOCK_IMPORT_EXPORT_PAGE, GET_TRANSFER_BIN_PAGE); lỗi / không có tab / quá giờ thì NÉM.
 //   * rpc(name, args) → Promise<data>: POST /rest/v1/rpc/<name> với JWT Admin của Extension; HTTP lỗi → ném result.message hoặc
 //     "Supabase HTTP <status>"; {ok:false,error} → ném error.message; {ok:true,data} → trả data (giống adminRpc của web).
 //   * now(): epoch ms (mặc định Date.now); onProgress({step:"skuCount"|"uidTemp", label, page, pages} | {step:"skuCount",
@@ -40,6 +45,37 @@
     return Date.parse(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}/.test(raw) && !/[zZ]|[+-]\d{2}:?\d{2}$/.test(raw) ? `${raw.replace(" ", "T")}+07:00` : raw);
   }
   const isTempUid = r => r.kind === "in" && /^adjustment$/i.test(String(r.sourceType || "").trim()) && /uid\s*temp|temporary\s*uid/i.test(r.reason || "");
+
+  // ---- Nguồn phiếu (26/10/2026), bản chép của storage-risk-temp-script ----
+  // Chỉ mục trong một lượt đọc Import/Export: dòng XUẤT theo mã phiếu (source_code) để tra phiếu gốc UID tạm; dòng NHẬP mới nhất theo kho + SKU.
+  function indexMove(m, warehouseId, outs, ins) {
+    if (m.kind === "out" && m.sourceCode) { const list = outs.get(m.sourceCode); if (list) list.push(m); else outs.set(m.sourceCode, [m]); }
+    else if (m.kind === "in" && m.sku) {
+      const k = `${warehouseId}|${m.sku}`, t = parseDate(m.createdAt), old = ins.get(k);
+      if (!old || (Number.isFinite(t) && !(old.t >= t))) ins.set(k, { m, t });
+    }
+  }
+  // Phiếu gốc của UID tạm: các dòng xuất có source_code = source_mapping_id của dòng "Tạo UID Temp" (IT / ADJ / lệnh sản xuất), gộp theo SKU.
+  const MAX_LINES = 30;
+  function originOf(code, outs) {
+    const list = code ? outs.get(code) : null;
+    if (!list || !list.length) return null;
+    const head = list[0], lines = [];
+    for (const m of list) {
+      const sku = String(m.sku || ""), qty = Number(m.qty) || 0, line = lines.find(l => l.sku === sku);
+      if (line) line.qty = Number((line.qty + qty).toFixed(6));
+      else if (lines.length < MAX_LINES) lines.push({ sku, qty });
+    }
+    const t = parseDate(head.createdAt);
+    return { type: head.sourceType || "", code, reason: head.reason || "", by: head.approvedBy || head.createdBy || "", at: Number.isFinite(t) ? new Date(t).toISOString() : null, from: head.fromWarehouse || head.warehouseName || "", to: head.toWarehouse || "", lines };
+  }
+  // Nguồn Hàng chưa lên kệ: cặp SKU × vị trí ảo F0-<vùng>-00-00-00-<n> có tồn, cặp cũ nhất trước, tối đa 60 cặp/lượt, ≤ 20 lần chuyển/cặp.
+  // Bản chụp Kiểm kê ai cũng xem và sku_count_overview trả nguyên văn → chỉ lưu phần trước @ của người thao tác (N1185).
+  const VIRTUAL = /^F0-[^-]+-00-00-00-\d+$/, MAX_PAIRS = 60, MOVES = 20;
+  const who = v => String(v || "").split("@")[0].trim();
+  const isoOf = v => { const t = parseDate(v); return Number.isFinite(t) ? new Date(t).toISOString() : null; };
+  const moveSource = r => ({ kind: "move", type: String(r.type || ""), qty: Number(r.qty) || 0, by: who(r.by), at: isoOf(r.at), from: String(r.from || ""), uid: String(r.uid || ""), uidId: Number.isSafeInteger(r.uidId) ? r.uidId : null });
+  const inSource = m => ({ kind: "in", type: m.sourceType || "", code: m.sourceCode || "", mapping: m.mappingId || "", reason: m.reason || "", by: who(m.approvedBy || m.createdBy), at: isoOf(m.createdAt), qty: Number(m.qty) || 0 });
 
   // Bản chép reconcile của Kiểm kê (index.html): gộp tồn In-BIN theo kho + SKU + vị trí, lần APPROVED gần nhất, dòng In-BIN 0 mà tổng > 0
   // vào held (giữ chỗ). Trạng thái tính theo now (không vào payload lưu).
@@ -151,6 +187,9 @@
         const t = parseDate(r.lastApprovedAt);
         return { warehouse_id: r.warehouseId, warehouse_name: r.warehouseName, sku: r.sku, product_name: r.productName || null, qty: r.qty, uom: r.uom || null, locations: r.locations, last_approved_at: Number.isFinite(t) ? new Date(t).toISOString() : null, last_approved_by: r.lastApprovedBy || null };
       });
+      // 26/10/2026: nguồn Hàng chưa lên kệ ghép vào locations[] trước khi lưu (như opts.enrich của web); lỗi lệnh WMS khi đọc nguồn không chặn
+      // lưu, chỉ ghi lý do vào kết quả (sources).
+      const sourced = await sources(payload, warehouses);
       show({ step: "skuCount", phase: "save", done: 0, total: payload.length });
       let started;
       try {
@@ -163,45 +202,84 @@
       } catch (error) {
         throw carry(new Error(`Chưa lưu được bản đồng bộ: ${/Failed to fetch|NetworkError|Timeout|aborted/i.test(String(error?.message)) ? "mất kết nối tới Supabase, kiểm tra mạng rồi bấm lại" : error.message}`), error);
       }
-      return { ok: true, runId: started?.runId ?? null, rows: payload.length, summary: result.summary, warehouses: warehouses.map(w => w.warehouseName), missing, stockRows: inventory.rows.length, approvedRows: approved.rows.length, held: result.held.length };
+      return { ok: true, runId: started?.runId ?? null, rows: payload.length, summary: result.summary, warehouses: warehouses.map(w => w.warehouseName), missing, stockRows: inventory.rows.length, approvedRows: approved.rows.length, held: result.held.length, sources: sourced };
+    }
+
+    // Import/Export 90 ngày của hai kho (readMoves của storage-risk-temp-script): dòng "Tạo UID Temp" kèm phiếu gốc, chỉ mục phiếu nhập.
+    // Đọc MỘT lần cho cả lượt (bước Kiểm kê gọi trước khi lưu, bước UID tạm dùng lại). Chỉ nhớ kết quả THÀNH CÔNG (review 26/10/2026):
+    // lỗi (thường là tạm thời: mạng, tab WMS) thì xoá để bước UID tạm đọc lại một lần thay vì phát lại lỗi cũ.
+    let movesRead = null;
+    const readMoves = () => movesRead || (movesRead = readMovesOnce().catch(error => { movesRead = null; throw error; }));
+    async function readMovesOnce() {
+      const meta = await ask("GET_SKU_COUNT_WAREHOUSES", { warehouseNames: WANT.map(w => w.name) }, "danh sách kho");
+      const found = WANT.map(w => ({ w, wh: (meta.warehouses || []).find(x => w.test.test(x.warehouseName || "")) }));
+      const missing = found.filter(f => !f.wh).map(f => f.w.name);
+      if (missing.length === found.length) throw new Error(`Tài khoản WMS không thấy kho: ${missing.join(", ")}`);
+      const to = now(), from = to - RANGE_DAYS * DAY, rows = [], seen = new Set(), warehouses = [], gaps = [], outs = new Map(), ins = new Map();
+      let scanned = 0, pages = 0;
+      for (const { w, wh } of found) {
+        if (!wh) continue;
+        const moves = await readPages("uidTemp", "GET_STOCK_IMPORT_EXPORT_PAGE", { warehouseIds: [wh.warehouseId], companyId: wh.companyId, from, to }, `${shortWh(wh.warehouseName)} nhập xuất`);
+        scanned += moves.rows.length; pages += moves.pages; warehouses.push(wh);
+        if (moves.total > moves.rows.length) gaps.push(`${wh.warehouseName}: WMS báo ${num(moves.total)} dòng, đọc được ${num(moves.rows.length)}`);
+        for (const m of moves.rows) {
+          if (!m || typeof m !== "object") continue;
+          const key = m.id ? `${wh.warehouseId}|${m.id}` : "";
+          if (key && seen.has(key)) continue;
+          if (key) seen.add(key);
+          indexMove(m, wh.warehouseId, outs, ins);
+          if (isTempUid(m)) rows.push({ wh: w.key, warehouseName: wh.warehouseName, sku: String(m.sku || ""), productName: m.productName || "", qty: Number(m.qty) || 0, sourceCode: m.sourceCode || "", mappingId: m.mappingId || "", createdBy: m.createdBy || "", at: parseDate(m.createdAt) });
+        }
+      }
+      for (const r of rows) r.origin = originOf(r.mappingId, outs);
+      return { missing, to, rows, warehouses, gaps, scanned, pages, ins };
+    }
+
+    // Nguồn Hàng chưa lên kệ (sources của storage-risk-temp-script): ghép vào locations[] của payload Kiểm kê. Lệnh lỗi / sai dạng (tab WMS
+    // chưa tải lại, WMS lỗi) → dừng, cặp chưa đọc không có khoá sources (web hiện "Chưa có dữ liệu nguồn").
+    // Trả { done, total, reason } (review 26/10/2026, không im lặng): done = số cặp đã có khoá sources (mảng rỗng = đã đọc, không có nguồn),
+    // total = số cặp SKU × vị trí ảo của bản chụp, reason = lý do ngắn khi dừng sớm / lệnh WMS lỗi / quá MAX_PAIRS cặp ("" khi đủ).
+    // Chỉ bắt lỗi của lệnh WMS (readMoves, GET_TRANSFER_BIN_PAGE); lỗi lập trình ném lên để bước Kiểm kê báo lỗi.
+    const why = (label, error) => `${label}: ${String(error?.message || "lỗi không rõ").slice(0, 160)}`;
+    async function sources(payload, warehouses) {
+      const company = new Map((warehouses || []).map(w => [Number(w.warehouseId), w.companyId ?? null])), pairs = [];
+      for (const row of payload) for (const loc of row.locations || []) {
+        if (VIRTUAL.test(String(loc.location || "").trim().toUpperCase())) pairs.push({ row, loc, t: parseDate(loc.modified || loc.created) });
+      }
+      pairs.sort((a, b) => (Number.isFinite(a.t) ? a.t : -Infinity) - (Number.isFinite(b.t) ? b.t : -Infinity));
+      const out = { done: 0, total: pairs.length, reason: "" };
+      let read;
+      try { read = await readMoves(); } catch (error) { out.reason = why("không đọc được nhập xuất", error); return out; }
+      for (const { row, loc } of pairs.slice(0, MAX_PAIRS)) {
+        let page;
+        try { page = await sendTab("GET_TRANSFER_BIN_PAGE", { warehouseId: row.warehouse_id, companyId: company.get(Number(row.warehouse_id)) ?? null, binIn: loc.location, sku: row.sku, page: 1, size: MOVES }); } catch (error) { out.reason = why("dừng đọc chuyển vị trí", error); break; }
+        if (!page || typeof page !== "object" || !Array.isArray(page.rows)) { out.reason = "lịch sử chuyển vị trí trả sai dạng"; break; }
+        const moves = page.rows.filter(r => r && typeof r === "object").slice(0, MOVES).map(moveSource), inbound = read.ins.get(`${row.warehouse_id}|${row.sku}`);
+        loc.sources = inbound ? [...moves, inSource(inbound.m)] : moves;
+        const total = Number(page.total);
+        if (Number.isFinite(total) && total > moves.length) loc.movesTotal = total;
+        out.done += 1;
+      }
+      if (!out.reason && pairs.length > MAX_PAIRS) out.reason = `mỗi lượt chỉ đọc ${MAX_PAIRS} cặp cũ nhất`;
+      return out;
     }
 
     // UID tạm (run của storage-risk-temp-script).
     async function uidTemp() {
-      let rows, warehouses, warn, scanned = 0, pages = 0, to;
-      try {
-        const meta = await ask("GET_SKU_COUNT_WAREHOUSES", { warehouseNames: WANT.map(w => w.name) }, "danh sách kho");
-        const found = WANT.map(w => ({ w, wh: (meta.warehouses || []).find(x => w.test.test(x.warehouseName || "")) }));
-        const missing = found.filter(f => !f.wh).map(f => f.w.name);
-        if (missing.length === found.length) throw new Error(`Tài khoản WMS không thấy kho: ${missing.join(", ")}`);
-        to = now();
-        const from = to - RANGE_DAYS * DAY, seen = new Set(), gaps = [];
-        rows = []; warehouses = [];
-        for (const { w, wh } of found) {
-          if (!wh) continue;
-          const moves = await readPages("uidTemp", "GET_STOCK_IMPORT_EXPORT_PAGE", { warehouseIds: [wh.warehouseId], companyId: wh.companyId, from, to }, `${shortWh(wh.warehouseName)} nhập xuất`);
-          scanned += moves.rows.length; pages += moves.pages; warehouses.push(wh);
-          if (moves.total > moves.rows.length) gaps.push(`${wh.warehouseName}: WMS báo ${num(moves.total)} dòng, đọc được ${num(moves.rows.length)}`);
-          for (const m of moves.rows) {
-            if (!m || typeof m !== "object" || !isTempUid(m)) continue;
-            const key = m.id ? `${wh.warehouseId}|${m.id}` : "";
-            if (key && seen.has(key)) continue;
-            if (key) seen.add(key);
-            rows.push({ wh: w.key, warehouseName: wh.warehouseName, sku: String(m.sku || ""), productName: m.productName || "", qty: Number(m.qty) || 0, sourceCode: m.sourceCode || "", mappingId: m.mappingId || "", createdBy: m.createdBy || "", at: parseDate(m.createdAt) });
-          }
-        }
-        rows.sort((a, b) => (Number.isFinite(b.at) ? b.at : -Infinity) - (Number.isFinite(a.at) ? a.at : -Infinity) || a.sku.localeCompare(b.sku));
-        warn = [...missing.map(n => `Chưa đọc được kho: ${n}`), ...gaps];
-      } catch (error) {
+      let read;
+      try { read = await readMoves(); } catch (error) {
         const m = String(error?.message || "");
         throw carry(new Error(/Failed to fetch|NetworkError|load failed/i.test(m) ? "WMS ngắt kết nối giữa chừng; tải lại tab WMS rồi bấm lại." : m || "Không đọc được dữ liệu."), error);
       }
+      const { missing, to, warehouses, gaps, scanned, pages } = read, rows = [...read.rows];
+      rows.sort((a, b) => (Number.isFinite(b.at) ? b.at : -Infinity) - (Number.isFinite(a.at) ? a.at : -Infinity) || a.sku.localeCompare(b.sku));
+      const warn = [...missing.map(n => `Chưa đọc được kho: ${n}`), ...gaps];
       const readAt = new Date(to).toISOString();
       let saved;
       try {
         saved = await rpc("uid_temp_save", {
           p_run: { readAt, warehouses: warehouses.map(w => ({ warehouseId: w.warehouseId, warehouseName: w.warehouseName, companyName: w.companyName || "" })), warn, scanned, pages, rangeDays: RANGE_DAYS },
-          p_rows: rows.map(r => ({ wh: r.wh, warehouseName: r.warehouseName, sku: r.sku, productName: r.productName, qty: r.qty, sourceCode: r.sourceCode, mappingId: r.mappingId, createdBy: r.createdBy, createdAt: Number.isFinite(r.at) ? new Date(r.at).toISOString() : null })),
+          p_rows: rows.map(r => ({ wh: r.wh, warehouseName: r.warehouseName, sku: r.sku, productName: r.productName, qty: r.qty, sourceCode: r.sourceCode, mappingId: r.mappingId, createdBy: r.createdBy, createdAt: Number.isFinite(r.at) ? new Date(r.at).toISOString() : null, origin: r.origin || null })),
         });
       } catch (error) {
         throw carry(new Error(`Đã đọc ${num(rows.length)} dòng nhưng chưa lưu được: ${error?.message || "lỗi không rõ"}`), error);

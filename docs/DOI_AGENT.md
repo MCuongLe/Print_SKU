@@ -13,7 +13,7 @@ Xem `AGENTS.md` mục "Bốn luật cứng" (nguồn duy nhất từ 25/10/2026)
 
 | Vai | Mô hình | Hồ sơ | Khi nào dùng |
 |---|---|---|---|
-| Lead | Fable 5.1 (dự phòng Opus 5.5); Sonnet cho việc tài liệu / commit / dọn / soát (mục "Chọn model và phiên") | phiên chính | **Mặc định làm thẳng mọi việc**: đọc `docs/PROJECT_MAP.md`, grep xác minh neo, sửa, viết test, chạy test liên quan, gọi Codex, báo cáo, migration/deploy cùng người dùng, commit khi được bảo |
+| Lead | Fable 5.1 (dự phòng Opus 5.5); Sonnet cho việc tài liệu / commit / dọn / soát (mục "Chọn model và phiên") | phiên chính | **Mặc định làm thẳng mọi việc**: đọc `docs/PROJECT_MAP.md`, grep xác minh neo, sửa, viết test, chạy test liên quan, gọi Codex, báo cáo, migration/deploy (tự chạy script, dry-run trước; lệnh phá huỷ hỏi người dùng), commit khi được bảo |
 | Thực thi logic | Opus | `thuc-thi-logic` | Chỉ khi có **một khối logic lớn tách được** (hàm SQL mới nhiều nhánh, Edge action mới, bộ đọc Extension mới) **và** lead đang làm việc khác song song. Giao một lần cả khối, không chia việc con |
 | Trinh sát | Sonnet (từ 25/10/2026, trước là Haiku) | `trinh-sat` | Khi vùng mã lạ với lead **và** bản đồ dự án không đủ (ví dụ truy đường dữ liệu qua 4–5 chặng cho một lỗi), hoặc khi phải đọc nhiều mã mà lead chỉ cần bản đồ kết quả (giữ ngữ cảnh lead nhỏ). Không gọi cho việc đã rõ neo |
 | Kiểm thử | Sonnet (từ 18/10/2026, trước là Haiku) | `kiem-thu` | **Mỗi đợt, khi lead báo xong phần mã:** chạy cả bộ test nền (log test ở ngoài ngữ cảnh lead), phân loại mỗi test hỏng (lỗi thật / test lệch hành vi mới / chập chờn) kèm dòng mã nghi ngờ, rồi `commit_gate.py` + soát hunk `index.html` ngoài vùng giao; không sửa gì. Lead làm tài liệu, `RULES.md` song song |
