@@ -99,11 +99,11 @@ const send = (message, sender = { id: "ext-id" }) => new Promise(resolve => {
   assert.equal(headers["company-ids"], "1002", "đổi công ty theo yêu cầu, không theo công ty đang chọn trên WMS");
   assert.equal(headers.Authorization, "Bearer test-token");
 
-  // Không truyền công ty: dùng công ty đang chọn trên WMS (WMS không lọc endpoint này theo company-ids)
+  // Không truyền công ty (web ghi mốc p_company_id 0): từ 0.12.4 không gửi company-ids (đọc toàn bộ phạm vi WMS trả cho token), vì WMS lọc endpoint này theo company-ids (đo 28/10: 30 ngày không header 988 dòng, 1002 881, 1005 49)
   const anyCompany = await send({ type: "GET_GROUP_UID_MOVES_PAGE", payload: { page: 1, size: 500 } });
   assert.equal(anyCompany.ok, true);
   assert.equal(anyCompany.data.companyId, null);
-  assert.equal(calls.at(-1).headers["company-ids"], "1001", "mặc định theo công ty đang chọn trên WMS");
+  assert.equal("company-ids" in calls.at(-1).headers, false, "không truyền công ty thì không gửi company-ids, không theo công ty đang chọn trên WMS (1001)");
   assert.equal(calls.at(-1).url.searchParams.has("from_updated_at"), false);
   const badCompany = await send({ type: "GET_GROUP_UID_MOVES_PAGE", payload: { companyId: "abc" } });
   assert.equal(badCompany.ok, false);

@@ -34,16 +34,20 @@
     return { token: String(token), company: String(company || "") };
   }
 
-  function requestHeaders(companyIds = "") {
+  // 0.12.4 (28/10/2026): `allCompanies` = không gửi `company-ids` (kết quả không phụ thuộc công ty đang chọn trên tab WMS). Mặc định (tham số rỗng)
+  // vẫn lấy công ty của tab (localStorage `company_id`). `company-ids` CÓ lọc nhiều endpoint WMS (đo 28/10, chỉ đếm): group-uid-infos không header 40.534
+  // UID, 1002 Mastige 24.855, 1005 Garment 12.164; group-uid-info-histories actions=4 (30 ngày) 988 / 881 / 49; asns, inbound-packing-lists, internal-transfers
+  // cũng lọc. Lệnh nạp dữ liệu vào Supabase hoặc ghép theo PO mà không có công ty cụ thể phải bật `allCompanies`, không thì đọc thiếu im lặng.
+  function requestHeaders(companyIds = "", { allCompanies = false } = {}) {
     const session = auth();
     const headers = { Accept: "application/json", Authorization: `Bearer ${session.token}` };
-    if (companyIds || session.company) headers["company-ids"] = String(companyIds || session.company);
+    if (!allCompanies && (companyIds || session.company)) headers["company-ids"] = String(companyIds || session.company);
     return headers;
   }
 
-  async function getJson(url, deniedMessage, companyIds = "", { emptyPage = false } = {}) {
+  async function getJson(url, deniedMessage, companyIds = "", { emptyPage = false, allCompanies = false } = {}) {
     // Lấy phiên trước vòng thử lại: hết phiên phải báo "đăng nhập lại" ngay, không bị coi là lỗi mạng rồi thử lại.
-    const headers = requestHeaders(companyIds);
+    const headers = requestHeaders(companyIds, { allCompanies });
     for (let attempt = 0; attempt < 3; attempt += 1) {
       let response;
       try {
@@ -86,7 +90,7 @@
     url.searchParams.set("size", String(size));
     if (payload?.from) url.searchParams.set("from_updated_at", String(new Date(payload.from).getTime()));
     if (payload?.to) url.searchParams.set("to_updated_at", String(new Date(payload.to).getTime()));
-    const normalized = core.normalizePage(await getJson(url, "Phiên WMS không còn quyền đọc Group UID; hãy đăng nhập lại", "", { emptyPage: true }));
+    const normalized = core.normalizePage(await getJson(url, "Phiên WMS không còn quyền đọc Group UID; hãy đăng nhập lại", "", { emptyPage: true, allCompanies: true }));
     return {
       page, size, total: normalized.total,
       totalPages: Math.max(1, Math.ceil(normalized.total / size)),
@@ -109,7 +113,8 @@
     url.searchParams.set("warehouse_ids", CUT_WAREHOUSE_ID);
     if (payload?.from) url.searchParams.set("from_updated_at", String(new Date(payload.from).getTime()));
     if (payload?.to) url.searchParams.set("to_updated_at", String(new Date(payload.to).getTime()));
-    const normalized = core.normalizeHistoryPage(await getJson(url, "Phiên WMS không còn quyền đọc lịch sử Group UID; hãy đăng nhập lại bằng tài khoản Admin", "", { emptyPage: true }));
+    // 0.12.4: kho 1177 là của Mastige nhưng tab WMS chọn công ty khác (vd. 1005) thì WMS trả HTTP 400 / {page,size}; không header cho cùng 4.611 dòng như 1002 (đo 28/10).
+    const normalized = core.normalizeHistoryPage(await getJson(url, "Phiên WMS không còn quyền đọc lịch sử Group UID; hãy đăng nhập lại bằng tài khoản Admin", "", { emptyPage: true, allCompanies: true }));
     // 0.12.3: như Import/Export — danh sách rỗng mà count báo còn dòng ở trang này là WMS tự mâu thuẫn → lỗi, không thành 0 dòng + tiến mốc phủ.
     if (normalized.sourceRows === 0 && normalized.total > (page - 1) * size) throw withReason(new Error("WMS trả trang lịch sử rỗng mâu thuẫn với tổng; hãy thử lại"), "network");
     return {
@@ -124,8 +129,9 @@
     };
   }
 
-  // Lịch sử đổi vị trí Group UID (action 4 = Transfer location). Không truyền warehouse_ids: WMS trả mọi kho mà tài khoản được xem
-  // và KHÔNG lọc theo company-ids ở endpoint này (đo 10/10/2026: 3 công ty cùng trả 5.072 dòng), nên chỉ cần đọc một lần.
+  // Lịch sử đổi vị trí Group UID (action 4 = Transfer location). Không truyền warehouse_ids. Đo 10/10/2026: 3 công ty cùng trả 5.072 dòng (không lọc
+  // `company-ids`); đo lại 28/10/2026: CÓ lọc (30 ngày: không header 988 dòng, 1002 881, 1005 49). Nơi gọi không truyền công ty (web LỊCH SỬ GROUP UID
+  // ghi mốc `p_company_id` 0) thì không gửi `company-ids`: đọc toàn bộ phạm vi WMS trả cho token, không giới hạn theo tab; truyền công ty thì đọc đúng công ty đó.
   async function readMovesPage(payload) {
     if (!core?.normalizeMovesPage) throw new Error("Extension chưa tải bộ đọc lịch sử chuyển vị trí; hãy Reload extension");
     const { page, size } = pageInput(payload), companyId = payload?.companyId == null || payload.companyId === "" ? "" : Number(payload.companyId);
@@ -137,7 +143,7 @@
     url.searchParams.set("actions", MOVE_ACTION);
     if (payload?.from) url.searchParams.set("from_updated_at", String(new Date(payload.from).getTime()));
     if (payload?.to) url.searchParams.set("to_updated_at", String(new Date(payload.to).getTime()));
-    const normalized = core.normalizeMovesPage(await getJson(url, "Phiên WMS không còn quyền đọc lịch sử chuyển vị trí; hãy đăng nhập lại", companyId, { emptyPage: true }));
+    const normalized = core.normalizeMovesPage(await getJson(url, "Phiên WMS không còn quyền đọc lịch sử chuyển vị trí; hãy đăng nhập lại", companyId, { emptyPage: true, allCompanies: companyId === "" }));
     if (normalized.sourceRows === 0 && normalized.total > (page - 1) * size) throw withReason(new Error("WMS trả trang lịch sử rỗng mâu thuẫn với tổng; hãy thử lại"), "network");
     return {
       page, size, total: normalized.total,
@@ -169,7 +175,7 @@
       url.searchParams.set("from_updated_at", String(new Date(payload.from).getTime()));
       url.searchParams.set("to_updated_at", String(payload?.to ? new Date(payload.to).getTime() : Date.now()));
     }
-    const normalized = core.normalizeNewUidPage(await getJson(url, "Phiên WMS không còn quyền đọc Group UID; hãy đăng nhập lại"));
+    const normalized = core.normalizeNewUidPage(await getJson(url, "Phiên WMS không còn quyền đọc Group UID; hãy đăng nhập lại", "", { allCompanies: true }));
     return {
       page, size, total: normalized.total,
       totalPages: Math.max(1, Math.ceil(normalized.total / size)),
@@ -221,7 +227,7 @@
     url.searchParams.set("processing_source_code", order);
     url.searchParams.set("from_updated_at", String(Date.UTC(2020, 0, 1)));
     url.searchParams.set("to_updated_at", String(Date.now() + 86400000));
-    const normalized = core.normalizePoGroupUidPage(await getJson(url, "Phiên WMS không còn quyền đọc Group UID; hãy đăng nhập lại"), order);
+    const normalized = core.normalizePoGroupUidPage(await getJson(url, "Phiên WMS không còn quyền đọc Group UID; hãy đăng nhập lại", "", { allCompanies: true }), order);
     return {
       page, size, total: normalized.total,
       totalPages: Math.max(1, Math.ceil(normalized.total / size)),
@@ -243,7 +249,8 @@
     url.searchParams.set("from_date", String(Date.UTC(2020, 0, 1)));
     url.searchParams.set("to_date", String(Date.now() + 86400000));
     url.searchParams.set("purchase_order_numbers", order);
-    const normalized = core.normalizePoAsnPage(await getJson(url, "Phiên WMS không còn quyền đọc ASN; hãy đăng nhập lại"), order);
+    // 0.12.4: cùng phạm vi với readPoGroupUidPage (một lượt "Theo PO" không được đọc UID mọi công ty mà ASN chỉ công ty của tab).
+    const normalized = core.normalizePoAsnPage(await getJson(url, "Phiên WMS không còn quyền đọc ASN; hãy đăng nhập lại", "", { allCompanies: true }), order);
     return {
       page, size, total: normalized.total,
       totalPages: Math.max(1, Math.ceil(normalized.total / size)),

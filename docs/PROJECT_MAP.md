@@ -59,7 +59,7 @@ Từ 26/10 nút `#ss-dev-btn` / `#gu-dev-btn` mở pop-up "Máy đồng bộ" `#
 Rủi ro lưu trữ: ô Cập nhật lúc / Đọc lúc đỏ theo `window.PrintSkuAutoStale.storageRisk` (250 phút trong khung 07:00–19:30).
 KIỂM TRA ĐẦU VÀO (26/10): công tắc nguồn `#ins-site` MTG | GARMENT (`SITES`, khoá `ins-site-v1`); `GET_PO {poCode, site}`; Garment chỉ nhận khi PING ≥ 0.11.0 và `po.site` khớp; kho và Buyer (C5) theo nguồn của PO đã nạp (`loadedSite`); Excel theo nút đang chọn (`file · MTG|GARMENT`), nút nguồn khoá bằng bộ đếm `lockSite`; test `inspection_garment_browser`.
 
-## 3. Extension `extension/inside-po-connector` (manifest 0.12.3)
+## 3. Extension `extension/inside-po-connector` (manifest 0.12.4)
 - `app-bridge.js`: content script trên trang Print SKU; allow-list lệnh; `window.postMessage` ↔ `chrome.runtime.sendMessage`.
 - `background.js`: service worker; kiểm `APP_URL_PATTERN`; `WMS_READ_TYPES`; tìm tab Inside (`INSIDE_SITES` mastige | garment, `findInsideTab(site)`; đồng bộ SKU và đồng bộ tự động luôn Mastige) / WMS; nhánh `AUTO_*` cho trang Options; alarms `auto-sync` / `auto-keepalive`; `chrome.storage.local.setAccessLevel(TRUSTED_CONTEXTS)`.
 - `inside-bridge.js`: `GET_PO` (danh sách + trang chi tiết PO; trả `lastModified` = cột LastModified, `deliveryDate`, `items[{sku, orderedQty}]`), `GET_SKU_SYNC_DATA` ({full}|{cutoff}), đọc 7 nhóm hàng `SKU_CATEGORIES`, Combo theo Modified; `sku-sync-core.js` (cutoffKey, comboStampsOrdered).
@@ -68,6 +68,7 @@ KIỂM TRA ĐẦU VÀO (26/10): công tắc nguồn `#ins-site` MTG | GARMENT (`
   - History (QC không có lệnh riêng: `qc_status` đi theo `GET_GROUP_UID_PAGE`; từ 0.10.2 cả `group_rfid_mapping` — mã RFID, luôn có khoá, `null` khi chưa gắn; từ 0.10.4 `purchase_order` — số PO khi nguồn PURCHASE_ORDER, `null` khi có nguồn khác, bỏ khoá khi không chắc); token từ `localStorage["auth_store"]`;
   - `group-uid-sync-core.js` (`normalizeRow` có `qc_status`), `inventory-audit-core.js`.
   - 0.12.0: `GET_WMS_DOC_INFO` (tra số phiếu ADJ / IT từ mã mapping của dòng Import/Export, ≤ 20 mã mỗi loại), `GET_TRANSFER_BIN_PAGE` (màn Transfer Location History theo vị trí đến + SKU, kèm tra mã Group UID); `GET_STOCK_IMPORT_EXPORT_PAGE` trả thêm `approvedBy`. Chi tiết endpoint và khoá dòng: kiến thức WMS cục bộ (không trong git).
+  - 0.12.4: `getJson` / `requestHeaders` nhận `{ allCompanies: true }` = không gửi `company-ids`; bật cho `GET_GROUP_UID_PAGE`, `GET_GROUP_UID_NEW_PAGE`, `GET_PO_GROUP_UID_PAGE`, `GET_GROUP_UID_HISTORY_PAGE`, `GET_GROUP_UID_MOVES_PAGE` (khi không truyền `companyId`), `GET_PO_ASN_PAGE`; test `wms_bridge_reads`, `group_uid_moves_core`.
 - `hcm-bridge.js`: app xây dựng (Cloudflare Access + Bearer) cho Kiểm soát công trình.
 - Nền tự động: `auto-sync.js` (`decide`, `tick`, `runNow`, lease/cooldown, held; 0.10.7: 4 loại `group_uid` / `sku` / `cut_adj` / `storage_risk`, tab ghim cả lượt, `auto.active` + `recover()` khi worker khởi động, `assessHealth` → dấu "!" trên icon, `rpc()` PostgREST bằng phiên Admin),
   - 0.10.10 (cổng bản): `extVersion` ở mọi lệnh Edge, `versionLess`; loại có `minExtension` cao hơn bản của máy bị `decide` bỏ (dấu `outdated`, `outdatedOutcome`, `firstLease`); 409 ở lần gia hạn khoá dừng lượt,

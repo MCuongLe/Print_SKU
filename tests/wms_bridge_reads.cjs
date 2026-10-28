@@ -488,5 +488,59 @@ const ROW = {
     }
   }
 
+  // 0.12.4 (28/10/2026): `company-ids` CÓ lọc nhiều endpoint WMS (đo 28/10, chỉ đếm): group-uid-infos không header 40.534 UID / 1002 Mastige 24.855 / 1005 Garment 12.164;
+  // group-uid-info-histories actions=4 (30 ngày) 988 / 881 / 49; Group UID của một PO Garment thấy được ở không header và 1005, không thấy ở 1002. Tab WMS đang chọn công ty
+  // Mastige (localStorage company_id = "1002") làm các lượt đọc không có công ty cụ thể chỉ thấy Mastige. Nên: 3 lệnh group-uid-infos (đồng bộ, UID New hai kho, Group UID
+  // theo PO), 2 lệnh lịch sử (Cắt kho 1177, chuyển vị trí khi không truyền công ty) và ASN theo PO không gửi `company-ids`; lệnh có công ty tường minh và các lệnh
+  // chưa đo / chưa đổi (Packing List, IT, ADJ) giữ hành vi cũ.
+  {
+    const seenHeaders = [];
+    const capture = async (url, init) => { seenHeaders.push({ url: String(url), headers: { ...init.headers } }); return reply(200, { count: 0, records: [] }); };
+    const PO_TEST = "100000001";
+    for (const [type, payload, endpoint] of [
+      ["GET_GROUP_UID_PAGE", {}, /\/group-uid-infos\?/],
+      ["GET_GROUP_UID_PAGE", { page: 1, size: 1 }, /\/group-uid-infos\?/],
+      ["GET_GROUP_UID_PAGE", { from: "2026-10-27T09:00:00Z", to: "2026-10-28T05:00:00Z" }, /\/group-uid-infos\?/],
+      ["GET_GROUP_UID_NEW_PAGE", {}, /\/group-uid-infos\?/],
+      ["GET_GROUP_UID_NEW_PAGE", { warehouseIds: [1339], from: "2026-10-01T00:00:00Z" }, /\/group-uid-infos\?/],
+      ["GET_PO_GROUP_UID_PAGE", { purchaseOrder: PO_TEST }, /\/group-uid-infos\?/],
+      ["GET_GROUP_UID_HISTORY_PAGE", {}, /\/group-uid-info-histories\?/],
+      ["GET_GROUP_UID_HISTORY_PAGE", { from: "2026-10-27T09:00:00Z", to: "2026-10-28T05:00:00Z" }, /\/group-uid-info-histories\?/],
+      ["GET_GROUP_UID_MOVES_PAGE", {}, /\/group-uid-info-histories\?/],
+      ["GET_GROUP_UID_MOVES_PAGE", { page: 2, size: 500, from: "2026-10-27T09:00:00Z", to: "2026-10-28T05:00:00Z" }, /\/group-uid-info-histories\?/],
+      ["GET_PO_ASN_PAGE", { purchaseOrder: PO_TEST }, /\/asns\?/],
+    ]) {
+      seenHeaders.length = 0;
+      result = await ask(load({ fetchImpl: capture }), type, payload);
+      assert.equal(result.ok, true, `${type}: ${JSON.stringify(result.error || "")}`);
+      assert.equal(seenHeaders.length, 1, `${type}: đúng một lần gọi`);
+      assert.match(seenHeaders[0].url, endpoint, `${type}: đúng endpoint`);
+      assert.equal("company-ids" in seenHeaders[0].headers, false, `${type}: không gửi company-ids dù tab WMS chọn công ty 1002 · ${JSON.stringify(Object.keys(seenHeaders[0].headers))}`);
+      assert.match(seenHeaders[0].headers.Authorization, /^Bearer test-token$/, `${type}: vẫn gửi phiên đăng nhập`);
+    }
+    // Có công ty tường minh thì vẫn gửi đúng công ty đó (không bị cờ nuốt)
+    seenHeaders.length = 0;
+    result = await ask(load({ fetchImpl: capture }), "GET_GROUP_UID_MOVES_PAGE", { companyId: 1005 });
+    assert.deepEqual([result.ok, seenHeaders[0]?.headers["company-ids"], result.data?.companyId], [true, "1005", 1005], "GET_GROUP_UID_MOVES_PAGE có companyId: gửi công ty yêu cầu");
+    // Phạm vi hẹp: lệnh chưa đo / chưa đổi vẫn lấy công ty của tab WMS
+    seenHeaders.length = 0;
+    result = await ask(load({ fetchImpl: capture }), "GET_PACKING_LIST_PAGE", { purchaseOrders: [PO_TEST] });
+    assert.equal(result.ok, true, JSON.stringify(result.error || ""));
+    assert.equal(seenHeaders[0].headers["company-ids"], "1002", "GET_PACKING_LIST_PAGE: giữ company-ids của tab WMS như cũ (chưa đổi ở 0.12.4)");
+    // Không có phiên: vẫn báo hết phiên, không gọi mạng (cả lệnh bật cờ)
+    for (const type of ["GET_GROUP_UID_PAGE", "GET_GROUP_UID_MOVES_PAGE", "GET_PO_ASN_PAGE"]) {
+      let called = 0;
+      result = await ask(load({ token: "", fetchImpl: async () => { called += 1; return reply(200, { count: 0, records: [] }); } }), type, { purchaseOrder: PO_TEST });
+      assert.deepEqual([result.ok, result.error?.reason, called], [false, "session", 0], `${type}: không đăng nhập vẫn là lỗi phiên, không gọi WMS`);
+    }
+    // Cấu trúc: mọi hàm đọc group-uid-infos (`new URL(API)`) phải bật allCompanies — reader thứ tư quên cờ sẽ đỏ ở đây, không lùi im lặng về công ty của tab
+    {
+      const source = fs.readFileSync(DIR + "wms-bridge.js", "utf8").replace(/\r\n/g, "\n");
+      const readers = source.split(/\n  async function /).slice(1).filter(body => body.includes("new URL(API)"));
+      assert.equal(readers.length, 3, `đúng 3 hàm đọc group-uid-infos (${readers.length}); thêm hàm mới thì phải thêm cả lượt gọi runtime trong bảng trên`);
+      for (const body of readers) assert.match(body, /getJson\(url,[^\n]*allCompanies: true/, `hàm ${body.slice(0, body.indexOf("("))} đọc group-uid-infos nhưng lời gọi getJson không bật allCompanies`);
+    }
+  }
+
   console.log("wms_bridge_reads: thử lại 429/5xx/lỗi mạng, 204, 401/403 và hết phiên cho Group UID, lịch sử Cắt, lịch sử chuyển vị trí, nhập xuất kho, đọc Group UID/ASN theo PO và số phiếu ADJ / IT (GET_WMS_DOC_INFO; chi tiết ADJ 404 / rỗng → po null, lỗi tạm 500 / mất mạng / thân hỏng → detailFailed, 401/403 → lỗi cả lệnh), Transfer Location History (lọc vị trí + SKU, tra mã Group UID), thân {page,size} rỗng (Group UID, chuyển vị trí, lịch sử Cắt / chuyển vị trí, Import/Export đối chiếu lệnh đếm; tồn kho / APPROVED vẫn lỗi) passed");
 })().catch(error => { console.error(error); process.exit(1); });

@@ -167,7 +167,7 @@ async function runWeb(opts = {}) {
     return rpcResult(name, args);
   };
   // opts.extVersion: phiên bản Extension trả cho PING_WMS (web kiểm trước khi đọc nguồn); opts.noAdmin: chưa xác minh được Admin.
-  const ext = (type, payload) => (type === "PING_WMS" ? Promise.resolve({ version: opts.extVersion || "0.12.3" }) : wms.send(type, payload));
+  const ext = (type, payload) => (type === "PING_WMS" ? Promise.resolve({ version: opts.extVersion || "0.12.4" }) : wms.send(type, payload));
   const num = v => Number(v || 0).toLocaleString("vi-VN");
   const audit = vm.runInContext(`const DAY=86400000;const state={busy:false,admin:true};
     ${WEB_AUDIT}; run`, vm.createContext({

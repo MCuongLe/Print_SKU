@@ -306,7 +306,7 @@ const actions = (calls, fn) => calls.filter(call => call.fn === fn).map(call => 
     assert.equal(h.storage.data["auto.last"], undefined, "bỏ qua không tính là đã chạy");
   }
 
-  // 0.12.3 (27/10/2026): trang thử Group UID (không lọc ngày) báo tổng 0 = WMS không thấy UID nào cho tài khoản (vd. mất quyền kho; company-ids không lọc; từ 0.12.2 thân
+  // 0.12.3 (27/10/2026): trang thử Group UID (không lọc ngày) báo tổng 0 = WMS không thấy UID nào cho tài khoản (vd. mất quyền kho; từ 0.12.4 đọc không gửi company-ids; từ 0.12.2 thân
   // {page, size} của group-uid-infos là 0 dòng) → bỏ qua TRƯỚC khi thuê khoá / tạo lượt, mọi mode; mốc không tiến. Tổng > 0 hoặc thiếu tổng → như cũ.
   {
     const probeOnly = data => message => (message.type === "GET_GROUP_UID_PAGE" && message.payload.size === 1 ? data : null);

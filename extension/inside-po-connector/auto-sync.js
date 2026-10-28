@@ -506,8 +506,9 @@
         if (tabUnavailable(error)) return { status: "skipped", message: error.message };
         throw error;
       }
-      // 0.12.3: trang thử không lọc ngày nên tổng 0 = WMS không thấy UID nào cho tài khoản này (mất quyền kho, phiên lệch; `company-ids` không lọc
-      // group-uid-infos — đo 27/10/2026). Từ 0.12.2 thân {page, size} là danh sách rỗng, nên không chặn ở đây thì lượt thành "ok · 0 UID" im lặng. Bỏ qua
+      // 0.12.3: trang thử không lọc ngày nên tổng 0 = WMS không thấy UID nào cho tài khoản này (mất quyền kho, phiên lệch). 0.12.4: đọc Group UID không
+      // gửi `company-ids` (nó CÓ lọc group-uid-infos, đo 28/10/2026) nên không còn phụ thuộc công ty đang chọn trên tab WMS. Từ 0.12.2 thân {page, size}
+      // là danh sách rỗng, nên không chặn ở đây thì lượt thành "ok · 0 UID" im lặng. Bỏ qua
       // trước khi thuê khoá / tạo lượt (mốc không tiến), mọi mode; chỉ khi tổng là số 0 — thiếu tổng thì chạy như cũ.
       if (probe?.total === 0) return { status: "skipped", message: "WMS không thấy UID nào (kiểm quyền kho và phiên đăng nhập của tab WMS)" };
       const skip = await firstLease("group_uid", device, cooldownSeconds);

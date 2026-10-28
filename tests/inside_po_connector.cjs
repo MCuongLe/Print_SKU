@@ -8,7 +8,7 @@ const manifest = JSON.parse(fs.readFileSync(path.join(extensionDir, "manifest.js
 const background = fs.readFileSync(path.join(extensionDir, "background.js"), "utf8");
 
 assert.equal(manifest.manifest_version, 3);
-assert.equal(manifest.version, "0.12.3");
+assert.equal(manifest.version, "0.12.4");
 // Đồng bộ tự động (0.10.0): alarm + storage cho phiên Admin riêng, gọi Edge Supabase, trang Tùy chọn.
 assert.ok(manifest.permissions.includes("alarms"));
 assert.ok(manifest.permissions.includes("storage"));
