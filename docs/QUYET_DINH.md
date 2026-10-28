@@ -207,6 +207,7 @@
 ### Lịch sử Group UID
 - `#uidhist-screen`: ai cũng xem; "Đọc WMS" chỉ Admin (gia tăng `range_to − 30 phút`, lần đầu 365 ngày), một luồng mọi công ty (`p_company_id=0`); `F0-VR-00-00-00-00` = "Trả NCC"; kết quả trong `#uh-dialog`. (10/10 · N0438, N0439, N0441, N0467)
 - Popup thay đổi Đồng bộ: bấm mã UID mở `#gu-uid-dialog` (có dòng "Trước:"). (14/10 · N0008)
+- File Excel tải xuống của `#uidhist-screen` có cột Lot và Roll ngay sau Tên sản phẩm (từ `group_uid_details.batch_code` / `roll_code` qua `group_uid_moves_lookup`, migration `group_uid_moves_lot_roll_v1`); chỉ file Excel, bảng trên màn không thêm cột; UID chưa có chi tiết thì ô trống. (27/10 · N20261027-1630)
 
 ### Phần còn giữ
 - Màn nạp Excel trên web đã xoá; backend `group_uid_v4/v5`, RPC `group_uid_import_*` và script CLI trong git vẫn giữ. (07/10, 18/10 · N0061, N0162, N1021)

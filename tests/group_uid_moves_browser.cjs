@@ -3,6 +3,8 @@
 // Chạy với python -m http.server 8000; Extension, WMS và Supabase đều giả lập, không ghi dữ liệu thật.
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const { readXlsx } = require("./xlsx_read.cjs");
 const BASE = process.env.BASE || "http://127.0.0.1:8000/", SESSION_KEY = "print-sku-admin-session-v1", DAY = 86400000, NOW = Date.now();
 const fmt = n => n.toLocaleString("vi-VN");
 
@@ -12,6 +14,9 @@ const USERS = ["nguoidung1@example.com", "nguoidung2@example.com", "nguoidung3@e
 const WHS = ["WH - MATERIAL - MTG", "WH - SEMI PRODUCT - MTG", "WH - MATERIAL - GARMENT"];
 const uidOf = i => `10282606${String(i % 200).padStart(8, "0")}`;
 const skuOf = uid => `4225${String(Number(uid.slice(-3)) % 40).padStart(5, "0")}`;
+// Lot / roll giả (group_uid_details.batch_code / roll_code, chữ); UID tận cùng 000 chưa có trong group_uid_details → null;
+// UID tận cùng 001 mang đúng hai dạng Excel dễ làm sai: lot "12/9" (dễ thành ngày) và roll "004" (dễ mất số 0 đầu)
+const lotOf = uid => uid.endsWith("000") ? null : uid.endsWith("001") ? "12/9" : `L${uid.slice(-3)}/8`, rollOf = uid => uid.endsWith("000") ? null : uid.endsWith("001") ? "004" : String(Number(uid.slice(-3)) % 30 + 1);
 const mk = (i, extra = {}) => ({
   history_id: 100000 + i, group_uid_code: uidOf(i), warehouse_id: 1177 + (i % 7 === 0 ? 1 : i % 11 === 0 ? 162 : 0),
   warehouse: i % 7 === 0 ? WHS[1] : i % 11 === 0 ? WHS[2] : WHS[0],
@@ -63,7 +68,7 @@ function lookup(a) {
   const limit = Math.min(Math.max(a.p_limit || 1000, 1), 5000), force = sku === "big";
   const items = hit.slice(0, force ? 5 : limit).map(r => { const chain = byUid.get(r.group_uid_code), next = chain[chain.indexOf(r) + 1];
     return { id: r.history_id, uid: r.group_uid_code, warehouse: r.warehouse, from: r.from_location, to: r.to_location, by: r.moved_by, at: r.moved_at,
-      nextLocation: next?.to_location ?? null, nextAt: next?.moved_at ?? null, sku: skuOf(r.group_uid_code), skuCount: 1, product: `Chỉ mẫu ${skuOf(r.group_uid_code)}` }; });
+      nextLocation: next?.to_location ?? null, nextAt: next?.moved_at ?? null, sku: skuOf(r.group_uid_code), skuCount: 1, lot: lotOf(r.group_uid_code), roll: rollOf(r.group_uid_code), product: `Chỉ mẫu ${skuOf(r.group_uid_code)}` }; });
   return { items, total: force ? 7000 : hit.length, limit, truncated: force || hit.length > limit };
 }
 function rpc(name, args) {
@@ -228,6 +233,25 @@ const expectBar = (info, tag, ratio) => {
       assert.equal(await page.locator('[data-uh-tab="moved"]').getAttribute("aria-selected"), "true", "bấm thẻ mở đúng tab");
       assert.equal((await rows.allInnerTexts()).every(t => t.includes("Đã chuyển tiếp")), true);
       await page.locator("#uh-dialog [data-as-close]").click(); await dialog.waitFor({ state: "hidden" });
+
+      // 27/10/2026: file Excel tải xuống có cột Lot và Roll (lấy từ group_uid_details qua group_uid_moves_lookup); UID chưa có chi tiết → ô trống
+      {
+        await page.locator('[data-uh-kind="all"]').click(); await dialog.waitFor({ state: "visible" });
+        const [download] = await Promise.all([page.waitForEvent("download"), page.locator("#uh-tools [data-as-export]").click()]);
+        assert.match(download.suggestedFilename(), /^lich-su-group-uid-.*\.xlsx$/);
+        const xlsx = readXlsx(fs.readFileSync(await download.path())), { table } = xlsx;
+        assert.deepEqual(table[0], ["Thời điểm", "Group UID", "SKU", "Tên sản phẩm", "Lot", "Roll", "Kho", "Từ vị trí", "Đến vị trí", "Người cập nhật", "Vị trí kế tiếp", "Lúc chuyển tiếp"], "Lot và Roll nằm ngay sau Tên sản phẩm");
+        const data = table.slice(1);
+        assert.ok(data.length > 50, "xuất cả danh sách đang lọc, không chỉ một trang");
+        for (const row of data) assert.deepEqual([String(row[4]), String(row[5])], [lotOf(String(row[1])) ?? "", rollOf(String(row[1])) ?? ""], `Lot / Roll của ${row[1]}`);
+        assert.ok(data.some(row => String(row[1]).endsWith("000") && row[4] === "" && row[5] === ""), "UID chưa có Lot / Roll ra ô trống");
+        assert.ok(data.some(row => row[4] && row[5]), "UID có Lot / Roll ra giá trị");
+        const tricky = data.filter(row => String(row[1]).endsWith("001"));
+        assert.ok(tricky.length > 0, "có UID mang lot 12/9 và roll 004");
+        for (const row of tricky) assert.deepEqual([row[4], row[5]], ["12/9", "004"], "lot 12/9 và roll 004 giữ nguyên là chữ (không thành ngày, không mất số 0 đầu)");
+        assert.ok(xlsx.sheet.includes('<is><t xml:space="preserve">12/9</t></is>'), "ô lot 12/9 là ô chữ (inlineStr) trong file");
+        await page.keyboard.press("Escape"); await dialog.waitFor({ state: "hidden" });
+      }
 
       // --- Bộ lọc (popup) ---
       const inRange = days(30), lastCall = () => rpcCalls.filter(c => c.name === "group_uid_moves_lookup").at(-1).args;

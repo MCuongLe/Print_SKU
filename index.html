@@ -12758,7 +12758,7 @@ async function rpc(name,args,retry=true){
         const TABS = { all: () => true, now: r => !r.nextLocation, moved: r => Boolean(r.nextLocation), vr: r => r.to === VR };
         const TAB_TITLE = { all: "Lượt chuyển vị trí", now: "Còn ở vị trí đến", moved: "Đã chuyển tiếp", vr: "Chuyển vào Trả NCC" };
         const COLS = [{ label: "Thời điểm", sort: "at", first: "desc" }, { label: "Group UID", sort: "uid" }, { label: "SKU", sort: "sku" }, { label: "Chuyển", sort: "to" }, { label: "Người cập nhật", sort: "by" }, { label: "Hiện tại", sort: "now" }];
-        const CSV_HEAD = ["Thời điểm", "Group UID", "SKU", "Tên sản phẩm", "Kho", "Từ vị trí", "Đến vị trí", "Người cập nhật", "Vị trí kế tiếp", "Lúc chuyển tiếp"];
+        const CSV_HEAD = ["Thời điểm", "Group UID", "SKU", "Tên sản phẩm", "Lot", "Roll", "Kho", "Từ vị trí", "Đến vị trí", "Người cập nhật", "Vị trí kế tiếp", "Lúc chuyển tiếp"];
         function rowFor(r) {
           const first = r.sku ? String(r.sku).split(", ")[0] : "", moved = Boolean(r.nextLocation);
           const sku = first ? `<div class="uh-sku" title="${esc(r.sku)}"><b>${esc(first)}</b>${r.skuCount > 1 ? `<i>+${num(r.skuCount - 1)}</i>` : ""}</div>${r.product ? `<span class="uh-pn" title="${esc(r.product)}">${esc(r.product)}</span>` : ""}` : '<span class="as-empty">—</span>';
@@ -12771,7 +12771,7 @@ async function rpc(name,args,retry=true){
             text: [r.uid, r.sku, r.product, r.warehouse, r.from, r.to, r.by, r.nextLocation].join(" "),
             facets: { wh: r.warehouse || "", by: r.by || "" },
             sort: { at: Date.parse(r.at) || 0, uid: r.uid, sku: first, to: r.to || "", by: r.by || "", now: moved ? 1 : 0 },
-            csv: [dt(r.at), r.uid, r.sku || "", r.product || "", r.warehouse || "", r.from || "", r.to || "", r.by || "", r.nextLocation || "", r.nextAt ? dt(r.nextAt) : ""]
+            csv: [dt(r.at), r.uid, r.sku || "", r.product || "", r.lot || "", r.roll || "", r.warehouse || "", r.from || "", r.to || "", r.by || "", r.nextLocation || "", r.nextAt ? dt(r.nextAt) : ""]
           };
         }
         const counts = () => Object.fromEntries(Object.entries(TABS).map(([k, test]) => [k, state.rows.filter(test).length]));
