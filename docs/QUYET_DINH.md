@@ -427,8 +427,8 @@ Mục này thắng mọi ghi chú "CHƯA LÊN" trong nhật ký. Kiểm lại kh
 - `sync_auto_v3` (26/10 14:55: bảng `sync_auto_devices` RLS bật, 0 policy, chỉ service_role như `sync_auto_leases`; cột `ext_version` ở `sku_sync_runs` / `group_uid_sync_runs`; `sync_auto_settings.min_extension` = `{}` với CHECK 3 vế, kiểm `pg_get_constraintdef` · N20261026-1102).
 - `cut_source_v1` (26/10 ~22:20, chạy bằng `apply_supabase_sql.py`): 5 cột nguồn ở `wms_group_uid_cuts`; `wms_group_uid_cut_set_source` / `wms_group_uid_cut_unresolved` anon không execute; `cut_group_uid_reconcile` còn che email; `wms_group_uid_cut_import` còn chặn mốc tương lai; Tick giúp bỏ Cut IT (kiểm chỉ đọc · N20261027-0800).
 - `uid_temp_origin_v1` (26/10 ~22:20): cột `uid_temp_rows.origin`, `uid_temp_save` / `uid_temp_overview` bản mới (che `origin.by` cho người ngoài Admin). Sổ `release_ledger` ghi cả hai tệp 27/10 08:00 bằng `record_ledger.py` (N20261027-0800).
+- `group_uid_moves_lot_roll_v1` (28/10 ~08:50, chạy bằng `apply_supabase_sql.py`, ghi sổ `release_ledger` bằng `record_ledger.py`): `group_uid_moves_lookup` trả thêm `lot`, `roll`; kiểm chỉ đọc: anon + authenticated thực thi, public không, vẫn che email, 200 dòng thử đều có khoá, 123 có giá trị (N20261028-0855); file Excel thật 28/10 10:00 có Lot/Roll đúng (N20261028-1010).
 
-- `group_uid_moves_lot_roll_v1` (28/10 ~08:50, chạy bằng `apply_supabase_sql.py`, ghi sổ `release_ledger` bằng `record_ledger.py`): `group_uid_moves_lookup` trả thêm `lot`, `roll`; kiểm chỉ đọc: anon + authenticated thực thi, public không, vẫn che email, 200 dòng thử đều có khoá, 123 có giá trị (N20261028-0855).
 **ĐÃ LÊN — Edge Function (bản đang chạy ↔ commit cuối của thư mục hàm)**
 - `sku-sync` bản 13, deploy 26/10 14:56 — sau commit b4c522d (14:52); nội dung đang chạy = tệp repo từng ký tự (so qua `get_edge_function`, N20261026-1102).
 - `group-uid-sync` bản 12, deploy 26/10 14:57 — sau commit b4c522d (14:52); đã đọc nội dung đang chạy: có khối cổng bản, `prepare` / `lease` qua cổng, `deviceList` trả null khi lỗi (chưa so từng ký tự, N20261026-1102).
@@ -449,7 +449,6 @@ Mục này thắng mọi ghi chú "CHƯA LÊN" trong nhật ký. Kiểm lại kh
 
 **Đã lên, CHƯA thử thật**
 - Sau khi Extension 0.12.3 lên (commit + Reload): lượt Đối chiếu ADJ khi khoảng lịch sử Cắt rỗng, Import/Export nhận danh sách rỗng, guard "WMS không thấy UID nào" (chỉ hiện ở nhật ký Tùy chọn, Chạy ngay coi skipped là ok); chưa lượt nào chạy với bản này. (N20261027-1330)
-- File Excel tải xuống của LỊCH SỬ GROUP UID có cột Lot, Roll (web c3461a5 đã push, Pages đã phục vụ; chưa mở file Excel thật trên máy người dùng). (N20261028-0855)
 - Nguồn phiếu Cut + pop-up nguồn UID tạm đã chạy thật (đo 27/10 11:25, lượt tự động 11:13): Cut 351/1.025 có nguồn (226 ADJ + 125 IT; trong khoảng đọc từ 28/09 còn 341 chưa nguồn, 325 là một sự kiện 10/10 gồm 4 SKU × Cut đúng 1.000, ngoài sự kiện đó ≈ 96 %); UID tạm 5/5 có phiếu gốc (mã hiện là 1004… của dòng xuất, chưa phải số phiếu IT 1007… / ADJ 1008…). (N20261027-1140)
 - Hàng chưa lên kệ: 38/38 cặp có nguồn sau khi sửa `{page,size}` rỗng ở Extension 0.12.2 (trước 1/35; lượt tay 27/10 12:33, 15 cặp có dòng chuyển vị trí, 34 cặp có phiếu nhập, 9 cặp tra được mã Group UID, pop-up mở thử đạt). (N20261027-1235)
 - Cổng bản trên Edge thật (`sku-sync` 13, `group-uid-sync` 12, deploy 26/10 14:56–14:57): đã chạy với Extension khai báo bản (`sync_auto_devices` có CUONG-PC v0.11.0, lượt 17:31); CHƯA thử nhánh 409 `EXTENSION_OUTDATED` vì `min_extension` = `{}`, và chưa thử máy dưới mức. (N20261026-1102)
