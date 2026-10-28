@@ -12659,10 +12659,96 @@ async function rpc(name,args,retry=true){
         .uh-pn{max-width:none}
       }
     </style>
+    <style id="uidhist-rfid-style">
+      /* LỊCH SỬ GROUP UID · Tiến độ dán A5000 (28/10/2026): công tắc xem Chuyển vị trí | Tiến độ A5000; mỗi dãy kệ một lưới khoang × tầng,
+         mỗi ô là một bin có % UID đã dán A5000. Chỉ dùng token (design_tokens_ratchet). */
+      #uidhist-screen[data-uh-view="rfid"] :is(#uh-strip, #uh-progress, #uh-message, .uh-search, .uh-metrics) { display: none; }
+      #uidhist-screen:not([data-uh-view="rfid"]) #uh-rfid { display: none; }
+      .uh-views { align-self: flex-start; }
+      .uh-views .as-tag, .uh-rfid__bar .uh-seg .as-tag { display: inline-flex; align-items: center; gap: var(--space-2); min-height: var(--target-min); }
+      .uh-views svg { width: 20px; height: 20px; flex: none; }
+      .uh-rfid { display: grid; gap: var(--space-4); }
+      .uh-rfid[hidden] { display: none; }
+      .uh-rfid__bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
+      .uh-rfid__bar .uh-seg b { color: var(--wms-brand); font-size: var(--fs-14); font-variant-numeric: tabular-nums; }
+      .uh-rfid__time { margin-left: auto; color: var(--wms-text-2); font-size: var(--fs-13); }
+      .uh-rfid__time[data-tone="warn"] { color: var(--wms-warning); font-weight: var(--fw-semibold); }
+      .uh-rfid__reload { display: inline-grid; place-items: center; min-width: var(--target-min); min-height: var(--target-min); padding: 0; border: 1px solid var(--wms-border); border-radius: var(--radius-control); background: var(--wms-surface); color: var(--wms-brand); cursor: pointer; }
+      .uh-rfid__reload:disabled { background: var(--wms-disabled-bg); color: var(--wms-disabled-text); cursor: not-allowed; }
+      .uh-rfid__reload .as-ico { width: 20px; height: 20px; }
+      .uh-kpi { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--space-3); }
+      .uh-kpi > div { display: grid; align-content: start; gap: 2px; min-width: 0; padding: var(--space-3) var(--space-4); border: 1px solid var(--wms-border); border-radius: var(--radius-card); background: var(--wms-surface); }
+      .uh-kpi strong { color: var(--wms-text); font-size: var(--fs-28); font-weight: var(--fw-bold); line-height: 1.1; font-variant-numeric: tabular-nums; }
+      .uh-kpi span { color: var(--wms-text-2); font-size: var(--fs-13); font-weight: var(--fw-semibold); }
+      .uh-kpi small { color: var(--wms-text-2); font-size: var(--fs-12); font-variant-numeric: tabular-nums; }
+      .uh-kpi [data-k="pct"] strong, .uh-kpi [data-k="done"] strong { color: var(--wms-success); }
+      .uh-kpi [data-k="old"] strong { color: var(--wms-danger); }
+      .uh-kpi [data-k="none"] strong { color: var(--wms-warning); }
+      .uh-rfid__legend { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4); margin: 0; padding: 0; list-style: none; color: var(--wms-text-2); font-size: var(--fs-13); }
+      .uh-rfid__legend li { display: inline-flex; align-items: center; gap: var(--space-2); }
+      .uh-rfid__legend li::before { content: ""; flex: none; width: 14px; height: 14px; border: 1px solid var(--uh-edge); border-radius: var(--radius-pill); background: var(--uh-fill); }
+      .uh-rfid [data-state="full"] { --uh-fill: color-mix(in srgb, var(--wms-success) 24%, var(--wms-surface)); --uh-edge: var(--wms-success); }
+      .uh-rfid [data-state="part"] { --uh-fill: color-mix(in srgb, var(--wms-warning) 24%, var(--wms-surface)); --uh-edge: var(--wms-warning); }
+      .uh-rfid [data-state="old"] { --uh-fill: color-mix(in srgb, var(--wms-danger) 30%, var(--wms-surface)); --uh-edge: var(--wms-danger); }
+      .uh-rfid [data-state="none"] { --uh-fill: color-mix(in srgb, var(--wms-danger) 10%, var(--wms-surface)); --uh-edge: color-mix(in srgb, var(--wms-danger) 45%, var(--wms-surface)); }
+      .uh-rfid [data-state="empty"] { --uh-fill: transparent; --uh-edge: var(--wms-border); }
+      .uh-racks { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 540px), 1fr)); gap: var(--space-3); align-items: start; }
+      .uh-rack { display: grid; gap: var(--space-3); min-width: 0; padding: var(--space-4); border: 1px solid var(--wms-border); border-radius: var(--radius-card); background: var(--wms-surface); }
+      .uh-rack__head { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-1) var(--space-3); }
+      .uh-rack__head h2 { margin: 0; color: var(--wms-text); font-size: var(--fs-18); font-weight: var(--fw-bold); }
+      .uh-rack__meta { color: var(--wms-text-2); font-size: var(--fs-13); }
+      .uh-rack__sum { display: inline-flex; align-items: baseline; gap: var(--space-2); margin-left: auto; }
+      .uh-rack__sum b { color: var(--wms-brand); font-size: var(--fs-18); font-weight: var(--fw-bold); font-variant-numeric: tabular-nums; }
+      .uh-rack__sum span { color: var(--wms-text-2); font-size: var(--fs-13); font-variant-numeric: tabular-nums; }
+      .uh-grid-wrap { overflow-x: auto; }
+      .uh-grid { display: grid; grid-template-columns: 36px repeat(var(--cols), minmax(52px, 96px)); justify-content: start; gap: var(--space-1); }
+      .uh-grid__axis { display: grid; place-items: center; min-height: 20px; color: var(--wms-text-2); font-size: var(--fs-12); font-weight: var(--fw-semibold); }
+      .uh-cell { display: grid; place-content: center; min-width: 0; min-height: 48px; padding: 2px; border: 1px solid var(--uh-edge); border-radius: var(--radius-control); background: var(--uh-fill); color: var(--wms-text); font: inherit; text-align: center; cursor: pointer; }
+      .uh-cell small { font-size: var(--fs-12); line-height: 1.2; }
+      .uh-cell b { font-size: var(--fs-14); font-weight: var(--fw-bold); line-height: 1.2; font-variant-numeric: tabular-nums; }
+      .uh-cell[data-state="empty"] { border-style: dashed; cursor: default; }
+      .uh-cell[data-dim="true"] { border-color: var(--wms-border); background: var(--wms-bg); color: var(--wms-text-2); }
+      .uh-cell:not([data-state="empty"]):hover { border-width: 2px; }
+      .uh-cell:focus-visible { outline: var(--wms-focus-width) solid var(--wms-focus); outline-offset: var(--wms-focus-offset); }
+      #uh-rfid-sum { margin: 2px 0 0; color: var(--wms-text); font-size: var(--fs-14); font-weight: var(--fw-semibold); }
+      #uh-rfid-sum:empty { display: none; }
+      #uh-rfid-sum[data-tone="error"] { color: var(--wms-danger); }
+      #uh-rfid-dialog .uh-rfid-table td:nth-child(1) code, #uh-rfid-dialog .uh-rfid-table td:nth-child(3) code { font: var(--fw-semibold) var(--fs-13) / 1.3 ui-monospace, SFMono-Regular, Consolas, monospace; white-space: nowrap; }
+      #uh-rfid-dialog .uh-rfid-table td:nth-child(1), #uh-rfid-dialog .uh-rfid-table td:nth-child(2) { white-space: nowrap; }
+      .uh-rfid__empty { margin: 0; padding: var(--space-6) var(--space-4); border: 1px dashed var(--wms-border); border-radius: var(--radius-card); color: var(--wms-text-2); font-size: var(--fs-14); text-align: center; }
+      @media (max-width: 760px) {
+        .uh-rfid__bar #uh-rfid-wh { order: 1; flex: 1 1 0; }
+        .uh-rfid__bar #uh-rfid-reload { order: 2; }
+        .uh-rfid__bar #uh-rfid-filter { order: 3; flex: 1 1 100%; }
+        .uh-rfid__bar .uh-seg .as-tag { flex: 1; justify-content: center; }
+        .uh-rfid__time { order: 4; flex: 1 1 100%; margin-left: 0; }
+        .uh-kpi { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .uh-kpi [data-k="pct"] { grid-column: 1 / -1; }
+        .uh-kpi strong { font-size: var(--fs-22); }
+        .uh-rack { padding: var(--space-3); }
+        .uh-grid { grid-template-columns: 32px repeat(var(--cols), minmax(44px, 96px)); }
+        .uh-cell { min-height: var(--target-min); }
+        #uh-rfid-dialog .uh-rfid-table thead { display: none; }
+        #uh-rfid-dialog .uh-rfid-table, #uh-rfid-dialog .uh-rfid-table tbody { display: block; }
+        #uh-rfid-dialog .uh-rfid-table tr { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 12px 16px; border-top: 1px solid var(--wms-border); }
+        #uh-rfid-dialog .uh-rfid-table td { display: block !important; padding: 0 !important; border: 0; white-space: normal !important; }
+        #uh-rfid-dialog .uh-rfid-table td:nth-child(1) { flex: 1 1 auto; }
+        #uh-rfid-dialog .uh-rfid-table td:nth-child(2) { margin-left: auto; }
+        #uh-rfid-dialog .uh-rfid-table td:nth-child(3) { flex: 1 0 100%; }
+        #uh-rfid-dialog .uh-rfid-table td:nth-child(3):has(.as-empty) { display: none !important; }
+        #uh-rfid-dialog .uh-rfid-table td:nth-child(n+4) { color: var(--wms-text-2); font-size: var(--fs-13); }
+        #uh-rfid-dialog .uh-rfid-table td:nth-child(4)::before { content: "SKU "; }
+        #uh-rfid-dialog .uh-rfid-table td:nth-child(5)::before { content: "Lot "; }
+        #uh-rfid-dialog .uh-rfid-table td:nth-child(6)::before { content: "Roll "; }
+        #uh-rfid-dialog .uh-rfid-table td:nth-child(7)::before { content: "SL "; }
+        #uh-rfid-dialog .uh-rfid-table td:nth-child(8)::before { content: "Bin "; }
+      }
+    </style>
     <section class="cut-screen" id="uidhist-screen" aria-labelledby="uh-title" hidden>
       <header class="uid-topbar"><div class="uid-topbar__inner"><button class="uid-back" id="uh-back" type="button" aria-label="Quay lại trang chủ WH-MATERIAL">WH-MATERIAL</button><span class="uid-topbar__mark" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg></span><div class="uid-topbar__name"><h1 id="uh-title">LỊCH SỬ GROUP UID</h1><span>Chuyển vị trí</span></div><button class="uid-topbar__admin" id="uh-admin" type="button" aria-pressed="false" aria-label="Đăng nhập Admin" title="Đăng nhập Admin"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path class="uid-topbar__admin-check" d="m9 12 2 2 4-4"/></svg></button></div></header>
       <div class="ss-content uh-content">
         <section class="ss-hero"><div><h2>Lịch sử chuyển vị trí</h2></div></section>
+        <div class="uh-seg uh-views" role="group" aria-label="Chế độ xem"><button class="as-tag" type="button" data-uh-view="move" aria-pressed="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg><span>Chuyển vị trí</span></button><button class="as-tag" type="button" data-uh-view="rfid" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg><span>Tiến độ A5000</span></button></div>
         <div class="as-strip" id="uh-strip"><div class="as-strip__lead"><span data-ico="clock">Cập nhật gần nhất</span><strong id="uh-read-at">—</strong><em id="uh-read-rel"></em><div class="as-hero-actions" id="uh-admin-tools" hidden><button class="src-read uh-run" id="uh-run" type="button"><span class="src-read__t">Đọc WMS</span></button><button class="src-read src-read--all src-read--icon" id="uh-full" type="button" aria-label="Đọc lại 365 ngày" title="Đọc lại 365 ngày"></button></div></div><div><span data-ico="database">Dữ liệu</span><strong id="uh-total">—</strong><em id="uh-span"></em></div><div><span data-ico="layers">Kho</span><strong id="uh-wh-count">—</strong><em id="uh-wh-top"></em></div></div>
         <div class="ss-progress" id="uh-progress" aria-hidden="true"><i></i></div>
         <p class="ss-status" id="uh-message" aria-live="polite"></p>
@@ -12681,6 +12767,23 @@ async function rpc(name,args,retry=true){
           <button class="ss-metric" type="button" data-uh-kind="moved"><span data-ico="arrow">Đã chuyển tiếp</span><strong id="uh-m-moved">—</strong></button>
           <button class="ss-metric" type="button" data-uh-kind="vr"><span data-ico="box">Trả NCC</span><strong id="uh-m-vr">—</strong><small>F0-VR-00-00-00-00</small></button>
         </section>
+        <section class="uh-rfid" id="uh-rfid" aria-label="Tiến độ dán A5000" hidden>
+          <div class="uh-rfid__bar">
+            <div class="uh-seg" id="uh-rfid-wh" role="group" aria-label="Kho"></div>
+            <div class="uh-seg" id="uh-rfid-filter" role="group" aria-label="Lọc ô"><button class="as-tag" type="button" data-uh-rfid-filter="all" aria-pressed="true">Tất cả</button><button class="as-tag" type="button" data-uh-rfid-filter="open" aria-pressed="false">Chưa xong</button><button class="as-tag" type="button" data-uh-rfid-filter="done" aria-pressed="false">Đã xong</button></div>
+            <span class="uh-rfid__time" id="uh-rfid-time">—</span><button class="uh-rfid__reload" id="uh-rfid-reload" type="button" aria-label="Tải lại" title="Tải lại" data-ico="refresh"></button>
+          </div>
+          <p class="ss-status" id="uh-rfid-msg" aria-live="polite"></p>
+          <div class="uh-kpi" id="uh-rfid-kpi"></div>
+          <ul class="uh-rfid__legend" id="uh-rfid-legend" aria-label="Chú giải"></ul>
+          <div class="uh-racks" id="uh-rfid-racks"></div>
+        </section>
+        <dialog class="as-dialog" id="uh-rfid-dialog" data-size="lg" aria-labelledby="uh-rfid-d-title">
+          <div class="as-d-head"><span class="as-d-mark" data-ico="box" aria-hidden="true"></span><div class="as-d-title"><h2 id="uh-rfid-d-title">Bin</h2><p id="uh-rfid-sum" aria-live="polite"></p><p id="uh-rfid-note"></p></div><div class="as-tools" id="uh-rfid-tools" hidden></div><button type="button" class="pj-icon" data-as-close aria-label="Đóng" title="Đóng"><svg class="pj-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>
+          <div class="as-tags" id="uh-rfid-tags" hidden></div>
+          <div class="as-d-body" tabindex="0" role="region" aria-label="Group UID chưa dán A5000"><div class="ss-table-wrap"><table class="ss-table uh-rfid-table"><thead><tr id="uh-rfid-head"></tr></thead><tbody id="uh-rfid-body"></tbody></table></div></div>
+          <div class="as-pager" id="uh-rfid-pager" hidden></div>
+        </dialog>
         <dialog class="as-dialog" id="uh-dialog" data-size="lg" aria-labelledby="uh-d-title">
           <div class="as-d-head"><span class="as-d-mark" data-ico="history" aria-hidden="true"></span><div class="as-d-title"><h2 id="uh-d-title">Lượt chuyển vị trí</h2><p id="uh-note"></p></div><div class="as-tools" id="uh-tools" hidden></div><button type="button" class="pj-icon" data-as-close aria-label="Đóng" title="Đóng"><svg class="pj-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>
           <div class="as-d-tabs"><div class="as-tabs" role="tablist" aria-label="Nhóm lượt chuyển"><button class="as-tab" type="button" role="tab" aria-selected="true" data-uh-tab="all">Tất cả<b id="uh-tab-all">0</b></button><button class="as-tab" type="button" role="tab" aria-selected="false" data-uh-tab="now">Còn ở đây<b id="uh-tab-now">0</b></button><button class="as-tab" type="button" role="tab" aria-selected="false" data-uh-tab="moved">Đã chuyển tiếp<b id="uh-tab-moved">0</b></button><button class="as-tab" type="button" role="tab" aria-selected="false" data-uh-tab="vr">Trả NCC<b id="uh-tab-vr">0</b></button></div></div>
@@ -12955,6 +13058,176 @@ async function rpc(name,args,retry=true){
         $("uh-sku-scan").addEventListener("click", () => window.PrintSkuScanUI.open({ title: "Quét SKU", typeLabel: "Gõ tay SKU", notFound: "Mã này không phải SKU", check: code => /^\d{9}$/.test(code) ? { sku: code, ten: "" } : null, typeFocus: "#uh-sku", onCode: code => { skuInput.value = code; searchAndShow(); } }));
         $("uh-loc-scan").addEventListener("click", () => window.PrintSkuScanUI.open({ title: "Quét mã vị trí", typeLabel: "Gõ tay mã vị trí", notFound: "Mã này không phải mã vị trí", check: code => LOCATION_PATTERN.test(String(code || "").toUpperCase()) ? { sku: String(code).toUpperCase(), ten: "" } : null, typeFocus: "#uh-loc", onCode: code => { locInput.value = String(code).toUpperCase(); searchAndShow(); } }));
         setRange("30"); renderChips(); renderMetrics(); route();
+      })();
+    </script>
+    <script id="uidhist-rfid-script">
+      (() => {
+        // LỊCH SỬ GROUP UID · Tiến độ dán A5000 (28/10/2026): đọc RPC group_uid_rfid_progress (số đếm theo bin, ai cũng xem), vẽ mỗi dãy kệ
+        // một lưới khoang × tầng. Xong = mọi UID tồn của bin có mã A5000; A3000 (mã cũ) chưa tính là xong. Bản chụp Group UID trên Supabase.
+        // Bấm một ô → pop-up các Group UID của bin chưa dán A5000 (RPC group_uid_rfid_bin_uids): chưa dán trước, mã cũ sau.
+        const $ = id => document.getElementById(id), screen = $("uidhist-screen"), panel = $("uh-rfid");
+        if (!screen || !panel) return;
+        const ROUTE = "group-uid-history", VIEW_KEY = "uh-view-v1", WH_KEY = "uh-rfid-wh-v1", FRESH_MS = 120000, STALE_MS = 24 * 3600000, GAP_LIMIT = 40;
+        // Vị trí <tầng nhà>-KHO-<dãy kệ>-<khoang>-<tầng kệ>-<ô>, vd. F0-KHO-501-04-01-01
+        const BIN_PATTERN = /^[^-]+-KHO-[^-]+-(\d{1,3})-(\d{1,3})-(\d{1,3})$/i;
+        const state = { data: null, wh: "", filter: "all", loadedAt: 0, busy: false };
+        const keep = { get(key) { try { return localStorage.getItem(key); } catch (_) { return null; } }, set(key, value) { try { localStorage.setItem(key, value); } catch (_) { /* không lưu được: giữ mặc định */ } } };
+        const esc = value => String(value ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+        const num = value => Number(value || 0).toLocaleString("vi-VN"), pad = n => String(n).padStart(2, "0");
+        const stamp = value => { const t = Date.parse(value); if (!Number.isFinite(t)) return "—"; const d = new Date(t + 7 * 3600000); return `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())} ${pad(d.getUTCDate())}/${pad(d.getUTCMonth() + 1)}`; };
+        const ago = value => { const t = Date.parse(value); if (!Number.isFinite(t)) return ""; const m = Math.floor((Date.now() - t) / 60000); if (m < 1) return "vừa xong"; if (m < 60) return `${m} phút trước`; if (m < 1440) return `${Math.floor(m / 60)} giờ trước`; return `${Math.floor(m / 1440)} ngày trước`; };
+        // 100% chỉ khi xong hẳn: tiến độ làm tròn không được lên 100 khi còn UID chưa dán
+        const pct = (done, total) => !total ? 0 : done >= total ? 100 : Math.min(99, Math.round(done / total * 100));
+        const stateOf = c => !c.total ? "empty" : c.done >= c.total ? "full" : c.done > 0 ? "part" : c.other > 0 ? "old" : "none";
+        const dimmed = st => st !== "empty" && (state.filter === "open" ? st === "full" : state.filter === "done" ? st !== "full" : false);
+        const tell = (text, tone = "") => { const el = $("uh-rfid-msg"); el.textContent = text; if (tone) el.dataset.tone = tone; else delete el.dataset.tone; };
+        const rpc = async (name = "group_uid_rfid_progress", args = {}) => {
+          const q = window.PrintSkuQueue, response = await fetch(`${q.supabaseUrl}/rest/v1/rpc/${name}`, { method: "POST", headers: { apikey: q.publishableKey, Authorization: `Bearer ${q.publishableKey}`, "Content-Type": "application/json" }, body: JSON.stringify(args), signal: AbortSignal.timeout(30000) });
+          const result = await response.json().catch(() => null);
+          if (!response.ok || !result) throw new Error(result?.message || `Supabase HTTP ${response.status}`);
+          if (!result.ok) throw new Error(result.error?.message || "Supabase từ chối yêu cầu");
+          return result.data;
+        };
+
+        // ---- Lưới của một dãy: cột = khoang, hàng = tầng (tầng cao ở trên như ngoài kệ); ô cùng khoang + tầng gộp lại ----
+        const span = values => {
+          const list = [...new Set(values)].sort((a, b) => a - b);
+          if (!list.length) return list;
+          return list[list.length - 1] - list[0] <= GAP_LIMIT ? Array.from({ length: list[list.length - 1] - list[0] + 1 }, (_, i) => list[0] + i) : list;
+        };
+        function layout(rack) {
+          const cells = new Map(), extra = [];
+          for (const bin of rack.bins || []) {
+            const m = BIN_PATTERN.exec(bin.location);
+            if (!m) { extra.push(bin); continue; }
+            const k = Number(m[1]), t = Number(m[2]), key = `${k}|${t}`, cell = cells.get(key) || { k, t, total: 0, done: 0, other: 0, bins: [] };
+            cell.total += bin.total; cell.done += bin.done; cell.other += bin.other; cell.bins.push(bin.location); cells.set(key, cell);
+          }
+          const all = [...cells.values()], ks = span(all.map(c => c.k)), ts = span(all.map(c => c.t)).reverse();
+          return { cells, extra, ks, ts, empty: ks.length * ts.length - cells.size };
+        }
+        function cellHtml(rack, c, extra) {
+          const st = stateOf(c), p = pct(c.done, c.total), label = extra ? c.bins[0] : `${pad(c.k)}·${pad(c.t)}`, key = extra ? c.bins[0] : `${c.k}|${c.t}`;
+          const text = `${label} ${p}% · dãy ${rack}${extra ? "" : ` · khoang ${pad(c.k)} · tầng ${pad(c.t)}`} · ${num(c.done)}/${num(c.total)} UID`;
+          return `<button class="uh-cell" type="button" data-state="${st}"${dimmed(st) ? ' data-dim="true"' : ""} data-rack="${esc(rack)}" data-key="${esc(key)}" aria-haspopup="dialog" aria-label="${esc(text)}" title="${esc(text)}"><small>${esc(label)}</small> <b>${p}%</b></button>`;
+        }
+        function rackHtml(rack) {
+          const L = layout(rack), cols = Math.max(L.ks.length, 1), counts = [`${num(L.cells.size)} ô`];
+          if (L.empty > 0) counts.push(`${num(L.empty)} trống`);
+          counts.push(`${L.ks.length} khoang × ${L.ts.length} tầng`);
+          let grid = "";
+          for (const t of L.ts) {
+            grid += `<span class="uh-grid__axis">T${pad(t)}</span>`;
+            for (const k of L.ks) { const c = L.cells.get(`${k}|${t}`); grid += c ? cellHtml(rack.rack, { ...c }, false) : `<span class="uh-cell" data-state="empty" title="Khoang ${pad(k)} · tầng ${pad(t)}: không có tồn"></span>`; }
+          }
+          grid += `<span></span>${L.ks.map(k => `<span class="uh-grid__axis">K${pad(k)}</span>`).join("")}`;
+          const extras = L.extra.length ? `<div class="uh-grid" style="--cols:${Math.min(L.extra.length, 4)}">${L.extra.map(b => cellHtml(rack.rack, { total: b.total, done: b.done, other: b.other, bins: [b.location] }, true)).join("")}</div>` : "";
+          return `<section class="uh-rack" aria-label="Dãy ${esc(rack.rack)}"><header class="uh-rack__head"><h2>Dãy ${esc(rack.rack)}</h2><span class="uh-rack__meta">${counts.join(" · ")}</span><span class="uh-rack__sum"><b>${pct(rack.done, rack.total)}%</b><span>${num(rack.done)}/${num(rack.total)}</span></span></header><div class="uh-grid-wrap"><div class="uh-grid" style="--cols:${cols}">${grid}</div></div>${extras}</section>`;
+        }
+        const oldList = () => (state.data?.otherPrefixes || []).join("/"), oldTag = () => oldList() || "cũ";
+        const current = () => (state.data?.warehouses || []).find(w => w.name === state.wh) || (state.data?.warehouses || [])[0] || null;
+
+        // ---- Pop-up UID chưa dán của một bin ----
+        const UI = window.AdminSyncUI, dialog = $("uh-rfid-dialog"), sumEl = $("uh-rfid-sum");
+        const binList = UI.createList({ tools: $("uh-rfid-tools"), tagsBox: $("uh-rfid-tags"), head: $("uh-rfid-head"), body: $("uh-rfid-body"), pager: $("uh-rfid-pager"), note: $("uh-rfid-note") });
+        const BIN_CSV_HEAD = ["Group UID", "Tình trạng", "RFID", "SKU", "Lot", "Roll", "Số lượng", "Vị trí", "Trạng thái WMS", "Cập nhật"];
+        const binColumns = multi => [{ label: "Group UID", sort: "uid" }, { label: "Tình trạng", sort: "state" }, { label: "RFID", sort: "rfid" }, { label: "SKU", sort: "sku" }, { label: "Lot", sort: "lot" }, { label: "Roll", sort: "roll" }, { label: "SL", sort: "qty" }, ...(multi ? [{ label: "Bin", sort: "loc" }] : [])];
+        const dash = '<span class="as-empty">—</span>', copyCode = value => `<code data-copy="${esc(value)}" title="Bấm để sao chép">${esc(value)}</code>`;
+        function binRow(item, multi) {
+          const old = item.state === "old", label = old ? "Mã cũ" : "Chưa dán";
+          const cells = [copyCode(item.groupUid), UI.chip(label, old ? "bad" : "warn"), item.rfid ? copyCode(item.rfid) : dash, item.sku ? `<b>${esc(item.sku)}</b>` : dash, item.lot ? esc(item.lot) : dash, item.roll ? esc(item.roll) : dash, num(item.qty)];
+          if (multi) cells.push(esc(item.location));
+          return {
+            cells, text: [item.groupUid, item.rfid, item.sku, item.lot, item.roll, item.location, label].join(" "), tags: [item.state],
+            sort: { uid: item.groupUid, state: old ? 1 : 0, rfid: item.rfid || "", sku: item.sku || "", lot: item.lot || "", roll: item.roll || "", qty: Number(item.qty) || 0, loc: item.location },
+            csv: [item.groupUid, label, item.rfid || "", item.sku || "", item.lot || "", item.roll || "", Number(item.qty) || 0, item.location, item.status || "", stamp(item.updatedAt)]
+          };
+        }
+        let binSeq = 0;
+        async function openBin(rackName, key) {
+          const w = current(), rack = (w?.racks || []).find(r => r.rack === rackName);
+          if (!rack) return;
+          const L = layout(rack), cell = key.includes("|") ? L.cells.get(key) : L.extra.map(b => ({ total: b.total, done: b.done, other: b.other, bins: [b.location] })).find(x => x.bins[0] === key);
+          if (!cell) return;
+          const locations = cell.bins, multi = locations.length > 1, mine = ++binSeq, wh = w.name;
+          $("uh-rfid-d-title").textContent = multi ? `Dãy ${rackName} · khoang ${pad(cell.k)} · tầng ${pad(cell.t)}` : locations[0];
+          sumEl.textContent = `${num(cell.done)}/${num(cell.total)} UID đã dán ${state.data.prefix}`; delete sumEl.dataset.tone;
+          binList.show({ columns: binColumns(multi), rows: [], total: 0, empty: "Đang tải…" }, { keep: false });
+          UI.openDialog(dialog);
+          try {
+            window.PrintSkuNotice?.busy(dialog, true);
+            const data = await rpc("group_uid_rfid_bin_uids", { p_warehouse: wh, p_locations: locations });
+            if (mine !== binSeq) return;
+            const left = Number(data.open) || 0;
+            sumEl.textContent = `${num(data.done)}/${num(data.total)} UID đã dán ${state.data.prefix}${left ? ` · còn ${num(left)}` : ""}`;
+            const rows = (data.items || []).map(item => binRow(item, multi)), oldCount = rows.filter(r => r.tags[0] === "old").length;
+            binList.show({ columns: binColumns(multi), rows, total: left, tags: oldCount && oldCount < rows.length ? [{ id: "none", label: "Chưa dán" }, { id: "old", label: "Mã cũ" }] : [],
+              filename: `chua-dan-${String(state.data.prefix).toLowerCase()}-${locations[0]}`, csvHead: BIN_CSV_HEAD, empty: `Mọi UID của bin đã dán ${state.data.prefix}.` }, { keep: false });
+          } catch (error) {
+            if (mine !== binSeq) return;
+            sumEl.textContent = error.message ? `Không tải được danh sách UID: ${error.message}` : "Không tải được danh sách UID."; sumEl.dataset.tone = "error";
+            window.PrintSkuNotice?.retry(() => openBin(rackName, key), sumEl);
+            binList.show({ columns: binColumns(multi), rows: [], total: 0, empty: "Chưa tải được danh sách." }, { keep: false });
+          } finally { window.PrintSkuNotice?.busy(dialog, false); }
+        }
+
+        // ---- Vẽ ----
+        function render() {
+          const d = state.data, w = current();
+          if (!d || !w) return;
+          state.wh = w.name;
+          $("uh-rfid-wh").innerHTML = d.warehouses.map(x => `<button class="as-tag" type="button" data-uh-rfid-wh="${esc(x.name)}" aria-pressed="${x.name === w.name}"><span>${esc(x.name)}</span><b>${pct(x.done, x.total)}%</b></button>`).join("");
+          panel.querySelectorAll("[data-uh-rfid-filter]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.uhRfidFilter === state.filter)));
+          const racks = w.racks || [], laid = racks.map(layout), cells = laid.reduce((n, L) => n + L.cells.size, 0);
+          const full = laid.reduce((n, L) => n + [...L.cells.values()].filter(c => c.done >= c.total).length, 0), rest = w.total - w.done - w.other;
+          const kpi = [["pct", `${pct(w.done, w.total)}%`, "Hoàn thành", `${num(w.done)} / ${num(w.total)} UID`], ["cells", `${num(full)} / ${num(cells)}`, "Ô đã xong", ""], ["done", num(w.done), `Đã dán ${d.prefix}`, ""], ["old", num(w.other), `Còn mã ${oldTag()}`, ""], ["none", num(rest), "Chưa dán", ""]];
+          $("uh-rfid-kpi").innerHTML = kpi.map(([k, big, label, sub]) => `<div data-k="${k}"><strong>${big}</strong><span>${esc(label)}</span>${sub ? `<small>${esc(sub)}</small>` : ""}</div>`).join("");
+          $("uh-rfid-legend").innerHTML = [["full", `100% ${d.prefix}`], ["part", "Đang dán"], ["old", `Còn mã ${oldTag()}`], ["none", "Chưa dán"], ["empty", "Trống"]].map(([st, text]) => `<li data-state="${st}">${esc(text)}</li>`).join("");
+          $("uh-rfid-racks").innerHTML = racks.length ? racks.map(rackHtml).join("") : `<p class="uh-rfid__empty">Chưa có UID trên kệ ${esc(w.name)}.</p>`;
+          const time = $("uh-rfid-time"), at = d.syncedAt, stale = !at || Date.now() - Date.parse(at) > STALE_MS;
+          time.textContent = at ? `Cập nhật ${stamp(at)} · ${ago(at)}` : "Chưa có dữ liệu";
+          time.title = d.fullAt ? `Đối chiếu toàn bộ gần nhất ${stamp(d.fullAt)}` : ""; time.dataset.tone = stale ? "warn" : "";
+        }
+
+        // ---- Tải ----
+        async function load() {
+          if (state.busy) return;
+          state.busy = true; $("uh-rfid-reload").disabled = true;
+          let busied = false;
+          if (!state.data) $("uh-rfid-racks").innerHTML = '<p class="uh-rfid__empty">Đang tải…</p>';
+          try {
+            window.PrintSkuNotice?.busy(panel, true); busied = true;
+            const data = await rpc();
+            state.data = data; state.loadedAt = Date.now(); tell("");
+            if (!state.wh || !data.warehouses.some(w => w.name === state.wh)) state.wh = data.warehouses.some(w => w.name === keep.get(WH_KEY)) ? keep.get(WH_KEY) : data.warehouses[0]?.name || "";
+            render();
+          } catch (error) {
+            if (!state.data) $("uh-rfid-racks").innerHTML = "";
+            tell(error.message ? `Không tải được tiến độ A5000: ${error.message}` : "Không tải được tiến độ A5000.", "error");
+            window.PrintSkuNotice?.retry(load, $("uh-rfid-msg"));
+          } finally { state.busy = false; $("uh-rfid-reload").disabled = false; if (busied) window.PrintSkuNotice?.busy(panel, false); }
+        }
+        const active = () => location.hash.replace(/^#/, "").split("&")[0] === ROUTE;
+        const ensure = () => { if (active() && screen.dataset.uhView === "rfid" && (!state.data || Date.now() - state.loadedAt > FRESH_MS)) load(); };
+        function setView(view, remember) {
+          screen.dataset.uhView = view; panel.hidden = view !== "rfid";
+          const sub = screen.querySelector(".uid-topbar__name span"); if (sub) sub.textContent = view === "rfid" ? "Tiến độ A5000" : "Chuyển vị trí";
+          screen.querySelectorAll("[data-uh-view]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.uhView === view)));
+          if (remember) keep.set(VIEW_KEY, view);
+          ensure();
+        }
+
+        // ---- Thao tác ----
+        screen.addEventListener("click", event => { const view = event.target.closest("[data-uh-view]"); if (view) setView(view.dataset.uhView, true); });
+        panel.addEventListener("click", event => {
+          const wh = event.target.closest("[data-uh-rfid-wh]"), filter = event.target.closest("[data-uh-rfid-filter]"), cell = event.target.closest(".uh-cell[data-key]");
+          if (wh) { state.wh = wh.dataset.uhRfidWh; keep.set(WH_KEY, state.wh); render(); return; }
+          if (filter) { state.filter = filter.dataset.uhRfidFilter; render(); return; }
+          if (cell) openBin(cell.dataset.rack, cell.dataset.key);
+        });
+        $("uh-rfid-reload").addEventListener("click", load);
+        addEventListener("hashchange", ensure);
+        setView(keep.get(VIEW_KEY) === "rfid" ? "rfid" : "move", false);
       })();
     </script>
     

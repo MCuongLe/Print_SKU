@@ -208,6 +208,10 @@
 - `#uidhist-screen`: ai cũng xem; "Đọc WMS" chỉ Admin (gia tăng `range_to − 30 phút`, lần đầu 365 ngày), một luồng mọi công ty (`p_company_id=0`); `F0-VR-00-00-00-00` = "Trả NCC"; kết quả trong `#uh-dialog`. (10/10 · N0438, N0439, N0441, N0467)
 - Popup thay đổi Đồng bộ: bấm mã UID mở `#gu-uid-dialog` (có dòng "Trước:"). (14/10 · N0008)
 - File Excel tải xuống của `#uidhist-screen` có cột Lot và Roll ngay sau Tên sản phẩm (từ `group_uid_details.batch_code` / `roll_code` qua `group_uid_moves_lookup`, migration `group_uid_moves_lot_roll_v1`); chỉ file Excel, bảng trên màn không thêm cột; UID chưa có chi tiết thì ô trống. (27/10 · N20261027-1630)
+- `#uidhist-screen` có công tắc Chuyển vị trí | Tiến độ A5000 (mặc định Chuyển vị trí, nhớ theo máy `uh-view-v1`). Tiến độ A5000: ai cũng xem, đọc `group_uid_rfid_progress` (migration `rfid_progress_v1`, số đếm theo bin, không UID / SKU / người). Theo trang Tiến độ dán RFID của app kho vật tư may. (28/10 · N20261028-1705)
+  - Phạm vi: kho Material MTG + GARMENT, UID tồn (Available / Blocked / Editing) có qty > 0, chỉ vị trí `<tầng>-KHO-<dãy>-<khoang>-<tầng kệ>-<ô>`. Xong = RFID A5000 (1 chữ + 11 số); RFID khác (A3000 = mã cũ) chưa tính xong, hiện riêng.
+  - Lưới mỗi dãy: cột khoang, hàng tầng kệ (cao ở trên), hai ô cùng khoang + tầng gộp một; % làm tròn nhưng 100% chỉ khi xong hẳn; dãy xếp số tăng rồi dãy chữ.
+  - Bấm ô mở pop-up `#uh-rfid-dialog`: Group UID của bin chưa dán A5000 (`group_uid_rfid_bin_uids`, ai cũng xem, ≤ 500 dòng): chưa có RFID trước, mã cũ A3000 sau; tìm, lọc tình trạng, xuất Excel. Không trả người cập nhật / email. (28/10 · N20261028-1735)
 
 ### Phần còn giữ
 - Màn nạp Excel trên web đã xoá; backend `group_uid_v4/v5`, RPC `group_uid_import_*` và script CLI trong git vẫn giữ. (07/10, 18/10 · N0061, N0162, N1021)
@@ -396,6 +400,8 @@
 - Nonce "Thử lại" ở IN TEM SKU / IN TEM GROUP UID (03/10 sinh nonce mới mỗi lần bấm) — chưa kiểm đã sửa. (03/10 · N0079)
 - Giả định NCC Kiểm tra đầu vào: hậu tố ` - người liên hệ` luôn có. (10/10 · N0178)
 - Test `inventory_audit` lỗi có sẵn — chưa kiểm đã sửa. (14/10 · N0686)
+- Tiến độ A5000 (Lịch sử Group UID): `rfid_progress_v1` chưa chạy trên Supabase; tổng MTG lệch trang tham chiếu (5.557 UID tồn qty > 0 so với 5.824 UIDgr; A3000 trùng 931) chưa rõ lý do (`group_uid_details` không lưu Type).
+  - Chưa kiểm: gắn RFID có làm WMS đổi `updated_date` (đồng bộ gia tăng thấy ngay) hay phải chờ lượt toàn bộ buổi sáng. (28/10 · N20261028-1705)
 
 ---
 

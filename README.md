@@ -158,11 +158,15 @@ Pop-up hiện chip nguồn, số phiếu, PO (ADJ) hoặc kho nhận + mô tả 
 
 - Dùng để: tra Group UID đã chuyển đến / đi từ một vị trí và ai cập nhật.
 - Ai dùng: mọi người xem; **Đọc WMS** chỉ Admin trên máy tính (Chrome, Extension, tab WMS).
-- Màn: `uidhist-script`, `#uidhist-screen`.
+- Màn: `uidhist-script`, `#uidhist-screen`; phần Tiến độ A5000: `uidhist-rfid-style`, `uidhist-rfid-script`.
 - Dữ liệu: bảng `group_uid_moves`; RPC `group_uid_moves_overview` / `group_uid_moves_lookup` (đọc công khai), ghi bằng RPC Admin; Extension đọc lịch sử Transfer location. File Excel tải xuống có thêm cột Lot và Roll (lấy từ `group_uid_details` trong `group_uid_moves_lookup`, migration `group_uid_moves_lot_roll_v1`).
-- Test: `group_uid_moves_core`, `group_uid_moves_browser`, `group_uid_moves_lot_roll_sql`.
+- Test: `group_uid_moves_core`, `group_uid_moves_browser`, `group_uid_moves_lot_roll_sql`, `uidhist_rfid_browser`, `rfid_progress_sql`.
 
 Nhập SKU và / hoặc mã vị trí (khung quét; SKU Combo hỏi chọn Normal) → bốn thẻ **Lượt chuyển · Còn ở đây · Đã chuyển tiếp · Trả NCC** → popup bảng (lọc kho, người cập nhật; xuất Excel). Mỗi lần tìm lấy ≤ 1.000 lượt mới nhất. `F0-VR-00-00-00-00` hiện là Trả NCC. Người chưa đăng nhập Admin chỉ thấy phần trước @ của email. Đọc WMS lần đầu 365 ngày, các lần sau lùi 30 phút.
+
+Công tắc đầu màn **Chuyển vị trí | Tiến độ A5000** (nhớ theo máy). **Tiến độ A5000**: chọn kho MTG / GARMENT → thẻ **Hoàn thành %** · **Ô đã xong** · **Đã dán A5000** · **Còn mã A3000** · **Chưa dán**, rồi mỗi dãy kệ một lưới khoang × tầng, mỗi ô là một bin có % UID tồn (qty > 0) đã dán A5000; mã cũ A3000 chưa tính là xong.
+
+Bấm ô mở pop-up các Group UID của bin chưa dán A5000 (chưa có RFID trước, mã cũ A3000 sau; tìm, lọc tình trạng, xuất Excel); lọc ô Tất cả / Chưa xong / Đã xong. Số lấy từ bản chụp Group UID trên Supabase (giờ cập nhật ghi ở đầu khung, vàng khi quá 24 giờ); ai cũng xem.
 
 ## TÌM SKU (`#find-sku`)
 
