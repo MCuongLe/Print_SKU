@@ -1071,7 +1071,7 @@ test("auto-config: minExtension đủ 4 loại (chuỗi hợp lệ hoặc null);
   setMin({ sku: "0.10.10", group_uid: "0.10.9", cut_adj: "x", storage_risk: 10 });
   for (let index = 0; index < 25; index += 1) {
     const name = `may-test-${String(index + 1).padStart(2, "0")}`;
-    devices.push({ holder: `${name}#${(index + 10).toString(36)}p7q2`, device: name, ext_version: index % 2 ? "0.12.4" : null, first_seen_at: iso(-30 * DAY), last_seen_at: iso(-index * 15 * 60 * MIN), last_kind: index % 2 ? "sku" : "storage_risk" });
+    devices.push({ holder: `${name}#${(index + 10).toString(36)}p7q2`, device: name, ext_version: index % 2 ? "0.12.5" : null, first_seen_at: iso(-30 * DAY), last_seen_at: iso(-index * 15 * 60 * MIN), last_kind: index % 2 ? "sku" : "storage_risk" });
   }
   devices.reverse();
   const config = await call({ action: "auto-config" });
@@ -1081,14 +1081,14 @@ test("auto-config: minExtension đủ 4 loại (chuỗi hợp lệ hoặc null);
   assert.deepEqual(list.map(row => row.device), Array.from({ length: 20 }, (_, index) => `may-test-${String(index + 1).padStart(2, "0")}`), "20 máy, mới nhất trước");
   const seen = name => devices.find(row => row.device === name).last_seen_at;
   assert.deepEqual(list[0], { device: "may-test-01", id4: "ap7q", version: null, lastSeenAt: seen("may-test-01"), lastKind: "storage_risk" });
-  assert.deepEqual(list[1], { device: "may-test-02", id4: "bp7q", version: "0.12.4", lastSeenAt: seen("may-test-02"), lastKind: "sku" });
+  assert.deepEqual(list[1], { device: "may-test-02", id4: "bp7q", version: "0.12.5", lastSeenAt: seen("may-test-02"), lastKind: "sku" });
   assert.equal(JSON.stringify(config.body).includes("p7q2"), false, "không trả holder / mã máy đầy đủ");
   devices.length = 0;
   devices.push(
-    { holder: "may-test-01#k7p2q9", device: "may-test-01", ext_version: "0.12.4", first_seen_at: iso(-20 * DAY), last_seen_at: iso(-13 * DAY), last_kind: "group_uid" },
+    { holder: "may-test-01#k7p2q9", device: "may-test-01", ext_version: "0.12.5", first_seen_at: iso(-20 * DAY), last_seen_at: iso(-13 * DAY), last_kind: "group_uid" },
     { holder: "may-test-02#m3n4b5", device: "may-test-02", ext_version: "0.10.9", first_seen_at: iso(-20 * DAY), last_seen_at: iso(-15 * DAY), last_kind: "sku" },
   );
-  assert.deepEqual((await call({ action: "auto-config" })).body.data.devices.map(row => [row.device, row.id4, row.version, row.lastKind]), [["may-test-01", "k7p2", "0.12.4", "group_uid"]], "máy không thấy trong 14 ngày bị bỏ");
+  assert.deepEqual((await call({ action: "auto-config" })).body.data.devices.map(row => [row.device, row.id4, row.version, row.lastKind]), [["may-test-01", "k7p2", "0.12.5", "group_uid"]], "máy không thấy trong 14 ngày bị bỏ");
   const inner = globalThis.fetch;
   globalThis.fetch = async (url, init = {}) => String(url).includes("/rest/v1/sync_auto_devices") ? json({ code: "42P01", message: "relation does not exist" }, 404) : inner(url, init);
   const failed = await call({ action: "auto-config" });

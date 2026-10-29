@@ -3,6 +3,7 @@
 // Supabase giả lập đúng khoá của hàm group_uid_rfid_progress (supabase/rfid_progress_v1.sql, mẫu dạng đã đối chiếu bằng SELECT chỉ đọc 28/10/2026);
 // bin giả F0-KHO-501-01-01-01…, Group UID giả 1028260000000xxx, không dữ liệu thật.
 // Bấm một ô → pop-up Group UID của bin chưa dán A5000 (RPC group_uid_rfid_bin_uids: chưa dán trước, mã cũ A3000 sau; tìm / lọc / Excel).
+// Admin có thêm nút Đọc WMS: nhờ Extension (≥ 0.12.5) chạy RUN_GROUP_UID_SYNC (đồng bộ Group UID gia tăng) rồi tải lại tiến độ; Extension giả.
 //   node tests/uidhist_rfid_browser.cjs   (máy chủ tĩnh cổng 8000, đổi bằng BASE)
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
 const assert = require("node:assert/strict");
@@ -19,11 +20,11 @@ const NOW = Date.now(), MIN = 60000, DAY = 86400000;
 const bin = (location, total, done, other = 0) => ({ location, total, done, other });
 const rack = (name, bins) => ({ rack: name, total: bins.reduce((n, b) => n + b.total, 0), done: bins.reduce((n, b) => n + b.done, 0), other: bins.reduce((n, b) => n + b.other, 0), bins });
 const wh = (name, warehouse, racks) => ({ name, warehouse, total: racks.reduce((n, r) => n + r.total, 0), done: racks.reduce((n, r) => n + r.done, 0), other: racks.reduce((n, r) => n + r.other, 0), racks });
-const data = (syncedAt = new Date(NOW - 5 * MIN).toISOString()) => ({
+const data = (syncedAt = new Date(NOW - 5 * MIN).toISOString(), filled = false) => ({
   prefix: "A5000", otherPrefixes: ["A3000"], syncedAt, fullAt: new Date(NOW - 8 * 3600000).toISOString(),
   warehouses: [
     wh("MTG", "WH - MATERIAL - MTG", [
-      rack("501", [bin("F0-KHO-501-01-01-01", 12, 12), bin("F0-KHO-501-02-01-01", 12, 11, 1), bin("F0-KHO-501-03-01-01", 10, 0, 4), bin("F0-KHO-501-01-02-01", 8, 0), bin("F0-KHO-501-03-02-01", 250, 249)]),
+      rack("501", [bin("F0-KHO-501-01-01-01", 12, 12), bin("F0-KHO-501-02-01-01", 12, 11, 1), bin("F0-KHO-501-03-01-01", 10, 0, 4), bin("F0-KHO-501-01-02-01", 8, filled ? 8 : 0), bin("F0-KHO-501-03-02-01", 250, 249)]),
       rack("507A", [bin("F0-KHO-507A-03-01-01", 5, 5)]),
       rack("HM", [bin("F0-KHO-HM-01-01-01", 3, 3), bin("F0-KHO-HM-01-01-02", 2, 1)]),
     ]),
@@ -47,8 +48,32 @@ const fakeBinReply = args => {
   return { warehouse: args.p_warehouse, locations: args.p_locations, total: bins.reduce((n, b) => n + b.total, 0), done: bins.reduce((n, b) => n + b.done, 0), open: items.length, items, limit: 500, truncated: false };
 };
 
+// Extension giả (chạy trong trang): trả lời PING / PING_WMS và RUN_GROUP_UID_SYNC theo window.__ext.mode; ghi lại mọi lệnh
+const fakeExtension = () => {
+  window.__ext = { calls: [], mode: "ok", delay: 300, version: "0.12.5" };
+  addEventListener("message", async event => {
+    const r = event.data;
+    if (!r || r.source !== "PRINT_SKU_APP") return;
+    window.__ext.calls.push({ type: r.type, payload: r.payload });
+    const reply = (ok, data, error) => postMessage({ source: "HASAKI_INSIDE_CONNECTOR", requestId: r.requestId, ok, data, error }, location.origin);
+    if (r.type === "PING" || r.type === "PING_WMS") return reply(true, { version: window.__ext.version });
+    if (r.type !== "RUN_GROUP_UID_SYNC") return reply(false, null, { code: "INVALID_REQUEST", message: "Yêu cầu kết nối không hợp lệ" });
+    await new Promise(resolve => setTimeout(resolve, window.__ext.delay));
+    const mode = window.__ext.mode;
+    if (mode === "ok") return reply(true, { status: "ok", message: "Đã cập nhật 12 UID · 340 UID đã đọc", runId: "r1", covered: false });
+    if (mode === "held") return reply(true, { status: "held", message: "Thay đổi lớn: 4,2% UID đổi", runId: "r2", covered: false });
+    if (mode === "skipped") return reply(true, { status: "skipped", message: "Đang có lượt khác (Admin đang xem trước)", runId: null, covered: true });
+    if (mode === "refused") return reply(false, null, { code: "AUTO_REFUSED", message: "Chưa đăng nhập Admin" });
+    if (mode === "unavailable") return reply(false, null, { code: "EXTENSION_UNAVAILABLE", message: "Tiện ích kết nối Inside chưa sẵn sàng" });
+    return reply(false, null, { code: "SYNC_ERROR", message: "WMS trả lỗi 500" });
+  });
+};
+
 async function open(browser, width, opts = {}) {
   const context = await browser.newContext({ viewport: { width, height: 900 } });
+  if (opts.admin) await context.addInitScript(key => sessionStorage.setItem(key, JSON.stringify({ access_token: "test-admin-token", refresh_token: "test-refresh-token" })), "print-sku-admin-session-v1");
+  if (opts.ext) await context.addInitScript(fakeExtension);
+  if (opts.rfidView) await context.addInitScript(() => localStorage.setItem("uh-view-v1", "rfid"));
   const page = await context.newPage(), errors = [], calls = [], binCalls = [], state = { fail: false, binFail: false, payload: opts.payload || data() };
   page.on("pageerror", error => errors.push(error.message));
   page.on("console", message => { if (message.type() === "error" && !/Failed to load resource/.test(message.text())) errors.push(message.text()); });
@@ -67,6 +92,8 @@ async function open(browser, width, opts = {}) {
     }
     if (name === "group_uid_moves_overview") return json({ ok: true, data: { total: 0, firstAt: null, lastAt: null, lastReadAt: null, warehouses: [] } });
     if (name === "group_uid_moves_lookup") return json({ ok: true, data: { items: [], total: 0, limit: 1000, truncated: false } });
+    if (url.endsWith("/auth/v1/user")) return json({ id: "00000000-0000-4000-8000-000000000001" });
+    if (url.includes("/rest/v1/user_roles")) return json([{ username: "Admin", role: "admin" }]);
     if (url.includes("/rest/v1/") && !url.includes("/rpc/")) return json([]);
     return json({ ok: true, data: { agents: [], jobs: [], items: [] } });
   });
@@ -102,6 +129,7 @@ const cell = (page, rackName, key) => page.locator(`.uh-cell[data-rack="${rackNa
       const publishable = await page.evaluate(() => window.PrintSkuQueue.publishableKey);
       assert.equal(calls[0].auth, `Bearer ${publishable}`, "xem bằng khoá ẩn danh, không dùng phiên Admin");
       assert.equal(calls[0].body, "{}", "hàm không tham số");
+      assert.equal(await page.locator("#uh-rfid-read").isVisible(), false, "người không phải Admin không thấy nút Đọc WMS");
       assert.equal(await page.locator("#uidhist-screen").getAttribute("data-uh-view"), "rfid");
       for (const sel of ["#uh-strip", ".uh-search", ".uh-metrics"]) assert.equal(await page.locator(sel).isVisible(), false, `${sel} ẩn ở Tiến độ A5000`);
       assert.equal(await page.evaluate(() => localStorage.getItem("uh-view-v1")), "rfid", "nhớ chế độ xem theo máy");
@@ -279,6 +307,88 @@ const cell = (page, rackName, key) => page.locator(`.uh-cell[data-rack="${rackNa
       assert.deepEqual(bad.errors, []);
       await bad.context.close();
     }
+    // --- Nút Đọc WMS (Admin): nhờ Extension chạy đồng bộ Group UID gia tăng rồi tải lại tiến độ ---
+    for (const width of [375, 1280]) {
+      const a = await open(browser, width, { admin: true, ext: true, rfidView: true });
+      await a.page.goto(BASE + "#group-uid-history");
+      await a.page.locator("#uh-rfid .uh-rack").first().waitFor();
+      const btn = a.page.locator("#uh-rfid-read"), msg = a.page.locator("#uh-rfid-msg");
+      await btn.waitFor({ state: "visible" });
+      assert.equal((await btn.innerText()).trim(), "Đọc WMS");
+      assert.ok((await btn.boundingBox()).height >= 44, `${width}px: nút Đọc WMS ≥ 44px`);
+      assert.ok(await a.page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), `${width}px: trang không tràn ngang`);
+      const extTypes = () => a.page.evaluate(() => window.__ext.calls.map(c => c.type).filter(t => t !== "PING"));
+      const resetExt = patch => a.page.evaluate(p => { window.__ext.calls.length = 0; Object.assign(window.__ext, p); }, patch);
+      const tone = () => msg.getAttribute("data-tone");
+      assert.equal(a.calls.length, 1);
+      await shot(a.page, `rfid-${width}-admin.png`);
+
+      // Thành công: số mới được tải lại (bản chụp mới hơn, bin 01·02 dán đủ → MTG 96%)
+      a.state.payload = data(new Date(NOW).toISOString(), true);
+      await resetExt({ mode: "ok", delay: 500 });
+      await btn.click();
+      assert.equal((await btn.innerText()).trim(), "Đang đọc…", "đang chạy: nhãn đổi");
+      assert.equal(await btn.getAttribute("data-busy"), "true");
+      assert.equal(await btn.isDisabled(), true, "đang chạy: không bấm chồng");
+      assert.equal(await a.page.locator("#uh-rfid-reload").isDisabled(), true);
+      await a.page.waitForFunction(() => /^Đã đồng bộ Group UID/.test(document.getElementById("uh-rfid-msg").textContent));
+      assert.equal(await msg.innerText(), "Đã đồng bộ Group UID · Đã cập nhật 12 UID · 340 UID đã đọc");
+      assert.equal(await tone(), "ok");
+      assert.deepEqual(await extTypes(), ["PING_WMS", "RUN_GROUP_UID_SYNC"], "kiểm tab WMS rồi mới ra lệnh");
+      assert.deepEqual(await a.page.evaluate(() => window.__ext.calls.find(c => c.type === "RUN_GROUP_UID_SYNC").payload), {}, "web không truyền kind / mode nào");
+      assert.equal(a.calls.length, 2, "đồng bộ xong tải lại tiến độ một lần");
+      assert.equal(await kpi(a.page, "pct"), "96%");
+      assert.match(await a.page.locator("#uh-rfid-time").innerText(), /vừa xong$/);
+      assert.equal((await btn.innerText()).trim(), "Đọc WMS");
+      assert.equal(await btn.isEnabled(), true);
+      assert.equal(await a.page.locator("#uh-rfid-reload").isEnabled(), true);
+
+      // Lượt bị giữ lại / bỏ qua: nói rõ, không tải lại
+      await resetExt({ mode: "held", delay: 20 });
+      await btn.click();
+      await a.page.waitForFunction(() => /^Lượt đồng bộ bị giữ lại/.test(document.getElementById("uh-rfid-msg").textContent));
+      assert.equal(await msg.innerText(), "Lượt đồng bộ bị giữ lại, cần Admin xem ở màn Đồng bộ Group UID: Thay đổi lớn: 4,2% UID đổi");
+      assert.equal(await tone(), "warn");
+      await resetExt({ mode: "skipped", delay: 20 });
+      await btn.click();
+      await a.page.waitForFunction(() => /^Đang có lượt khác/.test(document.getElementById("uh-rfid-msg").textContent));
+      assert.equal(await tone(), "warn");
+      assert.equal(a.calls.length, 2, "held / skipped không tải lại tiến độ");
+
+      // Extension từ chối / lỗi lượt: báo lỗi, không có nút Thử lại (không phải lần tải)
+      await resetExt({ mode: "refused", delay: 20 });
+      await btn.click();
+      await a.page.waitForFunction(() => /^Không đồng bộ được Group UID/.test(document.getElementById("uh-rfid-msg").textContent));
+      assert.match(await msg.innerText(), /^Không đồng bộ được Group UID: Chưa đăng nhập Admin/);
+      assert.equal(await tone(), "error");
+      assert.equal(await a.page.locator("#uh-rfid-msg .ps-retry").count(), 0, "lệnh đồng bộ không có Thử lại");
+      await resetExt({ mode: "error", delay: 20 });
+      await btn.click();
+      await a.page.waitForFunction(() => /WMS trả lỗi 500/.test(document.getElementById("uh-rfid-msg").textContent));
+      assert.equal(await tone(), "error");
+
+      // Hết giờ / cầu nối không sẵn sàng giữa lượt: cảnh báo (lượt có thể vẫn chạy), không báo lỗi cứng
+      await resetExt({ mode: "unavailable", delay: 20 });
+      await btn.click();
+      await a.page.waitForFunction(() => /^Chưa nhận được phản hồi của Extension/.test(document.getElementById("uh-rfid-msg").textContent));
+      assert.equal(await tone(), "warn");
+      assert.match(await msg.innerText(), /lượt đồng bộ có thể vẫn đang chạy/);
+
+      // Extension cũ (< 0.12.5): báo ngay, không ra lệnh (cầu nối cũ im lặng với lệnh lạ nên không được chờ hết giờ)
+      await resetExt({ mode: "ok", delay: 20, version: "0.12.3" });
+      await btn.click();
+      await a.page.waitForFunction(() => /Reload Extension/.test(document.getElementById("uh-rfid-msg").textContent), null, { timeout: 8000 });
+      assert.equal(await tone(), "error");
+      assert.deepEqual(await extTypes(), ["PING_WMS"], "bản cũ: chưa gửi RUN_GROUP_UID_SYNC");
+      assert.equal((await btn.innerText()).trim(), "Đọc WMS");
+
+      // Thoát Admin → nút ẩn
+      await a.page.evaluate(() => window.PrintSkuAdminAccess.logout());
+      await btn.waitFor({ state: "hidden" });
+      assert.deepEqual(a.errors, [], `${width}px: không lỗi console`);
+      await a.context.close();
+    }
+
     // --- Kho chưa có UID trên kệ ---
     const empty = await open(browser, 1280, { payload: { prefix: "A5000", otherPrefixes: [], syncedAt: null, fullAt: null, warehouses: [wh("MTG", "WH - MATERIAL - MTG", []), wh("GARMENT", "WH - MATERIAL - GARMENT", [])] } });
     await empty.page.addInitScript(() => localStorage.setItem("uh-view-v1", "rfid"));

@@ -152,6 +152,16 @@
     if (!error?.fromTab || error.code === "TAB_TIMEOUT") return false;
     return /_TAB_MISSING$|_BRIDGE_ERROR$/.test(String(error.code || "")) || error.reason === "session";
   }
+  // 0.12.5: lệnh từ web (RUN_GROUP_UID_SYNC) → đáp án của runNow đổi thành phản hồi cầu nối. Web không truyền kind / mode / tham số nào; phiên Admin
+  // dùng để ghi là phiên RIÊNG của Extension (không phải phiên Admin trên web) nên lệnh này chỉ cho đúng một việc: đồng bộ Group UID gia tăng.
+  function webRunResponse(answer) {
+    const result = answer?.result;
+    if (result && (result.status === "error" || result.outdated)) {
+      return { ok: false, error: { code: result.outdated ? "EXTENSION_OUTDATED" : "SYNC_ERROR", message: clean(result.message, 300) || "Không đồng bộ được Group UID" } };
+    }
+    if (!result) return { ok: false, error: { code: "AUTO_REFUSED", message: clean(answer?.error, 300) || "Extension không chạy được lượt đồng bộ" } };
+    return { ok: true, data: { status: String(result.status || ""), message: clean(result.message, 300), runId: result.runId || null, covered: Boolean(result.covered) } };
+  }
   // Danh sách lý do cảnh báo (rỗng = ổn). Máy tắt tự động hoặc Admin tạm dừng là chủ ý → không cảnh báo.
   // 0.10.10: health.kinds[kind].outdated ghi khi đúng bản `version` này dưới mức tối thiểu → báo ngay (không chờ 2 nhịp), thay câu "ngừng"
   // của loại đó. Dấu ghi khi máy còn bản khác (vừa Reload): loại đó bị chặn chủ ý tới lúc này, không phải ngừng → không báo gì cho tới
@@ -866,7 +876,7 @@
     return { tick, runNow, status, handleMessage, edge, onKeepAlive, recover, refreshBadge, isRunning: () => Boolean(running) };
   }
 
-  const api = { createAutoSync, decide, inFullWindow, vnMinutes, tabUnavailable, assessHealth, storageWorkMinutes, versionLess, parseMinFromMessage, MESSAGE_TYPES: ["AUTO_STATUS", "AUTO_SIGN_IN", "AUTO_SIGN_OUT", "AUTO_SET_DEVICE", "AUTO_SET_ENABLED", "AUTO_RUN_NOW"] };
+  const api = { createAutoSync, decide, inFullWindow, vnMinutes, tabUnavailable, webRunResponse, assessHealth, storageWorkMinutes, versionLess, parseMinFromMessage, MESSAGE_TYPES: ["AUTO_STATUS", "AUTO_SIGN_IN", "AUTO_SIGN_OUT", "AUTO_SET_DEVICE", "AUTO_SET_ENABLED", "AUTO_RUN_NOW"] };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.AutoSyncModule = api;
 })(typeof self !== "undefined" ? self : globalThis);

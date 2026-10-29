@@ -166,6 +166,8 @@ Nhập SKU và / hoặc mã vị trí (khung quét; SKU Combo hỏi chọn Norma
 
 Công tắc đầu màn **Chuyển vị trí | Tiến độ A5000** (nhớ theo máy). **Tiến độ A5000**: chọn kho MTG / GARMENT → thẻ **Hoàn thành %** · **Ô đã xong** · **Đã dán A5000** · **Còn mã A3000** · **Chưa dán**, rồi mỗi dãy kệ một lưới khoang × tầng, mỗi ô là một bin có % UID tồn (qty > 0) đã dán A5000; mã cũ A3000 chưa tính là xong.
 
+Admin có thêm nút **Đọc WMS**: nhờ Extension (≥ 0.12.5, đã đăng nhập Admin ở Tùy chọn, có tab WMS) chạy đồng bộ Group UID gia tăng ngay rồi tải lại tiến độ.
+
 Bấm ô mở pop-up các Group UID của bin chưa dán A5000 (chưa có RFID trước, mã cũ A3000 sau; tìm, lọc tình trạng, xuất Excel); lọc ô Tất cả / Chưa xong / Đã xong. Số lấy từ bản chụp Group UID trên Supabase (giờ cập nhật ghi ở đầu khung, vàng khi quá 24 giờ); ai cũng xem.
 
 ## TÌM SKU (`#find-sku`)

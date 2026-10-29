@@ -8,7 +8,7 @@ const manifest = JSON.parse(fs.readFileSync(path.join(extensionDir, "manifest.js
 const background = fs.readFileSync(path.join(extensionDir, "background.js"), "utf8");
 
 assert.equal(manifest.manifest_version, 3);
-assert.equal(manifest.version, "0.12.4");
+assert.equal(manifest.version, "0.12.5");
 // Đồng bộ tự động (0.10.0): alarm + storage cho phiên Admin riêng, gọi Edge Supabase, trang Tùy chọn.
 assert.ok(manifest.permissions.includes("alarms"));
 assert.ok(manifest.permissions.includes("storage"));
@@ -183,6 +183,28 @@ const settle = () => new Promise(resolve => setImmediate(resolve));
   const evilTab = { id: "ext-id", url: "https://evil.example/", tab: { id: 4, url: "https://evil.example/" } };
   assert.equal((await bg.send({ type: "AUTO_SIGN_OUT" }, evilTab)).error.code, "FORBIDDEN_ORIGIN");
   assert.equal(bg.stored["auto.device"], "may-test-01");
+
+  // 0.12.5: lệnh web RUN_GROUP_UID_SYNC (nút Đọc WMS ở Tiến độ A5000): web chỉ ra lệnh, Extension chạy bằng phiên Admin RIÊNG của nó.
+  // Một việc cố định (Group UID gia tăng), không nhận kind / mode / tham số từ web; chỉ trang Print SKU được gọi; trang Tùy chọn chỉ dùng AUTO_*.
+  {
+    const bgSource = fs.readFileSync(path.join(extensionDir, "background.js"), "utf8");
+    const branch = bgSource.slice(bgSource.indexOf('if (message.type === "RUN_GROUP_UID_SYNC")'), bgSource.indexOf('if (message.type === "PING_HCM")'));
+    assert.ok(branch.includes('AutoSync.runNow("group_uid", "incremental")'), "đúng một việc cố định: Group UID gia tăng");
+    assert.ok(!/message\.(kind|mode|payload)/.test(branch), "không đọc kind / mode / payload do web gửi");
+    assert.equal((bgSource.match(/AutoSync\.runNow\(/g) || []).length, 1, "background chỉ có một chỗ gọi runNow (lệnh web này)");
+    assert.ok(!bgSource.match(/^const WMS_READ_TYPES = \[.*\];$/m)[0].includes("RUN_GROUP_UID_SYNC"), "lệnh chạy đồng bộ không nằm trong nhóm lệnh ĐỌC WMS");
+    assert.ok(appBridgeSource.includes('"RUN_GROUP_UID_SYNC"'), "cầu nối cho phép lệnh");
+    // Chưa đăng nhập Admin trong Extension: từ chối kèm câu của Extension, không chạy gì
+    const refused = await bg.send({ type: "RUN_GROUP_UID_SYNC", payload: { kind: "sku", mode: "full" } }, webTab);
+    assert.deepEqual(refused, { ok: false, error: { code: "AUTO_REFUSED", message: "Chưa đăng nhập Admin" } });
+    assert.equal((await bg.send({ type: "RUN_GROUP_UID_SYNC" }, evilTab)).error.code, "FORBIDDEN_ORIGIN", "trang lạ không ra lệnh được");
+    assert.deepEqual(await bg.send({ type: "RUN_GROUP_UID_SYNC" }, optionsSender), { ok: false, error: "Yêu cầu không hợp lệ" }, "trang Tùy chọn chỉ dùng lệnh AUTO_*");
+    // Cầu nối chuyển tiếp lệnh này như các lệnh khác
+    const sync = runBridge({ runtime: { sendMessage: async message => ({ ok: true, data: { forwarded: message.type } }) } });
+    sync.send({ ...request, type: "RUN_GROUP_UID_SYNC", payload: {} });
+    await settle();
+    assert.deepEqual(sync.posted.map(item => [item.data.ok, item.data.data]), [[true, { forwarded: "RUN_GROUP_UID_SYNC" }]]);
+  }
 
   // 0.11.0: GET_PO chọn tab theo site (mastige | garment, mặc định mastige); đồng bộ SKU luôn đọc tab Inside Mastige, không bao giờ tab Garment.
   {

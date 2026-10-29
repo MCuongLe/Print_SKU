@@ -120,7 +120,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     sendResponse(errorResponse("FORBIDDEN_ORIGIN", "Ứng dụng không nằm trên địa chỉ Print SKU được cho phép"));
     return false;
   }
-  if (!message || !["PING", "PING_WMS", "PING_HCM", "GET_PO", "GET_SKU_SYNC_DATA", "GET_HCM_DATA", ...WMS_READ_TYPES].includes(message.type)) {
+  if (!message || !["PING", "PING_WMS", "PING_HCM", "GET_PO", "GET_SKU_SYNC_DATA", "GET_HCM_DATA", "RUN_GROUP_UID_SYNC", ...WMS_READ_TYPES].includes(message.type)) {
     sendResponse(errorResponse("INVALID_REQUEST", "Yêu cầu kết nối không hợp lệ"));
     return false;
   }
@@ -133,6 +133,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     findWmsTab().then(tab => sendResponse(tab
       ? { ok: true, data: { version: chrome.runtime.getManifest().version } }
       : errorResponse("WMS_TAB_MISSING", "Hãy mở một tab WMS và đăng nhập trước")));
+    return true;
+  }
+
+  if (message.type === "RUN_GROUP_UID_SYNC") {
+    // 0.12.5: nút "Đọc WMS" ở Tiến độ A5000. Một việc cố định (đồng bộ Group UID gia tăng bằng phiên Admin riêng của Extension), không nhận tham số từ web.
+    AutoSync.runNow("group_uid", "incremental")
+      .then(answer => sendResponse(self.AutoSyncModule.webRunResponse(answer)))
+      .catch(() => sendResponse(errorResponse("CONNECTOR_ERROR", "Tiện ích gặp lỗi khi đồng bộ Group UID")));
     return true;
   }
 

@@ -3,7 +3,7 @@
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
-const { createAutoSync, decide, inFullWindow, vnMinutes, assessHealth, versionLess, parseMinFromMessage } = require("../extension/inside-po-connector/auto-sync.js");
+const { createAutoSync, decide, inFullWindow, vnMinutes, assessHealth, versionLess, parseMinFromMessage, webRunResponse } = require("../extension/inside-po-connector/auto-sync.js");
 const { readGroupUidSnapshot } = require("../extension/inside-po-connector/group-uid-snapshot-core.js");
 
 // 0.10.10: bản Extension giả của máy trong ca cổng bản (dữ liệu ca, không phải số phiên bản của manifest).
@@ -941,6 +941,24 @@ const actions = (calls, fn) => calls.filter(call => call.fn === fn).map(call => 
       catch (error) { failed.push(name); console.error(`FAIL 0.10.10 ${name}: ${error.message}`); }
     }
     assert.deepEqual(failed, [], "ca 0.10.10 hỏng");
+  }
+
+  // 0.12.5: đáp án runNow → phản hồi cho lệnh web RUN_GROUP_UID_SYNC (nút Đọc WMS ở Tiến độ A5000)
+  {
+    const ok = webRunResponse({ ok: true, result: { status: "ok", runId: "r1", message: "Đã cập nhật 12 UID · 340 UID đã đọc" } });
+    assert.deepEqual(ok, { ok: true, data: { status: "ok", message: "Đã cập nhật 12 UID · 340 UID đã đọc", runId: "r1", covered: false } });
+    const held = webRunResponse({ ok: true, result: { status: "held", runId: "r2", message: "Thay đổi lớn: cần Admin xem" } });
+    assert.deepEqual([held.ok, held.data.status, held.data.message], [true, "held", "Thay đổi lớn: cần Admin xem"], "lượt bị giữ lại không phải lỗi: web nói rõ để Admin xem xét");
+    const covered = webRunResponse({ ok: true, result: { status: "skipped", covered: true, message: "Đang có lượt khác (Admin đang xem trước)" } });
+    assert.deepEqual([covered.ok, covered.data.status, covered.data.covered, covered.data.runId], [true, "skipped", true, null]);
+    const noTab = webRunResponse({ ok: true, result: { status: "skipped", message: "Hãy mở một tab WMS và đăng nhập trước" } });
+    assert.deepEqual([noTab.ok, noTab.data.status], [true, "skipped"]);
+    assert.deepEqual(webRunResponse({ ok: false, result: { status: "error", message: "WMS HTTP 500" }, error: "WMS HTTP 500" }), { ok: false, error: { code: "SYNC_ERROR", message: "WMS HTTP 500" } });
+    assert.deepEqual(webRunResponse({ ok: false, result: { status: "skipped", outdated: { min: "0.12.5" }, message: "Cần Extension 0.12.5" }, error: "Cần Extension 0.12.5" }).error.code, "EXTENSION_OUTDATED");
+    assert.deepEqual(webRunResponse({ ok: false, error: "Chưa đặt tên máy" }), { ok: false, error: { code: "AUTO_REFUSED", message: "Chưa đặt tên máy" } });
+    assert.deepEqual(webRunResponse({ ok: false, error: "Đang có lượt tự động chạy" }).error.code, "AUTO_REFUSED");
+    assert.equal(webRunResponse(undefined).error.code, "AUTO_REFUSED", "không có đáp án → từ chối, không ném lỗi");
+    assert.equal(webRunResponse({ ok: false, error: "  a\n  b  " }).error.message, "a b", "gọn khoảng trắng như mọi câu của Extension");
   }
 
   console.log("auto_sync_core: decide + orchestration passed");

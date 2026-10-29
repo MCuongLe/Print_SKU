@@ -211,6 +211,7 @@
 - `#uidhist-screen` có công tắc Chuyển vị trí | Tiến độ A5000 (mặc định Chuyển vị trí, nhớ theo máy `uh-view-v1`). Tiến độ A5000: ai cũng xem, đọc `group_uid_rfid_progress` (migration `rfid_progress_v1`, số đếm theo bin, không UID / SKU / người). Theo trang Tiến độ dán RFID của app kho vật tư may. (28/10 · N20261028-1705)
   - Phạm vi: kho Material MTG + GARMENT, UID tồn (Available / Blocked / Editing) có qty > 0, chỉ vị trí `<tầng>-KHO-<dãy>-<khoang>-<tầng kệ>-<ô>`. Xong = RFID A5000 (1 chữ + 11 số); RFID khác (A3000 = mã cũ) chưa tính xong, hiện riêng.
   - Lưới mỗi dãy: cột khoang, hàng tầng kệ (cao ở trên), hai ô cùng khoang + tầng gộp một; % làm tròn nhưng 100% chỉ khi xong hẳn; dãy xếp số tăng rồi dãy chữ.
+  - Nút Đọc WMS (`#uh-rfid-read`, chỉ Admin): ra lệnh `RUN_GROUP_UID_SYNC` cho Extension ≥ 0.12.5 chạy đồng bộ Group UID GIA TĂNG ngay (phiên Admin riêng của Extension; web không truyền tham số), xong tải lại tiến độ cho mọi người. Người dùng chọn hướng này thay vì đọc ~40.000 UID vào bộ nhớ. (28/10 · N20261028-1915)
   - Bấm ô mở pop-up `#uh-rfid-dialog`: Group UID của bin chưa dán A5000 (`group_uid_rfid_bin_uids`, ai cũng xem, ≤ 500 dòng): chưa có RFID trước, mã cũ A3000 sau; tìm, lọc tình trạng, xuất Excel. Không trả người cập nhật / email. (28/10 · N20261028-1735)
 
 ### Phần còn giữ
@@ -400,7 +401,8 @@
 - Nonce "Thử lại" ở IN TEM SKU / IN TEM GROUP UID (03/10 sinh nonce mới mỗi lần bấm) — chưa kiểm đã sửa. (03/10 · N0079)
 - Giả định NCC Kiểm tra đầu vào: hậu tố ` - người liên hệ` luôn có. (10/10 · N0178)
 - Test `inventory_audit` lỗi có sẵn — chưa kiểm đã sửa. (14/10 · N0686)
-- Tiến độ A5000 (Lịch sử Group UID): `rfid_progress_v1` chưa chạy trên Supabase; tổng MTG lệch trang tham chiếu (5.557 UID tồn qty > 0 so với 5.824 UIDgr; A3000 trùng 931) chưa rõ lý do (`group_uid_details` không lưu Type).
+- Tiến độ A5000 (Lịch sử Group UID): `rfid_progress_v1` đã chạy 28/10 (xem Trạng thái lên thật); tổng MTG lệch trang tham chiếu (5.557 UID tồn qty > 0 so với 5.824 UIDgr; A3000 trùng 931) chưa rõ lý do (`group_uid_details` không lưu Type).
+  - Nút Đọc WMS (Extension 0.12.5): chưa chạy thật trên máy có Reload Extension — chưa kiểm lượt gia tăng thật (số UID đọc, thời gian), lượt bị giữ lại, phiên Admin riêng đã đặt chưa. (28/10 · N20261028-1915)
   - Chưa kiểm: gắn RFID có làm WMS đổi `updated_date` (đồng bộ gia tăng thấy ngay) hay phải chờ lượt toàn bộ buổi sáng. (28/10 · N20261028-1705)
 
 ---
@@ -432,6 +434,7 @@ Mục này thắng mọi ghi chú "CHƯA LÊN" trong nhật ký. Kiểm lại kh
 - `vendor_return_v3` (Trả NCC, 26/10 01:25: hàm `vendor_return_delete`, kiểm: SECURITY DEFINER, anon không execute · N20261026-0126).
 - `sku_name_touch_v1` (25/10: hàm + trigger `sku_name_touch` trên `SKU_Name` · N20261025-2156).
 - `sync_auto_v3` (26/10 14:55: bảng `sync_auto_devices` RLS bật, 0 policy, chỉ service_role như `sync_auto_leases`; cột `ext_version` ở `sku_sync_runs` / `group_uid_sync_runs`; `sync_auto_settings.min_extension` = `{}` với CHECK 3 vế, kiểm `pg_get_constraintdef` · N20261026-1102).
+- `rfid_progress_v1` (28/10 ~18:15, Tiến độ A5000: hai hàm `group_uid_rfid_progress()` và `group_uid_rfid_bin_uids(text, text[])`, SECURITY DEFINER, `search_path` rỗng, anon + authenticated execute, public không; gọi thật bằng khoá ẩn danh qua PostgREST đạt; ghi sổ `release_ledger` ở commit `a619965`; web đã push 28/10 ~18:05, trang công khai có Tiến độ A5000 · N20261028-1745).
 - `cut_source_v1` (26/10 ~22:20, chạy bằng `apply_supabase_sql.py`): 5 cột nguồn ở `wms_group_uid_cuts`; `wms_group_uid_cut_set_source` / `wms_group_uid_cut_unresolved` anon không execute; `cut_group_uid_reconcile` còn che email; `wms_group_uid_cut_import` còn chặn mốc tương lai; Tick giúp bỏ Cut IT (kiểm chỉ đọc · N20261027-0800).
 - `uid_temp_origin_v1` (26/10 ~22:20): cột `uid_temp_rows.origin`, `uid_temp_save` / `uid_temp_overview` bản mới (che `origin.by` cho người ngoài Admin). Sổ `release_ledger` ghi cả hai tệp 27/10 08:00 bằng `record_ledger.py` (N20261027-0800).
 - `group_uid_moves_lot_roll_v1` (28/10 ~08:50, chạy bằng `apply_supabase_sql.py`, ghi sổ `release_ledger` bằng `record_ledger.py`): `group_uid_moves_lookup` trả thêm `lot`, `roll`; kiểm chỉ đọc: anon + authenticated thực thi, public không, vẫn che email, 200 dòng thử đều có khoá, 123 có giá trị (N20261028-0855); file Excel thật 28/10 10:00 có Lot/Roll đúng (N20261028-1010).

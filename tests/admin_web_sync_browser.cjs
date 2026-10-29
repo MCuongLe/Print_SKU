@@ -58,7 +58,7 @@ const mockRoutes = (page, failOn = null) => page.route('**/*', async route => {
 const fakeExtension = (o = {}) => addEventListener('message', event => {
   const r = event.data; if (!r || r.source !== 'PRINT_SKU_APP') return;
   (window.__extCalls = window.__extCalls || []).push(r.type);
-  const data = r.type === 'PING' ? { version: o && 'ping' in o ? o.ping : '0.3.3' } : r.type === 'PING_WMS' ? { version: '0.12.4' } : r.type === 'GET_GROUP_UID_PAGE' ? { page: 1, size: 500, total: 0, totalPages: 1, rows: [] } : { generatedAt: new Date().toISOString(), cutoff: 'x', categories: [], normalRows: [], comboRows: [], sourceCounts: {} };
+  const data = r.type === 'PING' ? { version: o && 'ping' in o ? o.ping : '0.3.3' } : r.type === 'PING_WMS' ? { version: '0.12.5' } : r.type === 'GET_GROUP_UID_PAGE' ? { page: 1, size: 500, total: 0, totalPages: 1, rows: [] } : { generatedAt: new Date().toISOString(), cutoff: 'x', categories: [], normalRows: [], comboRows: [], sourceCounts: {} };
   postMessage({ source: 'HASAKI_INSIDE_CONNECTOR', requestId: r.requestId, ok: true, data }, location.origin);
 });
 

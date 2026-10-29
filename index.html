@@ -12676,6 +12676,7 @@ async function rpc(name,args,retry=true){
       .uh-rfid__reload { display: inline-grid; place-items: center; min-width: var(--target-min); min-height: var(--target-min); padding: 0; border: 1px solid var(--wms-border); border-radius: var(--radius-control); background: var(--wms-surface); color: var(--wms-brand); cursor: pointer; }
       .uh-rfid__reload:disabled { background: var(--wms-disabled-bg); color: var(--wms-disabled-text); cursor: not-allowed; }
       .uh-rfid__reload .as-ico { width: 20px; height: 20px; }
+      #uidhist-screen #uh-rfid-read[hidden] { display: none; }
       .uh-kpi { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--space-3); }
       .uh-kpi > div { display: grid; align-content: start; gap: 2px; min-width: 0; padding: var(--space-3) var(--space-4); border: 1px solid var(--wms-border); border-radius: var(--radius-card); background: var(--wms-surface); }
       .uh-kpi strong { color: var(--wms-text); font-size: var(--fs-28); font-weight: var(--fw-bold); line-height: 1.1; font-variant-numeric: tabular-nums; }
@@ -12721,7 +12722,8 @@ async function rpc(name,args,retry=true){
         .uh-rfid__bar #uh-rfid-reload { order: 2; }
         .uh-rfid__bar #uh-rfid-filter { order: 3; flex: 1 1 100%; }
         .uh-rfid__bar .uh-seg .as-tag { flex: 1; justify-content: center; }
-        .uh-rfid__time { order: 4; flex: 1 1 100%; margin-left: 0; }
+        #uidhist-screen .uh-rfid__bar #uh-rfid-read { order: 4; flex: 1 1 100%; }
+        .uh-rfid__time { order: 5; flex: 1 1 100%; margin-left: 0; }
         .uh-kpi { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         .uh-kpi [data-k="pct"] { grid-column: 1 / -1; }
         .uh-kpi strong { font-size: var(--fs-22); }
@@ -12771,7 +12773,7 @@ async function rpc(name,args,retry=true){
           <div class="uh-rfid__bar">
             <div class="uh-seg" id="uh-rfid-wh" role="group" aria-label="Kho"></div>
             <div class="uh-seg" id="uh-rfid-filter" role="group" aria-label="Lọc ô"><button class="as-tag" type="button" data-uh-rfid-filter="all" aria-pressed="true">Tất cả</button><button class="as-tag" type="button" data-uh-rfid-filter="open" aria-pressed="false">Chưa xong</button><button class="as-tag" type="button" data-uh-rfid-filter="done" aria-pressed="false">Đã xong</button></div>
-            <span class="uh-rfid__time" id="uh-rfid-time">—</span><button class="uh-rfid__reload" id="uh-rfid-reload" type="button" aria-label="Tải lại" title="Tải lại" data-ico="refresh"></button>
+            <span class="uh-rfid__time" id="uh-rfid-time">—</span><button class="src-read" id="uh-rfid-read" type="button" hidden><span class="src-read__t">Đọc WMS</span></button><button class="uh-rfid__reload" id="uh-rfid-reload" type="button" aria-label="Tải lại" title="Tải lại" data-ico="refresh"></button>
           </div>
           <p class="ss-status" id="uh-rfid-msg" aria-live="polite"></p>
           <div class="uh-kpi" id="uh-rfid-kpi"></div>
@@ -13070,7 +13072,7 @@ async function rpc(name,args,retry=true){
         const ROUTE = "group-uid-history", VIEW_KEY = "uh-view-v1", WH_KEY = "uh-rfid-wh-v1", FRESH_MS = 120000, STALE_MS = 24 * 3600000, GAP_LIMIT = 40;
         // Vị trí <tầng nhà>-KHO-<dãy kệ>-<khoang>-<tầng kệ>-<ô>, vd. F0-KHO-501-04-01-01
         const BIN_PATTERN = /^[^-]+-KHO-[^-]+-(\d{1,3})-(\d{1,3})-(\d{1,3})$/i;
-        const state = { data: null, wh: "", filter: "all", loadedAt: 0, busy: false };
+        const state = { data: null, wh: "", filter: "all", loadedAt: 0, busy: false, reading: false };
         const keep = { get(key) { try { return localStorage.getItem(key); } catch (_) { return null; } }, set(key, value) { try { localStorage.setItem(key, value); } catch (_) { /* không lưu được: giữ mặc định */ } } };
         const esc = value => String(value ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
         const num = value => Number(value || 0).toLocaleString("vi-VN"), pad = n => String(n).padStart(2, "0");
@@ -13081,6 +13083,21 @@ async function rpc(name,args,retry=true){
         const stateOf = c => !c.total ? "empty" : c.done >= c.total ? "full" : c.done > 0 ? "part" : c.other > 0 ? "old" : "none";
         const dimmed = st => st !== "empty" && (state.filter === "open" ? st === "full" : state.filter === "done" ? st !== "full" : false);
         const tell = (text, tone = "") => { const el = $("uh-rfid-msg"); el.textContent = text; if (tone) el.dataset.tone = tone; else delete el.dataset.tone; };
+        // Nút Đọc WMS (chỉ Admin): nhờ Extension (≥ 0.12.5, phiên Admin riêng của nó) chạy đồng bộ Group UID gia tăng rồi tải lại tiến độ cho mọi người.
+        const SYNC_TIMEOUT_MS = 330000, MIN_SYNC_EXT = "0.12.5", readBtn = $("uh-rfid-read");
+        const olderThan = (version, min) => { const a = String(version || "0").split(".").map(Number), b = min.split(".").map(Number); for (let i = 0; i < 3; i++) if ((a[i] || 0) !== b[i]) return (a[i] || 0) < b[i]; return false; };
+        const extensionRequest=(type,payload={},timeout=120000)=>window.PrintSkuBridgeReady(type).then(() => new Promise((resolve, reject) => {
+          const requestId = `uid-rfid-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+          const timer = setTimeout(() => { removeEventListener("message", listener); reject(Object.assign(new Error("Extension phản hồi quá lâu; kiểm tra tab WMS rồi thử lại"), { code: "TIMEOUT" })); }, timeout);
+          const listener = event => {
+            const response = event.data;
+            if (event.source !== window || event.origin !== location.origin || response?.source !== "HASAKI_INSIDE_CONNECTOR" || response.requestId !== requestId) return;
+            clearTimeout(timer); removeEventListener("message", listener);
+            response.ok ? resolve(response.data) : reject(Object.assign(new Error(response.error?.message || "Extension không đồng bộ được Group UID"), { code: response.error?.code }));
+          };
+          addEventListener("message", listener);
+          postMessage({ source: "PRINT_SKU_APP", requestId, type, payload }, location.origin);
+        }));
         const rpc = async (name = "group_uid_rfid_progress", args = {}) => {
           const q = window.PrintSkuQueue, response = await fetch(`${q.supabaseUrl}/rest/v1/rpc/${name}`, { method: "POST", headers: { apikey: q.publishableKey, Authorization: `Bearer ${q.publishableKey}`, "Content-Type": "application/json" }, body: JSON.stringify(args), signal: AbortSignal.timeout(30000) });
           const result = await response.json().catch(() => null);
@@ -13192,7 +13209,7 @@ async function rpc(name,args,retry=true){
         // ---- Tải ----
         async function load() {
           if (state.busy) return;
-          state.busy = true; $("uh-rfid-reload").disabled = true;
+          state.busy = true; $("uh-rfid-reload").disabled = true; readBtn.disabled = true;
           let busied = false;
           if (!state.data) $("uh-rfid-racks").innerHTML = '<p class="uh-rfid__empty">Đang tải…</p>';
           try {
@@ -13205,7 +13222,7 @@ async function rpc(name,args,retry=true){
             if (!state.data) $("uh-rfid-racks").innerHTML = "";
             tell(error.message ? `Không tải được tiến độ A5000: ${error.message}` : "Không tải được tiến độ A5000.", "error");
             window.PrintSkuNotice?.retry(load, $("uh-rfid-msg"));
-          } finally { state.busy = false; $("uh-rfid-reload").disabled = false; if (busied) window.PrintSkuNotice?.busy(panel, false); }
+          } finally { state.busy = false; $("uh-rfid-reload").disabled = state.reading; readBtn.disabled = state.reading; if (busied) window.PrintSkuNotice?.busy(panel, false); }
         }
         const active = () => location.hash.replace(/^#/, "").split("&")[0] === ROUTE;
         const ensure = () => { if (active() && screen.dataset.uhView === "rfid" && (!state.data || Date.now() - state.loadedAt > FRESH_MS)) load(); };
@@ -13217,6 +13234,31 @@ async function rpc(name,args,retry=true){
           ensure();
         }
 
+        // ---- Đọc WMS (Admin) ----
+        const syncAdmin = () => { readBtn.hidden = !window.PrintSkuAdminAccess?.peekToken?.(); };
+        function setReading(on) {
+          state.reading = on; readBtn.disabled = on; readBtn.dataset.busy = String(on);
+          readBtn.querySelector(".src-read__t").textContent = on ? "Đang đọc…" : "Đọc WMS";
+          $("uh-rfid-reload").disabled = on || state.busy;
+        }
+        async function readWms() {
+          if (state.reading || state.busy || readBtn.hidden) return;
+          setReading(true); tell("Đang đồng bộ Group UID từ WMS…");
+          try {
+            const info = await extensionRequest("PING_WMS", {}, 6000);
+            // Extension cũ không có lệnh này và cầu nối cũ im lặng với lệnh lạ → kiểm bản trước, không để người dùng chờ hết giờ
+            if (olderThan(info?.version, MIN_SYNC_EXT)) throw Object.assign(new Error("Extension cũ"), { code: "INVALID_REQUEST" });
+            const data = await extensionRequest("RUN_GROUP_UID_SYNC", {}, SYNC_TIMEOUT_MS);
+            if (data?.status === "ok") { const before = state.loadedAt; await load(); if (state.loadedAt !== before) tell(`Đã đồng bộ Group UID · ${data.message}`, "ok"); }
+            else if (data?.status === "held") tell(`Lượt đồng bộ bị giữ lại, cần Admin xem ở màn Đồng bộ Group UID: ${data.message || "thay đổi lớn"}`, "warn");
+            else tell(data?.message || "Extension không chạy lượt đồng bộ", "warn");
+          } catch (error) {
+            if (error.code === "TIMEOUT" || error.code === "EXTENSION_UNAVAILABLE") tell("Chưa nhận được phản hồi của Extension; lượt đồng bộ có thể vẫn đang chạy. Bấm Tải lại sau ít phút hoặc xem Lượt gần nhất ở Tùy chọn Extension.", "warn");
+            else tell(error.code === "INVALID_REQUEST" ? "Extension chưa có lệnh đồng bộ này: Reload Extension (bản 0.12.5 trở lên) rồi tải lại trang"
+              : error.message ? `Không đồng bộ được Group UID: ${error.message}` : "Không đồng bộ được Group UID.", "error");
+          } finally { setReading(false); }
+        }
+
         // ---- Thao tác ----
         screen.addEventListener("click", event => { const view = event.target.closest("[data-uh-view]"); if (view) setView(view.dataset.uhView, true); });
         panel.addEventListener("click", event => {
@@ -13226,7 +13268,10 @@ async function rpc(name,args,retry=true){
           if (cell) openBin(cell.dataset.rack, cell.dataset.key);
         });
         $("uh-rfid-reload").addEventListener("click", load);
-        addEventListener("hashchange", ensure);
+        readBtn.addEventListener("click", readWms);
+        addEventListener("print-sku-admin-ready", syncAdmin); addEventListener("print-sku-admin-logout", syncAdmin);
+        addEventListener("hashchange", () => { syncAdmin(); ensure(); });
+        syncAdmin();
         setView(keep.get(VIEW_KEY) === "rfid" ? "rfid" : "move", false);
       })();
     </script>

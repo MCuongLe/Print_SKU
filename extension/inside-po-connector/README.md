@@ -38,6 +38,11 @@ Phiên bản 0.6.1 đọc đầy đủ Combo nhiều thành phần, Group UID hi
 
 Phiên bản 0.7.1 thêm lệnh chỉ đọc `GET_GROUP_UID_MOVES_PAGE` cho ô LỊCH SỬ GROUP UID: lịch sử `Transfer location` của mọi kho tài khoản được xem, 500 dòng/trang (0.7.1 ghi WMS không lọc endpoint này theo `company-ids`; đo lại 28/10 thì có lọc, xem 0.12.4). Sau khi cập nhật extension phải Reload trong `chrome://extensions` và tải lại trang Print SKU.
 
+Phiên bản 0.12.5 (28/10/2026): thêm lệnh web `RUN_GROUP_UID_SYNC` cho nút "Đọc WMS" ở Tiến độ A5000 (LỊCH SỬ GROUP UID). Cần Reload Extension rồi tải lại tab web; không migration, không deploy Edge, tương thích ngược (bản cũ chỉ không có lệnh này, web báo "cập nhật Extension").
+- Lệnh chạy đúng `runNow("group_uid", "incremental")` của đồng bộ tự động: bằng phiên Admin RIÊNG của Extension (Tùy chọn → Phiên Admin) và tên máy đã đặt; cần tab WMS đăng nhập. Web không truyền kind / mode / tham số nào, không đổi được việc được chạy.
+- Trả `{status, message, runId, covered}` (`status` ok / held / skipped, như "Lượt gần nhất" ở Tùy chọn); chưa đăng nhập Admin, chưa đặt tên máy, đang có lượt khác → lỗi `AUTO_REFUSED` kèm câu của Extension; lượt lỗi → `SYNC_ERROR`; Edge từ chối bản Extension → `EXTENSION_OUTDATED`.
+- Lệnh vẫn qua cổng chung: chỉ trang Print SKU được phép (`APP_URL_PATTERN`), một lượt tại một thời điểm (`running`), khoá thuê và ngưỡng an toàn của đồng bộ Group UID giữ nguyên (lượt bị giữ lại vẫn báo `held`, không tự ghi đè).
+
 Phiên bản 0.12.4 (28/10/2026): đọc WMS không còn phụ thuộc công ty đang chọn trên tab WMS. Cần Reload Extension rồi tải lại tab WMS; không migration, không deploy Edge, không đổi web.
 - Lỗi gốc: `company-ids` CÓ lọc nhiều endpoint WMS (đo 28/10 từ tab WMS, chỉ đếm). `group-uid-infos`: không header 40.534 UID; 1002 Mastige 24.855; 1005 Garment 12.164; 1001 279; công ty khác HTTP 400. `group-uid-info-histories` (`actions=4`, 30 ngày): 988 / 881 / 49.
 - Không header ra tập lớn hơn hợp ba công ty chọn được (40.534 so với 37.298); phần dư chưa rõ thuộc công ty nào. Lượt Toàn bộ trước 27/10 vẫn đọc 40.425 UID (đo 27/10 từng ghi "không lọc": WMS đổi hành vi hoặc đo lệch, chưa phân biệt được).
