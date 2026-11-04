@@ -93,6 +93,11 @@ const open = async (browser, { width = 1280, height = 900, ext = true, failOn = 
   return { context, page };
 };
 const go = async (page, hash) => { await page.goto(BASE + '#home'); await page.goto(BASE + hash); };
+// Không có Extension: PING chờ ~6 giây THẬT rồi mới báo lỗi. Đẩy đồng hồ trang tới trước (context.clock.install() gọi trước khi mở trang)
+// cho tới khi dải báo lỗi, thay vì ngủ 6 s mỗi màn; hẹn giờ PING đặt sau lần đẩy đầu thì lần sau đẩy tiếp.
+const skipPing = async (page, selector) => {
+  for (let i = 0; i < 100 && !(await page.evaluate(s => document.querySelector(s)?.dataset.tone === 'error', selector)); i++) { await page.clock.fastForward(7000); await page.waitForTimeout(50); }
+};
 const navItems = page => page.evaluate(() => {
   const vis = e => { const b = e.getBoundingClientRect(); return b.width > 0 && b.height > 0 && getComputedStyle(e).display !== 'none'; };
   const btns = [...document.querySelectorAll('#app-nav [data-an-hash]')].filter(vis);
@@ -224,7 +229,9 @@ const navItems = page => page.evaluate(() => {
       // ---------- 4b) Không có Extension: hai màn báo giống nhau (dải lỗi, không "Sẵn sàng") ----------
       for (const [hash, status, connection] of [['#admin/sku-sync', '#sku-sync-status', '#sku-sync-connection'], ['#admin/group-uid-sync', '#gu-status', '#gu-connection']]) {
         const { context, page } = await open(browser, { width, ext: false });
+        await context.clock.install();
         await go(page, hash);
+        await skipPing(page, status);
         await page.waitForFunction(s => document.querySelector(s).dataset.tone === 'error', status, { timeout: 20000 }); // PING chờ ~6 giây rồi báo lỗi
         const info = await page.evaluate(([s, c]) => ({ text: document.querySelector(s).textContent.trim(), tone: document.querySelector(s).dataset.tone, pill: document.querySelector(c).textContent.trim() }), [status, connection]);
         assert.equal(info.tone, 'error', `${hash}: phải là dải lỗi`); assert.match(info.text, /Extension/); assert.equal(/Sẵn sàng/.test(info.text), false, `${hash}: không được báo "Sẵn sàng" khi chưa có Extension`); assert.match(info.pill, /Chưa kết nối/);

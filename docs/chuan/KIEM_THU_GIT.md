@@ -14,10 +14,21 @@ Gom từ `docs/QUYET_DINH.md` chủ đề 1, `docs/DOI_AGENT.md`, `docs/CONTEXT_
 
 ## Chạy test
 
-- Trong lúc làm chỉ chạy test liên quan (`node tests/<tên>` hoặc `run_tests.py --only <tên>`). Nguồn: `docs/DOI_AGENT.md` bước 2
-- Trước khi báo xong: cả bộ `python scripts/run_tests.py` một lần, chạy nền; script tự chạy lại test hỏng một lần và in mục CHẬP CHỜN — chép mục đó vào báo cáo. Nguồn: `docs/DOI_AGENT.md` bước 4; (10–23/10 · N0068, N0883, N1175)
-- Cây chính giữ cổng 8000; worktree của agent dùng cổng khác + `BASE=`. Chạy cả bộ trên bản dựng phải phục vụ ở cổng 8000 vì một số test gắn cứng cổng này (vd. `wh_dialog_browser`). Nguồn: (16–17/10 · N0890, N1001; 25/10 · N1211)
-- Test chập chờn đã biết (không do tính năng): `print_devices_browser`, `sku_catalog_race_browser`, `group_uid_mockup`, `find_sku_mobile`. Nguồn: (12–23/10 · N0591, N0937, N1028, N1166)
+- Trong lúc làm chỉ chạy test liên quan: `node tests/<tên>`, `run_tests.py --only <tên>` hoặc `run_tests.py --changed` (xem dưới). Nguồn: `docs/DOI_AGENT.md` bước 2; `docs/plans/2026-11-04-tang-toc-bo-test.md`
+- `--changed [REF]` chọn test theo `git diff` so với REF (mặc định `HEAD`, kèm tệp chưa theo dõi); `--list` chỉ in danh sách, không chạy. Không thay được cả bộ trước khi báo xong. Giữ bởi: `tests/test_run_tests.py`. Nguồn: `docs/plans/2026-11-04-tang-toc-bo-test.md`
+  - Chọn test nhắc tên tệp đổi (runner quét chuỗi tên tệp trong mã test), test nhắc id khối `index.html` có dòng đổi, và luôn bộ chuẩn giao diện khi `index.html` đổi.
+  - Có tệp đổi không map được (kể cả khối `index.html` không test nào nhắc) thì chạy cả bộ; `docs/`, `*.md`, `.claude/`, `workstation-agent/` (bộ test riêng `node --test`) không ép chạy gì.
+- Trước khi báo xong: cả bộ `python scripts/run_tests.py` một lần, chạy nền; script tự chạy lại test hỏng một lần, tuần tự, và in mục CHẬP CHỜN — chép mục đó vào báo cáo. Nguồn: `docs/DOI_AGENT.md` bước 4; (10–23/10 · N0068, N0883, N1175)
+  - Mặc định 4 tiến trình song song (`--jobs N`, tối đa theo số lõi; `--jobs 1` = tuần tự từng tệp như bản cũ); mỗi test một tiến trình riêng, kết quả in theo thứ tự hoàn thành, test dài chạy trước theo số đo lần trước. Giữ bởi: `tests/test_run_tests.py`. Nguồn: `docs/plans/2026-11-04-tang-toc-bo-test.md`
+  - Số đo 04/11/2026 (140 test, máy 12 lõi, thời gian in ở cuối `run_tests.py`): tuần tự 1482 s; `--jobs 4` 761–878 s (3 lần), 506 s sau khi cắt thời gian chết ở 5 test chậm nhất. Khi chạy 4 tiến trình CPU đã ~80–90%, nên thêm tiến trình không nhanh hơn.
+  - Sau mỗi lần chạy in 15 test chậm nhất và ghi `outputs/test-times.json` (`gitignore`; lần chạy một phần chỉ cập nhật test đã chạy). Đo trước khi tối ưu một test.
+- Một máy chỉ chạy một bộ một lúc: runner giữ tệp khoá `print_sku_run_tests.lock` trong thư mục `.git` chung của mọi worktree (đổi bằng biến `PRINT_SKU_TEST_LOCK`); phiên đến sau chờ tối đa `--lock-wait` giây (mặc định 1800) rồi thoát mã 3 kèm PID, cây, lệnh của phiên đang chạy. Giữ bởi: `tests/test_run_tests.py`. Nguồn: `docs/plans/2026-11-04-tang-toc-bo-test.md`
+  - Khoá chết (tiến trình chủ không còn, hoặc 2 phút không cập nhật) tự bị phá. `--no-lock` bỏ qua khoá: chỉ dùng khi chạy vài test nhỏ (`--only`) và chấp nhận máy chậm hơn.
+- Test phải chạy song song được: không ghi tệp / thư mục tạm cùng tên (dùng `mkdtempSync` / `tempfile`), không mở cổng cố định, không gắn cứng cổng 8000 (đọc `BASE`). Kiểm 04/11/2026: không test nào ghi tệp chung hay mở cổng. Giữ bởi: chưa có (đọc mã). Nguồn: `docs/plans/2026-11-04-tang-toc-bo-test.md`
+  - Thời gian thật của trang (hẹn giờ, ngưỡng "cũ sau 3 giây") thì dời đồng hồ trang (`context.clock`, dời `Date.now`) thay vì `waitForTimeout`; chờ giao diện yên bằng `tests/page_settle.cjs`.
+  - Một `waitForFunction` có điều kiện không bao giờ đúng bị `.catch(() => {})` nuốt sẽ ngủ trọn 30 s (đã gặp ở `sku_queue_browser`: 60 s mỗi lần chạy).
+- Cây chính giữ cổng 8000; worktree của agent chạy cả bộ bằng `--port <cổng khác>` (runner mở máy chủ ở cổng đó và đặt `BASE`, `APP_URL`). Runner cảnh báo khi máy chủ ở cổng đang chạy phục vụ `index.html` khác cây này (worktree dùng nhầm cổng 8000 của cây chính). Nguồn: (16–17/10 · N0890, N1001; 25/10 · N1211); `docs/plans/2026-11-04-tang-toc-bo-test.md`
+- Test chập chờn đã biết (không do tính năng): `print_devices_browser`, `sku_catalog_race_browser`, `group_uid_mockup`, `find_sku_mobile`, `sku_catalog_screens_browser` (đạt khi chạy riêng, hỏng khi nhiều trình duyệt chạy cùng lúc ở bước "mã không có trên máy → hỏi máy chủ"; chưa rõ nguyên nhân gốc). Nguồn: (12–23/10 · N0591, N0937, N1028, N1166); `docs/plans/2026-11-04-tang-toc-bo-test.md`
 - Test hỏng: phân loại lỗi thật do thay đổi / test cũ lệch hành vi đã chốt / chập chờn; kiểm trên HEAD không có thay đổi trước khi kết luận "không do đợt này". Nguồn: `docs/DOI_AGENT.md` (`kiem-thu`); (25/10 · N1211)
 
 ## Commit

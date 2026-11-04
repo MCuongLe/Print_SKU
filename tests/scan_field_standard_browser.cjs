@@ -4,6 +4,7 @@
 // "Gõ tay" trong lớp quét bấm đúng nút này và đưa con trỏ về ô. Mốc chuẩn: #cut-code, #xa-vai-code, #cap-vai-code; ô kiểm: #uid-code, #uid-bulk-sku,
 // #uc-code, #uh-sku, #uh-loc. Camera + bộ đọc mã giả lập, Supabase giả lập (không ghi dữ liệu thật). Chạy với python -m http.server 8000 (đổi bằng BASE).
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
+const { settle } = require('./page_settle.cjs');
 
 const BASE = process.env.BASE || 'http://127.0.0.1:8000/';
 const FIELDS = [
@@ -91,7 +92,7 @@ const measure = ({ id, camera }) => {
           const kbSel = `.scan-field__tools > button[aria-controls="${f.id}"]`;
           await page.goto(BASE + '#' + f.route);
           await page.locator('#' + f.id).waitFor({ state: 'visible' });
-          await page.waitForTimeout(400);
+          await settle(page, { max: 400 });
           await page.evaluate(() => { document.querySelectorAll('dialog[open]').forEach(d => d.close()); });
           const m = await page.evaluate(measure, f);
           if (m.missing) { bad('không có ô'); continue; }
@@ -205,7 +206,7 @@ const measure = ({ id, camera }) => {
           const bad = msg => problems.push(`${tag} · #f-sku: ${msg}`);
           await page.goto(BASE + '#worker');
           await page.locator('#f-sku').waitFor({ state: 'visible' });
-          await page.waitForTimeout(400);
+          await settle(page, { max: 400 });
           await page.evaluate(() => { document.querySelectorAll('dialog[open]').forEach(d => d.close()); });
           const s = await page.evaluate(() => {
             const input = document.getElementById('f-sku'), row = input.closest('.sku-row'), cs = getComputedStyle(input);
