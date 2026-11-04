@@ -97,6 +97,7 @@ Thứ tự theo luật 4 và quyết định 21/10 ("cài agent trước khi pus
 ## Phát sinh
 - 04/11/2026 Việc 3c — Web: pop-up nhập mét + tự tra (Đ14) · lead · [x] viết xong + test (`xa_vai_a4_browser` phần `popupScan`); CHƯA thử máy Honeywell thật (bàn phím số, máy quét có / không Enter), CHƯA commit.
   - Gồm `#xa-vai-uid-dialog`, `#xa-vai-note`, tự tra khi đủ 16 chữ số, chống tra trùng + Enter đến muộn.
+  - Lỗi người dùng báo sau khi lên thật: lưu bằng chạm nút Lưu (hoặc nút Đóng) rồi quét UID kế thì không hiện pop-up. Gốc (tái hiện bằng gõ phím thật): đóng pop-up khi nút đang giữ focus → `document.activeElement` là ô quét nhưng phím không vào ô ("focus ma"); Enter ở ô mét không bị. Sửa: `refocusScan()` (`blur()` + `focus()` ô quét) trong handler `close`; test `typedScan` (gõ phím thật + chạm Lưu / Đóng / Esc / Enter). Test cũ dùng `locator.fill` nên không bắt được.
   - Codex vòng 1 (ảnh) và vòng 2 (phần vừa sửa) sửa 6 điểm: lỗi mạng khi tra tiếp, rời màn lúc đang lưu, Enter chỉ lưu khi ô mét đã đổi, nhãn Mét thực tế + bố cục, chốt Enter ở `submit` (nút Lưu `type="button"`), tra nền trả muộn sau khi quay lại.
 
 ## Lệch kế hoạch

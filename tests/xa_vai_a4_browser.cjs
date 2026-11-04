@@ -834,6 +834,51 @@ async function popupScan(browser) {
   await context.close();
   console.log('PASS pop-up quét: đủ 16 chữ số tự tra, tự tra + Enter một lần, pop-up neo đầu màn, Enter lưu → về ô quét, Esc không ghi, lỗi báo trong pop-up, UID mới thay trong ô mét, UID đã in chỉ hiện thẻ báo không pop-up, UID lạ không pop-up, rời màn đóng pop-up');
 }
+// Máy quét thật CHỈ gõ vào ô đang nhận phím (không tự focus như locator.fill). Chạm nút Lưu / Đóng rồi quét tiếp: pop-up phải hiện lại.
+// Lỗi gốc (người dùng báo 04/11, đo bằng gõ phím thật): đóng pop-up khi nút đang giữ focus → document.activeElement = ô quét nhưng phím KHÔNG
+// vào ô ("focus ma"), máy quét gõ mất mã, UID kế không hiện pop-up. Enter ở ô mét thì không bị (focus đang ở ô nhập).
+async function typedScan(browser) {
+  const { context, page, errors } = await newPage(browser, 375);
+  const s = makeServer();
+  await mock(page, s);
+  await page.goto(BASE + '#xa-vai');
+  await page.locator('#xa-vai-screen').waitFor({ state: 'visible' });
+  await waitFor(async () => await focused(page) === 'xa-vai-code', 'vào màn con trỏ ở ô quét');
+  const dlg = page.locator('#xa-vai-uid-dialog');
+  const typeScan = async (n, enter = false) => {
+    await page.keyboard.type(uid(n), { delay: 5 });
+    if (enter) await page.keyboard.press('Enter');
+    await dlg.waitFor({ state: 'visible', timeout: 4000 }).catch(async () => assert.fail(`quét ${uid(n)} bằng gõ phím: pop-up không hiện (ô quét="${await page.locator('#xa-vai-code').inputValue()}", focus=${await focused(page)})`));
+  };
+  // Chạm Lưu rồi quét tiếp, ba lượt liên tiếp
+  for (const [n, m] of [[2, '50,5'], [4, '30,5'], [6, '60,5']]) {
+    await typeScan(n);
+    await page.keyboard.type(m);
+    await page.locator('#xa-vai-save').tap();
+    await waitMsg(page, new RegExp(`Đã lưu ${uid(n)}`));
+    await dlg.waitFor({ state: 'hidden' });
+  }
+  // Chạm Đóng rồi quét tiếp
+  await typeScan(1);
+  await page.locator('#xa-vai-uid-close').tap();
+  await dlg.waitFor({ state: 'hidden' });
+  // Esc rồi quét tiếp (máy quét có Enter cuối mã)
+  await typeScan(3, true);
+  await page.keyboard.press('Escape');
+  await dlg.waitFor({ state: 'hidden' });
+  // Enter ở ô mét rồi quét tiếp
+  await typeScan(9);
+  await page.keyboard.type('20,5');
+  await page.keyboard.press('Enter');
+  await waitMsg(page, new RegExp(`Đã lưu ${uid(9)}`));
+  await dlg.waitFor({ state: 'hidden' });
+  await typeScan(5);
+  await page.keyboard.press('Escape');
+  await dlg.waitFor({ state: 'hidden' });
+  assert.deepEqual(errors, []);
+  await context.close();
+  console.log('PASS quét bằng gõ phím thật: chạm Lưu / chạm Đóng / Esc / Enter rồi quét UID kế vẫn hiện pop-up (không focus ma)');
+}
 async function mobile(browser) {
   const { context, page, errors } = await newPage(browser, 375);
   const s = makeServer();
@@ -888,7 +933,7 @@ async function mobile(browser) {
   try {
     // XA_VAI_ONLY=watchLimit (tên phần, cách nhau dấu phẩy) để chạy riêng khi dò lỗi; mặc định chạy hết.
     const only = (process.env.XA_VAI_ONLY || '').split(',').filter(Boolean);
-    for (const part of [desktop, bigQueue, tracking, watchLimit, popupScan, mobile]) if (!only.length || only.includes(part.name)) await part(browser);
+    for (const part of [desktop, bigQueue, tracking, watchLimit, popupScan, typedScan, mobile]) if (!only.length || only.includes(part.name)) await part(browser);
     console.log('PASS xa_vai_a4_browser');
   } finally { await browser.close(); }
 })().catch(error => { console.error('FAIL', error); process.exit(1); });

@@ -9851,7 +9851,9 @@ var FSK_CORE = (function () {
         meterForm.addEventListener('submit',event=>{event.preventDefault();if(lookingUid||meters.value===openedValue)return;save()});
         entryClose.addEventListener('click',()=>{if(!saving)entry.close()});
         entry.addEventListener('cancel',event=>{if(saving)event.preventDefault()});
-        entry.addEventListener('close',()=>{const keep=keepOnClose;keepOnClose=false;if(entry.open)return;if(!keep){if(saving)clearAfterSave=true;else clearUid()}focusScan()});
+        // Đóng pop-up khi nút Lưu / Đóng đang giữ focus (chạm tay): Chrome ghi activeElement = ô quét nhưng phím KHÔNG vào ô (focus ma) → máy quét gõ mất mã, UID kế không hiện pop-up (đo 04/11). blur() rồi focus() lại ô quét sửa; ô quét inputmode=none nên không bật bàn phím.
+        const refocusScan=()=>{if(activeTab!=='scan'||screen.hidden||modalOpen())return;code.blur();code.focus()};
+        entry.addEventListener('close',()=>{const keep=keepOnClose;keepOnClose=false;if(entry.open)return;if(!keep){if(saving)clearAfterSave=true;else clearUid()}refocusScan()});
 
         // ---- Chờ in: danh sách UID đã có mét của MỌI SKU, chọn → In A4 (nhập Mã hàng) ----
         const queueKey=items=>`${items.map(x=>x.groupUid).join(',')}|${copies.value}`;
