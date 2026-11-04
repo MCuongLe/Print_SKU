@@ -40,7 +40,7 @@ function mock(page, calls) {
     const rpc = url.match(/\/rest\/v1\/rpc\/([a-z_]+)/)?.[1];
     const args = JSON.parse(route.request().postData() || '{}');
     if (rpc) calls.push({ rpc, args });
-    if (rpc === 'print_queue_status') return json({ ok: true, data: { queued: 1, queuedCopies: 2, active: 0, agents: [{ id: 'may-kho-01', state: { version: '0.8.9', printer: { ok: true, blocked: false, message: 'sẵn sàng' } }, lastSeenAt: new Date().toISOString() }] } });
+    if (rpc === 'print_queue_status') return json({ ok: true, data: { queued: 1, queuedCopies: 2, active: 0, agents: [{ id: 'may-kho-01', name: 'Máy kho 01', capabilities: ['sku:v1', 'group_uid:v1', 'location:v1'], state: { version: '0.8.9', printer: { ok: true, blocked: false, message: 'sẵn sàng' } }, lastSeenAt: new Date().toISOString() }] } });
     if (rpc === 'print_admin_jobs') {
       const day = args.p_day || TODAY, q = String(args.p_query || '').toLowerCase();
       const dayJobs = day === TODAY ? JOBS : [];

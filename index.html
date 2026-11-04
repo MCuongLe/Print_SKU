@@ -113,6 +113,12 @@
         })));
         const jobStatus = id => deniedWatch(rpc("print_job_status", { p_access_token: accessToken(), p_job_id: id }));
         const queueStatus = () => deniedWatch(rpc("print_queue_status", { p_access_token: accessToken() }));
+        // Chọn agent theo loại máy in (04/11/2026): agent tem (TSC) khai sku:v1 / group_uid:v1 / location:v1, agent máy in A4 (phiếu xả vải) khai xa_vai_sheet:v1.
+        // Không lọc thì agent liên lạc gần nhất thắng bất kể loại: agent A4 sống làm thẻ máy in tem báo "rảnh" khi agent tem đã chết.
+        const AGENT_KINDS = { label: ["sku:v1", "group_uid:v1", "location:v1"], a4: ["xa_vai_sheet:v1"] };
+        const latestAgent = (agents, kind = "label") => [...(agents || [])]
+          .filter(agent => (agent.capabilities || []).some(cap => (AGENT_KINDS[kind] || []).includes(cap)))
+          .sort((a, b) => Date.parse(b.lastSeenAt || 0) - Date.parse(a.lastSeenAt || 0))[0];
 
         // Tem Group UID từ agent 0.10.0: Số lô / Số cuộn / RFID mỗi giá trị một dòng chữ đậm riêng và tự thu nhỏ, nên Lot và Roll
         // không còn đè nhau. Rủi ro còn lại: agent cắt Lot / Roll quá 20 ký tự (job-validator, cleanText) — tem in ra mã cụt —
@@ -165,7 +171,7 @@
           }
         };
 
-        window.PrintSkuQueue = { enqueue, jobStatus, queueStatus, accessToken, deviceKey, supabaseUrl: SUPABASE_URL, publishableKey: SUPABASE_KEY, lotRollTooLong, confirmLotRoll, labelRoll, poDate };
+        window.PrintSkuQueue = { enqueue, jobStatus, queueStatus, latestAgent, accessToken, deviceKey, supabaseUrl: SUPABASE_URL, publishableKey: SUPABASE_KEY, lotRollTooLong, confirmLotRoll, labelRoll, poDate };
 
         // Hỏi lại tiện ích trước mỗi lệnh gửi qua cầu nối extension (Đồng bộ SKU, Group UID, Kiểm kê, Đối chiếu ADJ).
         // Extension vừa Reload/cập nhật mà trang chưa tải lại thì cầu nối trong tab này mồ côi: lệnh im lặng tới hết hạn chờ
@@ -199,8 +205,7 @@
             if (command.action === "pr_hangdoi") {
               const result = await queueStatus();
               if (!result.ok) return legacyResponse({ status: "error", canKhoa: result.error?.code === "ACCESS_DENIED", message: result.error?.message });
-              const agents = result.data?.agents || [];
-              const latest = [...agents].sort((a, b) => Date.parse(b.lastSeenAt || 0) - Date.parse(a.lastSeenAt || 0))[0];
+              const latest = latestAgent(result.data?.agents, "label");
               return legacyResponse({ status: "success", may: printerView(latest), cho: Number(result.data?.queued) || 0, temCho: Number(result.data?.queuedCopies) || 0, tranSku: 100, tranTem: 500 }); // 19/10/2026: 30 → 100 SKU/lệnh, khớp agent (job-validator cắt ở 100) và TÌM SKU; phiếu IT 37 dòng thêm được hết
             }
             if (command.action === "pr_them") {
@@ -2894,8 +2899,7 @@ Error generating stack: `+y.message+`
         const refreshPrinterPill = async () => {
           try {
             const result = await window.PrintSkuQueue.queueStatus();
-            const agents = result?.data?.agents || [];
-            const latest = [...agents].sort((a, b) => Date.parse(b.lastSeenAt || 0) - Date.parse(a.lastSeenAt || 0))[0];
+            const latest = window.PrintSkuQueue.latestAgent(result?.data?.agents, "label");
             const seen = latest?.lastSeenAt ? Date.parse(latest.lastSeenAt) : 0;
             const printer = latest?.state?.printer || {};
             // 45 giây: agent 0.8.4 khi rảnh chỉ hỏi hàng đợi mỗi 20 giây (Realtime đánh thức khi có lệnh).
@@ -11212,7 +11216,7 @@ async function rpc(name,args,retry=true){
           try{
             const result=await window.PrintSkuQueue.queueStatus();
             if(!result?.ok)throw new Error(result?.error?.message||"");
-            const q=result.data||{},agent=[...(q.agents||[])].sort((a,b)=>Date.parse(b.lastSeenAt||0)-Date.parse(a.lastSeenAt||0))[0],printer=agent?.state?.printer||{};
+            const q=result.data||{},agent=window.PrintSkuQueue.latestAgent(q.agents,"label"),printer=agent?.state?.printer||{};
             const stale=!agent?.lastSeenAt||Date.now()-Date.parse(agent.lastSeenAt)>45000,version=agent?.state?.version?`v${agent.state.version} · `:"";
             if(stale)tile("pj-stat-printer","Mất liên lạc",agent?.lastSeenAt?`${version}${ago(agent.lastSeenAt)}`:"Chưa có agent","bad");
             else if(printer.blocked)tile("pj-stat-printer",printer.message||"Máy in đang mắc",`${version}${ago(agent.lastSeenAt)}`,"bad");
