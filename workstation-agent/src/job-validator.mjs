@@ -47,7 +47,32 @@ function validCopies(value) {
   return Number.isInteger(copies) && copies >= 1 && copies <= 500 ? copies : null;
 }
 
-export function normalizeJob(input) {
+// 0.11.0 phiếu xả vải: ngày giờ ISO 8601 có múi giờ (Postgres trả "2026-11-04T08:30:00.123456+00:00").
+// Bắt buộc có múi giờ để giờ in trên phiếu không phụ thuộc đồng hồ máy trạm.
+const ISO_DATE_TIME = /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(:\d{2}(\.\d{1,9})?)?(Z|[+-]\d{2}(:?\d{2})?)$/i;
+const XA_VAI_MAX_COPIES = 5;
+const XA_VAI_MAX_ITEMS = 100;
+// CONTRACT V2: actual_mm ≤ 100.000 m (check của bảng xa_vai_measures); Lot/Roll phiếu tối đa 40 ký tự.
+const XA_VAI_MAX_MM = 100000000;
+const XA_VAI_CODE_LENGTH = 40;
+// CONTRACT V3: Mã hàng (mã kiểu hàng, ví dụ CWSH02) — cùng mẫu với check item_code của bảng xa_vai_measures.
+const XA_VAI_ITEM_CODE = /^[0-9A-Z._-]{1,40}$/;
+
+function validIsoDateTime(value) {
+  return typeof value === "string" && ISO_DATE_TIME.test(value.trim()) && Number.isFinite(Date.parse(value.trim()));
+}
+
+// Số đo (mm) của phiếu xả vải: số JSON, hoặc chuỗi số (phòng khi phía máy chủ trả numeric dạng chuỗi). null, "", true... không phải số.
+function meterNumber(value) {
+  if (typeof value === "number") return value;
+  if (typeof value === "string" && value.trim() !== "") return Number(value.trim());
+  return Number.NaN;
+}
+
+// Loại lệnh mỗi chế độ máy in được nhận (hàng đợi đã chia theo capability; đây là chốt chặn thứ hai).
+const KIND_TYPES = { label: ["sku", "group_uid", "location"], a4: ["xa_vai_sheet"] };
+
+export function normalizeJob(input, { printerKind } = {}) {
   const source = input && typeof input === "object" ? input : {};
   const payload = source.payload && typeof source.payload === "object" ? source.payload : {};
   const type = cleanText(source.type, 30).toLowerCase();
@@ -56,8 +81,13 @@ export function normalizeJob(input) {
   const errors = [];
   if (!source.id) errors.push("Thiếu id của lệnh in");
   if (!source.nonce) errors.push("Thiếu nonce chống gửi trùng");
-  if (!copies) errors.push("Số tem phải từ 1 đến 500");
-  if (!['sku', 'group_uid', 'location'].includes(type)) errors.push("Loại tem không được hỗ trợ");
+  if (type === "xa_vai_sheet") {
+    if (!copies || copies > XA_VAI_MAX_COPIES) errors.push(`Số bản phiếu phải từ 1 đến ${XA_VAI_MAX_COPIES}`);
+  } else if (!copies) errors.push("Số tem phải từ 1 đến 500");
+  if (!['sku', 'group_uid', 'location', 'xa_vai_sheet'].includes(type)) errors.push("Loại tem không được hỗ trợ");
+  else if (printerKind && !(KIND_TYPES[printerKind] ?? KIND_TYPES.label).includes(type)) {
+    errors.push(printerKind === "a4" ? "Máy in A4 chỉ in phiếu xả vải, không in tem" : "Máy in tem không in phiếu A4");
+  }
 
   let normalizedPayload = {};
   if (type === "sku") {
@@ -150,6 +180,45 @@ export function normalizeJob(input) {
     const totalCopies = items.reduce((sum, item) => sum + item.copies, 0);
     if (items.length && totalCopies !== copies) errors.push("Tổng số tem vị trí không khớp lệnh in");
     normalizedPayload = { items };
+  }
+
+  if (type === "xa_vai_sheet") {
+    // Phiếu theo dõi xả vải (0.11.0): mọi số liệu do máy chủ dựng từ DB; sai bất kỳ trường nào thì từ chối cả lệnh,
+    // không in phiếu thiếu dòng. Số đo là mm nguyên (systemMm, actualMm — CONTRACT V2); payload v1 chỉ có systemM/actualM
+    // thì thiếu actualMm → từ chối. Lot/Roll giữ 40 ký tự (phiếu là bản ghi theo dõi, mã không nên bị cắt im lặng; mẫu
+    // phiếu tự thu cỡ / cắt "…" trong ô); tem Group UID vẫn 20. Tên sản phẩm cắt 180 như mọi loại tem.
+    // CONTRACT V3: itemCode = mã kiểu hàng nhập lúc in (máy chủ đã chuẩn hoá viết hoa) — bắt buộc, đúng mẫu, KHÔNG sửa giúp
+    // (mã bị sửa là phiếu treo nhầm hàng); sku nằm ở TỪNG dòng (một phiếu nhiều SKU); productName tuỳ chọn (null khi nhiều SKU).
+    if (templateVersion !== 1) errors.push("Phiên bản phiếu xả vải không được hỗ trợ");
+    const itemCode = typeof payload.itemCode === "string" ? payload.itemCode : "";
+    if (!XA_VAI_ITEM_CODE.test(itemCode)) errors.push("Mã hàng chỉ gồm chữ IN HOA, số, . _ - (1–40 ký tự)");
+    const printedAt = typeof payload.printedAt === "string" ? payload.printedAt.trim() : "";
+    if (!validIsoDateTime(printedAt)) errors.push("Ngày giờ in không hợp lệ");
+    const sourceItems = Array.isArray(payload.items) ? payload.items : [];
+    if (!sourceItems.length) errors.push("Danh sách Group UID đang trống");
+    if (sourceItems.length > XA_VAI_MAX_ITEMS) errors.push(`Phiếu tối đa ${XA_VAI_MAX_ITEMS} Group UID`);
+    const items = sourceItems.slice(0, XA_VAI_MAX_ITEMS).map((raw, index) => {
+      const entry = raw && typeof raw === "object" ? raw : {};
+      const where = ` dòng ${index + 1}`;
+      const groupUid = rawCode(entry.groupUid);
+      if (!validGroupUid(groupUid)) errors.push(`Group UID${where} không hợp lệ`);
+      const sku = rawCode(entry.sku);
+      if (!SKU_PATTERN.test(sku)) errors.push(`SKU${where} không hợp lệ`);
+      const actualMm = Math.round(meterNumber(entry.actualMm));
+      if (!Number.isFinite(actualMm) || actualMm < 1 || actualMm > XA_VAI_MAX_MM) errors.push(`Mét thực tế${where} phải lớn hơn 0 và không quá 100.000 m`);
+      const systemMm = entry.systemMm === null || entry.systemMm === undefined ? null : Math.round(meterNumber(entry.systemMm));
+      if (systemMm !== null && !(Number.isFinite(systemMm) && systemMm >= 0)) errors.push(`Mét hệ thống${where} không hợp lệ`);
+      const measuredAt = typeof entry.measuredAt === "string" ? entry.measuredAt.trim() : "";
+      if (!validIsoDateTime(measuredAt)) errors.push(`Giờ nhập${where} không hợp lệ`);
+      return { groupUid, sku, lot: cleanText(entry.lot, XA_VAI_CODE_LENGTH), roll: cleanText(entry.roll, XA_VAI_CODE_LENGTH), systemMm, actualMm, measuredAt };
+    });
+    normalizedPayload = {
+      itemCode,
+      productName: cleanText(payload.productName, 180) || null,
+      printedAt,
+      reprint: payload.reprint === true,
+      items
+    };
   }
 
   return {

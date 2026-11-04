@@ -1,0 +1,699 @@
+// THEO DÕI XẢ VẢI bản phiếu A4 (04/11/2026, docs/plans/2026-11-04-xa-vai-met-thuc-te-a4.md): quét Group UID của BẤT KỲ SKU nào → nhập mét thực tế
+// → hàng "Chờ in" (mọi SKU) → In A4: khung nhập Mã hàng (mã kiểu hàng như CWSH02, nhớ theo máy) → RPC xa_vai_print_enqueue(p_item_code) qua
+// PrintSkuQueue.enqueueRpc (khoá máy, nonce, lớp phủ chibi) → "Đã in" lọc theo Mã hàng + ngày, in lại (một mã hàng mỗi phiếu), Excel.
+// Máy chủ giả lập theo hợp đồng RPC (CONTRACT V2 mục 1, 5: đơn vị mm; CONTRACT V3 mục 1, 3: item_code, bỏ p_sku ở save / list; chưa có mẫu phản hồi
+// thật vì RPC mới). Dữ liệu giả: SKU 9000000xx, UID 1028260000000xxx, mã hàng CWSH02 / TEST01.
+// Chạy với python -m http.server 8000 (đổi bằng BASE). XA_VAI_SHOTS=<thư mục> thì chụp ảnh 1280 + 375 px ba tab + khung nhập Mã hàng.
+const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
+const assert = require('node:assert/strict');
+const { readXlsx } = require('./xlsx_read.cjs');
+
+const BASE = process.env.BASE || 'http://127.0.0.1:8000/';
+const SHOTS = process.env.XA_VAI_SHOTS || '';
+const TOKEN = 'pd_' + 'cd'.repeat(24);
+const SKU = '900000001', SKU2 = '900000002', SKU_BIG = '900000003';
+const NAME = 'Vải Test Jersey/Cotton/155gsm, 178cm/Đen/g';
+const CODE_RE = /^[0-9A-Z._-]{1,40}$/;
+const uid = n => `10282600000${String(n).padStart(5, '0')}`;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const ago = m => new Date(Date.now() - m * 60000).toISOString();
+
+// Máy chủ giả: chi tiết UID (group_uid_details) + bảng xa_vai_measures (có item_code) + lệnh in. Đơn vị lưu và so sánh = mm nguyên.
+const makeServer = () => {
+  const s = { calls: [], details: new Map(), measures: new Map(), jobs: new Map(), nonces: new Map(), mode: 'ok', abortOnce: new Set(), abortAfter: new Set(), seq: 0, listTotal: null };
+  const add = (n, sku, systemMm, lot = 'L1', roll = `R${n}`) => s.details.set(uid(n), { sku, lot, roll, systemMm, productName: sku === SKU ? NAME : `Vải thử ${sku}` });
+  add(1, SKU, 60758); add(2, SKU, 50000); add(3, SKU, 40000); add(4, SKU, 30000); add(5, SKU, null); add(6, SKU, 60000); add(9, SKU2, 20000);
+  for (let i = 0; i < 150; i++) add(500 + i, SKU_BIG, 10000, 'LB', `B${i}`);
+  s.item = (u, m) => ({ groupUid: u, sku: m.sku, itemCode: m.itemCode || null, lot: m.lot, roll: m.roll, systemMm: m.systemMm, actualMm: m.actualMm, measuredAt: m.measuredAt, status: m.status, printedAt: m.printedAt || null, printJobId: m.jobId || null });
+  s.measure = (u, actualMm, status = 'pending', extra = {}) => { const d = s.details.get(u); s.measures.set(u, { sku: d.sku, lot: d.lot, roll: d.roll, systemMm: d.systemMm, actualMm, measuredAt: new Date(Date.now() + (s.seq++)).toISOString(), status, printedAt: null, jobId: null, itemCode: null, ...extra }); };
+  // Lệnh do máy khác gửi (hoặc trước khi tải lại trang): UID đang "printing" gắn printJobId + mã hàng.
+  s.foreignJob = (id, uids, itemCode = 'CWSH02') => { s.jobs.set(id, { status: 'queued', uids, reprint: false }); uids.forEach(u => { const m = s.measures.get(u); m.status = 'printing'; m.jobId = id; m.itemCode = itemCode; }); };
+  return s;
+};
+
+const mock = async (page, s) => page.route('**/*', async route => {
+  const url = route.request().url();
+  if (url.startsWith(BASE)) return route.continue();
+  const json = (body, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
+  const rpc = url.match(/\/rest\/v1\/rpc\/([a-z_]+)/)?.[1];
+  if (!rpc) return json([]);
+  const body = route.request().postDataJSON?.() || {};
+  s.calls.push({ rpc, body });
+  if (s.abortOnce.has(rpc)) { s.abortOnce.delete(rpc); return route.abort('internetdisconnected'); }
+  // PostgREST: tham số lạ (chữ ký cũ có p_sku) → HTTP 404 PGRST202, như khi web cũ gọi hàm đã đổi chữ ký.
+  const noFn = () => json({ code: 'PGRST202', message: `Could not find the function public.${rpc}`, details: null, hint: null }, 404);
+  // abortAfter: máy chủ đã ghi xong rồi mới mất phản hồi (hết giờ) — web không biết lệnh đã vào hay chưa.
+  const after = s.abortAfter.has(rpc);
+  if (after) s.abortAfter.delete(rpc);
+  const ok = after ? () => route.abort('timedout') : data => json({ ok: true, data });
+  const fail = (code, message, extra = {}) => json({ ok: false, error: { code, message, ...extra } });
+  const denied = () => fail('ACCESS_DENIED', 'Máy chưa kích hoạt; vào ô KÍCH HOẠT MÁY.');
+  if (rpc === 'xa_vai_measure_lookup') {
+    const u = String(body.p_group_uid || '').trim(), d = s.details.get(u), m = s.measures.get(u);
+    if (!d) return fail('GROUP_UID_NOT_READY', 'Group UID chưa có trong dữ liệu');
+    return ok({ groupUid: u, sku: d.sku, productName: d.productName, itemCode: m ? m.itemCode || null : null, lot: d.lot, roll: d.roll, uidStatus: 'Available', systemQty: 1000, systemMm: d.systemMm, state: m ? m.status : 'new', actualMm: m ? m.actualMm : null, measuredAt: m ? m.measuredAt : null, printedAt: m ? m.printedAt : null, printJobId: m ? m.jobId || null : null });
+  }
+  // list / search: p_item_code khác rỗng mà sai mẫu (sau upper + trim) → INVALID_ITEM_CODE (SQL V3).
+  const badCode = () => body.p_item_code != null && String(body.p_item_code).trim() !== '' && !CODE_RE.test(String(body.p_item_code).trim().toUpperCase());
+  if ((rpc === 'xa_vai_measure_list' || rpc === 'xa_vai_measure_search') && badCode()) return fail('INVALID_ITEM_CODE', 'Mã hàng chỉ gồm chữ, số, . _ - (tối đa 40 ký tự)');
+  if (rpc === 'xa_vai_measure_list') {
+    if ('p_sku' in body) return noFn();
+    // queue = pending + printing của MỌI SKU, bỏ qua p_item_code (CONTRACT V3 mục 1).
+    const items = [...s.measures.entries()].filter(([, m]) => m.status === 'pending' || m.status === 'printing').sort((a, b) => a[1].measuredAt.localeCompare(b[1].measuredAt)).map(([u, m]) => s.item(u, m));
+    return ok({ items, total: s.listTotal ?? items.length });
+  }
+  if (rpc === 'xa_vai_measure_search') {
+    const items = [...s.measures.entries()].filter(([, m]) => m.status === 'printed' && (!body.p_item_code || m.itemCode === body.p_item_code) && (!body.p_sku || m.sku === body.p_sku)).map(([u, m]) => s.item(u, m));
+    return ok({ items, total: items.length, truncated: false });
+  }
+  if (rpc === 'xa_vai_measure_save') {
+    if ('p_sku' in body) return noFn();
+    if (s.mode === 'deny') return denied();
+    const u = body.p_group_uid, d = s.details.get(u), m = s.measures.get(u);
+    if (!d) return fail('GROUP_UID_NOT_READY', 'Group UID chưa có trong dữ liệu');
+    if (!(Number.isInteger(body.p_actual_mm) && body.p_actual_mm > 0 && body.p_actual_mm <= 100000000)) return fail('INVALID_QTY', 'Mét thực tế phải lớn hơn 0 và không quá 100.000 m');
+    if (m && m.status !== 'pending') return fail('NOT_PENDING', 'UID đã gửi in');
+    if (m && !body.p_replace) return fail('ALREADY_MEASURED', 'UID đã có mét', { item: s.item(u, m) });
+    if (m) { m.actualMm = body.p_actual_mm; m.measuredAt = new Date().toISOString(); return ok({ item: s.item(u, m), replaced: true }); }
+    s.measure(u, body.p_actual_mm);
+    return ok({ item: s.item(u, s.measures.get(u)), replaced: false });
+  }
+  if (rpc === 'xa_vai_measure_delete') {
+    if (s.mode === 'deny') return denied();
+    const m = s.measures.get(body.p_group_uid);
+    if (!m) return fail('NOT_FOUND', 'Không có'); if (m.status !== 'pending') return fail('NOT_PENDING', 'Đã gửi in');
+    s.measures.delete(body.p_group_uid); return ok({ groupUid: body.p_group_uid });
+  }
+  if (rpc === 'xa_vai_print_enqueue') {
+    if (s.mode === 'deny') return denied();
+    // Máy chủ từ chối ở tầng HTTP (4xx, vd hàm chưa có / tham số sai): web phải báo "Chưa gửi được", không "Chưa rõ".
+    if (s.mode === 'http404') return noFn();
+    if (s.nonces.has(body.p_nonce)) return ok({ ...s.nonces.get(body.p_nonce), duplicate: true });
+    const rows = body.p_uids.map(u => [u, s.measures.get(u)]);
+    if (rows.some(([, m]) => !m)) return fail('NOT_FOUND', 'Không có');
+    if (rows.some(([, m]) => m.status !== (body.p_reprint ? 'printed' : 'pending'))) return fail('NOT_PENDING', 'Sai trạng thái');
+    const code = String(body.p_item_code ?? '').trim().toUpperCase();
+    if (!body.p_reprint && !CODE_RE.test(code)) return fail('INVALID_ITEM_CODE', 'Mã hàng chỉ gồm chữ, số, . _ - (tối đa 40 ký tự)');
+    if (s.mode === 'badcode' && !body.p_reprint) return fail('INVALID_ITEM_CODE', 'Mã hàng chỉ gồm chữ, số, . _ - (tối đa 40 ký tự)');
+    if (body.p_reprint) { const codes = new Set(rows.map(([, m]) => m.itemCode || '')); if (codes.size !== 1 || codes.has('')) return fail('MIXED_ITEM_CODE', 'Mỗi phiếu một mã hàng', { itemCodes: [...codes].filter(Boolean) }); }
+    const id = `00000000-0000-4000-8000-${String(s.jobs.size + 1).padStart(12, '0')}`;
+    s.jobs.set(id, { status: 'queued', uids: body.p_uids, reprint: body.p_reprint });
+    if (!body.p_reprint) rows.forEach(([, m]) => { m.status = 'printing'; m.jobId = id; m.itemCode = code; });
+    const data = { id, status: 'queued', duplicate: false, count: rows.length };
+    s.nonces.set(body.p_nonce, data);
+    return ok(data);
+  }
+  if (rpc === 'print_job_status') { const j = s.jobs.get(body.p_job_id); return j ? ok({ id: body.p_job_id, status: j.status, errorCode: j.errorCode || null, errorMessage: j.errorMessage || null, result: j.result || null }) : fail('NOT_FOUND', 'Không có lệnh'); }
+  if (rpc === 'print_queue_status') return ok({ queued: 0, queuedCopies: 0, queuedA4: 0, active: 0, agents: [
+    { id: 'may-kho-01', capabilities: ['sku:v1', 'group_uid:v1'], lastSeenAt: ago(0.1), state: { printer: { blocked: false } } },
+    { id: 'may-a4-01', capabilities: ['xa_vai_sheet:v1'], lastSeenAt: s.a4Seen || ago(0.1), state: { printer: { blocked: false } } }] });
+  return json({ ok: true, data: {} });
+});
+// Agent giả in xong: lệnh queued → completed, UID printing → printed (trigger máy chủ, giữ item_code).
+const finishJobs = (s, result = { spoolConfirmed: true }) => { for (const [id, j] of s.jobs) if (j.status === 'queued') { j.status = 'completed'; j.result = result; for (const [, m] of s.measures) if (m.jobId === id && m.status === 'printing') { m.status = 'printed'; m.printedAt = new Date().toISOString(); } } };
+// Agent giả báo lỗi: lệnh failed, trigger trả UID về "Chờ in" và xoá item_code (lệnh in lại không đổi dòng nào).
+const failJob = (s, id, errorCode, errorMessage) => { const j = s.jobs.get(id); j.status = 'failed'; j.errorCode = errorCode; j.errorMessage = errorMessage; for (const [, m] of s.measures) if (m.jobId === id && m.status === 'printing') { m.status = 'pending'; m.jobId = null; m.itemCode = null; } };
+
+const calls = (s, rpc) => s.calls.filter(c => c.rpc === rpc);
+const waitFor = async (fn, what, ms = 6000) => { const end = Date.now() + ms; while (Date.now() < end) { if (await fn()) return; await sleep(50); } assert.fail(`hết giờ chờ: ${what}`); };
+const msg = page => page.locator('#xa-vai-message').innerText();
+const waitMsg = (page, re, ms = 6000) => page.waitForFunction(r => new RegExp(r).test(document.getElementById('xa-vai-message').textContent), re.source, { timeout: ms }).catch(async e => { throw new Error(`chờ /${re.source}/, đang là "${await msg(page)}" (${e.message.split(/\r?\n/)[0]})`); });
+const focused = page => page.evaluate(() => document.activeElement?.id || '');
+const shot = async (page, name) => { if (SHOTS) { await sleep(250); await page.screenshot({ path: `${SHOTS}/${name}.png`, fullPage: true }); } };
+const mh = page => page.locator('#xa-vai-mh-dialog');
+// Bấm In (hoặc In lại) → khung nhập Mã hàng → (gõ mã) → In.
+const openCode = async (page, btn = '#xa-vai-print') => { await page.locator(btn).click(); await mh(page).waitFor({ state: 'visible' }); };
+const submitCode = async (page, code) => { if (code !== undefined) await page.locator('#xa-vai-mh-code').fill(code); await page.locator('#xa-vai-mh-ok').click(); };
+const printCode = async (page, code) => { await openCode(page); await submitCode(page, code); await mh(page).waitFor({ state: 'hidden' }); };
+const chibiGone = page => page.waitForFunction(() => { const o = document.getElementById('print-chibi-overlay'); return !o || o.hidden; }, null, { timeout: 6000 });
+const statusCalls = (s, id) => calls(s, 'print_job_status').filter(c => !id || c.body.p_job_id === id).length;
+// Âm báo: đếm lệnh PrintSkuScanCue.play (không phát tiếng thật).
+const spyCue = page => page.evaluate(() => { window.__cues = []; window.PrintSkuScanCue.play = tone => { window.__cues.push(tone); }; });
+const cues = page => page.evaluate(() => window.__cues);
+const setHidden = (page, hidden) => page.evaluate(h => { Object.defineProperty(document, 'hidden', { configurable: true, get: () => h }); document.dispatchEvent(new Event('visibilitychange')); }, hidden);
+
+async function newPage(browser, width) {
+  const mobile = width < 800;
+  const context = await browser.newContext({ viewport: { width, height: mobile ? 800 : 900 }, isMobile: mobile, hasTouch: mobile, acceptDownloads: true });
+  await context.addInitScript(token => { if (!sessionStorage.getItem('xv-init')) { sessionStorage.setItem('xv-init', '1'); localStorage.setItem('tb-khoa', token); } }, TOKEN);
+  const page = await context.newPage();
+  const errors = [];
+  page.on('pageerror', e => errors.push(e.message));
+  page.on('console', m => { if (m.type() === 'error' && !/Failed to load resource|ERR_INTERNET_DISCONNECTED/.test(m.text())) errors.push(m.text()); });
+  return { context, page, errors };
+}
+const scan = async (page, value) => { await chibiGone(page); await page.locator('#xa-vai-code').fill(value); await page.locator('#xa-vai-code').press('Enter'); };
+const typeMeters = async (page, value) => { await chibiGone(page); await page.locator('#xa-vai-meters').fill(value); await page.locator('#xa-vai-meters').press('Enter'); };
+
+async function desktop(browser) {
+  const { context, page, errors } = await newPage(browser, 1280);
+  const s = makeServer();
+  await mock(page, s);
+  await page.goto(BASE + '#xa-vai');
+  await page.locator('#xa-vai-screen').waitFor({ state: 'visible' });
+  // Ba tab, không còn tab cũ; tab Quét không còn phần Mã hàng-là-SKU, Chờ in không còn công tắc "Tất cả SKU"
+  assert.deepEqual(await page.locator('#xa-vai-screen .cut-tab').evaluateAll(n => n.map(b => b.id)), ['xa-vai-tab-scan', 'xa-vai-tab-queue', 'xa-vai-tab-printed']);
+  assert.equal(await page.locator('#xa-vai-tab-open, #xa-vai-tab-done').count(), 0, 'gỡ tab Đang xả / Đã xả xong');
+  assert.equal(await page.locator('#xa-vai-sku-code, #xa-vai-sku-card, #xa-vai-sku-change, #xa-vai-all').count(), 0, 'bỏ ô SKU / Đổi mã / công tắc Tất cả SKU');
+  await waitFor(() => calls(s, 'xa_vai_measure_search').length && calls(s, 'xa_vai_measure_list').length, 'tải Chờ in + Đã in khi vào màn');
+  const list0 = calls(s, 'xa_vai_measure_list')[0].body;
+  assert.equal(list0.p_status, 'queue'); assert.equal('p_sku' in list0, false, 'list không gửi p_sku'); assert.equal(list0.p_item_code ?? null, null, 'Chờ in không lọc mã hàng');
+  const today = await page.evaluate(() => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()));
+  const search0 = calls(s, 'xa_vai_measure_search')[0].body;
+  assert.equal(search0.p_date_from, today, 'Đã in mặc định từ hôm nay'); assert.equal(search0.p_date_to, today);
+  for (const name of ['xa_vai_measure_list', 'xa_vai_measure_search']) assert.ok(calls(s, name).every(c => !('p_access_token' in c.body)), `${name} (đọc) không gửi khoá máy`);
+  await waitFor(async () => await focused(page) === 'xa-vai-code', 'vào màn con trỏ ở ô Group UID');
+  await shot(page, '1280-quet-trong');
+  // Quét UID → thẻ UID + con trỏ sang ô mét
+  await scan(page, uid(1));
+  await page.locator('#xa-vai-meter-form').waitFor({ state: 'visible' });
+  const card = (await page.locator('#xa-vai-uid').innerText()).replace(/\s+/g, ' ');
+  assert.match(card, new RegExp(uid(1))); assert.match(card, new RegExp(SKU)); assert.match(card, /L1/); assert.match(card, /R1/); assert.match(card, /60,76/);
+  await waitFor(async () => await focused(page) === 'xa-vai-meters', 'con trỏ sang ô mét');
+  await shot(page, '1280-quet-uid');
+  await typeMeters(page, '60,5');
+  await waitMsg(page, /Đã lưu 1028260000000001/);
+  const save1 = calls(s, 'xa_vai_measure_save')[0].body;
+  assert.deepEqual({ ...save1 }, { p_access_token: TOKEN, p_group_uid: uid(1), p_actual_mm: 60500, p_replace: false }, 'lưu mét: khoá máy + mm nguyên, không p_sku');
+  assert.equal(await page.locator('#xa-vai-saved').textContent(), '1', 'đếm UID đã lưu của phiên');
+  assert.equal(await page.locator('#xa-vai-meter-form').isHidden(), true, 'lưu xong thì ẩn ô mét');
+  await waitFor(async () => await focused(page) === 'xa-vai-code', 'lưu xong con trỏ về ô quét');
+  // Lệch > 20%: hỏi xác nhận (Nhập lại → không ghi; Lưu → ghi)
+  await scan(page, uid(2));
+  await page.locator('#xa-vai-meter-form').waitFor({ state: 'visible' });
+  await typeMeters(page, '30');
+  const whd = page.locator('dialog.whd');
+  await whd.waitFor({ state: 'visible' });
+  assert.match(await whd.locator('.whd-title').textContent(), /lệch hơn 20%/);
+  assert.match(await whd.locator('.whd-facts').innerText(), /50,00/);
+  await whd.locator('.whd-cancel').click();
+  await sleep(200);
+  assert.equal(calls(s, 'xa_vai_measure_save').length, 1, 'Nhập lại thì chưa ghi');
+  await page.locator('#xa-vai-meters').press('Enter');
+  await whd.waitFor({ state: 'visible' }); await whd.locator('.whd-ok').click();
+  await waitMsg(page, /Đã lưu 1028260000000002/);
+  assert.equal(calls(s, 'xa_vai_measure_save').pop().body.p_actual_mm, 30000);
+  // Lệch theo mm: hệ thống 60.000 mm; 49,5 m gửi đúng 49.500 mm; dòng chênh lệch khi gõ theo mm
+  await scan(page, uid(6));
+  await page.locator('#xa-vai-meter-form').waitFor({ state: 'visible' });
+  await page.locator('#xa-vai-meters').fill('49,5');
+  assert.equal(await page.locator('#xa-vai-diff').innerText(), 'Chênh lệch −10,50 m', 'chênh lệch khi gõ tính theo mm, không còn độ co %');
+  assert.equal(await page.locator('#xa-vai-diff').getAttribute('data-tone'), null, 'lệch ≤ 20% không tô cảnh báo');
+  await page.locator('#xa-vai-meters').press('Enter');
+  await waitMsg(page, /Đã lưu 1028260000000006 · 49,50 m/);
+  assert.equal(calls(s, 'xa_vai_measure_save').pop().body.p_actual_mm, 49500, '49,5 m → 49500 mm');
+  await page.locator(`#xa-vai-tab-queue`).click();
+  await page.waitForFunction(u => document.querySelector(`#xa-vai-queue-rows tr[data-uid="${u}"]`), uid(6));
+  await page.locator(`#xa-vai-queue-rows tr[data-uid="${uid(6)}"] [data-act="delete"]`).click();
+  await page.locator('dialog.whd .whd-ok').click();
+  await page.waitForFunction(u => !document.querySelector(`#xa-vai-queue-rows tr[data-uid="${u}"]`), uid(6));
+  await page.locator('#xa-vai-tab-scan').click();
+  // UID của SKU khác (V3): quét và lưu bình thường, không còn chặn "Khác mã hàng"
+  await scan(page, uid(9));
+  await page.locator('#xa-vai-meter-form').waitFor({ state: 'visible' });
+  assert.match(await page.locator('#xa-vai-uid').innerText(), new RegExp(SKU2));
+  assert.notEqual(await page.locator('#xa-vai-uid').getAttribute('data-tone'), 'bad', 'UID SKU khác không bị tô đỏ');
+  await typeMeters(page, '19,5');
+  await waitMsg(page, /Đã lưu 1028260000000009/);
+  // ALREADY_MEASURED (máy khác vừa lưu sau lúc tra) → hỏi thay số → lưu lại với p_replace
+  await scan(page, uid(3));
+  await page.locator('#xa-vai-meter-form').waitFor({ state: 'visible' });
+  s.measure(uid(3), 39000);
+  await typeMeters(page, '38,4');
+  await whd.waitFor({ state: 'visible' });
+  assert.match(await whd.locator('.whd-title').textContent(), /đã có mét/);
+  assert.match(await whd.locator('.whd-facts').innerText(), /39,00/);
+  await whd.locator('.whd-ok').click();
+  await waitMsg(page, /Đã sửa 1028260000000003/);
+  const saves3 = calls(s, 'xa_vai_measure_save').filter(c => c.body.p_group_uid === uid(3)).map(c => c.body.p_replace);
+  assert.deepEqual(saves3, [false, true], 'ALREADY_MEASURED → lưu lại với p_replace=true');
+  // UID đã có mét (Chờ in): hiện số cũ, sửa = p_replace
+  await scan(page, uid(1));
+  await page.locator('#xa-vai-meter-form').waitFor({ state: 'visible' });
+  assert.equal(await page.locator('#xa-vai-meters').inputValue(), '60,50', 'UID đã có mét thì hiện số cũ');
+  await typeMeters(page, '61');
+  await waitMsg(page, /Đã sửa 1028260000000001/);
+  assert.equal(calls(s, 'xa_vai_measure_save').pop().body.p_replace, true);
+  // Mất mạng khi GHI: "chưa rõ đã ghi hay chưa" rồi tra lại UID
+  await scan(page, uid(4));
+  await page.locator('#xa-vai-meter-form').waitFor({ state: 'visible' });
+  const lookups = calls(s, 'xa_vai_measure_lookup').length;
+  s.abortOnce.add('xa_vai_measure_save');
+  await typeMeters(page, '29,9');
+  await waitMsg(page, /Chưa rõ đã ghi hay chưa/);
+  await waitFor(() => calls(s, 'xa_vai_measure_lookup').length > lookups, 'tra lại UID sau lỗi mạng');
+  assert.equal(calls(s, 'xa_vai_measure_lookup').pop().body.p_group_uid, uid(4));
+  assert.equal(await page.locator('#xa-vai-meters').inputValue(), '29,9', 'giữ số đang nhập để bấm lại');
+  // Máy chưa kích hoạt: hộp kích hoạt mở, báo trong dòng, giữ số mét
+  s.mode = 'deny';
+  await page.locator('#xa-vai-meters').press('Enter');
+  await page.locator('#pdv-dialog').waitFor({ state: 'visible' });
+  await waitMsg(page, /Máy chưa kích hoạt/);
+  assert.equal(await page.locator('#xa-vai-message .xv-activate').count(), 1, 'có nút mở lại ô Kích hoạt máy');
+  assert.equal(await page.locator('#xa-vai-meters').inputValue(), '29,9');
+  await page.locator('#pdv-cancel').click();
+  s.mode = 'ok';
+  await page.locator('#xa-vai-meters').press('Enter');
+  await waitMsg(page, /Đã lưu 1028260000000004/);
+  assert.equal(await page.locator('#xa-vai-saved').textContent(), '7');
+  assert.ok(calls(s, 'xa_vai_measure_save').every(c => !('p_sku' in c.body)), 'save không gửi p_sku');
+
+  // ---- Chờ in: mọi SKU, cột SKU luôn hiện ----
+  await page.locator('#xa-vai-tab-queue').click();
+  await page.waitForFunction(() => document.querySelectorAll('#xa-vai-queue-rows tr[data-uid]').length === 5);
+  assert.equal(await page.locator('#xa-vai-queue-count').textContent(), '5');
+  assert.equal(await page.locator('#xa-vai-queue-rows input[data-pick]:checked').count(), 5, 'mặc định chọn hết UID chờ in');
+  assert.match((await page.locator('#xa-vai-queue-total').innerText()).replace(/\s+/g, ' '), /5 UID.*178,80 m/, 'tổng UID + mét thực tế');
+  const skuHead = await page.locator('#xa-vai-queue-rows').evaluate(tb => [...tb.closest('table').querySelectorAll('thead th')].map(th => ({ t: th.textContent.trim(), v: getComputedStyle(th).display !== 'none' })));
+  assert.ok(skuHead.some(h => h.t === 'SKU' && h.v), 'cột SKU luôn hiện ở Chờ in');
+  assert.match(await page.locator(`#xa-vai-queue-rows tr[data-uid="${uid(9)}"]`).innerText(), new RegExp(SKU2));
+  await page.waitForFunction(() => /Máy in A4 sẵn sàng/.test(document.getElementById('xa-vai-printer').textContent));
+  assert.equal(await page.locator('#xa-vai-printer').getAttribute('data-tone'), 'ok');
+  await shot(page, '1280-cho-in');
+  // Sửa: về tab Quét với UID đó
+  await page.locator(`#xa-vai-queue-rows tr[data-uid="${uid(2)}"] [data-act="edit"]`).click();
+  await page.locator('#xa-vai-meter-form').waitFor({ state: 'visible' });
+  assert.equal(await page.locator('#xa-vai-tab-scan').getAttribute('aria-selected'), 'true');
+  assert.equal(await page.locator('#xa-vai-meters').inputValue(), '30,00');
+  await page.locator('#xa-vai-tab-queue').click();
+  // Xoá: hỏi xác nhận rồi gọi xa_vai_measure_delete có khoá máy
+  await page.locator(`#xa-vai-queue-rows tr[data-uid="${uid(2)}"] [data-act="delete"]`).click();
+  await whd.waitFor({ state: 'visible' }); await whd.locator('.whd-ok').click();
+  await page.waitForFunction(() => document.querySelectorAll('#xa-vai-queue-rows tr[data-uid]').length === 4);
+  assert.equal(calls(s, 'xa_vai_measure_delete')[0].body.p_access_token, TOKEN);
+  const order = await page.locator('#xa-vai-queue-rows tr[data-uid]').evaluateAll(trs => trs.map(tr => tr.dataset.uid));
+  assert.deepEqual(order.slice().sort(), [uid(1), uid(3), uid(4), uid(9)]);
+  await page.locator('#xa-vai-copies').selectOption('2');
+  assert.match((await page.locator(`#xa-vai-queue-rows tr[data-uid="${uid(1)}"]`).innerText()).replace(/\s+/g, ' '), /60,76 61,00/, 'Chờ in: mét = mm ÷ 1000');
+  // In A4 → khung nhập Mã hàng: Huỷ thì không gửi
+  await openCode(page);
+  assert.match((await mh(page).innerText()).replace(/\s+/g, ' '), /4 UID.*2 bản/, 'khung Mã hàng hiện số UID và số bản');
+  assert.equal(await page.locator('#xa-vai-mh-code').inputValue(), '', 'máy chưa có mã lần trước thì ô trống');
+  await waitFor(async () => await focused(page) === 'xa-vai-mh-code', 'con trỏ vào ô Mã hàng');
+  await shot(page, '1280-ma-hang');
+  await page.locator('#xa-vai-mh-cancel').click();
+  await mh(page).waitFor({ state: 'hidden' });
+  assert.equal(calls(s, 'xa_vai_print_enqueue').length, 0, 'Huỷ thì không gửi');
+  // Sai mẫu (khoảng trắng, chữ có dấu) → báo trong khung, không gửi
+  await openCode(page);
+  await submitCode(page, 'CW SH02');
+  await page.waitForFunction(() => /Mã hàng chỉ gồm chữ, số/.test(document.getElementById('xa-vai-mh-error').textContent));
+  assert.equal(await mh(page).isVisible(), true, 'sai mẫu thì khung vẫn mở');
+  await submitCode(page, 'ÁO01');
+  await page.waitForFunction(() => /Mã hàng chỉ gồm chữ, số/.test(document.getElementById('xa-vai-mh-error').textContent));
+  await shot(page, '1280-ma-hang-sai');
+  assert.equal(calls(s, 'xa_vai_print_enqueue').length, 0, 'sai mẫu thì không gửi');
+  // Gõ chữ thường → tự viết hoa; lỗi mạng lần đầu → "Chưa rõ" + tải lại thật → Thử lại dùng lại nonce và mã hàng
+  await page.locator('#xa-vai-mh-code').fill('cwsh02');
+  assert.equal(await page.locator('#xa-vai-mh-code').inputValue(), 'CWSH02', 'mã hàng tự viết hoa');
+  s.abortOnce.add('xa_vai_print_enqueue');
+  const lists0 = calls(s, 'xa_vai_measure_list').length;
+  await page.locator('#xa-vai-mh-ok').click();
+  await mh(page).waitFor({ state: 'hidden' });
+  await waitMsg(page, /^Chưa rõ lệnh in đã gửi hay chưa — đã tải lại danh sách$/);
+  assert.doesNotMatch(await msg(page), /chưa gửi được|fetch|failed|error|network|HTTP/i, 'lỗi mạng khi In: không chữ Anh, không "chưa gửi được"');
+  assert.ok(calls(s, 'xa_vai_measure_list').length > lists0, 'lỗi mạng khi In thì tải lại hàng chờ');
+  await page.waitForFunction(() => document.getElementById('xa-vai-print').textContent.trim() === 'Thử lại');
+  const sawChibi = page.waitForFunction(() => { const o = document.getElementById('print-chibi-overlay'); return o && !o.hidden; }, null, { timeout: 6000 }).then(() => true, () => false);
+  await openCode(page);
+  assert.equal(await page.locator('#xa-vai-mh-code').inputValue(), 'CWSH02', 'Thử lại: điền sẵn mã hàng của lần gửi dở');
+  await submitCode(page);
+  assert.equal(await sawChibi, true, 'lệnh in A4 hiện lớp phủ chibi chung');
+  await waitMsg(page, /Đã gửi in A4 4 UID/);
+  const [e1, e2] = calls(s, 'xa_vai_print_enqueue').map(c => c.body);
+  assert.deepEqual(e2.p_uids, order, 'gửi đúng UID theo thứ tự hàng chờ — hai SKU chung một phiếu');
+  assert.equal(new Set(e2.p_uids.map(u => s.measures.get(u).sku)).size, 2, 'UID hai SKU in chung một lệnh');
+  assert.equal(e2.p_item_code, 'CWSH02', 'gửi p_item_code viết hoa');
+  assert.equal(e2.p_copies, 2); assert.equal(e2.p_reprint, false); assert.equal(e2.p_access_token, TOKEN);
+  assert.ok(e2.p_nonce && e2.p_nonce === e1.p_nonce, 'Thử lại sau lỗi mạng dùng lại nonce');
+  assert.equal(await page.evaluate(() => localStorage.getItem('xa-vai-mahang-v1')), 'CWSH02', 'gửi được thì nhớ mã hàng theo máy');
+  await page.waitForFunction(() => document.querySelectorAll('#xa-vai-queue-rows input[data-pick]:disabled').length === 4);
+  assert.match(await page.locator('#xa-vai-queue-rows').innerText(), /Đang in/, 'UID đã gửi hiện "Đang in", không chọn được');
+  // Agent in xong → UID sang Đã in
+  finishJobs(s);
+  await page.waitForFunction(() => document.querySelectorAll('#xa-vai-queue-rows tr[data-uid]').length === 0, null, { timeout: 9000 });
+  await page.waitForFunction(() => document.querySelectorAll('#xa-vai-printed-rows tr[data-uid]').length === 4, null, { timeout: 9000 });
+  assert.equal(await page.locator('#xa-vai-found').textContent(), '4');
+  // Lần In sau: khung điền sẵn mã lần trước; đổi mã → nonce mới, p_item_code mới
+  await page.locator('#xa-vai-tab-scan').click();
+  await scan(page, uid(5));
+  await page.waitForFunction(u => document.getElementById('xa-vai-uid').textContent.includes(u) && !document.getElementById('xa-vai-meter-form').hidden, uid(5)); // thẻ UID của lần Sửa trước còn trên tab Quét: chờ đúng UID mới
+  assert.match(await page.locator('#xa-vai-uid').innerText(), /—/, 'mét hệ thống không quy đổi được thì hiện —');
+  await typeMeters(page, '12');
+  await waitMsg(page, /Đã lưu 1028260000000005/);
+  await page.locator('#xa-vai-tab-queue').click();
+  await page.waitForFunction(() => document.querySelectorAll('#xa-vai-queue-rows input[data-pick]:checked').length === 1);
+  await openCode(page);
+  assert.equal(await page.locator('#xa-vai-mh-code').inputValue(), 'CWSH02', 'nhớ mã hàng lần trước');
+  await submitCode(page, 'test01');
+  await waitMsg(page, /Đã gửi in A4 1 UID/);
+  const e3 = calls(s, 'xa_vai_print_enqueue').pop().body;
+  assert.notEqual(e3.p_nonce, e2.p_nonce, 'lần bấm mới có nonce mới'); assert.equal(e3.p_item_code, 'TEST01');
+  assert.equal(await page.evaluate(() => localStorage.getItem('xa-vai-mahang-v1')), 'TEST01');
+  finishJobs(s);
+  // Máy in A4 mất kết nối (> 45 giây)
+  s.a4Seen = ago(2);
+  await page.locator('#xa-vai-reload').click();
+  await page.waitForFunction(() => /Mất kết nối máy in A4/.test(document.getElementById('xa-vai-printer').textContent));
+
+  // ---- Đã in: lọc Mã hàng, in lại (một mã hàng mỗi phiếu), Excel ----
+  await page.locator('#xa-vai-tab-printed').click();
+  await page.waitForFunction(() => document.querySelectorAll('#xa-vai-printed-rows tr[data-uid]').length === 5, null, { timeout: 9000 });
+  const heads = await page.locator('#xa-vai-printed-rows').evaluate(tb => [...tb.closest('table').querySelectorAll('thead th')].map(th => th.textContent.trim()));
+  assert.deepEqual(heads, ['Chọn', 'Mã hàng', 'Group UID', 'SKU', 'Lot', 'Roll', 'Mét HT', 'Mét TT', 'Giờ in']);
+  const row1 = (await page.locator(`#xa-vai-printed-rows tr[data-uid="${uid(1)}"]`).innerText()).replace(/\s+/g, ' ');
+  assert.match(row1, /CWSH02/); assert.match(row1, new RegExp(SKU)); assert.match(row1, /60,76 61,00/, 'Đã in: mét = mm ÷ 1000');
+  await shot(page, '1280-da-in');
+  // Ô lọc Mã hàng: chỉ viết hoa, KHÔNG xoá ký tự sai (dán CW/SH02 không được âm thầm thành CWSH02); sai mẫu → báo, không gọi RPC
+  await page.locator('#xa-vai-item').fill(' cw/sh02 ');
+  assert.equal(await page.locator('#xa-vai-item').inputValue(), ' CW/SH02 ', 'ô lọc Mã hàng tự viết hoa, giữ nguyên ký tự sai');
+  const searchesBad = calls(s, 'xa_vai_measure_search').length;
+  await page.locator('#xa-vai-item').press('Enter');
+  await waitMsg(page, /Mã hàng chỉ gồm chữ, số, \. _ - \(tối đa 40 ký tự\)/);
+  assert.equal(await page.locator('#xa-vai-message').getAttribute('data-tone'), 'error');
+  assert.equal(await page.locator('#xa-vai-item').getAttribute('aria-invalid'), 'true', 'ô lọc đánh dấu sai');
+  await sleep(300);
+  assert.equal(calls(s, 'xa_vai_measure_search').length, searchesBad, 'mã sai mẫu thì không gọi xa_vai_measure_search');
+  await page.locator('#xa-vai-item').fill(' cwsh02 ');
+  assert.equal(await page.locator('#xa-vai-item').inputValue(), ' CWSH02 ', 'ô lọc Mã hàng tự viết hoa');
+  const searches = calls(s, 'xa_vai_measure_search').length;
+  await page.locator('#xa-vai-item').press('Enter');
+  await waitFor(() => calls(s, 'xa_vai_measure_search').length > searches, 'tìm theo Mã hàng');
+  const sq = calls(s, 'xa_vai_measure_search').pop().body;
+  assert.equal(sq.p_item_code, 'CWSH02'); assert.equal(sq.p_sku ?? null, null); assert.equal(sq.p_date_from, today);
+  await page.waitForFunction(() => document.querySelectorAll('#xa-vai-printed-rows tr[data-uid]').length === 4);
+  // Bấm một mã hàng trong bảng → chọn mọi dòng cùng mã
+  await page.locator(`#xa-vai-printed-rows tr[data-uid="${uid(3)}"] [data-code]`).click();
+  await page.waitForFunction(() => document.querySelectorAll('#xa-vai-printed-rows input[data-pick]:checked').length === 4);
+  // In lại: máy chủ ĐÃ ghi lệnh rồi mới mất phản hồi (hết giờ) → "Chưa rõ" → Thử lại gửi đúng nonce cũ → máy chủ trả lệnh cũ, không in trùng
+  const jobs0 = s.jobs.size;
+  s.abortAfter.add('xa_vai_print_enqueue');
+  await page.locator('#xa-vai-reprint').click();
+  await waitMsg(page, /^Chưa rõ lệnh in đã gửi hay chưa — đã tải lại danh sách$/);
+  assert.equal(s.jobs.size, jobs0 + 1, 'máy chủ đã ghi lệnh in lại');
+  await page.waitForFunction(() => document.getElementById('xa-vai-reprint').textContent.trim() === 'Thử lại');
+  await page.locator('#xa-vai-reprint').click();
+  await waitMsg(page, /Đã gửi in lại 4 UID/);
+  await chibiGone(page); // lớp phủ chibi giữ con trỏ ~0,7 s: gõ vào ô lọc khi nó còn mở thì phím không tới ô
+  const [r1, re] = calls(s, 'xa_vai_print_enqueue').slice(-2).map(c => c.body);
+  assert.ok(re.p_nonce && re.p_nonce === r1.p_nonce, 'Thử lại sau "chưa rõ" gửi đúng nonce cũ');
+  assert.equal(s.jobs.size, jobs0 + 1, 'Thử lại cùng nonce không tạo lệnh in thứ hai');
+  assert.deepEqual(re.p_uids.slice().sort(), [uid(1), uid(3), uid(4), uid(9)]); assert.equal(re.p_reprint, true); assert.equal(re.p_copies, 1);
+  finishJobs(s);
+  // Chọn lẫn hai mã hàng → báo "Mỗi phiếu một mã hàng", không gửi
+  await page.locator('#xa-vai-item').fill('');
+  await page.locator('#xa-vai-item').press('Enter');
+  await page.waitForFunction(() => document.querySelectorAll('#xa-vai-printed-rows tr[data-uid]').length === 5);
+  assert.equal(calls(s, 'xa_vai_measure_search').pop().body.p_item_code, null, 'ô lọc rỗng gửi p_item_code null');
+  await page.locator('#xa-vai-printed-all').check(); await page.locator('#xa-vai-printed-all').uncheck(); // đang chọn 4/5 (lưng chừng): chọn hết rồi bỏ hết
+  await page.locator(`#xa-vai-printed-rows tr[data-uid="${uid(1)}"] input[data-pick]`).check();
+  await page.locator(`#xa-vai-printed-rows tr[data-uid="${uid(5)}"] input[data-pick]`).check();
+  const before = calls(s, 'xa_vai_print_enqueue').length;
+  await page.locator('#xa-vai-reprint').click();
+  await waitMsg(page, /Mỗi phiếu một mã hàng/);
+  assert.equal(await page.locator('#xa-vai-message').getAttribute('data-tone'), 'error');
+  assert.equal(calls(s, 'xa_vai_print_enqueue').length, before, 'chọn lẫn mã hàng thì không gửi');
+  // Máy chủ báo MIXED_ITEM_CODE (dữ liệu trên màn đã cũ) → cùng câu báo
+  await page.locator(`#xa-vai-printed-rows tr[data-uid="${uid(5)}"] input[data-pick]`).uncheck();
+  await page.locator(`#xa-vai-printed-rows tr[data-uid="${uid(3)}"] input[data-pick]`).check();
+  await page.waitForFunction(() => document.querySelectorAll('#xa-vai-printed-rows input[data-pick]:checked').length === 2);
+  await page.evaluate(() => { document.getElementById('xa-vai-message').textContent = ''; });
+  s.measures.get(uid(3)).itemCode = 'TEST01';
+  await page.locator('#xa-vai-reprint').click();
+  await waitMsg(page, /Chưa gửi được lệnh in: Mỗi phiếu một mã hàng/);
+  assert.equal(calls(s, 'xa_vai_print_enqueue').length, before + 1, 'máy chủ từ chối MIXED_ITEM_CODE');
+  s.measures.get(uid(3)).itemCode = 'CWSH02';
+  const [download] = await Promise.all([page.waitForEvent('download'), page.locator('#xa-vai-export').click()]);
+  assert.match(download.suggestedFilename(), /\.xlsx$/);
+  const book = readXlsx(require('node:fs').readFileSync(await download.path()));
+  assert.deepEqual(book.table[0], ['STT', 'Mã hàng', 'SKU', 'Group UID', 'Lot', 'Roll', 'Hệ thống (mm)', 'Thực tế (mm)', 'Chênh lệch (mm)', 'Giờ nhập', 'Giờ in'], 'Excel: cột mm, không cột co');
+  assert.equal(book.table.length, 6, 'tiêu đề + 5 dòng');
+  const x1 = book.table.find(r => r[3] === uid(1));
+  assert.ok(x1, 'Group UID là chữ đủ 16 số'); assert.equal(x1[1], 'CWSH02'); assert.equal(x1[2], SKU); assert.equal(x1[6], 60758); assert.equal(x1[7], 61000); assert.equal(x1[8], 242, 'mm nguyên: thực tế − hệ thống');
+  const x4 = book.table.find(r => r[3] === uid(4));
+  assert.equal(x4[6], 30000); assert.equal(x4[7], 29900); assert.equal(x4[8], -100, 'chênh lệch âm');
+  const x5 = book.table.find(r => r[3] === uid(5));
+  assert.equal(x5[6], ''); assert.equal(x5[7], 12000); assert.equal(x5[8], '', 'không có hệ thống thì ô chênh lệch trống');
+  assert.ok(book.table.every(r => r.every(v => !/(^|\s)co(\s|$)|%/i.test(String(v)))), 'Excel không có độ co %');
+  assert.equal(x5[1], 'TEST01');
+  assert.ok(calls(s, 'xa_vai_measure_list').length && calls(s, 'xa_vai_measure_list').every(c => !('p_access_token' in c.body)), 'xa_vai_measure_list (đọc) không gửi khoá máy');
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, '1280 px không tràn ngang');
+  assert.deepEqual(errors, [], 'không lỗi console');
+  await context.close();
+  console.log('PASS 1280px: quét mọi SKU → mét → lưu (khoá máy, không p_sku), lệch > 20% hỏi, ALREADY_MEASURED → thay, sửa UID Chờ in, mất mạng "chưa rõ" + tra lại, ACCESS_DENIED, Chờ in (mọi SKU, cột SKU, chọn/sửa/xoá/tổng/máy in A4), khung Mã hàng (Huỷ, sai mẫu, viết hoa, nhớ mã), In A4 hai SKU một phiếu (nonce, Thử lại cùng nonce + mã, chibi) → Đã in lọc Mã hàng, chọn theo mã, In lại, một mã hàng mỗi phiếu (máy + máy chủ), Excel Mã hàng + SKU');
+}
+
+async function bigQueue(browser) {
+  const { context, page, errors } = await newPage(browser, 1280);
+  const s = makeServer();
+  for (let i = 0; i < 150; i++) s.measure(uid(500 + i), 9500);
+  await mock(page, s);
+  await page.addInitScript(() => localStorage.setItem('xa-vai-mahang-v1', 'TEST01'));
+  await page.goto(BASE + '#xa-vai');
+  await page.locator('#xa-vai-screen').waitFor({ state: 'visible' });
+  await page.locator('#xa-vai-tab-queue').click();
+  await page.waitForFunction(() => document.querySelectorAll('#xa-vai-queue-rows input[data-pick]:checked').length === 150);
+  await openCode(page);
+  assert.equal(await page.locator('#xa-vai-mh-code').inputValue(), 'TEST01', 'điền sẵn mã hàng lưu trên máy');
+  await page.locator('#xa-vai-mh-code').press('Enter');
+  await waitMsg(page, /Đã gửi in A4 150 UID · TEST01 · 2 lệnh/);
+  const sent = calls(s, 'xa_vai_print_enqueue').map(c => c.body);
+  assert.deepEqual(sent.map(b => b.p_uids.length), [100, 50], '> 100 UID chia lệnh ≤ 100');
+  assert.deepEqual(sent.map(b => b.p_item_code), ['TEST01', 'TEST01'], 'các lệnh chia nhỏ dùng cùng mã hàng');
+  const base = sent[0].p_nonce.replace(/-1$/, '');
+  assert.deepEqual(sent.map(b => b.p_nonce), [`${base}-1`, `${base}-2`], 'nonce = nonce gốc + -1, -2');
+  assert.deepEqual(errors, []);
+  await context.close();
+  console.log('PASS > 100 UID: tự chia 100 + 50, nonce gốc -1/-2, cùng mã hàng (điền sẵn từ máy)');
+}
+
+// Theo dõi lệnh in (review vòng 2): lệnh máy khác ở tab Quét không đè dòng báo / không phát âm; ở tab khác báo không âm; tab ẩn thôi hỏi
+// print_job_status, hiện lại hỏi tiếp; hết dòng printing thì thôi hỏi; "Hiện n / tổng"; lỗi 4xx ("Chưa gửi được", bỏ nonce) khác lỗi mạng
+// ("Chưa rõ", giữ nonce, chỉ nói "đã tải lại" khi tải lại thật xong); lệnh in lại lỗi không nói "UID về Chờ in".
+async function tracking(browser) {
+  const { context, page, errors } = await newPage(browser, 1280);
+  const s = makeServer();
+  const job = n => `00000000-0000-4000-8000-0000000000a${n}`;
+  s.measure(uid(1), 60500); s.measure(uid(2), 49800); s.measure(uid(3), 40100); s.measure(uid(9), 19000);
+  s.foreignJob(job(1), [uid(1)]); s.foreignJob(job(2), [uid(2)]);
+  s.listTotal = 250;
+  await mock(page, s);
+  await page.goto(BASE + '#xa-vai');
+  await page.locator('#xa-vai-screen').waitFor({ state: 'visible' });
+  await waitFor(() => calls(s, 'xa_vai_measure_list').length, 'tải Chờ in khi vào màn (không cần chọn mã)');
+  await waitFor(() => statusCalls(s, job(2)), 'theo dõi lệnh máy khác ngay ở tab Quét');
+  // Đang làm ở tab Quét: lệnh máy khác xong / lỗi chỉ tải lại danh sách — không đè dòng báo, không phát âm
+  await spyCue(page);
+  await scan(page, uid(4));
+  await waitMsg(page, /^Đã tra 1028260000000004$/);
+  await page.evaluate(() => { window.__cues = []; });
+  const lists1 = calls(s, 'xa_vai_measure_list').length;
+  failJob(s, job(2), 'SENT_UNCONFIRMED', 'Lệnh đã được gửi xuống máy in nhưng agent mất kết nối trước khi xác nhận.');
+  finishJobs(s, { spoolConfirmed: false });
+  await waitFor(() => calls(s, 'xa_vai_measure_list').length > lists1, 'lệnh máy khác xong thì tải lại Chờ in', 9000);
+  await sleep(400);
+  assert.equal(await msg(page), 'Đã tra 1028260000000004', 'lệnh máy khác không đè dòng báo của tab Quét');
+  assert.deepEqual(await cues(page), [], 'lệnh máy khác không phát âm');
+  // Chờ in: total > số dòng → "Hiện n / tổng"
+  await page.locator('#xa-vai-tab-queue').click();
+  await page.waitForFunction(() => document.querySelectorAll('#xa-vai-queue-rows tr[data-uid]').length === 3);
+  assert.match((await page.locator('#xa-vai-queue-total').innerText()).replace(/\s+/g, ' '), /Hiện 3 \/ 250/, 'total > số dòng → "Hiện n / tổng"');
+  await shot(page, '1280-cho-in-hien-n-tong');
+  s.listTotal = null;
+  // Lệnh máy khác ở tab Chờ in: dòng sang Đã in không cần Tải lại, có báo nhưng không phát âm
+  s.foreignJob(job(3), [uid(9)]);
+  await page.locator('#xa-vai-reload').click();
+  await page.waitForFunction(u => document.querySelector(`#xa-vai-queue-rows tr[data-uid="${u}"] input[data-pick]`)?.disabled, uid(9));
+  assert.equal(/Hiện/.test(await page.locator('#xa-vai-queue-total').innerText()), false, 'đủ dòng thì không báo "Hiện n / tổng"');
+  await waitFor(() => statusCalls(s, job(3)), 'hỏi trạng thái lệnh của máy khác');
+  await page.evaluate(() => { window.__xvReload = 0; window.__cues = []; document.getElementById('xa-vai-reload').addEventListener('click', () => { window.__xvReload += 1; }); });
+  finishJobs(s, { spoolConfirmed: false });
+  await page.waitForFunction(u => !document.querySelector(`#xa-vai-queue-rows tr[data-uid="${u}"]`), uid(9), { timeout: 9000 });
+  await page.waitForFunction(u => document.querySelector(`#xa-vai-printed-rows tr[data-uid="${u}"]`), uid(9), { timeout: 9000 });
+  await waitMsg(page, /Đã gửi tới máy in A4 \(chưa xác nhận ra giấy\)/);
+  assert.equal(await page.evaluate(() => window.__xvReload), 0, 'dòng sang Đã in không cần bấm Tải lại');
+  s.foreignJob(job(4), [uid(3)]);
+  await page.locator('#xa-vai-reload').click();
+  await page.waitForFunction(u => document.querySelector(`#xa-vai-queue-rows tr[data-uid="${u}"] input[data-pick]`)?.disabled, uid(3));
+  await waitFor(() => statusCalls(s, job(4)), 'hỏi trạng thái lệnh thứ hai của máy khác');
+  failJob(s, job(4), 'SENT_UNCONFIRMED', 'Agent mất kết nối.');
+  await waitMsg(page, /Phiếu có thể đã in — kiểm tra máy in A4 trước khi in lại/, 9000);
+  assert.equal(await page.locator('#xa-vai-message').getAttribute('data-tone'), 'warn');
+  assert.deepEqual(await cues(page), [], 'lệnh máy khác ở tab khác: có báo, không phát âm');
+  await page.waitForFunction(u => document.querySelector(`#xa-vai-queue-rows tr[data-uid="${u}"] input[data-pick]`)?.disabled === false, uid(3), { timeout: 9000 });
+  // Tab ẩn: thôi hỏi print_job_status; hiện lại: hỏi tiếp
+  s.foreignJob(job(5), [uid(2)]);
+  await page.locator('#xa-vai-reload').click();
+  await waitFor(() => statusCalls(s, job(5)), 'theo dõi lệnh thứ ba');
+  await setHidden(page, true);
+  await sleep(800);
+  const hiddenN = statusCalls(s);
+  await sleep(4500);
+  assert.equal(statusCalls(s), hiddenN, 'tab ẩn thì thôi hỏi trạng thái lệnh');
+  await setHidden(page, false);
+  await waitFor(() => statusCalls(s) > hiddenN, 'hiện tab lại thì hỏi tiếp', 4000);
+  finishJobs(s);
+  await page.waitForFunction(u => !document.querySelector(`#xa-vai-queue-rows tr[data-uid="${u}"]`), uid(2), { timeout: 9000 });
+  // Không còn dòng printing: thôi hỏi trạng thái lệnh
+  await sleep(1500);
+  const polls = statusCalls(s);
+  await sleep(3500);
+  assert.equal(statusCalls(s), polls, 'hết dòng printing thì không hỏi print_job_status nữa');
+  // Lỗi HTTP 4xx khi In: "Chưa gửi được lệnh in: …", bỏ nonce (lần sau nonce mới), nút không kẹt "Thử lại"
+  s.measure(uid(4), 29000); s.measure(uid(6), 58000);
+  await page.locator('#xa-vai-reload').click();
+  await page.waitForFunction(() => document.querySelectorAll('#xa-vai-queue-rows tr[data-uid]').length === 3);
+  await page.locator('#xa-vai-queue-all').check();
+  await page.waitForFunction(() => document.querySelectorAll('#xa-vai-queue-rows input[data-pick]:checked').length === 3);
+  // Máy chủ trả INVALID_ITEM_CODE: khung Mã hàng hiện lại với câu lỗi, giữ mã đã gõ; sửa xong In lại được
+  s.mode = 'badcode';
+  const enq0 = calls(s, 'xa_vai_print_enqueue').length;
+  await openCode(page); await submitCode(page, 'TEST01');
+  await page.waitForFunction(() => { const d = document.getElementById('xa-vai-mh-dialog'); return d.open && /Mã hàng chỉ gồm chữ, số/.test(document.getElementById('xa-vai-mh-error').textContent); });
+  assert.equal(calls(s, 'xa_vai_print_enqueue').length, enq0 + 1, 'đã hỏi máy chủ một lần');
+  assert.equal(await page.locator('#xa-vai-mh-code').inputValue(), 'TEST01', 'giữ mã đã gõ');
+  await page.locator('#xa-vai-mh-cancel').click();
+  await mh(page).waitFor({ state: 'hidden' });
+  s.mode = 'http404';
+  await printCode(page, 'TEST01');
+  await waitMsg(page, /^Chưa gửi được lệnh in: /);
+  assert.doesNotMatch(await msg(page), /Chưa rõ/, '4xx không phải "chưa rõ"');
+  assert.equal(await page.locator('#xa-vai-message').getAttribute('data-tone'), 'error');
+  await page.waitForFunction(() => document.getElementById('xa-vai-print').textContent.trim() !== 'Thử lại');
+  const nonceA = calls(s, 'xa_vai_print_enqueue').pop().body.p_nonce;
+  assert.equal(await page.evaluate(() => localStorage.getItem('xa-vai-mahang-v1')), null, 'chưa gửi được thì chưa nhớ mã');
+  // Lỗi mạng khi In + tải lại cũng lỗi: "Chưa rõ" + "Chưa tải lại được danh sách" (không nói "đã tải lại"), nút Thử lại (PrintSkuNotice) tải lại hàng chờ
+  s.mode = 'ok';
+  s.abortOnce.add('xa_vai_print_enqueue'); s.abortOnce.add('xa_vai_measure_list');
+  await printCode(page, 'TEST01');
+  await waitMsg(page, /^Chưa rõ lệnh in đã gửi hay chưa\. Chưa tải lại được danh sách$/);
+  assert.doesNotMatch(await msg(page), /bấm Tải lại/, 'không câu hướng dẫn "bấm Tải lại"');
+  const listsRetry = calls(s, 'xa_vai_measure_list').length;
+  await page.locator('#xa-vai-message .ps-retry').click();
+  await waitFor(() => calls(s, 'xa_vai_measure_list').length > listsRetry, 'nút Thử lại tải lại hàng chờ');
+  const nonceB = calls(s, 'xa_vai_print_enqueue').pop().body.p_nonce;
+  assert.notEqual(nonceB, nonceA, 'sau lỗi 4xx thì lần gửi sau có nonce mới');
+  await page.waitForFunction(() => document.getElementById('xa-vai-print').textContent.trim() === 'Thử lại');
+  await printCode(page);
+  await waitMsg(page, /Đã gửi in A4 3 UID/);
+  assert.equal(calls(s, 'xa_vai_print_enqueue').pop().body.p_nonce, nonceB, 'Thử lại sau lỗi mạng dùng lại nonce');
+  finishJobs(s);
+  await page.waitForFunction(() => document.querySelectorAll('#xa-vai-queue-rows tr[data-uid]').length === 0, null, { timeout: 9000 });
+  // In A4: máy chủ đã ghi rồi mới hết giờ → "Chưa rõ", tải lại thấy "Đang in" (printJobId) → theo dõi tới khi in xong
+  s.measure(uid(5), 12000);
+  await page.locator('#xa-vai-reload').click();
+  await page.waitForFunction(() => document.querySelectorAll('#xa-vai-queue-rows input[data-pick]:checked').length === 1);
+  s.abortAfter.add('xa_vai_print_enqueue');
+  await printCode(page, 'TEST01');
+  await waitMsg(page, /^Chưa rõ lệnh in đã gửi hay chưa — đã tải lại danh sách$/);
+  await page.waitForFunction(() => document.querySelectorAll('#xa-vai-queue-rows input[data-pick]:disabled').length === 1);
+  finishJobs(s);
+  await page.waitForFunction(() => document.querySelectorAll('#xa-vai-queue-rows tr[data-uid]').length === 0, null, { timeout: 9000 });
+  // Lệnh IN LẠI lỗi: "Lệnh in lại lỗi: …", không nói "UID về Chờ in"
+  await page.locator('#xa-vai-tab-printed').click();
+  await page.waitForFunction(u => document.querySelector(`#xa-vai-printed-rows tr[data-uid="${u}"]`), uid(5), { timeout: 9000 });
+  await page.locator(`#xa-vai-printed-rows tr[data-uid="${uid(5)}"] input[data-pick]`).check();
+  await page.locator('#xa-vai-reprint').click();
+  await waitMsg(page, /Đã gửi in lại 1 UID/);
+  const reId = [...s.jobs.keys()].pop();
+  assert.equal(s.jobs.get(reId).reprint, true);
+  failJob(s, reId, 'PRINT_ERROR', 'Kẹt giấy');
+  await waitMsg(page, /^Lệnh in lại lỗi: Kẹt giấy$/, 9000);
+  assert.doesNotMatch(await msg(page), /Chờ in/, 'lệnh in lại lỗi không nói "UID về Chờ in"');
+  assert.deepEqual(errors, []);
+  await context.close();
+  console.log('PASS theo dõi: lệnh máy khác ở tab Quét không đè dòng báo / không âm, ở Chờ in báo không âm, dòng sang Đã in không cần Tải lại, spoolConfirmed=false, SENT_UNCONFIRMED, tab ẩn thôi hỏi / hiện hỏi lại, thôi hỏi khi hết printing, "Hiện n / tổng", 4xx "Chưa gửi được" (nonce mới) vs lỗi mạng "Chưa rõ" (tải lại lỗi → nút Thử lại), In "chưa rõ" (máy chủ đã ghi) → theo dõi, lệnh in lại lỗi');
+}
+
+// Giới hạn theo dõi (review vòng 3): agent A4 tắt, lệnh "queued" mãi → sau ~10 phút thôi hỏi print_job_status; Lưu mét (loadQueue → track) KHÔNG
+// mở lại chuỗi hỏi; chỉ bấm Tải lại mới theo dõi lại. Tua thời gian: nhịp theo dõi tính bằng tổng các khoảng chờ đã hẹn (không đọc đồng hồ), nên
+// trang này thu nhỏ mọi setTimeout ≥ 2,5 s 500 lần (2,5 s → 5 ms, 60 s → 120 ms). page.clock (Playwright 1.63) chạy mọi bộ hẹn giờ của cả trang
+// theo thời gian giả: 10 phút giả mất > 4 phút thật rồi sập trình duyệt, nên không dùng.
+async function watchLimit(browser) {
+  const { context, page, errors } = await newPage(browser, 1280);
+  const s = makeServer();
+  const job = '00000000-0000-4000-8000-0000000000b1';
+  s.measure(uid(1), 60500); s.foreignJob(job, [uid(1)]);
+  await mock(page, s);
+  await page.addInitScript(() => { const orig = window.setTimeout; window.setTimeout = (fn, ms, ...a) => orig(fn, Number(ms) >= 2500 ? Number(ms) / 500 : ms, ...a); });
+  await page.goto(BASE + '#xa-vai');
+  await page.locator('#xa-vai-screen').waitFor({ state: 'visible' });
+  await waitFor(() => statusCalls(s, job) > 3, 'đang theo dõi lệnh kẹt');
+  // Chờ tới khi thôi hỏi: số lần gọi đứng yên 1,5 s (khoảng hỏi lớn nhất sau thu nhỏ = 120 ms)
+  let stopped = -1;
+  await waitFor(async () => { const n = statusCalls(s, job); await sleep(2000); if (statusCalls(s, job) === n) { stopped = n; return true; } return false; }, 'thôi hỏi sau ~10 phút', 20000);
+  assert.ok(stopped >= 30 && stopped <= 50, `hỏi khoảng 39 lần trong ~10 phút rồi dừng (đã hỏi ${stopped})`);
+  // Lưu mét một UID khác → loadQueue → track(): không mở lại chuỗi hỏi
+  const lists = calls(s, 'xa_vai_measure_list').length;
+  await scan(page, uid(2));
+  await page.locator('#xa-vai-meter-form').waitFor({ state: 'visible' });
+  await typeMeters(page, '50');
+  await waitMsg(page, /Đã lưu 1028260000000002/);
+  await waitFor(() => calls(s, 'xa_vai_measure_list').length > lists, 'lưu xong tải lại Chờ in');
+  await sleep(3500); // nhịp đầu sau khi thêm lệnh là 1,5 s (không bị thu nhỏ)
+  assert.equal(statusCalls(s, job), stopped, 'Lưu mét không làm hỏi lại lệnh đã thôi theo dõi');
+  // Bấm Tải lại → theo dõi lại
+  await page.locator('#xa-vai-tab-queue').click();
+  await page.locator('#xa-vai-reload').click();
+  await waitFor(() => statusCalls(s, job) > stopped, 'bấm Tải lại thì theo dõi lại', 4000);
+  assert.deepEqual(errors, []);
+  await context.close();
+  console.log('PASS giới hạn theo dõi: ~10 phút thôi hỏi, Lưu mét không hỏi lại, Tải lại theo dõi lại');
+}
+async function mobile(browser) {
+  const { context, page, errors } = await newPage(browser, 375);
+  const s = makeServer();
+  s.measure(uid(1), 60500); s.measure(uid(9), 19800);
+  s.measure(uid(3), 40100, 'printed', { printedAt: new Date().toISOString(), itemCode: 'CWSH02' }); s.measure(uid(4), 29700, 'printed', { printedAt: new Date().toISOString(), itemCode: 'CWSH02' });
+  await mock(page, s);
+  await page.addInitScript(() => localStorage.setItem('xa-vai-mahang-v1', 'CWSH02'));
+  await page.goto(BASE + '#xa-vai');
+  await page.locator('#xa-vai-screen').waitFor({ state: 'visible' });
+  const over = () => page.evaluate(() => document.documentElement.scrollWidth > innerWidth);
+  await scan(page, uid(5));
+  await page.locator('#xa-vai-meter-form').waitFor({ state: 'visible' });
+  await page.locator('#xa-vai-meters').fill('11,5');
+  assert.equal(await over(), false, '375 px tab Quét không tràn ngang');
+  await shot(page, '375-quet');
+  await page.locator('#xa-vai-tab-queue').click();
+  await page.waitForFunction(() => document.querySelectorAll('#xa-vai-queue-rows tr[data-uid]').length === 2);
+  await page.waitForFunction(() => /Máy in A4/.test(document.getElementById('xa-vai-printer').textContent));
+  assert.equal(await over(), false, '375 px tab Chờ in không tràn ngang');
+  const cardRow = await page.locator('#xa-vai-queue-rows tr[data-uid]').first().evaluate(tr => getComputedStyle(tr).display);
+  assert.equal(cardRow, 'flex', 'bảng thành thẻ trên điện thoại');
+  const btn = await page.locator('#xa-vai-print').boundingBox();
+  assert.ok(btn.height >= 44 && btn.x >= 0 && btn.x + btn.width <= 375, 'nút In A4 đủ lớn, nằm trong màn');
+  await shot(page, '375-cho-in');
+  // Khung nhập Mã hàng trên điện thoại: nằm trong màn, ô chữ ≥ 16 px, nút ≥ 44 px
+  await openCode(page);
+  assert.equal(await page.locator('#xa-vai-mh-code').inputValue(), 'CWSH02');
+  const box = await mh(page).boundingBox();
+  assert.ok(box.x >= 0 && box.x + box.width <= 375 && box.y >= 0 && box.y + box.height <= 800, 'khung Mã hàng nằm trong màn 375 px');
+  assert.ok(parseFloat(await page.locator('#xa-vai-mh-code').evaluate(el => getComputedStyle(el).fontSize)) >= 16, 'ô Mã hàng chữ ≥ 16 px');
+  for (const id of ['#xa-vai-mh-ok', '#xa-vai-mh-cancel']) assert.ok((await page.locator(id).boundingBox()).height >= 44, `${id} ≥ 44 px`);
+  await shot(page, '375-ma-hang');
+  await page.locator('#xa-vai-mh-cancel').click();
+  await mh(page).waitFor({ state: 'hidden' });
+  assert.equal(calls(s, 'xa_vai_print_enqueue').length, 0);
+  await page.locator('#xa-vai-screen').evaluate(el => { el.scrollTop = el.scrollHeight; });
+  await shot(page, '375-cho-in-cuoi');
+  await page.locator('#xa-vai-tab-printed').click();
+  await page.waitForFunction(() => document.querySelectorAll('#xa-vai-printed-rows tr[data-uid]').length === 2);
+  assert.equal(await over(), false, '375 px tab Đã in không tràn ngang');
+  const codeBtn = await page.locator(`#xa-vai-printed-rows tr[data-uid="${uid(3)}"] [data-code]`).boundingBox();
+  assert.ok(codeBtn.height >= 44, 'nút Mã hàng trong thẻ ≥ 44 px');
+  await shot(page, '375-da-in');
+  assert.deepEqual(errors, []);
+  await context.close();
+  console.log('PASS 375px: ba tab + khung Mã hàng không tràn ngang, bảng thành thẻ, nút In A4 / Mã hàng ≥ 44 px');
+}
+
+(async () => {
+  const browser = await chromium.launch({ channel: 'chrome', headless: true });
+  try {
+    // XA_VAI_ONLY=watchLimit (tên phần, cách nhau dấu phẩy) để chạy riêng khi dò lỗi; mặc định chạy hết.
+    const only = (process.env.XA_VAI_ONLY || '').split(',').filter(Boolean);
+    for (const part of [desktop, bigQueue, tracking, watchLimit, mobile]) if (!only.length || only.includes(part.name)) await part(browser);
+    console.log('PASS xa_vai_a4_browser');
+  } finally { await browser.close(); }
+})().catch(error => { console.error('FAIL', error); process.exit(1); });

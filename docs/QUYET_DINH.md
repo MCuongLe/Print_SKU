@@ -120,7 +120,7 @@
 - `print_jobs` KHÔNG phải lịch sử: cron `print_jobs_purge()` 03:00 VN xoá lệnh xong > 3 ngày (tìm lại được 3–6 ngày); số đo tốc độ in ghi RULES ngay khi đo. (03/10, 08/10 · N0072, N0421, N0425)
 - Lệnh in Admin (`#admin/lenh-in`): in lại SKU y hệt lệnh gốc, UID chọn toàn bộ/một phần; payload in lại do máy chủ dựng (`print_admin_reprint`). (08/10, 11/10 · N0421, N0424, N0036)
 - Nút In: idle/working/failed/disabled, vạch load tới khi lệnh XONG (`PrintSkuQueue.jobStatus`), lỗi → "Thử lại" dùng lại nonce. (03/10 · N0079)
-- Mọi lệnh qua `PrintSkuQueue.enqueue` và lệnh In lại Admin dùng lớp phủ chibi chung trong lúc máy chủ nhận lệnh; tick chỉ nghĩa là đã vào hàng đợi, hiện 700 ms rồi đóng; lỗi đóng ngay để màn gốc báo lỗi. Không áp cho `window.print()` dự phòng vì không biết kết quả hộp in của trình duyệt. (25/10 · N1206)
+- Mọi lệnh qua `PrintSkuQueue.enqueue` / `enqueueRpc` và lệnh In lại Admin dùng lớp phủ chibi chung trong lúc máy chủ nhận lệnh; tick chỉ nghĩa là đã vào hàng đợi, hiện 700 ms rồi đóng; lỗi đóng ngay để màn gốc báo lỗi. Không áp cho `window.print()` dự phòng vì không biết kết quả hộp in của trình duyệt. (25/10 · N1206)
 - Trạng thái máy in: hỏi `print_queue_status` 15 s (không hỏi khi tab ẩn), ngưỡng 45 s theo `last_seen_at`, chữ "Mất kết nối máy in". (08/10, 14/10 · N0047, N0710)
 - Giới hạn: 100 SKU/lệnh (In tem SKU, Phiếu IT, Trợ lý in), 500 tem/lệnh; `group_uid` ≤ 100 UID/lệnh, tự chia. (19/10, [?] · N1106, N0216)
 
@@ -230,7 +230,24 @@
 - Bấm UID mở popup barcode (`encodeCode128` chép nguyên từ agent) có tick "Đã xuất ADJ". (28/09, 02/10 · N0099, N0342)
 
 ### Xả vải
-- `#xa-vai` (`xa_vai_log`): mỗi UID xả 1 lần; toàn hệ thống chỉ 1 UID đang xả (advisory lock); quét = bắt đầu ngay; "Đã xả xong" lọc theo `ended_at` khoảng ngày (mặc định hôm nay); tự làm mới 15 s. (26/09 · N0350, N0355, N0357, N0367, N0400)
+- `#xa-vai` làm lại 04/11/2026 (`docs/plans/2026-11-04-xa-vai-met-thuc-te-a4.md`): quét Group UID → nhập mét thực tế → "Chờ in" → chọn UID, bấm In A4 và nhập Mã hàng → "Đã in" (lọc theo mã hàng, in lại, Excel). (04/11 · N20261104-1930)
+  - Bảng `xa_vai_measures`, mỗi UID một dòng, `pending → printing → printed`; ghi = máy đã kích hoạt, xem = mọi người; sửa / xoá chỉ khi còn `pending`.
+  - Đổi chốt 04/11 (người dùng "Chốt, build"): bỏ giờ bắt đầu / kết thúc xả, "1 UID đang xả" (advisory lock) và tự làm mới 15 s của bản 26/09 (N0350, N0355, N0357, N0367, N0400).
+  - Bảng `xa_vai_log` và hàm `xa_vai_*` cũ giữ ở server, web không gọi nữa.
+  - Mã hàng = mã kiểu hàng như `CWSH02`, KHÔNG phải SKU (SKU luôn là số 9 chữ số): nhập tay lúc in (khung nổi khi bấm In), viết hoa, `A-Z 0-9 . _ -`, ≤ 40 ký tự; màn quét không có ô Mã hàng, UID mọi SKU. (04/11 · N20261104-1930)
+  - Lưu `item_code` theo UID khi in; tab Đã in lọc theo mã hàng + ngày, in lại (mỗi phiếu một mã hàng, `MIXED_ITEM_CODE`). Mét lệch > 20% so với mét hệ thống thì hỏi xác nhận.
+  - Đơn vị so sánh = mm (người dùng chốt 04/11): qty WMS quy đổi ra mm ở máy chủ theo trường cuối tên SKU (`m` × 1000; `mm`; `g` × 1000 ÷ (GSM × khổ m), cùng `computeCutQty`); không quy đổi được thì "—".
+  - Lưu `system_mm` / `actual_mm` (số nguyên mm). Màn hình (ô nhập, Chờ in, Đã in) hiện MÉT (mm ÷ 1000, 2 chữ số); phiếu A4 và Excel hiện MM nguyên. Không có "Co (%)" ở đâu cả. (04/11 · N20261104-1930)
+  - Phiếu A4 ngang: biển lớn đầu MỖI trang (Mã hàng cỡ rất lớn + `Xả dd/mm/yyyy`, ngày xả = ngày nhập mét giờ VN, nhiều ngày thì khoảng); bảng STT · Group UID · SKU · Lot · Roll · Hệ thống (mm) · Thực tế (mm) · Chênh lệch (mm) · Giờ nhập.
+  - Dòng TỔNG và hai ô ký (Người xả · Người kiểm) ở trang cuối; chênh lệch tính trên UID có mét hệ thống, dòng TỔNG ghi "n/m UID". In lại ghi "IN LẠI", không đổi trạng thái UID. ≤ 100 UID / lệnh (web tự chia), 1–5 bản.
+  - Lệnh `xa_vai_sheet` v1 chỉ agent khai `xa_vai_sheet:v1` nhận (`PRINTER_KIND=a4`, id `may-a4-01`, máy DESKTOP-foq5t89, in qua driver Windows, không TSPL); `print_queue_status` đếm riêng `queuedA4`; thẻ máy in tem chỉ đọc agent tem. (04/11 · N20261104-1700)
+  - Chặn cấu hình sai: `print_agents.allowed_capabilities` (null = không giới hạn) — `print_agent_claim` chỉ giao phần capability nằm trong danh sách, `may-a4-01` = `{xa_vai_sheet:v1}`.
+  - Agent từ chối khởi động khi `PRINTER_KIND` khác `label` / `a4` và ghi lỗi vào `agent.log`. (04/11 · N20261104-1930)
+  - Lệnh `failed` / huỷ → UID về "Chờ in" (kể cả `SENT_UNCONFIRMED`, có thể in trùng giấy, người dùng quyết); `spoolConfirmed=false` vẫn là đã in nhưng web ghi "chưa xác nhận ra giấy".
+  - Lỗi khi In: mất mạng, hết giờ hoặc 5xx báo "Chưa rõ lệnh in đã gửi hay chưa", giữ nonce cho Thử lại; HTTP 4xx (máy chủ trả lời rõ) báo "Chưa gửi được" kèm nguyên nhân và bỏ nonce.
+  - Theo dõi lệnh in: dòng `printing` của máy khác theo dõi bằng `printJobId`; không tự làm mới danh sách 15 s; dừng khi tab ẩn, giãn nhịp 2,5 → 15 → 60 s, dừng sau ~10 phút hoặc 10 lỗi (chỉ Tải lại hoặc lệnh in mới theo dõi lại).
+  - Lệnh của máy khác ở tab Quét không đè dòng báo và không phát âm; lệnh in lại thất bại không nói "UID về Chờ in".
+  - Khung nhập Mã hàng nhớ mã dùng gần nhất theo máy (`xa-vai-mahang-v1`); Thử lại điền sẵn mã của lần gửi dở. (04/11 · N20261104-1930)
 
 ### TÌM GROUP UID: Cấp vải + UID blocked
 - Một ô trang chủ, công tắc Cấp vải | UID blocked (độc lập, nhớ phần dùng gần nhất); 2 ô cũ hidden, đường dẫn cũ giữ. (21/10 · N1057)

@@ -31,7 +31,7 @@ $configFile = Join-Path $configDir '.env'
 New-Item -ItemType Directory -Path $configDir -Force | Out-Null
 if (-not (Test-Path $configFile)) {
   Copy-Item -LiteralPath (Join-Path $InstallDir '.env.example') -Destination $configFile
-  Write-Warning "Đã tạo $configFile. Hãy nhập SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY và PRINT_AGENT_TOKEN trước khi chạy task."
+  Write-Warning "Đã tạo $configFile. Hãy nhập SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY và PRINT_AGENT_TOKEN trước khi chạy task. Máy in A4 (phiếu xả vải): thêm PRINTER_KIND=a4 (bỏ trống = label = máy tem); giá trị khác label/a4 thì agent không chạy."
 }
 
 $node = $installedNode

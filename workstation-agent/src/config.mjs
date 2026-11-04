@@ -33,6 +33,14 @@ function loopStall(value) {
   return ms === 0 ? 0 : Math.max(ms, 300000);
 }
 
+function printerKind(value) {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "label";
+  const kind = raw.toLowerCase();
+  if (kind === "label" || kind === "a4") return kind;
+  throw new Error(`PRINTER_KIND không hợp lệ: "${raw}" — chỉ nhận label hoặc a4 (bỏ trống = label; không ghi chú cùng dòng).`);
+}
+
 export function loadConfig(options = {}) {
   const envFile = path.resolve(options.envFile || process.env.PRINT_AGENT_ENV || path.join(ROOT_DIR, "config", ".env"));
   let fileValues = {};
@@ -47,6 +55,10 @@ export function loadConfig(options = {}) {
     supabasePublishableKey: get("SUPABASE_PUBLISHABLE_KEY"),
     agentToken: get("PRINT_AGENT_TOKEN"),
     printerName: get("PRINTER_NAME", "TSC PE200 (Copy 1)"),
+    // 0.11.0: label (mặc định, máy tem TSC, TSPL RAW) | a4 (máy in A4 qua driver Windows, chỉ in phiếu xả vải).
+    // Thiếu / rỗng = label (máy tem cũ không cần sửa .env). Giá trị lạ thì dừng hẳn (CONTRACT V2): máy A4 gõ sai
+    // mà chạy thành agent tem sẽ khai capability tem và nhận nhầm lệnh tem.
+    printerKind: printerKind(get("PRINTER_KIND")),
     agentId: get("AGENT_ID", "may-kho-01"),
     pollIntervalMs: positiveInt(get("AGENT_POLL_INTERVAL_MS"), 1000, 250, 60000),
     // 0.8.4: hỏi thưa khi rảnh, Realtime đánh thức khi có lệnh (xem nextPollDelay ở agent.mjs).

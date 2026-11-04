@@ -27,13 +27,13 @@ const fakeMeasure = async (config, texts, sizes, options = {}) => {
 };
 const nameLineCount = (svg) => (svg.match(/<text x="12" y="\d+" font-size="\d+">/g) || []).length;
 
-test("0.10.2: agent khai sku:v3 (vẫn giữ sku:v1, sku:v2); VERSION, package.json, AGENT_VERSION = 0.10.2", () => {
+test("0.10.2: agent khai sku:v3 (vẫn giữ sku:v1, sku:v2); VERSION, package.json, AGENT_VERSION = 0.11.0 (bản hiện tại)", () => {
   for (const cap of ["sku:v1", "sku:v2", "sku:v3"]) assert.ok(CAPABILITIES.includes(cap), cap);
   const version = fs.readFileSync(new URL("../VERSION", import.meta.url), "utf8").trim();
   const pkg = JSON.parse(fs.readFileSync(new URL("../package.json", import.meta.url), "utf8"));
-  assert.equal(version, "0.10.2");
-  assert.equal(pkg.version, "0.10.2");
-  assert.equal(AGENT_VERSION, "0.10.2");
+  assert.equal(version, "0.11.0");
+  assert.equal(pkg.version, "0.11.0");
+  assert.equal(AGENT_VERSION, "0.11.0");
 });
 
 test("v3 không PO, không ngày nhận: giống từng byte v1 (kể cả khi PO/ngày chỉ là khoảng trắng, có/không tên đo sẵn)", () => {

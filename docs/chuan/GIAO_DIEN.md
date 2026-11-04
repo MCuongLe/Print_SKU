@@ -46,7 +46,7 @@ Gom từ `docs/QUYET_DINH.md` chủ đề 2, các mục "Chuẩn …" của `REA
 - Mọi ô quét (trừ TÌM SKU) dùng khung `.scan-field`: bàn phím ảo ẩn mặc định, nút bàn phím nhớ theo máy. Giữ bởi: `scan_field_standard_browser`. Nguồn: (03–18/10 · N0078, N0650, N1013)
 - Ô quét không dùng `readonly` / `virtualkeyboardpolicy="manual"` (máy quét gõ qua IME); giữ focus ô quét chỉ ở tab quét; không tự submit. Nguồn: (19/09–05/10 · N0190, N0329, N0331, N0076)
 - Âm báo quét chung `PrintSkuScanCue.play(tone)`; tắt âm vẫn rung. Camera chung `PrintSkuScanUI`, lỗi có Thử lại trong cùng lớp. Nguồn: (01–23/10 · N1168, N0412, N0417, N0063, N0507)
-- Nút In: trạng thái `data-print-state` idle / working / failed / disabled, vạch load tới khi lệnh xong, lỗi → "Thử lại" dùng lại nonce; mọi lệnh qua `PrintSkuQueue.enqueue` hiện lớp phủ chibi chung (tick 700 ms rồi đóng). Nguồn: (03/10, 25/10 · N0079, N1206)
+- Nút In: trạng thái `data-print-state` idle / working / failed / disabled, vạch load tới khi lệnh xong, lỗi → "Thử lại" dùng lại nonce; mọi lệnh qua `PrintSkuQueue.enqueue` / `enqueueRpc` hiện lớp phủ chibi chung (tick 700 ms rồi đóng). Nguồn: (03/10, 25/10 · N0079, N1206)
 - Không đặt `min-height: 100vh` cho `.cut-screen` (Chrome Android cắt thanh đáy). Nguồn: (10/10 · N0030)
 - Chuyển động tôn trọng `prefers-reduced-motion`. Nguồn: (03/10, 25/10 · README cũ "Nút In tem"; N1204)
 

@@ -21,7 +21,8 @@ $utf8 = New-Object System.Text.UTF8Encoding($false)
 $reader = New-Object System.IO.StreamReader([Console]::OpenStandardInput(), $utf8)
 $writer = New-Object System.IO.StreamWriter([Console]::OpenStandardOutput(), $utf8)
 $writer.AutoFlush = $true
-$allowed = @('printer-status.ps1', 'raw-print.ps1', 'measure-text.ps1')
+# 0.11.0: print-bitmap.ps1 = in phieu A4 (PNG) qua driver Windows cho agent che do a4.
+$allowed = @('printer-status.ps1', 'raw-print.ps1', 'measure-text.ps1', 'print-bitmap.ps1')
 $escape = [System.Text.RegularExpressions.MatchEvaluator]{ param($m) ('\u{0:x4}' -f [int][char]$m.Value) }
 
 function Send-Reply($object) {

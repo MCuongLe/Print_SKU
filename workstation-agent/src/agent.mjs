@@ -1,8 +1,9 @@
 import path from "node:path";
 import { normalizeJob } from "./job-validator.mjs";
-import { CAPABILITIES } from "./templates/index.mjs";
-import { queryPrinter, sendRaw, waitForSpooler } from "./printer.mjs";
+import { capabilitiesFor } from "./templates/index.mjs";
+import { queryPrinter, sendBitmapPages, sendRaw, waitForSpooler } from "./printer.mjs";
 import { renderJobTspl } from "./render.mjs";
+import { renderXaVaiSheetPages } from "./templates/xa-vai-sheet.mjs";
 import { measureTextWidths } from "./text-metrics.mjs";
 import { isTransientNetworkError } from "./network-retry.mjs";
 import { createSentJournal } from "./sent-journal.mjs";
@@ -14,7 +15,7 @@ import { createPowerShellHost, setPowerShellHost } from "./ps-host.mjs";
 import { LABEL_FONT_FAMILY } from "./templates/common.mjs";
 import { createLoopWatchdog, LOOP_STALL_EXIT_CODE } from "./process-guard.mjs";
 
-export const AGENT_VERSION = "0.10.2";
+export const AGENT_VERSION = "0.11.0";
 
 // Báo "hoàn tất" SAU khi tem đã ra giấy thì không được bỏ cuộc vì mạng: thử
 // lại giãn dần tới 30 giây/lần, khoảng 10 phút. Quá nữa thì để sổ tay lo — hết
@@ -59,7 +60,8 @@ export function createWaiter() {
 function publicState(config, printer) {
   return {
     version: AGENT_VERSION,
-    capabilities: CAPABILITIES,
+    // 0.11.0: chế độ a4 chỉ khai xa_vai_sheet:v1; chế độ label (mặc định) giữ nguyên danh sách tem.
+    capabilities: capabilitiesFor(config.printerKind),
     printer: {
       name: config.printerName,
       ok: Boolean(printer.ok),
@@ -119,7 +121,9 @@ async function settleFromJournal(job, entry, context) {
     ? entry.error
     : {
         code: "SENT_UNCONFIRMED",
-        message: "Lệnh đã được gửi xuống máy in nhưng agent mất kết nối trước khi xác nhận. Kiểm tra tem ở máy in trước khi in lại."
+        message: job.type === "xa_vai_sheet"
+          ? "Lệnh đã được gửi xuống máy in nhưng agent mất kết nối trước khi xác nhận. Kiểm tra phiếu ở máy in A4 trước khi in lại."
+          : "Lệnh đã được gửi xuống máy in nhưng agent mất kết nối trước khi xác nhận. Kiểm tra tem ở máy in trước khi in lại."
       };
   logger.warn(`Lệnh ${job.id} đã gửi xuống máy in trước đó (${entry.stage}); không in lại, báo lỗi để người vận hành kiểm tra`);
   if (await reportFailed(job, details, context)) journal.remove(job.id);
@@ -129,17 +133,20 @@ async function settleFromJournal(job, entry, context) {
 export async function processClaimedJob(input, dependencies) {
   const { config, queue, logger, signal } = dependencies;
   // printer/render/wait chỉ thay trong test, để không phải dựng Windows Spooler thật.
-  const printer = { queryPrinter, sendRaw, waitForSpooler, ...dependencies.printer };
-  const render = dependencies.render ?? renderJobTspl;
+  const printer = { queryPrinter, sendRaw, sendBitmapPages, waitForSpooler, ...dependencies.printer };
   const journal = dependencies.journal ?? createSentJournal(config.tempDir, { logger });
   const context = { queue, journal, logger, signal, sleep: dependencies.wait ?? wait };
-  const validation = normalizeJob(input);
+  // 0.11.0: chế độ máy in (label | a4) chặn lệnh sai loại thêm một lần nữa sau hàng đợi.
+  const validation = normalizeJob(input, { printerKind: config.printerKind ?? "label" });
   if (!validation.ok) {
     await queue.fail(String(input?.id || "unknown"), { code: "INVALID_JOB", message: validation.errors.join("; ") });
     return { ok: false, errors: validation.errors };
   }
   const job = validation.job;
-  logger.info(`Nhận lệnh ${job.id}: ${job.type}, ${job.copies} tem`);
+  // 0.11.0: phiếu xả vải A4 = các trang PNG gửi qua driver Windows (sendBitmapPages); tem = TSPL RAW như cũ.
+  const isSheet = job.type === "xa_vai_sheet";
+  const render = dependencies.render ?? (isSheet ? renderXaVaiSheetPages : renderJobTspl);
+  logger.info(`Nhận lệnh ${job.id}: ${job.type}, ${job.copies} ${isSheet ? `bản phiếu (${job.payload.items.length} UID)` : "tem"}`);
   const recorded = journal.get(job.id);
   if (recorded) return settleFromJournal(job, recorded, context);
 
@@ -163,6 +170,7 @@ export async function processClaimedJob(input, dependencies) {
       logger.warn(`Hoãn ${job.id}: ${before.message || before.code}`);
       return { ok: false, requeued: true, printer: before };
     }
+    // tem: Buffer TSPL; phiếu: mảng Buffer PNG (mỗi phần tử một trang).
     const tspl = await render(
       job,
       config,
@@ -172,13 +180,17 @@ export async function processClaimedJob(input, dependencies) {
         .catch((error) => logger.warn(`Lệnh ${job.id}: không báo được tiến độ dựng tem (${error.message})`)),
       { measureText: dependencies.measureText ?? measureTextWidths, logger }
     );
+    const pageCount = isSheet ? tspl.length : null;
+    const byteCount = isSheet ? tspl.reduce((sum, page) => sum + page.length, 0) : tspl.length;
     await renderingReport;
     // Chốt chặn cuối trước khi gửi: phải báo được "sending" để chắc agent còn
     // giữ lệnh. Lỗi mạng ở đây trả lệnh về hàng đợi — chưa có tem nào ra giấy.
-    await queue.progress(job.id, "sending", { bytes: tspl.length });
-    journal.record(job.id, { stage: "sending", copies: job.copies, bytes: tspl.length });
+    await queue.progress(job.id, "sending", isSheet ? { pages: pageCount, bytes: byteCount } : { bytes: tspl.length });
+    journal.record(job.id, { stage: "sending", copies: job.copies, bytes: byteCount, ...(isSheet ? { pages: pageCount } : {}) });
     sent = true;
-    const spool = await printer.sendRaw(config, tspl, job.id);
+    const spool = isSheet
+      ? await printer.sendBitmapPages(config, tspl, job.copies, job.id)
+      : await printer.sendRaw(config, tspl, job.id);
     journal.record(job.id, { stage: "sent", spoolJobId: spool.jobId ?? null });
     // 0.8.8: chỉ để hiển thị (retry: false, lỗi bị nuốt) nên không chờ nó trước khi dò spooler (~0,5s);
     // được chờ lại ngay trước khi báo hoàn tất để "spooling" không bao giờ đến SAU "completed".
@@ -222,7 +234,9 @@ export async function processClaimedJob(input, dependencies) {
       throw Object.assign(new Error(after.message || "Máy in báo lỗi sau khi nhận dữ liệu"), { code: after.code || "PRINTER_POSTCHECK_FAILED" });
     }
     await spoolingReport;
-    result = { copies: job.copies, bytes: tspl.length, spoolJobId: spool.jobId ?? null, pagesPrinted, spoolConfirmed, templateVersion: job.templateVersion };
+    result = isSheet
+      ? { pages: pageCount, copies: job.copies, bytes: byteCount, spoolJobId: spool.jobId ?? null, pagesPrinted, spoolConfirmed, templateVersion: job.templateVersion }
+      : { copies: job.copies, bytes: tspl.length, spoolJobId: spool.jobId ?? null, pagesPrinted, spoolConfirmed, templateVersion: job.templateVersion };
   } catch (error) {
     const details = { code: error.code || "PRINT_FAILED", message: String(error.message || error).slice(0, 200) };
     // Số trang đã in được là manh mối duy nhất để biết in lại từ tem nào.
@@ -243,7 +257,8 @@ export async function processClaimedJob(input, dependencies) {
   }
   journal.record(job.id, { stage: "printed", result });
   const reported = await reportCompleted(job, result, context);
-  logger.info(`Hoàn tất ${job.id}: ${job.copies} tem, ${result.bytes} byte${reported ? "" : " (chưa báo được về hàng đợi)"}`);
+  const done = isSheet ? `${result.pages} trang × ${job.copies} bản` : `${job.copies} tem`;
+  logger.info(`Hoàn tất ${job.id}: ${done}, ${result.bytes} byte${reported ? "" : " (chưa báo được về hàng đợi)"}`);
   return { ok: true, result, reported, printer: lastPrinter };
 }
 
@@ -262,7 +277,7 @@ export function shouldSkipPrinterCheck({ cache, now, woken, config }) {
 }
 
 export async function runService(config, queue, logger, signal, lock, dependencies = {}) {
-  logger.info(`Agent ${config.agentId} v${AGENT_VERSION} khởi động; hỗ trợ ${CAPABILITIES.join(", ")}`);
+  logger.info(`Agent ${config.agentId} v${AGENT_VERSION} khởi động; hỗ trợ ${capabilitiesFor(config.printerKind).join(", ")}`);
   const journal = createSentJournal(config.tempDir, { logger });
   const waiter = createWaiter();
   signal?.addEventListener?.("abort", () => waiter.wake());
@@ -295,7 +310,8 @@ export async function runService(config, queue, logger, signal, lock, dependenci
     }
   }).catch((error) => logger.warn(`Chưa nạp sẵn mẫu số lượng/ngày vào cache đo chữ: ${String(error?.message || error).slice(0, 160)}`));
   let printing = false;
-  const catalogEnabled = textCache && config.skuCache && config.queueProvider === "supabase" && config.supabaseUrl && config.supabasePublishableKey;
+  // 0.11.0: máy in A4 không in tem nên không tải/đo sẵn danh mục SKU.
+  const catalogEnabled = textCache && config.skuCache && config.printerKind !== "a4" && config.queueProvider === "supabase" && config.supabaseUrl && config.supabasePublishableKey;
   const catalog = catalogEnabled
     ? (dependencies.createSkuCatalog ?? createSkuCatalog)({
       config, measureText, textCache, baseMeasure: measureTextWidths, logger,

@@ -1,4 +1,5 @@
-// Khoá máy cho nhóm ghi ở xưởng (17/10/2026, giao diện): lệnh GHI của Cấp vải và Xả vải gửi p_access_token (lệnh ĐỌC thì không);
+// Khoá máy cho nhóm ghi ở xưởng (17/10/2026, giao diện): lệnh GHI của Cấp vải và Xả vải gửi p_access_token (lệnh ĐỌC thì không;
+// Xả vải từ 04/11/2026 là luồng mét thực tế → phiếu A4: ghi = xa_vai_measure_save / _delete, đọc = _lookup / _list / _search);
 // phản hồi accessWarning → thanh vàng "Máy chưa kích hoạt" (không chặn, nút Kích hoạt mở hộp, tối đa 1 lần/10 phút);
 // ACCESS_DENIED → hộp Kích hoạt máy mở, không cập nhật danh sách. Admin: thẻ "Khoá máy xưởng" trong tab Thiết bị (chế độ, bảng 7 ngày
 // theo hàm, chuyển chế độ có xác nhận); RPC chưa có thì thẻ ẩn, tab vẫn chạy. Supabase giả lập, chạy với python -m http.server 8000.
@@ -15,7 +16,9 @@ const ago = m => new Date(Date.now() - m * 60000).toISOString();
 
 const LINE = { id: 'l1', no: 1, sku: SKU, lot: 'L1', roll: '1', groupUid: UID, qtyM: 100, state: 'matched', scannedAt: null, location: 'A-01' };
 const PLAN = { id: 'p1', name: 'Đợt thử', status: 'open', scanned: 0, total: 1, matched: 1, qtyTotal: 100, poNo: '10012600000001', createdAt: ago(60) };
-const OPEN_ITEM = { groupUid: UID, sku: SKU, batchCode: 'L1', rollCode: '1', startedAt: ago(10) };
+// Xả vải theo CONTRACT V2 + V3 (04/11/2026): đơn vị mm nguyên (systemMm / actualMm / p_actual_mm), item có printJobId + itemCode;
+// save / list không còn p_sku (gửi p_sku = chữ ký cũ → PostgREST 404).
+const XV_ITEM = { groupUid: UID, sku: SKU, itemCode: null, lot: 'L1', roll: '1', systemMm: 60000, actualMm: 59500, measuredAt: ago(10), status: 'pending', printedAt: null, printJobId: null };
 
 // Máy chủ giả: state.mode = 'ok' | 'warn' | 'deny' cho các lệnh GHI; ghi lại mọi lệnh gọi.
 const mockFloor = async (page, state) => page.route('**/*', async route => {
@@ -37,10 +40,12 @@ const mockFloor = async (page, state) => page.route('**/*', async route => {
     const scanned = { ...state.line, scannedAt: new Date().toISOString(), scannedBy: 'Máy thử' };
     return write({ result: 'issued', line: scanned, plan: { ...state.plan, scanned: 1 } });
   }
-  if (rpc === 'xa_vai_list_open') return ok({ items: state.open });
-  if (rpc === 'xa_vai_search') return ok({ items: [] });
-  if (rpc === 'xa_vai_start') return write({ item: OPEN_ITEM });
-  if (rpc === 'xa_vai_end') { const r = write({ item: OPEN_ITEM }); if (state.mode !== 'deny') state.open = []; return r; }
+  const noFn = () => json({ code: 'PGRST202', message: `Could not find the function public.${rpc}` }, 404);
+  if (rpc === 'xa_vai_measure_list') return 'p_sku' in body ? noFn() : ok({ items: state.open, total: state.open.length });
+  if (rpc === 'xa_vai_measure_search') return ok({ items: [], total: 0, truncated: false });
+  if (rpc === 'xa_vai_measure_lookup') return ok({ groupUid: body.p_group_uid, sku: SKU, productName: 'Vải thử', itemCode: null, lot: 'L1', roll: '1', uidStatus: 'Available', systemQty: 1000, systemMm: 60000, state: 'new', actualMm: null, measuredAt: null, printedAt: null, printJobId: null });
+  if (rpc === 'xa_vai_measure_save') return 'p_sku' in body ? noFn() : write({ item: { ...XV_ITEM, groupUid: body.p_group_uid, actualMm: body.p_actual_mm }, replaced: false });
+  if (rpc === 'xa_vai_measure_delete') { const r = write({ groupUid: body.p_group_uid }); if (state.mode !== 'deny') state.open = []; return r; }
   return json({ ok: true, data: {} });
 });
 
@@ -115,44 +120,55 @@ async function capVai(browser) {
 
 async function xaVai(browser) {
   const { context, page, errors } = await newPage(browser);
-  const state = { calls: [], mode: 'warn', plan: PLAN, line: LINE, open: [OPEN_ITEM] };
+  const state = { calls: [], mode: 'warn', plan: PLAN, line: LINE, open: [XV_ITEM] };
   await mockFloor(page, state);
   await page.goto(BASE + '#xa-vai');
   await page.locator('#xa-vai-screen').waitFor({ state: 'visible' });
-  await page.locator('#xa-vai-open-list .cut-row').waitFor({ state: 'attached' });
-  for (const name of ['xa_vai_list_open', 'xa_vai_search']) {
+  await waitCalls(state, 'xa_vai_measure_list', 1);
+  await waitCalls(state, 'xa_vai_measure_search', 1);
+  // Lưu mét (ghi nhận): thành công, thanh vàng.
+  await page.locator('#xa-vai-code').fill('1028260000000009');
+  await page.locator('#xa-vai-code').press('Enter');
+  await page.locator('#xa-vai-meters').waitFor({ state: 'visible' });
+  await page.locator('#xa-vai-meters').fill('58,5');
+  await page.locator('#xa-vai-meters').press('Enter');
+  await page.waitForFunction(() => /Đã lưu 1028260000000009/.test(document.getElementById('xa-vai-message').textContent));
+  for (const name of ['xa_vai_measure_list', 'xa_vai_measure_search', 'xa_vai_measure_lookup']) {
     const c = withToken(state.calls, name);
     assert.ok(c.length, `đã gọi ${name}`);
     assert.ok(c.every(x => !('p_access_token' in x.body)), `${name} không có p_access_token`);
   }
-  // Bắt đầu xả (ghi nhận): thành công, ô quét xoá, thanh vàng.
-  await page.locator('#xa-vai-code').fill('1028260000000009');
-  await page.locator('#xa-vai-code').press('Enter');
-  await page.waitForFunction(() => /Đã ghi giờ bắt đầu xả vải/.test(document.getElementById('xa-vai-message').textContent));
-  const start = withToken(state.calls, 'xa_vai_start')[0];
-  assert.equal(start.body.p_access_token, TOKEN, 'xa_vai_start gửi khoá máy');
-  assert.equal(start.body.p_group_uid, '1028260000000009');
-  assert.equal(await page.locator('#xa-vai-code').inputValue(), '', 'ghi được thì xoá ô quét');
+  const save = withToken(state.calls, 'xa_vai_measure_save')[0];
+  assert.equal(save.body.p_access_token, TOKEN, 'xa_vai_measure_save gửi khoá máy');
+  assert.equal(save.body.p_group_uid, '1028260000000009');
+  assert.equal(save.body.p_actual_mm, 58500, 'ô nhập mét → gửi mm nguyên');
+  assert.equal('p_sku' in save.body, false, 'xa_vai_measure_save không gửi p_sku (V3)');
+  assert.equal(withToken(state.calls, 'xa_vai_measure_list')[0].body.p_status, 'queue', 'xa_vai_measure_list(p_item_code, p_status)');
   await bar(page).waitFor({ state: 'visible' });
   assert.match(await bar(page).textContent(), /Máy chưa kích hoạt/);
   await page.locator('#floor-access-close').click();
   assert.equal(await bar(page).isHidden(), true, 'nút đóng ẩn thanh');
-  // Bị từ chối khi bắt đầu: hộp mở, ô quét GIỮ giá trị.
+  // Bị từ chối khi lưu: hộp mở, GIỮ số mét đang nhập.
   state.mode = 'deny';
   await page.locator('#xa-vai-code').fill('1028260000000010');
   await page.locator('#xa-vai-code').press('Enter');
+  await page.locator('#xa-vai-meters').waitFor({ state: 'visible' });
+  await page.locator('#xa-vai-meters').fill('57');
+  await page.locator('#xa-vai-meters').press('Enter');
   await page.locator('#pdv-dialog').waitFor({ state: 'visible' });
   await page.waitForFunction(() => /Máy chưa kích hoạt/.test(document.getElementById('xa-vai-message').textContent));
-  assert.equal(await page.locator('#xa-vai-code').inputValue(), '1028260000000010', 'bị từ chối thì giữ ô quét');
+  assert.equal(await page.locator('#xa-vai-meters').inputValue(), '57', 'bị từ chối thì giữ số mét');
   await page.locator('#pdv-cancel').click();
-  // Bị từ chối khi kết thúc: danh sách đang xả không đổi.
-  await page.locator('#xa-vai-tab-open').click();
-  await page.locator('#xa-vai-open-list [data-action="end"]').click();
-  await waitCalls(state, 'xa_vai_end', 1);
-  const end = withToken(state.calls, 'xa_vai_end')[0];
-  assert.equal(end.body.p_access_token, TOKEN, 'xa_vai_end gửi khoá máy');
+  // Bị từ chối khi xoá khỏi hàng chờ: danh sách không đổi.
+  await page.locator('#xa-vai-tab-queue').click();
+  await page.locator('#xa-vai-queue-rows [data-act="delete"]').click();
+  const whd = page.locator('dialog.whd'); await whd.waitFor({ state: 'visible' }); await whd.locator('.whd-ok').click();
+  await waitCalls(state, 'xa_vai_measure_delete', 1);
+  const del = withToken(state.calls, 'xa_vai_measure_delete')[0];
+  assert.equal(del.body.p_access_token, TOKEN, 'xa_vai_measure_delete gửi khoá máy');
   await page.waitForFunction(() => /Máy chưa kích hoạt/.test(document.getElementById('xa-vai-message').textContent));
-  assert.equal(await page.locator('#xa-vai-open-list .cut-row').count(), 1, 'bị từ chối thì danh sách đang xả không đổi');
+  assert.equal(await page.locator('#xa-vai-queue-rows tr[data-uid]').count(), 1, 'bị từ chối thì hàng chờ không đổi');
+  assert.equal(state.calls.some(c => /^xa_vai_(start|end|list_open|search)$/.test(c.rpc)), false, 'web không gọi RPC xả vải cũ');
   assert.deepEqual(errors, [], 'không lỗi JS');
   await context.close();
 }
@@ -233,7 +249,7 @@ async function admin(browser) {
   try {
     await capVai(browser);
     await xaVai(browser);
-    console.log('PASS xả vải: p_access_token cho bắt đầu/kết thúc (đọc không có), thanh vàng, bị từ chối giữ ô quét và danh sách');
+    console.log('PASS xả vải: p_access_token cho lưu/xoá mét (đọc không có), thanh vàng, bị từ chối giữ số mét và hàng chờ');
     await admin(browser);
     console.log('PASS admin: thẻ Khoá máy xưởng — chế độ, bảng 7 ngày, chuyển chế độ có xác nhận, RPC chưa có thì ẩn');
   } finally { await browser.close(); }

@@ -46,6 +46,62 @@ export async function queryPrinter(config, jobId = null) {
   }
 }
 
+const BITMAP_ERRORS = {
+  FILE_MISSING: "Không tìm thấy ảnh trang phiếu để in",
+  NO_A4: "Máy in không có khổ giấy A4",
+  PRINTER_INVALID: "Không tìm thấy máy in A4 trong Windows",
+  PRINT_FAILED: "Windows báo lỗi khi in phiếu"
+};
+
+/**
+ * 0.11.0: in các trang PNG (phiếu xả vải A4) qua DRIVER Windows — máy laser host-based (HP P1102w) không nhận
+ * TSPL/RAW. Cùng quy tắc với sendRaw: KHÔNG idempotent — PowerShell thường trực chết sau khi yêu cầu đã tới thì
+ * ném lỗi, không gọi lại (gọi lại là in trùng phiếu); tệp tạm luôn xoá trong finally.
+ * `pages`: Buffer PNG (ghi ra tệp tạm) hoặc đường dẫn có sẵn (không xoá). `copies`: số bản của CẢ phiếu.
+ * Thời hạn rộng theo số trang × số bản: driver GDI dựng mỗi trang 300 dpi mất vài giây.
+ */
+export async function sendBitmapPages(config, pages, copies, jobId) {
+  const safeId = String(jobId).replace(/[^0-9A-Za-z._-]/g, "_");
+  const stamp = Date.now();
+  const created = [];
+  try {
+    const files = pages.map((page, index) => {
+      if (typeof page === "string") return page;
+      const file = path.join(config.tempDir, `${safeId}-${stamp}-p${index + 1}.png`);
+      fs.writeFileSync(file, page);
+      created.push(file);
+      return file;
+    });
+    const args = { Printer: config.printerName, Files: files.join("|"), Copies: Number(copies) || 1, DocName: `PrintSKU xa-vai ${safeId}`.slice(0, 120) };
+    const timeoutMs = Math.min(600000, 60000 + 15000 * files.length * args.Copies);
+    let stdout = "";
+    const hosted = await runViaHost("print-bitmap.ps1", args, { timeoutMs, idempotent: false });
+    if (hosted.used) stdout = hosted.stdout;
+    else try {
+      const script = path.join(config.rootDir, "powershell", "print-bitmap.ps1");
+      ({ stdout } = await execFileAsync("powershell.exe", [
+        "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", script,
+        "-Printer", args.Printer, "-Files", args.Files, "-Copies", String(args.Copies), "-DocName", args.DocName
+      ], { windowsHide: true, timeout: timeoutMs }));
+    } catch (error) {
+      stdout = String(error?.stdout || "");
+      if (!stdout.trim()) throw error;
+    }
+    const result = JSON.parse(stdout.trim());
+    if (!result.ok) {
+      // print-bitmap.ps1 chỉ chứa ASCII nên trả mã lỗi; câu tiếng Việt có dấu dựng ở đây.
+      const known = BITMAP_ERRORS[result.code];
+      const message = known ? `${known}${result.message ? ` (${result.message})` : ""}` : result.message || "Windows từ chối lệnh in phiếu";
+      throw Object.assign(new Error(message.slice(0, 200)), { code: result.code || "PRINT_FAILED" });
+    }
+    return result;
+  } finally {
+    for (const file of created) {
+      try { fs.unlinkSync(file); } catch { /* tệp tạm sẽ được diagnose dọn sau */ }
+    }
+  }
+}
+
 export async function sendRaw(config, buffer, jobId) {
   const safeId = String(jobId).replace(/[^0-9A-Za-z._-]/g, "_");
   const file = path.join(config.tempDir, `${safeId}-${Date.now()}.tspl`);

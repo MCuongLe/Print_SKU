@@ -27,7 +27,7 @@ flowchart TB
 | Web (một tệp, GitHub Pages) | `index.html` (~2,5 MB) | Mỗi module = `<style id>` + `<section id="…-screen">` + `<script id>` IIFE. Tìm bằng id / chuỗi neo, **không theo số dòng**. Có một dòng bundle React minified (IN TEM SKU) — chỉ sửa bằng neo ngắn. Danh sách khối: PROJECT_MAP mục 2. |
 | Chrome Extension | `extension/inside-po-connector/` (phiên bản ở `manifest.json`) | Đọc Inside/WMS trong tab đã đăng nhập (token không rời tab) + đồng bộ tự động nền. PROJECT_MAP mục 3. |
 | Edge Functions | `supabase/functions/{sku-sync,group-uid-sync,print-assistant,sku-vision}/index.ts` | `verify_jwt` false. `sku-sync`, `group-uid-sync`, `print-assistant` tự kiểm JWT Admin; `sku-vision` công khai (chỉ kiểm publishable key + trần lượt/ngày). Deploy bằng `scripts/deploy_<tên>.py`. |
-| Agent in | `workstation-agent/` (phiên bản ở `VERSION`) | Node trên `may-kho-01`: claim `print_jobs` theo capability → vẽ tem → máy in TSC. Mẫu tem `src/templates/`. |
+| Agent in | `workstation-agent/` (phiên bản ở `VERSION`) | Node trên `may-kho-01`: claim `print_jobs` theo capability → vẽ tem → máy in TSC. Mẫu tem `src/templates/`. Từ 0.11.0 chế độ `PRINTER_KIND=a4` (máy `may-a4-01`): chỉ nhận lệnh `xa_vai_sheet`, vẽ phiếu A4 (`xa-vai-sheet.mjs`) và in qua driver Windows (`print-bitmap.ps1`). |
 | Công cụ | `scripts/*.py` | `run_tests.py`, `commit_gate.py`, `apply_supabase_sql.py`, `codex_review.py`, `deploy_*.py`, `live_status.py` (trạng thái lên thật, chỉ đọc). |
 | Test | `tests/*.cjs|*.mjs`, `workstation-agent/tests/` | `python scripts/run_tests.py` (máy chủ tĩnh cổng 8000), agent: `node --test`. |
 
@@ -61,6 +61,7 @@ flowchart TB
 - **Inside Mastige** (PO, SKU), **Inside Garment** (`garment.inshasaki.com`, chỉ PO, Extension ≥ 0.11.0) và **WMS** (Group UID, phiếu IT, Import/Export, history): chỉ đọc qua content script Extension trong tab người dùng đã đăng nhập; không gọi thẳng từ web hay Edge.
 - **App xây dựng** (Kiểm soát công trình): `hcm-bridge.js`, Cloudflare Access + Bearer.
 - **Máy in TSC** (USB, `may-kho-01`; `may-kho-02` đã tạo agent, chưa cài): chỉ qua agent.
+- **Máy in A4** (HP LaserJet Professional P 1102w, USB ở máy DESKTOP-foq5t89; agent `may-a4-01`, `PRINTER_KIND=a4`): phiếu xả vải, chỉ qua agent. Máy khác thấy máy in này dạng kết nối chia sẻ.
 - **AI:** Edge `print-assistant` (Claude nếu có khoá, không thì Gemini), `sku-vision` (Gemini). Khoá ở Supabase Secrets.
 - **Hosting:** GitHub Pages — push `main` = web lên ngay.
 - **Thư viện:** web không CDN/npm runtime (cấm thêm khi chưa được duyệt); agent: `sharp`, `qrcode-generator`; test: Playwright (ngoài repo, `PLAYWRIGHT_MODULE`), `axe-core`.

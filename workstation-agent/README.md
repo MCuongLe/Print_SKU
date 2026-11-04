@@ -1,6 +1,45 @@
 # Print SKU UID Agent
 
-Agent Windows độc lập phục vụ ứng dụng Print SKU. Bản 0.10.2 in tem SKU (mẫu gộp `sku:v3`: tem có PO + ngày nhận và tem thường trong cùng một lệnh; vẫn in `sku:v1`, `sku:v2`), Group UID và mã vị trí (tem Fabric Relaxation đã bỏ) tem.
+Agent Windows độc lập phục vụ ứng dụng Print SKU. Bản 0.11.0 thêm chế độ máy in A4 (`PRINTER_KIND=a4`) in PHIẾU THEO DÕI XẢ VẢI; chế độ mặc định in tem SKU (mẫu gộp `sku:v3`: tem có PO + ngày nhận và tem thường trong cùng một lệnh; vẫn in `sku:v1`, `sku:v2`), Group UID và mã vị trí (tem Fabric Relaxation đã bỏ) tem.
+
+## Cập nhật 0.11.0 — chế độ máy in A4: PHIẾU THEO DÕI XẢ VẢI (`xa_vai_sheet:v1`)
+
+- Dòng mới trong `config\.env`: `PRINTER_KIND=label` (mặc định, máy tem TSC như cũ) hoặc `PRINTER_KIND=a4` (máy in A4
+  qua driver Windows, ví dụ HP LaserJet Professional P1102w — máy host-based, **không** nhận TSPL RAW). Thiếu / rỗng =
+  `label`; giá trị khác (`laser`, `a-4`, `a4 # ghi chú`…) thì agent **từ chối khởi động** ("PRINTER_KIND không hợp lệ") để
+  máy A4 gõ sai không chạy thành agent tem. Lỗi cấu hình này (và mọi lỗi `loadConfig`) được ghi vào `logs\agent.log`
+  (`ERROR Không khởi động agent — cấu hình sai: …`) rồi agent thoát mã 1 — Task Scheduler bỏ stderr nên xem log để biết.
+- Chế độ `label` giữ nguyên 6 capability và mọi hành vi in tem. Chế độ `a4` **chỉ** khai `xa_vai_sheet:v1` (không nhận lệnh
+  tem; `normalizeJob` chặn thêm lần nữa nếu lệnh sai loại tới được), không tải/đo sẵn danh mục SKU.
+- Lệnh `type xa_vai_sheet`, `templateVersion 1`, `copies` 1–5 = số bản của **cả phiếu**; payload
+  `{ itemCode, productName, printedAt, reprint, items: [{ groupUid, sku, lot, roll, systemMm, actualMm, measuredAt }] }` (1–100
+  dòng; sai bất kỳ trường nào → từ chối cả lệnh). `itemCode` = **Mã hàng** (mã kiểu hàng, ví dụ `CWSH02`, người dùng nhập lúc
+  bấm In) — bắt buộc, đúng mẫu `^[0-9A-Z._-]{1,40}$`, agent không tự viết hoa/cắt giúp; `sku` nằm ở **từng dòng** (một phiếu
+  được nhiều SKU); `productName` tuỳ chọn (máy chủ chỉ gửi khi cả phiếu một SKU). Số đo là **mm nguyên** và phiếu in
+  thẳng mm (không đổi mét), nhóm nghìn dấu chấm: `60758` → `60.758`, chênh lệch `-2.734`. Lot/Roll giữ tối đa 40 ký tự
+  (dài thì thu cỡ / cắt "…" trong ô). Xem `docs/QUEUE_CONTRACT.md`.
+- Mẫu `src/templates/xa-vai-sheet.mjs`: A4 ngang, PNG 300 dpi (3508 × 2480), lề trong ảnh 12 mm / 10,6 mm. **Biển lớn đầu mỗi
+  trang** như tờ treo ở kho: Mã hàng cỡ 250 px (chữ hoa ~15 mm, mã dài thu tới 140 rồi mới cắt "…") bên trái, `Xả dd/mm/yyyy`
+  cỡ 150 (nhường tới 130 để mã giữ cỡ, không bao giờ cắt) bên phải; ngày xả = ngày giờ Việt Nam của `measuredAt`, nhiều ngày
+  thì `Xả 03/11 – 04/11/2026` (khác năm `Xả 31/12/2026 – 01/01/2027`). Dòng nhỏ phía trên: PHIẾU THEO DÕI XẢ VẢI · IN LẠI
+  (nền đen) · Trang · Ngày in. Dòng dưới biển: khi biển phải cắt mã (mã dài hơn ~16 ký tự) thì in **mã đầy đủ**
+  `Mã hàng: <mã>` (đậm, cỡ 36, không bao giờ cắt — hai mã chỉ khác đuôi `…-L` / `…-XL` vẫn phân biệt được), rồi
+  `SKU … · tên` cùng hàng chỉ khi có `productName` và cả phiếu một SKU (tên bị cắt "…" trước, không cắt mã). Bảng: STT · Group UID ·
+  **SKU** · Lot · Roll · Hệ thống (mm) · Thực tế (mm) · Chênh lệch (mm) · Giờ nhập (không còn cột độ co); 18 dòng/trang
+  (dòng 7 mm, tự tính từ chiều cao biển), dòng TỔNG + hai ô ký "Người xả" · "Người kiểm" ở trang cuối. Chênh lệch =
+  thực tế − hệ thống (mm); thiếu mét hệ thống → "—". Dòng TỔNG (mm): tổng thực tế cộng mọi dòng; tổng hệ thống và chênh
+  lệch chỉ tính trên các dòng có mét hệ thống, kèm chú thích "chênh lệch: n/m UID có mét hệ thống" khi có dòng thiếu.
+- In qua `powershell/print-bitmap.ps1` (`PrintDocument`, A4 ngang, lề 0, bù lề cứng của máy, tự lặp đủ số bản trong một tài
+  liệu, tìm job spooler theo tên tài liệu ~2 giây). Cùng an toàn như tem: đã gửi xuống spooler mà mất kết nối thì **không in
+  lại** (sổ tay `sent-journal`, `SENT_UNCONFIRMED`); mất mạng trước khi gửi thì lệnh về hàng đợi.
+- Xem trước: `node src/cli.mjs preview --type xa_vai_sheet` (ghi `preview\xa-vai-<số>-p1.png`, `-p2.png`… từ dữ liệu giả: Mã hàng `CWSH02`, ba SKU,
+  xả một ngày); thêm `-- --sample dai` cho bản "đại" (Mã hàng 14 ký tự, một SKU có tên dài, xả hai ngày, IN LẠI);
+  `-- --item-code <mã>` thay Mã hàng (ví dụ `CWSH02-FT-SHORT-NAVY-L` để xem dòng `Mã hàng:` dưới biển).
+- **Thứ tự lên:** (1) migration `supabase/xa_vai_a4_v1.sql` + bản web lọc thẻ máy in theo capability; (2) tạo hàng `print_agents` cho `may-a4-01` với
+  `allowed_capabilities = '{xa_vai_sheet:v1}'` và token riêng (ghi vào `config\.env` của máy A4, không đưa vào git);
+  (3) cài ZIP 0.11.0 trên máy cắm máy in A4 với `AGENT_ID=may-a4-01`, `PRINTER_NAME=<tên máy in trong Get-Printer>`,
+  `PRINTER_KIND=a4` (log khởi động phải có `hỗ trợ xa_vai_sheet:v1`; sai cấu hình thì `logs\agent.log` có dòng ERROR) → in thử
+  một phiếu; (4) push bản web màn mới SAU CÙNG. Máy tem (may-kho-01) không cần nâng. Test: `tests/xa-vai-sheet-0110.test.mjs`.
 
 ## Cập nhật 0.10.2 — gộp tem SKU thường và tem Phụ liệu (tem SKU phiên bản 3)
 
@@ -230,6 +269,7 @@ Nếu máy phát triển chỉ có npm, có thể dùng `npm install`; file khó
 ```powershell
 pnpm preview:sku
 pnpm preview:uid
+node src/cli.mjs preview --type xa_vai_sheet
 ```
 
 ## Dựng TSPL, không in
@@ -244,6 +284,8 @@ Kết quả nằm trong `preview`. Hai lệnh trên không gọi Windows Spooler
 ## Cấu hình service
 
 Sao chép `.env.example` thành `config\.env`, sau đó nhập Supabase URL, publishable key, token riêng của agent và tên máy in. Không đưa `.env` lên Git và không dùng service-role key trên máy trạm.
+
+- `PRINTER_KIND=label` (mặc định, có thể bỏ trống) cho máy tem TSC; `PRINTER_KIND=a4` cho máy in A4 in phiếu xả vải (0.11.0). Giá trị khác thì agent không khởi động.
 
 ## Chạy kiểm tra
 

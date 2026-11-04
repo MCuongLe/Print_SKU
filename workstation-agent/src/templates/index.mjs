@@ -8,6 +8,14 @@ import { renderLocationLabel } from "./location-label.mjs";
 // 0.10.2: sku:v3 = mẫu gộp v1 + v2 (khung PO/ngày theo từng tem, số lượng như v1); v1, v2 giữ cho lệnh cũ còn trong hàng đợi.
 export const CAPABILITIES = ["sku:v1", "sku:v2", "sku:v3", "group_uid:v1", "location:v1", "location:name-optional"];
 
+// 0.11.0: agent chế độ A4 (PRINTER_KIND=a4, máy in laser qua driver Windows) CHỈ khai phiếu xả vải — không bao giờ
+// nhận lệnh tem (byte TSPL RAW đẩy ra máy laser là in rác). Agent tem không khai xa_vai_sheet:v1.
+export const A4_CAPABILITIES = ["xa_vai_sheet:v1"];
+
+export function capabilitiesFor(printerKind) {
+  return printerKind === "a4" ? A4_CAPABILITIES : CAPABILITIES;
+}
+
 export function renderLabelSvg(job) {
   if (job.type === "sku") return renderSkuLabel(job.payload, { version: job.templateVersion });
   if (job.type === "group_uid") return renderGroupUidLabel(job.payload);

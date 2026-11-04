@@ -21,7 +21,7 @@ Gom từ `docs/CONTEXT_MAP.md` mục 1, `docs/PROJECT_MAP.md` mục 2, `docs/QUY
 
 Dùng cổng có sẵn; danh sách đầy đủ ở `docs/PROJECT_MAP.md` mục 2.
 
-- Lệnh in: mọi lệnh qua `PrintSkuQueue.enqueue` → RPC `print_enqueue`. Nguồn: `docs/CONTEXT_MAP.md` mục 3; (03/10, 25/10 · N0079, N1206)
+- Lệnh in: mọi lệnh qua `PrintSkuQueue.enqueue` → RPC `print_enqueue`; riêng xả vải qua `PrintSkuQueue.enqueueRpc` → RPC `xa_vai_print_enqueue` (cùng lớp phủ, khoá máy, `deniedWatch`). Nguồn: `docs/CONTEXT_MAP.md` mục 3; (03/10, 25/10 · N0079, N1206)
 - Combo → Normal: mọi luồng đưa SKU vào in / tra gặp Combo phải hỏi qua `SkuComboPicker.chooseNormal`; `sku_combo_links` không mở thẳng cho client. Nguồn: (30/09–12/10 · N0405, N0067, N0014)
 - Danh mục SKU trên máy `window.PrintSkuCatalog`: Supabase luôn đúng, IndexedDB chỉ để hiện nhanh, không ghi ngược; ghi IndexedDB đọc–so–ghi trong một giao dịch. Nguồn: (18–19/10 · N1033, N1035, N1085, N1105)
 - Cầu nối Extension: mọi helper `extensionRequest` hỏi `PrintSkuBridgeReady` (PING ≤ 1,8 s) trước; Reload Extension mà chưa F5 thì báo tải lại trang. Thêm helper phải tăng số đếm trong test. Giữ bởi: `bridge_ready`. Nguồn: (10/10, 15/10 · N0179, N0789)
