@@ -9568,8 +9568,7 @@ var FSK_CORE = (function () {
       #xa-vai-screen .xv-col { display: grid; align-content: start; gap: var(--space-4); min-width: 0; }
       #xa-vai-screen .xv-step { display: grid; gap: var(--space-2); min-width: 0; }
       #xa-vai-screen .xv-label { margin: 0; color: var(--wms-text-2); font-size: var(--fs-13); font-weight: var(--fw-semibold); }
-      #xa-vai-screen :is(.xv-uid, .xv-meter, .xv-empty)[hidden] { display: none; }
-      #xa-vai-screen .xv-empty { display: grid; justify-items: center; align-content: center; gap: var(--space-2); min-height: 168px; padding: var(--space-4); border: 1px dashed var(--wms-border); border-radius: var(--ui-in-r); color: var(--wms-text-2); font-size: var(--fs-14); font-weight: var(--fw-semibold); text-align: center; }
+      #xa-vai-screen :is(.xv-uid, .xv-meter)[hidden] { display: none; }
       #xa-vai-screen .xv-uid { display: grid; gap: var(--space-3); padding: var(--space-4); border: 1px solid var(--wms-border); border-left: 4px solid var(--wms-success); border-radius: var(--ui-in-r); background: var(--wms-surface); }
       #xa-vai-screen .xv-uid[data-tone="warn"] { border-left-color: var(--wms-warning); }
       #xa-vai-screen .xv-uid__head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2); }
@@ -9598,6 +9597,10 @@ var FSK_CORE = (function () {
       #xa-vai-screen .xv-bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); margin: 0 0 var(--space-3); }
       #xa-vai-screen .xv-printer { display: inline-flex; align-items: center; gap: var(--space-2); min-height: var(--ui-compact); margin-right: auto; padding: 0 var(--space-4); border: 1px solid var(--wms-border); border-radius: var(--radius-pill); background: var(--wms-surface); color: var(--wms-text-2); font-size: var(--fs-14); font-weight: var(--fw-semibold); }
       #xa-vai-screen .xv-printer svg { flex: none; }
+      #xa-vai-screen .xv-printer .xv-ps { display: none; }
+      #xa-vai-screen .xv-printer[data-tone="ok"] .xv-ps--ok, #xa-vai-screen .xv-printer[data-tone="warn"] .xv-ps--warn, #xa-vai-screen .xv-printer[data-tone="off"] .xv-ps--off { display: block; }
+      #xa-vai-screen .xv-uidbtn { min-height: var(--target-min); padding: 0; border: 0; background: none; color: var(--wms-brand); font: inherit; font-weight: var(--fw-bold); font-variant-numeric: tabular-nums; text-align: left; cursor: pointer; }
+      #xa-vai-screen .xv-uidbtn:focus-visible { outline: 2px solid var(--wms-focus-ring); outline-offset: 2px; }
       #xa-vai-screen .xv-printer[data-tone="ok"] { border-color: var(--wms-success); color: var(--wms-success); }
       #xa-vai-screen .xv-printer[data-tone="warn"] { border-color: var(--wms-warning); color: var(--wms-warning); }
       #xa-vai-screen .xv-printer[data-tone="off"] { border-color: var(--wms-danger); color: var(--wms-danger); }
@@ -9638,12 +9641,6 @@ var FSK_CORE = (function () {
       #xa-vai-uid-dialog .xv-facts dd { overflow-wrap: break-word; }
       #xa-vai-uid-dialog .xv-uid-err { margin: 0; color: var(--wms-danger); font-size: var(--fs-14); font-weight: var(--fw-semibold); }
       #xa-vai-uid-dialog .xv-uid-err:empty { display: none; }
-      @media (min-width: 900px) {
-        #xa-vai-screen .xv-scan { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; gap: var(--space-6); }
-      }
-      @media (max-width: 899px) {
-        #xa-vai-screen .xv-empty { display: none; }
-      }
       @media (max-width: 800px) {
         #xa-vai-screen .xv-meter__row { grid-template-columns: minmax(0, 1fr) minmax(104px, auto); }
         #xa-vai-screen #xa-vai-save { min-width: 0; }
@@ -9671,39 +9668,63 @@ var FSK_CORE = (function () {
         #xa-vai-screen .cut-table td.n { text-align: left; }
         #xa-vai-screen .cut-table td.xv-act { align-items: center; }
         #xa-vai-screen .xv-act__in { justify-content: flex-start; }
+        /* Chờ in trên điện thoại (04/11/2026): nút In + Số bản lên đầu; máy in sẵn sàng chỉ là icon, có vấn đề thì một dòng ngay dưới nút In; mỗi UID một hàng
+           (ô chọn · UID bấm để sửa · mét thực tế · xoá; SKU / Lot / Roll / mét hệ thống xem trong pop-up Sửa). */
+        #xa-vai-screen [data-panel="queue"] { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: var(--space-3); }
+        #xa-vai-screen [data-panel="queue"] > .xv-foot { grid-row: 1; grid-column: 1 / -1; margin: 0; }
+        #xa-vai-screen [data-panel="queue"] > .xv-bar { display: contents; }
+        #xa-vai-screen [data-panel="queue"] .xv-pick { grid-row: 3; grid-column: 1; margin: 0; }
+        #xa-vai-screen [data-panel="queue"] .xv-printer { grid-row: 3; grid-column: 2; flex: none; justify-content: center; min-width: var(--ui-compact); padding: 0 var(--space-3); }
+        #xa-vai-screen [data-panel="queue"] #xa-vai-reload { grid-row: 3; grid-column: 3; }
+        #xa-vai-screen [data-panel="queue"] .cut-table-wrap { grid-row: 4; grid-column: 1 / -1; }
+        #xa-vai-screen [data-panel="queue"] .xv-printer:is([data-tone="warn"], [data-tone="off"]) { grid-row: 2; grid-column: 1 / -1; justify-content: flex-start; min-width: 0; }
+        #xa-vai-screen [data-panel="queue"] .xv-printer #xa-vai-printer-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        #xa-vai-screen [data-panel="queue"] .xv-printer:is([data-tone="ok"], [data-tone="idle"]) #xa-vai-printer-text, #xa-vai-screen #xa-vai-queue-selected { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+        #xa-vai-screen [data-panel="queue"] .xv-total { order: 2; gap: var(--space-4); font-size: var(--fs-13); }
+        #xa-vai-screen [data-panel="queue"] .xv-total b { font-size: var(--fs-16); }
+        #xa-vai-screen #xa-vai-queue-rows tr { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto auto; align-items: center; column-gap: var(--space-2); min-height: 56px; margin: 0 0 var(--space-2); padding: 0 var(--space-2); }
+        #xa-vai-screen #xa-vai-queue-rows td { min-width: 0; padding: 0; }
+        #xa-vai-screen #xa-vai-queue-rows td:is([data-label="SKU"], [data-label="Lot"], [data-label="Roll"], [data-label="Mét HT"]) { display: none; }
+        #xa-vai-screen #xa-vai-queue-rows td.cut-th-check { position: relative; inset: auto; grid-column: 1; width: 28px; height: var(--target-min); }
+        #xa-vai-screen #xa-vai-queue-rows td.cut-th-check::after { content: ""; position: absolute; inset: 0 -8px; }
+        #xa-vai-screen #xa-vai-queue-rows td[data-label="Group UID"] { grid-column: 2; order: 0; padding: 0; font-size: var(--fs-14); }
+        #xa-vai-screen #xa-vai-queue-rows td[data-label="Mét TT"] { grid-column: 3; justify-content: flex-end; font-size: var(--fs-14); white-space: nowrap; }
+        #xa-vai-screen #xa-vai-queue-rows td[data-label="Mét TT"]::before { content: none; }
+        #xa-vai-screen #xa-vai-queue-rows td.xv-act { grid-column: 4; justify-self: end; }
+        #xa-vai-screen #xa-vai-queue-rows td.xv-act::before { content: none; }
+        #xa-vai-screen #xa-vai-queue-rows [data-act="edit"] { display: none; }
       }
     </style>
     <section class="cut-screen" id="xa-vai-screen" aria-labelledby="xa-vai-title" hidden>
       <header class="uid-topbar"><div class="uid-topbar__inner"><button class="uid-back" id="xa-vai-back" type="button" aria-label="Quay lại trang chủ WH-MATERIAL">WH-MATERIAL</button><span class="uid-topbar__mark" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2h4M12 14v-4M4 13a8 8 0 0 1 8-7 8 8 0 1 1-5.3 14L4 17.6M9 17H4v5"/></svg></span><div class="uid-topbar__name"><h1 id="xa-vai-title">THEO DÕI XẢ VẢI</h1><span>Group UID · mét thực tế · phiếu A4 theo mã hàng</span></div></div></header>
       <div class="cut-main">
         <div class="cut-tabs" role="tablist">
-          <button class="cut-tab" id="xa-vai-tab-scan" type="button" role="tab" data-tab="scan" aria-selected="true"><i class="fsk-tab-n" aria-hidden="true">1</i><span class="tab-l">Quét Group UID</span><span class="tab-s">Quét</span></button>
+          <button class="cut-tab" id="xa-vai-tab-scan" type="button" role="tab" data-tab="scan" aria-selected="true"><i class="fsk-tab-n" aria-hidden="true">1</i>Quét</button>
           <button class="cut-tab" id="xa-vai-tab-queue" type="button" role="tab" data-tab="queue" aria-selected="false"><i class="fsk-tab-n" aria-hidden="true">2</i>Chờ in <b class="cut-badge" id="xa-vai-queue-count">0</b></button>
           <button class="cut-tab" id="xa-vai-tab-printed" type="button" role="tab" data-tab="printed" aria-selected="false"><i class="fsk-tab-n" aria-hidden="true">3</i>Đã in <b class="cut-badge" id="xa-vai-found">0</b></button>
         </div>
         <p class="cut-message" id="xa-vai-message" aria-live="polite" style="margin-bottom:14px"></p>
         <div class="cut-grid">
-        <section class="cut-card" data-panel="scan"><h2><span>1</span>Quét Group UID</h2>
+        <section class="cut-card" data-panel="scan"><h2 class="xv-vh"><span>1</span>Quét Group UID</h2>
           <div class="xv-scan">
             <div class="xv-col">
               <div class="xv-step">
-                <p class="xv-label" id="xa-vai-code-label">Group UID</p>
-                <form class="cut-scan" id="xa-vai-form"><div class="scan-field"><input class="cut-input cut-input--scan" id="xa-vai-code" autocomplete="off" inputmode="none" placeholder="Group UID" maxlength="40" aria-labelledby="xa-vai-code-label"><span class="scan-field__tools"><button class="act-icon act-icon--camera" id="xa-vai-camera" type="button" aria-label="Quét bằng camera" title="Quét bằng camera" hidden></button><button class="act-icon act-icon--keyboard" id="xa-vai-keyboard" type="button" data-kb-key="xa-vai-ban-phim" aria-controls="xa-vai-code" aria-label="Hiện bàn phím" title="Hiện bàn phím"></button></span></div><button class="cut-primary act-icon act-icon--search" id="xa-vai-lookup" type="submit">Tra UID</button></form>
+                <form class="cut-scan" id="xa-vai-form"><div class="scan-field"><input class="cut-input cut-input--scan" id="xa-vai-code" autocomplete="off" inputmode="none" placeholder="Group UID" maxlength="40" aria-label="Group UID"><span class="scan-field__tools"><button class="act-icon act-icon--camera" id="xa-vai-camera" type="button" aria-label="Quét bằng camera" title="Quét bằng camera" hidden></button><button class="act-icon act-icon--keyboard" id="xa-vai-keyboard" type="button" data-kb-key="xa-vai-ban-phim" aria-controls="xa-vai-code" aria-label="Hiện bàn phím" title="Hiện bàn phím"></button></span></div><button class="cut-primary act-icon act-icon--search" id="xa-vai-lookup" type="submit">Tra cứu</button></form>
               </div>
             </div>
             <div class="xv-col">
-              <div class="xv-empty" id="xa-vai-uid-empty"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 12h10"/></svg><span>Chưa quét Group UID</span></div><div class="xv-uid" id="xa-vai-note" aria-live="polite" hidden></div>
-              <p class="xv-session" id="xa-vai-session"><span>Đã lưu</span> <b id="xa-vai-saved">0</b> <span>UID</span></p>
+              <div class="xv-uid" id="xa-vai-note" aria-live="polite" hidden></div>
+              <p class="xv-session" id="xa-vai-session"><span>Đã lưu</span> <b id="xa-vai-saved">0</b></p>
             </div>
           </div>
         </section>
-        <section class="cut-card" data-panel="queue"><h2><span>2</span>Chờ in</h2>
-          <div class="xv-bar"><span class="xv-printer" id="xa-vai-printer" data-tone="idle" role="status"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg><span id="xa-vai-printer-text">Máy in A4</span></span><button class="cut-icon-btn act-icon act-icon--load" id="xa-vai-reload" type="button" aria-label="Tải lại" title="Tải lại"></button></div>
+        <section class="cut-card" data-panel="queue"><h2 class="xv-vh"><span>2</span>Chờ in</h2>
+          <div class="xv-bar"><span class="xv-printer" id="xa-vai-printer" data-tone="idle" role="status"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg><svg class="xv-ps xv-ps--ok" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><svg class="xv-ps xv-ps--warn" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg><svg class="xv-ps xv-ps--off" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg><span id="xa-vai-printer-text">Máy in A4</span></span><button class="cut-icon-btn act-icon act-icon--load" id="xa-vai-reload" type="button" aria-label="Tải lại" title="Tải lại"></button></div>
           <div class="cut-actions xv-pick"><label class="cut-selectall"><input id="xa-vai-queue-all" type="checkbox"><span>Chọn tất cả</span><em id="xa-vai-queue-selected">Đã chọn 0</em></label></div>
           <div class="cut-table-wrap"><table class="cut-table xv-table"><thead><tr><th class="cut-th-check"><span class="xv-vh">Chọn</span></th><th>Group UID</th><th>SKU</th><th>Lot</th><th>Roll</th><th class="n">Mét HT</th><th class="n">Mét TT</th><th><span class="xv-vh">Thao tác</span></th></tr></thead><tbody id="xa-vai-queue-rows"><tr><td colspan="8" class="cut-empty">Chưa có UID chờ in</td></tr></tbody></table></div>
-          <div class="xv-foot"><p class="xv-total" id="xa-vai-queue-total"><span><b>0</b> UID</span><span><b>0,00</b> m</span></p><label class="xv-copies"><span>Số bản</span><select class="cut-input" id="xa-vai-copies"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></label><button class="cut-primary act-icon act-icon--print" id="xa-vai-print" type="button" aria-disabled="true">In A4</button></div>
+          <div class="xv-foot"><p class="xv-total" id="xa-vai-queue-total"><span><b>0</b> UID</span><span><b>0,00</b> m</span></p><label class="xv-copies" title="Số bản"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg><span class="xv-vh">Số bản</span><select class="cut-input" id="xa-vai-copies"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></label><button class="cut-primary act-icon act-icon--print" id="xa-vai-print" type="button" aria-disabled="true">In A4</button></div>
         </section>
-        <section class="cut-card" data-panel="printed"><h2><span>3</span>Đã in</h2><form class="cut-searchbar" id="xa-vai-search"><input class="cut-input" id="xa-vai-item" placeholder="Mã hàng" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="40" aria-label="Lọc theo Mã hàng" title="Lọc theo Mã hàng"><div class="cut-daterange"><input class="cut-input" id="xa-vai-date-from" type="date" aria-label="In từ ngày" title="In từ ngày"><span aria-hidden="true">–</span><input class="cut-input" id="xa-vai-date-to" type="date" aria-label="In đến ngày" title="In đến ngày"></div><button class="cut-secondary act-icon act-icon--search" type="submit">Tìm kiếm</button></form>
+        <section class="cut-card" data-panel="printed"><h2 class="xv-vh"><span>3</span>Đã in</h2><form class="cut-searchbar" id="xa-vai-search"><input class="cut-input" id="xa-vai-item" placeholder="Mã hàng" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="40" aria-label="Lọc theo Mã hàng" title="Lọc theo Mã hàng"><div class="cut-daterange"><input class="cut-input" id="xa-vai-date-from" type="date" aria-label="In từ ngày" title="In từ ngày"><span aria-hidden="true">–</span><input class="cut-input" id="xa-vai-date-to" type="date" aria-label="In đến ngày" title="In đến ngày"></div><button class="cut-secondary act-icon act-icon--search" type="submit">Tìm kiếm</button></form>
           <div class="cut-actions xv-pick"><label class="cut-selectall"><input id="xa-vai-printed-all" type="checkbox"><span>Chọn tất cả</span><em id="xa-vai-printed-selected">Đã chọn 0</em></label><label class="xv-copies"><span>Số bản</span><select class="cut-input" id="xa-vai-reprint-copies"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></label><button class="cut-secondary act-icon act-icon--print" id="xa-vai-reprint" type="button" aria-disabled="true">In lại</button><button class="cut-icon-btn" id="xa-vai-export" type="button" disabled title="Xuất Excel" aria-label="Xuất Excel"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button></div>
           <div class="cut-table-wrap"><table class="cut-table xv-table"><thead><tr><th class="cut-th-check"><span class="xv-vh">Chọn</span></th><th>Mã hàng</th><th>Group UID</th><th>SKU</th><th>Lot</th><th>Roll</th><th class="n">Mét HT</th><th class="n">Mét TT</th><th>Giờ in</th></tr></thead><tbody id="xa-vai-printed-rows"><tr><td colspan="9" class="cut-empty">Chưa có phiếu đã in</td></tr></tbody></table></div>
         </section>
@@ -9722,7 +9743,7 @@ var FSK_CORE = (function () {
         const screen=$('xa-vai-screen'),message=$('xa-vai-message');
         const tabs={scan:$('xa-vai-tab-scan'),queue:$('xa-vai-tab-queue'),printed:$('xa-vai-tab-printed')};
         const panels=Object.fromEntries(Object.keys(tabs).map(k=>[k,screen.querySelector(`.cut-card[data-panel="${k}"]`)]));
-        const form=$('xa-vai-form'),code=$('xa-vai-code'),uidBox=$('xa-vai-uid'),uidEmpty=$('xa-vai-uid-empty'),meterForm=$('xa-vai-meter-form'),meters=$('xa-vai-meters'),diffLine=$('xa-vai-diff'),saveBtn=$('xa-vai-save'),savedOut=$('xa-vai-saved');
+        const form=$('xa-vai-form'),code=$('xa-vai-code'),uidBox=$('xa-vai-uid'),meterForm=$('xa-vai-meter-form'),meters=$('xa-vai-meters'),diffLine=$('xa-vai-diff'),saveBtn=$('xa-vai-save'),savedOut=$('xa-vai-saved');
         const queueRows=$('xa-vai-queue-rows'),queueCount=$('xa-vai-queue-count'),queueTotal=$('xa-vai-queue-total'),queueAll=$('xa-vai-queue-all'),queueSel=$('xa-vai-queue-selected'),copies=$('xa-vai-copies'),printBtn=$('xa-vai-print'),printer=$('xa-vai-printer'),printerText=$('xa-vai-printer-text');
         const searchForm=$('xa-vai-search'),itemFilter=$('xa-vai-item'),dateFrom=$('xa-vai-date-from'),dateTo=$('xa-vai-date-to'),printedRows=$('xa-vai-printed-rows'),found=$('xa-vai-found'),printedAll=$('xa-vai-printed-all'),printedSel=$('xa-vai-printed-selected'),reprintCopies=$('xa-vai-reprint-copies'),reprintBtn=$('xa-vai-reprint'),exportBtn=$('xa-vai-export');
         const entry=$('xa-vai-uid-dialog'),entryClose=$('xa-vai-uid-close'),entryErr=$('xa-vai-uid-error'),noteBox=$('xa-vai-note');
@@ -9771,9 +9792,9 @@ var FSK_CORE = (function () {
         // Pop-up nhập mét (04/11/2026): thẻ UID + ô mét + Lưu nằm trong #xa-vai-uid-dialog; UID đã in phiếu thì không có gì để nhập → thẻ báo #xa-vai-note ở màn quét.
         const closeEntry=({keep=false}={})=>{if(!entry.open)return;keepOnClose=keep;entry.close()};
         const showEntry=()=>{if(activeTab!=='scan'||screen.hidden)return;if(!entry.open)entry.showModal();meters.focus();meters.select()};
-        const clearUid=()=>{current=null;uidBox.hidden=true;uidEmpty.hidden=false;uidBox.innerHTML='';noteBox.hidden=true;noteBox.innerHTML='';meterForm.hidden=true;meters.value='';diffLine.textContent='';delete diffLine.dataset.tone;entryErr.textContent='';closeEntry()};
+        const clearUid=()=>{current=null;uidBox.hidden=true;uidBox.innerHTML='';noteBox.hidden=true;noteBox.innerHTML='';meterForm.hidden=true;meters.value='';diffLine.textContent='';delete diffLine.dataset.tone;entryErr.textContent='';closeEntry()};
         const renderUid=(d,tone,box=uidBox)=>{
-          box.hidden=false;uidEmpty.hidden=true;box.dataset.tone=tone;
+          box.hidden=false;box.dataset.tone=tone;
           box.innerHTML=`<div class="xv-uid__head"><div class="xv-uid__id"><strong class="xv-uid__code">${esc(d.groupUid)}</strong>${d.via?`<small class="xv-uid__via">RFID ${esc(d.via)}</small>`:''}</div><span class="xv-state" data-state="${esc(d.state)}">${esc(STATE[d.state]||d.state||'')}</span></div><dl class="xv-facts"><div><dt>SKU</dt><dd${d.productName?` title="${esc(d.productName)}"`:''}>${esc(d.sku||'—')}</dd></div>${d.itemCode?`<div><dt>Mã hàng</dt><dd>${esc(d.itemCode)}</dd></div>`:''}<div><dt>Lot</dt><dd>${esc(d.lot||'—')}</dd></div><div><dt>Roll</dt><dd>${esc(d.roll||'—')}</dd></div><div class="xv-facts__m"><dt>Mét HT</dt><dd>${mmM(d.systemMm)}</dd></div>${finite(d.actualMm)?`<div class="xv-facts__m"><dt>Mét TT</dt><dd>${mmM(d.actualMm)}</dd></div>`:''}</dl>`;
         };
         // Tra trùng cùng UID khi đang tra (máy quét gửi Enter ngay sau mã đã tự tra) bị bỏ; tra nền (quiet) luôn chạy.
@@ -9875,7 +9896,7 @@ var FSK_CORE = (function () {
         const pickedQueue=()=>queueItems.filter(x=>x.status==='pending'&&queueChecked.has(x.groupUid));
         const renderQueue=()=>{
           queueCount.textContent=String(Math.max(queueTotalN,queueItems.length));
-          queueRows.innerHTML=queueItems.length?queueItems.map(x=>{const pend=x.status==='pending',on=pend&&queueChecked.has(x.groupUid);return `<tr data-uid="${esc(x.groupUid)}"${on?' class="is-selected"':''}><td class="cut-th-check"><input type="checkbox" data-pick${on?' checked':''}${pend?'':' disabled'} aria-label="Chọn ${esc(x.groupUid)}"></td><td>${esc(x.groupUid)}</td><td>${esc(x.sku)}</td><td>${esc(x.lot||'')}</td><td>${esc(x.roll||'')}</td><td class="n">${mmM(x.systemMm)}</td><td class="n xv-tt">${mmM(x.actualMm)}</td><td class="xv-act"><div class="xv-act__in">${pend?`<button class="cut-icon-btn act-icon act-icon--pencil" type="button" data-act="edit" aria-label="Sửa mét ${esc(x.groupUid)}" title="Sửa mét"></button><button class="cut-icon-btn act-icon act-icon--trash" type="button" data-act="delete" aria-label="Xoá ${esc(x.groupUid)}" title="Xoá"></button>`:'<span class="cut-status" data-status="queued">Đang in</span>'}</div></td></tr>`}).join(''):'<tr><td colspan="8" class="cut-empty">Chưa có UID chờ in</td></tr>';
+          queueRows.innerHTML=queueItems.length?queueItems.map(x=>{const pend=x.status==='pending',on=pend&&queueChecked.has(x.groupUid);return `<tr data-uid="${esc(x.groupUid)}"${on?' class="is-selected"':''}><td class="cut-th-check"><input type="checkbox" data-pick${on?' checked':''}${pend?'':' disabled'} aria-label="Chọn ${esc(x.groupUid)}"></td><td>${pend?`<button class="xv-uidbtn" type="button" data-act="open" aria-label="Sửa mét ${esc(x.groupUid)}">${esc(x.groupUid)}</button>`:esc(x.groupUid)}</td><td>${esc(x.sku)}</td><td>${esc(x.lot||'')}</td><td>${esc(x.roll||'')}</td><td class="n">${mmM(x.systemMm)}</td><td class="n xv-tt">${mmM(x.actualMm)}</td><td class="xv-act"><div class="xv-act__in">${pend?`<button class="cut-icon-btn act-icon act-icon--pencil" type="button" data-act="edit" aria-label="Sửa mét ${esc(x.groupUid)}" title="Sửa mét"></button><button class="cut-icon-btn act-icon act-icon--trash" type="button" data-act="delete" aria-label="Xoá ${esc(x.groupUid)}" title="Xoá"></button>`:'<span class="cut-status" data-status="queued">Đang in</span>'}</div></td></tr>`}).join(''):'<tr><td colspan="8" class="cut-empty">Chưa có UID chờ in</td></tr>';
           const sum=queueItems.reduce((a,x)=>a+(finite(x.actualMm)?Number(x.actualMm):0),0),picked=pickedQueue(),pend=queueItems.filter(x=>x.status==='pending').length;
           // Máy chủ cắt danh sách (total > số dòng trả về): báo "Hiện n / tổng" như tab Đã in báo "tối đa 5.000".
           const more=queueTotalN>queueItems.length?`<span>Hiện ${queueItems.length.toLocaleString('vi-VN')} / ${queueTotalN.toLocaleString('vi-VN')}</span>`:'';
@@ -9912,7 +9933,7 @@ var FSK_CORE = (function () {
           if(!button)return;
           const uid=button.closest('tr').dataset.uid,item=queueItems.find(x=>x.groupUid===uid);
           if(!item)return;
-          if(button.dataset.act==='edit'){setActiveTab('scan');lookup(uid);return}
+          if(button.dataset.act==='edit'||button.dataset.act==='open'){setActiveTab('scan');lookup(uid);return}
           const ok=await window.WhDialog.confirm({tone:'danger',title:'Xoá khỏi hàng chờ',facts:[uid,`${mmM(item.actualMm)} m`],confirmText:'Xoá',cancelText:'Huỷ'});
           if(!ok)return;
           try{

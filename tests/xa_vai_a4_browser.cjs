@@ -900,7 +900,7 @@ async function mobile(browser) {
   await page.waitForFunction(() => /Máy in A4/.test(document.getElementById('xa-vai-printer').textContent));
   assert.equal(await over(), false, '375 px tab Chờ in không tràn ngang');
   const cardRow = await page.locator('#xa-vai-queue-rows tr[data-uid]').first().evaluate(tr => getComputedStyle(tr).display);
-  assert.equal(cardRow, 'flex', 'bảng thành thẻ trên điện thoại');
+  assert.equal(cardRow, 'grid', 'bảng Chờ in thành hàng gọn một dòng (lưới) trên điện thoại, không còn thẻ nhiều dòng (04/11, queuePhone kiểm chi tiết)');
   const btn = await page.locator('#xa-vai-print').boundingBox();
   assert.ok(btn.height >= 44 && btn.x >= 0 && btn.x + btn.width <= 375, 'nút In A4 đủ lớn, nằm trong màn');
   await shot(page, '375-cho-in');
@@ -928,12 +928,132 @@ async function mobile(browser) {
   console.log('PASS 375px: ba tab + khung Mã hàng không tràn ngang, bảng thành thẻ, nút In A4 / Mã hàng ≥ 44 px');
 }
 
+// TAB QUÉT: MỖI TÊN MỘT LẦN (04/11/2026, người dùng: "mục 1 quét bị lặp quét group UID, Group UID, Tra UID, UID"): tab đã gọi tên "Quét" nên tiêu đề
+// thẻ chỉ còn cho trình đọc màn hình; ô quét giữ MỘT tên (placeholder "Group UID"); nút "Tra cứu" không lặp danh từ; bộ đếm "Đã lưu 0" không lặp đơn vị;
+// không còn khung rỗng "Chưa quét Group UID" (trước đây chiếm nửa thẻ trên máy tính, ô quét bị bóp còn ~170 px, placeholder cắt thành "G…").
+async function scanTabNames(browser) {
+  for (const width of [1280, 375]) {
+    const { context, page, errors } = await newPage(browser, width);
+    await mock(page, makeServer());
+    await page.goto(BASE + '#xa-vai');
+    await page.locator('#xa-vai-screen').waitFor({ state: 'visible' });
+    const tab = (await page.locator('#xa-vai-tab-scan').innerText()).replace(/\s+/g, ' ').replace(/\d+/g, '').trim();
+    assert.equal(tab, 'Quét', `${width}: tab 1 chỉ ghi "Quét"`);
+    // Chữ nhìn thấy trong thẻ Quét (bỏ phần tử ẩn, phần tử cắt 1 px kiểu sr-only và con của chúng)
+    const seen = await page.locator('#xa-vai-screen [data-panel="scan"]').evaluate(root => {
+      const out = [], walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+      for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+        const text = n.textContent.replace(/\s+/g, ' ').trim();
+        if (!text) continue;
+        let hidden = false;
+        for (let el = n.parentElement; el && !hidden; el = el === root ? null : el.parentElement) {
+          const r = el.getBoundingClientRect(), cs = getComputedStyle(el);
+          hidden = cs.visibility === 'hidden' || cs.display === 'none' || r.width < 2 || r.height < 2;
+        }
+        if (!hidden) out.push(text);
+      }
+      return out;
+    });
+    assert.equal(seen.join(' '), 'Tra cứu Đã lưu 0', `${width}: thẻ Quét chỉ còn nút "Tra cứu" và bộ đếm, không lặp tên / đơn vị (thấy: ${JSON.stringify(seen)})`);
+    const code = page.locator('#xa-vai-code');
+    assert.equal(await code.getAttribute('placeholder'), 'Group UID', 'ô quét giữ một tên');
+    assert.equal(await code.getAttribute('aria-label'), 'Group UID', 'ô quét có tên cho trình đọc màn hình');
+    assert.equal(await page.locator('#xa-vai-code-label, #xa-vai-uid-empty').count(), 0, 'không còn nhãn rời và khung rỗng');
+    const heading = page.locator('#xa-vai-screen [data-panel="scan"] > h2');
+    assert.match(await heading.textContent(), /Quét/, 'tiêu đề thẻ còn trong cây trợ năng');
+    assert.ok((await heading.boundingBox()).width <= 2, 'tiêu đề thẻ không hiện (tab đã gọi tên)');
+    // Bố cục: ô quét chiếm hết bề ngang thẻ
+    const field = await page.locator('#xa-vai-form .scan-field').boundingBox(), btn = await page.locator('#xa-vai-lookup').boundingBox();
+    const card = await page.locator('#xa-vai-screen [data-panel="scan"]').boundingBox();
+    assert.ok(field.x + field.width <= card.x + card.width + 1 && btn.x + btn.width <= card.x + card.width + 1, `${width}: không tràn thẻ`);
+    if (width >= 800) {
+      assert.ok(field.width >= 480, `${width}: ô quét rộng (${field.width})`);
+      assert.ok(Math.abs(btn.y + btn.height / 2 - (field.y + field.height / 2)) <= 12, 'nút Tra cứu cùng hàng với ô quét');
+    } else {
+      assert.ok(field.width >= 300, `${width}: ô quét rộng (${field.width})`);
+      assert.ok(btn.y >= field.y + field.height - 1, 'điện thoại: nút Tra cứu nằm dưới ô quét');
+      assert.ok(btn.width >= 300, 'nút Tra cứu rộng hết thẻ');
+    }
+    assert.ok(btn.height >= 44, 'nút Tra cứu ≥ 44 px');
+    await shot(page, `${width}-tab-quet-ten-mot-lan`);
+    assert.deepEqual(errors, []);
+    await context.close();
+  }
+  console.log('PASS tab Quét: mỗi tên một lần (tab "Quét", ô quét "Group UID", nút "Tra cứu", "Đã lưu 0"), ô quét chiếm hết thẻ ở 1280 và 375 px');
+}
+
+// CHỜ IN TRÊN ĐIỆN THOẠI (04/11/2026, người dùng: "mục chờ in tối ưu cho điện thoại, ưu tiên nút in lên trên, thông báo máy in gọn bằng icon, group uid hiển thị
+// đơn giản 1 hàng"): nút In A4 (kèm Số bản) nằm TRÊN danh sách; máy in sẵn sàng chỉ là icon (chữ vẫn có cho trình đọc màn hình), máy in có vấn đề mới hiện
+// chữ, một dòng ngay dưới nút In; mỗi UID một hàng: ô chọn · Group UID · mét thực tế · sửa · xoá (SKU / Lot / Roll / mét hệ thống xem trong pop-up Sửa).
+async function queuePhone(browser) {
+  for (const width of [375, 360]) {
+    const { context, page, errors } = await newPage(browser, width);
+    const s = makeServer();
+    s.measure(uid(1), 60500); s.measure(uid(9), 19800); s.measure(uid(2), 50000);
+    await mock(page, s);
+    await page.goto(BASE + '#xa-vai');
+    await page.locator('#xa-vai-screen').waitFor({ state: 'visible' });
+    await page.locator('#xa-vai-tab-queue').click();
+    await page.waitForFunction(() => document.querySelectorAll('#xa-vai-queue-rows tr[data-uid]').length === 3);
+    await page.waitForFunction(() => document.getElementById('xa-vai-printer').dataset.tone === 'ok');
+    const box = sel => page.locator(sel).first().boundingBox();
+    const over = () => page.evaluate(() => document.documentElement.scrollWidth > innerWidth);
+    // 1) nút In ở trên danh sách, thấy ngay không phải cuộn
+    const print = await box('#xa-vai-print'), first = await box('#xa-vai-queue-rows tr[data-uid]');
+    assert.ok(print.y + print.height <= first.y, `${width}: nút In nằm trên danh sách (In y=${print.y}+${print.height}, dòng đầu y=${first.y})`);
+    assert.ok(print.y < 260 && print.height >= 44, `${width}: nút In thấy ngay, cao ≥ 44 (y=${print.y}, cao ${print.height})`);
+    const copies = await box('#xa-vai-copies');
+    assert.ok(copies.y + copies.height <= first.y && copies.height >= 44, `${width}: Số bản cùng khối nút In, ở trên danh sách`);
+    // 2) máy in sẵn sàng = chỉ icon
+    const chip = await box('#xa-vai-printer'), txt = await box('#xa-vai-printer-text');
+    assert.ok(txt.width <= 2, `${width}: máy in sẵn sàng không hiện chữ`);
+    assert.match(await page.locator('#xa-vai-printer').textContent(), /sẵn sàng/, 'chữ vẫn có cho trình đọc màn hình');
+    assert.ok(chip.width <= 100 && chip.height >= 44, `${width}: thẻ máy in gọn (${chip.width} × ${chip.height})`);
+    assert.equal(await page.locator('#xa-vai-printer .xv-ps--ok').isVisible(), true, 'icon trạng thái sẵn sàng');
+    const all = await box('#xa-vai-queue-all'), reload = await box('#xa-vai-reload');
+    assert.ok(Math.abs(chip.y + chip.height / 2 - (reload.y + reload.height / 2)) <= 14 && Math.abs(all.y + all.height / 2 - (reload.y + reload.height / 2)) <= 14, `${width}: Chọn tất cả · máy in · Tải lại cùng một hàng`);
+    assert.ok((await box('#xa-vai-queue-selected')).width <= 2, `${width}: "Đã chọn n" ẩn (nút In đã ghi số UID)`);
+    // 3) mỗi UID một hàng
+    await shot(page, `${width}-cho-in-gon`);
+    const rows = page.locator('#xa-vai-queue-rows tr[data-uid]');
+    for (let i = 0; i < 3; i++) {
+      const row = rows.nth(i), rb = await row.boundingBox();
+      assert.ok(rb.height <= 64, `${width}: dòng ${i + 1} một hàng (cao ${rb.height})`);
+      assert.equal(await row.evaluate(r => r.scrollWidth <= r.clientWidth), true, `${width}: dòng ${i + 1} không tràn ngang`);
+      for (const label of ['SKU', 'Lot', 'Roll', 'Mét HT']) assert.equal(await row.locator(`td[data-label="${label}"]`).isHidden(), true, `${width}: cột ${label} ẩn trong hàng`);
+      const parts = [row.locator('input[data-pick]'), row.locator('td[data-label="Group UID"]'), row.locator('td[data-label="Mét TT"]'), row.locator('.xv-uidbtn'), row.locator('[data-act="delete"]')];
+      const cy = rb.y + rb.height / 2;
+      for (const part of parts) { const b = await part.boundingBox(); assert.ok(b && Math.abs(b.y + b.height / 2 - cy) <= 12 && b.x >= rb.x && b.x + b.width <= rb.x + rb.width + 1, `${width}: dòng ${i + 1} đủ ô chọn, UID, mét, sửa, xoá trên một hàng`); }
+      const del = await row.locator('[data-act="delete"]').boundingBox(), link = await row.locator('.xv-uidbtn').boundingBox();
+      assert.ok(del.width >= 44 && del.height >= 44 && link.height >= 44, `${width}: nút xoá / UID ≥ 44 px`);
+      assert.equal(await row.locator('[data-act="edit"]').isHidden(), true, `${width}: nút bút chì ẩn (bấm UID để sửa)`);
+      assert.match((await row.locator('td[data-label="Group UID"]').innerText()).trim(), /^\d{16}$/, 'ô UID chỉ có mã');
+    }
+    assert.equal(await over(), false, `${width}: tab Chờ in không tràn ngang`);
+    // 4) máy in có vấn đề: chữ hiện, một dòng, ngay dưới nút In
+    s.a4Seen = ago(10);
+    await page.locator('#xa-vai-tab-scan').click();
+    await page.locator('#xa-vai-tab-queue').click();
+    await page.waitForFunction(() => document.getElementById('xa-vai-printer').dataset.tone === 'off', null, { timeout: 20000 });
+    const bad = await box('#xa-vai-printer'), badText = await box('#xa-vai-printer-text'), print2 = await box('#xa-vai-print');
+    assert.ok(badText.width > 40, `${width}: máy in lỗi hiện chữ`);
+    assert.ok(bad.height <= 56 && bad.width >= width - 80, `${width}: một dòng, rộng hết thẻ (${bad.width} × ${bad.height})`);
+    assert.ok(bad.y >= print2.y + print2.height - 1 && bad.y < (await box('#xa-vai-queue-rows tr[data-uid]')).y, `${width}: thẻ máy in lỗi nằm giữa nút In và danh sách`);
+    assert.equal(await page.locator('#xa-vai-printer .xv-ps--off').isVisible(), true, 'icon trạng thái mất kết nối');
+    await shot(page, `${width}-cho-in-may-in-loi`);
+    assert.equal(await over(), false);
+    assert.deepEqual(errors, []);
+    await context.close();
+  }
+  console.log('PASS Chờ in điện thoại (375 + 360 px): nút In + Số bản trên danh sách, máy in sẵn sàng chỉ icon / lỗi một dòng dưới nút In, mỗi UID một hàng (chọn · UID · mét · sửa · xoá)');
+}
+
 (async () => {
   const browser = await chromium.launch({ channel: 'chrome', headless: true });
   try {
     // XA_VAI_ONLY=watchLimit (tên phần, cách nhau dấu phẩy) để chạy riêng khi dò lỗi; mặc định chạy hết.
     const only = (process.env.XA_VAI_ONLY || '').split(',').filter(Boolean);
-    for (const part of [desktop, bigQueue, tracking, watchLimit, popupScan, typedScan, mobile]) if (!only.length || only.includes(part.name)) await part(browser);
+    for (const part of [desktop, bigQueue, tracking, watchLimit, popupScan, typedScan, mobile, scanTabNames, queuePhone]) if (!only.length || only.includes(part.name)) await part(browser);
     console.log('PASS xa_vai_a4_browser');
   } finally { await browser.close(); }
 })().catch(error => { console.error('FAIL', error); process.exit(1); });
