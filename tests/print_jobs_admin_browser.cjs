@@ -9,6 +9,7 @@ const SESSION_KEY = 'print-sku-admin-session-v1';
 const TODAY = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 const at = (hh, mm) => new Date(`${TODAY}T${hh}:${mm}:00+07:00`).toISOString();
 
+const LONG_TYPE = 'loai_moi_chua_biet_ten_dai';
 const JOBS = [
   { id: 'aaaa1111-0000-4000-8000-000000000001', type: 'sku', status: 'completed', copies: 6, source: 'Máy kho', createdAt: at('10', '31'), completedAt: at('10', '31'),
     items: [{ sku: '900000101', productName: 'Vải mẫu A cotton xanh navy', quantity: '', printedDate: '08/10/26', copies: 2 },
@@ -25,6 +26,11 @@ const JOBS = [
     items: [{ sku: '900000401', productName: 'Nút mẫu E 4 lỗ nâu', quantity: '', printedDate: '08/10/26', copies: 2 }] },
   { id: 'eeee5555-0000-4000-8000-000000000005', type: 'location', status: 'completed', copies: 1, source: 'web-location', createdAt: at('08', '15'), completedAt: at('08', '15'),
     items: [{ code: 'Z99-T01-001-01-01-01', name: 'Kệ thử', copies: 1 }] },
+  // 04/11/2026: phiếu A4 xả vải (agent may-a4-01) có mã loại dài; loại lạ chưa có nhãn tiếng Việt giữ mã thô, cắt gọn + title.
+  { id: 'abcd7777-0000-4000-8000-000000000007', type: 'xa_vai_sheet', status: 'completed', copies: 1, source: 'XV-MB', createdAt: at('07', '45'), completedAt: at('07', '46'),
+    items: [{ sku: '900000501', productName: 'Vải mẫu F lanh be', copies: 1 }] },
+  { id: 'abcd8888-0000-4000-8000-000000000008', type: LONG_TYPE, status: 'completed', copies: 1, source: 'test', createdAt: at('07', '30'), completedAt: at('07', '31'),
+    items: [{ sku: '900000601', productName: 'Vải mẫu G ren trắng', copies: 1 }] },
 ];
 const kind = job => (job.type === 'sku' || job.type === 'group_uid' ? job.type : 'other');
 const text = job => [job.id, job.source, ...job.items.flatMap(it => [it.sku, it.groupUid, it.productName, it.code, it.name])].join(' ').toLowerCase();
@@ -115,14 +121,16 @@ const lastCall = (calls, name) => [...calls].reverse().find(call => call.rpc ===
       assert.equal((await page.locator('#pj-stat-printer strong').innerText()).trim(), 'Sẵn sàng');
       assert.match(await page.locator('#pj-stat-printer small').innerText(), /v0\.8\.9/);
       assert.equal((await page.locator('#pj-stat-queue strong').innerText()).trim(), '1');
-      assert.equal((await page.locator('#pj-stat-day strong').innerText()).trim(), '5 lệnh');
+      assert.equal((await page.locator('#pj-stat-day strong').innerText()).trim(), '7 lệnh');
       assert.equal((await page.locator('#pj-stat-failed strong').innerText()).trim(), '1');
       assert.equal(await page.locator('#pj-stat-failed').getAttribute('data-tone'), 'bad');
 
       await shot(page, `list-${width}`, true);
       // Danh sách: đủ lệnh, nhãn In lại, nguồn đổi sang tên màn
-      assert.equal(await rows(page).count(), 5);
-      assert.deepEqual([await page.locator('#pj-count-all').innerText(), await page.locator('#pj-count-sku').innerText(), await page.locator('#pj-count-uid').innerText()], ['5', '3', '1']);
+      assert.equal(await rows(page).count(), 7);
+      const chipCounts = await Promise.all(['all', 'sku', 'uid', 'other'].map(async name => Number(await page.locator(`#pj-count-${name}`).innerText())));
+      assert.deepEqual(chipCounts, [7, 3, 1, 3]);
+      assert.equal(chipCounts[1] + chipCounts[2] + chipCounts[3], chipCounts[0], 'các chip loại cộng lại bằng Tất cả');
       const reRow = rows(page).filter({ hasText: 'Nút mẫu E' });
       assert.equal(await reRow.locator('.pj-re').count(), 1);
       assert.equal(await reRow.locator('.pj-end .pj-badge').count(), 1, 'cột trạng thái chỉ một nhãn');
@@ -130,13 +138,34 @@ const lastCall = (calls, name) => [...calls].reverse().find(call => call.rpc ===
       assert.equal(await page.locator('#pj-today').isHidden(), true);
       assert.equal(await page.locator('#pj-next').isDisabled(), true, 'không đi tới ngày mai');
 
+      // Cột Loại (04/11/2026): nhãn tiếng Việt ngắn thay mã thô; ô không tràn / đè sang cột Nội dung; loại lạ giữ mã thô, cắt gọn, có title
+      const kindRows = await page.$$eval('#pj-list .pj-row:not(.pj-head)', els => els.map(row => {
+        const kind = row.querySelector('.pj-kind'), label = kind.querySelector(':scope > span'), main = row.querySelector('.pj-main');
+        const k = kind.getBoundingClientRect(), m = main.getBoundingClientRect();
+        return { text: kind.textContent.trim(), title: kind.getAttribute('title'), overflow: kind.scrollWidth - kind.clientWidth, clipped: label ? label.scrollWidth > label.clientWidth : null, gap: m.left - k.right };
+      }));
+      for (const r of kindRows) {
+        assert.ok(r.overflow <= 0, `ô Loại "${r.text}" không tràn khỏi cột (dư ${r.overflow}px)`);
+        if (width >= 768) assert.ok(r.gap >= 0, `ô Loại "${r.text}" không đè lên cột Nội dung (cách ${r.gap}px)`);
+      }
+      assert.deepEqual(kindRows.map(r => r.text).sort(), ['SKU', 'SKU', 'SKU', 'UID', 'Vị trí', 'Xả vải', LONG_TYPE].sort(), 'nhãn Loại: tiếng Việt ngắn, loại lạ giữ mã thô');
+      for (const r of kindRows) if (r.text !== LONG_TYPE) assert.equal(r.clipped, false, `nhãn "${r.text}" hiện đủ, không bị cắt`);
+      const longKind = kindRows.find(r => r.text === LONG_TYPE);
+      assert.equal(longKind.title, LONG_TYPE, 'loại lạ có title là mã thô');
+      if (width >= 768) assert.equal(longKind.clipped, true, 'loại lạ bị cắt gọn bằng dấu …');
+      assert.equal(kindRows.find(r => r.text === 'Xả vải').title, 'xa_vai_sheet', 'title giữ mã thô để tra');
+
       // Lọc UID → chỉ lệnh UID; Tất cả → đủ lại
       await page.locator('[data-pj-type="group_uid"]').click();
       await page.waitForFunction(() => document.querySelectorAll('#pj-list .pj-row:not(.pj-head)').length === 1);
       assert.equal(lastCall(calls, 'print_admin_jobs').args.p_type, 'group_uid');
       assert.equal(await page.locator('[data-pj-type="group_uid"]').getAttribute('aria-pressed'), 'true');
+      await page.locator('[data-pj-type="other"]').click();
+      await page.waitForFunction(() => document.querySelectorAll('#pj-list .pj-row:not(.pj-head)').length === 3);
+      assert.equal(lastCall(calls, 'print_admin_jobs').args.p_type, 'other');
+      assert.deepEqual((await rows(page).locator('.pj-kind').allInnerTexts()).map(t => t.trim()).sort(), ['Vị trí', 'Xả vải', LONG_TYPE].sort());
       await page.locator('[data-pj-type="all"]').click();
-      await page.waitForFunction(() => document.querySelectorAll('#pj-list .pj-row:not(.pj-head)').length === 5);
+      await page.waitForFunction(() => document.querySelectorAll('#pj-list .pj-row:not(.pj-head)').length === 7);
 
       // Tìm theo SKU (gửi lên máy chủ)
       await page.locator('#pj-query').fill('900000301');
@@ -145,7 +174,7 @@ const lastCall = (calls, name) => [...calls].reverse().find(call => call.rpc ===
       await page.locator('#pj-query').fill('khongcolenhnao');
       await page.waitForFunction(() => /Không có lệnh khớp/.test(document.getElementById('pj-list').textContent));
       await page.locator('#pj-query').fill('');
-      await page.waitForFunction(() => document.querySelectorAll('#pj-list .pj-row:not(.pj-head)').length === 5);
+      await page.waitForFunction(() => document.querySelectorAll('#pj-list .pj-row:not(.pj-head)').length === 7);
 
       // Ngày trước: rỗng, hiện nút Hôm nay; quay lại Hôm nay
       await page.locator('#pj-prev').click();
@@ -154,7 +183,7 @@ const lastCall = (calls, name) => [...calls].reverse().find(call => call.rpc ===
       assert.equal(await page.locator('#pj-today').isVisible(), true);
       assert.match(await page.locator('#pj-day-label').textContent(), /^Ngày \d\d\/\d\d$/);
       await page.locator('#pj-today').click();
-      await page.waitForFunction(() => document.querySelectorAll('#pj-list .pj-row:not(.pj-head)').length === 5);
+      await page.waitForFunction(() => document.querySelectorAll('#pj-list .pj-row:not(.pj-head)').length === 7);
 
       // Popup SKU: không có ô tick, in lại nguyên lệnh (không gửi p_items)
       await rows(page).filter({ hasText: 'Vải mẫu A cotton xanh navy' }).click();
