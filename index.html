@@ -9670,7 +9670,8 @@ var FSK_CORE = (function () {
         #xa-vai-screen .xv-act__in { justify-content: flex-start; }
         /* Chờ in trên điện thoại (04/11/2026): nút In + Số bản lên đầu; máy in sẵn sàng chỉ là icon, có vấn đề thì một dòng ngay dưới nút In; mỗi UID một hàng
            (ô chọn · UID bấm để sửa · mét thực tế · xoá; SKU / Lot / Roll / mét hệ thống xem trong pop-up Sửa). */
-        #xa-vai-screen [data-panel="queue"] { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: var(--space-3); }
+        /* Chỉ khi tab Chờ in đang chọn: display:grid không điều kiện từng đè quy tắc ẩn của tab khác (tab Quét hiện luôn danh sách Chờ in, 04/11). */
+        #xa-vai-screen [data-panel="queue"][data-active="true"] { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: var(--space-3); }
         #xa-vai-screen [data-panel="queue"] > .xv-foot { grid-row: 1; grid-column: 1 / -1; margin: 0; }
         #xa-vai-screen [data-panel="queue"] > .xv-bar { display: contents; }
         #xa-vai-screen [data-panel="queue"] .xv-pick { grid-row: 3; grid-column: 1; margin: 0; }

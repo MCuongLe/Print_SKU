@@ -928,6 +928,13 @@ async function mobile(browser) {
   console.log('PASS 375px: ba tab + khung Mã hàng không tràn ngang, bảng thành thẻ, nút In A4 / Mã hàng ≥ 44 px');
 }
 
+// Mỗi tab chỉ hiện đúng một thẻ: bắt lỗi CSS đè quy tắc ẩn của tab không được chọn (04/11/2026: thẻ Chờ in `display: grid` vô điều kiện làm tab Quét
+// hiện luôn danh sách Chờ in bên dưới, người dùng báo "giao diện quét và chờ in rất lộn xộn" trên điện thoại).
+const onlyPanel = async (page, name, where) => {
+  const shown = await page.locator('#xa-vai-screen .cut-card[data-panel]').evaluateAll(cards => cards.filter(card => { const r = card.getBoundingClientRect(); return getComputedStyle(card).display !== 'none' && r.width > 0 && r.height > 0; }).map(card => card.dataset.panel));
+  assert.deepEqual(shown, [name], `${where}: chỉ thẻ "${name}" hiện (đang hiện: ${shown.join(', ') || 'không thẻ nào'})`);
+};
+
 // TAB QUÉT: MỖI TÊN MỘT LẦN (04/11/2026, người dùng: "mục 1 quét bị lặp quét group UID, Group UID, Tra UID, UID"): tab đã gọi tên "Quét" nên tiêu đề
 // thẻ chỉ còn cho trình đọc màn hình; ô quét giữ MỘT tên (placeholder "Group UID"); nút "Tra cứu" không lặp danh từ; bộ đếm "Đã lưu 0" không lặp đơn vị;
 // không còn khung rỗng "Chưa quét Group UID" (trước đây chiếm nửa thẻ trên máy tính, ô quét bị bóp còn ~170 px, placeholder cắt thành "G…").
@@ -939,6 +946,7 @@ async function scanTabNames(browser) {
     await page.locator('#xa-vai-screen').waitFor({ state: 'visible' });
     const tab = (await page.locator('#xa-vai-tab-scan').innerText()).replace(/\s+/g, ' ').replace(/\d+/g, '').trim();
     assert.equal(tab, 'Quét', `${width}: tab 1 chỉ ghi "Quét"`);
+    await onlyPanel(page, 'scan', `${width}: tab Quét`);
     // Chữ nhìn thấy trong thẻ Quét (bỏ phần tử ẩn, phần tử cắt 1 px kiểu sr-only và con của chúng)
     const seen = await page.locator('#xa-vai-screen [data-panel="scan"]').evaluate(root => {
       const out = [], walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
@@ -993,8 +1001,10 @@ async function queuePhone(browser) {
     await mock(page, s);
     await page.goto(BASE + '#xa-vai');
     await page.locator('#xa-vai-screen').waitFor({ state: 'visible' });
+    await onlyPanel(page, 'scan', `${width}: tab Quét không hiện danh sách Chờ in`);
     await page.locator('#xa-vai-tab-queue').click();
     await page.waitForFunction(() => document.querySelectorAll('#xa-vai-queue-rows tr[data-uid]').length === 3);
+    await onlyPanel(page, 'queue', `${width}: tab Chờ in`);
     await page.waitForFunction(() => document.getElementById('xa-vai-printer').dataset.tone === 'ok');
     const box = sel => page.locator(sel).first().boundingBox();
     const over = () => page.evaluate(() => document.documentElement.scrollWidth > innerWidth);
@@ -1042,6 +1052,10 @@ async function queuePhone(browser) {
     assert.equal(await page.locator('#xa-vai-printer .xv-ps--off').isVisible(), true, 'icon trạng thái mất kết nối');
     await shot(page, `${width}-cho-in-may-in-loi`);
     assert.equal(await over(), false);
+    await page.locator('#xa-vai-tab-printed').click();
+    await onlyPanel(page, 'printed', `${width}: tab Đã in`);
+    await page.locator('#xa-vai-tab-scan').click();
+    await onlyPanel(page, 'scan', `${width}: quay lại tab Quét`);
     assert.deepEqual(errors, []);
     await context.close();
   }
