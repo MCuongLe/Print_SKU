@@ -32,6 +32,7 @@ Trạng thái (04/11/2026): **ĐÃ BUILD + 3 vòng review + cả bộ test; CH�
   - **Đ11 · Mã hàng nhập lúc in** (người dùng chốt 04/11 sau ảnh tờ treo): chọn UID rồi bấm In → khung nhập Mã hàng (viết hoa, `A-Z 0-9 . _ -`, ≤ 40); màn quét không có ô Mã hàng, UID mọi SKU; lưu theo mã hàng để lọc và in lại (mỗi phiếu một mã hàng).
   - **Đ12 · Ngày xả** = ngày nhập mét (`measuredAt`, giờ Việt Nam) của các dòng trên phiếu; nhiều ngày thì in khoảng.
   - **Đ13 · Bỏ "Độ co %"; phiếu A4 và Excel dùng mm** (người dùng chốt 04/11): không còn cột / số co ở đâu; cột Hệ thống, Thực tế, Chênh lệch của phiếu và Excel là số nguyên mm; màn hình (ô nhập, Chờ in, Đã in) giữ mét.
+  - **Đ14 · Quét → tự tra → pop-up nhập mét** (người dùng yêu cầu 04/11 trên điện thoại Honeywell): đủ 16 chữ số trong ô quét thì tự tra (chỉ đọc; ghi vẫn Enter / Lưu), UID chưa in mở pop-up nhập mét ngay (neo đầu màn trên điện thoại, cao ~270 px vì Honeywell 360 × ~670 px chỉ còn ~290 px phía trên bàn phím số); UID đã in / đang in hiện thẻ báo, không pop-up.
 - **Hợp đồng dữ liệu hiện hành (V3):**
   - Bảng `xa_vai_measures`: `group_uid_code` (PK) · `sku` · `item_code` · `batch_code` · `roll_code` · `system_qty` · `system_mm` · `actual_mm` · `measured_at` · `device_id` · `status` (`pending` / `printing` / `printed`) · `print_job_id` · `printed_at`. RLS bật, không policy.
   - Đọc (anon): `xa_vai_measure_lookup`, `xa_vai_measure_list(p_item_code, p_status)`, `xa_vai_measure_search(p_item_code, p_sku, p_date_from, p_date_to, p_limit)`.
@@ -94,7 +95,9 @@ Thứ tự theo luật 4 và quyết định 21/10 ("cài agent trước khi pus
 - [ ] Dòng nhắc commit kèm danh sách tệp khi xong.
 
 ## Phát sinh
-- (chưa có)
+- 04/11/2026 Việc 3c — Web: pop-up nhập mét + tự tra (Đ14) · lead · [x] viết xong + test (`xa_vai_a4_browser` phần `popupScan`); CHƯA thử máy Honeywell thật (bàn phím số, máy quét có / không Enter), CHƯA commit.
+  - Gồm `#xa-vai-uid-dialog`, `#xa-vai-note`, tự tra khi đủ 16 chữ số, chống tra trùng + Enter đến muộn.
+  - Codex vòng 1 (ảnh) và vòng 2 (phần vừa sửa) sửa 6 điểm: lỗi mạng khi tra tiếp, rời màn lúc đang lưu, Enter chỉ lưu khi ô mét đã đổi, nhãn Mét thực tế + bố cục, chốt Enter ở `submit` (nút Lưu `type="button"`), tra nền trả muộn sau khi quay lại.
 
 ## Lệch kế hoạch
 - 04/11/2026 Việc 1: kế hoạch ghi chép nguyên văn `print_agent_claim` từ `print_sku_v3_v1.sql`; đối chiếu bản đang chạy (Supabase MCP chỉ đọc) thấy bản mới nhất là `backend_hygiene_v1.sql` (có `agent_id is null or agent_id=p_agent_id`, hai khối trả lease) → migration mới xuất phát từ bản đó;

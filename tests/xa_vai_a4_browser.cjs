@@ -39,6 +39,7 @@ const mock = async (page, s) => page.route('**/*', async route => {
   if (!rpc) return json([]);
   const body = route.request().postDataJSON?.() || {};
   s.calls.push({ rpc, body });
+  if (s.delayMs?.[rpc]) await sleep(s.delayMs[rpc]);
   if (s.abortOnce.has(rpc)) { s.abortOnce.delete(rpc); return route.abort('internetdisconnected'); }
   // PostgREST: tham số lạ (chữ ký cũ có p_sku) → HTTP 404 PGRST202, như khi web cũ gọi hàm đã đổi chữ ký.
   const noFn = () => json({ code: 'PGRST202', message: `Could not find the function public.${rpc}`, details: null, hint: null }, 404);
@@ -275,6 +276,8 @@ async function desktop(browser) {
   await page.locator('#xa-vai-meter-form').waitFor({ state: 'visible' });
   assert.equal(await page.locator('#xa-vai-tab-scan').getAttribute('aria-selected'), 'true');
   assert.equal(await page.locator('#xa-vai-meters').inputValue(), '30,00');
+  assert.equal(await page.locator('#xa-vai-uid-dialog').evaluate(d => d.open), true, 'Sửa từ Chờ in mở pop-up nhập mét');
+  await page.locator('#xa-vai-uid-close').click(); // pop-up modal chặn bấm tab: đóng trước
   await page.locator('#xa-vai-tab-queue').click();
   // Xoá: hỏi xác nhận rồi gọi xa_vai_measure_delete có khoá máy
   await page.locator(`#xa-vai-queue-rows tr[data-uid="${uid(2)}"] [data-act="delete"]`).click();
@@ -494,7 +497,8 @@ async function tracking(browser) {
   await sleep(400);
   assert.equal(await msg(page), 'Đã tra 1028260000000004', 'lệnh máy khác không đè dòng báo của tab Quét');
   assert.deepEqual(await cues(page), [], 'lệnh máy khác không phát âm');
-  // Chờ in: total > số dòng → "Hiện n / tổng"
+  // Chờ in: total > số dòng → "Hiện n / tổng" (pop-up nhập mét của UID vừa quét chặn bấm tab: đóng trước)
+  await page.locator('#xa-vai-uid-close').click();
   await page.locator('#xa-vai-tab-queue').click();
   await page.waitForFunction(() => document.querySelectorAll('#xa-vai-queue-rows tr[data-uid]').length === 3);
   assert.match((await page.locator('#xa-vai-queue-total').innerText()).replace(/\s+/g, ' '), /Hiện 3 \/ 250/, 'total > số dòng → "Hiện n / tổng"');
@@ -640,6 +644,196 @@ async function watchLimit(browser) {
   await context.close();
   console.log('PASS giới hạn theo dõi: ~10 phút thôi hỏi, Lưu mét không hỏi lại, Tải lại theo dõi lại');
 }
+// QUÉT → TỰ TRA → POP-UP NHẬP MÉT (04/11/2026, yêu cầu trên điện thoại Honeywell): đủ 16 chữ số thì tự tra (không cần Enter hay "Tra UID"; mọi
+// Group UID trong WMS đều 16 chữ số), UID có trong hệ thống thì mở pop-up nhập mét ngay — con trỏ ở ô mét (bàn phím số), Enter / Lưu → đóng, con
+// trỏ về ô quét. Chỉ việc ĐỌC tự chạy; GHI vẫn cần Enter / Lưu (quyết định "không tự submit" của ô quét giữ cho ghi). Pop-up neo ở ĐẦU màn trên
+// điện thoại để bàn phím số không che ô mét và nút Lưu.
+async function popupScan(browser) {
+  const { context, page, errors } = await newPage(browser, 375);
+  const s = makeServer();
+  s.measure(uid(1), 60500); // pending → pop-up "Sửa"
+  s.measure(uid(3), 40100, 'printed', { printedAt: new Date().toISOString(), itemCode: 'CWSH02' }); // đã in → pop-up chỉ xem
+  await mock(page, s);
+  await page.goto(BASE + '#xa-vai');
+  await page.locator('#xa-vai-screen').waitFor({ state: 'visible' });
+  const dlg = page.locator('#xa-vai-uid-dialog');
+  const code = page.locator('#xa-vai-code');
+  const meters = page.locator('#xa-vai-meters');
+  const lookups = () => calls(s, 'xa_vai_measure_lookup').length;
+  const isOpen = () => dlg.evaluate(d => d.open);
+  await waitFor(async () => await focused(page) === 'xa-vai-code', 'vào màn con trỏ ở ô quét');
+  // 15 chữ số chưa phải một Group UID: không tự tra
+  await code.fill(uid(2).slice(0, 15));
+  await sleep(400);
+  assert.equal(lookups(), 0, 'chưa đủ 16 chữ số thì không tự tra');
+  assert.equal(await isOpen(), false);
+  // Đủ 16 chữ số: tự tra, KHÔNG Enter, KHÔNG bấm Tra UID → pop-up modal
+  await code.fill(uid(2));
+  await dlg.waitFor({ state: 'visible' });
+  assert.equal(lookups(), 1, 'tự tra đúng một lần');
+  assert.equal(await dlg.evaluate(d => d.matches(':modal')), true, 'pop-up là hộp thoại modal');
+  assert.equal(await dlg.locator('#xa-vai-uid').count(), 1, 'thẻ UID nằm trong pop-up');
+  assert.equal(await dlg.locator('#xa-vai-meter-form').count(), 1, 'ô mét + Lưu nằm trong pop-up');
+  await waitFor(async () => await focused(page) === 'xa-vai-meters', 'con trỏ ở ô mét trong pop-up');
+  assert.equal(await meters.getAttribute('inputmode'), 'decimal', 'bàn phím số');
+  const card = (await page.locator('#xa-vai-uid').innerText()).replace(/\s+/g, ' ');
+  assert.match(card, new RegExp(uid(2))); assert.match(card, new RegExp(SKU)); assert.match(card, /L1/); assert.match(card, /50,00/);
+  // Hình học trên 375 × 800: nằm trong màn, neo ở đầu (bàn phím ~45% màn không che), ô chữ ≥ 16 px, nút ≥ 44 px
+  const box = await dlg.boundingBox();
+  assert.ok(box.x >= 0 && box.x + box.width <= 375, 'pop-up không tràn ngang');
+  assert.ok(box.y >= 0 && box.y < 120, `pop-up neo ở đầu màn (y=${box.y})`);
+  // Honeywell 360 × ~670 px: thanh Chrome ~68 + bàn phím số ~270 → còn ~290 px phía trên bàn phím; pop-up phải gọn trong đó.
+  assert.ok(box.y + box.height <= 300, `pop-up nằm gọn trên vùng bàn phím (đáy ${box.y + box.height})`);
+  assert.ok(parseFloat(await meters.evaluate(el => getComputedStyle(el).fontSize)) >= 16, 'ô mét chữ ≥ 16 px');
+  for (const id of ['#xa-vai-save', '#xa-vai-uid-close']) assert.ok((await page.locator(id).boundingBox()).height >= 44, `${id} ≥ 44 px`);
+  await shot(page, '375-popup-nhap-met');
+  // Vùng thấy được khi bàn phím số bật (Honeywell 360 px, ~290 px phía trên bàn phím): thẻ, ô mét và nút Lưu đều nằm trọn trong đó
+  await page.setViewportSize({ width: 360, height: 290 });
+  const tight = await dlg.boundingBox(), tightSave = await page.locator('#xa-vai-save').boundingBox(), tightIn = await meters.boundingBox();
+  assert.ok(tight.y >= 0 && tight.y + tight.height <= 290 && tight.x >= 0 && tight.x + tight.width <= 360, `pop-up nằm trọn trong 360 × 290 (${JSON.stringify(tight)})`);
+  assert.ok(tightSave.y + tightSave.height <= 290 && tightIn.y + tightIn.height <= 290, `ô mét và nút Lưu nằm trong 290 px phía trên bàn phím (dialog ${JSON.stringify(tight)}, Lưu ${JSON.stringify(tightSave)}, ô ${JSON.stringify(tightIn)})`);
+  await page.setViewportSize({ width: 375, height: 800 });
+  // Enter ở ô mét (phím → của bàn phím số) = Lưu → đóng pop-up, con trỏ về ô quét, đếm phiên
+  await meters.fill('50,5');
+  await meters.press('Enter');
+  await waitMsg(page, /Đã lưu 1028260000000002 · 50,50 m/);
+  await dlg.waitFor({ state: 'hidden' });
+  assert.equal(await isOpen(), false);
+  await waitFor(async () => await focused(page) === 'xa-vai-code', 'lưu xong con trỏ về ô quét');
+  assert.equal(await page.locator('#xa-vai-saved').textContent(), '1');
+  assert.equal(calls(s, 'xa_vai_measure_save').length, 1);
+  // Máy quét gửi Enter ngay sau mã: tự tra + Enter vẫn chỉ tra MỘT lần
+  await code.fill(uid(4));
+  await code.press('Enter');
+  await dlg.waitFor({ state: 'visible' });
+  await sleep(300);
+  assert.equal(lookups(), 2, 'tự tra + Enter chỉ tra một lần');
+  // Esc / đóng: không ghi, con trỏ về ô quét, ô mét sạch
+  await page.keyboard.press('Escape');
+  await dlg.waitFor({ state: 'hidden' });
+  assert.equal(calls(s, 'xa_vai_measure_save').length, 1, 'đóng pop-up không ghi');
+  await waitFor(async () => await focused(page) === 'xa-vai-code', 'đóng pop-up con trỏ về ô quét');
+  assert.equal(await meters.inputValue(), '', 'đóng pop-up xoá số đang gõ');
+  // Số không hợp lệ: báo ngay TRONG pop-up (dòng báo của màn nằm sau lớp phủ)
+  await code.fill(uid(6));
+  await dlg.waitFor({ state: 'visible' });
+  await meters.fill('abc');
+  await meters.press('Enter');
+  const err = page.locator('#xa-vai-uid-error');
+  await waitFor(async () => /Mét thực tế không hợp lệ/.test(await err.innerText()), 'báo lỗi trong pop-up');
+  assert.equal(await err.isVisible(), true);
+  assert.equal(await dlg.evaluate(d => d.open), true, 'lỗi thì pop-up giữ nguyên để sửa');
+  assert.equal(calls(s, 'xa_vai_measure_save').length, 1, 'số sai không gửi lên máy chủ');
+  // Máy quét bắn tiếp UID khác vào ô mét (chưa lưu): chuyển sang UID mới, lỗi cũ xoá, UID đã có mét hiện số cũ + nút Sửa
+  await spyCue(page);
+  await meters.fill(uid(1));
+  await meters.press('Enter'); // máy quét có Enter cuối mã: không được lưu / báo lỗi giả
+  await waitFor(async () => (await page.locator('#xa-vai-uid').innerText()).includes(uid(1)), 'chuyển sang UID quét tiếp trong ô mét');
+  await sleep(500);
+  assert.equal(calls(s, 'xa_vai_measure_save').length, 1, 'Enter đến sau mã quét không lưu UID mới');
+  assert.ok(!(await cues(page)).includes('error'), 'Enter đến sau mã quét không phát tiếng lỗi');
+  assert.equal(await meters.inputValue(), '60,50', 'UID đã có mét hiện số cũ');
+  assert.match((await page.locator('#xa-vai-save').textContent()).trim(), /Sửa/);
+  // Enter đến muộn (máy quét hậu tố chậm, gõ tay) khi ô mét chưa đổi gì: KHÔNG lưu, dù đã quá 0,3 s; nút Sửa vẫn lưu được
+  await sleep(700);
+  await meters.press('Enter');
+  await sleep(300);
+  assert.equal(calls(s, 'xa_vai_measure_save').length, 1, 'Enter khi chưa đổi số không lưu lại UID đã có mét');
+  assert.equal(await dlg.evaluate(d => d.open), true);
+  await page.locator('#xa-vai-meter-form').evaluate(f => f.requestSubmit()); // phím Xong của IME Android có thể submit thẳng, không qua keydown Enter
+  await sleep(300);
+  assert.equal(calls(s, 'xa_vai_measure_save').length, 1, 'submit trực tiếp khi chưa đổi số không lưu lại UID đã có mét');
+  const boxPending = await dlg.boundingBox();
+  assert.ok(boxPending.y + boxPending.height <= 290, `pop-up UID đã có mét (thêm Mét TT) vẫn gọn trên bàn phím (đáy ${boxPending.y + boxPending.height})`);
+  assert.equal(await page.locator('#xa-vai-meter-form > label').isVisible(), true, 'nhãn "Mét thực tế" luôn thấy (phân biệt với Mét HT / Mét TT)');
+  await shot(page, '375-popup-sua');
+  assert.equal(await err.innerText(), '', 'sang UID mới thì xoá lỗi cũ');
+  await page.keyboard.press('Escape');
+  await dlg.waitFor({ state: 'hidden' });
+  // UID đã in phiếu: KHÔNG pop-up (không có gì để nhập) — thẻ báo ngay dưới ô quét, con trỏ giữ ở ô quét để quét tiếp liền
+  await code.fill(uid(3));
+  await waitMsg(page, /đã in phiếu CWSH02/);
+  assert.equal(await isOpen(), false, 'UID đã in không mở pop-up');
+  assert.match((await page.locator('#xa-vai-note').innerText()).replace(/\s+/g, ' '), /Đã in/);
+  assert.equal(await page.locator('#xa-vai-meter-form').isHidden(), true, 'UID đã in: không có ô mét');
+  await waitFor(async () => await focused(page) === 'xa-vai-code', 'UID đã in: con trỏ vẫn ở ô quét');
+  // Quét tiếp UID chưa nhập: thẻ báo cũ biến mất, pop-up mở
+  await code.fill(uid(5));
+  await dlg.waitFor({ state: 'visible' });
+  assert.equal(await page.locator('#xa-vai-note').isHidden(), true, 'quét UID mới thì xoá thẻ báo cũ');
+  await page.keyboard.press('Escape');
+  await dlg.waitFor({ state: 'hidden' });
+  // UID không có trong hệ thống: KHÔNG mở pop-up, báo lỗi, giữ mã trong ô quét
+  const before = lookups();
+  await code.fill(uid(99));
+  await waitMsg(page, /chưa có trong dữ liệu/);
+  assert.equal(lookups(), before + 1);
+  assert.equal(await isOpen(), false, 'UID lạ không mở pop-up');
+  assert.equal(await code.inputValue(), uid(99), 'giữ mã để xem lại');
+  // Rời màn khi pop-up đang mở: pop-up đóng, trang không bị khoá (không còn hộp thoại modal)
+  await code.fill(uid(1));
+  await dlg.waitFor({ state: 'visible' });
+  await page.evaluate(() => { location.hash = '#home'; });
+  await waitFor(async () => !(await isOpen()), 'rời màn thì pop-up đóng');
+  assert.equal(await page.evaluate(() => document.querySelectorAll('dialog:modal').length), 0, 'không còn hộp thoại modal khoá trang');
+  await page.evaluate(() => { location.hash = '#xa-vai'; });
+  await page.locator('#xa-vai-screen').waitFor({ state: 'visible' });
+  await waitFor(async () => await focused(page) === 'xa-vai-code', 'vào lại màn con trỏ ở ô quét');
+  // Nút Lưu bấm tay lưu được (không phụ thuộc Enter / submit)
+  await code.fill(uid(6));
+  await dlg.waitFor({ state: 'visible' });
+  await meters.fill('59,5');
+  await page.locator('#xa-vai-save').click();
+  await waitMsg(page, /Đã lưu 1028260000000006 · 59,50 m/);
+  await dlg.waitFor({ state: 'hidden' });
+  // Tra UID quét tiếp (trong ô mét) bị lỗi mạng: KHÔNG giữ thẻ UID cũ (nhập mét rồi lưu nhầm cây vải cũ) — đóng pop-up, mã vừa quét về ô quét
+  await code.fill(uid(2));
+  await dlg.waitFor({ state: 'visible' });
+  s.abortOnce.add('xa_vai_measure_lookup');
+  const savesBefore = calls(s, 'xa_vai_measure_save').length;
+  await meters.fill(uid(4));
+  await waitMsg(page, /Không tra được Group UID/);
+  await dlg.waitFor({ state: 'hidden' });
+  assert.equal(await code.inputValue(), uid(4), 'lỗi mạng khi tra: mã vừa quét về ô Group UID để thử lại');
+  assert.equal(await page.locator('#xa-vai-meter-form').isHidden(), true, 'lỗi mạng khi tra: không còn form mét của UID cũ');
+  assert.equal(calls(s, 'xa_vai_measure_save').length, savesBefore);
+  // Rời màn đúng lúc đang lưu mà lưu hỏng: quay lại không còn UID cũ / form mét treo mà pop-up đã đóng
+  await code.fill(uid(2));
+  await dlg.waitFor({ state: 'visible' });
+  s.delayMs = { xa_vai_measure_save: 700 };
+  s.abortOnce.add('xa_vai_measure_save');
+  await meters.fill('44');
+  await meters.press('Enter');
+  await waitFor(() => calls(s, 'xa_vai_measure_save').length === savesBefore + 1, 'lệnh lưu đã gửi');
+  await page.evaluate(() => { location.hash = '#home'; });
+  await sleep(1100);
+  s.delayMs = null;
+  await page.evaluate(() => { location.hash = '#xa-vai'; });
+  await page.locator('#xa-vai-screen').waitFor({ state: 'visible' });
+  assert.equal(await page.locator('#xa-vai-meter-form').isHidden(), true, 'quay lại không còn form mét của UID cũ');
+  assert.equal(await isOpen(), false);
+  await waitFor(async () => await focused(page) === 'xa-vai-code', 'quay lại con trỏ ở ô quét');
+  // Cùng cuộc đua nhưng quay lại NGAY: lưu hỏng sau 0,5 s rồi tra nền trả sau 0,8 s — kết quả muộn không được dựng lại UID cũ / mở lại pop-up
+  await code.fill(uid(2));
+  await dlg.waitFor({ state: 'visible' });
+  s.delayMs = { xa_vai_measure_save: 500, xa_vai_measure_lookup: 800 };
+  s.abortOnce.add('xa_vai_measure_save');
+  const savesRace = calls(s, 'xa_vai_measure_save').length;
+  await meters.fill('45');
+  await meters.press('Enter');
+  await waitFor(() => calls(s, 'xa_vai_measure_save').length === savesRace + 1, 'lệnh lưu đã gửi');
+  await page.evaluate(() => { location.hash = '#home'; });
+  await page.evaluate(() => { location.hash = '#xa-vai'; });
+  await page.locator('#xa-vai-screen').waitFor({ state: 'visible' });
+  await sleep(2000);
+  s.delayMs = null;
+  assert.equal(await isOpen(), false, 'tra nền trả muộn không mở lại pop-up');
+  assert.equal(await page.locator('#xa-vai-meter-form').isHidden(), true, 'tra nền trả muộn không dựng lại form mét');
+  await waitFor(async () => await focused(page) === 'xa-vai-code', 'con trỏ ở ô quét sau cuộc đua');
+  assert.deepEqual(errors, []);
+  await context.close();
+  console.log('PASS pop-up quét: đủ 16 chữ số tự tra, tự tra + Enter một lần, pop-up neo đầu màn, Enter lưu → về ô quét, Esc không ghi, lỗi báo trong pop-up, UID mới thay trong ô mét, UID đã in chỉ hiện thẻ báo không pop-up, UID lạ không pop-up, rời màn đóng pop-up');
+}
 async function mobile(browser) {
   const { context, page, errors } = await newPage(browser, 375);
   const s = makeServer();
@@ -655,6 +849,7 @@ async function mobile(browser) {
   await page.locator('#xa-vai-meters').fill('11,5');
   assert.equal(await over(), false, '375 px tab Quét không tràn ngang');
   await shot(page, '375-quet');
+  await page.locator('#xa-vai-uid-close').click(); // pop-up nhập mét chặn bấm tab: đóng trước
   await page.locator('#xa-vai-tab-queue').click();
   await page.waitForFunction(() => document.querySelectorAll('#xa-vai-queue-rows tr[data-uid]').length === 2);
   await page.waitForFunction(() => /Máy in A4/.test(document.getElementById('xa-vai-printer').textContent));
@@ -693,7 +888,7 @@ async function mobile(browser) {
   try {
     // XA_VAI_ONLY=watchLimit (tên phần, cách nhau dấu phẩy) để chạy riêng khi dò lỗi; mặc định chạy hết.
     const only = (process.env.XA_VAI_ONLY || '').split(',').filter(Boolean);
-    for (const part of [desktop, bigQueue, tracking, watchLimit, mobile]) if (!only.length || only.includes(part.name)) await part(browser);
+    for (const part of [desktop, bigQueue, tracking, watchLimit, popupScan, mobile]) if (!only.length || only.includes(part.name)) await part(browser);
     console.log('PASS xa_vai_a4_browser');
   } finally { await browser.close(); }
 })().catch(error => { console.error('FAIL', error); process.exit(1); });

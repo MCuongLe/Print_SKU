@@ -99,7 +99,7 @@
 
 ### Quét, bàn phím, camera
 - Khung quét chuẩn `.scan-field` cho mọi ô quét (trừ TÌM SKU): bàn phím ảo ẩn mặc định, nút bàn phím trong khay nhớ theo máy; các ô sau `#f-sku` theo `__kbH`. (03/10, 14/10, 18/10 · N0078, N0650, N1013)
-- Máy quét Honeywell phải đặt Wedge Method = Keyboard; không dùng `readonly`/`virtualkeyboardpolicy="manual"` (máy quét gõ qua IME); giữ focus ô quét chỉ ở tab quét; không tự submit (Enter/nút mới lưu). (19/09, 25–26/09, 05/10 · N0190, N0329, N0331, N0076)
+- Máy quét Honeywell phải đặt Wedge Method = Keyboard; không dùng `readonly`/`virtualkeyboardpolicy="manual"` (máy quét gõ qua IME); giữ focus ô quét chỉ ở tab quét; không tự submit (Enter/nút mới lưu) — riêng xả vải tự TRA (đọc) khi đủ 16 chữ số, ghi vẫn Enter/Lưu. (19/09, 25–26/09, 05/10, 04/11 · N0190, N0329, N0331, N0076, N20261104-1600)
 - Âm báo quét chung `PrintSkuScanCue.play(tone)` (ok/warn/error/blocked/qc/store); tắt âm vẫn rung. (23/10 · N1168)
 - Lớp camera chung `PrintSkuScanUI` (`open`; `openGroupUid` chỉ nhận UID 16 số), vòng đời `#wms-camera-lifecycle`, lỗi có Thử lại trong cùng lớp; ZXing trong bundle đã vá Code128. (01/10, 07/10, 11/10 · N0412, N0417, N0063, N0507)
 
@@ -236,6 +236,11 @@
   - Bảng `xa_vai_log` và hàm `xa_vai_*` cũ giữ ở server, web không gọi nữa.
   - Mã hàng = mã kiểu hàng như `CWSH02`, KHÔNG phải SKU (SKU luôn là số 9 chữ số): nhập tay lúc in (khung nổi khi bấm In), viết hoa, `A-Z 0-9 . _ -`, ≤ 40 ký tự; màn quét không có ô Mã hàng, UID mọi SKU. (04/11 · N20261104-1930)
   - Lưu `item_code` theo UID khi in; tab Đã in lọc theo mã hàng + ngày, in lại (mỗi phiếu một mã hàng, `MIXED_ITEM_CODE`). Mét lệch > 20% so với mét hệ thống thì hỏi xác nhận.
+  - Quét → tự tra → pop-up nhập mét (04/11/2026, yêu cầu trên điện thoại Honeywell): đủ 16 chữ số trong ô quét thì tự tra, không cần Enter hay "Tra UID" (mọi Group UID WMS đều 16 chữ số: 40.860 / 40.860 dòng); UID chưa in mở `#xa-vai-uid-dialog` (thẻ UID + ô mét + Lưu). (04/11 · N20261104-1600)
+    - Điện thoại: pop-up neo ĐẦU màn, cao ~250 px (Honeywell chỉ còn ~290 px phía trên bàn phím số); mọi cỡ màn dùng pop-up, một đường mã.
+    - Nút Lưu / Sửa luôn lưu. Enter hay phím Xong của IME không lưu khi ô mét chưa đổi so với lúc mở, hoặc khi đang tra UID khác. Esc / Đóng không ghi; không đóng bằng chạm nền (tránh mất số đang gõ).
+    - Lỗi nhắc ngay trong pop-up. Tra UID quét tiếp bị lỗi mạng thì bỏ thẻ UID cũ, mã về ô quét; rời màn lúc đang lưu thì dọn sau khi lưu xong.
+    - UID đã in / đang in không có gì để nhập → thẻ báo `#xa-vai-note` ở màn quét, con trỏ giữ ở ô quét. Chỉ ĐỌC tự chạy, GHI vẫn Enter / Lưu.
   - Đơn vị so sánh = mm (người dùng chốt 04/11): qty WMS quy đổi ra mm ở máy chủ theo trường cuối tên SKU (`m` × 1000; `mm`; `g` × 1000 ÷ (GSM × khổ m), cùng `computeCutQty`); không quy đổi được thì "—".
   - Lưu `system_mm` / `actual_mm` (số nguyên mm). Màn hình (ô nhập, Chờ in, Đã in) hiện MÉT (mm ÷ 1000, 2 chữ số); phiếu A4 và Excel hiện MM nguyên. Không có "Co (%)" ở đâu cả. (04/11 · N20261104-1930)
   - Phiếu A4 ngang: biển lớn đầu MỖI trang (Mã hàng cỡ rất lớn + `Xả dd/mm/yyyy`, ngày xả = ngày nhập mét giờ VN, nhiều ngày thì khoảng); bảng STT · Group UID · SKU · Lot · Roll · Hệ thống (mm) · Thực tế (mm) · Chênh lệch (mm) · Giờ nhập.

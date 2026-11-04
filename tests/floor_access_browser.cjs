@@ -159,6 +159,7 @@ async function xaVai(browser) {
   await page.waitForFunction(() => /Máy chưa kích hoạt/.test(document.getElementById('xa-vai-message').textContent));
   assert.equal(await page.locator('#xa-vai-meters').inputValue(), '57', 'bị từ chối thì giữ số mét');
   await page.locator('#pdv-cancel').click();
+  await page.locator('#xa-vai-uid-close').click(); // pop-up nhập mét (modal) còn mở sau lần lưu bị từ chối: đóng trước khi bấm tab
   // Bị từ chối khi xoá khỏi hàng chờ: danh sách không đổi.
   await page.locator('#xa-vai-tab-queue').click();
   await page.locator('#xa-vai-queue-rows [data-act="delete"]').click();
