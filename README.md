@@ -27,7 +27,7 @@ Mở `http://localhost:8000/`. Không mở thẳng tệp: camera cần `https://
 
 **Kiểm thử**
 
-- Cả bộ: `python scripts/run_tests.py` (chạy nền, tự chạy lại test hỏng một lần). Một test: `--only <tên>`. Playwright nạp qua biến `PLAYWRIGHT_MODULE`.
+- Cả bộ: `python scripts/run_tests.py` (chạy nền, 4 tiến trình song song, tự chạy lại test hỏng một lần). Một test: `--only <tên>`; test liên quan tệp đang đổi: `--changed`. Playwright nạp qua biến `PLAYWRIGHT_MODULE`.
 - `tests/a11y_axe_browser.cjs` cần `npm install` một lần ở gốc repo (axe-core chỉ dùng khi test; `node_modules/` không commit).
 - Agent máy trạm: `node --test` trong `workstation-agent`.
 - Cổng trước commit: `python scripts/commit_gate.py --cached`. Luật viết test và commit: `docs/chuan/KIEM_THU_GIT.md`.

@@ -93,6 +93,11 @@ const paste = (page, text) => page.locator("#pa-input").evaluate((el, text) => {
   const data = new DataTransfer(); data.setData("text/plain", text);
   el.focus(); return !el.dispatchEvent(new ClipboardEvent("paste", { clipboardData: data, bubbles: true, cancelable: true }));
 }, text);
+// findMade chờ SETTLE_MS = 20 s THẬT (máy chủ ghi xong) rồi mới tra lại đợt: đẩy đồng hồ trang tới trước (context.clock.install()
+// phải gọi trước) cho tới khi điều kiện `done` đúng, thay vì ngủ 20 s. Hẹn giờ có thể được đặt sau lần đẩy đầu nên lặp.
+async function skipSettle(page, done) {
+  for (let i = 0; i < 100 && !(await page.evaluate(done)); i++) { await page.clock.fastForward(20000); await page.waitForTimeout(50); }
+}
 const card = page => page.locator("#pa-pl");
 const rowsOf = page => page.evaluate(() => [...document.querySelectorAll("#pa-pl .pa-pl-row")].map(r => ({
   uid: r.dataset.uid, on: r.querySelector("[data-pl-on]").checked, locked: r.querySelector("[data-pl-on]").disabled, m: r.querySelector(".pa-pl-m").textContent.trim(), flag: r.querySelector(".pa-flag")?.textContent.trim() || "" })));
@@ -287,12 +292,14 @@ const shot = async (page, name) => { if (!SHOTS) return; fs.mkdirSync(SHOTS, { r
     // 10) Tạo đợt rớt mạng sau khi máy chủ đã ghi → "chưa rõ", khoá thẻ, tìm lại đợt trên máy chủ → coi như đã tạo (không cho tạo trùng)
     {
       const { page, context, errors, rpc, setLines, setImport } = await open(browser);
+      await context.clock.install(); // đồng hồ trang chạy thật nhưng đẩy tới được: bỏ 20 s chờ SETTLE_MS của findMade
       await paste(page, "1028260000000101");
       await card(page).waitFor({ state: "visible", timeout: 8000 });
       setImport("drop"); setLines([L(1, "1028260000000101")]);
       await page.locator("#pa-pl-create").click();
       await page.waitForFunction(() => /Chưa rõ/.test([...document.querySelectorAll("#pa-thread .pa-msg")].map(m => m.textContent).join(" ")), null, { timeout: 8000 });
       assert.equal(await page.locator("#pa-pl-create").isDisabled(), true, "chưa rõ thì khoá nút Tạo đợt");
+      await skipSettle(page, () => document.querySelector("#pa-thread [data-pl-open]"));
       await page.locator("#pa-thread [data-pl-open]").waitFor({ timeout: 30000 });
       const msgs = await page.evaluate(() => [...document.querySelectorAll("#pa-thread .pa-msg")].map(m => m.textContent).join("\n"));
       assert.match(msgs, /ghép 1\/1/);
@@ -323,11 +330,13 @@ const shot = async (page, name) => { if (!SHOTS) return; fs.mkdirSync(SHOTS, { r
     // 12) Rớt mạng TRƯỚC khi tới máy chủ, có đợt cũ cùng tên (mã thao tác khác): không nhận nhầm, máy chủ không có → mở lại nút
     {
       const { page, context, errors, rpc, setImport } = await open(browser);
+      await context.clock.install();
       await paste(page, "1028260000000101");
       await card(page).waitFor({ state: "visible", timeout: 8000 });
       setImport("lost");
       await page.locator("#pa-pl-create").click();
       await page.waitForFunction(() => /Chưa rõ/.test([...document.querySelectorAll("#pa-thread .pa-msg")].map(m => m.textContent).join(" ")), null, { timeout: 8000 });
+      await skipSettle(page, () => document.getElementById("pa-pl-create")?.disabled === false);
       await page.waitForFunction(() => document.getElementById("pa-pl-create")?.disabled === false, null, { timeout: 40000 });
       assert.equal(await page.locator("#pa-thread [data-pl-open]").count(), 0, "không được coi đợt cũ cùng tên là đợt vừa tạo");
       assert.equal(rpc.filter(r => r.name === "fabric_issue_import").length, 1);

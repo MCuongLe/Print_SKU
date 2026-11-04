@@ -59,7 +59,7 @@ Vì: phần tốn token nhất là chính phiên lead dài — phiên 25/10 làm
    - (3) **gom lỗi theo loại**: Codex trả nhóm lỗi cùng nguyên nhân/mẫu kèm mọi vị trí (cả chỗ tương tự ngoài diff), lead sửa cả nhóm một lần rồi mới sang vòng sau.
    - Lead lọc từng nhóm thành **sửa / làm sau / bỏ qua có lý do** (trái quyết định đã chốt) **và tham vấn Fable (`co-van`) cùng việc lọc đó trên phát hiện thô của cả hai review** (từ 22/10/2026, xem `/review-claude` bước 5), tự quyết, chỉ hỏi người dùng khi bản sửa đổi một quyết định đã chốt hoặc đổi hành vi người dùng thấy. Ghi kết quả lọc vào `RULES.md`.
    - Codex chạy 2–15 phút: khởi động nền rồi làm tiếp việc khác, **nhưng không chạy cả bộ test cùng lúc** (hai lần test chập chờn 17/10 đều lúc máy chạy Codex + agent song song).
-4. **Cả bộ test một lần, chạy nền** (`python scripts/run_tests.py --no-server` khi máy chủ 8000 đang chạy) trước khi báo xong; script tự chạy lại test hỏng một lần, tuần tự, và in mục **CHẬP CHỜN** cho test chỉ đạt lần hai — chép mục đó vào báo cáo.
+4. **Cả bộ test một lần, chạy nền** (`python scripts/run_tests.py --no-server` khi máy chủ 8000 đang chạy) trước khi báo xong (chạy 4 tiến trình song song, một bộ một lúc trên máy; phiên đến sau chờ khoá); script tự chạy lại test hỏng một lần, tuần tự, và in mục **CHẬP CHỜN** cho test chỉ đạt lần hai — chép mục đó vào báo cáo.
    - **Cổng trước commit là script:** `python scripts/commit_gate.py` (bí mật, dữ liệu thật, mojibake + `diff --check`, đổi CRLF cả tệp, phiên bản Extension khi manifest đổi, CDN/npm mới, cảnh báo bản đồ) phải in "Đủ điều kiện commit" trước khi nhắc commit; mục KHÔNG ĐẠT nào là dữ liệu giả hợp lệ bị bắt nhầm thì ghi rõ trong báo cáo.
    - Riêng mục "hunk `index.html` ngoài vùng được giao" lead tự nhìn diff.
 5. **Báo cáo và nhắc commit.** Hành vi đổi, dòng test thật, Codex đã xử lý thế nào, điều chưa kiểm, danh sách tệp chờ. Lead cập nhật `docs/PROJECT_MAP.md` cùng commit khi đổi module/lệnh/Edge/migration; `README.md` khi đổi hành vi người dùng; `RULES.md` quyết định và số đo.
@@ -128,7 +128,7 @@ Bàn giao: sửa thẳng (cây chính) | git diff > <scratchpad>/<việc>.patch 
 
 ## Chạy nhanh
 
-- Cả bộ test: `python scripts/run_tests.py [--no-server] [--only <tên>] [--no-retry]` (tự chạy lại test hỏng một lần, in mục CHẬP CHỜN); máy chủ tĩnh cổng 8000; `PLAYWRIGHT_MODULE=C:/Users/HASAKI/playwright-tools/node_modules/playwright`.
+- Cả bộ test: `python scripts/run_tests.py [--no-server] [--only <tên>] [--changed] [--jobs N] [--port <cổng>] [--no-retry]` (4 tiến trình song song, một bộ một lúc, tự chạy lại test hỏng một lần, in mục CHẬP CHỜN; cờ đủ ở `docs/PROJECT_MAP.md` mục 5); máy chủ tĩnh cổng 8000 (worktree: `--port`); `PLAYWRIGHT_MODULE=C:/Users/HASAKI/playwright-tools/node_modules/playwright`.
 - Cổng trước commit: `python scripts/commit_gate.py [--cached | --commit <sha>]` (thoát 1 khi có mục KHÔNG ĐẠT). Từ 18/10/2026 hook `.claude/settings.json` tự chạy cổng này trước mọi `git commit` và chặn Write ghi đè cả `index.html` / sửa `.env` (`scripts/claude_hooks.py`); người dùng gọi `/commit-push` để commit + push theo đủ luật.
 - Review Codex: `/review-codex`, hoặc `python scripts/codex_review.py --commit <sha> | --working-tree | --images <thư mục> --brief <md>`.
 - Migration: `python scripts/apply_supabase_sql.py <tệp> [--dry-run] [--allow-destructive]`; deploy Edge: `python scripts/deploy_<tên>.py [--dry-run]`.

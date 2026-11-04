@@ -114,6 +114,18 @@ const open = async (browser, { width = 1280, admin = false, fastTimeout = false 
   await page.waitForFunction(() => document.getElementById("vr-total").textContent.trim() !== "—");
   return { context, page, errors, srv };
 };
+// Bản chụp danh sách "cũ" khi Date.now() - loadedAt > 3000 (khối vendor-return-script). Thay vì ngủ 3,2 s từ một lúc bất kỳ (lượt tải
+// lại xong muộn khi máy bận thì bản chụp vẫn còn mới → mã lạ không tải lại → treo), chờ hết lượt tải đang chạy rồi dời Date.now() của trang
+// tới trước `ms`: bản chụp chắc chắn đã cũ, không tốn thời gian thật.
+const ageSnapshot = async (page, srv, ms) => {
+  let seen = -1, since = Date.now();
+  for (;;) {
+    const n = srv.calls.filter(c => c.rpc === "vendor_return_snapshot").length;
+    if (n !== seen) { seen = n; since = Date.now(); } else if (Date.now() - since >= 300) break;
+    await new Promise(resolve => setTimeout(resolve, 50));
+  }
+  await page.evaluate(shift => { const now = Date.now.bind(Date); Date.now = () => now() + shift; }, ms);
+};
 const scan = async (page, code) => { await page.locator("#vr-code").fill(code); await page.locator("#vr-code").press("Enter"); };
 const result = page => page.evaluate(() => { const r = document.getElementById("vr-result"); return { tone: r.dataset.tone, title: r.querySelector(".vr-result__title")?.textContent || "", note: r.querySelector(".vr-result__note")?.textContent || "" }; });
 const shot = async (page, name) => { if (process.env.VR_SHOTS) await page.screenshot({ path: `${process.env.VR_SHOTS}/${name}.png`, fullPage: true }); };
@@ -192,7 +204,7 @@ const locHeads = page => page.locator("#vr-locs .vr-loc__head").allInnerTexts().
       await page.waitForFunction(() => document.getElementById("vr-navy").textContent.trim() === "3/3", null, { timeout: 10000 });
       assert.deepEqual(srv.calls.filter(c => c.rpc === "vendor_return_scan").slice(-2).map(c => c.args.p_group_uid), ["1028260000000102", "1028260000000103"]);
       // Mã lạ khi tải lại danh sách lỗi (review vòng 2): không kết luận "ngoài danh sách" theo danh sách cũ
-      await page.waitForTimeout(3200);
+      await ageSnapshot(page, srv, 3200);
       srv.snapFail = true;
       await scan(page, "1028260000000998");
       await page.waitForFunction(() => /Không tải được danh sách/.test(document.getElementById("vr-result").textContent));
@@ -418,7 +430,7 @@ const locHeads = page => page.locator("#vr-locs .vr-loc__head").allInnerTexts().
     // G3a: bản chụp đã cũ (> 3 s), đợt bị xoá trên máy chủ → mã lạ → tải lại thấy không còn đợt → "Chưa có danh sách" (không phải "Không thuộc danh sách trả")
     {
       const { context, page, errors, srv } = await open(browser);
-      await page.waitForTimeout(3300);
+      await ageSnapshot(page, srv, 3300);
       srv.list = null; srv.items = [];
       await scan(page, "1028260000000999");
       await page.waitForFunction(() => document.getElementById("vr-result").dataset.tone === "bad");

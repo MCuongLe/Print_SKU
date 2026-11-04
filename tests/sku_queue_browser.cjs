@@ -113,8 +113,7 @@ const state = page => page.evaluate(() => {
       }
       await page.waitForFunction(() => document.querySelector('dialog.whd[open]') || true);
       if (await page.locator('dialog.whd[open] .whd-ok').count()) await page.locator('dialog.whd[open] .whd-ok').click();
-      await page.waitForFunction(n => n > 0, 0).catch(() => {});
-      for (let i = 0; i < 30 && !enqueued.length; i++) await page.waitForTimeout(100);
+      for (let i = 0; i < 200 && !enqueued.length; i++) await page.waitForTimeout(100); // chờ lệnh in tới (tối đa 20 s); dòng cũ waitForFunction(n => n > 0, 0) không bao giờ đúng nên luôn ngủ trọn 30 s
       assert.ok(enqueued.length >= 1, 'In tem vẫn gửi lệnh in (print_enqueue)');
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
       assert.deepEqual(errors, []);
