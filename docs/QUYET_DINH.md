@@ -196,7 +196,11 @@
 - Dọn UID Canceled > 180 ngày: `group_uid_canceled_purge` cron thứ Hai 03:15 VN; preview/apply bỏ qua dòng Canceled quá hạn. (16/10 · N0841)
 
 ### RFID
-- 1 RFID = 1 UID, mã tem 1 chữ + 11 số; nguồn thiếu khoá/null/rỗng → xoá, sai dạng/Extension cũ → giữ; web hỏi `group_uid_by_rfid`, chỉ nhận đúng 1 UID (ưu tiên không Canceled), trùng → cảnh báo; quét RFID chỉ ở LỰA UID BLOCKED. (20/10 · N1071–N1073)
+- 1 RFID = 1 UID, mã tem 1 chữ + 11 số; nguồn thiếu khoá/null/rỗng → xoá, sai dạng/Extension cũ → giữ; web hỏi `group_uid_by_rfid`, chỉ nhận đúng 1 UID (ưu tiên không Canceled), trùng → cảnh báo. (20/10 · N1071–N1073)
+- Quét RFID (A5000 mới, A3000 cũ) ra Group UID ở LỰA UID BLOCKED và 6 ô quét Group UID: IN TEM GROUP UID, CẮT GROUP UID, XẢ VẢI, CẤP VẢI, TRẢ NCC, CHUYỂN ĐỔI ĐƠN VỊ, cộng camera dùng chung. Đổi quyết định cũ "chỉ ở LỰA UID BLOCKED". (04/11 · N20261104-1630)
+  - Một khối dùng chung `window.PrintSkuRfid` (`rfid-resolve-script`): mẫu 1 chữ + 11 số, hỏi `group_uid_by_rfid` ≤ 2 giây, chỉ nhận đúng 1 UID; mã không phải RFID đi nguyên, không gọi máy chủ.
+  - Mọi thao tác ghi theo Group UID đã giải mã, không ghi mã RFID; thẻ kết quả có dòng `RFID <mã>`; RFID chưa liên kết / trùng nhiều UID / chưa kiểm được báo ngắn kèm mã, không đi tiếp.
+  - RFID mới gắn trong WMS về Supabase theo đồng bộ gia tăng (30 phút) hoặc Admin bấm Đọc WMS; chưa kiểm WMS có đổi `updated_date` khi gắn RFID.
 
 ### Tra cứu và IN TEM GROUP UID
 - `group_uid_lookup` ≤ 100 mã, chỉ trả trường phục vụ tem, tên chỉ từ `SKU_Name` (không bịa); mỗi UID 1 tem; lỗi mạng báo "không tra được". (22/09 · N0151–N0157)

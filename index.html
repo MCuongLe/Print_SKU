@@ -1268,7 +1268,7 @@
         };
         // Quét Group UID (CẮT UID, XẢ VẢI, IN TEM GROUP UID): không tra SKU_Name. Group UID luôn 16 chữ số (28.418/28.418 mã,
         // 07/10/2026) nên đọc phải mã khác trên tem (vd SKU 9 số) thì hỏi "Vẫn dùng mã này" / "Quét tiếp".
-        const openGroupUid = ({ onCode, typeFocus = "" } = {}) => open({ title: "Quét Group UID", typeLabel: "Gõ tay mã UID", notFound: "Mã này không phải Group UID", check: code => /^\d{16}$/.test(code) ? { sku: code, ten: "" } : null, onCode, typeFocus });
+        const openGroupUid = ({ onCode, typeFocus = "" } = {}) => open({ title: "Quét Group UID", typeLabel: "Gõ tay mã UID", notFound: "Mã này không phải Group UID", check: code => /^\d{16}$/.test(code) || /^[A-Z][0-9]{11}$/i.test(code) ? { sku: code, ten: "" } : null, onCode, typeFocus });
         // Nút camera chỉ hiện khi trình duyệt mở được camera (https hoặc localhost).
         const canOpen = () => Boolean(navigator.mediaDevices?.getUserMedia && window.isSecureContext);
         window.PrintSkuScanUI = { open, region, openGroupUid, canOpen };
@@ -3578,14 +3578,19 @@ Error generating stack: `+y.message+`
         form.addEventListener("submit", async event => {
           event.preventDefault();
           if (printing) return;
-          const code = groupUid.value.trim();
-          if (!code) return setStatus("Nhập Group UID trước khi thêm.", "error");
-          if (code.length > 40 || !/^[\x20-\x7E]+$/.test(code)) return setStatus("Group UID cần tối đa 40 ký tự chữ/số không dấu.", "error");
+          const raw = groupUid.value.trim();
+          if (!raw) return setStatus("Nhập Group UID trước khi thêm.", "error");
+          if (raw.length > 40 || !/^[ -~]+$/.test(raw)) return setStatus("Group UID cần tối đa 40 ký tự chữ/số không dấu.", "error");
+          // Xoá ô NGAY (giải mã RFID chờ tới 2 giây): mã quét tiếp không bị nối vào mã đang xử lý; lỗi / trùng thì trả mã về ô nếu ô còn trống.
+          groupUid.value = ""; groupUid.focus();
+          const restore = () => { if (!groupUid.value) groupUid.value = raw; };
+          // RFID A5000 → Group UID (khối dùng chung #rfid-resolve-script); mã thường đi nguyên như cũ.
+          const g = await window.PrintSkuRfid.uid(raw);
+          if (g.fail) { restore(); return setStatus(g.text, "error"); }
+          const code = g.uid;
           const exists = lookingUp.has(code.toLowerCase()) || [...pending, ...mapped].some(item => item.groupUid.trim().toLowerCase() === code.toLowerCase());
-          if (exists) return setStatus("Group UID này đã có trong danh sách.", "error");
-          groupUid.value = "";
-          groupUid.focus();
-          setStatus(`Đang tra Group UID ${code}…`);
+          if (exists) { restore(); return setStatus("Group UID này đã có trong danh sách.", "error"); }
+          setStatus(`Đang tra Group UID ${code}${g.via ? ` (RFID ${g.via})` : ""}…`);
           await addGroupUids([code]);
         });
         // Quét Group UID bằng camera điện thoại (lớp quét chung PrintSkuScanUI.openGroupUid, chỉ nhận mã 16 số):
@@ -8511,12 +8516,15 @@ var FSK_CORE = (function () {
         };
         const lookup = async code => {
           const value = String(code || "").trim(); if (!value) return null;
+          // RFID A5000 → Group UID (khối dùng chung #rfid-resolve-script): chưa liên kết / trùng / lỗi → ném lỗi, runLookup báo "Không tra được mã: …".
+          const rf = await window.PrintSkuRfid.uid(value); if (rf.fail) throw new Error(rf.text);
+          if (rf.via) { const hit = await lookupUid(rf.uid); return hit && { ...hit, via: rf.via }; }
           if (/^\d{16}$/.test(value)) return await lookupUid(value);
           return await lookupSku(value) || await lookupUid(value);
         };
         const applyProduct = hit => {
           state.selected = hit; state.specChoices = []; state.comboRun += 1; renderSpecChoices();
-          $("uc-picked").hidden = false; $("uc-picked-code").textContent = hit.uid ? `${hit.uid} · SKU ${hit.sku || "—"}` : `SKU ${hit.sku}`;
+          $("uc-picked").hidden = false; $("uc-picked-code").textContent = hit.uid ? `${hit.uid} · SKU ${hit.sku || "—"}${hit.via ? ` · RFID ${hit.via}` : ""}` : `SKU ${hit.sku}`;
           $("uc-picked-name").textContent = hit.pn || "Tên sản phẩm chưa có trong danh mục";
           $("uc-lookup-summary").textContent = hit.uid ? `UID ${hit.uid} · SKU ${hit.sku || "—"}` : `Đã chọn SKU ${hit.sku}`;
           const material = FSK_CORE.materialOf(hit.pn); if (material) setKind(material);
@@ -8535,9 +8543,11 @@ var FSK_CORE = (function () {
           compute();
           $("uc-lookup-details").open = false;
         };
+        let lookupSeq = 0; // RFID tra chậm rồi nhập mã khác: chỉ lượt mới nhất được áp dụng / báo lỗi
         const runLookup = async code => {
-          tell(`Đang tra ${code}…`); try { const hit = await lookup(code); if (!hit) return tell("Không tìm thấy mã này.", "warn"); applyProduct(hit); tell(""); }
-          catch (error) { tell(`Không tra được mã: ${error.message}`, "error"); }
+          const mine = ++lookupSeq;
+          tell(`Đang tra ${code}…`); try { const hit = await lookup(code); if (mine !== lookupSeq) return; if (!hit) return tell("Không tìm thấy mã này.", "warn"); applyProduct(hit); tell(""); }
+          catch (error) { if (mine === lookupSeq) tell(`Không tra được mã: ${error.message}`, "error"); }
         };
         $("uc-code-form").addEventListener("submit", event => { event.preventDefault(); const code = $("uc-code").value.trim(); if (code) runLookup(code); });
         $("uc-camera").hidden = !window.PrintSkuScanUI?.canOpen?.();
@@ -8690,7 +8700,7 @@ var FSK_CORE = (function () {
         const resolveComboSku=async input=>{const sku=input.value.trim(),picker=window.SkuComboPicker;if(!sku||!picker?.chooseNormal||comboChecked.get(input)===sku)return '';const run=(comboRuns.get(input)||0)+1;comboRuns.set(input,run);const valid=()=>active()&&input.value.trim()===sku&&comboRuns.get(input)===run;const choice=await picker.chooseNormal(sku,valid,'Group UID đã cắt lưu theo SKU Normal.','Chọn SKU Normal để tra cứu');if(!valid()||choice==='cancel'||choice===null)return null;if(choice&&typeof choice==='object'){input.value=choice.normal_sku;comboChecked.set(input,choice.normal_sku);return sku}comboChecked.set(input,sku);return ''};
         const runSearch=async({combo=''}={})=>{const from=dateFrom.value||null,to=dateTo.value||null,adj=adjFilter.value,po=poFilter.value.trim();if(from&&to&&from>to){tell('Ngày bắt đầu phải trước hoặc bằng ngày kết thúc.','error');return}window.PrintSkuNotice?.busy(screen,true);try{const r=await rpc('cut_group_uid_search',{p_sku:skuFilter.value.trim(),p_lot:lotFilter.value.trim(),p_date_from:from,p_date_to:to,...(adj?{p_adj:adj}:{}),...(po?{p_po:po}:{}),p_limit:5000});if(!r.ok)throw new Error(r.error?.message);searchItems=r.data?.items||[];mergeStaged(searchItems);renderSearch();renderOpen();const range=from&&to?(from===to?` ngày ${viDay(from)}`:` từ ${viDay(from)} đến ${viDay(to)}`):from?` từ ${viDay(from)}`:to?` đến ${viDay(to)}`:'';tell(`${combo?`SKU Combo ${combo} → SKU Normal ${skuFilter.value.trim()} · `:''}Tìm thấy ${searchItems.length} UID đã cắt${range}${adj==='done'?' · đã xuất ADJ':adj==='pending'?' · chưa xuất ADJ':''}${po?` · PO ${po}`:''}.`,'ok');message.dataset.kind='search'}catch(e){tell(`Không tra cứu được UID đã cắt: ${e.message}`,'error');window.PrintSkuNotice?.retry(()=>runSearch(),message)}finally{window.PrintSkuNotice?.busy(screen,false)}};
         adjFilter.addEventListener('change',runSearch);
-        form.addEventListener('submit',async event=>{event.preventDefault();const uid=code.value.trim();if(!uid||busy)return;busy=true;add.disabled=true;tell(`Đang kiểm tra ${uid}…`);try{const r=await rpc('cut_group_uid_scan',{p_group_uid:uid});if(!r.ok){const extra=r.error?.code==='GROUP_UID_NOT_READY'?' Vào mục Nạp dữ liệu Group UID để cập nhật database.':'';tell((r.error?.message||'Không lưu được UID')+extra,r.error?.code==='ALREADY_CUT'?'warn':'error');return}const d=r.data;last.hidden=false;last.innerHTML=`<strong>${esc(d.groupUid)} · ${esc(d.sku)}</strong><span>${esc(d.productName)}</span><small>Lot ${esc(d.lot||'—')} · Roll ${esc(d.roll||'—')}</small>`;code.value='';if(d.skuInactive){last.insertAdjacentHTML('beforeend','<em class="cut-inactive">SKU đã ngừng hoạt động</em>');tell('Đã lưu tem. SKU này đã ngừng hoạt động trên Inside, chỉ còn cuộn trong kho.','warn')}else tell('Đã lưu tem. Sang Tra cứu để chọn in khi cần.','ok');await Promise.all([loadOpen({quiet:true}),runSearch()]);if(d.skuInactive)tell('Tem đã lưu. SKU này đã ngừng hoạt động trên Inside, chỉ còn cuộn trong kho.','warn')}catch(e){tell(`Chưa rõ UID đã lưu hay chưa: ${e.message}. Đang tải lại để đối chiếu.`,'error');loadOpen({quiet:true})}finally{busy=false;add.disabled=false;syncSelection();focusScan()}});
+        form.addEventListener('submit',async event=>{event.preventDefault();const raw=code.value.trim();if(!raw||busy)return;busy=true;add.disabled=true;tell(`Đang kiểm tra ${raw}…`);try{const g=await window.PrintSkuRfid.uid(raw);if(g.fail){tell(g.text,'error');try{window.PrintSkuScanCue?.play('error')}catch(_){}return}const uid=g.uid;const r=await rpc('cut_group_uid_scan',{p_group_uid:uid});if(!r.ok){const extra=r.error?.code==='GROUP_UID_NOT_READY'?' Vào mục Nạp dữ liệu Group UID để cập nhật database.':'';tell((r.error?.message||'Không lưu được UID')+extra,r.error?.code==='ALREADY_CUT'?'warn':'error');return}const d=r.data;last.hidden=false;last.innerHTML=`<strong>${esc(d.groupUid)} · ${esc(d.sku)}</strong><span>${esc(d.productName)}</span><small>Lot ${esc(d.lot||'—')} · Roll ${esc(d.roll||'—')}</small>${g.via?`<small>RFID ${esc(g.via)}</small>`:''}`;code.value='';if(d.skuInactive){last.insertAdjacentHTML('beforeend','<em class="cut-inactive">SKU đã ngừng hoạt động</em>');tell('Đã lưu tem. SKU này đã ngừng hoạt động trên Inside, chỉ còn cuộn trong kho.','warn')}else tell('Đã lưu tem. Sang Tra cứu để chọn in khi cần.','ok');await Promise.all([loadOpen({quiet:true}),runSearch()]);if(d.skuInactive)tell('Tem đã lưu. SKU này đã ngừng hoạt động trên Inside, chỉ còn cuộn trong kho.','warn')}catch(e){tell(`Chưa rõ UID đã lưu hay chưa: ${e.message}. Đang tải lại để đối chiếu.`,'error');loadOpen({quiet:true})}finally{busy=false;add.disabled=false;syncSelection();focusScan()}});
         list.addEventListener('change',event=>{const row=event.target.closest('.cut-row');if(row&&!event.target.checked){stagedItems.delete(row.dataset.code);renderOpen();return}syncSelection()});
         selectAll.addEventListener('change',()=>{if(!selectAll.checked){stagedItems.clear();renderOpen();return}list.querySelectorAll('.cut-row input:not(:disabled)').forEach(x=>x.checked=true);syncSelection()});
         resultsBody.addEventListener('change',syncSearchSelection);
@@ -9564,6 +9574,8 @@ var FSK_CORE = (function () {
       #xa-vai-screen .xv-uid[data-tone="warn"] { border-left-color: var(--wms-warning); }
       #xa-vai-screen .xv-uid__head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2); }
       #xa-vai-screen .xv-uid__code { color: var(--wms-text); font-size: var(--fs-18); font-weight: var(--fw-bold); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+      #xa-vai-screen .xv-uid__id { display: grid; min-width: 0; }
+      #xa-vai-screen .xv-uid__via { color: var(--wms-text-2); font-size: var(--fs-12); font-weight: var(--fw-semibold); }
       #xa-vai-screen .xv-state { padding: var(--space-1) var(--space-3); border-radius: var(--radius-pill); background: rgba(0, 95, 65, .08); color: var(--wms-brand); font-size: var(--fs-12); font-weight: var(--fw-semibold); }
       #xa-vai-screen .xv-state[data-state="pending"] { background: color-mix(in srgb, var(--wms-warning) 12%, #fff); color: var(--wms-warning); }
       #xa-vai-screen .xv-state:is([data-state="printing"], [data-state="printed"]) { background: var(--wms-bg); color: var(--wms-text-2); }
@@ -9717,7 +9729,7 @@ var FSK_CORE = (function () {
         const mhDialog=$('xa-vai-mh-dialog'),mhForm=$('xa-vai-mh-form'),mhCode=$('xa-vai-mh-code'),mhError=$('xa-vai-mh-error'),mhSub=$('xa-vai-mh-sub');
         // Mã hàng = mã kiểu hàng (CWSH02…): chữ hoa, số, . _ - , tối đa 40 ký tự — cùng mẫu với máy chủ (INVALID_ITEM_CODE) và agent in phiếu.
         const CODE_STORE='xa-vai-mahang-v1',CODE_RE=/^[0-9A-Z._-]{1,40}$/,CODE_ERROR='Mã hàng chỉ gồm chữ, số, . _ - (tối đa 40 ký tự)';
-        const MAX_UIDS=100,DIFF_WARN=.2,UID_RE=/^\d{16}$/,STALE_MS=45000,WATCH_MAX_MS=10*60000,WATCH_MAX_ERR=10;
+        const MAX_UIDS=100,DIFF_WARN=.2,UID_RE=/^\d{16}$/,RFID_RE=/^[A-Za-z][0-9]{11}$/,STALE_MS=45000,WATCH_MAX_MS=10*60000,WATCH_MAX_ERR=10;
         const STATE={new:'Chưa nhập',pending:'Chờ in',printing:'Đang in',printed:'Đã in'};
         let current=null,saving=false,keepOnClose=false,clearAfterSave=false,lookingUid='',openedValue='',activeTab='scan',savedCount=0,lookupRun=0,queueRun=0,searchRun=0,printerTimer=0;
         let watchTimer=0,watchBusy=false,watchMs=0,watchErr=0,watchNext=0;
@@ -9762,22 +9774,25 @@ var FSK_CORE = (function () {
         const clearUid=()=>{current=null;uidBox.hidden=true;uidEmpty.hidden=false;uidBox.innerHTML='';noteBox.hidden=true;noteBox.innerHTML='';meterForm.hidden=true;meters.value='';diffLine.textContent='';delete diffLine.dataset.tone;entryErr.textContent='';closeEntry()};
         const renderUid=(d,tone,box=uidBox)=>{
           box.hidden=false;uidEmpty.hidden=true;box.dataset.tone=tone;
-          box.innerHTML=`<div class="xv-uid__head"><strong class="xv-uid__code">${esc(d.groupUid)}</strong><span class="xv-state" data-state="${esc(d.state)}">${esc(STATE[d.state]||d.state||'')}</span></div><dl class="xv-facts"><div><dt>SKU</dt><dd${d.productName?` title="${esc(d.productName)}"`:''}>${esc(d.sku||'—')}</dd></div>${d.itemCode?`<div><dt>Mã hàng</dt><dd>${esc(d.itemCode)}</dd></div>`:''}<div><dt>Lot</dt><dd>${esc(d.lot||'—')}</dd></div><div><dt>Roll</dt><dd>${esc(d.roll||'—')}</dd></div><div class="xv-facts__m"><dt>Mét HT</dt><dd>${mmM(d.systemMm)}</dd></div>${finite(d.actualMm)?`<div class="xv-facts__m"><dt>Mét TT</dt><dd>${mmM(d.actualMm)}</dd></div>`:''}</dl>`;
+          box.innerHTML=`<div class="xv-uid__head"><div class="xv-uid__id"><strong class="xv-uid__code">${esc(d.groupUid)}</strong>${d.via?`<small class="xv-uid__via">RFID ${esc(d.via)}</small>`:''}</div><span class="xv-state" data-state="${esc(d.state)}">${esc(STATE[d.state]||d.state||'')}</span></div><dl class="xv-facts"><div><dt>SKU</dt><dd${d.productName?` title="${esc(d.productName)}"`:''}>${esc(d.sku||'—')}</dd></div>${d.itemCode?`<div><dt>Mã hàng</dt><dd>${esc(d.itemCode)}</dd></div>`:''}<div><dt>Lot</dt><dd>${esc(d.lot||'—')}</dd></div><div><dt>Roll</dt><dd>${esc(d.roll||'—')}</dd></div><div class="xv-facts__m"><dt>Mét HT</dt><dd>${mmM(d.systemMm)}</dd></div>${finite(d.actualMm)?`<div class="xv-facts__m"><dt>Mét TT</dt><dd>${mmM(d.actualMm)}</dd></div>`:''}</dl>`;
         };
         // Tra trùng cùng UID khi đang tra (máy quét gửi Enter ngay sau mã đã tự tra) bị bỏ; tra nền (quiet) luôn chạy.
         const lookup=async(uid,opts={})=>{
           if(!opts.quiet){if(uid===lookingUid)return null;lookingUid=uid}
           try{return await lookupNow(uid,opts)}finally{if(!opts.quiet&&lookingUid===uid)lookingUid=''}
         };
-        const lookupNow=async(uid,{quiet=false}={})=>{
+        const lookupNow=async(raw,{quiet=false}={})=>{
           const run=++lookupRun;
-          if(!quiet)tell(`Đang tra ${uid}…`);
+          if(!quiet){tell(`Đang tra ${raw}…`);if(code.value.trim()===String(raw).trim())code.value=''}
+          // RFID A5000 → Group UID (khối dùng chung #rfid-resolve-script); tra nền (quiet) luôn nhận Group UID đã giải mã.
+          let uid=raw,via='';
+          if(!quiet){const g=await window.PrintSkuRfid.uid(raw);if(run!==lookupRun)return null;if(g.fail){clearUid();tell(g.text,'error');cue('error');code.value=raw;code.select();return null}uid=g.uid;via=g.via}
           let r;
           try{r=await rpc('xa_vai_measure_lookup',{p_group_uid:uid})}
-          catch(e){if(run===lookupRun&&!quiet){clearUid();tell(`Không tra được Group UID: ${e.message}`,'error');cue('error');code.value=uid;code.select()}return null}
+          catch(e){if(run===lookupRun&&!quiet){clearUid();tell(`Không tra được Group UID: ${e.message}`,'error');cue('error');code.value=raw;code.select()}return null}
           if(run!==lookupRun||!active())return null;
-          if(!r.ok){if(!quiet){clearUid();tell(r.error?.message||'Không tra được Group UID','error');cue('error');code.value=uid;code.select()}return null}
-          const d={...r.data,groupUid:String(r.data?.groupUid||uid),state:r.data?.state||'new'};
+          if(!r.ok){if(!quiet){clearUid();tell(r.error?.message||'Không tra được Group UID','error');cue('error');code.value=raw;code.select()}return null}
+          const d={...r.data,groupUid:String(r.data?.groupUid||uid),state:r.data?.state||'new',via};
           current=d;code.value='';
           if(d.state==='printing'||d.state==='printed'){closeEntry({keep:true});uidBox.hidden=true;meterForm.hidden=true;renderUid(d,'warn',noteBox);if(!quiet){tell(`${d.groupUid} ${d.state==='printed'?'đã in phiếu':'đang in phiếu'}${d.itemCode?` ${d.itemCode}`:''} — không sửa mét`,'warn');cue('warn')}focusScan();return d}
           noteBox.hidden=true;noteBox.innerHTML='';renderUid(d,d.state==='pending'?'warn':'ok');meterForm.hidden=false;
@@ -9795,7 +9810,7 @@ var FSK_CORE = (function () {
           lookup(uid);
         });
         // Mọi Group UID trong WMS đều 16 chữ số (kiểm 40.860 / 40.860 dòng, 04/11/2026): đủ 16 chữ số là tự tra, máy quét không gửi Enter vẫn chạy; Enter / Tra UID vẫn dùng được. Chỉ ĐỌC tự chạy, GHI vẫn cần Enter / Lưu.
-        code.addEventListener('input',()=>{const v=code.value.replace(/\s/g,'');if(UID_RE.test(v)&&!saving)lookup(v)});
+        code.addEventListener('input',()=>{const v=code.value.replace(/\s/g,'');if((UID_RE.test(v)||RFID_RE.test(v))&&!saving)lookup(v)});
         const cameraBtn=$('xa-vai-camera');
         if(window.PrintSkuScanUI?.canOpen())cameraBtn.hidden=false;
         cameraBtn.addEventListener('click',()=>{if(saving)return;window.PrintSkuScanUI.openGroupUid({typeFocus:'#xa-vai-code',onCode:c=>{code.value=c;form.requestSubmit()}})});
@@ -9811,14 +9826,14 @@ var FSK_CORE = (function () {
           diffLine.textContent=`Chênh lệch ${signedMm(d)} m`;
           if(Math.abs(d)/sys>DIFF_WARN)diffLine.dataset.tone='warn';else delete diffLine.dataset.tone;
         };
-        meters.addEventListener('input',()=>{const raw=meters.value.replace(/\s/g,'');if(UID_RE.test(raw)&&!saving){meters.value='';lookup(raw);return}updateDiff()});
+        meters.addEventListener('input',()=>{const raw=meters.value.replace(/\s/g,'');if((UID_RE.test(raw)||RFID_RE.test(raw))&&!saving){meters.value='';lookup(raw);return}updateDiff()});
         const saveError=e=>e?.code==='NOT_PENDING'?'UID đã gửi in — không sửa mét':e?.code==='INVALID_QTY'?'Mét thực tế không hợp lệ':`Không lưu được: ${e?.message||'máy chủ từ chối'}`;
         const save=async()=>{
           const d=current;
           if(!d||saving||meterForm.hidden)return;
           const raw=meters.value.trim();
           // Máy quét bắn Group UID vào ô mét (chưa lưu UID trước) → coi như lượt quét mới, không lưu số 16 chữ số thành mét.
-          if(UID_RE.test(raw.replace(/\s/g,''))){meters.value='';lookup(raw.replace(/\s/g,''));return}
+          if(UID_RE.test(raw.replace(/\s/g,''))||RFID_RE.test(raw.replace(/\s/g,''))){meters.value='';lookup(raw.replace(/\s/g,''));return}
           const n=toMm(raw);
           if(!Number.isFinite(n)){tell('Mét thực tế không hợp lệ','error');cue('error');meters.focus();meters.select();return}
           const sys=Number(d.systemMm);
@@ -14911,6 +14926,39 @@ async function rpc(name,args,retry=true){
         </section>
       </div>
     </section>
+    <script id="rfid-resolve-script">
+      // RFID A5000 → GROUP UID dùng chung (04/11/2026, docs/plans/2026-11-04-quet-rfid-a5000-link-group-uid.md): mọi ô quét Group UID gọi
+      // PrintSkuRfid.uid(raw) trước khi tra / ghi. Mã RFID = 1 chữ + 11 số (A5000… mới, A3000… cũ); hỏi group_uid_by_rfid (≤ 2 giây), chỉ nhận
+      // đúng 1 UID (ưu tiên không Canceled). Không phải RFID (Group UID 16 số, mã khác) thì trả nguyên mã và KHÔNG gọi máy chủ.
+      (()=>{
+        const WAIT_MS=2000,RFID=/(?<![A-Z0-9])[A-Z][0-9]{11}(?![A-Z0-9])/,GUID=/(?<!\d)\d{16}(?!\d)/;
+        const TEXT={none:'RFID chưa liên kết',many:'RFID trùng nhiều UID',error:'RFID chưa kiểm được'};
+        const rfidOf=raw=>(String(raw||'').toUpperCase().match(RFID)||[])[0]||'';
+        // Kết quả máy chủ: {code} (null khi không có dòng) | {many:true} | {error:true} — cùng hình với resolveRfid của LỰA UID BLOCKED.
+        const resolve=async rf=>{
+          try{
+            const q=window.PrintSkuQueue,res=await fetch(`${q.supabaseUrl}/rest/v1/rpc/group_uid_by_rfid`,{method:'POST',headers:{apikey:q.publishableKey,Authorization:`Bearer ${q.publishableKey}`,'Content-Type':'application/json'},body:JSON.stringify({p_codes:[rf]}),signal:AbortSignal.timeout(WAIT_MS)});
+            const body=await res.json().catch(()=>null);
+            if(!res.ok||!body||!body.ok)return{error:true};
+            const rows=(Array.isArray(body.data?.rows)?body.data.rows:[]).filter(r=>String(r.rfid||'').toUpperCase()===rf&&/^\d{16}$/.test(String(r.groupUid)));
+            const live=rows.filter(r=>!/^cancel/i.test(String(r.status||''))),uids=[...new Set((live.length?live:rows).map(r=>String(r.groupUid)))];
+            return uids.length>1?{many:true}:{code:uids[0]||null};
+          }catch(_){return{error:true}}
+        };
+        // Cho màn quét: {uid,via:''} khi không phải RFID; {uid,via:RFID} khi giải mã được; {fail:'none'|'many'|'error',via,text} khi không.
+        const uid=async raw=>{
+          const text=String(raw??'').trim();
+          // Có Group UID 16 số trong chuỗi: trả nguyên chuỗi, mỗi màn tự xét độ chặt như trước (TRẢ NCC từ chối mã có tiền tố, LỰA UID BLOCKED tự lấy 16 số).
+          if(GUID.test(text))return{uid:text,via:''};
+          const rf=rfidOf(text);
+          if(!rf)return{uid:text,via:''};
+          const got=await resolve(rf);
+          const kind=got.error?'error':got.many?'many':got.code?'':'none';
+          return kind?{fail:kind,via:rf,text:`${TEXT[kind]} · ${rf}`}:{uid:got.code,via:rf};
+        };
+        window.PrintSkuRfid={rfidOf,resolve,uid,TEXT};
+      })();
+    </script>
     <script id="uid-block-script">
       // LỰA UID BLOCKED (20/10/2026, docs/plans/2026-10-20-lua-uid-blocked.md, supabase/uid_block_v1.sql). Admin nạp Excel danh sách Group UID
       // blocked (mọi sheet, dòng Status = Blocked, bỏ trùng) → Supabase; mọi máy tải danh sách về (cache kiểm phiên bản, khoá "uid_block") để
@@ -15066,18 +15114,11 @@ async function rpc(name,args,retry=true){
 
         // ---- Quét: máy scan gửi kèm tiền tố / Enter → đúng 16 chữ số Group UID (dãy số dài hơn không bị cắt) ----
         const norm=raw=>(String(raw||'').match(/(?<!\d)\d{16}(?!\d)/)||[])[0]||'';
-        const rfidOf=raw=>(String(raw||'').toUpperCase().match(/(?<![A-Z0-9])[A-Z][0-9]{11}(?![A-Z0-9])/)||[])[0]||'';
-        // RFID → Group UID (review 20/10): có mạng thì luôn hỏi máy chủ (group_uid_by_rfid, ≤ 2 giây) — liên kết có thể đã đổi sau lúc
+        const rfidOf=window.PrintSkuRfid.rfidOf; // khối dùng chung #rfid-resolve-script
+        // RFID → Group UID (review 20/10): có mạng thì luôn hỏi máy chủ (khối dùng chung, ≤ 2 giây) — liên kết có thể đã đổi sau lúc
         // nạp danh sách; chỉ nhận khi ra đúng 1 UID (ưu tiên UID không Canceled), nhiều UID → báo trùng. Mất mạng / lỗi → danh sách trên máy.
         const resolveRfid=async rf=>{
-          if(navigator.onLine!==false){
-            try{
-              const d=await Promise.race([anonRpc('group_uid_by_rfid',{p_codes:[rf]}),sleep(WAIT_MS).then(()=>{throw new Error('timeout')})]);
-              const rows=(Array.isArray(d?.rows)?d.rows:[]).filter(r=>String(r.rfid||'').toUpperCase()===rf&&/^\d{16}$/.test(String(r.groupUid)));
-              const live=rows.filter(r=>!/^cancel/i.test(String(r.status||''))),uids=[...new Set((live.length?live:rows).map(r=>String(r.groupUid)))];
-              return uids.length>1?{many:true}:{code:uids[0]||null};
-            }catch(_){}
-          }
+          if(navigator.onLine!==false){const got=await window.PrintSkuRfid.resolve(rf);if(!got.error)return got}
           const hit=S.byRfid.get(rf);
           return hit==='dup'?{many:true}:hit?{code:String(hit.groupUid)}:{error:true};
         };
@@ -15721,7 +15762,7 @@ async function rpc(name,args,retry=true){
         const colorName=it=>NAME[it.color]||it.color;
 
         // ---- Quét: hàng đợi tuần tự; kiểm trên máy trước, mã lạ hỏi lại máy chủ (danh sách có thể vừa đổi) ----
-        const checkOne=async(raw,retried=false)=>{
+        const checkOne=async(raw,retried=false,via='')=>{
           const code=String(raw).trim();
           if(!CODE.test(code)){paint({tone:'bad',title:'Mã không hợp lệ',code});cue('bad');return}
           const fresh=()=>S.loadState==='ok'&&Date.now()-(S.loadedAt||0)<=3000;
@@ -15750,11 +15791,13 @@ async function rpc(name,args,retry=true){
             const cur=S.byCode.get(code)||it;   // bản chụp có thể vừa thay trong lúc chờ
             Object.assign(cur,{scannedAt:mark.scannedAt,device:mark.device});
             if(d.result==='dup'){paint({tone:'dup',title:`Đã quét · ${colorName(cur)}`,code,note:dupNote(cur)});cue('dup')}
-            else{paint({tone:'ok',title:`Đúng · ${colorName(cur)}`,code,note:[where(cur),cur.lot&&`Lot ${cur.lot}`,cur.roll&&`Roll ${cur.roll}`].filter(Boolean).join(' · ')});cue('ok')}
+            else{paint({tone:'ok',title:`Đúng · ${colorName(cur)}`,code,note:[via&&`RFID ${via}`,where(cur),cur.lot&&`Lot ${cur.lot}`,cur.roll&&`Roll ${cur.roll}`].filter(Boolean).join(' · ')});cue('ok')}
             renderCounts();renderView();
           }catch(e){paint({tone:'bad',title:'Chưa lưu được lượt quét',code,note:e.message});cue('bad')}
         };
-        const check=raw=>{S.queue=S.queue.then(()=>checkOne(raw)).catch(()=>{})};
+        // RFID A5000 → Group UID (khối dùng chung #rfid-resolve-script): quét RFID chưa liên kết / trùng báo đỏ, không ghi.
+        const checkRfid=async raw=>{const g=await window.PrintSkuRfid.uid(String(raw).trim());if(g.fail){paint({tone:'bad',title:g.text,code:String(raw).trim()});cue('bad');return}return checkOne(g.uid,false,g.via)};
+        const check=raw=>{S.queue=S.queue.then(()=>checkRfid(raw)).catch(()=>{})};
         $('vr-form').addEventListener('submit',e=>{e.preventDefault();const input=$('vr-code'),v=input.value;input.value='';if(v.trim())check(v);input.focus()});
         if(window.PrintSkuScanUI?.canOpen?.())$('vr-camera').hidden=false;
         $('vr-camera').addEventListener('click',()=>window.PrintSkuScanUI.openGroupUid({typeFocus:'#vr-code',onCode:c=>{$('vr-code').value=c;$('vr-form').requestSubmit()}}));
@@ -16372,13 +16415,13 @@ async function rpc(name,args,retry=true){
         };
 
         // ---- Quét: hàng đợi tuần tự để máy quét tay bắn liên tục không bị mất mã khi mạng chậm ----
-        const scanOne=async uid=>{
+        const scanOne=async(uid,via='')=>{
           if(!S.planId){const r={tone:'error',title:'Chưa chọn đợt cấp vải',uid,facts:'',note:''};paintResult(r);cue('error');return}
           try{
             const r=await rpc('fabric_issue_scan',{p_plan_id:S.planId,p_group_uid:uid,p_by:scannerName()});
             if(r.ok){
               const{result,line,plan}=r.data;patchLine(line,plan);
-              if(result==='issued'){S.mine.add(uid);paintResult({tone:'ok',title:'CẤP GROUP UID NÀY',uid,line,plan});pushRecent(uid,'ok','Đã cấp');cue('ok');tell(`Đã quét ${plan.scanned}/${plan.matched} cuộn.`,'ok')}
+              if(result==='issued'){S.mine.add(uid);paintResult({tone:'ok',title:'CẤP GROUP UID NÀY',uid,line,plan,note:via?`RFID ${via}`:''});pushRecent(uid,'ok','Đã cấp');cue('ok');tell(`Đã quét ${plan.scanned}/${plan.matched} cuộn.`,'ok')}
               else{const mine=S.mine.has(uid)||(line.scannedBy&&line.scannedBy===scannerName());paintResult({tone:'warn',title:mine?'BẠN ĐÃ QUÉT UID NÀY':'MÁY KHÁC ĐÃ QUÉT UID NÀY',uid,line,plan,note:`${fmtAt(line.scannedAt)}${mine?'':` · ${line.scannedBy||'máy khác'}`}`});pushRecent(uid,'warn',mine?'Bạn đã quét':'Máy khác đã quét');cue('warn');tell(mine?'UID này bạn đã quét rồi.':'UID này máy khác đã cấp trước đó.','warn')}
               return;
             }
@@ -16392,7 +16435,9 @@ async function rpc(name,args,retry=true){
             if(e.code==='PLAN_NOT_FOUND')refresh();
           }catch(e){paintResult({tone:'error',title:'CHƯA RÕ ĐÃ GHI HAY CHƯA',uid,facts:'',note:e.message});cue('error');tell(`Chưa rõ đã ghi hay chưa: ${e.message}`,'error')}
         };
-        const pump=async()=>{if(S.pumping)return;S.pumping=true;try{while(S.queue.length)await scanOne(S.queue.shift())}finally{S.pumping=false}};
+        // RFID A5000 → Group UID (khối dùng chung #rfid-resolve-script): hàng đợi giữ mã thô, giải mã ngay trước khi ghi.
+        const scanRaw=async raw=>{const g=await window.PrintSkuRfid.uid(raw);if(g.fail){paintResult({tone:'error',title:g.text,uid:raw,facts:'',note:''});pushRecent(raw,'error','RFID');cue('error');tell(g.text,'error');return}return scanOne(g.uid,g.via)};
+        const pump=async()=>{if(S.pumping)return;S.pumping=true;try{while(S.queue.length)await scanRaw(S.queue.shift())}finally{S.pumping=false}};
         form.addEventListener('submit',event=>{event.preventDefault();const uid=code.value.trim();if(!uid)return;code.value='';S.queue.push(uid);pump();code.focus()});
         if(window.PrintSkuScanUI?.canOpen())cameraBtn.hidden=false;
         cameraBtn.addEventListener('click',()=>window.PrintSkuScanUI.openGroupUid({typeFocus:'#cap-vai-code',onCode:c=>{code.value=c;form.requestSubmit()}}));
