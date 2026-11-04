@@ -1,7 +1,7 @@
 # Chuẩn kiểm thử và git (25/10/2026)
 
 Áp cho: test trong `tests/`, commit, push. Đọc khi: viết / sửa test, chạy cả bộ, commit khi nhiều phiên cùng sửa.
-Gom từ `docs/QUYET_DINH.md` chủ đề 1, `docs/DOI_AGENT.md`, `docs/CONTEXT_MAP.md` mục 6; không có luật mới. Luật nền (bốn luật cứng, kiểm chứng, bàn giao): `AGENTS.md`. Lệnh chạy: `docs/PROJECT_MAP.md` mục 5.
+Gom từ `docs/QUYET_DINH.md` chủ đề 1, `docs/DOI_AGENT.md`, `docs/CONTEXT_MAP.md` mục 6; riêng mục "Dọn sau khi chạy test" và "Kiểm commit chỉ chứa một phần cây làm việc" là luật mới 04/11/2026. Luật nền (bốn luật cứng, kiểm chứng, bàn giao): `AGENTS.md`. Lệnh chạy: `docs/PROJECT_MAP.md` mục 5.
 
 ## Viết test
 
@@ -21,6 +21,7 @@ Gom từ `docs/QUYET_DINH.md` chủ đề 1, `docs/DOI_AGENT.md`, `docs/CONTEXT_
 - Trước khi báo xong: cả bộ `python scripts/run_tests.py` một lần, chạy nền; script tự chạy lại test hỏng một lần, tuần tự, và in mục CHẬP CHỜN — chép mục đó vào báo cáo. Nguồn: `docs/DOI_AGENT.md` bước 4; (10–23/10 · N0068, N0883, N1175)
   - Mặc định 4 tiến trình song song (`--jobs N`, tối đa theo số lõi; `--jobs 1` = tuần tự từng tệp như bản cũ); mỗi test một tiến trình riêng, kết quả in theo thứ tự hoàn thành, test dài chạy trước theo số đo lần trước. Giữ bởi: `tests/test_run_tests.py`. Nguồn: `docs/plans/2026-11-04-tang-toc-bo-test.md`
   - Số đo 04/11/2026 (140 test, máy 12 lõi, thời gian in ở cuối `run_tests.py`): tuần tự 1482 s; `--jobs 4` 761–878 s (3 lần), 506 s sau khi cắt thời gian chết ở 5 test chậm nhất. Khi chạy 4 tiến trình CPU đã ~80–90%, nên thêm tiến trình không nhanh hơn.
+  - Lượt chạy 04/11/2026 tối (`--jobs 4`): cả bộ 144 test 527 s; 141 test trên cây tạm 375 s (tổng thời gian từng test 1332 s, ×3,6 so với một tiến trình).
   - Sau mỗi lần chạy in 15 test chậm nhất và ghi `outputs/test-times.json` (`gitignore`; lần chạy một phần chỉ cập nhật test đã chạy). Đo trước khi tối ưu một test.
 - Một máy chỉ chạy một bộ một lúc: runner giữ tệp khoá `print_sku_run_tests.lock` trong thư mục `.git` chung của mọi worktree (đổi bằng biến `PRINT_SKU_TEST_LOCK`); phiên đến sau chờ tối đa `--lock-wait` giây (mặc định 1800) rồi thoát mã 3 kèm PID, cây, lệnh của phiên đang chạy. Giữ bởi: `tests/test_run_tests.py`. Nguồn: `docs/plans/2026-11-04-tang-toc-bo-test.md`
   - Khoá chết (tiến trình chủ không còn, hoặc 2 phút không cập nhật) tự bị phá. `--no-lock` bỏ qua khoá: chỉ dùng khi chạy vài test nhỏ (`--only`) và chấp nhận máy chậm hơn.
@@ -28,8 +29,24 @@ Gom từ `docs/QUYET_DINH.md` chủ đề 1, `docs/DOI_AGENT.md`, `docs/CONTEXT_
   - Thời gian thật của trang (hẹn giờ, ngưỡng "cũ sau 3 giây") thì dời đồng hồ trang (`context.clock`, dời `Date.now`) thay vì `waitForTimeout`; chờ giao diện yên bằng `tests/page_settle.cjs`.
   - Một `waitForFunction` có điều kiện không bao giờ đúng bị `.catch(() => {})` nuốt sẽ ngủ trọn 30 s (đã gặp ở `sku_queue_browser`: 60 s mỗi lần chạy).
 - Cây chính giữ cổng 8000; worktree của agent chạy cả bộ bằng `--port <cổng khác>` (runner mở máy chủ ở cổng đó và đặt `BASE`, `APP_URL`). Runner cảnh báo khi máy chủ ở cổng đang chạy phục vụ `index.html` khác cây này (worktree dùng nhầm cổng 8000 của cây chính). Nguồn: (16–17/10 · N0890, N1001; 25/10 · N1211); `docs/plans/2026-11-04-tang-toc-bo-test.md`
+- `python scripts/run_tests.py --help` lỗi mã hoá trên console cp1252 (có sẵn từ trước); dùng `python -X utf8 scripts/run_tests.py --help`. Nguồn: (04/11 · N20261104-2123)
 - Test chập chờn đã biết (không do tính năng): `print_devices_browser`, `sku_catalog_race_browser`, `group_uid_mockup`, `find_sku_mobile`, `sku_catalog_screens_browser` (đạt khi chạy riêng, hỏng khi nhiều trình duyệt chạy cùng lúc ở bước "mã không có trên máy → hỏi máy chủ"; chưa rõ nguyên nhân gốc). Nguồn: (12–23/10 · N0591, N0937, N1028, N1166); `docs/plans/2026-11-04-tang-toc-bo-test.md`
 - Test hỏng: phân loại lỗi thật do thay đổi / test cũ lệch hành vi đã chốt / chập chờn; kiểm trên HEAD không có thay đổi trước khi kết luận "không do đợt này". Nguồn: `docs/DOI_AGENT.md` (`kiem-thu`); (25/10 · N1211)
+
+## Dọn sau khi chạy test
+
+- Runner tự dọn phần của nó: tắt máy chủ tĩnh nó mở (khối `finally`), giết cả cây tiến trình của test quá giờ hoặc bị huỷ (`kill_tree`), nhả khoá. Lượt chạy bình thường không phải dọn tay. Giữ bởi: chưa có (đọc mã `scripts/run_tests.py`). Nguồn: (04/11 · N20261104-2123)
+- Máy chủ tĩnh bật tay (`python -m http.server <cổng>`, dùng với `--no-server`) thì tự tắt khi xong việc; trước khi kết thúc phiên liệt kê tiến trình có `http.server` trong dòng lệnh (`Get-CimInstance Win32_Process`) và tắt cái của mình. Nguồn: (04/11 · N20261104-2123: một `http.server 8000` bật tay từ 19:22 còn sống sau khi mọi phiên xong)
+  - Máy chủ không rõ chủ, hoặc của phiên khác: hỏi người dùng trước khi tắt (phiên khác có thể đang dùng cổng 8000).
+- Cây tạm / worktree dựng để kiểm: xoá khi xong. Có junction `node_modules` thì gỡ trước bằng `cmd /c rmdir <đường dẫn junction>` (hoặc kiểm `Get-ChildItem -Recurse -Force -Attributes ReparsePoint` ra 0 mục) rồi mới `Remove-Item -Recurse`; không xoá đệ quy cây còn junction vì có thể chạm `node_modules` thật. Nguồn: (04/11 · N20261104-2123)
+- `outputs/` (gitignore) giữ log và báo cáo cũ (04/11: 84 MB), `tmp/` giữ ảnh chụp (4,8 MB): chưa có luật dọn, chỉ dọn khi người dùng bảo; luôn giữ `outputs/test-times.json` và các sao lưu ngoài git (vd. `outputs/sample_bags_backup_2026-10-11.csv`). Nguồn: (04/11 · N20261104-2123)
+
+## Kiểm commit chỉ chứa một phần cây làm việc
+
+- Nhiều phiên cùng sửa `index.html` và commit chỉ lấy hunk của mình: sau khi stage, kiểm `git show :<tệp>` không còn dấu của phần phiên kia, rồi chạy cả bộ trên đúng nội dung đã stage: `git checkout-index -a -f --prefix=<thư mục ngoài repo>/`, vào đó chạy `python -X utf8 scripts/run_tests.py --port <cổng khác> --no-lock`. Nguồn: (04/11 · N20261104-2123: 141/141 trước commit `0aa8bfb`)
+  - Số test = số test đã nằm trong commit (test chưa theo dõi của phiên kia không có mặt); cổng khác 8000 để không đụng máy chủ cây chính.
+  - Cây tạm không có `node_modules`: `a11y_axe_browser` và `cut_adj_reconcile_browser` báo "Chưa có axe-core" (không phải lỗi mã). Nối junction `node_modules` của cây chính, chạy lại hai test đó bằng `--only`, rồi gỡ junction (mục trên).
+  - Cách tách hunk dùng được: `git diff -U3 <tệp>` ra bản vá, lọc hunk theo nội dung từng hunk (đọc, không đoán theo số thứ tự), `git apply --cached --check --recount <bản vá lọc>` rồi áp thật; cách khác `GIT_INDEX_FILE` ở `docs/QUYET_DINH.md` mục "Git khi nhiều phiên cùng sửa".
 
 ## Commit
 

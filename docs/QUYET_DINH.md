@@ -48,6 +48,9 @@
 
 ### Test và dữ liệu
 - Cả bộ: `python scripts/run_tests.py` (chạy nền, thử lại test hỏng 1 lần) + `python scripts/commit_gate.py` trước khi báo; test trình duyệt đọc `BASE`, Playwright qua `PLAYWRIGHT_MODULE`. (10–23/10 · N0068, N0883, N1175)
+- Bộ test chạy 4 tiến trình song song, một bộ một lúc trên máy (khoá trong `.git`), `--changed` chọn test theo diff; tuần tự 1482 s → `--jobs 4` 506 s (04/11, 140 test). Chi tiết `docs/chuan/KIEM_THU_GIT.md`. (04/11 · N20261104-1910)
+- Sau khi chạy test: runner tự tắt máy chủ / tiến trình / khoá của nó; máy chủ bật tay thì tự tắt, máy chủ không rõ chủ thì hỏi người dùng; cây tạm xoá khi xong, gỡ junction `node_modules` trước. (04/11 · N20261104-2123)
+- Commit chỉ lấy một phần cây làm việc: chạy cả bộ trên cây tạm dựng từ nội dung đã stage (`git checkout-index -a -f --prefix=`, `--port` khác, `--no-lock`) trước khi commit. (04/11 · N20261104-2123)
 - Test chập chờn đã biết (không do tính năng): `print_devices_browser`, `sku_catalog_race_browser`, `group_uid_mockup`, `find_sku_mobile`. (12–23/10 · N0591, N0937, N1028, N1166)
 - Dữ liệu giả bắt buộc trong test/repo: SKU `9000000xx`, UID `1028260000000xxx`, `100000001`; không đưa SKU/UID thật vào repo. (17/10 · N0920, N1001)
 

@@ -52,7 +52,7 @@ Quyết định riêng của từng module ở `docs/QUYET_DINH.md` theo chủ �
 ## Kiểm chứng (làm phần áp dụng)
 
 1. `git diff --check`; xem diff không có thay đổi lớn ngoài ý muốn.
-2. Phục vụ repo qua máy chủ tĩnh (`python -m http.server 8000`; worktree của agent dùng cổng khác + `BASE=`), không mở tệp trực tiếp. Trang không có lỗi console.
+2. Phục vụ repo qua máy chủ tĩnh (`python -m http.server 8000`; worktree của agent dùng cổng khác + `BASE=`), không mở tệp trực tiếp. Tự bật máy chủ thì tự tắt khi xong (`docs/chuan/KIEM_THU_GIT.md` mục "Dọn sau khi chạy test"). Trang không có lỗi console.
 3. Chạy luồng bị ảnh hưởng bằng dữ liệu giả, trên máy tính và điện thoại. Giao diện Admin chỉ xét máy tính.
 4. Tem, bố cục in: xem trước khi in — khổ giấy, lề, chữ bị cắt, mã vạch đọc được, nhiều tem sang trang.
 5. Camera, máy quét: từ chối quyền, không có camera, quét đúng, nhập tay. Camera cần `https://` hoặc localhost.
