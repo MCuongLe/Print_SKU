@@ -13,13 +13,13 @@
 ### Đội agent và review
 - Đội agent bản 3: lead (Fable, dự phòng Opus) tự làm phần lớn việc, kể cả giao diện; `trinh-sat`, `thuc-thi-logic`, `kiem-thu` chỉ dùng khi việc chạy song song thật; vai trò chi tiết ở `docs/DOI_AGENT.md`. (18/10 · N1013, N1039)
 - Chọn model theo loại việc: Sonnet làm lead cho tài liệu / commit / dọn / soát chỉ đọc; Fable (dự phòng Opus) cho logic, giao diện mới, thiết kế, nguyên nhân gốc; mỗi việc một phiên mới; lead giao phần đọc nhiều (cả bộ test, trinh sát, soát) cho agent Sonnet. (25/10 · N20261025-2344)
-- Bốn luật cứng: có bằng chứng mới báo "xong"; tìm nguyên nhân gốc trước khi sửa lỗi; chỉ commit khi người dùng bảo; migration trước push. Test đỏ trước chỉ áp cho sửa lỗi/đổi logic; tệp kế hoạch `docs/plans/` chỉ cho migration nhiều bước. (18/10 · N1013; AGENTS.md)
+- Bốn luật cứng: có bằng chứng mới báo "xong"; tìm nguyên nhân gốc trước khi sửa lỗi; sửa xong test chỗ sửa rồi tự commit + push (05/11 · N20261105-0800); migration trước push. Test đỏ trước chỉ áp cho sửa lỗi/đổi logic; tệp kế hoạch `docs/plans/` chỉ cho migration nhiều bước. (18/10 · N1013; AGENTS.md)
 - Review: một vòng Codex mỗi đợt cho SQL/Edge/Extension/luồng in/quyền VÀ giao diện (ảnh chụp), chạy song song `/review-claude` (A Opus + BC Sonnet; `co-van` chấm độ tin và lọc); tối đa 3 vòng rồi đổi hướng, vòng sau chỉ diff vừa sửa (`--since last`), gom lỗi theo loại. (18/10, 25/10, 26/10 · N1016, N1037, N20261025-2344, N20261026-0006)
 - `co-van` (Fable, chỉ đọc) là bước cố định mỗi vòng review: gộp phát hiện thô Codex + Claude, mở mã xác nhận, chấm độ tin 0–100 (thay Haiku), xếp Nên sửa / Làm sau / Bỏ qua; còn được gọi ở 4 điểm kẹt (chọn hướng chạm dữ liệu/in/quyền/migration, review chạm 3 vòng, Codex ↔ review-claude mâu thuẫn, 2 giả thuyết chưa ra gốc). Lead vẫn quyết. (18/10, 22/10, 25/10 · N1044, N1132, N20261025-2344)
 - Thay đổi rất nhỏ được bỏ `/review-claude` nhưng phải báo người dùng; sửa chỉ ở test đã chứng minh bằng đột biến thì không cần vòng 3. (22/10 · N1107, N1170)
 - Lead tự quyết sửa phát hiện review; chỉ hỏi người dùng khi đổi quyết định đã chốt hoặc đổi hành vi. Lỗi logic đã xác nhận → viết test đỏ rồi sửa. (17–18/10 · N1001, N1038)
 - Năm luật chống sót việc: ô tích từng gạch kèm bằng chứng; rà kế hoạch 3 mốc; phát sinh commit riêng; lệch kế hoạch báo ngay; chia việc cố định. Đánh giá thành viên mỗi đợt, xem lại mỗi 3 đợt. (18/10 · N1046, N1075)
-- `kiem-thu` (Sonnet): chạy cả bộ test nền, phân loại LỖI THẬT / TEST LỆCH / CHẬP CHỜN, chạy commit_gate, không sửa mã. (18/10 · N1041, N1081)
+- `kiem-thu` (Sonnet): khi người dùng bảo chạy cả bộ thì chạy nền, phân loại LỖI THẬT / TEST LỆCH / CHẬP CHỜN, chạy commit_gate, không sửa mã. (18/10 · N1041, N1081)
 - `/review-claude` thử gộp B (luật dự án) và C (lỗi im lặng) thành một agent Sonnet `BC` trong 2 đợt kế tiếp; hết thử lead đề xuất giữ gộp hoặc tách lại theo bảng đánh giá (`docs/DOI_AGENT.md`). (20/10, 26/10 · N1098, N1099, N20261026-0006)
 - `trinh-sat` (Sonnet từ 25/10, trước là Haiku): gọi khi vùng mã lạ hoặc khi phải đọc nhiều mã mà lead chỉ cần bản đồ kết quả. (25/10 · N20261025-2344)
 - Codex CLI: `codex exec --sandbox read-only -C . -o <out.md> - < <prompt.md>`, prompt nêu quyết định đã chốt. (16/10 · N0872)
@@ -47,10 +47,10 @@
 - Ghi bằng Python (hook chặn `cp`/Write); không heredoc cho Python có `\`; không để `\u0000` chưa thoát; giữ đúng kiểu dòng CRLF/LF (kiểm `/(?<!\r)\n/`); tìm bằng `str.find` (regex trên 2 MB có thể treo); script vá luôn `assert` mốc; script đổi CSS chỉ sửa bên trong `{…}`. (16–23/10 · N0003, N0042, N0760, N0771, N1104, N1129, N1148)
 
 ### Test và dữ liệu
-- Cả bộ: `python scripts/run_tests.py` (chạy nền, thử lại test hỏng 1 lần) + `python scripts/commit_gate.py` trước khi báo; test trình duyệt đọc `BASE`, Playwright qua `PLAYWRIGHT_MODULE`. (10–23/10 · N0068, N0883, N1175)
+- Test chỗ đã sửa (`run_tests.py --only <màn>` / `--changed`) + `python scripts/commit_gate.py` trước khi báo; cả bộ (chạy nền, thử lại test hỏng 1 lần) chỉ khi người dùng bảo (05/11 · N20261105-0800); test trình duyệt đọc `BASE`, Playwright qua `PLAYWRIGHT_MODULE`. (10–23/10 · N0068, N0883, N1175)
 - Bộ test chạy 4 tiến trình song song, một bộ một lúc trên máy (khoá trong `.git`), `--changed` chọn test theo diff; tuần tự 1482 s → `--jobs 4` 506 s (04/11, 140 test). Chi tiết `docs/chuan/KIEM_THU_GIT.md`. (04/11 · N20261104-1910)
 - Sau khi chạy test: runner tự tắt máy chủ / tiến trình / khoá của nó; máy chủ bật tay thì tự tắt, máy chủ không rõ chủ thì hỏi người dùng; cây tạm xoá khi xong, gỡ junction `node_modules` trước. (04/11 · N20261104-2123)
-- Commit chỉ lấy một phần cây làm việc: chạy cả bộ trên cây tạm dựng từ nội dung đã stage (`git checkout-index -a -f --prefix=`, `--port` khác, `--no-lock`) trước khi commit. (04/11 · N20261104-2123)
+- Commit chỉ lấy một phần cây làm việc: test chỗ đã sửa rồi commit; cả bộ trên cây tạm dựng từ nội dung đã stage (`git checkout-index -a -f --prefix=`, `--port` khác, `--no-lock`) chỉ khi người dùng bảo. (04/11, 05/11 · N20261104-2123, N20261105-0800)
 - Test chập chờn đã biết (không do tính năng): `print_devices_browser`, `sku_catalog_race_browser`, `group_uid_mockup`, `find_sku_mobile`. (12–23/10 · N0591, N0937, N1028, N1166)
 - Dữ liệu giả bắt buộc trong test/repo: SKU `9000000xx`, UID `1028260000000xxx`, `100000001`; không đưa SKU/UID thật vào repo. (17/10 · N0920, N1001)
 

@@ -33,7 +33,7 @@ Quyết định riêng của từng module ở `docs/QUYET_DINH.md` theo chủ �
 
 1. Không báo "xong" khi chưa trích kết quả lệnh thật; điều chưa kiểm phải nói rõ là chưa kiểm.
 2. Không sửa lỗi khi chưa có nguyên nhân gốc có bằng chứng.
-3. Chỉ commit / push khi người dùng nói; xong việc nhắc commit kèm danh sách tệp.
+3. Sửa xong: test đúng chỗ đã sửa, đạt thì lead tự commit (chỉ phần của mình) + push, không chờ người dùng bảo; vẫn theo luật 4. Người dùng chốt 05/11/2026.
 4. Push `main` = web lên ngay. Web cần hàm / cột / Edge mới: commit (chưa push) → migration → deploy Edge → Reload Extension (tải lại tab Inside / WMS) → push.
 
 ## Luật kỹ thuật
@@ -56,7 +56,7 @@ Quyết định riêng của từng module ở `docs/QUYET_DINH.md` theo chủ �
 3. Chạy luồng bị ảnh hưởng bằng dữ liệu giả, trên máy tính và điện thoại. Giao diện Admin chỉ xét máy tính.
 4. Tem, bố cục in: xem trước khi in — khổ giấy, lề, chữ bị cắt, mã vạch đọc được, nhiều tem sang trang.
 5. Camera, máy quét: từ chối quyền, không có camera, quét đúng, nhập tay. Camera cần `https://` hoặc localhost.
-6. Trong lúc làm chạy test liên quan; trước khi báo xong chạy cả bộ `python scripts/run_tests.py` (nền) và `python scripts/commit_gate.py`.
+6. Chạy test của chỗ đã sửa (`python scripts/run_tests.py --only <màn / module>`) và `python scripts/commit_gate.py`. Không chạy cả bộ trước khi báo xong hay trước commit; cả bộ chỉ khi người dùng bảo.
 7. Phần không tự động kiểm được: nêu đúng những gì người dùng còn phải thử.
 
 ## Bàn giao
@@ -65,6 +65,6 @@ Quyết định riêng của từng module ở `docs/QUYET_DINH.md` theo chủ �
 - Đã kiểm gì, chưa kiểm gì (trình duyệt, camera, máy in, khổ tem).
 - Thay đổi lớn ở `index.html` và lý do.
 - Tài liệu đã cập nhật theo `docs/chuan/TAI_LIEU.md` mục 5.
-- Dòng nhắc commit kèm danh sách tệp.
+- Mã commit đã push; phần chưa push được (chờ migration / Edge theo luật 4) kèm danh sách tệp.
 
 Trả lời người dùng bằng tiếng Việt có dấu.

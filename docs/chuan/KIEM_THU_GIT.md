@@ -14,11 +14,11 @@ Gom từ `docs/QUYET_DINH.md` chủ đề 1, `docs/DOI_AGENT.md`, `docs/CONTEXT_
 
 ## Chạy test
 
-- Trong lúc làm chỉ chạy test liên quan: `node tests/<tên>`, `run_tests.py --only <tên>` hoặc `run_tests.py --changed` (xem dưới). Nguồn: `docs/DOI_AGENT.md` bước 2; `docs/plans/2026-11-04-tang-toc-bo-test.md`
-- `--changed [REF]` chọn test theo `git diff` so với REF (mặc định `HEAD`, kèm tệp chưa theo dõi); `--list` chỉ in danh sách, không chạy. Không thay được cả bộ trước khi báo xong. Giữ bởi: `tests/test_run_tests.py`. Nguồn: `docs/plans/2026-11-04-tang-toc-bo-test.md`
+- Sửa chỗ nào test chỗ đó: `node tests/<tên>`, `run_tests.py --only <tên màn / module>` hoặc `run_tests.py --changed` (xem dưới); đạt thì commit + push (mục Commit). Nguồn: (05/11 · N20261105-0800) Nguồn: `docs/DOI_AGENT.md` bước 2; `docs/plans/2026-11-04-tang-toc-bo-test.md`
+- `--changed [REF]` chọn test theo `git diff` so với REF (mặc định `HEAD`, kèm tệp chưa theo dõi); `--list` chỉ in danh sách, không chạy. `--list` ra cả bộ (tệp không map được) thì dùng `--only` theo màn đã sửa. Giữ bởi: `tests/test_run_tests.py`. Nguồn: `docs/plans/2026-11-04-tang-toc-bo-test.md`
   - Chọn test nhắc tên tệp đổi (runner quét chuỗi tên tệp trong mã test), test nhắc id khối `index.html` có dòng đổi, và luôn bộ chuẩn giao diện khi `index.html` đổi.
   - Có tệp đổi không map được (kể cả khối `index.html` không test nào nhắc) thì chạy cả bộ; `docs/`, `*.md`, `.claude/`, `workstation-agent/` (bộ test riêng `node --test`) không ép chạy gì.
-- Trước khi báo xong: cả bộ `python scripts/run_tests.py` một lần, chạy nền; script tự chạy lại test hỏng một lần, tuần tự, và in mục CHẬP CHỜN — chép mục đó vào báo cáo. Nguồn: `docs/DOI_AGENT.md` bước 4; (10–23/10 · N0068, N0883, N1175)
+- Cả bộ `python scripts/run_tests.py` chỉ chạy khi người dùng bảo (bỏ luật chạy cả bộ trước khi báo xong, 05/11 · N20261105-0800); chạy nền; script tự chạy lại test hỏng một lần, tuần tự, và in mục CHẬP CHỜN — chép mục đó vào báo cáo. Nguồn: `docs/DOI_AGENT.md` bước 4; (10–23/10 · N0068, N0883, N1175)
   - Mặc định 4 tiến trình song song (`--jobs N`, tối đa theo số lõi; `--jobs 1` = tuần tự từng tệp như bản cũ); mỗi test một tiến trình riêng, kết quả in theo thứ tự hoàn thành, test dài chạy trước theo số đo lần trước. Giữ bởi: `tests/test_run_tests.py`. Nguồn: `docs/plans/2026-11-04-tang-toc-bo-test.md`
   - Số đo 04/11/2026 (140 test, máy 12 lõi, thời gian in ở cuối `run_tests.py`): tuần tự 1482 s; `--jobs 4` 761–878 s (3 lần), 506 s sau khi cắt thời gian chết ở 5 test chậm nhất. Khi chạy 4 tiến trình CPU đã ~80–90%, nên thêm tiến trình không nhanh hơn.
   - Lượt chạy 04/11/2026 tối (`--jobs 4`): cả bộ 144 test 527 s; 141 test trên cây tạm 375 s (tổng thời gian từng test 1332 s, ×3,6 so với một tiến trình).
@@ -43,14 +43,14 @@ Gom từ `docs/QUYET_DINH.md` chủ đề 1, `docs/DOI_AGENT.md`, `docs/CONTEXT_
 
 ## Kiểm commit chỉ chứa một phần cây làm việc
 
-- Nhiều phiên cùng sửa `index.html` và commit chỉ lấy hunk của mình: sau khi stage, kiểm `git show :<tệp>` không còn dấu của phần phiên kia, rồi chạy cả bộ trên đúng nội dung đã stage: `git checkout-index -a -f --prefix=<thư mục ngoài repo>/`, vào đó chạy `python -X utf8 scripts/run_tests.py --port <cổng khác> --no-lock`. Nguồn: (04/11 · N20261104-2123: 141/141 trước commit `0aa8bfb`)
+- Nhiều phiên cùng sửa `index.html` và commit chỉ lấy hunk của mình: sau khi stage, kiểm `git show :<tệp>` không còn dấu của phần phiên kia, rồi chạy test của chỗ đã sửa (05/11 · N20261105-0800). Khi người dùng bảo chạy cả bộ thì chạy trên đúng nội dung đã stage: `git checkout-index -a -f --prefix=<thư mục ngoài repo>/`, vào đó `python -X utf8 scripts/run_tests.py --port <cổng khác> --no-lock`. Nguồn: (04/11 · N20261104-2123)
   - Số test = số test đã nằm trong commit (test chưa theo dõi của phiên kia không có mặt); cổng khác 8000 để không đụng máy chủ cây chính.
   - Cây tạm không có `node_modules`: `a11y_axe_browser` và `cut_adj_reconcile_browser` báo "Chưa có axe-core" (không phải lỗi mã). Nối junction `node_modules` của cây chính, chạy lại hai test đó bằng `--only`, rồi gỡ junction (mục trên).
   - Cách tách hunk dùng được: `git diff -U3 <tệp>` ra bản vá, lọc hunk theo nội dung từng hunk (đọc, không đoán theo số thứ tự), `git apply --cached --check --recount <bản vá lọc>` rồi áp thật; cách khác `GIT_INDEX_FILE` ở `docs/QUYET_DINH.md` mục "Git khi nhiều phiên cùng sửa".
 
 ## Commit
 
-- Chỉ commit / push khi người dùng nói; commit theo đợt; yêu cầu phát sinh giữa đợt đi commit riêng (trừ khi người dùng bảo gộp). Nguồn: `AGENTS.md`; (18/10 · N1046, N1075)
+- Test chỗ sửa đạt + `commit_gate` đạt thì lead tự commit + push, không chờ người dùng bảo (05/11 · N20261105-0800); push vẫn theo mục cuối (migration trước push); commit theo đợt; yêu cầu phát sinh giữa đợt đi commit riêng (trừ khi người dùng bảo gộp). Nguồn: `AGENTS.md`; (18/10 · N1046, N1075)
 - Thông điệp tiếng Việt không dấu, dòng đầu tóm tắt việc + phiên bản nếu có (vd. `Extension 0.10.7: …`). Nguồn: `docs/CONTEXT_MAP.md` mục 6; (25/10 · N20261025-2108)
 - Trước commit: `python scripts/commit_gate.py --cached` phải in "Đủ điều kiện commit" (bí mật, dữ liệu thật, mojibake, `diff --check`, đổi CRLF cả tệp, phiên bản Extension, CDN / npm, cảnh báo bản đồ). Hook tự chạy cổng này với mọi `git commit`; `/commit-push` chỉ người dùng gọi. Nguồn: (18/10 · N1023, N1024); `docs/DOI_AGENT.md` bước 4
 - `commit_gate` còn cảnh báo, chưa chặn: dòng tài liệu > 400 ký tự, hàm `SECURITY DEFINER` thiếu `search_path` / `revoke`, mã nhật ký không có thẻ, thông điệp có dấu (`--message-file <tệp>` hoặc `--commit <sha>`). Nguồn: (25/10 · N20261025-2144)
