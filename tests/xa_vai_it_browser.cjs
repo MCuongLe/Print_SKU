@@ -72,6 +72,20 @@ function mock(page, s) {
         lines: b.lines.map(l => ({ ...l, deliveredMm: l.deliveredQty, uidCount: b.uids.filter(u => u.sku === l.sku).length, measuredCount: 0, actualMm: null })) } });
       return ok({ itNumber: b.itNumber, itemCode: b.itemCode, created: true, uidsAdded: b.uids.length, uidsTotal: b.uids.length });
     }
+    // Đợt 2: trạng thái UID với các đợt; gắn / báo / đóng đợt / mục ngoài phiếu.
+    if (rpc === 'xa_vai_it_check') {
+      const u = String(body.p_group_uid);
+      if (s.batch.uids.some(x => x.groupUid === u)) return ok({ groupUid: u, sku: '900000001', state: 'in_batch' });
+      return ok({ groupUid: u, sku: '900000009', ...(s.checks?.[u] || { state: 'free' }) });
+    }
+    if (rpc === 'xa_vai_it_attach') { s.attached = [...(s.attached || []), body]; return ok({ itNumber: body.p_it_number, itemCode: body.p_it_number === IT ? 'CWSH02' : 'SWSH09', attached: true }); }
+    if (rpc === 'xa_vai_it_report') { s.reports = [...(s.reports || []), body]; return ok({ reported: true, state: 'other_sku' }); }
+    if (rpc === 'xa_vai_it_set_status') {
+      if (request.headers().authorization !== 'Bearer test-admin-token') return json({ ok: false, error: { code: 'FORBIDDEN', message: 'Chỉ Admin' } });
+      s.batch.batchStatus = body.p_status; return ok({ itNumber: body.p_it_number, status: body.p_status });
+    }
+    if (rpc === 'xa_vai_it_outside') return ok(s.outside || { attached: [], outside: [], attachedTotal: 0, outsideTotal: 0 });
+    if (rpc === 'xa_vai_measure_save' && s.saveError) return json({ ok: false, error: s.saveError });
     if (rpc === 'xa_vai_measure_lookup') {
       const u = String(body.p_group_uid);
       return ok({ groupUid: u, sku: '900000001', productName: 'Vải thử 1/mm', itemCode: null, lot: 'L1', roll: 'R9', uidStatus: 'Available', systemQty: 90000, systemMm: 90000, state: 'new', actualMm: null, measuredAt: null, printedAt: null, printJobId: null });
@@ -105,10 +119,15 @@ async function open(browser, width, s, { ext = EXT_IT } = {}) {
 async function login(page) {
   await page.locator('#xa-vai-admin').click();
   await page.locator('#admin-auth').waitFor({ state: 'visible' });
-  await page.locator('#admin-auth-email').fill('admin@test.vn');
-  await page.locator('#admin-auth-password').fill('mat-khau-thu');
+  // Hộp đăng nhập xoá trống ô ngay sau khi mở (bất đồng bộ): điền lại tới khi giá trị giữ được rồi mới bấm (đo 05/11: báo "Nhập đầy đủ email…").
+  for (let i = 0; i < 20; i += 1) {
+    await page.locator('#admin-auth-email').fill('admin@test.vn');
+    await page.locator('#admin-auth-password').fill('mat-khau-thu');
+    await page.waitForTimeout(100);
+    if (await page.locator('#admin-auth-email').inputValue() === 'admin@test.vn' && await page.locator('#admin-auth-password').inputValue() === 'mat-khau-thu') break;
+  }
   await page.locator('#admin-auth-submit').click();
-  await page.locator('#admin-auth').waitFor({ state: 'hidden' });
+  try { await page.locator('#admin-auth').waitFor({ state: 'hidden', timeout: 8000 }); } catch (e) { throw new Error('Đăng nhập Admin kẹt: ' + (await page.locator('#admin-auth').innerText()).replace(/\s+/g, ' ').slice(0, 300)); }
   await page.waitForFunction(() => document.querySelector('#xa-vai-admin').getAttribute('aria-pressed') === 'true');
 }
 // Không tràn ngang trong thẻ (khổ điện thoại).
@@ -278,7 +297,90 @@ const noOverflow = async (page, sel) => {
       assert.deepEqual(errors, []);
       await context.close();
     }
-    console.log('xa_vai_it_browser: xem đợt + tiến độ + UID, Admin đọc phiếu (mã hàng từ ghi chú, thiếu UID, Extension cũ, phiếu chưa xuất), Lưu đợt bằng JWT Admin, pop-up quét + In A4 điền mã của đợt — 1280 + 375 passed');
+    // ---------- 6. Đợt 2: cùng SKU ngoài phiếu (chọn đợt, gắn rồi lưu), khác SKU bị chặn + báo, đóng đợt, mục Ngoài phiếu ----------
+    for (const width of [1280, 375]) {
+      const s = { batch: { ...seedBatch(), batchStatus: 'open', outsideCount: 1 }, saved: [], calls: [], queue: [],
+        checks: { [uid(40)]: { state: 'same_sku', batches: [{ itNumber: IT, itemCode: 'CWSH02' }, { itNumber: IT_NEW, itemCode: 'SWSH09' }] }, [uid(41)]: { state: 'other_sku', openItems: ['CWSH02'] } },
+        outside: { attached: [{ groupUid: uid(39), sku: '900000001', itNumber: IT, itemCode: 'CWSH02', addedAt: now(), device: 'may-test-01', state: 'pending' }],
+          outside: [{ groupUid: uid(41), sku: '900000009', lastAt: now(), scanCount: 2, device: 'may-test-01', openItems: 'CWSH02' }], attachedTotal: 1, outsideTotal: 1 } };
+      const { context, page, errors } = await open(browser, width, s);
+      // Cùng SKU, hai đợt đang xả: pop-up "Ngoài phiếu", chọn đợt thứ hai, lưu → gắn đúng đợt TRƯỚC rồi mới lưu mét.
+      await page.locator('#xa-vai-code').click();
+      await page.keyboard.type(uid(40));
+      await page.locator('#xa-vai-uid-dialog').waitFor({ state: 'visible' });
+      await page.waitForFunction(() => /Ngoài phiếu/.test(document.getElementById('xa-vai-uid').innerText));
+      assert.equal(await page.locator('#xa-vai-it-pickrow').isVisible(), true, 'nhiều đợt: có ô chọn đợt');
+      await page.locator('#xa-vai-it-pick').selectOption(IT_NEW);
+      await page.waitForFunction(() => /Mã hàng\s*SWSH09/.test(document.getElementById('xa-vai-uid').innerText));
+      await shot(page, `out-same-${width}`);
+      await page.locator('#xa-vai-meters').fill('88,5');
+      await page.locator('#xa-vai-save').click();
+      await page.waitForFunction(() => /Đã lưu .* ngoài phiếu SWSH09/.test(document.getElementById('xa-vai-message').textContent));
+      assert.deepEqual(s.attached.map(a => [a.p_group_uid, a.p_it_number]), [[uid(40), IT_NEW]]);
+      assert.ok(s.attached[0].p_access_token, 'gắn bằng khoá máy');
+      const order = s.calls.map(c => c.rpc).filter(r => r === 'xa_vai_it_attach' || r === 'xa_vai_measure_save');
+      assert.deepEqual(order, ['xa_vai_it_attach', 'xa_vai_measure_save'], 'gắn trước, lưu sau');
+
+      // Khác SKU: pop-up cảnh báo, không có ô mét, báo vận hành kho; máy quét bắn UID kế → pop-up đóng, tra UID mới.
+      const saves = calls(s, 'xa_vai_measure_save').length;
+      await page.locator('#xa-vai-code').click();
+      await page.keyboard.type(uid(41));
+      await page.locator('#xa-vai-uid-dialog').waitFor({ state: 'visible' });
+      await page.waitForFunction(() => /Ngoài đợt xả/.test(document.getElementById('xa-vai-uid').innerText));
+      assert.equal(await page.locator('#xa-vai-meter-form').isVisible(), false, 'không có ô mét');
+      await page.waitForFunction(() => document.getElementById('xa-vai-uid-error').textContent.includes('không lưu, đã báo vận hành kho'));
+      await shot(page, `out-block-${width}`);
+      await page.waitForFunction(() => true);
+      assert.equal(s.reports.length, 1); assert.equal(s.reports[0].p_group_uid, uid(41)); assert.ok(s.reports[0].p_access_token);
+      assert.equal(calls(s, 'xa_vai_measure_save').length, saves, 'khác SKU: không lưu');
+      const lookups = calls(s, 'xa_vai_measure_lookup').length;
+      await page.keyboard.type(uid(2));
+      await page.waitForFunction(() => /Mã hàng\s*CWSH02/.test(document.getElementById('xa-vai-uid').innerText));
+      assert.equal(calls(s, 'xa_vai_measure_lookup').length, lookups + 1);
+      assert.equal(calls(s, 'xa_vai_measure_lookup').pop().body.p_group_uid, uid(2), 'không mất ký tự đầu của lượt quét kế');
+      await page.locator('#xa-vai-uid-close').click();
+
+      // Máy chủ chặn OUTSIDE_BATCH lúc lưu (đợt vừa đổi): báo lỗi + báo vận hành kho.
+      s.saveError = { code: 'OUTSIDE_BATCH', message: 'Group UID nằm ngoài đợt xả vải đang mở' };
+      await page.locator('#xa-vai-code').click();
+      await page.keyboard.type(uid(42));
+      await page.locator('#xa-vai-uid-dialog').waitFor({ state: 'visible' });
+      await page.locator('#xa-vai-meters').fill('90');
+      await page.locator('#xa-vai-save').click();
+      await page.waitForFunction(() => /Ngoài đợt xả vải — không lưu/.test(document.getElementById('xa-vai-message').textContent));
+      for (let i = 0; i < 40 && s.reports.at(-1).p_group_uid !== uid(42); i += 1) await page.waitForTimeout(50);
+      assert.equal(s.reports.at(-1).p_group_uid, uid(42));
+      s.saveError = null;
+      await page.keyboard.press('Escape');
+
+      // Tab Phiếu IT: trạng thái đợt, số ngoài phiếu, mục Ngoài phiếu; Admin đóng đợt (Admin chỉ xét máy tính).
+      await page.locator('#xa-vai-tab-it').click();
+      const card = page.locator(`.xv-it-card[data-it="${IT}"]`);
+      await card.waitFor();
+      assert.equal((await card.locator('.xv-it-st').innerText()).trim(), 'Đang xả');
+      assert.equal((await card.locator('.xv-it-card__out').innerText()).trim(), 'Ngoài phiếu 1');
+      assert.equal(await card.locator('[data-it-act="status"]').count(), 0, 'chưa Admin: không có nút Đóng đợt');
+      const out = page.locator('#xa-vai-it-out');
+      await out.waitFor({ state: 'visible' });
+      assert.equal((await page.locator('#xa-vai-it-out-count').innerText()).trim(), '2');
+      await out.locator('summary').click();
+      assert.equal(await out.locator('tbody tr').count(), 2);
+      assert.match(await out.innerText(), /Khác SKU · không lưu · 1/);
+      if (width >= 768) {
+        await login(page);
+        await card.locator('[data-it-act="status"]').click();
+        await page.locator('dialog.whd .whd-ok').click();
+        await page.waitForFunction(it => document.querySelector(`.xv-it-card[data-it="${it}"] .xv-it-st`)?.textContent.trim() === 'Xong', IT);
+        const st = calls(s, 'xa_vai_it_set_status');
+        assert.equal(st.length, 1); assert.equal(st[0].body.p_status, 'done'); assert.equal(st[0].auth, 'Bearer test-admin-token');
+        assert.equal((await card.locator('[data-it-act="status"]').innerText()).trim(), 'Mở lại');
+        await shot(page, `out-list-${width}`);
+      }
+      if (width < 768) await noOverflow(page, '#xa-vai-screen [data-panel="it"]');
+      assert.deepEqual(errors, []);
+      await context.close();
+    }
+    console.log('xa_vai_it_browser: đợt 2 (cùng SKU gắn đợt, khác SKU chặn + báo, OUTSIDE_BATCH, đóng đợt, mục Ngoài phiếu) + xem đợt + tiến độ + UID, Admin đọc phiếu (mã hàng từ ghi chú, thiếu UID, Extension cũ, phiếu chưa xuất), Lưu đợt bằng JWT Admin, pop-up quét + In A4 điền mã của đợt — 1280 + 375 passed');
   } finally {
     await browser.close();
   }

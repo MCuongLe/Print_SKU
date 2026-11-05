@@ -276,6 +276,8 @@
     - UID ngoài đợt vẫn đo được, không chặn; quét UID của đợt → pop-up hiện mã hàng của đợt; In A4 điền sẵn mã hàng khi MỌI UID đã chọn thuộc đợt cùng một mã, còn lại như cũ.
     - Nạp lại cùng phiếu: cập nhật đầu phiếu + dòng + mã hàng, thêm UID mới, không gỡ UID cũ (WMS chỉ trả UID mà IT là nguồn gần nhất); phiếu chưa xuất hoặc chưa có UID không lưu được.
     - Không sửa hàm có sẵn: đợt gắn với dòng đo qua `group_uid_code` (bảng `xa_vai_it_batches`, `xa_vai_it_uids`, migration `xa_vai_it_v1`).
+    - UID ngoài phiếu (đợt 2, 05/11/2026, người dùng "Chốt, build"; migration `xa_vai_it_v2`): cùng SKU với đợt **Đang xả** mà không có trong danh sách → tự gắn vào đợt khi lưu (nhãn "ngoài phiếu", tính tiến độ; nhiều đợt thì chọn đợt); **khác SKU** khi đang có ít nhất một đợt mở → pop-up cảnh báo, **không lưu** (máy chủ ép `OUTSIDE_BATCH`) — **đổi chốt 04/11** "UID mọi SKU đo được" cho trường hợp này; không có đợt mở → đo tự do như cũ. (05/11 · N20261105-1500)
+    - Báo vận hành kho = mục "Ngoài phiếu" trong tab Phiếu IT (UID gắn ngoài phiếu + UID khác SKU bị chặn, số lần quét, máy, Excel), lưu Supabase, không dịch vụ ngoài. Admin đóng / mở lại đợt (Đang xả / Xong); đợt Xong không nhận UID gắn thêm và không tính vào điều kiện chặn.
   - Khung nhập Mã hàng nhớ mã dùng gần nhất theo máy (`xa-vai-mahang-v1`); Thử lại điền sẵn mã của lần gửi dở. (04/11 · N20261104-1930)
 
 ### TÌM GROUP UID: Cấp vải + UID blocked

@@ -61,6 +61,14 @@ Thứ tự: Việc 1 → Việc 2 → Việc 3 → Việc 4 (review) → Việc 
 - [ ] commit (chưa push) → migration → ghi sổ → người dùng Reload Extension → push
 - [ ] `docs/QUYET_DINH.md`, `docs/PROJECT_MAP.md`, `README.md`, `RULES.md`
 
+## Đợt 2: UID ngoài phiếu (05/11/2026, người dùng "Chốt, build")
+- Chốt: cùng SKU với đợt đang xả mà không có trong danh sách → tự gắn vào đợt (nhãn "ngoài phiếu", tính tiến độ, nhiều đợt thì chọn) + báo vận hành kho; khác SKU → pop-up cảnh báo, KHÔNG lưu, báo vận hành kho; Admin đóng đợt; báo cáo = danh sách trong app. Lead tự quyết (người dùng xác nhận): chỉ chặn khi có ít nhất một đợt mở.
+- Hợp đồng: `xa_vai_it_check(p_group_uid)` → `{ groupUid, sku, state: in_batch | same_sku | other_sku | free, batches?, openItems? }`; `xa_vai_it_attach(p_access_token, p_group_uid, p_it_number)` (lỗi `BATCH_DONE`, `SKU_NOT_IN_BATCH`, `NOT_FOUND`); `xa_vai_it_report(p_access_token, p_group_uid)` (máy chủ xét lại, chỉ ghi khi other_sku); `xa_vai_it_set_status(p_it_number, 'open' | 'done')` (Admin); `xa_vai_it_outside(p_limit)` → `{ attached, outside, attachedTotal, outsideTotal }`; `xa_vai_measure_save` trả `OUTSIDE_BATCH` cho UID mới khác SKU khi có đợt mở.
+- [x] SQL `supabase/xa_vai_it_v2.sql` + `tests/xa_vai_it_v2_sql.cjs` PASS (phần lưu mét = bản đang chạy, so `pg_get_functiondef` 05/11 + chặn)
+- [x] Web: pop-up "Ngoài phiếu" + ô chọn đợt, gắn TRƯỚC khi lưu; pop-up "Ngoài đợt xả" không ô mét, phím của lượt quét kế đóng pop-up và vào ô quét; mục Ngoài phiếu + Excel; trạng thái đợt + Đóng đợt / Mở lại (Admin)
+- [x] `tests/xa_vai_it_browser.cjs` mục 6 (1280 + 375) PASS; sửa race đăng nhập trong test (hộp xoá trống ô sau khi mở)
+- [ ] Review, commit, migration `xa_vai_it_v2`, push
+
 ## Phát sinh
 - 05/11/2026 Tách hunk: cây làm việc có phần "Đối chiếu phủ lot theo PO" của phiên khác (`index.html`, `docs/QUYET_DINH.md`, `tests/bridge_ready.cjs` + tệp chưa theo dõi) → commit chỉ phần của đợt này; `bridge_ready` phần commit 11, cây làm việc 12; `tests/cut_po_coverage_browser.cjs` (chưa theo dõi) đã đổi số phiên bản giả lập 0.12.5 → 0.12.6 để cổng commit đạt.
 

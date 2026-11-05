@@ -211,7 +211,7 @@ Chọn UID rồi bấm **In A4**: khung nhập **Mã hàng** (mã kiểu hàng n
 
 Tab **Đã in** lọc theo mã hàng và ngày, in lại (mỗi phiếu một mã hàng) và xuất Excel (mm). Số hệ thống là số lượng WMS đổi ra mm theo tên SKU (vải gram dùng GSM và khổ); màn hình hiện mét, phiếu A4 và Excel hiện mm.
 
-Tab **Phiếu IT**: Admin nhập số phiếu IT (16 số) rồi bấm **Đọc WMS** (Extension ≥ 0.12.6, tab WMS đã đăng nhập) → xem mã hàng (tách từ ghi chú phiếu, sửa được), từng SKU với SL đã xuất, số Group UID và phần chưa có UID → **Lưu đợt**. Mọi người xem các đợt: UID đã đo / tổng UID, mét thực tế so với SL đã xuất, danh sách UID. Quét UID của một đợt thì pop-up hiện mã hàng của đợt; In A4 điền sẵn mã đó khi mọi UID đã chọn cùng một đợt. UID ngoài đợt vẫn đo và in như cũ.
+Tab **Phiếu IT**: Admin nhập số phiếu IT (16 số) rồi bấm **Đọc WMS** (Extension ≥ 0.12.6, tab WMS đã đăng nhập) → xem mã hàng (tách từ ghi chú phiếu, sửa được), từng SKU với SL đã xuất, số Group UID và phần chưa có UID → **Lưu đợt**. Mọi người xem các đợt: UID đã đo / tổng UID, mét thực tế so với SL đã xuất, danh sách UID. Quét UID của một đợt thì pop-up hiện mã hàng của đợt; In A4 điền sẵn mã đó khi mọi UID đã chọn cùng một đợt. Khi có đợt **Đang xả**: quét UID cùng SKU với đợt nhưng không có trong phiếu thì pop-up ghi "Ngoài phiếu" (nhiều đợt thì chọn đợt), bấm Lưu sẽ gắn UID vào đợt; UID khác SKU thì pop-up "Ngoài đợt xả", không lưu được. Cả hai vào mục **Ngoài phiếu** của tab Phiếu IT cho vận hành kho (xuất Excel được). Admin bấm **Đóng đợt** / **Mở lại** trên thẻ đợt; không có đợt nào đang xả thì đo tự do như cũ.
 
 ## TÌM GROUP UID (`#cap-vai` · `#uid-block` · `#tra-ncc`)
 
