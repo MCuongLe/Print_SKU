@@ -33,7 +33,7 @@ Quyết định riêng của từng module ở `docs/QUYET_DINH.md` theo chủ �
 
 1. Không báo "xong" khi chưa trích kết quả lệnh thật; điều chưa kiểm phải nói rõ là chưa kiểm.
 2. Không sửa lỗi khi chưa có nguyên nhân gốc có bằng chứng.
-3. Sửa xong: test đúng chỗ đã sửa, đạt thì lead tự commit (chỉ phần của mình) + push, không chờ người dùng bảo; vẫn theo luật 4. Người dùng chốt 05/11/2026.
+3. Sửa xong: lead Fable / Opus quyết phạm vi test theo bốn bậc (`docs/chuan/KIEM_THU_GIT.md` mục "Chạy test") và ghi dòng `Phạm vi test:` kèm dòng PASS nguyên văn; đạt và `commit_gate` đạt thì lead tự commit (chỉ phần của mình) + push, không chờ người dùng bảo; vẫn theo luật 4. Người dùng chốt 05/11/2026 (bậc test thay bản sáng cùng ngày).
 4. Push `main` = web lên ngay. Web cần hàm / cột / Edge mới: commit (chưa push) → migration → deploy Edge → Reload Extension (tải lại tab Inside / WMS) → push.
 
 ## Luật kỹ thuật
@@ -53,10 +53,13 @@ Quyết định riêng của từng module ở `docs/QUYET_DINH.md` theo chủ �
 
 1. `git diff --check`; xem diff không có thay đổi lớn ngoài ý muốn.
 2. Phục vụ repo qua máy chủ tĩnh (`python -m http.server 8000`; worktree của agent dùng cổng khác + `BASE=`), không mở tệp trực tiếp. Tự bật máy chủ thì tự tắt khi xong (`docs/chuan/KIEM_THU_GIT.md` mục "Dọn sau khi chạy test"). Trang không có lỗi console.
-3. Chạy luồng bị ảnh hưởng bằng dữ liệu giả, trên máy tính và điện thoại. Giao diện Admin chỉ xét máy tính.
+3. Chạy luồng bị ảnh hưởng bằng dữ liệu giả, trên máy tính và điện thoại (hai khổ nằm trong test của màn, không phải cả bộ). Giao diện Admin chỉ xét máy tính.
 4. Tem, bố cục in: xem trước khi in — khổ giấy, lề, chữ bị cắt, mã vạch đọc được, nhiều tem sang trang.
 5. Camera, máy quét: từ chối quyền, không có camera, quét đúng, nhập tay. Camera cần `https://` hoặc localhost.
-6. Chạy test của chỗ đã sửa (`python scripts/run_tests.py --only <màn / module>`) và `python scripts/commit_gate.py`. Không chạy cả bộ trước khi báo xong hay trước commit; cả bộ chỉ khi người dùng bảo.
+6. Test theo bậc do lead Fable / Opus quyết (chi tiết `docs/chuan/KIEM_THU_GIT.md`), luôn kèm `python scripts/commit_gate.py`:
+   - Bậc 0 tài liệu: chỉ `commit_gate`. Bậc 1 một màn: `run_tests.py --only <màn>` + SQL tĩnh; đổi markup / CSS thì thêm `design_tokens_ratchet`, `icon_standard`, `ui_standard`.
+   - Bậc 2 khối / hàm dùng chung, Edge, Extension, agent: bậc 1 + test của mọi nơi gọi (lead grep và liệt kê) + cả bộ chuẩn giao diện.
+   - Bậc 3 cả bộ: chỉ khi người dùng bảo, không liệt kê được nơi gọi (> 8 test), đổi hạ tầng test, hoặc chạy nền sau khi push bậc 2 (không chặn báo xong).
 7. Phần không tự động kiểm được: nêu đúng những gì người dùng còn phải thử.
 
 ## Bàn giao
