@@ -1,6 +1,6 @@
 # Xả vải theo phiếu IT (2026-11-05)
 
-Trạng thái (05/11/2026): **ĐÃ LÊN đợt 1 + đợt 2** (migration `xa_vai_it_v1`, `xa_vai_it_v2`; Extension 0.12.6; web `b169ad6`). Chưa thử với đợt thật / Honeywell. Người dùng chốt "Chốt, build".
+Trạng thái (05/11/2026): **ĐÃ LÊN đợt 1 + đợt 2** (migration `xa_vai_it_v1`, `xa_vai_it_v2`; Extension 0.12.6; web `ac73fd8`). Chưa thử với đợt thật / Honeywell. Người dùng chốt "Chốt, build".
 
 ## Thiết kế
 
@@ -68,7 +68,7 @@ Thứ tự: Việc 1 → Việc 2 → Việc 3 → Việc 4 (review) → Việc 
 - [x] Web: pop-up "Ngoài phiếu" + ô chọn đợt, gắn TRƯỚC khi lưu; pop-up "Ngoài đợt xả" không ô mét, phím của lượt quét kế đóng pop-up và vào ô quét; mục Ngoài phiếu + Excel; trạng thái đợt + Đóng đợt / Mở lại (Admin)
 - [x] `tests/xa_vai_it_browser.cjs` mục 6 (1280 + 375) PASS; sửa race đăng nhập trong test (hộp xoá trống ô sau khi mở)
 - [x] Review vòng 1 (Codex mã 5 + ảnh 6, Claude A 4 + BC 8; co-van 14 vấn đề): sửa — máy chủ ép gắn cùng SKU (75, [cả hai]), một UID một đợt + gỡ 'scan' khi nạp phiếu (60, [cả hai]), báo vận hành kho chỉ nói đã báo khi xong + lỗi luôn hiện, OUTSIDE_BATCH chuyển pop-up chặn (60), lỗi gắn BATCH_DONE tra lại, giữ phiếu đã chọn khi tra lại, mục Bất thường + "Hiện n / N" + Excel 2.000 dòng, icon nút đợt, QUYET_DINH dòng mâu thuẫn; bỏ qua: phân loại-ghi không nguyên tử (20), gắn rồi lưu lỗi (20, tự lành), đợt v1 thành mở (0 dòng). Làm sau: outbox bền cho báo cáo, timeout riêng cho check, race hộp đăng nhập Admin chung.
-- [x] Commit, migration `xa_vai_it_v2` (~12:55, kiểm `-- kiem:` true), push `b169ad6`; người dùng chốt "Chuyển" cho UID WMS trả về phiếu mới. Web đợt 2 lên sớm ~7 phút do phiên khác push commit chồng lên (b84b858), không hại dữ liệu (0 đợt).
+- [x] Commit, migration `xa_vai_it_v2` (~12:55, kiểm `-- kiem:` true), push `ac73fd8`; người dùng chốt "Chuyển" cho UID WMS trả về phiếu mới. Web đợt 2 lên sớm ~7 phút do phiên khác push commit chồng lên (commit đó sau đã gỡ khỏi lịch sử; SHA đợt 2 đổi b169ad6 → ac73fd8, 3990226 → 0caff0f), không hại dữ liệu (0 đợt).
 
 ## Phát sinh
 - 05/11/2026 Tách hunk: cây làm việc có phần "Đối chiếu phủ lot theo PO" của phiên khác (`index.html`, `docs/QUYET_DINH.md`, `tests/bridge_ready.cjs` + tệp chưa theo dõi) → commit chỉ phần của đợt này; `bridge_ready` phần commit 11, cây làm việc 12; `tests/cut_po_coverage_browser.cjs` (chưa theo dõi) đã đổi số phiên bản giả lập 0.12.5 → 0.12.6 để cổng commit đạt.
