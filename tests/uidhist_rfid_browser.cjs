@@ -50,7 +50,7 @@ const fakeBinReply = args => {
 
 // Extension giả (chạy trong trang): trả lời PING / PING_WMS và RUN_GROUP_UID_SYNC theo window.__ext.mode; ghi lại mọi lệnh
 const fakeExtension = () => {
-  window.__ext = { calls: [], mode: "ok", delay: 300, version: "0.12.5" };
+  window.__ext = { calls: [], mode: "ok", delay: 300, version: "0.12.6" };
   addEventListener("message", async event => {
     const r = event.data;
     if (!r || r.source !== "PRINT_SKU_APP") return;

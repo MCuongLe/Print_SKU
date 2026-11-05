@@ -152,8 +152,8 @@ async function desktop(browser) {
   await mock(page, s);
   await page.goto(BASE + '#xa-vai');
   await page.locator('#xa-vai-screen').waitFor({ state: 'visible' });
-  // Ba tab, không còn tab cũ; tab Quét không còn phần Mã hàng-là-SKU, Chờ in không còn công tắc "Tất cả SKU"
-  assert.deepEqual(await page.locator('#xa-vai-screen .cut-tab').evaluateAll(n => n.map(b => b.id)), ['xa-vai-tab-scan', 'xa-vai-tab-queue', 'xa-vai-tab-printed']);
+  // Bốn tab (05/11/2026 thêm Phiếu IT, test riêng xa_vai_it_browser), không còn tab cũ; tab Quét không còn phần Mã hàng-là-SKU, Chờ in không còn công tắc "Tất cả SKU"
+  assert.deepEqual(await page.locator('#xa-vai-screen .cut-tab').evaluateAll(n => n.map(b => b.id)), ['xa-vai-tab-scan', 'xa-vai-tab-queue', 'xa-vai-tab-printed', 'xa-vai-tab-it']);
   assert.equal(await page.locator('#xa-vai-tab-open, #xa-vai-tab-done').count(), 0, 'gỡ tab Đang xả / Đã xả xong');
   assert.equal(await page.locator('#xa-vai-sku-code, #xa-vai-sku-card, #xa-vai-sku-change, #xa-vai-all').count(), 0, 'bỏ ô SKU / Đổi mã / công tắc Tất cả SKU');
   await waitFor(() => calls(s, 'xa_vai_measure_search').length && calls(s, 'xa_vai_measure_list').length, 'tải Chờ in + Đã in khi vào màn');

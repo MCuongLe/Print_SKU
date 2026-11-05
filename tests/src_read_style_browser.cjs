@@ -24,6 +24,8 @@ const SCREENS = [
   // 21/10/2026 (người dùng: "các nút lấy dữ liệu từ WMS hoặc Inside cần chuẩn hoá giống như các trang")
   { name: "LỰA UID BLOCKED · Danh sách", hash: "#uid-block", wait: "#uid-block-screen:not([hidden])", prep: async page => { await page.locator('[data-ub-tab="list"]').click(); await page.locator("#ub-wms").waitFor({ state: "visible" }); }, id: "ub-wms" },
   { name: "KIỂM TRA ĐẦU VÀO · Mã PO", hash: "#inspection", wait: "#ins-screen:not([hidden])", id: "ins-fetch-po", mate: "ins-po-lookup" },
+  // 05/11/2026 tab Phiếu IT của THEO DÕI XẢ VẢI (ô số phiếu chỉ hiện khi Admin: admin stub)
+  { name: "THEO DÕI XẢ VẢI · Phiếu IT", hash: "#xa-vai", wait: "#xa-vai-screen:not([hidden])", admin: "stub", prep: async page => { await page.locator("#xa-vai-tab-it").click(); }, id: "xa-vai-it-read", mate: "xa-vai-it-number" },
 ];
 
 // Nút nằm trong dải mốc giờ / hàng tab (18/10/2026, khối #strip-read): cùng màu / viền / icon / vạch load, nhưng cỡ gọn 36, chữ 14 — so cỡ với nhau, không so với nút 52 của màn đồng bộ.
@@ -32,7 +34,7 @@ const STRIP = new Set(SCREENS.filter(x => x.strip).map(x => x.id));
 const fakeExtension = () => addEventListener("message", event => {
   const request = event.data;
   if (!request || request.source !== "PRINT_SKU_APP") return;
-  postMessage({ source: "HASAKI_INSIDE_CONNECTOR", requestId: request.requestId, ok: true, data: { version: "0.12.5" } }, location.origin);
+  postMessage({ source: "HASAKI_INSIDE_CONNECTOR", requestId: request.requestId, ok: true, data: { version: "0.12.6" } }, location.origin);
 });
 
 // Supabase / Edge giả tối thiểu: đủ để màn dựng xong và hiện công cụ Admin, không cần dữ liệu thật.

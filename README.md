@@ -200,16 +200,18 @@ Quét / nhập SKU hoặc Group UID để tự điền Tex, quy cách cuộn, kh
 
 - Dùng để: ghi mét thực tế của từng cuộn vải sau khi xả và in phiếu A4 theo mã hàng (thay phiếu theo dõi giấy).
 - Ai dùng: Worker trên máy đã kích hoạt (ghi và in); mọi người xem được.
-- Màn: `#xa-vai-screen` — ba tab **Quét**, **Chờ in**, **Đã in**.
+- Màn: `#xa-vai-screen` — bốn tab **Quét**, **Chờ in**, **Đã in**, **Phiếu IT**.
 - Dữ liệu: bảng `xa_vai_measures`, RPC `xa_vai_measure_*` và `xa_vai_print_enqueue` (migration `xa_vai_a4_v1`); bảng `xa_vai_log` cũ giữ ở máy chủ, web không gọi.
 - Máy in: agent `may-a4-01` (`PRINTER_KIND=a4`) trên máy cắm máy in A4, xem `workstation-agent/README.md`.
-- Test: `xa_vai_a4_browser`, `xa_vai_a4_sql`, `floor_access_browser`, `printer_pill_capability_browser`.
+- Test: `xa_vai_a4_browser`, `xa_vai_a4_sql`, `floor_access_browser`, `printer_pill_capability_browser`, `xa_vai_it_browser`, `xa_vai_it_sql`, `xa_vai_it_core`.
 
 Quét Group UID (SKU nào cũng được), nhập mét thực tế (mét, tối đa 2 chữ số thập phân); lệch quá 20% so với số hệ thống thì hỏi xác nhận. UID đã có mét nằm ở **Chờ in** và sửa / xoá được cho tới khi in.
 
 Chọn UID rồi bấm **In A4**: khung nhập **Mã hàng** (mã kiểu hàng như `CWSH02`, không phải SKU) rồi in. Phiếu A4 ngang có biển lớn đầu mỗi trang (mã hàng + `Xả dd/mm/yyyy`, ngày xả là ngày nhập mét) và bảng Group UID · SKU · Lot · Roll · Hệ thống (mm) · Thực tế (mm) · Chênh lệch (mm) · Giờ nhập, tổng và hai ô ký ở trang cuối.
 
 Tab **Đã in** lọc theo mã hàng và ngày, in lại (mỗi phiếu một mã hàng) và xuất Excel (mm). Số hệ thống là số lượng WMS đổi ra mm theo tên SKU (vải gram dùng GSM và khổ); màn hình hiện mét, phiếu A4 và Excel hiện mm.
+
+Tab **Phiếu IT**: Admin nhập số phiếu IT (16 số) rồi bấm **Đọc WMS** (Extension ≥ 0.12.6, tab WMS đã đăng nhập) → xem mã hàng (tách từ ghi chú phiếu, sửa được), từng SKU với SL đã xuất, số Group UID và phần chưa có UID → **Lưu đợt**. Mọi người xem các đợt: UID đã đo / tổng UID, mét thực tế so với SL đã xuất, danh sách UID. Quét UID của một đợt thì pop-up hiện mã hàng của đợt; In A4 điền sẵn mã đó khi mọi UID đã chọn cùng một đợt. UID ngoài đợt vẫn đo và in như cũ.
 
 ## TÌM GROUP UID (`#cap-vai` · `#uid-block` · `#tra-ncc`)
 

@@ -441,6 +441,46 @@
     return { ...core.normalizeInternalTransfer(head, await getJson(itemsUrl, denied)), generatedAt: new Date().toISOString() };
   }
 
+  // Xả vải theo phiếu IT (05/11/2026, 0.12.6): đầu phiếu + dòng (SL đã xuất) + Group UID của phiếu. Không gửi `company-ids` (kết quả không phụ thuộc
+  // công ty đang chọn trên tab WMS, như 0.12.4). Group UID: `group-uid-infos?processing_source_code=<mapping_id>` (đo 05/11: lọc đúng, 57 UID một phiếu),
+  // 500 / trang, tối đa 3.000 UID; WMS bỏ qua bộ lọc thì tổng vọt lên → báo lỗi thay vì đọc cả kho. Chỉ GET.
+  const MAX_XA_VAI_IT_LINES = 200, MAX_XA_VAI_IT_UIDS = 3000;
+  async function readXaVaiIt(payload) {
+    if (!core?.normalizeXaVaiIt) throw new Error("Extension chưa tải bộ đọc phiếu IT; hãy Reload extension");
+    const number = String(payload?.number ?? "").trim();
+    if (!/^\d{16}$/.test(number)) throw new Error("Số phiếu IT phải có 16 chữ số");
+    const denied = "Phiên WMS không còn quyền đọc phiếu IT; hãy đăng nhập lại";
+    const listUrl = new URL(IT_API);
+    listUrl.searchParams.set("page", "1");
+    listUrl.searchParams.set("size", "5");
+    listUrl.searchParams.set("internal_transfer_numbers", number);
+    const head = core.responseRows(await getJson(listUrl, denied, "", { allCompanies: true })).find(row => String(row?.internal_transfer_number ?? "").trim() === number);
+    if (!head) throw new Error(`Không tìm thấy phiếu IT ${number}`);
+    const itemsUrl = new URL(IT_ITEMS_API);
+    itemsUrl.searchParams.set("internal_transfer_id", String(head.internal_transfer_id));
+    itemsUrl.searchParams.set("page", "1");
+    itemsUrl.searchParams.set("size", "500");
+    const items = await getJson(itemsUrl, denied, "", { allCompanies: true });
+    if (core.responseRows(items).length > MAX_XA_VAI_IT_LINES) throw new Error(`Phiếu IT có hơn ${MAX_XA_VAI_IT_LINES} dòng SKU`);
+    const mapping = String(head?.mapping_id ?? "").trim(), rows = [];
+    if (/^\d{6,40}$/.test(mapping)) {
+      const deniedUid = "Phiên WMS không còn quyền đọc Group UID; hãy đăng nhập lại";
+      for (let page = 1; ; page += 1) {
+        const url = new URL(API);
+        url.searchParams.set("active_tab", "group-list");
+        url.searchParams.set("processing_source_code", mapping);
+        url.searchParams.set("page", String(page));
+        url.searchParams.set("size", "500");
+        const body = await getJson(url, deniedUid, "", { allCompanies: true, emptyPage: true });
+        const pageRows = core.responseRows(body), total = core.responseTotal(body, rows.length + pageRows.length);
+        if (total > MAX_XA_VAI_IT_UIDS) throw new Error(`WMS trả ${total.toLocaleString("vi-VN")} Group UID cho phiếu ${number} (tối đa ${MAX_XA_VAI_IT_UIDS.toLocaleString("vi-VN")}); không nạp`);
+        rows.push(...pageRows);
+        if (pageRows.length < 500 || rows.length >= total) break;
+      }
+    }
+    return { ...core.normalizeXaVaiIt(head, items, rows), generatedAt: new Date().toISOString() };
+  }
+
   // Số phiếu cho nguồn Cut (Đối chiếu ADJ, 26/10/2026): `source_mapping_id` của dòng Import/Export → phiếu ADJ (`adjustments?mapping_codes=`
   // rồi chi tiết lấy `reference_code` = số PO) / phiếu IT (`internal-transfers?mapping_ids=`). Chỉ GET; tối đa 20 mã mỗi loại một lần;
   // WMS bỏ qua bộ lọc thì phiếu khác mã bị loại. Trả { adj:[{mappingCode, number, reason, po, detailFailed?}], it:[{mappingId, number, toWarehouse,
@@ -499,7 +539,7 @@
   }
 
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    if (sender.id !== chrome.runtime.id || !["GET_GROUP_UID_PAGE", "GET_GROUP_UID_HISTORY_PAGE", "GET_GROUP_UID_MOVES_PAGE", "GET_GROUP_UID_NEW_PAGE", "GET_PACKING_LIST_PAGE", "GET_PO_GROUP_UID_PAGE", "GET_PO_ASN_PAGE", "GET_INTERNAL_TRANSFER", "GET_SKU_COUNT_WAREHOUSES", "GET_SKU_COUNT_APPROVED_PAGE", "GET_SKU_COUNT_INVENTORY_PAGE", "GET_STOCK_IMPORT_EXPORT_PAGE", "GET_WMS_DOC_INFO", "GET_TRANSFER_BIN_PAGE"].includes(message?.type)) return false;
+    if (sender.id !== chrome.runtime.id || !["GET_GROUP_UID_PAGE", "GET_GROUP_UID_HISTORY_PAGE", "GET_GROUP_UID_MOVES_PAGE", "GET_GROUP_UID_NEW_PAGE", "GET_PACKING_LIST_PAGE", "GET_PO_GROUP_UID_PAGE", "GET_PO_ASN_PAGE", "GET_INTERNAL_TRANSFER", "GET_XA_VAI_IT", "GET_SKU_COUNT_WAREHOUSES", "GET_SKU_COUNT_APPROVED_PAGE", "GET_SKU_COUNT_INVENTORY_PAGE", "GET_STOCK_IMPORT_EXPORT_PAGE", "GET_WMS_DOC_INFO", "GET_TRANSFER_BIN_PAGE"].includes(message?.type)) return false;
     const readers = {
       GET_GROUP_UID_PAGE: readPage,
       GET_GROUP_UID_HISTORY_PAGE: readHistoryPage,
@@ -509,6 +549,7 @@
       GET_PO_GROUP_UID_PAGE: readPoGroupUidPage,
       GET_PO_ASN_PAGE: readPoAsnPage,
       GET_INTERNAL_TRANSFER: readInternalTransfer,
+      GET_XA_VAI_IT: readXaVaiIt,
       GET_SKU_COUNT_WAREHOUSES: readCountWarehouses,
       GET_SKU_COUNT_APPROVED_PAGE: readApprovedCountPage,
       GET_SKU_COUNT_INVENTORY_PAGE: readInventoryPage,
@@ -516,7 +557,7 @@
       GET_WMS_DOC_INFO: readDocInfo,
       GET_TRANSFER_BIN_PAGE: readTransferBinPage,
     };
-    const failure = message.type === "GET_WMS_DOC_INFO" ? "WMS_DOC_READ_FAILED" : message.type === "GET_TRANSFER_BIN_PAGE" ? "TRANSFER_BIN_READ_FAILED" : message.type === "GET_STOCK_IMPORT_EXPORT_PAGE" ? "IMPORT_EXPORT_READ_FAILED" : message.type === "GET_INTERNAL_TRANSFER" ? "INTERNAL_TRANSFER_READ_FAILED" : message.type.startsWith("GET_SKU_COUNT_") ? "SKU_COUNT_READ_FAILED" : "GROUP_UID_READ_FAILED";
+    const failure = message.type === "GET_WMS_DOC_INFO" ? "WMS_DOC_READ_FAILED" : message.type === "GET_TRANSFER_BIN_PAGE" ? "TRANSFER_BIN_READ_FAILED" : message.type === "GET_STOCK_IMPORT_EXPORT_PAGE" ? "IMPORT_EXPORT_READ_FAILED" : message.type === "GET_INTERNAL_TRANSFER" || message.type === "GET_XA_VAI_IT" ? "INTERNAL_TRANSFER_READ_FAILED" : message.type.startsWith("GET_SKU_COUNT_") ? "SKU_COUNT_READ_FAILED" : "GROUP_UID_READ_FAILED";
     readers[message.type](message.payload || {})
       .then(data => sendResponse({ ok: true, data }))
       .catch(error => sendResponse({ ok: false, error: { code: failure, message: (auditCore || core)?.clean(error?.message || error, 300) || "Không đọc được dữ liệu WMS", ...(error?.reason ? { reason: error.reason } : {}) } }));

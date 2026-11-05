@@ -271,6 +271,11 @@
   - Lỗi khi In: mất mạng, hết giờ hoặc 5xx báo "Chưa rõ lệnh in đã gửi hay chưa", giữ nonce cho Thử lại; HTTP 4xx (máy chủ trả lời rõ) báo "Chưa gửi được" kèm nguyên nhân và bỏ nonce.
   - Theo dõi lệnh in: dòng `printing` của máy khác theo dõi bằng `printJobId`; không tự làm mới danh sách 15 s; dừng khi tab ẩn, giãn nhịp 2,5 → 15 → 60 s, dừng sau ~10 phút hoặc 10 lỗi (chỉ Tải lại hoặc lệnh in mới theo dõi lại).
   - Lệnh của máy khác ở tab Quét không đè dòng báo và không phát âm; lệnh in lại thất bại không nói "UID về Chờ in".
+  - Đợt xả theo phiếu IT (05/11/2026, người dùng "Chốt, build"; `docs/plans/2026-11-05-xa-vai-theo-phieu-it.md`): tab 4 **Phiếu IT** — Admin nhập số phiếu, Đọc WMS (Extension ≥ 0.12.6 `GET_XA_VAI_IT`), Lưu đợt; mọi người xem đợt + tiến độ từng SKU + UID. (05/11 · N20261105-1500)
+    - Số lượng = SL đã xuất (`delivered_quantity`), không phải SL yêu cầu; mã hàng tách từ ghi chú phiếu (chữ sau "mã"), Admin sửa được; lấy luôn Group UID của phiếu (`group-uid-infos` theo `processing_source_code` = `mapping_id` của IT).
+    - UID ngoài đợt vẫn đo được, không chặn; quét UID của đợt → pop-up hiện mã hàng của đợt; In A4 điền sẵn mã hàng khi MỌI UID đã chọn thuộc đợt cùng một mã, còn lại như cũ.
+    - Nạp lại cùng phiếu: cập nhật đầu phiếu + dòng + mã hàng, thêm UID mới, không gỡ UID cũ (WMS chỉ trả UID mà IT là nguồn gần nhất); phiếu chưa xuất hoặc chưa có UID không lưu được.
+    - Không sửa hàm có sẵn: đợt gắn với dòng đo qua `group_uid_code` (bảng `xa_vai_it_batches`, `xa_vai_it_uids`, migration `xa_vai_it_v1`).
   - Khung nhập Mã hàng nhớ mã dùng gần nhất theo máy (`xa-vai-mahang-v1`); Thử lại điền sẵn mã của lần gửi dở. (04/11 · N20261104-1930)
 
 ### TÌM GROUP UID: Cấp vải + UID blocked

@@ -38,6 +38,8 @@ Phiên bản 0.6.1 đọc đầy đủ Combo nhiều thành phần, Group UID hi
 
 Phiên bản 0.7.1 thêm lệnh chỉ đọc `GET_GROUP_UID_MOVES_PAGE` cho ô LỊCH SỬ GROUP UID: lịch sử `Transfer location` của mọi kho tài khoản được xem, 500 dòng/trang (0.7.1 ghi WMS không lọc endpoint này theo `company-ids`; đo lại 28/10 thì có lọc, xem 0.12.4). Sau khi cập nhật extension phải Reload trong `chrome://extensions` và tải lại trang Print SKU.
 
+Phiên bản 0.12.6 (05/11/2026): thêm lệnh chỉ đọc `GET_XA_VAI_IT` cho tab Phiếu IT của THEO DÕI XẢ VẢI: đầu phiếu IT + dòng SKU (SL yêu cầu và SL đã xuất `delivered_quantity`) + Group UID của phiếu (`group-uid-infos?processing_source_code=<mapping_id>`, 500 / trang, tối đa 3.000 UID, không gửi `company-ids`). Cần Reload Extension rồi tải lại tab WMS và tab web; cần migration `supabase/xa_vai_it_v1.sql` trước khi web dùng; tương thích ngược (bản cũ chỉ không có lệnh này, web báo "Reload Extension").
+
 Phiên bản 0.12.5 (28/10/2026): thêm lệnh web `RUN_GROUP_UID_SYNC` cho nút "Đọc WMS" ở Tiến độ A5000 (LỊCH SỬ GROUP UID). Cần Reload Extension rồi tải lại tab web; không migration, không deploy Edge, tương thích ngược (bản cũ chỉ không có lệnh này, web báo "cập nhật Extension").
 - Lệnh chạy đúng `runNow("group_uid", "incremental")` của đồng bộ tự động: bằng phiên Admin RIÊNG của Extension (Tùy chọn → Phiên Admin) và tên máy đã đặt; cần tab WMS đăng nhập. Web không truyền kind / mode / tham số nào, không đổi được việc được chạy.
 - Trả `{status, message, runId, covered}` (`status` ok / held / skipped, như "Lượt gần nhất" ở Tùy chọn); chưa đăng nhập Admin, chưa đặt tên máy, đang có lượt khác → lỗi `AUTO_REFUSED` kèm câu của Extension; lượt lỗi → `SYNC_ERROR`; Edge từ chối bản Extension → `EXTENSION_OUTDATED`.

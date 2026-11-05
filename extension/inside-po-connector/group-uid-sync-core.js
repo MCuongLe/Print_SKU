@@ -339,5 +339,42 @@
     };
   }
 
-  globalThis.HasakiGroupUidSyncCore = Object.freeze({ clean, normalizeRow, normalizePage, newerRecord, normalizeHistoryPage, normalizeMovesPage, normalizeNewUidPage, normalizePackingListPage, normalizeInternalTransfer, responseRows, responseTotal, normalizePoGroupUidPage, normalizePoAsnPage });
+  // Xả vải theo phiếu IT (05/11/2026, Extension 0.12.6, docs/plans/2026-11-05-xa-vai-theo-phieu-it.md): đầu phiếu + dòng như IN TEM SKU, thêm SL đã xuất
+  // (`delivered_quantity`, người dùng chốt dùng số này) và Group UID của phiếu (group-uid-infos lọc processing_source_code = mapping_id của IT; mỗi cuộn
+  // một SKU ở products[0]; `group_uid_code` WMS trả SỐ → ép chuỗi). UID khác nguồn (WMS bỏ qua bộ lọc), sai mã, nhiều SKU hay SKU không có trong phiếu thì
+  // bỏ và đếm ở `skipped`; trùng mã giữ dòng đầu.
+  function normalizeXaVaiIt(head, itemsPayload, uidRows) {
+    const base = normalizeInternalTransfer(head, itemsPayload);
+    const lines = responseRows(itemsPayload).map((raw, index) => {
+      const value = raw?.delivered_quantity, delivered = value === null || value === undefined || value === "" ? 0 : Number(value);
+      if (!Number.isFinite(delivered) || delivered < 0) throw new Error(`Phiếu IT dòng ${index + 1} có SL đã xuất không hợp lệ`);
+      const item = base.items[index];
+      return { sku: item.sku, name: item.name, unit: item.unit, requestedQty: item.quantity, deliveredQty: delivered };
+    });
+    const mapping = clean(head?.mapping_id, 40);
+    const mappingId = /^\d{6,40}$/.test(mapping) ? mapping : null;
+    const skus = new Set(lines.map(line => line.sku)), seen = new Set(), uids = [];
+    const skipped = { otherSource: 0, badCode: 0, multiSku: 0, otherSku: 0 };
+    for (const raw of Array.isArray(uidRows) ? uidRows : []) {
+      if (!mappingId || clean(raw?.processing_source_code, 40) !== mappingId) { skipped.otherSource += 1; continue; }
+      const code = clean(raw?.group_uid_code, 40);
+      if (!/^\d{16}$/.test(code)) { skipped.badCode += 1; continue; }
+      if (seen.has(code)) continue;
+      const products = Array.isArray(raw?.products) ? raw.products.filter(product => clean(product?.sku, 40)) : [];
+      if (products.length !== 1) { skipped.multiSku += 1; continue; }
+      const sku = clean(products[0].sku, 40);
+      if (!skus.has(sku)) { skipped.otherSku += 1; continue; }
+      seen.add(code);
+      const qtyValue = raw?.uid_quantity ?? products[0].quantity, qty = qtyValue === null || qtyValue === undefined || qtyValue === "" ? null : Number(qtyValue);
+      uids.push({
+        groupUid: code, sku, lot: clean(raw?.batch_code, 120), roll: clean(raw?.roll_code, 120),
+        qty: Number.isFinite(qty) && qty >= 0 ? qty : null, rfid: clean(raw?.group_rfid_mapping, 40) || null,
+        status: clean(raw?.status_name, 60) || null, location: clean(raw?.location_description, 120) || null,
+      });
+    }
+    const { items: _items, ...rest } = base;
+    return { ...rest, mappingId, lines, uids, uidTotal: uids.length, skipped };
+  }
+
+  globalThis.HasakiGroupUidSyncCore = Object.freeze({ clean, normalizeRow, normalizePage, newerRecord, normalizeHistoryPage, normalizeMovesPage, normalizeNewUidPage, normalizePackingListPage, normalizeInternalTransfer, normalizeXaVaiIt, responseRows, responseTotal, normalizePoGroupUidPage, normalizePoAsnPage });
 })();
