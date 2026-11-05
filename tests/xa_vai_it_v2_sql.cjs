@@ -24,7 +24,11 @@ assert.ok(sql.indexOf("commit;") < sql.indexOf("notify pgrst, 'reload schema';")
 assert.match(raw, /^-- Chạy: python scripts\/apply_supabase_sql\.py supabase\/xa_vai_it_v2\.sql$/m, "không kèm --allow-destructive");
 for (const [re, label] of [[/\bdrop\s+(table|schema|view|type|index|function|trigger|policy)\b/i, "DROP"], [/\btruncate\b/i, "TRUNCATE"], [/\bdelete\s+from\b/i, "DELETE"],
   [/\balter\s+table\b[^;]*\bdrop\b/i, "ALTER … DROP"]]) assert.ok(!re.test(topLevel), `không ${label} ở cấp cao nhất`);
-assert.ok(!/\bdelete\s+from\b/i.test(sql), "không xoá dữ liệu ở đâu");
+// Chỉ một lệnh xoá trong thân hàm: nạp lại phiếu gỡ dòng 'scan' ở đợt khác của UID mà WMS trả cho phiếu này (một UID một đợt).
+const deletes = [...sql.matchAll(/\bdelete\s+from\s+public\.(\w+)([^;]*);/gi)];
+assert.equal(deletes.length, 1, "chỉ một lệnh xoá");
+assert.equal(deletes[0][1], "xa_vai_it_uids");
+assert.match(squash(deletes[0][2]), /^x where x\.source = 'scan' and x\.it_number <> v_it and x\.group_uid_code in \(select btrim\(u->>'groupUid'\) from jsonb_array_elements\(v_uids\) as t\(u\)\)$/);
 const kiem = raw.match(/^-- kiem: (.+)$/m);
 assert.ok(kiem && /^select /i.test(kiem[1]) && !/\b(insert|update|delete|drop|alter|create|grant|revoke)\b/i.test(kiem[1]), "-- kiem: chỉ đọc");
 for (const part of ["public.xa_vai_it_reports", "relrowsecurity", "column_name = 'status'", "column_name = 'source'", "not has_function_privilege('anon', 'public.xa_vai_it_set_status(text,text)'",
@@ -45,13 +49,13 @@ assert.ok(!/create policy/i.test(sql) && !/grant [^;]*on table[^;]*to (anon|auth
 
 // ---------- Hàm: danh sách + quyền ----------
 const created = [...sql.matchAll(/create or replace function public\.(\w+)\(/g)].map(m => m[1]);
-assert.deepEqual(created, ["_xa_vai_it_state", "xa_vai_it_check", "_xa_vai_it_attach_body", "xa_vai_it_attach", "_xa_vai_it_report_body", "xa_vai_it_report",
+assert.deepEqual(created, ["_xa_vai_it_state", "xa_vai_it_check", "_xa_vai_it_attach_core", "_xa_vai_it_attach_body", "xa_vai_it_attach", "_xa_vai_it_report_body", "xa_vai_it_report",
   "xa_vai_it_set_status", "xa_vai_it_outside", "xa_vai_it_save", "_xa_vai_it_json", "xa_vai_it_list", "xa_vai_it_get", "_xa_vai_measure_save_body"]);
 const grants = [...sql.matchAll(/^grant execute on function public\.(\w+)\(([^)]*)\) to ([^;]+);$/gm)].map(m => `${m[1]}(${m[2]}) → ${m[3]}`);
 assert.deepEqual(grants, ["xa_vai_it_check(text) → anon, authenticated", "xa_vai_it_attach(text, text, text) → anon, authenticated", "xa_vai_it_report(text, text) → anon, authenticated",
   "xa_vai_it_set_status(text, text) → authenticated", "xa_vai_it_outside(integer) → anon, authenticated", "xa_vai_it_save(jsonb) → authenticated",
   "xa_vai_it_list(integer) → anon, authenticated", "xa_vai_it_get(text) → anon, authenticated"]);
-for (const sig of ["_xa_vai_it_state(text, text)", "_xa_vai_it_attach_body(text, text, text)", "_xa_vai_it_report_body(text, text)", "_xa_vai_it_json(public.xa_vai_it_batches)",
+for (const sig of ["_xa_vai_it_state(text, text)", "_xa_vai_it_attach_core(text, text, uuid)", "_xa_vai_it_attach_body(text, text, text)", "_xa_vai_it_report_body(text, text)", "_xa_vai_it_json(public.xa_vai_it_batches)",
   "_xa_vai_measure_save_body(text, text, numeric, boolean)"])
   assert.ok(sql.includes(`revoke all on function public.${sig} from public, anon, authenticated;`), `hàm nội bộ không cấp quyền: ${sig}`);
 for (const name of created.filter(n => n !== "_xa_vai_it_state" && n !== "_xa_vai_it_json"))
@@ -68,9 +72,13 @@ for (const [pub, body, key] of [["xa_vai_it_attach", "_xa_vai_it_attach_body", "
   const b = fnBody(pub).body;
   assert.ok(b.includes(`public.floor_access_check(p_access_token, '${key}')`) && b.includes("public.floor_access_denied()") && b.includes(`public.${body}(`), `${pub} qua floor_access_check`);
 }
-const attach = fnBody("_xa_vai_it_attach_body").body;
-for (const part of ["for update", "'BATCH_DONE'", "'SKU_NOT_IN_BATCH'", "'NOT_FOUND'", "'scan'", "public.print_device_by_token(p_access_token)", "on conflict (it_number, group_uid_code) do nothing"])
-  assert.ok(attach.includes(part), `attach có ${part}`);
+const core = fnBody("_xa_vai_it_attach_core").body;
+for (const part of ["for update", "'BATCH_DONE'", "'SKU_NOT_IN_BATCH'", "'NOT_FOUND'", "'ALREADY_IN_BATCH'", "'scan'", "on conflict (it_number, group_uid_code) do nothing"])
+  assert.ok(core.includes(part), `lõi gắn có ${part}`);
+// Một UID một đợt: khoá theo Group UID TRƯỚC khi xét đợt hiện có và trước khoá dòng đợt.
+const lockAt = core.indexOf("pg_advisory_xact_lock(hashtextextended('xa_vai_it_uid:' || p_code, 0))");
+assert.ok(lockAt >= 0 && lockAt < core.indexOf("from public.xa_vai_it_uids x") && lockAt < core.indexOf("for update"), "khoá UID trước");
+assert.ok(fnBody("_xa_vai_it_attach_body").body.includes("public._xa_vai_it_attach_core(v_code, v_it, public.print_device_by_token(p_access_token))"));
 const report = fnBody("_xa_vai_it_report_body").body;
 assert.ok(report.includes("v_state->>'state' <> 'other_sku'") && report.indexOf("<> 'other_sku'") < report.indexOf("insert into public.xa_vai_it_reports"), "chỉ ghi báo cáo khi máy chủ xét lại là other_sku");
 assert.ok(report.includes("scan_count = least(r.scan_count, 1000000) + 1"));
@@ -88,9 +96,15 @@ assert.ok(fnBody("xa_vai_it_get").body.includes("'source', x.source"));
 const a4 = fs.readFileSync(path.join(root, "supabase/xa_vai_a4_v1.sql"), "utf8").replace(/\r\n/g, "\n").replace(/--[^\n]*/g, "");
 const a4Start = a4.indexOf("create or replace function public._xa_vai_measure_save_body("), a4Body = squash(a4.slice(a4.indexOf("$$", a4Start) + 2, a4.indexOf("$$", a4.indexOf("$$", a4Start) + 2)));
 const saveBody = fnBody("_xa_vai_measure_save_body").body;
-const guard = "if not exists (select 1 from public.xa_vai_measures m where m.group_uid_code = v_code) and public._xa_vai_it_state(v_code, v_sku)->>'state' = 'other_sku' then return jsonb_build_object('ok', false, 'error', jsonb_build_object('code', 'OUTSIDE_BATCH', 'message', 'Group UID nằm ngoài đợt xả vải đang mở')); end if; ";
-assert.ok(saveBody.includes(guard), "có chặn OUTSIDE_BATCH");
-assert.equal(saveBody.replace(guard, ""), a4Body, "phần còn lại giống hệt bản đang chạy (xa_vai_a4_v1)");
-assert.ok(saveBody.indexOf("OUTSIDE_BATCH") < saveBody.indexOf("insert into public.xa_vai_measures"), "chặn trước khi chèn");
+const guardStart = saveBody.indexOf("if not exists (select 1 from public.xa_vai_measures m where m.group_uid_code = v_code) then");
+const guardEnd = saveBody.indexOf("end if; end if; end if; ", guardStart) + "end if; end if; end if; ".length;
+assert.ok(guardStart > 0 && guardEnd > guardStart, "có khối kiểm đợt");
+const guard = saveBody.slice(guardStart, guardEnd);
+for (const part of ["v_it_state->>'state' = 'other_sku'", "'OUTSIDE_BATCH'", "v_it_state->>'state' = 'same_sku'", "jsonb_array_length(v_it_state->'batches') > 1", "'NEED_BATCH'",
+  "public._xa_vai_it_attach_core(v_code, v_it_state->'batches'->0->>'itNumber', public.print_device_by_token(p_access_token))", "<> 'ALREADY_IN_BATCH'"])
+  assert.ok(guard.includes(part), `khối kiểm đợt có ${part}`);
+const plain = (saveBody.slice(0, guardStart) + saveBody.slice(guardEnd)).replace(" v_it_state jsonb; v_attach jsonb;", "");
+assert.equal(plain, a4Body, "phần còn lại giống hệt bản đang chạy (xa_vai_a4_v1)");
+assert.ok(saveBody.indexOf("OUTSIDE_BATCH") < saveBody.indexOf("insert into public.xa_vai_measures") && saveBody.indexOf("NEED_BATCH") < saveBody.indexOf("insert into public.xa_vai_measures"), "kiểm đợt trước khi chèn");
 
-console.log("xa_vai_it_v2_sql: cột + bảng báo cáo + RLS, 13 hàm đúng quyền, trạng thái UID, gắn / báo qua khoá máy, đóng đợt Admin, lưu mét = bản đang chạy + chặn OUTSIDE_BATCH đều đạt");
+console.log("xa_vai_it_v2_sql: cột + bảng báo cáo + RLS, 14 hàm đúng quyền, lõi gắn khoá theo UID (một UID một đợt), trạng thái UID, gắn / báo qua khoá máy, đóng đợt Admin, lưu mét = bản đang chạy + chặn OUTSIDE_BATCH đều đạt");

@@ -78,6 +78,7 @@ function mock(page, s) {
       if (s.batch.uids.some(x => x.groupUid === u)) return ok({ groupUid: u, sku: '900000001', state: 'in_batch' });
       return ok({ groupUid: u, sku: '900000009', ...(s.checks?.[u] || { state: 'free' }) });
     }
+    if (rpc === 'xa_vai_it_attach' && s.attachError) { s.attached = [...(s.attached || []), body]; const e = s.attachError; s.attachError = null; return json({ ok: false, error: e }); }
     if (rpc === 'xa_vai_it_attach') { s.attached = [...(s.attached || []), body]; return ok({ itNumber: body.p_it_number, itemCode: body.p_it_number === IT ? 'CWSH02' : 'SWSH09', attached: true }); }
     if (rpc === 'xa_vai_it_report') { s.reports = [...(s.reports || []), body]; return ok({ reported: true, state: 'other_sku' }); }
     if (rpc === 'xa_vai_it_set_status') {
@@ -85,7 +86,7 @@ function mock(page, s) {
       s.batch.batchStatus = body.p_status; return ok({ itNumber: body.p_it_number, status: body.p_status });
     }
     if (rpc === 'xa_vai_it_outside') return ok(s.outside || { attached: [], outside: [], attachedTotal: 0, outsideTotal: 0 });
-    if (rpc === 'xa_vai_measure_save' && s.saveError) return json({ ok: false, error: s.saveError });
+    if (rpc === 'xa_vai_measure_save' && s.saveError) { const e = s.saveError; if (s.saveErrorOnce) s.saveError = null; return json({ ok: false, error: e }); }
     if (rpc === 'xa_vai_measure_lookup') {
       const u = String(body.p_group_uid);
       return ok({ groupUid: u, sku: '900000001', productName: 'Vải thử 1/mm', itemCode: null, lot: 'L1', roll: 'R9', uidStatus: 'Available', systemQty: 90000, systemMm: 90000, state: 'new', actualMm: null, measuredAt: null, printedAt: null, printJobId: null });
@@ -328,7 +329,8 @@ const noOverflow = async (page, sel) => {
       await page.locator('#xa-vai-uid-dialog').waitFor({ state: 'visible' });
       await page.waitForFunction(() => /Ngoài đợt xả/.test(document.getElementById('xa-vai-uid').innerText));
       assert.equal(await page.locator('#xa-vai-meter-form').isVisible(), false, 'không có ô mét');
-      await page.waitForFunction(() => document.getElementById('xa-vai-uid-error').textContent.includes('không lưu, đã báo vận hành kho'));
+      await page.waitForFunction(() => document.getElementById('xa-vai-uid-error').textContent.includes('Ngoài đợt xả · không lưu · đã báo vận hành kho'));
+      assert.equal((await page.locator('#xa-vai-uid-error').innerText()).includes(uid(41)), false, 'câu báo trong pop-up không lặp UID');
       await shot(page, `out-block-${width}`);
       await page.waitForFunction(() => true);
       assert.equal(s.reports.length, 1); assert.equal(s.reports[0].p_group_uid, uid(41)); assert.ok(s.reports[0].p_access_token);
@@ -347,11 +349,34 @@ const noOverflow = async (page, sel) => {
       await page.locator('#xa-vai-uid-dialog').waitFor({ state: 'visible' });
       await page.locator('#xa-vai-meters').fill('90');
       await page.locator('#xa-vai-save').click();
-      await page.waitForFunction(() => /Ngoài đợt xả vải — không lưu/.test(document.getElementById('xa-vai-message').textContent));
-      for (let i = 0; i < 40 && s.reports.at(-1).p_group_uid !== uid(42); i += 1) await page.waitForTimeout(50);
+      await page.waitForFunction(() => /Ngoài đợt xả · không lưu · đã báo vận hành kho/.test(document.getElementById('xa-vai-message').textContent));
       assert.equal(s.reports.at(-1).p_group_uid, uid(42));
+      assert.equal(await page.locator('#xa-vai-meter-form').isVisible(), false, 'máy chủ chặn → pop-up chuyển sang chặn, không còn ô mét');
       s.saveError = null;
       await page.keyboard.press('Escape');
+
+      // Máy chủ ép gắn (web không kiểm được đợt lúc tra): NEED_BATCH → hiện ô chọn phiếu IT, chọn rồi Lưu → gắn đúng phiếu rồi lưu.
+      s.saveError = { code: 'NEED_BATCH', message: 'Chọn phiếu IT cho Group UID này', batches: [{ itNumber: IT, itemCode: 'CWSH02' }, { itNumber: IT_NEW, itemCode: 'SWSH09' }] }; s.saveErrorOnce = true;
+      await page.locator('#xa-vai-code').click();
+      await page.keyboard.type(uid(43));
+      await page.locator('#xa-vai-uid-dialog').waitFor({ state: 'visible' });
+      await page.locator('#xa-vai-meters').fill('90');
+      await page.locator('#xa-vai-save').click();
+      await page.waitForFunction(() => /Chọn phiếu IT rồi Lưu/.test(document.getElementById('xa-vai-message').textContent));
+      assert.equal(await page.locator('#xa-vai-it-pickrow').isVisible(), true);
+      await page.locator('#xa-vai-it-pick').selectOption(IT_NEW);
+      await page.locator('#xa-vai-save').click();
+      await page.waitForFunction(() => /Đã lưu .* ngoài phiếu SWSH09/.test(document.getElementById('xa-vai-message').textContent));
+      assert.deepEqual(s.attached.at(-1).p_group_uid === uid(43) && s.attached.at(-1).p_it_number, IT_NEW);
+
+      // Máy khác vừa gắn UID vào đợt khác (ALREADY_IN_BATCH): vẫn lưu, theo đợt đã có.
+      s.attachError = { code: 'ALREADY_IN_BATCH', message: 'Group UID đã thuộc đợt xả khác', itNumber: IT, itemCode: 'CWSH02' };
+      await page.locator('#xa-vai-code').click();
+      await page.keyboard.type(uid(40));
+      await page.locator('#xa-vai-uid-dialog').waitFor({ state: 'visible' });
+      await page.locator('#xa-vai-meters').fill('90');
+      await page.locator('#xa-vai-save').click();
+      await page.waitForFunction(() => /Đã lưu .* ngoài phiếu CWSH02/.test(document.getElementById('xa-vai-message').textContent));
 
       // Tab Phiếu IT: trạng thái đợt, số ngoài phiếu, mục Ngoài phiếu; Admin đóng đợt (Admin chỉ xét máy tính).
       await page.locator('#xa-vai-tab-it').click();
@@ -365,7 +390,9 @@ const noOverflow = async (page, sel) => {
       assert.equal((await page.locator('#xa-vai-it-out-count').innerText()).trim(), '2');
       await out.locator('summary').click();
       assert.equal(await out.locator('tbody tr').count(), 2);
-      assert.match(await out.innerText(), /Khác SKU · không lưu · 1/);
+      assert.match(await out.innerText(), /Ngoài đợt xả · không lưu · 1/);
+      assert.match(await out.innerText(), /Ngoài phiếu · gắn vào đợt · 1/);
+      assert.equal((await out.locator('summary').innerText()).replace(/\s+/g, ' ').trim(), 'Bất thường 2');
       if (width >= 768) {
         await login(page);
         await card.locator('[data-it-act="status"]').click();

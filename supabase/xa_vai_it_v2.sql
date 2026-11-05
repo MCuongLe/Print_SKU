@@ -8,11 +8,12 @@
 -- Tác động:
 --   * xa_vai_it_batches: cột status ('open' | 'done', mặc định open), closed_at, closed_by. xa_vai_it_uids: cột source ('it' = từ WMS, 'scan' = gắn khi
 --     quét), added_device. Bảng mới xa_vai_it_reports (UID khác SKU bị chặn: một dòng / UID, số lần quét, máy quét cuối). RLS bật, không policy.
---   * Hàm mới: _xa_vai_it_state (nội bộ), xa_vai_it_check (anon), xa_vai_it_attach + xa_vai_it_report (khoá máy xưởng, floor_access_check),
+--   * Hàm mới: _xa_vai_it_state, _xa_vai_it_attach_core (nội bộ; khoá theo Group UID, một UID một đợt), xa_vai_it_check (anon), xa_vai_it_attach + xa_vai_it_report (khoá máy xưởng, floor_access_check),
 --     xa_vai_it_set_status (JWT Admin), xa_vai_it_outside (anon: UID gắn ngoài phiếu + UID khác SKU bị chặn).
 --   * Thay (create or replace, cùng chữ ký): xa_vai_it_save (nạp lại thấy UID trong WMS → source = 'it'), _xa_vai_it_json (+ batchStatus,
 --     closedAt, outsideCount), xa_vai_it_list (đợt mở trước), xa_vai_it_get (+ source, addedAt), _xa_vai_measure_save_body (bản đang chạy =
---     supabase/xa_vai_a4_v1.sql, so pg_get_functiondef 05/11: khớp; thêm chặn OUTSIDE_BATCH cho UID mới khác SKU khi có đợt mở).
+--     supabase/xa_vai_a4_v1.sql, so pg_get_functiondef 05/11: khớp; thêm: UID mới khác SKU khi có đợt mở → OUTSIDE_BATCH; cùng SKU chưa gắn →
+--     tự gắn khi một đợt khớp, NEED_BATCH khi nhiều đợt). xa_vai_it_save còn gỡ dòng 'scan' ở đợt khác của UID mà WMS trả cho phiếu đang nạp.
 --   Phân loại: web cũ vẫn chạy (khoá OUTSIDE_BATCH chỉ báo lỗi chung "Không lưu được" ở web cũ).
 -- Không DROP / DELETE ở cấp cao nhất (alter table chỉ add column / add constraint khi chưa có) → không cần --allow-destructive. Chạy lại được.
 -- Thứ tự lên: commit (chưa push) → migration này → push web. Không đổi Extension.
@@ -26,6 +27,7 @@
 --   drop function if exists public._xa_vai_it_report_body(text, text);
 --   drop function if exists public.xa_vai_it_attach(text, text, text);
 --   drop function if exists public._xa_vai_it_attach_body(text, text, text);
+--   drop function if exists public._xa_vai_it_attach_core(text, text, uuid);
 --   drop function if exists public.xa_vai_it_check(text);
 --   drop table if exists public.xa_vai_it_reports;
 begin;
@@ -116,27 +118,38 @@ begin
     'meta', jsonb_build_object('updatedAt', now(), 'schemaVersion', 1));
 end $$;
 
--- ---------- Gắn UID cùng SKU vào đợt (khi quét; web gọi TRƯỚC khi lưu mét) ----------
-create or replace function public._xa_vai_it_attach_body(p_access_token text, p_group_uid text, p_it_number text)
+-- ---------- Gắn UID cùng SKU vào đợt ----------
+-- Lõi dùng chung cho xa_vai_it_attach (web gắn trước khi lưu) và _xa_vai_measure_save_body (máy chủ tự gắn khi web không gắn được — review vòng 1:
+-- check lỗi / web cũ thì UID cùng SKU bị lưu mà không vào đợt). Khoá giao dịch theo Group UID rồi xét lại: một UID chỉ thuộc MỘT đợt
+-- (đã ở chính đợt này → idempotent; đã ở đợt khác → ALREADY_IN_BATCH kèm đợt đó). Thứ tự khoá: Group UID → dòng đợt (FOR UPDATE).
+create or replace function public._xa_vai_it_attach_core(p_code text, p_it text, p_device uuid)
 returns jsonb language plpgsql security definer set search_path = '' as $$
 declare
-  v_code text := btrim(coalesce(p_group_uid, ''));
-  v_it text := btrim(coalesce(p_it_number, ''));
   v_gd public.group_uid_details;
   v_sku text;
   v_batch public.xa_vai_it_batches;
+  v_other record;
   v_name text;
   v_added boolean;
 begin
-  if v_code !~ '^[0-9]{16}$' or v_it !~ '^[0-9]{16}$' then
-    return jsonb_build_object('ok', false, 'error', jsonb_build_object('code', 'INVALID_INPUT', 'message', 'Mã Group UID hoặc số phiếu IT không hợp lệ'));
+  perform pg_advisory_xact_lock(hashtextextended('xa_vai_it_uid:' || p_code, 0));
+  select x.it_number, b.item_code into v_other
+    from public.xa_vai_it_uids x join public.xa_vai_it_batches b on b.it_number = x.it_number
+   where x.group_uid_code = p_code
+   order by (x.it_number = p_it) desc, x.added_at desc limit 1;
+  if found then
+    if v_other.it_number = p_it then
+      return jsonb_build_object('ok', true, 'data', jsonb_build_object('itNumber', p_it, 'itemCode', v_other.item_code, 'attached', false));
+    end if;
+    return jsonb_build_object('ok', false, 'error', jsonb_build_object('code', 'ALREADY_IN_BATCH', 'message', 'Group UID đã thuộc đợt xả khác',
+      'itNumber', v_other.it_number, 'itemCode', v_other.item_code));
   end if;
-  select g.* into v_gd from public.group_uid_details g where g.group_uid_code = v_code;
+  select g.* into v_gd from public.group_uid_details g where g.group_uid_code = p_code;
   v_sku := btrim(coalesce(v_gd.sku, ''));
   if v_gd.group_uid_code is null or v_sku = '' then
     return jsonb_build_object('ok', false, 'error', jsonb_build_object('code', 'GROUP_UID_NOT_READY', 'message', 'Group UID chưa có dữ liệu SKU'));
   end if;
-  select b.* into v_batch from public.xa_vai_it_batches b where b.it_number = v_it for update;
+  select b.* into v_batch from public.xa_vai_it_batches b where b.it_number = p_it for update;
   if not found then
     return jsonb_build_object('ok', false, 'error', jsonb_build_object('code', 'NOT_FOUND', 'message', 'Chưa nạp phiếu IT này'));
   end if;
@@ -148,13 +161,25 @@ begin
     return jsonb_build_object('ok', false, 'error', jsonb_build_object('code', 'SKU_NOT_IN_BATCH', 'message', 'SKU của Group UID không có trong phiếu IT này'));
   end if;
   insert into public.xa_vai_it_uids (it_number, group_uid_code, sku, batch_code, roll_code, wms_qty, wms_mm, rfid, source, added_device)
-  values (v_it, v_code, v_sku, left(btrim(coalesce(v_gd.batch_code, '')), 120), left(btrim(coalesce(v_gd.roll_code, '')), 120), v_gd.qty,
-          public.xa_vai_system_mm(v_name, v_gd.qty), left(nullif(btrim(coalesce(v_gd.group_rfid_mapping, '')), ''), 40), 'scan',
-          public.print_device_by_token(p_access_token))
+  values (p_it, p_code, v_sku, left(btrim(coalesce(v_gd.batch_code, '')), 120), left(btrim(coalesce(v_gd.roll_code, '')), 120), v_gd.qty,
+          public.xa_vai_system_mm(v_name, v_gd.qty), left(nullif(btrim(coalesce(v_gd.group_rfid_mapping, '')), ''), 40), 'scan', p_device)
   on conflict (it_number, group_uid_code) do nothing;
   v_added := found;
-  return jsonb_build_object('ok', true, 'data', jsonb_build_object('itNumber', v_it, 'itemCode', v_batch.item_code, 'attached', v_added),
-    'meta', jsonb_build_object('updatedAt', now(), 'schemaVersion', 1));
+  return jsonb_build_object('ok', true, 'data', jsonb_build_object('itNumber', p_it, 'itemCode', v_batch.item_code, 'attached', v_added));
+end $$;
+revoke all on function public._xa_vai_it_attach_core(text, text, uuid) from public, anon, authenticated;
+
+create or replace function public._xa_vai_it_attach_body(p_access_token text, p_group_uid text, p_it_number text)
+returns jsonb language plpgsql security definer set search_path = '' as $$
+declare
+  v_code text := btrim(coalesce(p_group_uid, ''));
+  v_it text := btrim(coalesce(p_it_number, ''));
+begin
+  if v_code !~ '^[0-9]{16}$' or v_it !~ '^[0-9]{16}$' then
+    return jsonb_build_object('ok', false, 'error', jsonb_build_object('code', 'INVALID_INPUT', 'message', 'Mã Group UID hoặc số phiếu IT không hợp lệ'));
+  end if;
+  return public._xa_vai_it_attach_core(v_code, v_it, public.print_device_by_token(p_access_token))
+    || jsonb_build_object('meta', jsonb_build_object('updatedAt', now(), 'schemaVersion', 1));
 end $$;
 revoke all on function public._xa_vai_it_attach_body(text, text, text) from public, anon, authenticated;
 
@@ -385,6 +410,9 @@ begin
     returning (xmax = 0) as inserted
   )
   select count(*) filter (where inserted) into v_added from up;
+  delete from public.xa_vai_it_uids x
+   where x.source = 'scan' and x.it_number <> v_it
+     and x.group_uid_code in (select btrim(u->>'groupUid') from jsonb_array_elements(v_uids) as t(u));
   select count(*) into v_total from public.xa_vai_it_uids u where u.it_number = v_it;
 
   return jsonb_build_object('ok', true, 'data', jsonb_build_object('itNumber', v_it, 'itemCode', v_code, 'created', v_created,
@@ -475,6 +503,8 @@ declare
   v_sys numeric;
   v_row public.xa_vai_measures;
   v_try integer := 0;
+  v_it_state jsonb;
+  v_attach jsonb;
 begin
   if v_code is null or length(v_code) > 40 or v_code ~ '[[:cntrl:]]' then
     return jsonb_build_object('ok', false, 'error', jsonb_build_object('code', 'INVALID_UID', 'message', 'Mã Group UID không hợp lệ'));
@@ -494,9 +524,21 @@ begin
   end if;
   -- Xả vải theo phiếu IT (xa_vai_it_v2, 05/11/2026): UID CHƯA có mét, khác SKU với mọi đợt đang xả (có ít nhất một đợt mở) → không lưu
   -- (web đã báo vận hành kho qua xa_vai_it_report). Sửa mét UID đã có dòng vẫn được. Không có đợt mở → đo tự do như trước.
-  if not exists (select 1 from public.xa_vai_measures m where m.group_uid_code = v_code)
-     and public._xa_vai_it_state(v_code, v_sku)->>'state' = 'other_sku' then
-    return jsonb_build_object('ok', false, 'error', jsonb_build_object('code', 'OUTSIDE_BATCH', 'message', 'Group UID nằm ngoài đợt xả vải đang mở'));
+  -- UID CÙNG SKU với đợt mở mà chưa gắn (web không kiểm được: mạng / web cũ): một đợt → tự gắn trong cùng giao dịch; nhiều đợt → NEED_BATCH.
+  if not exists (select 1 from public.xa_vai_measures m where m.group_uid_code = v_code) then
+    v_it_state := public._xa_vai_it_state(v_code, v_sku);
+    if v_it_state->>'state' = 'other_sku' then
+      return jsonb_build_object('ok', false, 'error', jsonb_build_object('code', 'OUTSIDE_BATCH', 'message', 'Group UID nằm ngoài đợt xả vải đang mở'));
+    end if;
+    if v_it_state->>'state' = 'same_sku' then
+      if jsonb_array_length(v_it_state->'batches') > 1 then
+        return jsonb_build_object('ok', false, 'error', jsonb_build_object('code', 'NEED_BATCH', 'message', 'Chọn phiếu IT cho Group UID này', 'batches', v_it_state->'batches'));
+      end if;
+      v_attach := public._xa_vai_it_attach_core(v_code, v_it_state->'batches'->0->>'itNumber', public.print_device_by_token(p_access_token));
+      if not coalesce((v_attach->>'ok')::boolean, false) and v_attach->'error'->>'code' <> 'ALREADY_IN_BATCH' then
+        return v_attach;
+      end if;
+    end if;
   end if;
   select btrim(coalesce(s.product_name, '')) into v_name from public."SKU_Name" s where s.sku = v_sku;
   v_sys := public.xa_vai_system_mm(v_name, v_gd.qty);
