@@ -240,7 +240,8 @@ export function normalizeJob(input, { printerKind } = {}) {
       productName: cleanText(payload.productName, 180) || null,
       printedAt,
       reprint: payload.reprint === true,
-      ...(rich ? { itNumbers } : {}),
+      // 0.12.1 (máy chủ xa_vai_a4_v3): tên máy gửi lệnh — ô "Người xả" (≤ 60 ký tự như print_devices.name); thiếu → null, ô để trống.
+      ...(rich ? { itNumbers, deviceName: cleanText(payload.deviceName, 60) || null } : {}),
       items
     };
   }

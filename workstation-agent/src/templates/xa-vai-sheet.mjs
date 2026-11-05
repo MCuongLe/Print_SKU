@@ -1,7 +1,7 @@
 import sharp from "sharp";
 import { escapeXml, LABEL_FONT_FAMILY } from "./common.mjs";
 import { estimateTextWidth } from "./text-layout.mjs";
-import { barcodeRects } from "./code128.mjs";
+import { barcodeRects, encodeCode128 } from "./code128.mjs";
 
 /**
  * PHIẾU THEO DÕI XẢ VẢI (agent 0.11.0, lệnh xa_vai_sheet v1) — khổ A4 NGANG, 300 dpi = 3508 × 2480 px mỗi trang.
@@ -21,6 +21,10 @@ import { barcodeRects } from "./code128.mjs";
  * dải barcode số phiếu IT (mỗi phiếu một barcode, tối đa 3) dưới biển; bảng nhóm theo SKU (dòng tiêu đề nhóm "SKU · Mã vải · Màu ·
  * Đơn vị", các cuộn, dòng cộng nhóm); cột Mã vải, Màu; số lượng theo ĐƠN VỊ GỐC của SKU (systemQty / actualQty: g, mm, m). Lệnh không có
  * khoá `unit` (máy chủ cũ) in mẫu cũ (mm) như 0.11.0.
+ *
+ * Bản 0.12.1 (05/11/2026, sau tờ in thử 0.12.0; máy chủ xa_vai_a4_v3 thêm deviceName): barcode phiếu IT lên GIỮA MÉP TRÊN (dải lề trên + dòng
+ * tiêu đề nhỏ, giữa tiêu đề trái và Trang / Ngày in phải) nên bảng không mất dải 165 px; không vừa (nhiều phiếu IT) thì về dải dưới biển như 0.12.0.
+ * Mẫu mới chỉ một ô ký "Người xả" ghi sẵn tên máy gửi lệnh (deviceName); bỏ ô "Người kiểm". Mẫu cũ (mm) giữ nguyên.
  *
  * Bề rộng chữ ước lượng bằng estimateTextWidth (bảng em của Arial, rộng hơn chữ thật ~10–20%) cộng thêm hệ số cho
  * chữ đậm: chữ nào không vừa ô thì thu cỡ rồi mới cắt kèm "…" — không bao giờ tràn ô hay tràn lề.
@@ -324,6 +328,19 @@ function tableSvg(rows, startIndex, totals) {
   return { svg: `${parts.join("")}<g stroke="#000" fill="none" shape-rendering="crispEdges">${lines.join("")}</g>`, bottom: tableBottom };
 }
 
+/** Mẫu 0.12.1: một ô "Người xả" ở góc phải, ghi sẵn tên máy gửi lệnh in (trống khi máy chủ không gửi). */
+function richSignatureSvg(top, deviceName) {
+  const boxW = 760;
+  const x = W - MX - boxW;
+  const parts = [`<rect x="${x}" y="${top}" width="${boxW}" height="${SIGN_H}" fill="none" stroke="#000" stroke-width="3" shape-rendering="crispEdges"/>`];
+  parts.push(textEl(x + boxW / 2, top + 44, "Người xả", { size: 32, bold: true, anchor: "middle" }));
+  if (deviceName) {
+    const name = fitText(deviceName, boxW - 2 * CELL_PAD, 44, { minSize: 28, bold: true });
+    parts.push(textEl(x + boxW / 2, top + 128, name.text, { size: name.size, bold: true, anchor: "middle", role: "device-name" }));
+  }
+  return parts.join("");
+}
+
 function signatureSvg(top) {
   const boxW = 760;
   const boxH = SIGN_H;
@@ -341,6 +358,12 @@ const BARCODE_BAND = 165;       // vạch 110 px (9,3 mm) + số 34 px + đệm
 const BARCODE_H = 110;
 const BARCODE_W = 900;          // mỗi phiếu IT một ô 900 px (16 số ở Code128 C ≈ 123 module → module 6 px, đọc được ở 300 dpi)
 const MAX_IT_BARCODES = 3;
+// 0.12.1: barcode ở mép trên. Vạch từ y = 66 (5,6 mm — HP P1102w không in được ~4,2 mm sát mép) tới sát vạch kẻ dưới dòng tiêu đề nhỏ.
+const TOP_BAR_Y = 66;
+const TOP_BAR_H = MY + INFO_H - 6 - TOP_BAR_Y;   // 109 px ≈ 9,2 mm
+const TOP_BAR_GAP = 60;                          // giữa hai phiếu IT
+const TOP_LABEL_GAP = 8;                         // giữa số "IT …" và vùng yên lặng của barcode
+const TOP_SIDE_GAP = 60;                         // cách tiêu đề trái / chữ Trang bên phải
 // Tổng đúng CONTENT_W (3224). Cột số không ghi đơn vị (đơn vị nằm ở dòng tiêu đề nhóm SKU).
 const RICH_COLUMNS = Object.freeze([
   { key: "stt", title: "STT", width: 100, align: "middle" },
@@ -499,6 +522,45 @@ function groupTitle(group, continued) {
   return [`SKU ${group.sku}`, group.fabricCode ? `Mã vải ${group.fabricCode}` : "", group.color ? `Màu ${group.color}` : "", unit].filter(Boolean).join(" · ") + (continued ? " (tiếp)" : "");
 }
 
+/** Vùng trống giữa dòng tiêu đề nhỏ (đo như headerSvg; "Trang 99/99" để mọi trang cùng một chỗ). */
+function topFreeRange(payload) {
+  let left = MX + textWidth("PHIẾU THEO DÕI XẢ VẢI", 34, true);
+  if (payload.reprint) left += 36 + 150;
+  const printed = `Ngày in ${formatViDateTime(payload.printedAt)}`;
+  const right = W - MX - textWidth(printed, 32) - 56 - textWidth("Trang 99/99", 34, true);
+  return { left: Math.ceil(left + TOP_SIDE_GAP), right: Math.floor(right - TOP_SIDE_GAP) };
+}
+
+/**
+ * Bố cục barcode ở mép trên: mỗi phiếu IT "IT <số>" (đậm 32, chân chữ cùng dòng tiêu đề) + barcode bên phải; module 6 → 4 px (≥ 0,34 mm) tới khi
+ * MỌI phiếu vừa vùng trống, đặt giữa trang (lệch vào trong vùng trống nếu cần). Không vừa → null (dùng dải dưới biển như 0.12.0).
+ */
+export function xaVaiTopBarcodeLayout(payload) {
+  const itNumbers = Array.isArray(payload.itNumbers) ? payload.itNumbers : [];
+  if (!itNumbers.length) return null;
+  const { left, right } = topFreeRange(payload);
+  for (const module of [6, 5, 4]) {
+    const items = itNumbers.map((number) => {
+      const label = `IT ${number}`;
+      const labelW = Math.ceil(textWidth(label, 32, true));
+      const boxW = (encodeCode128(number).length + 20) * module;   // 10 module yên lặng mỗi bên (barcodeRects)
+      return { number, label, labelW, boxW, width: labelW + TOP_LABEL_GAP + boxW };
+    });
+    const total = items.reduce((sum, item) => sum + item.width, 0) + (items.length - 1) * TOP_BAR_GAP;
+    if (total > right - left) continue;
+    let x = Math.round(Math.min(Math.max(W / 2 - total / 2, left), right - total));
+    const placed = items.map((item) => { const at = { ...item, x, module }; x += item.width + TOP_BAR_GAP; return at; });
+    return { module, items: placed };
+  }
+  return null;
+}
+
+function topBarcodesSvg(layout) {
+  const baseline = MY + 36;
+  return layout.items.map((item) => textEl(item.x, baseline, item.label, { size: 32, bold: true, role: "it-number" })
+    + barcodeRects(item.number, { x: item.x + item.labelW + TOP_LABEL_GAP, y: TOP_BAR_Y, width: item.boxW, height: TOP_BAR_H }).rects).join("");
+}
+
 function itBarcodesSvg(itNumbers, top) {
   const parts = [];
   itNumbers.slice(0, MAX_IT_BARCODES).forEach((number, index) => {
@@ -597,7 +659,8 @@ export function xaVaiRichTotals(items) {
 
 function renderRichSvgs(payload, items) {
   const itNumbers = Array.isArray(payload.itNumbers) ? payload.itNumbers : [];
-  const hasBarcodes = itNumbers.length > 0;
+  const topLayout = xaVaiTopBarcodeLayout(payload);
+  const hasBarcodes = itNumbers.length > 0 && !topLayout;   // dải dưới biển chỉ khi mép trên không đủ chỗ
   const tableTop = TABLE_TOP + (hasBarcodes ? BARCODE_BAND : 0);
   const pages = paginateXaVaiRich(xaVaiRichEntries(items), xaVaiRichRowsPerFullPage(hasBarcodes), xaVaiRichRowsPerPage(hasBarcodes));
   const totals = xaVaiRichTotals(items);
@@ -605,8 +668,8 @@ function renderRichSvgs(payload, items) {
   return pages.map((entries, pageIndex) => {
     const last = pageIndex === pages.length - 1;
     const table = richTableSvg(entries, tableTop, last ? totals : null);
-    const barcodes = hasBarcodes ? itBarcodesSvg(itNumbers, TABLE_TOP - 4) : "";
-    const body = `${headerSvg({ ...payload, items }, releaseLabel, pageIndex, pages.length)}${barcodes}${table.svg}${last ? signatureSvg(table.bottom + SIGN_GAP) : ""}`;
+    const barcodes = topLayout ? topBarcodesSvg(topLayout) : hasBarcodes ? itBarcodesSvg(itNumbers, TABLE_TOP - 4) : "";
+    const body = `${headerSvg({ ...payload, items }, releaseLabel, pageIndex, pages.length)}${barcodes}${table.svg}${last ? richSignatureSvg(table.bottom + SIGN_GAP, payload.deviceName) : ""}`;
     return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" font-family="${LABEL_FONT_FAMILY}" fill="#000"><rect width="${W}" height="${H}" fill="#fff"/>${body}</svg>`;
   });
 }
