@@ -268,3 +268,11 @@ Xem lại khi đổi khổ giấy, máy in, barcode, queue contract, thời hạ
 - Mẫu mới: dải barcode Code128 cao 110 px mỗi số phiếu IT (tối đa 3) dưới biển; bảng nhóm SKU (tiêu đề "SKU · Mã vải · Màu · Đơn vị", cộng nhóm có ghi chú khi thiếu số); g / mm số nguyên, đơn vị khác 2 chữ số; TỔNG chỉ cộng khi mọi SKU cùng đơn vị. Chia trang: trang giữa 19 dòng, trang cuối 16 (chừa TỔNG + ô ký); cắt ở đầu nhóm SKU, không để "(tiếp)" đứng ngay trên dòng Cộng (fuzz hai bộ, review 05/11).
 - **Test**: `tests/xa-vai-sheet-0120.test.mjs` (6 test); `node --test` 242/242.
 - **CHƯA in giấy thật**: cài gói 0.12.0 trên DESKTOP-foq5t89 (giữ `.env`), in thử một phiếu có 2 phiếu IT + 2 SKU (mm và g): xem barcode quét được bằng máy cầm tay, số gram, chia trang.
+
+## Agent 0.12.1 (05/11/2026) — barcode phiếu IT ở mép trên, ô "Người xả" = tên máy gửi lệnh
+
+- Tờ in thử thật 0.12.0 (HAO-MB, phiếu SWSH02, 1 phiếu IT, 3 SKU) đạt; người dùng: "Mã phiếu IT cần chuyển lên giữa đầu trang tận dụng mép giấy. Bỏ phần người kiểm tra. Người xả lấy tên thiết bị gửi lệnh in."
+- Barcode: vạch y 66 → 175 px (5,6 mm từ mép; HP P1102w lề cứng ~4,2 mm; print-bitmap.ps1 vẽ ảnh lùi theo lề cứng nên toạ độ ảnh = toạ độ giấy), "IT …" đậm 32 cùng chân chữ dòng tiêu đề; cả cụm giữa trang trong vùng trống giữa tiêu đề (+ IN LẠI) và "Trang 99/99 · Ngày in"; module 6 → 4 px; không vừa → dải dưới biển (0.12.0). Đo: 1 phiếu IT vừa ở module 6; 2 phiếu không vừa.
+- Ô ký: một ô "Người xả" + `deviceName` (máy chủ `xa_vai_a4_v3`: `print_devices.name` của máy gửi lệnh; in lại = máy gửi lệnh in lại, vì print_jobs chỉ giữ vài ngày).
+- **Test**: `tests/xa-vai-sheet-0121.test.mjs` (4 test); `node --test` 246/246 (một lần chạy hỏng 1 test chập chờn, 4 lần chạy lại đạt).
+- **CHƯA in giấy thật** bản 0.12.1: cài gói trên DESKTOP-foq5t89, in thử — xem vạch ở mép trên có bị xén không, máy cầm tay quét được.

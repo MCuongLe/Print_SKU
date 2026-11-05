@@ -2,6 +2,12 @@
 
 Agent Windows độc lập phục vụ ứng dụng Print SKU. Bản 0.11.0 thêm chế độ máy in A4 (`PRINTER_KIND=a4`) in PHIẾU THEO DÕI XẢ VẢI; chế độ mặc định in tem SKU (mẫu gộp `sku:v3`: tem có PO + ngày nhận và tem thường trong cùng một lệnh; vẫn in `sku:v1`, `sku:v2`), Group UID và mã vị trí (tem Fabric Relaxation đã bỏ) tem.
 
+## Cập nhật 0.12.1 — phiếu A4 xả vải: barcode ở mép trên, ô "Người xả" ghi tên máy (05/11/2026)
+
+- Sau tờ in thử 0.12.0 (người dùng): barcode số phiếu IT lên **giữa mép trên** (vạch cao 109 px từ 5,6 mm cách mép giấy, số "IT …" cùng dòng tiêu đề nhỏ), bảng không còn mất dải 165 px dưới biển. Nhiều phiếu IT không vừa mép trên (thường ≥ 2) thì về dải dưới biển như 0.12.0.
+- Mẫu mới chỉ còn một ô ký **"Người xả"**, ghi sẵn tên máy gửi lệnh in (`payload.deviceName`, tên trong Admin → Thiết bị in; máy chủ `supabase/xa_vai_a4_v3.sql`); bỏ ô "Người kiểm". Lệnh không có tên → ô trống. Mẫu cũ (mm) giữ hai ô.
+- Chỉ máy in A4 (`may-a4-01`, DESKTOP-foq5t89) cài lại; gói `release/PrintSKUAgent-0.12.1.zip`, giữ `.env`. Test `tests/xa-vai-sheet-0121.test.mjs`.
+
 ## Cập nhật 0.12.0 — phiếu A4 xả vải: barcode phiếu IT, nhóm theo SKU, đơn vị gốc (05/11/2026)
 
 - Cùng lệnh `xa_vai_sheet` v1, không đổi capability. Máy chủ `supabase/xa_vai_a4_v2.sql` thêm vào payload `itNumbers` và ở từng dòng `itNumber`, `fabricCode`, `color`, `unit`, `systemQty`, `actualQty` (đơn vị gốc của SKU: g / mm / m). Khi MỌI dòng có khoá `unit`, agent in mẫu mới: dải barcode Code128 từng số phiếu IT (tối đa 3) dưới biển mã hàng; bảng nhóm theo SKU (dòng tiêu đề "SKU · Mã vải · Màu · Đơn vị", các cuộn, dòng cộng nhóm); cột Mã vải, Màu; số lượng theo đơn vị gốc (g, mm số nguyên; m 2 chữ số thập phân); TỔNG chỉ cộng số khi mọi SKU cùng đơn vị. Lệnh không có trường mới in mẫu cũ (mm) như 0.11.0.
@@ -31,7 +37,7 @@ Agent Windows độc lập phục vụ ứng dụng Print SKU. Bản 0.11.0 thê
   `Mã hàng: <mã>` (đậm, cỡ 36, không bao giờ cắt — hai mã chỉ khác đuôi `…-L` / `…-XL` vẫn phân biệt được), rồi
   `SKU … · tên` cùng hàng chỉ khi có `productName` và cả phiếu một SKU (tên bị cắt "…" trước, không cắt mã). Bảng: STT · Group UID ·
   **SKU** · Lot · Roll · Hệ thống (mm) · Thực tế (mm) · Chênh lệch (mm) · Giờ nhập (không còn cột độ co); 18 dòng/trang
-  (dòng 7 mm, tự tính từ chiều cao biển), dòng TỔNG + hai ô ký "Người xả" · "Người kiểm" ở trang cuối. Chênh lệch =
+  (dòng 7 mm, tự tính từ chiều cao biển), dòng TỔNG + hai ô ký "Người xả" · "Người kiểm" ở trang cuối (mẫu 0.12.1: một ô "Người xả" ghi tên máy gửi lệnh). Chênh lệch =
   thực tế − hệ thống (mm); thiếu mét hệ thống → "—". Dòng TỔNG (mm): tổng thực tế cộng mọi dòng; tổng hệ thống và chênh
   lệch chỉ tính trên các dòng có mét hệ thống, kèm chú thích "chênh lệch: n/m UID có mét hệ thống" khi có dòng thiếu.
 - In qua `powershell/print-bitmap.ps1` (`PrintDocument`, A4 ngang, lề 0, bù lề cứng của máy, tự lặp đủ số bản trong một tài

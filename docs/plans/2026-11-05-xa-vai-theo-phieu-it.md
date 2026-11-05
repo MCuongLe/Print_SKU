@@ -78,7 +78,16 @@ Thứ tự: Việc 1 → Việc 2 → Việc 3 → Việc 4 (review) → Việc 
 - [x] Agent 0.12.0 (mẫu mới, validator, phiên bản) + `workstation-agent/tests/xa-vai-sheet-0120.test.mjs`; `node --test` 242/242
 - [x] Web: Excel đơn vị gốc + Mã vải / Màu; `xa_vai_a4_browser` PASS
 - [x] Review vòng 1 (Codex mã 4 + ảnh 7, Claude A 4 + BC 6; co-van 15 vấn đề): sửa chia trang (biên 18 / 36 cuộn, trang 1 bị bóp; fuzz 60.000 tổ hợp sạch), ghi chú thiếu số ở Cộng / TỔNG, TỔNG khác đơn vị, số lẻ cho kg / yard, barcode 110 px, tách tên (bỏ %, tên 3 trường, trim), giữ mm khi tên SKU đổi sau lúc đo, itNumbers một phiếu mỗi UID, Excel thêm Thực tế (mm), tài liệu; KHÔNG đổi xa_vai_it_save (co-van: vượt chốt, nạp lại phiếu cũ giành UID). Làm sau: nhóm theo sku + unit, hiện phiên bản agent trên web.
-- [ ] Commit, migration, push, build gói 0.12.0, người dùng cài trên DESKTOP-foq5t89 + in thử
+- [x] Commit, migration, push, build gói 0.12.0, người dùng cài trên DESKTOP-foq5t89 + in thử (tờ in thật 05/11 16:27: barcode, nhóm SKU, số đúng)
+
+## Đợt 4: barcode mép trên + ô Người xả (05/11/2026)
+- Yêu cầu (sau tờ in thử 0.12.0): "Mã phiếu IT cần chuyển lên giữa đầu trang tận dụng mép giấy. Bỏ phần người kiểm tra. Người xả lấy tên thiết bị gửi lệnh in."
+- Thiết kế: barcode ở lề trên + dòng tiêu đề nhỏ, giữa trang; không vừa (≥ 2 phiếu IT) → dải dưới biển như 0.12.0. Một ô "Người xả" = `print_devices.name` của máy gửi lệnh (in lại: máy gửi lệnh in lại). Cùng lệnh v1, chỉ thêm `deviceName`.
+- [x] SQL `supabase/xa_vai_a4_v3.sql` + `tests/xa_vai_a4_v3_sql.cjs` PASS
+- [x] Agent 0.12.1 + `workstation-agent/tests/xa-vai-sheet-0121.test.mjs`; `node --test` 246/246
+- [x] Review vòng 1 (Codex 1, Claude A 0, BC 4; co-van chấm): sửa tài liệu (70); bỏ qua >3 phiếu IT (có sẵn từ 0.12.0, đã chốt tối đa 3), tên máy dài / in lại ghi máy in lại (đã chốt), log nhánh dải dưới biển; làm sau: log khi lệnh mẫu mới thiếu deviceName (35)
+- [x] Migration `xa_vai_a4_v3` (5 câu, `-- kiem:` true, ghi sổ release_ledger ở 7c2534e)
+- [ ] Build gói 0.12.1, người dùng cài trên DESKTOP-foq5t89 + in thử (vạch ở mép trên không bị xén, máy cầm tay quét được, ô Người xả có tên máy)
 
 ## Phát sinh
 - 05/11/2026 Tách hunk: cây làm việc có phần "Đối chiếu phủ lot theo PO" của phiên khác (`index.html`, `docs/QUYET_DINH.md`, `tests/bridge_ready.cjs` + tệp chưa theo dõi) → commit chỉ phần của đợt này; `bridge_ready` phần commit 11, cây làm việc 12; `tests/cut_po_coverage_browser.cjs` (chưa theo dõi) đã đổi số phiên bản giả lập 0.12.5 → 0.12.6 để cổng commit đạt.
