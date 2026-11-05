@@ -6,10 +6,13 @@
 --
 -- Tác động:
 --   * Hàm mới (nội bộ, không cấp quyền): xa_vai_name_parts(tên SKU) → { fabricCode, color, unit } (tên dạng "Vải …/<mã vải>/…/<màu>/<đơn vị>";
---     màu = trường gần đơn vị nhất (đi lùi tới trường 3) không trống, không "none", không phải thông số gsm / cm / inch / width / khổ;
---     mã vải "none" → null; tên < 4 trường → null);
+--     màu = trường gần đơn vị nhất (đi lùi tới trường 3; tên 3 trường: trường 2) không trống, không "none", không phải thông số
+--     gsm / cm / inch / width / khổ hay thành phần có %; mã vải = trường 2 khi tên ≥ 4 trường, "none" / có % → null);
 --     xa_vai_mm_to_unit(tên SKU, mm) = nghịch đảo xa_vai_system_mm (m: mm ÷ 1000; mm: mm; g: mm × GSM × khổ (m) ÷ 1000; đơn vị khác / thiếu
---     GSM, khổ → null); _xa_vai_unit_json(dòng, tên) → { unit, systemQty (= system_qty WMS), actualQty, fabricCode, color }.
+--     GSM, khổ → null); _xa_vai_unit_json(dòng, tên) → { unit, systemQty (= system_qty WMS), actualQty, fabricCode, color } — tên hiện tại
+--     không khớp số chụp lúc đo (xa_vai_system_mm(tên, system_qty) ≠ system_mm) → giữ mm.
+--   * Không đổi xa_vai_it_save (review vòng 1 / co-van: gỡ cả UID nguồn 'it' vượt chốt "Chuyển" 05/11 và làm nạp lại phiếu cũ giành UID);
+--     UID còn liên kết hai phiếu thì lệnh in chỉ lấy MỘT phiếu mỗi UID (added_at mới nhất, như xa_vai_it_of_uids) → không in thừa barcode.
 --   * Thay (cùng chữ ký): _xa_vai_item_json (+ các trường trên — Excel tab Đã in), _xa_vai_print_enqueue_body (bản đang chạy = xa_vai_a4_v1.sql,
 --     kiểm pg_get_functiondef 05/11: khớp; + itNumbers, item.itNumber + trường đơn vị; dòng xếp theo SKU). template_version vẫn 1: agent 0.11.0
 --     bỏ qua trường lạ, in mẫu cũ; agent 0.12.0 in mẫu mới khi có trường mới.
@@ -18,7 +21,7 @@
 -- Thứ tự lên: commit (chưa push) → migration này → push web (Excel) → người dùng cài agent 0.12.0 ở máy in A4 → in thử.
 -- Kiểm cục bộ: node tests/xa_vai_a4_v2_sql.cjs; python scripts/apply_supabase_sql.py supabase/xa_vai_a4_v2.sql --dry-run
 -- Chạy: python scripts/apply_supabase_sql.py supabase/xa_vai_a4_v2.sql
--- kiem: select to_regprocedure('public.xa_vai_name_parts(text)') is not null and to_regprocedure('public.xa_vai_mm_to_unit(text,numeric)') is not null and not has_function_privilege('anon', 'public.xa_vai_name_parts(text)', 'execute') and not has_function_privilege('anon', 'public._xa_vai_unit_json(public.xa_vai_measures,text)', 'execute') and public.xa_vai_mm_to_unit('Vải thử/M1/100% Cotton/200gsm, 160cm/Đen/g', 1000) = 320 and (public.xa_vai_name_parts('Vải bo rib/Korea/None/None/Cam/None/Khổ 100cm/g')->>'color') = 'Cam' and public.xa_vai_mm_to_unit('Vải thử/M1/x/150gsm,152cm/Đen/mm', 1234) = 1234 and (public.xa_vai_name_parts('Vải thử/M1 NCC/100% Poly/63gsm-60inch/Đen-Deep black/mm')->>'color') = 'Đen-Deep black' and (public.xa_vai_name_parts('Vải thử/M1/x/Dusty Mauve /140gsm,57inch/mm')->>'color') = 'Dusty Mauve'
+-- kiem: select to_regprocedure('public.xa_vai_name_parts(text)') is not null and to_regprocedure('public.xa_vai_mm_to_unit(text,numeric)') is not null and not has_function_privilege('anon', 'public.xa_vai_name_parts(text)', 'execute') and not has_function_privilege('anon', 'public._xa_vai_unit_json(public.xa_vai_measures,text)', 'execute') and public.xa_vai_mm_to_unit('Vải thử/M1/100% Cotton/200gsm, 160cm/Đen/g', 1000) = 320 and (public.xa_vai_name_parts('Vải bo rib/Korea/None/None/Cam/None/Khổ 100cm/g')->>'color') = 'Cam' and (public.xa_vai_name_parts('Vải X/M1/100% Cotton/200gsm,160cm/g')->>'color') is null and (public.xa_vai_name_parts('Vải dệt kim/95% poly/150cm, 750gsm/Painted Hawaii/mm')->>'fabricCode') is null and (public.xa_vai_name_parts('Vải thun/Trắng/mét')->>'color') = 'Trắng' and public.xa_vai_mm_to_unit('Vải thử/M1/x/150gsm,152cm/Đen/mm', 1234) = 1234 and (public.xa_vai_name_parts('Vải thử/M1 NCC/100% Poly/63gsm-60inch/Đen-Deep black/mm')->>'color') = 'Đen-Deep black' and (public.xa_vai_name_parts('Vải thử/M1/x/Dusty Mauve /140gsm,57inch/mm')->>'color') = 'Dusty Mauve'
 -- Rút lui (chạy lại khối _xa_vai_item_json + _xa_vai_print_enqueue_body của xa_vai_a4_v1.sql; rồi kèm --allow-destructive):
 --   drop function if exists public._xa_vai_unit_json(public.xa_vai_measures, text);
 --   drop function if exists public.xa_vai_mm_to_unit(text, numeric);
@@ -33,27 +36,33 @@ returns jsonb language plpgsql immutable set search_path = '' as $$
 declare
   v_parts text[] := string_to_array(coalesce(p_product_name, ''), '/');
   v_n integer := cardinality(string_to_array(coalesce(p_product_name, ''), '/'));
+  v_unit text;
   v_color text;
   v_code text;
+  v_seg text;
   v_i integer;
-  v_spec constant text := '(gsm|[0-9]\s*cm|inch|width|khổ|[0-9]\s*in\y)';
+  v_spec constant text := '(gsm|[0-9]\s*cm|inch|width|khổ|[0-9]\s*in\y|%)';
 begin
-  if v_n < 4 then
-    return jsonb_build_object('fabricCode', null, 'color', null, 'unit', nullif(lower(btrim(v_parts[v_n])), ''));
+  v_unit := left(nullif(lower(btrim(coalesce(v_parts[v_n], ''), E' \t\r\n')), ''), 20);
+  if v_n < 3 then
+    return jsonb_build_object('fabricCode', null, 'color', null, 'unit', v_unit);
   end if;
-  -- Màu: đi lùi từ trường kề đơn vị tới trường 3, bỏ trường trống / "none" / thông số (gsm, cm, inch, width, khổ).
-  for v_i in reverse v_n - 1 .. 3 loop
-    if btrim(v_parts[v_i]) <> '' and lower(btrim(v_parts[v_i])) <> 'none' and btrim(v_parts[v_i]) !~* v_spec then
-      v_color := btrim(v_parts[v_i]);
+  -- Màu: đi lùi từ trường kề đơn vị tới trường 3 (tên 3 trường: trường 2), bỏ trường trống / "none" / thông số / thành phần (có %).
+  for v_i in reverse v_n - 1 .. least(3, v_n - 1) loop
+    v_seg := btrim(coalesce(v_parts[v_i], ''), E' \t\r\n');
+    if v_seg <> '' and lower(v_seg) <> 'none' and v_seg !~* v_spec then
+      v_color := v_seg;
       exit;
     end if;
   end loop;
-  v_code := btrim(v_parts[2]);
-  if lower(v_code) = 'none' then
-    v_code := null;
+  -- Mã vải: trường 2 khi tên ≥ 4 trường, trừ "none" và thành phần vải (có %).
+  if v_n >= 4 then
+    v_code := btrim(coalesce(v_parts[2], ''), E' \t\r\n');
+    if lower(v_code) = 'none' or v_code like '%\%%' then
+      v_code := null;
+    end if;
   end if;
-  return jsonb_build_object('fabricCode', left(nullif(v_code, ''), 80), 'color', left(v_color, 80),
-    'unit', left(nullif(lower(btrim(v_parts[v_n])), ''), 20));
+  return jsonb_build_object('fabricCode', left(nullif(v_code, ''), 80), 'color', left(v_color, 80), 'unit', v_unit);
 end $$;
 revoke all on function public.xa_vai_name_parts(text) from public, anon, authenticated;
 
@@ -108,9 +117,17 @@ revoke all on function public.xa_vai_mm_to_unit(text, numeric) from public, anon
 -- Trường đơn vị gốc của một dòng đo: systemQty = số lượng WMS gốc (system_qty, đã ở đơn vị gốc); actualQty = mét thực tế đổi ra đơn vị gốc.
 create or replace function public._xa_vai_unit_json(p_row public.xa_vai_measures, p_product_name text)
 returns jsonb language sql immutable set search_path = '' as $$
-  select jsonb_build_object('unit', public.xa_vai_name_parts(p_product_name)->>'unit', 'systemQty', p_row.system_qty,
-    'actualQty', public.xa_vai_mm_to_unit(p_product_name, p_row.actual_mm),
-    'fabricCode', public.xa_vai_name_parts(p_product_name)->>'fabricCode', 'color', public.xa_vai_name_parts(p_product_name)->>'color')
+  -- Số hệ thống chụp lúc đo (system_qty, system_mm) ghép với tên SKU HIỆN TẠI: nếu tên đã đổi (đơn vị / GSM / khổ) thì
+  -- xa_vai_system_mm(tên, system_qty) không còn bằng system_mm → giữ mm (đơn vị lúc đo) thay vì ghép hai thời điểm (review vòng 1).
+  select case
+    when p_row.system_mm is not null and public.xa_vai_system_mm(p_product_name, p_row.system_qty) is distinct from p_row.system_mm then
+      jsonb_build_object('unit', 'mm', 'systemQty', p_row.system_mm, 'actualQty', p_row.actual_mm,
+        'fabricCode', public.xa_vai_name_parts(p_product_name)->>'fabricCode', 'color', public.xa_vai_name_parts(p_product_name)->>'color')
+    else
+      jsonb_build_object('unit', public.xa_vai_name_parts(p_product_name)->>'unit', 'systemQty', p_row.system_qty,
+        'actualQty', public.xa_vai_mm_to_unit(p_product_name, p_row.actual_mm),
+        'fabricCode', public.xa_vai_name_parts(p_product_name)->>'fabricCode', 'color', public.xa_vai_name_parts(p_product_name)->>'color')
+  end
 $$;
 revoke all on function public._xa_vai_unit_json(public.xa_vai_measures, text) from public, anon, authenticated;
 
@@ -212,11 +229,11 @@ begin
   -- bỏ qua trường lạ và in mẫu cũ (mm). Dòng xếp theo SKU rồi giờ nhập (phiếu nhóm theo SKU).
   select jsonb_build_object('itemCode', v_item, 'productName', v_name, 'printedAt', public._xa_vai_iso(now()),
            'reprint', v_reprint,
-           'itNumbers', coalesce((select jsonb_agg(distinct x.it_number order by x.it_number) from public.xa_vai_it_uids x where x.group_uid_code = any(v_uids)), '[]'::jsonb),
+           'itNumbers', coalesce((select jsonb_agg(distinct c.it order by c.it) from (select (select x.it_number from public.xa_vai_it_uids x where x.group_uid_code = u order by x.added_at desc, x.it_number limit 1) as it from unnest(v_uids) as u) c where c.it is not null), '[]'::jsonb),
            'items', coalesce(jsonb_agg(jsonb_build_object('groupUid', m.group_uid_code, 'sku', m.sku, 'lot', m.batch_code, 'roll', m.roll_code,
                       'systemMm', m.system_mm, 'actualMm', m.actual_mm, 'measuredAt', public._xa_vai_iso(m.measured_at))
                       || public._xa_vai_unit_json(m, s.product_name)
-                      || jsonb_build_object('itNumber', (select x.it_number from public.xa_vai_it_uids x where x.group_uid_code = m.group_uid_code order by x.added_at desc limit 1))
+                      || jsonb_build_object('itNumber', (select x.it_number from public.xa_vai_it_uids x where x.group_uid_code = m.group_uid_code order by x.added_at desc, x.it_number limit 1))
                       order by m.sku, m.measured_at, m.group_uid_code), '[]'::jsonb))
     into v_payload
     from public.xa_vai_measures m left join public."SKU_Name" s on s.sku = m.sku where m.group_uid_code = any(v_uids);

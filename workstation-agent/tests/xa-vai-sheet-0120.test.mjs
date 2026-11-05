@@ -7,7 +7,7 @@ import sharp from "sharp";
 import { normalizeJob } from "../src/job-validator.mjs";
 import {
   XA_VAI_COLUMNS, XA_VAI_PAGE, XA_VAI_RICH_COLUMNS, formatViQty, isRichXaVai, paginateXaVaiRich, renderXaVaiSheetPages, renderXaVaiSheetSvgs,
-  xaVaiGroups, xaVaiQtyTotals, xaVaiRichEntries, xaVaiRichRowsPerFullPage, xaVaiRichRowsPerPage, xaVaiRichTotals
+  qtyNote, xaVaiGroups, xaVaiQtyTotals, xaVaiRichEntries, xaVaiRichRowsPerFullPage, xaVaiRichRowsPerPage, xaVaiRichTotals
 } from "../src/templates/xa-vai-sheet.mjs";
 
 const uid = (n) => `1028260000000${String(n).padStart(3, "0")}`;
@@ -41,10 +41,13 @@ test("định dạng theo đơn vị gốc + cộng nhóm", () => {
   assert.equal(formatViQty(60758, "g"), "60.758"); assert.equal(formatViQty(1234.5, "m"), "1.234,50"); assert.equal(formatViQty(0, "m"), "0,00");
   assert.equal(formatViQty(-2734, "mm"), "-2.734"); assert.equal(formatViQty(null, "g"), "—");
   const t = xaVaiQtyTotals([rich(1, "9", { systemQty: 100, actualQty: 90 }), rich(2, "9", { systemQty: 50, actualQty: null }), rich(3, "9", { systemQty: null, actualQty: 10 })]);
-  assert.deepEqual(t, { count: 3, comparedCount: 1, system: 150, actual: 100, diff: -10, actualMissing: 1 });
+  assert.deepEqual(t, { count: 3, comparedCount: 1, system: 150, actual: 100, diff: -10, actualMissing: 1, systemMissing: 1 });
   const mixed = xaVaiRichTotals([rich(1, "900000001"), rich(2, "900000002", { unit: "g" })]);
   assert.equal(mixed.mixedUnits, true); assert.equal(mixed.groups, 2);
   assert.equal(xaVaiRichTotals([rich(1, "900000001"), rich(2, "900000001")]).mixedUnits, false);
+  assert.equal(xaVaiRichTotals([rich(1, "900000001", { unit: null })]).mixedUnits, false, "một SKU không rõ đơn vị: vẫn cộng");
+  assert.equal(xaVaiRichTotals([rich(1, "900000001", { unit: null }), rich(2, "900000002")]).mixedUnits, true);
+  assert.equal(formatViQty(18.75, "kg"), "18,75"); assert.equal(formatViQty(0.4, "yard"), "0,40");
 });
 
 test("nhóm theo SKU + chia trang: tiêu đề nhóm không đứng cuối trang, nhóm sang trang mới lặp tiêu đề (tiếp)", () => {
@@ -76,6 +79,16 @@ test("chia trang: trang giữa dùng hết chiều cao, trang cuối chừa TỔ
   assert.ok(big.slice(1).every((p) => p[0].type === "head" && p[0].continued));
   assert.equal(big.flat().filter((e) => e.type === "row").length, 40);
   assert.ok(big.every((p) => p[p.length - 1].type !== "head"));
+  // Ca biên (review vòng 1): nhóm lấp đúng một trang giữa → trang sau không chỉ có "(tiếp)" + Cộng; 17 cuộn → trang 1 không bị bóp còn vài cuộn.
+  for (const n of [17, 18, 19, 35, 36, 37, 54]) {
+    const ps = paginateXaVaiRich(xaVaiRichEntries(Array.from({ length: n }, (_, i) => rich(i + 1, "900000001"))), full, last);
+    assert.ok(ps.slice(0, -1).every((p) => p.length <= full) && ps.at(-1).length <= last, `${n} cuộn: không quá sức chứa`);
+    assert.equal(ps.flat().filter((e) => e.type === "row").length, n, `${n} cuộn: đủ cuộn`);
+    for (const p of ps) if (p.some((e) => e.type === "sum")) assert.ok(p.some((e) => e.type === "row"), `${n} cuộn: trang có dòng Cộng có ít nhất một cuộn`);
+    assert.ok(ps[0].length >= full - 3, `${n} cuộn: trang 1 gần đầy (${ps[0].length})`);
+  }
+  // Ghi chú thiếu số ở dòng Cộng và TỔNG.
+  assert.match(qtyNote(xaVaiQtyTotals([rich(1, "9", { systemQty: null }), rich(2, "9", { actualQty: null }), rich(3, "9")])), /1 cuộn thiếu số hệ thống · 1 cuộn chưa đổi được đơn vị/);
   // Vừa trang cuối thì một trang.
   assert.equal(paginateXaVaiRich(xaVaiRichEntries(items.slice(0, 5)), full, last).length, 1);
 });
@@ -93,7 +106,7 @@ test("SVG mẫu mới: barcode từng phiếu IT, cột Mã vải / Màu, tiêu 
   assert.ok(svg.includes("Cộng SKU 900000001 (2 cuộn)") && svg.includes("Cộng SKU 900000002 (1 cuộn)"));
   assert.ok(svg.includes(">16.763<") && svg.includes(">16.500<") && svg.includes(">-263<"), "số gram theo đơn vị gốc");
   assert.ok(svg.includes(">100.000<") && svg.includes(">99.600<"), "cộng nhóm mm");
-  assert.ok(svg.includes("TỔNG (3 UID · 2 SKU) · nhiều đơn vị"), "nhiều đơn vị: TỔNG không cộng số");
+  assert.ok(svg.includes("TỔNG (3 UID · 2 SKU) · khác đơn vị, không cộng"), "nhiều đơn vị: TỔNG không cộng số");
   assert.equal(XA_VAI_RICH_COLUMNS.reduce((sum, c) => sum + c.width, 0), XA_VAI_PAGE.width - 2 * XA_VAI_PAGE.marginX);
   // Không có phiếu IT (UID tự do): không vẽ dải barcode, thêm 2 dòng mỗi trang.
   const free = renderXaVaiSheetSvgs(normalizeJob(job([rich(1, "900000001", { itNumber: null })], { itNumbers: [] })).job.payload)[0];

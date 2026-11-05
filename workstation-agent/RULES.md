@@ -260,3 +260,11 @@ Xem lại khi đổi khổ giấy, máy in, barcode, queue contract, thời hạ
 - **Test**: `tests/group-uid-po-date-0100.test.mjs` mới (11 test); bỏ `tests/lot-roll-090.test.mjs`; sửa `templates`, `group-uid-name`, `sku-footer`, `restart-089`.
 - **CHƯA kiểm trên máy in thật** (chỉ làm được ở may-kho-01): in thử một tem có đủ Số lô / Số cuộn / RFID, PO 14 số, ngày nhận để xem độ đậm, khoảng cách và vạch ô trên giấy nhiệt; chỉ PO, chỉ ngày; PO 20 số; không SKU.
 - **Thứ tự phát hành (review 21/10/2026):** agent 0.10.0 không khai capability mới và web không kiểm phiên bản agent, nên agent ≤ 0.9.0 nhận lệnh có `po` / `receivedDate` sẽ bỏ hai trường và in tem cũ trong khi web báo "Đã gửi". **Dựng ZIP 0.10.0, cài lên may-kho-01 và in thử tem đủ PO + ngày nhận TRƯỚC khi push `main`** (push = deploy web). Chặn cứng bằng capability (ví dụ `group_uid:po-date`, theo mẫu `location:name-optional`) là việc làm sau nếu cần.
+
+## Agent 0.12.0 (05/11/2026) — phiếu A4 xả vải: barcode phiếu IT, nhóm theo SKU, đơn vị gốc
+
+- **Chỉ máy in A4** (`may-a4-01`, DESKTOP-foq5t89) cần cài; máy tem giữ bản đang chạy (phần tem không đổi).
+- Cùng lệnh `xa_vai_sheet` v1, không đổi capability: máy chủ `supabase/xa_vai_a4_v2.sql` thêm `itNumbers` + từng dòng `itNumber`, `fabricCode`, `color`, `unit`, `systemQty`, `actualQty`. Mọi dòng có khoá `unit` → mẫu mới; thiếu → mẫu 0.11.0 (mm). Agent 0.11.0 bỏ qua trường lạ nên vẫn in mẫu cũ cho tới khi cài 0.12.0.
+- Mẫu mới: dải barcode Code128 cao 110 px mỗi số phiếu IT (tối đa 3) dưới biển; bảng nhóm SKU (tiêu đề "SKU · Mã vải · Màu · Đơn vị", cộng nhóm có ghi chú khi thiếu số); g / mm số nguyên, đơn vị khác 2 chữ số; TỔNG chỉ cộng khi mọi SKU cùng đơn vị. Chia trang: trang giữa 19 dòng, trang cuối 16 (chừa TỔNG + ô ký); cắt ở đầu nhóm SKU, không để "(tiếp)" đứng ngay trên dòng Cộng (fuzz hai bộ, review 05/11).
+- **Test**: `tests/xa-vai-sheet-0120.test.mjs` (6 test); `node --test` 242/242.
+- **CHƯA in giấy thật**: cài gói 0.12.0 trên DESKTOP-foq5t89 (giữ `.env`), in thử một phiếu có 2 phiếu IT + 2 SKU (mm và g): xem barcode quét được bằng máy cầm tay, số gram, chia trang.

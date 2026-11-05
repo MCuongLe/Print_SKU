@@ -10350,11 +10350,12 @@ var FSK_CORE = (function () {
           // không cột co. Mã hàng / SKU / Group UID giữ chữ. AdminSyncUI.xlsxBlob đã đặt trang A4 ngang, vừa một trang theo chiều ngang.
           // 05/11/2026 (xa_vai_a4_v2): số theo ĐƠN VỊ GỐC của SKU như phiếu A4 (g, mm số nguyên; m 2 chữ số) + Mã vải, Màu; màn hình vẫn mét.
           // Máy chủ chưa có trường unit (trước migration) thì giữ mm như cũ.
-          const q=(v,u)=>!finite(v)?'':String(u||'').toLowerCase()==='m'?Math.round(Number(v)*100)/100:Math.round(Number(v));
-          const head=['STT','Mã hàng','SKU','Mã vải','Màu','Group UID','Lot','Roll','Đơn vị','Hệ thống','Thực tế','Chênh lệch','Giờ nhập','Giờ in'];
+          // g / mm số nguyên; đơn vị khác (m, kg, yard…) 2 chữ số. Cột "Thực tế (mm)" luôn có số đo gốc (SKU không đổi được đơn vị vẫn thấy số đã đo).
+          const q=(v,u)=>!finite(v)?'':['g','mm'].includes(String(u||'').trim().toLowerCase())?Math.round(Number(v)):Math.round(Number(v)*100)/100;
+          const head=['STT','Mã hàng','SKU','Mã vải','Màu','Group UID','Lot','Roll','Đơn vị','Hệ thống','Thực tế','Chênh lệch','Thực tế (mm)','Giờ nhập','Giờ in'];
           const rows=printedItems.map((x,i)=>{
-            const base='unit' in x,u=base?x.unit:'mm',sys=base?x.systemQty:x.systemMm,act=base?x.actualQty:x.actualMm;
-            return [i+1,String(x.itemCode??''),String(x.sku??''),String(x.fabricCode??''),String(x.color??''),String(x.groupUid??''),String(x.lot??''),String(x.roll??''),String(u??''),q(sys,u),q(act,u),finite(sys)&&finite(act)?q(Number(act)-Number(sys),u):'',fmtAt(x.measuredAt),fmtAt(x.printedAt)];
+            const base='unit' in x,u=String((base?x.unit:'mm')??'').trim(),sys=base?x.systemQty:x.systemMm,act=base?x.actualQty:x.actualMm;
+            return [i+1,String(x.itemCode??''),String(x.sku??''),String(x.fabricCode??''),String(x.color??''),String(x.groupUid??''),String(x.lot??''),String(x.roll??''),u,q(sys,u),q(act,u),finite(sys)&&finite(act)?q(Number(act)-Number(sys),u):'',finite(x.actualMm)?Math.round(Number(x.actualMm)):'',fmtAt(x.measuredAt),fmtAt(x.printedAt)];
           });
           const blob=window.AdminSyncUI.xlsxBlob(head,rows,'Xả vải'),a=document.createElement('a'),day=(dateFrom.value||todayVN()).replace(/-/g,''),f=itemFilter.value.trim().toUpperCase();
           a.href=URL.createObjectURL(blob);a.download=`Xa_vai_da_in_${CODE_RE.test(f)?`${f}_`:''}${day}.xlsx`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),10000);

@@ -52,7 +52,7 @@ Chế độ `label` (mặc định, máy tem TSC):
 
 ```json
 {
-  "version": "0.11.0",
+  "version": "0.12.0",
   "capabilities": ["sku:v1", "sku:v2", "sku:v3", "group_uid:v1", "location:v1", "location:name-optional"]
 }
 ```
@@ -61,7 +61,7 @@ Chế độ `a4` (`PRINTER_KIND=a4`, 0.11.0) — CHỈ một khả năng, không
 
 ```json
 {
-  "version": "0.11.0",
+  "version": "0.12.0",
   "capabilities": ["xa_vai_sheet:v1"]
 }
 ```

@@ -337,8 +337,8 @@ function signatureSvg(top) {
 }
 
 // ---------------- Mẫu 0.12.0: barcode phiếu IT + nhóm SKU + đơn vị gốc ----------------
-const BARCODE_BAND = 150;       // vạch 92 px + số 34 px + đệm
-const BARCODE_H = 92;
+const BARCODE_BAND = 165;       // vạch 110 px (9,3 mm) + số 34 px + đệm
+const BARCODE_H = 110;
 const BARCODE_W = 900;          // mỗi phiếu IT một ô 900 px (16 số ở Code128 C ≈ 123 module → module 6 px, đọc được ở 300 dpi)
 const MAX_IT_BARCODES = 3;
 // Tổng đúng CONTENT_W (3224). Cột số không ghi đơn vị (đơn vị nằm ở dòng tiêu đề nhóm SKU).
@@ -375,11 +375,11 @@ export function xaVaiRichRowsPerFullPage(hasBarcodes) {
 
 const finiteOrNull = (value) => (value === null || value === undefined || value === "" || !Number.isFinite(Number(value)) ? null : Number(value));
 
-/** Số theo đơn vị gốc kiểu Việt: m → 2 chữ số thập phân "1.234,50"; g / mm / khác → số nguyên "60.758"; null → "—". */
+/** Số theo đơn vị gốc kiểu Việt: g / mm → số nguyên "60.758"; đơn vị khác (m, kg, yard, mét…) → 2 chữ số thập phân "1.234,50"; null → "—". */
 export function formatViQty(value, unit) {
   const number = finiteOrNull(value);
   if (number === null) return DASH;
-  const meters = String(unit ?? "").toLowerCase() === "m";
+  const meters = !["g", "mm"].includes(String(unit ?? "").trim().toLowerCase());
   const rounded = meters ? Math.round(number * 100) / 100 : Math.round(number);
   if (rounded === 0) return meters ? "0,00" : "0";
   const [integer, fraction] = Math.abs(rounded).toFixed(meters ? 2 : 0).split(".");
@@ -409,7 +409,7 @@ export function xaVaiQtyTotals(items) {
   return {
     count: items.length, comparedCount: paired,
     system: systemCount ? system : null, actual: actualCount ? actual : null,
-    diff: paired ? pairedActual - pairedSystem : null, actualMissing: items.length - actualCount
+    diff: paired ? pairedActual - pairedSystem : null, actualMissing: items.length - actualCount, systemMissing: items.length - systemCount
   };
 }
 
@@ -428,7 +428,7 @@ export function xaVaiRichEntries(items) {
 /**
  * Chia trang: trang giữa chứa tới `full` dòng, trang cuối tới `last` dòng (chừa TỔNG + ô ký). Không để tiêu đề nhóm đứng cuối trang;
  * nhóm sang trang mới thì lặp tiêu đề "(tiếp)". Phần còn lại quá `last` thì tách trang cuối, ưu tiên cắt ở đầu một nhóm SKU (trang cuối
- * không chỉ còn mỗi dòng "Cộng").
+ * không chỉ còn mỗi dòng "Cộng"; trang bắt đầu bằng "(tiếp)" luôn có ít nhất một cuộn).
  */
 export function paginateXaVaiRich(entries, full, last = full) {
   const fullCap = Math.max(3, full);
@@ -441,8 +441,13 @@ export function paginateXaVaiRich(entries, full, last = full) {
     if (entry.type === "head") lastHead = entry;
     const closing = current.length >= fullCap || (entry.type === "head" && current.length >= fullCap - 1);
     if (closing) {
+      // Sang trang đúng lúc gặp dòng Cộng: mang cuộn cuối sang cùng, không để "(tiếp)" đứng ngay trên dòng Cộng.
+      const carried = entry.type === "sum" && current.length > 2 && current[current.length - 1].type === "row" ? current.pop() : null;
+      // Cuộn mang đi là cuộn duy nhất của nhóm → mang cả tiêu đề nhóm (trang trước không kết thúc bằng tiêu đề).
+      const carriedHead = carried && current[current.length - 1]?.type === "head" ? current.pop() : null;
       pages.push(current);
-      current = entry.type === "head" ? [] : continuation(lastHead);
+      current = entry.type === "head" || carriedHead ? (carriedHead ? [carriedHead] : []) : continuation(lastHead);
+      if (carried) current.push(carried);
     }
     current.push(entry);
   }
@@ -454,7 +459,9 @@ export function paginateXaVaiRich(entries, full, last = full) {
       if (current[index].type === "head" && !current[index].continued) { cut = index; break; }
     }
     if (cut < 0) {
-      cut = Math.max(1, minCut);
+      // Không có đầu nhóm trong cửa sổ: chuyển ít nhất một cuộn + dòng Cộng sang trang cuối, trang trước giữ tối đa.
+      cut = Math.max(1, Math.max(minCut, current.length - 2));
+      while (cut > 1 && current[cut].type !== "row") cut -= 1;
       if (current[cut - 1].type === "head") cut -= 1;
     }
     const head = current.slice(0, cut);
@@ -467,7 +474,24 @@ export function paginateXaVaiRich(entries, full, last = full) {
     current = tail;
   }
   if (current.length) pages.push(current);
+  // Trang bắt đầu bằng "(tiếp)" mà ngay sau là dòng Cộng (nhóm vừa lấp đầy trang trước): kéo cuộn cuối của trang trước sang (review vòng 1).
+  for (let index = 1; index < pages.length; index += 1) {
+    const page = pages[index], prev = pages[index - 1];
+    const room = index === pages.length - 1 ? lastCap : fullCap;
+    if (page[0]?.type === "head" && page[0].continued && page[1]?.type === "sum" && prev.length > 2 && prev[prev.length - 1].type === "row" && page.length < room) {
+      page.splice(1, 0, prev.pop());
+    }
+  }
   return pages;
+}
+
+// Ghi chú khi số cộng không cùng phạm vi cuộn: thiếu số hệ thống, chưa đổi được đơn vị, chênh lệch chỉ trên cuộn đủ hai số.
+export function qtyNote(t) {
+  const parts = [];
+  if (t.systemMissing) parts.push(`${t.systemMissing} cuộn thiếu số hệ thống`);
+  if (t.actualMissing) parts.push(`${t.actualMissing} cuộn chưa đổi được đơn vị`);
+  if (!parts.length && t.comparedCount < t.count) parts.push(`chênh lệch ${t.comparedCount}/${t.count} cuộn`);
+  return parts.length ? ` · ${parts.join(" · ")}` : "";
 }
 
 function groupTitle(group, continued) {
@@ -514,7 +538,7 @@ function richTableSvg(entries, tableTop, finalTotals) {
     if (entry.type === "sum") {
       mergedRows.push({ top, full: false });
       const t = entry.totals, unit = entry.group.unit;
-      const note = t.actualMissing ? ` · ${t.actualMissing} cuộn chưa đổi được đơn vị` : t.comparedCount < t.count ? ` · chênh lệch ${t.comparedCount}/${t.count} cuộn` : "";
+      const note = qtyNote(t);
       parts.push(cellText({ width: labelWidth, align: "start" }, MX, top, ROW_H, `Cộng SKU ${entry.group.sku} (${t.count} cuộn)${note}`, { bold: true, size: note ? 28 : undefined }));
       const values = { system: formatViQty(t.system, unit), actual: formatViQty(t.actual, unit), diff: formatViQty(t.diff, unit), measuredAt: "" };
       RICH_COLUMNS.slice(RICH_LABEL_SPAN).forEach((column, offset) => parts.push(cellText(column, lefts[RICH_LABEL_SPAN + offset], top, ROW_H, values[column.key], { bold: true })));
@@ -536,7 +560,7 @@ function richTableSvg(entries, tableTop, finalTotals) {
   if (finalTotals) {
     const top = bodyBottom;
     const t = finalTotals;
-    const note = t.mixedUnits ? " · nhiều đơn vị, xem dòng cộng từng SKU" : "";
+    const note = t.mixedUnits ? " · khác đơn vị, không cộng — xem dòng Cộng từng SKU" : qtyNote(t);
     parts.push(cellText({ width: labelWidth, align: "start" }, MX, top, ROW_H, `TỔNG (${t.count} UID · ${t.groups} SKU)${note}`, { bold: true, size: note ? 28 : undefined }));
     const values = t.mixedUnits ? { system: DASH, actual: DASH, diff: DASH, measuredAt: "" }
       : { system: formatViQty(t.system, t.unit), actual: formatViQty(t.actual, t.unit), diff: formatViQty(t.diff, t.unit), measuredAt: t.unit ? t.unit : "" };
@@ -564,9 +588,11 @@ function richTableSvg(entries, tableTop, finalTotals) {
 /** TỔNG cả phiếu theo đơn vị gốc: chỉ cộng số khi mọi SKU cùng một đơn vị. */
 export function xaVaiRichTotals(items) {
   const groups = xaVaiGroups(items);
-  const units = new Set(groups.map((group) => String(group.unit ?? "")));
+  // Khác đơn vị = có ≥ 2 đơn vị, hoặc có nhóm không rõ đơn vị cạnh nhóm khác; một SKU không rõ đơn vị vẫn cộng (cùng SKU).
+  const keys = groups.map((group) => String(group.unit ?? "").trim().toLowerCase() || "?");
   const base = xaVaiQtyTotals(items);
-  return { ...base, groups: groups.length, mixedUnits: units.size !== 1 || units.has(""), unit: units.size === 1 ? groups[0].unit : null };
+  const mixed = new Set(keys).size > 1 || (keys.includes("?") && groups.length > 1);
+  return { ...base, groups: groups.length, mixedUnits: mixed, unit: mixed ? null : groups[0]?.unit ?? null };
 }
 
 function renderRichSvgs(payload, items) {

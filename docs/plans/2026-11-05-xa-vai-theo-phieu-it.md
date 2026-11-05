@@ -77,7 +77,8 @@ Thứ tự: Việc 1 → Việc 2 → Việc 3 → Việc 4 (review) → Việc 
 - [x] SQL `supabase/xa_vai_a4_v2.sql` + `tests/xa_vai_a4_v2_sql.cjs` PASS
 - [x] Agent 0.12.0 (mẫu mới, validator, phiên bản) + `workstation-agent/tests/xa-vai-sheet-0120.test.mjs`; `node --test` 242/242
 - [x] Web: Excel đơn vị gốc + Mã vải / Màu; `xa_vai_a4_browser` PASS
-- [ ] Review, commit, migration, push, build gói 0.12.0, người dùng cài trên DESKTOP-foq5t89 + in thử
+- [x] Review vòng 1 (Codex mã 4 + ảnh 7, Claude A 4 + BC 6; co-van 15 vấn đề): sửa chia trang (biên 18 / 36 cuộn, trang 1 bị bóp; fuzz 60.000 tổ hợp sạch), ghi chú thiếu số ở Cộng / TỔNG, TỔNG khác đơn vị, số lẻ cho kg / yard, barcode 110 px, tách tên (bỏ %, tên 3 trường, trim), giữ mm khi tên SKU đổi sau lúc đo, itNumbers một phiếu mỗi UID, Excel thêm Thực tế (mm), tài liệu; KHÔNG đổi xa_vai_it_save (co-van: vượt chốt, nạp lại phiếu cũ giành UID). Làm sau: nhóm theo sku + unit, hiện phiên bản agent trên web.
+- [ ] Commit, migration, push, build gói 0.12.0, người dùng cài trên DESKTOP-foq5t89 + in thử
 
 ## Phát sinh
 - 05/11/2026 Tách hunk: cây làm việc có phần "Đối chiếu phủ lot theo PO" của phiên khác (`index.html`, `docs/QUYET_DINH.md`, `tests/bridge_ready.cjs` + tệp chưa theo dõi) → commit chỉ phần của đợt này; `bridge_ready` phần commit 11, cây làm việc 12; `tests/cut_po_coverage_browser.cjs` (chưa theo dõi) đã đổi số phiên bản giả lập 0.12.5 → 0.12.6 để cổng commit đạt.

@@ -86,6 +86,9 @@ const mock = async (page, s) => page.route('**/*', async route => {
     if (!m) return fail('NOT_FOUND', 'Không có'); if (m.status !== 'pending') return fail('NOT_PENDING', 'Đã gửi in');
     s.measures.delete(body.p_group_uid); return ok({ groupUid: body.p_group_uid });
   }
+  // forceMixed: máy chủ trả MIXED_ITEM_CODE một lần (dữ liệu trên màn đã cũ) mà KHÔNG đổi dữ liệu giả — đổi itemCode giữa chừng
+  // đua với lượt tự tải lại danh sách Đã in sau khi lệnh xong (chập chờn đo 05/11/2026, cả trên commit cũ).
+  if (rpc === 'xa_vai_print_enqueue' && s.forceMixed) { s.forceMixed = false; return json({ ok: false, error: { code: 'MIXED_ITEM_CODE', message: 'Mỗi phiếu một mã hàng', itemCodes: ['CWSH02', 'TEST01'] } }); }
   if (rpc === 'xa_vai_print_enqueue') {
     if (s.mode === 'deny') return denied();
     // Máy chủ từ chối ở tầng HTTP (4xx, vd hàm chưa có / tham số sai): web phải báo "Chưa gửi được", không "Chưa rõ".
@@ -422,11 +425,10 @@ async function desktop(browser) {
   await page.locator(`#xa-vai-printed-rows tr[data-uid="${uid(3)}"] input[data-pick]`).check();
   await page.waitForFunction(() => document.querySelectorAll('#xa-vai-printed-rows input[data-pick]:checked').length === 2);
   await page.evaluate(() => { document.getElementById('xa-vai-message').textContent = ''; });
-  s.measures.get(uid(3)).itemCode = 'TEST01';
+  s.forceMixed = true;
   await page.locator('#xa-vai-reprint').click();
   await waitMsg(page, /Chưa gửi được lệnh in: Mỗi phiếu một mã hàng/);
   assert.equal(calls(s, 'xa_vai_print_enqueue').length, before + 1, 'máy chủ từ chối MIXED_ITEM_CODE');
-  s.measures.get(uid(3)).itemCode = 'CWSH02';
   // Một dòng có trường đơn vị gốc (vải g): Excel dùng đơn vị gốc + mã vải / màu; dòng khác (máy chủ cũ) giữ mm.
   s.measures.get(uid(4)).unitFields = { unit: 'g', systemQty: 16763, actualQty: 16500, fabricCode: 'M001_NCC', color: 'Đen' };
   await page.locator('#xa-vai-search button[type="submit"]').click();
@@ -434,7 +436,7 @@ async function desktop(browser) {
   const [download] = await Promise.all([page.waitForEvent('download'), page.locator('#xa-vai-export').click()]);
   assert.match(download.suggestedFilename(), /\.xlsx$/);
   const book = readXlsx(require('node:fs').readFileSync(await download.path()));
-  assert.deepEqual(book.table[0], ['STT', 'Mã hàng', 'SKU', 'Mã vải', 'Màu', 'Group UID', 'Lot', 'Roll', 'Đơn vị', 'Hệ thống', 'Thực tế', 'Chênh lệch', 'Giờ nhập', 'Giờ in'], 'Excel: đơn vị gốc + mã vải / màu, không cột co');
+  assert.deepEqual(book.table[0], ['STT', 'Mã hàng', 'SKU', 'Mã vải', 'Màu', 'Group UID', 'Lot', 'Roll', 'Đơn vị', 'Hệ thống', 'Thực tế', 'Chênh lệch', 'Thực tế (mm)', 'Giờ nhập', 'Giờ in'], 'Excel: đơn vị gốc + mã vải / màu, không cột co');
   assert.equal(book.table.length, 6, 'tiêu đề + 5 dòng');
   const x1 = book.table.find(r => r[5] === uid(1));
   assert.ok(x1, 'Group UID là chữ đủ 16 số'); assert.equal(x1[1], 'CWSH02'); assert.equal(x1[2], SKU); assert.equal(x1[8], 'mm', 'máy chủ cũ: mm');
@@ -442,6 +444,7 @@ async function desktop(browser) {
   const x4 = book.table.find(r => r[5] === uid(4));
   assert.deepEqual(x4.slice(3, 5), ['M001_NCC', 'Đen']); assert.equal(x4[8], 'g');
   assert.equal(x4[9], 16763); assert.equal(x4[10], 16500); assert.equal(x4[11], -263, 'đơn vị gốc (g): thực tế − hệ thống');
+  assert.equal(x4[12], 29900, 'cột Thực tế (mm) luôn có số đo gốc');
   const x5 = book.table.find(r => r[5] === uid(5));
   assert.equal(x5[9], ''); assert.equal(x5[10], 12000); assert.equal(x5[11], '', 'không có hệ thống thì ô chênh lệch trống');
   assert.ok(book.table.every(r => r.every(v => !/(^|\s)co(\s|$)|%/i.test(String(v)))), 'Excel không có độ co %');
