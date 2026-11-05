@@ -255,7 +255,8 @@ Thứ tự chạy hiện hành (04/11 22:09): Việc 0 xong → **Việc 6** (xo
   - [ ] Kiểm kịch bản trên Supabase thật trong giao dịch tự huỷ (`ROLLBACK`) — cần người dùng cho phép (có DELETE). Chưa kiểm cú pháp PL/pgSQL trên Postgres thật.
   - [x] Review Codex 2 vòng (nhật ký `RULES.md` [N20261104-2316]): sửa `p_dry_run` NULL (`v_dry_run`), `JOB_ACTIVE` (UID còn trong lệnh A4 đang chờ / đang in), web (cờ trước await, gia hạn 401/403 một lần, "Chưa rõ" + tải lại khi mất phản hồi / 5xx / 2xx thân hỏng); ghi nhận không sửa: bước đếm không ràng buộc lần xoá (Admin khác xoá cùng lúc có thể làm xoá thêm một lệnh A4 vừa trống).
   - [x] Cả bộ `python scripts/run_tests.py` 146/146 PASS (447 s); `commit_gate` ĐẠT; `git diff --check` sạch. `PROJECT_MAP.md` mục Xả vải thêm một dòng.
-  - [ ] Phát hành theo luật 4 khi người dùng nói: commit tách hunk → `apply_supabase_sql.py --dry-run` → chạy thật → kiểm chỉ đọc (`-- kiem:`) → push; ghi `docs/QUYET_DINH.md` mục 3 + sổ `record_ledger.py` khi lên thật.
+  - [x] Phát hành theo luật 4 (05/11/2026): commit `76c19a3` → migration chạy + kiểm chỉ đọc (`-- kiem:` true; dry-run Admin 8 dòng / 4 lệnh A4, không ghi) → sổ ledger → push `7073a60..5ce360f`; trang công khai có nút khiên. Nhật ký `RULES.md` [N20261105-0805], [N20261105-0812].
+  - [ ] Người dùng đăng nhập Admin thật và xoá 8 dòng thử; kiểm chỉ đọc `print_jobs_purge_log` có một dòng `xa_vai_manual`, `xa_vai_measures` còn 0 dòng thử.
 
 ## Lệch kế hoạch
 - 04/11/2026 Việc 6: đổi chỗ xoá từ màn Lệnh in sang tab Đã in của Xả vải (người dùng 22:25), hàm `print_job_delete(p_job_ids uuid[])` của kế hoạch thay bằng `xa_vai_printed_delete(p_group_uids text[], p_dry_run)`; lệnh SKU / UID thử không xoá tay được (cron 3 ngày). Bản Lệnh in đã build (ô chọn, nút thùng rác, `print_job_delete_v1.sql`) đã gỡ, chưa từng commit.

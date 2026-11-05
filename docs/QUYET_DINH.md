@@ -241,6 +241,9 @@
   - Bảng `xa_vai_measures`, mỗi UID một dòng, `pending → printing → printed`; ghi = máy đã kích hoạt, xem = mọi người; sửa / xoá chỉ khi còn `pending`.
   - Đổi chốt 04/11 (người dùng "Chốt, build"): bỏ giờ bắt đầu / kết thúc xả, "1 UID đang xả" (advisory lock) và tự làm mới 15 s của bản 26/09 (N0350, N0355, N0357, N0367, N0400).
   - Bảng `xa_vai_log` và hàm `xa_vai_*` cũ giữ ở server, web không gọi nữa.
+  - Admin xoá dòng đã in ở tab Đã in (04/11–05/11, người dùng: "tôi muốn đăng nhập admin và xóa ở đây"; Việc 6 của `docs/plans/2026-11-04-xoa-lenh-da-in-khi-admin-dang-nhap.md`): icon khiên đăng nhập Admin ngay ở màn, nút Xoá chỉ Admin thấy.
+    - Xoá dòng `printed` đã chọn (UID về chưa đo) + lệnh `xa_vai_sheet` không còn dòng nào; lệnh còn dòng chưa chọn giữ. Không hạn 24 giờ; giữ dòng in xong < 5 phút hoặc UID còn trong lệnh A4 đang chờ / đang in. Không hoàn tác, không sao lưu.
+    - Máy chủ đếm trước (`xa_vai_printed_delete`, `p_dry_run` mặc định), hộp xác nhận nêu số dòng / lệnh A4, xoá đúng danh sách đã đếm; nhật ký số đếm `print_jobs_purge_log` (`xa_vai_manual`). Không có xoá ở màn Lệnh in (người dùng chọn). (04–05/11 · N20261104-2316, N20261105-0805)
   - Mã hàng = mã kiểu hàng như `CWSH02`, KHÔNG phải SKU (SKU luôn là số 9 chữ số): nhập tay lúc in (khung nổi khi bấm In), viết hoa, `A-Z 0-9 . _ -`, ≤ 40 ký tự; màn quét không có ô Mã hàng, UID mọi SKU. (04/11 · N20261104-1930)
   - Lưu `item_code` theo UID khi in; tab Đã in lọc theo mã hàng + ngày, in lại (mỗi phiếu một mã hàng, `MIXED_ITEM_CODE`). Mét lệch > 20% so với mét hệ thống thì hỏi xác nhận.
   - Quét → tự tra → pop-up nhập mét (04/11/2026, yêu cầu trên điện thoại Honeywell): đủ 16 chữ số trong ô quét thì tự tra, không cần Enter hay "Tra UID" (mọi Group UID WMS đều 16 chữ số: 40.860 / 40.860 dòng); UID chưa in mở `#xa-vai-uid-dialog` (thẻ UID + ô mét + Lưu). (04/11 · N20261104-1600)
@@ -454,6 +457,7 @@ Mục này thắng mọi ghi chú "CHƯA LÊN" trong nhật ký. Kiểm lại kh
 - `sku_missing_archive_v1` (SKU rời 7 nhóm tự lưu trữ).
 - `group_uid_qc_status_v1` (trạng thái QC Group UID).
 - `floor_access_v1` (khoá máy nhóm ghi xưởng, chế độ bắt buộc).
+- `xa_vai_printed_delete_v1` (Xả vải Đã in: Admin xoá dòng + lệnh A4 trống) — chạy + kiểm chỉ đọc 05/11/2026 08:0x, web push 05/11 (`7073a60..5ce360f`, commit `76c19a3`).
 - `uid_block_v1` + `uid_block_wms_v1` + `uid_block_auto_v1` (UID blocked; cron `uid-block-refresh-wms` */30).
 - `group_uid_rfid_v1` (RFID ↔ Group UID).
 - `cut_group_uid_po_v1` (cột `cut_group_uids.po`).
