@@ -1,6 +1,6 @@
 # Xả vải theo phiếu IT (2026-11-05)
 
-Trạng thái (05/11/2026): **ĐANG BUILD**. Người dùng chốt "Chốt, build".
+Trạng thái (05/11/2026): **ĐÃ BUILD + review vòng 1; CHƯA LÊN** (chờ migration → Reload Extension 0.12.6 → push). Người dùng chốt "Chốt, build".
 
 ## Thiết kế
 
@@ -31,7 +31,7 @@ Trạng thái (05/11/2026): **ĐANG BUILD**. Người dùng chốt "Chốt, buil
   - `xa_vai_it_save(p_batch jsonb)` — chỉ Admin (`print_admin_allowed()`, JWT), `authenticated`. Lỗi `FORBIDDEN`, `INVALID_INPUT`, `INVALID_ITEM_CODE`, `NOT_DELIVERED`. Trả `{ itNumber, created, uidsAdded, uidsTotal }`.
   - `xa_vai_it_list(p_limit)` — anon: đợt mới nhất trước, mỗi dòng SKU kèm `uidCount`, `uidMm`, `measuredCount`, `actualMm`, `systemMm` (mm từ `xa_vai_system_mm`).
   - `xa_vai_it_get(p_it_number)` — anon: đợt + UID kèm `state` (`new`/`pending`/`printing`/`printed`), `actualMm`, `printedItemCode`.
-  - `xa_vai_it_of_uids(p_uids text[])` — anon, ≤ 500 UID: `{ items:[{ groupUid, itNumber, itemCode }] }` (đợt nạp gần nhất nếu UID ở nhiều đợt).
+  - `xa_vai_it_of_uids(p_uids text[])` — anon, ≤ 500 UID: `{ items:[{ groupUid, itNumber, itemCode }] }` (UID ở nhiều đợt → đợt mà UID được thêm vào gần nhất, theo `added_at`).
 - **Rủi ro và cách chặn:**
   - Extension cũ im lặng với lệnh lạ → web hỏi `PING_WMS`, phiên bản < 0.12.6 báo "Reload Extension".
   - UID chuyển tiếp trước khi Admin nạp → mất khỏi kết quả WMS; màn hiện "chưa có UID" theo SKU để thấy.
@@ -41,29 +41,31 @@ Trạng thái (05/11/2026): **ĐANG BUILD**. Người dùng chốt "Chốt, buil
 ## Kế hoạch
 Thứ tự: Việc 1 → Việc 2 → Việc 3 → Việc 4 (review) → Việc 5 (lên).
 
-### Việc 1 — SQL `supabase/xa_vai_it_v1.sql` · lead · [ ]
-- [ ] Hai bảng + 4 RPC, quyền đúng vai, dòng `-- kiem:`, khối Rút lui
-- [ ] Test tĩnh `tests/xa_vai_it_sql.cjs` PASS + `apply_supabase_sql.py --dry-run`
+### Việc 1 — SQL `supabase/xa_vai_it_v1.sql` · lead · [x]
+- [x] Hai bảng + 4 RPC, quyền đúng vai, dòng `-- kiem:`, khối Rút lui (commit 26cb1d0)
+- [x] Test tĩnh `tests/xa_vai_it_sql.cjs` PASS + `apply_supabase_sql.py --dry-run` tới cuối
 
-### Việc 2 — Extension 0.12.6 `GET_XA_VAI_IT` · lead · [ ]
-- [ ] `group-uid-sync-core.js` `normalizeXaVaiIt`; `wms-bridge.js` `readXaVaiIt`; allow-list `app-bridge.js`, `background.js`, `wms-bridge.js`
-- [ ] manifest + README + test `tests/xa_vai_it_core.cjs`; sửa số phiên bản ở `inside_po_connector`, `sku_sync_extension`
+### Việc 2 — Extension 0.12.6 `GET_XA_VAI_IT` · lead · [x]
+- [x] `group-uid-sync-core.js` `normalizeXaVaiIt`; `wms-bridge.js` `readXaVaiIt`; allow-list `app-bridge.js`, `background.js`, `wms-bridge.js` (26cb1d0)
+- [x] manifest + README + test `tests/xa_vai_it_core.cjs` PASS; số phiên bản giả lập 0.12.6 ở 15 test (cổng commit đòi), chạy lại 15/15 PASS
 
-### Việc 3 — Web tab Phiếu IT · lead · [ ]
-- [ ] Tab 4, xem trước + Lưu đợt (Admin), danh sách đợt + UID
-- [ ] Pop-up quét có dòng đợt; In A4 điền sẵn mã hàng của đợt
-- [ ] `tests/xa_vai_it_browser.cjs` (máy tính + 375 px); `xa_vai_a4_browser`, bộ chuẩn UI PASS
+### Việc 3 — Web tab Phiếu IT · lead · [x]
+- [x] Tab 4, xem trước + Lưu đợt (Admin), danh sách đợt + UID (26cb1d0)
+- [x] Pop-up quét có mã hàng của đợt; In A4 điền sẵn mã hàng của đợt
+- [x] `tests/xa_vai_it_browser.cjs` (1280 + 375) PASS; `xa_vai_a4_browser` PASS (sửa kỳ vọng 4 tab); bộ chuẩn UI 11/11 PASS
 
-### Việc 4 — Review · [ ]
-- [ ] Codex + `/review-claude` một vòng (ảnh giao diện kèm), lọc với co-van
+### Việc 4 — Review · [x]
+- [x] Codex mã (5 nhóm) + Codex ảnh (8 ý) + Claude A (5) + BC (8); co-van gộp 12 vấn đề, không cần người dùng quyết; sửa ở commit sau review (mục Nhật ký)
 
 ### Việc 5 — Lên · [ ]
 - [ ] commit (chưa push) → migration → ghi sổ → người dùng Reload Extension → push
 - [ ] `docs/QUYET_DINH.md`, `docs/PROJECT_MAP.md`, `README.md`, `RULES.md`
 
 ## Phát sinh
+- 05/11/2026 Tách hunk: cây làm việc có phần "Đối chiếu phủ lot theo PO" của phiên khác (`index.html`, `docs/QUYET_DINH.md`, `tests/bridge_ready.cjs` + tệp chưa theo dõi) → commit chỉ phần của đợt này; `bridge_ready` phần commit 11, cây làm việc 12; `tests/cut_po_coverage_browser.cjs` (chưa theo dõi) đã đổi số phiên bản giả lập 0.12.5 → 0.12.6 để cổng commit đạt.
 
 ## Lệch kế hoạch
 
 ## Nhật ký
 - 2026-11-05 Dò WMS + Supabase (số đo ở trên); người dùng chốt Đ1–Đ4.
+- 2026-11-05 Review vòng 1 (co-van chấm): SỬA — đợt của UID theo `added_at` (60), nạp lại giữ mã hàng đã lưu (65), In A4 khoá + kiểm lại lựa chọn sau khi tra đợt, chờ 2,5 s (55, [cả hai]), gộp SKU trùng ở Extension + câu lỗi SQL riêng (50, [cả hai]), kiểm mã UID duy nhất = tổng WMS / trang lặp / WMS bỏ lọc / dòng phiếu bị cắt + web báo UID bị bỏ (35, [cả hai]), badge = tổng máy chủ + "Hiện n / N" + giới hạn 50 (45), gom tiến độ một lần theo SKU, tổng chỉ tính SKU trong phiếu (25–40), nhãn tổng theo số đã in (40), thoát Admin bỏ bản nháp (35). Ảnh: SỬA % cạnh thanh, "Có UID", Ghi chú cả hàng; BỎ QUA thanh nút dính đáy điện thoại (xem trước là thao tác Admin, chỉ xét máy tính), màu "Chưa nhập" (kiểu có sẵn của pop-up, chốt 04/11), nhãn ô số phiếu (placeholder đủ, không thêm chữ), tách hai tầng đầu thẻ, màu dòng báo.

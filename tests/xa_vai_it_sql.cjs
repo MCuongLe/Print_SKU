@@ -80,7 +80,7 @@ const b = save.body;
 assert.ok(b.indexOf("if not public.print_admin_allowed() then") >= 0 && b.indexOf("if not public.print_admin_allowed() then") < b.indexOf("insert into"), "kiểm Admin trước khi ghi");
 for (const part of ["'FORBIDDEN'", "'INVALID_INPUT'", "'INVALID_ITEM_CODE'", "'NOT_DELIVERED'", "v_it !~ '^[0-9]{16}$'", "public._xa_vai_item_code(p_batch->>'itemCode')",
   "jsonb_array_length(v_lines) not between 1 and 200", "jsonb_array_length(v_uids) > 3000", "count(*) - count(distinct btrim(l->>'sku'))",
-  "v_delivered <= 0 or jsonb_array_length(v_uids) = 0", "public.xa_vai_system_mm(l->>'name', (l->>'deliveredQty')::numeric)",
+  "v_delivered <= 0 or jsonb_array_length(v_uids) = 0", "SKU lặp ở nhiều dòng của phiếu IT", "public.xa_vai_system_mm(l->>'name', (l->>'deliveredQty')::numeric)",
   "on conflict (it_number) do update set", "on conflict (it_number, group_uid_code) do update set"])
   assert.ok(b.includes(part), `save có: ${part}`);
 // Ép kiểu số chỉ trong CASE sau khi biết là số (OR của SQL không bảo đảm thứ tự).
@@ -95,14 +95,18 @@ assert.ok(b.includes("returning (xmax = 0) as inserted") && b.includes("count(*)
 
 // ---------- Đọc ----------
 const json = fnBody("_xa_vai_it_json").body;
-for (const part of ["left join public.xa_vai_measures m on m.group_uid_code = x.group_uid_code", "with ordinality", "'uidCount'", "'measuredCount'", "'actualMm'", "'printedCount'", "order by per.n"])
+for (const part of ["left join public.xa_vai_measures m on m.group_uid_code = x.group_uid_code", "group by x.sku", "left join agg a on a.sku = t.l->>'sku'", "with ordinality", "'uidCount', (select coalesce(sum(per.uid_count), 0) from per)", "'measuredCount'", "'actualMm'", "'printedCount'", "order by per.n"])
   assert.ok(json.includes(part), `_xa_vai_it_json có: ${part}`);
 const list = fnBody("xa_vai_it_list").body;
 assert.ok(list.includes("least(greatest(coalesce(p_limit, 30), 1), 100)") && list.includes("order by b.loaded_at desc"));
 const get = fnBody("xa_vai_it_get").body;
 for (const part of ["'NOT_FOUND'", "'state', coalesce(m.status, 'new')", "'printedItemCode', m.item_code"]) assert.ok(get.includes(part), `get có: ${part}`);
 const of = fnBody("xa_vai_it_of_uids").body;
-for (const part of ["cardinality(v_codes) > 500", "distinct on (x.group_uid_code)", "order by x.group_uid_code, b.loaded_at desc"]) assert.ok(of.includes(part), `of_uids có: ${part}`);
+for (const part of ["cardinality(v_codes) > 500", "distinct on (x.group_uid_code)", "order by x.group_uid_code, x.added_at desc, b.loaded_at desc"]) assert.ok(of.includes(part), `of_uids có: ${part}`);
+// UID ở nhiều đợt: xếp theo lúc UID vào đợt (added_at không bị on conflict cập nhật), không theo lần nạp lại.
+assert.ok(!/added_at\s*=\s*excluded/.test(sql), "nạp lại không đổi added_at");
+// Gom một lần theo SKU: không còn truy vấn con quét lại UID cho từng dòng.
+assert.ok(!/\(select count\(\*\) from u where/.test(json), "_xa_vai_it_json không quét lại UID mỗi dòng");
 
 // Không đụng bảng / hàm có sẵn.
 assert.ok(!/alter table public\.xa_vai_measures/i.test(sql) && !/(insert into|update) public\.xa_vai_measures/i.test(sql), "không ghi xa_vai_measures");

@@ -55,7 +55,11 @@ function mock(page, s) {
     const ok = data => json({ ok: true, data });
     const { uids: _u, ...head } = s.batch;
     if (rpc === 'xa_vai_it_list') return ok({ items: [head, ...s.saved.map(b => b.listItem)], total: 1 + s.saved.length });
-    if (rpc === 'xa_vai_it_get') return ok({ ...head, uids: s.batch.uids });
+    if (rpc === 'xa_vai_it_get') {
+      if (body.p_it_number === IT) return ok({ ...head, uids: s.batch.uids });
+      const hit = s.saved.find(b => b.p_batch.itNumber === body.p_it_number);
+      return hit ? ok({ ...hit.listItem, uids: [] }) : json({ ok: false, error: { code: 'NOT_FOUND', message: 'Chưa nạp phiếu IT này' } });
+    }
     if (rpc === 'xa_vai_it_of_uids') {
       const map = new Map(s.batch.uids.map(u => [u.groupUid, { itNumber: IT, itemCode: s.batch.itemCode }]));
       for (const b of s.saved) for (const u of b.p_batch.uids) map.set(u.groupUid, { itNumber: b.p_batch.itNumber, itemCode: b.p_batch.itemCode });
@@ -194,6 +198,13 @@ const noOverflow = async (page, sel) => {
         await page.locator(`.xv-it-card[data-it="${IT_NEW}"]`).waitFor();
         assert.equal(await page.locator(`.xv-it-card[data-it="${IT_NEW}"] details`).getAttribute('open'), '', 'đợt vừa lưu mở sẵn UID');
         assert.equal(await input.inputValue(), '', 'lưu xong xoá ô số phiếu');
+        // Đọc lại phiếu đã lưu: giữ mã hàng Admin đã sửa (SWSH09B), không lấy lại mã từ ghi chú (SWSH09).
+        await input.fill(IT_NEW);
+        await read.click();
+        await preview.waitFor({ state: 'visible' });
+        assert.equal(await page.locator('#xa-vai-it-code').inputValue(), 'SWSH09B');
+        assert.match(await msg(page), /đã có đợt/);
+        assert.equal((await page.locator('#xa-vai-it-count').innerText()).trim(), '2');
         assert.deepEqual(errors, []);
         await context.close();
       }
@@ -227,6 +238,11 @@ const noOverflow = async (page, sel) => {
       await page.locator('#xa-vai-it-preview').waitFor({ state: 'visible' });
       assert.equal(await page.locator('#xa-vai-it-save').isDisabled(), true);
       assert.match(await page.locator('#xa-vai-it-preview').innerText(), /Phiếu chưa xuất hoặc chưa có Group UID/);
+      // Thoát Admin: bỏ bản nháp và ô đọc phiếu.
+      await page.locator('#xa-vai-admin').click();
+      await page.locator('dialog.whd .whd-ok').click();
+      await page.locator('#xa-vai-it-preview').waitFor({ state: 'hidden' });
+      assert.equal(await page.locator('#xa-vai-it-form').isVisible(), false);
       assert.deepEqual(errors, []);
       await context.close();
     }

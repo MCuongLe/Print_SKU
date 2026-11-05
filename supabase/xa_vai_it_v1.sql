@@ -117,8 +117,11 @@ begin
          count(*) - count(distinct btrim(l->>'sku'))
     into v_bad, v_n
     from jsonb_array_elements(v_lines) as t(l);
-  if v_bad > 0 or v_n > 0 then
+  if v_bad > 0 then
     return jsonb_build_object('ok', false, 'error', jsonb_build_object('code', 'INVALID_INPUT', 'message', 'Dòng SKU của phiếu IT không hợp lệ'));
+  end if;
+  if v_n > 0 then
+    return jsonb_build_object('ok', false, 'error', jsonb_build_object('code', 'INVALID_INPUT', 'message', 'SKU lặp ở nhiều dòng của phiếu IT; hãy Reload Extension rồi đọc lại'));
   end if;
   select coalesce(sum((l->>'deliveredQty')::numeric), 0) into v_delivered from jsonb_array_elements(v_lines) as t(l);
 
@@ -199,30 +202,29 @@ end $$;
 
 -- ---------- Đọc (mọi người, không token) ----------
 -- Tiến độ của đợt: theo từng dòng SKU (giữ thứ tự WMS) — uidCount / uidMm = UID của phiếu, measuredCount / actualMm / systemMm = UID đã
--- có dòng xa_vai_measures (mọi trạng thái), printedCount = UID đã in phiếu A4.
+-- có dòng xa_vai_measures (mọi trạng thái), printedCount = UID đã in phiếu A4. Gom UID một lần theo SKU (review vòng 1: quét lại nhiều lần
+-- mỗi dòng chậm ở giới hạn 200 dòng × 3.000 UID); tổng của đợt chỉ tính SKU còn trong dòng phiếu (nạp lại bỏ SKU thì UID cũ không lệch tổng).
 create or replace function public._xa_vai_it_json(p_batch public.xa_vai_it_batches)
 returns jsonb language sql stable set search_path = '' as $$
-  with u as (
-    select x.sku, x.wms_mm, m.status, m.actual_mm, m.system_mm
+  with agg as (
+    select x.sku, count(*) as uid_count, sum(x.wms_mm) as uid_mm, count(m.group_uid_code) as measured_count,
+           count(*) filter (where m.status = 'printed') as printed_count, sum(m.actual_mm) as actual_mm, sum(m.system_mm) as system_mm
       from public.xa_vai_it_uids x
       left join public.xa_vai_measures m on m.group_uid_code = x.group_uid_code
      where x.it_number = p_batch.it_number
+     group by x.sku
   ), per as (
-    select l, n,
-           (select count(*) from u where u.sku = l->>'sku') as uid_count,
-           (select sum(u.wms_mm) from u where u.sku = l->>'sku') as uid_mm,
-           (select count(*) from u where u.sku = l->>'sku' and u.status is not null) as measured_count,
-           (select count(*) from u where u.sku = l->>'sku' and u.status = 'printed') as printed_count,
-           (select sum(u.actual_mm) from u where u.sku = l->>'sku') as actual_mm,
-           (select sum(u.system_mm) from u where u.sku = l->>'sku' and u.status is not null) as system_mm
+    select t.l, t.n, coalesce(a.uid_count, 0) as uid_count, a.uid_mm, coalesce(a.measured_count, 0) as measured_count,
+           coalesce(a.printed_count, 0) as printed_count, a.actual_mm, a.system_mm
       from jsonb_array_elements(p_batch.lines) with ordinality as t(l, n)
+      left join agg a on a.sku = t.l->>'sku'
   )
   select jsonb_build_object(
     'itNumber', p_batch.it_number, 'itemCode', p_batch.item_code, 'description', p_batch.description, 'status', p_batch.it_status,
     'fromWarehouse', p_batch.from_warehouse, 'toWarehouse', p_batch.to_warehouse, 'itCreatedAt', p_batch.it_created_at,
     'loadedAt', p_batch.loaded_at,
-    'uidCount', (select count(*) from u), 'measuredCount', (select count(*) from u where u.status is not null),
-    'printedCount', (select count(*) from u where u.status = 'printed'),
+    'uidCount', (select coalesce(sum(per.uid_count), 0) from per), 'measuredCount', (select coalesce(sum(per.measured_count), 0) from per),
+    'printedCount', (select coalesce(sum(per.printed_count), 0) from per),
     'lines', coalesce((select jsonb_agg(per.l || jsonb_build_object('uidCount', per.uid_count, 'uidMm', per.uid_mm, 'measuredCount', per.measured_count,
                'printedCount', per.printed_count, 'actualMm', per.actual_mm, 'systemMm', per.system_mm) order by per.n) from per), '[]'::jsonb))
 $$;
@@ -270,8 +272,9 @@ begin
     'meta', jsonb_build_object('updatedAt', now(), 'schemaVersion', 1));
 end $$;
 
--- Đợt của từng UID (pop-up quét, điền sẵn mã hàng khi In A4): tối đa 500 mã / lần; UID ở nhiều đợt → đợt nạp gần nhất; UID không thuộc
--- đợt nào thì không có trong kết quả.
+-- Đợt của từng UID (pop-up quét, điền sẵn mã hàng khi In A4): tối đa 500 mã / lần; UID ở nhiều đợt → đợt mà UID được THÊM vào gần nhất
+-- (added_at không đổi khi nạp lại; xếp theo loaded_at thì nạp lại phiếu cũ sẽ giành UID đã chuyển sang phiếu mới — review vòng 1); UID không
+-- thuộc đợt nào thì không có trong kết quả.
 create or replace function public.xa_vai_it_of_uids(p_uids text[])
 returns jsonb language plpgsql stable security definer set search_path = '' as $$
 declare
@@ -290,7 +293,7 @@ begin
             from public.xa_vai_it_uids x
             join public.xa_vai_it_batches b on b.it_number = x.it_number
            where x.group_uid_code = any(v_codes)
-           order by x.group_uid_code, b.loaded_at desc, b.it_number) q;
+           order by x.group_uid_code, x.added_at desc, b.loaded_at desc, b.it_number) q;
   return jsonb_build_object('ok', true, 'data', jsonb_build_object('items', v_items),
     'meta', jsonb_build_object('updatedAt', now(), 'schemaVersion', 1));
 end $$;

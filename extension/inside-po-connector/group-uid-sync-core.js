@@ -345,12 +345,16 @@
   // bỏ và đếm ở `skipped`; trùng mã giữ dòng đầu.
   function normalizeXaVaiIt(head, itemsPayload, uidRows) {
     const base = normalizeInternalTransfer(head, itemsPayload);
-    const lines = responseRows(itemsPayload).map((raw, index) => {
+    // Nhiều dòng cùng SKU → gộp một dòng (cộng SL yêu cầu / đã xuất, giữ tên và đơn vị dòng đầu): tiến độ tính theo SKU, máy chủ nhận mỗi SKU một dòng.
+    const bySku = new Map();
+    responseRows(itemsPayload).forEach((raw, index) => {
       const value = raw?.delivered_quantity, delivered = value === null || value === undefined || value === "" ? 0 : Number(value);
       if (!Number.isFinite(delivered) || delivered < 0) throw new Error(`Phiếu IT dòng ${index + 1} có SL đã xuất không hợp lệ`);
-      const item = base.items[index];
-      return { sku: item.sku, name: item.name, unit: item.unit, requestedQty: item.quantity, deliveredQty: delivered };
+      const item = base.items[index], line = bySku.get(item.sku);
+      if (line) { line.requestedQty += item.quantity; line.deliveredQty += delivered; line.merged += 1; }
+      else bySku.set(item.sku, { sku: item.sku, name: item.name, unit: item.unit, requestedQty: item.quantity, deliveredQty: delivered, merged: 1 });
     });
+    const lines = [...bySku.values()].map(({ merged: _merged, ...line }) => line);
     const mapping = clean(head?.mapping_id, 40);
     const mappingId = /^\d{6,40}$/.test(mapping) ? mapping : null;
     const skus = new Set(lines.map(line => line.sku)), seen = new Set(), uids = [];

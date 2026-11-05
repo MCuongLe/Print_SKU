@@ -44,16 +44,21 @@ assert.deepEqual(it.skipped, { otherSource: 1, badCode: 1, multiSku: 1, otherSku
 assert.equal(core.normalizeXaVaiIt({ ...HEAD, mapping_id: "" }, ITEMS, UIDS).uids.length, 0);
 assert.throws(() => core.normalizeXaVaiIt(HEAD, { records: [line("900000001", 1, -5)] }, []), /SL đã xuất không hợp lệ/);
 assert.throws(() => core.normalizeXaVaiIt(HEAD, { records: [line("900000001", 1, "abc")] }, []), /SL đã xuất không hợp lệ/);
+// Nhiều dòng cùng SKU → một dòng, cộng SL (máy chủ từ chối SKU trùng; review vòng 1).
+assert.deepEqual(JSON.parse(JSON.stringify(core.normalizeXaVaiIt(HEAD, { records: [line("900000001", 100, 80), line("900000002", 5, 5), line("900000001", 50, 40)] }, []).lines)), [
+  { sku: "900000001", name: "Vải thử 900000001/mm", unit: "mm", requestedQty: 150, deliveredQty: 120 },
+  { sku: "900000002", name: "Vải thử 900000002/mm", unit: "mm", requestedQty: 5, deliveredQty: 5 },
+]);
 
 // --- Bộ đọc trong wms-bridge ---
 const calls = [];
-let listener, lists = { records: [HEAD], count: 1 }, uidPages = [{ data: { records: UIDS.slice(0, 2), count: 2 } }];
+let listener, lists = { records: [HEAD], count: 1 }, itemsBody = ITEMS, uidPages = [{ data: { records: UIDS.slice(0, 2), count: 2 } }];
 const bridgeContext = {
   window: {}, URL, Date, Intl, Promise, JSON, Math, Number, String, Array, Object, Error, setTimeout, console,
   localStorage: { getItem: key => ({ auth_store: JSON.stringify({ state: { token: "test-token" } }), company_id: "1005" })[key] ?? null },
   fetch: async (url, options) => {
     const u = new URL(url); calls.push({ url: u, headers: options.headers });
-    const body = u.pathname.endsWith("/internal-transfers") ? lists : u.pathname.endsWith("/group-uid-infos") ? uidPages[Number(u.searchParams.get("page")) - 1] || { data: { records: [], count: 0 } } : ITEMS;
+    const body = u.pathname.endsWith("/internal-transfers") ? lists : u.pathname.endsWith("/group-uid-infos") ? uidPages[Number(u.searchParams.get("page")) - 1] || { data: { records: [], count: 0 } } : itemsBody;
     return { ok: true, status: 200, json: async () => body };
   },
   chrome: { runtime: { id: "ext-id", onMessage: { addListener: fn => { listener = fn; } } } },
@@ -91,6 +96,20 @@ const send = (message, sender = { id: "ext-id" }) => new Promise(resolve => { co
   assert.equal(huge.ok, false); assert.match(huge.error.message, /tối đa 3\.000/); assert.equal(huge.error.code, "INTERNAL_TRANSFER_READ_FAILED");
   assert.equal(calls.slice(before).filter(c => c.url.pathname.endsWith("/group-uid-infos")).length, 1);
 
+  // Trang 2 lặp trang 1 (dữ liệu đổi giữa hai lần đọc): số mã duy nhất < tổng → báo lỗi, không trả đợt thiếu UID.
+  uidPages = [{ data: { records: many.slice(0, 500), count: 600 } }, { data: { records: many.slice(0, 500), count: 600 } }];
+  const repeat = await send({ type: "GET_XA_VAI_IT", payload: { number: "1007260000000001" } });
+  assert.equal(repeat.ok, false); assert.match(repeat.error.message, /thay đổi trong lúc đọc \(500 \/ 600\)/);
+  // WMS khai tổng ≤ 3.000 nhưng không lọc theo phiếu (mọi UID khác nguồn) → báo lỗi thay vì đợt rỗng.
+  uidPages = [{ data: { records: [uid(7, "900000001", 1, { processing_source_code: "10022699999999" })], count: 1 } }];
+  const unfiltered = await send({ type: "GET_XA_VAI_IT", payload: { number: "1007260000000001" } });
+  assert.equal(unfiltered.ok, false); assert.match(unfiltered.error.message, /không lọc Group UID theo phiếu/);
+  // Dòng phiếu bị cắt (tổng khai > số dòng nhận) → báo lỗi.
+  itemsBody = { records: ITEMS.records, count: 5 };
+  const cut = await send({ type: "GET_XA_VAI_IT", payload: { number: "1007260000000001" } });
+  assert.equal(cut.ok, false); assert.match(cut.error.message, /thiếu dòng phiếu IT 1007260000000001 \(2 \/ 5\)/);
+  itemsBody = ITEMS;
+
   // Không có phiếu / số sai / nơi gửi lạ.
   lists = { records: [] };
   assert.match((await send({ type: "GET_XA_VAI_IT", payload: { number: "1007260000000001" } })).error.message, /Không tìm thấy phiếu IT/);
@@ -101,5 +120,5 @@ const send = (message, sender = { id: "ext-id" }) => new Promise(resolve => { co
 
   // Cầu nối web và background cho lệnh đi qua.
   for (const file of ["app-bridge.js", "background.js"]) assert.ok(fs.readFileSync(dir + file, "utf8").includes('"GET_XA_VAI_IT"'), `${file} cho GET_XA_VAI_IT`);
-  console.log("xa_vai_it_core: dòng SL đã xuất, Group UID theo mapping_id (lọc nguồn / trùng / SKU ngoài phiếu), nhiều trang, chặn WMS bỏ lọc, không company-ids passed");
+  console.log("xa_vai_it_core: dòng SL đã xuất, Group UID theo mapping_id (lọc nguồn / trùng / SKU ngoài phiếu), nhiều trang, chặn WMS bỏ lọc, không company-ids + gộp SKU trùng, trang lặp, WMS bỏ lọc, dòng phiếu bị cắt passed");
 })().catch(error => { console.error(error); process.exitCode = 1; });

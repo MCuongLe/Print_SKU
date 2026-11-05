@@ -9623,6 +9623,10 @@ var FSK_CORE = (function () {
       #xa-vai-screen .xv-it-bar { display: block; min-width: 72px; height: 8px; overflow: hidden; border-radius: var(--radius-pill); background: var(--wms-bg); }
       #xa-vai-screen .xv-it-bar > i { display: block; height: 100%; border-radius: inherit; background: var(--wms-success); }
       #xa-vai-screen .xv-it-gap { color: var(--wms-warning); font-weight: var(--fw-semibold); }
+      #xa-vai-screen .xv-it-prog { display: flex; align-items: center; gap: var(--space-2); }
+      #xa-vai-screen .xv-it-prog > .xv-it-bar { flex: 1; }
+      #xa-vai-screen .xv-it-prog > b { min-width: 40px; color: var(--wms-text-2); font-size: var(--fs-12); font-weight: var(--fw-semibold); font-variant-numeric: tabular-nums; text-align: right; }
+      #xa-vai-screen .xv-it-preview .xv-facts > div:last-child { grid-column: 1 / -1; }
       #xa-vai-screen .xv-it-uids > summary { min-height: var(--target-min); display: flex; align-items: center; color: var(--wms-brand); font-weight: var(--fw-semibold); cursor: pointer; }
       #xa-vai-screen .xv-it-uids > summary:focus-visible { outline: 2px solid var(--wms-focus-ring); outline-offset: 2px; }
       #xa-vai-screen .xv-pick .cut-selectall { flex: 0 1 auto; }
@@ -10074,14 +10078,20 @@ var FSK_CORE = (function () {
             if(unclear)loading.then(ok=>{if(message.textContent!==said)return;if(ok){tell(`${said} — đã tải lại danh sách`,'warn');return}tell(`${said}. Chưa tải lại được danh sách`,'error');window.PrintSkuNotice?.retry(()=>loadQueue(),message)});
           }
         };
+        let itOpening=false;
         printBtn.addEventListener('click',async()=>{
           const items=pickedQueue();
-          if(!items.length||sending.queue||mhDialog.open)return;
+          if(!items.length||sending.queue||mhDialog.open||itOpening)return;
           const copiesN=Number(copies.value)||1,held=heldNonce.queue;
           // Thử lại sau "chưa rõ": điền sẵn mã hàng của lần gửi dở (cùng nonce); còn lại điền mã dùng gần nhất của máy.
           let value=held&&held.uidsKey===`Q|${items.map(x=>x.groupUid).join(',')}|${copiesN}`&&held.itemCode?held.itemCode:'',error='';
           // Phiếu IT (05/11/2026): mọi UID đã chọn thuộc đợt cùng một mã hàng → điền sẵn mã đó; tra lỗi / lẫn đợt → mã dùng gần nhất của máy.
-          if(!value){value=await itCodeFor(items.map(x=>x.groupUid))||readCode();if(sending.queue||mhDialog.open)return}
+          if(!value){
+            itOpening=true;printBtn.setAttribute('aria-busy','true');
+            try{value=await itCodeFor(items.map(x=>x.groupUid))||readCode()}finally{itOpening=false;printBtn.removeAttribute('aria-busy')}
+            if(sending.queue||mhDialog.open)return;
+            if(queueKey(pickedQueue())!==queueKey(items)||Number(copies.value||1)!==copiesN){tell('Danh sách chọn vừa đổi — bấm In A4 lại','warn');return}
+          }
           for(;;){
             const itemCode=await askCode({count:items.length,skus:new Set(items.map(x=>x.sku)).size,copiesN,value,error});
             if(!itemCode)return;
@@ -10233,7 +10243,7 @@ var FSK_CORE = (function () {
         // RPC xa_vai_printed_delete (supabase/xa_vai_printed_delete_v1.sql) bằng JWT phiên Admin: máy chủ đếm trước (p_dry_run) → hộp
         // xác nhận → xoá đúng danh sách máy chủ trả; Group UID trở lại chưa đo, lệnh in A4 không còn dòng nào bị xoá theo.
         function renderDelete(){const b=$('xa-vai-delete'),n=pickedPrinted().length;b.hidden=!window.PrintSkuAdminAccess?.peekToken?.();b.disabled=!n||sending.del;b.textContent=n?`Xoá · ${n.toLocaleString('vi-VN')}`:'Xoá'}
-        function syncAdmin(){const b=$('xa-vai-admin'),admin=!!window.PrintSkuAdminAccess?.peekToken?.(),label=admin?'Đang là Admin · bấm để thoát':'Đăng nhập Admin';b.setAttribute('aria-pressed',String(admin));b.setAttribute('aria-label',label);b.title=label;renderDelete();$('xa-vai-it-form').hidden=!admin}
+        function syncAdmin(){const b=$('xa-vai-admin'),admin=!!window.PrintSkuAdminAccess?.peekToken?.(),label=admin?'Đang là Admin · bấm để thoát':'Đăng nhập Admin';b.setAttribute('aria-pressed',String(admin));b.setAttribute('aria-label',label);b.title=label;renderDelete();$('xa-vai-it-form').hidden=!admin;if(!admin&&itDraft){itDraft=null;renderDraft()}}
         $('xa-vai-admin').addEventListener('click',async()=>{
           if(window.PrintSkuAdminAccess?.peekToken?.()){if(await window.WhDialog.confirm({icon:'undo',title:'Thoát quyền Admin?',confirmText:'Thoát',cancelText:'Ở lại'})){window.PrintSkuAdminAccess.logout();syncAdmin();tell('Đã thoát quyền Admin.','ok')}return}
           // Chưa có phiên thì getToken mở hộp đăng nhập và trả ''; đăng nhập xong hộp phát print-sku-admin-ready.
@@ -10298,7 +10308,7 @@ var FSK_CORE = (function () {
         // (xa_vai_it_list / xa_vai_it_get). Đợt chỉ gắn theo Group UID: quét UID của đợt thì pop-up hiện mã hàng của đợt, In A4 điền sẵn mã đó.
         const IT_RE=/^\d{16}$/,MIN_IT_EXT='0.12.6',IT_HINT_MS=60000;
         const itForm=$('xa-vai-it-form'),itNumber=$('xa-vai-it-number'),itRead=$('xa-vai-it-read'),itPreview=$('xa-vai-it-preview'),itList=$('xa-vai-it-list'),itCount=$('xa-vai-it-count');
-        let itDraft=null,itBusy=false,itSaving=false,itRun=0,itListRun=0,itItems=[];
+        let itDraft=null,itBusy=false,itSaving=false,itRun=0,itListRun=0,itItems=[],itTotal=0;
         const itOpen=new Set(),itOf=new Map();
         const extensionRequest=(type,payload={},timeout=90000)=>window.PrintSkuBridgeReady(type).then(()=>new Promise((resolve,reject)=>{
           const requestId=`xa-vai-it-${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -10351,7 +10361,7 @@ var FSK_CORE = (function () {
         };
         const itCodeFor=async uids=>{
           try{
-            const map=await Promise.race([fetchItOf(uids),new Promise((_,reject)=>setTimeout(()=>reject(new Error('timeout')),5000))]);
+            const map=await Promise.race([fetchItOf(uids),new Promise((_,reject)=>setTimeout(()=>reject(new Error('timeout')),2500))]);
             const codes=new Set([...map.values()].map(v=>v?.itemCode||''));
             return codes.size===1&&!codes.has('')?[...codes][0]:'';
           }catch(_){return ''}
@@ -10365,11 +10375,11 @@ var FSK_CORE = (function () {
           for(const u of d.uids){const g=bySku.get(u.sku)||{n:0,q:0};g.n+=1;g.q+=finite(u.qty)?Number(u.qty):0;bySku.set(u.sku,g)}
           const delivered=d.lines.reduce((a,l)=>a+(finite(l.deliveredQty)?Number(l.deliveredQty):0),0),ready=delivered>0&&d.uids.length>0;
           const rows=d.lines.map(l=>{const g=bySku.get(l.sku)||{n:0,q:0},gap=finite(l.deliveredQty)?Number(l.deliveredQty)-g.q:null;
-            return `<tr>${td('SKU',`<span class="xv-it-sku">${esc(l.sku)}${l.name?`<small>${esc(l.name)}</small>`:''}</span>`)}${td('Đã xuất',qtyText(l.deliveredQty,l.unit),'n')}${td('Số UID',g.n.toLocaleString('vi-VN'),'n')}${td('Theo UID',qtyText(g.q,l.unit),'n')}${td('Chưa có UID',gap>0?`<span class="xv-it-gap">${qtyText(gap,l.unit)}</span>`:'—','n')}</tr>`}).join('');
+            return `<tr>${td('SKU',`<span class="xv-it-sku">${esc(l.sku)}${l.name?`<small>${esc(l.name)}</small>`:''}</span>`)}${td('Đã xuất',qtyText(l.deliveredQty,l.unit),'n')}${td('Số UID',g.n.toLocaleString('vi-VN'),'n')}${td('Có UID',qtyText(g.q,l.unit),'n')}${td('Chưa có UID',gap>0?`<span class="xv-it-gap">${qtyText(gap,l.unit)}</span>`:'—','n')}</tr>`}).join('');
           itPreview.hidden=false;
           itPreview.innerHTML=`<dl class="xv-facts"><div><dt>Phiếu IT</dt><dd>${esc(d.number)}</dd></div><div><dt>Trạng thái</dt><dd>${esc(d.status||'—')}</dd></div><div><dt>Kho đi</dt><dd>${esc(d.fromWarehouse||'—')}</dd></div><div><dt>Kho đến</dt><dd>${esc(d.toWarehouse||'—')}</dd></div><div><dt>Ghi chú</dt><dd>${esc(d.description||'—')}</dd></div></dl>`+
             `<div class="xv-it-code"><label class="xv-label" for="xa-vai-it-code">Mã hàng</label><input class="cut-input" id="xa-vai-it-code" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="40" value="${esc(d.itemCode)}" aria-describedby="xa-vai-it-code-err"><p class="xv-it-err" id="xa-vai-it-code-err" role="alert"></p></div>`+
-            `<div class="cut-table-wrap"><table class="cut-table xv-table"><thead><tr><th>SKU</th><th class="n">Đã xuất</th><th class="n">Số UID</th><th class="n">Theo UID</th><th class="n">Chưa có UID</th></tr></thead><tbody>${rows}</tbody></table></div>`+
+            `<div class="cut-table-wrap"><table class="cut-table xv-table"><thead><tr><th>SKU</th><th class="n">Đã xuất</th><th class="n">Số UID</th><th class="n">Có UID</th><th class="n">Chưa có UID</th></tr></thead><tbody>${rows}</tbody></table></div>`+
             `<div class="xv-foot">${ready?'':'<p class="xv-it-err">Phiếu chưa xuất hoặc chưa có Group UID</p>'}<button class="cut-secondary act-icon act-icon--x" id="xa-vai-it-cancel" type="button">Huỷ</button><button class="cut-primary act-icon act-icon--check" id="xa-vai-it-save" type="button"${ready?'':' disabled'}>Lưu đợt · ${d.uids.length.toLocaleString('vi-VN')} UID</button></div>`;
           const input=$('xa-vai-it-code');
           input.addEventListener('input',()=>{upper(input);const v=input.value.trim();markItCode(v&&!CODE_RE.test(v)?CODE_ERROR:'')});
@@ -10390,13 +10400,18 @@ var FSK_CORE = (function () {
             const info=await extensionRequest('PING_WMS',{},6000);
             // Extension cũ im lặng với lệnh lạ: kiểm bản trước, không để người dùng chờ hết giờ.
             if(older(info?.version,MIN_IT_EXT))throw new Error(`cần Extension ${MIN_IT_EXT} trở lên, hãy Reload Extension rồi tải lại tab WMS`);
+            // Phiếu đã lưu: giữ mã hàng của đợt (Admin có thể đã sửa khác ghi chú); tra lỗi thì lấy từ danh sách đợt đang hiện.
+            const savedP=rpc('xa_vai_it_get',{p_it_number:number}).then(r=>r?.ok?r.data:null,()=>itItems.find(b=>b.itNumber===number)||null);
             const data=await extensionRequest('GET_XA_VAI_IT',{number});
+            const saved=await savedP;
             if(!data||String(data.number)!==number||!Array.isArray(data.lines)||!Array.isArray(data.uids)||data.lines.some(l=>!l||typeof l.sku!=='string'||!l.sku))throw new Error('Extension trả phiếu IT không hợp lệ');
             if(run!==itRun||!active())return;
-            itDraft={...data,itemCode:codeFromNote(data.description)};
+            const savedCode=saved&&CODE_RE.test(String(saved.itemCode||''))?String(saved.itemCode):'';
+            itDraft={...data,itemCode:savedCode||codeFromNote(data.description),saved:Boolean(saved)};
             renderDraft();
             const gap=data.lines.reduce((a,l)=>a+(finite(l.deliveredQty)?Number(l.deliveredQty):0),0)-data.uids.reduce((a,u)=>a+(finite(u.qty)?Number(u.qty):0),0);
-            tell(`Phiếu ${number} · ${data.lines.length} SKU · ${data.uids.length.toLocaleString('vi-VN')} UID${itDraft.itemCode?` · ${itDraft.itemCode}`:''}`,gap>0||!itDraft.itemCode?'warn':'ok');
+            const sk=data.skipped||{},dropped=['otherSource','badCode','multiSku','otherSku'].reduce((a,k)=>a+(Number(sk[k])||0),0);
+            tell(`Phiếu ${number}${saved?' · đã có đợt':''} · ${data.lines.length} SKU · ${data.uids.length.toLocaleString('vi-VN')} UID${dropped?` · bỏ ${dropped.toLocaleString('vi-VN')} UID không thuộc phiếu`:''}${itDraft.itemCode?` · ${itDraft.itemCode}`:''}`,gap>0||dropped||!itDraft.itemCode?'warn':'ok');
           }catch(e){if(run===itRun){tell(`Không đọc được phiếu IT: ${e.message}`,'error');window.PrintSkuNotice?.retry(()=>readIt(),message)}}
           finally{if(run===itRun)setItBusy(false)}
         };
@@ -10429,15 +10444,16 @@ var FSK_CORE = (function () {
         // không thì số UID đã đo ÷ tổng UID). Mở "UID" mới tải chi tiết (xa_vai_it_get); thẻ đang mở giữ mở khi tải lại.
         const pct=(a,b)=>b>0?Math.max(0,Math.min(100,Math.round(a/b*100))):0;
         const renderIts=()=>{
-          itCount.textContent=String(itItems.length);
+          itCount.textContent=String(Math.max(itTotal,itItems.length));
           if(!itItems.length){itList.innerHTML='<p class="cut-empty">Chưa có đợt xả theo phiếu IT</p>';return}
+          const more=itTotal>itItems.length?`<p class="cut-empty">Hiện ${itItems.length.toLocaleString('vi-VN')} / ${itTotal.toLocaleString('vi-VN')} đợt mới nhất</p>`:'';
           itList.innerHTML=itItems.map(b=>{
             const lines=(Array.isArray(b.lines)?b.lines:[]).map(l=>{const p=finite(l.deliveredMm)&&Number(l.deliveredMm)>0?pct(Number(l.actualMm)||0,Number(l.deliveredMm)):pct(Number(l.measuredCount)||0,Number(l.uidCount)||0);
-              return `<tr>${td('SKU',`<span class="xv-it-sku">${esc(l.sku)}${l.name?`<small>${esc(l.name)}</small>`:''}</span>`)}${td('UID đã đo',`${Number(l.measuredCount||0).toLocaleString('vi-VN')} / ${Number(l.uidCount||0).toLocaleString('vi-VN')}`,'n')}${td('Mét TT',mmM(l.actualMm),'n')}${td('Đã xuất',finite(l.deliveredMm)?`${mmM(l.deliveredMm)} m`:qtyText(l.deliveredQty,l.unit),'n')}${td('Tiến độ',`<span class="xv-it-bar" role="img" aria-label="${p}%" title="${p}%"><i style="width:${p}%"></i></span>`)}</tr>`}).join('');
-            return `<article class="xv-it-card" data-it="${esc(b.itNumber)}"><header class="xv-it-card__head"><strong class="xv-it-card__code">${esc(b.itemCode)}</strong><span class="xv-it-card__meta" title="${esc(b.description||'')}">IT ${esc(b.itNumber)}</span><span class="xv-it-card__meta">${esc(fmtAt(b.loadedAt))}</span><span class="xv-state"${Number(b.measuredCount)>=Number(b.uidCount)&&Number(b.uidCount)>0?' data-state="printed"':''}>${Number(b.measuredCount||0).toLocaleString('vi-VN')} / ${Number(b.uidCount||0).toLocaleString('vi-VN')} UID</span></header>`+
+              return `<tr>${td('SKU',`<span class="xv-it-sku">${esc(l.sku)}${l.name?`<small>${esc(l.name)}</small>`:''}</span>`)}${td('UID đã đo',`${Number(l.measuredCount||0).toLocaleString('vi-VN')} / ${Number(l.uidCount||0).toLocaleString('vi-VN')}`,'n')}${td('Mét TT',mmM(l.actualMm),'n')}${td('Đã xuất',finite(l.deliveredMm)?`${mmM(l.deliveredMm)} m`:qtyText(l.deliveredQty,l.unit),'n')}${td('Tiến độ',`<span class="xv-it-prog"><span class="xv-it-bar" aria-hidden="true"><i style="width:${p}%"></i></span><b>${p}%</b></span>`)}</tr>`}).join('');
+            return `<article class="xv-it-card" data-it="${esc(b.itNumber)}"><header class="xv-it-card__head"><strong class="xv-it-card__code">${esc(b.itemCode)}</strong><span class="xv-it-card__meta" title="${esc(b.description||'')}">IT ${esc(b.itNumber)}</span><span class="xv-it-card__meta">${esc(fmtAt(b.loadedAt))}</span><span class="xv-state"${Number(b.printedCount)>=Number(b.uidCount)&&Number(b.uidCount)>0?' data-state="printed"':''}>${Number(b.measuredCount||0).toLocaleString('vi-VN')} / ${Number(b.uidCount||0).toLocaleString('vi-VN')} UID</span></header>`+
               `<div class="cut-table-wrap"><table class="cut-table xv-table"><thead><tr><th>SKU</th><th class="n">UID đã đo</th><th class="n">Mét TT</th><th class="n">Đã xuất</th><th>Tiến độ</th></tr></thead><tbody>${lines}</tbody></table></div>`+
               `<details class="xv-it-uids" data-it="${esc(b.itNumber)}"${itOpen.has(b.itNumber)?' open':''}><summary>UID · ${Number(b.uidCount||0).toLocaleString('vi-VN')}</summary><div class="xv-it-uids__body"></div></details></article>`;
-          }).join('');
+          }).join('')+more;
           for(const det of itList.querySelectorAll('details[open]'))loadItUids(det);
         };
         // Chrome cũng phát toggle khi chèn <details open>: chặn tải trùng cho cùng một thẻ.
@@ -10462,10 +10478,10 @@ var FSK_CORE = (function () {
         const loadIts=async({silent=false}={})=>{
           const run=++itListRun;
           try{
-            const r=await rpc('xa_vai_it_list',{p_limit:30});
+            const r=await rpc('xa_vai_it_list',{p_limit:50});
             if(!r.ok)throw new Error(r.error?.message||'máy chủ từ chối');
             if(run!==itListRun)return true;
-            itItems=Array.isArray(r.data?.items)?r.data.items:[];
+            itItems=Array.isArray(r.data?.items)?r.data.items:[];itTotal=Number(r.data?.total)||0;
             renderIts();
             return true;
           }catch(e){if(!silent&&run===itListRun){tell(`Không tải được đợt xả theo phiếu IT: ${e.message}`,'error');window.PrintSkuNotice?.retry(()=>loadIts(),message)}return run!==itListRun}

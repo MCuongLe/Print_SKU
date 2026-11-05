@@ -461,8 +461,12 @@
     itemsUrl.searchParams.set("page", "1");
     itemsUrl.searchParams.set("size", "500");
     const items = await getJson(itemsUrl, denied, "", { allCompanies: true });
-    if (core.responseRows(items).length > MAX_XA_VAI_IT_LINES) throw new Error(`Phiếu IT có hơn ${MAX_XA_VAI_IT_LINES} dòng SKU`);
-    const mapping = String(head?.mapping_id ?? "").trim(), rows = [];
+    const itemRows = core.responseRows(items);
+    if (itemRows.length > MAX_XA_VAI_IT_LINES) throw new Error(`Phiếu IT có hơn ${MAX_XA_VAI_IT_LINES} dòng SKU`);
+    // WMS trả hết dòng một lần (đo 15/10); khai tổng lớn hơn số dòng nhận được = bị cắt → báo lỗi, không lưu đợt thiếu SKU.
+    if (core.responseTotal(items, itemRows.length) > itemRows.length) throw new Error(`WMS trả thiếu dòng phiếu IT ${number} (${itemRows.length} / ${core.responseTotal(items, itemRows.length)}); thử lại`);
+    const mapping = String(head?.mapping_id ?? "").trim(), rows = [], codes = new Set();
+    let total = 0;
     if (/^\d{6,40}$/.test(mapping)) {
       const deniedUid = "Phiên WMS không còn quyền đọc Group UID; hãy đăng nhập lại";
       for (let page = 1; ; page += 1) {
@@ -472,11 +476,20 @@
         url.searchParams.set("page", String(page));
         url.searchParams.set("size", "500");
         const body = await getJson(url, deniedUid, "", { allCompanies: true, emptyPage: true });
-        const pageRows = core.responseRows(body), total = core.responseTotal(body, rows.length + pageRows.length);
+        const pageRows = core.responseRows(body);
+        total = core.responseTotal(body, rows.length + pageRows.length);
         if (total > MAX_XA_VAI_IT_UIDS) throw new Error(`WMS trả ${total.toLocaleString("vi-VN")} Group UID cho phiếu ${number} (tối đa ${MAX_XA_VAI_IT_UIDS.toLocaleString("vi-VN")}); không nạp`);
+        const before = codes.size;
+        for (const row of pageRows) codes.add(String(row?.group_uid_code ?? "").trim());
         rows.push(...pageRows);
-        if (pageRows.length < 500 || rows.length >= total) break;
+        if (pageRows.length < 500 || codes.size >= total) break;
+        // Trang đầy mà không thêm mã mới (WMS lặp trang) → dừng, kiểm thiếu ở dưới.
+        if (codes.size === before || page * 500 >= MAX_XA_VAI_IT_UIDS + 500) break;
       }
+      // Dữ liệu đổi giữa hai trang (UID nhảy trang khi bị cắt / chuyển) làm lặp hoặc sót: số mã duy nhất phải bằng tổng WMS khai.
+      if (codes.size < total) throw new Error(`Group UID của phiếu ${number} thay đổi trong lúc đọc (${codes.size} / ${total}); thử lại`);
+      // WMS bỏ qua bộ lọc nguồn → mọi dòng là UID khác phiếu.
+      if (rows.length && rows.every(row => String(row?.processing_source_code ?? "").trim() !== mapping)) throw new Error(`WMS không lọc Group UID theo phiếu ${number}; không nạp`);
     }
     return { ...core.normalizeXaVaiIt(head, items, rows), generatedAt: new Date().toISOString() };
   }
