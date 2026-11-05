@@ -2,9 +2,9 @@
 
     python scripts/run_tests.py                  # cả bộ, 4 tiến trình song song
     python scripts/run_tests.py --jobs 1         # tuần tự từng tệp, đúng như bản cũ
-    python scripts/run_tests.py --only sku_sync  # chỉ test có tên chứa từ khoá
+    python scripts/run_tests.py --only sku_sync  # chỉ test có tên chứa từ khoá; nhiều từ khoá cách nhau dấu phẩy (--only xa_vai,icon_standard)
     python scripts/run_tests.py --changed        # chỉ test liên quan tệp đang đổi (git); không map được thì chạy cả bộ
-    python scripts/run_tests.py --changed --list # chỉ in test sẽ chạy, không chạy
+    python scripts/run_tests.py --changed --list # chỉ in test gợi ý + khối chưa có test / tệp không map được, không chạy (lead quyết bậc)
     python scripts/run_tests.py --port 8012      # phục vụ + đặt BASE ở cổng khác (worktree; cổng 8000 giữ cho cây chính)
     python scripts/run_tests.py --no-server      # không tự mở python -m http.server
 
@@ -453,11 +453,59 @@ def say(text: str) -> None:
     print(text, flush=True)
 
 
+NO_TEST_MARK = "không test nào nhắc tới"
+
+
+def only_filter(files: list[Path], spec: str) -> list[Path]:
+    """--only: một hoặc nhiều từ khoá cách nhau dấu phẩy; giữ test có tên chứa BẤT KỲ từ khoá nào (05/11/2026, bậc 1 cần
+    gọi một lệnh cho test màn + 3 test chuẩn). Chuỗi rỗng / chỉ dấu phẩy = không lọc."""
+    keys = [k.strip() for k in spec.split(",") if k.strip()]
+    if not keys:
+        return files
+    return [p for p in files if any(k in p.name for k in keys)]
+
+
+def split_unmapped(unmapped: list[str]) -> tuple[list[str], list[str]]:
+    """Tách phần không map được thành (khối index.html chưa có test nào nhắc, tệp / dải dòng khác)."""
+    blocks = [u for u in unmapped if NO_TEST_MARK in u]
+    others = [u for u in unmapped if NO_TEST_MARK not in u]
+    return blocks, others
+
+
+def changed_summary(chosen: dict[str, str], unmapped: list[str], all_files: list[Path], listing: bool) -> list[str]:
+    """Dòng in cho --changed. Có phần không map được: --list in gợi ý + hai nhóm để lead quyết bậc (--only hoặc cả bộ);
+    không --list thì giữ hành vi cũ (chạy cả bộ)."""
+    lines: list[str] = []
+    reasons: dict[str, int] = {}
+    for why in chosen.values():
+        reasons[why] = reasons.get(why, 0) + 1
+    picked = [p.name for p in all_files if p.name in chosen]
+    if not unmapped:
+        lines.append(f"Chọn {len(picked)}/{len(all_files)} test: " + " · ".join(f"{k} → {v}" for k, v in sorted(reasons.items())[:8]))
+        return lines
+    blocks, others = split_unmapped(unmapped)
+    if not listing:
+        lines.append("Không map được sang test nào → chạy CẢ BỘ: " + "; ".join(unmapped[:8]) + (" …" if len(unmapped) > 8 else ""))
+        lines.append("(--changed --list để xem gợi ý và tự chọn --only thay vì cả bộ)")
+        return lines
+    lines.append(f"Gợi ý {len(picked)}/{len(all_files)} test (map được): " + " · ".join(f"{k} → {v}" for k, v in sorted(reasons.items())[:8]))
+    lines.extend(f"  {name}" for name in picked)
+    if blocks:
+        lines.append("Khối index.html chưa có test nào nhắc (viết test hoặc lead quyết bậc):")
+        lines.extend(f"  {b}" for b in blocks[:12])
+    if others:
+        lines.append("Tệp không map được (lead quyết bậc: thêm --only hoặc chạy cả bộ):")
+        lines.extend(f"  {o}" for o in others[:12])
+    stems = [name.rsplit(".", 1)[0] for name in picked]
+    lines.append("Không --list: sẽ chạy CẢ BỘ." + (f" Chạy riêng phần gợi ý: --only {','.join(stems)}" if stems else ""))
+    return lines
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--only", default="", help="chỉ chạy test có tên chứa chuỗi này")
+    parser.add_argument("--only", default="", help="chỉ chạy test có tên chứa từ khoá; nhiều từ khoá cách nhau dấu phẩy")
     parser.add_argument("--changed", nargs="?", const="HEAD", default=None, metavar="REF",
-                        help="chỉ chạy test liên quan tệp đổi so với REF (mặc định HEAD, gồm cả tệp chưa theo dõi); không map được thì cả bộ")
+                        help="chỉ chạy test liên quan tệp đổi so với REF (mặc định HEAD, gồm cả tệp chưa theo dõi); không map được thì cả bộ (kèm --list: in gợi ý để lead quyết)")
     parser.add_argument("--jobs", type=int, default=DEFAULT_JOBS, help=f"số test chạy cùng lúc (mặc định {DEFAULT_JOBS}, tối đa theo số lõi; 1 = tuần tự như cũ)")
     parser.add_argument("--port", type=int, default=None, help=f"cổng máy chủ tĩnh + BASE (mặc định {DEFAULT_PORT}, để cho cây chính; worktree dùng cổng khác)")
     parser.add_argument("--list", action="store_true", help="chỉ in danh sách test sẽ chạy rồi thoát")
@@ -505,19 +553,16 @@ def main(argv: list[str] | None = None) -> int:
             say(f"--changed {args.changed}: {len(changed)} tệp đổi" + (f" ({', '.join(changed[:6])}{' …' if len(changed) > 6 else ''})" if changed else ""))
             if any(p.startswith("workstation-agent/") for p in changed):
                 say("workstation-agent/ đổi: bộ test của agent chạy riêng (`node --test` trong workstation-agent/), không thuộc run_tests.py.")
-            if unmapped:
-                say("Không map được sang test nào → chạy CẢ BỘ: " + "; ".join(unmapped[:8]) + (" …" if len(unmapped) > 8 else ""))
-            else:
+            for line in changed_summary(chosen, unmapped, all_files, args.list):
+                say(line)
+            if unmapped and args.list:
+                return 0
+            if not unmapped:
                 files = [p for p in all_files if p.name in chosen]
-                reasons: dict[str, int] = {}
-                for why in chosen.values():
-                    reasons[why] = reasons.get(why, 0) + 1
-                say(f"Chọn {len(files)}/{len(all_files)} test: " + " · ".join(f"{k} → {v}" for k, v in sorted(reasons.items())[:8]))
                 if not files:
-                    say("Không có test liên quan (chỉ đổi tài liệu / cấu hình). Trước khi báo xong vẫn phải chạy cả bộ.")
+                    say("Không có test liên quan (chỉ đổi tài liệu / cấu hình): bậc 0, chỉ cần commit_gate.")
                     return 0
-    if args.only:
-        files = [p for p in files if args.only in p.name]
+    files = only_filter(files, args.only)
     if not files:
         say("Không có test nào khớp.")
         return 0

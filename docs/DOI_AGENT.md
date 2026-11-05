@@ -130,7 +130,7 @@ Bàn giao: sửa thẳng (cây chính) | git diff > <scratchpad>/<việc>.patch 
 
 ## Chạy nhanh
 
-- Cả bộ test: `python scripts/run_tests.py [--no-server] [--only <tên>] [--changed] [--jobs N] [--port <cổng>] [--no-retry]` (4 tiến trình song song, một bộ một lúc, tự chạy lại test hỏng một lần, in mục CHẬP CHỜN; cờ đủ ở `docs/PROJECT_MAP.md` mục 5); máy chủ tĩnh cổng 8000 (worktree: `--port`); `PLAYWRIGHT_MODULE=C:/Users/HASAKI/playwright-tools/node_modules/playwright`.
+- Cả bộ test: `python scripts/run_tests.py [--no-server] [--only <từ khoá,…>] [--changed [--list]] [--jobs N] [--port <cổng>] [--no-retry]` (4 tiến trình song song, một bộ một lúc, tự chạy lại test hỏng một lần, in mục CHẬP CHỜN; cờ đủ ở `docs/PROJECT_MAP.md` mục 5); máy chủ tĩnh cổng 8000 (worktree: `--port`); `PLAYWRIGHT_MODULE=C:/Users/HASAKI/playwright-tools/node_modules/playwright`.
 - Cổng trước commit: `python scripts/commit_gate.py [--cached | --commit <sha>]` (thoát 1 khi có mục KHÔNG ĐẠT). Từ 18/10/2026 hook `.claude/settings.json` tự chạy cổng này trước mọi `git commit` và chặn Write ghi đè cả `index.html` / sửa `.env` (`scripts/claude_hooks.py`); người dùng gọi `/commit-push` để commit + push theo đủ luật.
 - Review Codex: `/review-codex`, hoặc `python scripts/codex_review.py --commit <sha> | --working-tree | --images <thư mục> --brief <md>`.
 - Migration: `python scripts/apply_supabase_sql.py <tệp> [--dry-run] [--allow-destructive]`; deploy Edge: `python scripts/deploy_<tên>.py [--dry-run]`.

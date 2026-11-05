@@ -241,5 +241,58 @@ class RunOneTest(unittest.TestCase):
         self.assertEqual(rt.main(["--only", "khong_co_test_nao_ten_nhu_the_zzz", "--no-server"]), 0)
 
 
+class ScopeTest(unittest.TestCase):
+    """Việc 2 của docs/plans/2026-11-05-quy-trinh-test-theo-pham-vi.md: --only nhiều từ khoá; --changed --list tách
+    "khối chưa có test nào nhắc" khỏi "tệp không map được" để lead quyết bậc thay vì rơi về cả bộ."""
+    FILES = [Path("tests") / n for n in ("xa_vai_a4_browser.cjs", "xa_vai_a4_sql.cjs", "icon_standard_browser.cjs", "sku_sync_core.cjs")]
+
+    def test_only_accepts_several_keywords_separated_by_commas(self):
+        names = [p.name for p in rt.only_filter(self.FILES, "xa_vai_a4_sql, icon_standard")]
+        self.assertEqual(names, ["xa_vai_a4_sql.cjs", "icon_standard_browser.cjs"])
+        self.assertEqual([p.name for p in rt.only_filter(self.FILES, "xa_vai")], ["xa_vai_a4_browser.cjs", "xa_vai_a4_sql.cjs"])
+        self.assertEqual(rt.only_filter(self.FILES, ""), self.FILES)
+        self.assertEqual(rt.only_filter(self.FILES, " , "), self.FILES)
+
+    def test_main_only_with_commas_lists_every_match(self):
+        import contextlib
+        import io
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = rt.main(["--only", "xa_vai_printed_delete_sql,xa_vai_a4_sql", "--list", "--no-server"])
+        self.assertEqual(code, 0)
+        self.assertIn("xa_vai_printed_delete_sql.cjs", out.getvalue())
+        self.assertIn("xa_vai_a4_sql.cjs", out.getvalue())
+        self.assertIn("\n2/", out.getvalue())
+
+    def test_unmapped_is_split_into_blocks_without_test_and_unknown_files(self):
+        blocks, others = rt.split_unmapped([
+            "index.html: dòng 5–6 trong khối worker-bundle (không test nào nhắc tới)",
+            "supabase/b_v1.sql",
+            "index.html: dòng 9–9 (ngoài khối có id)",
+        ])
+        self.assertEqual(blocks, ["index.html: dòng 5–6 trong khối worker-bundle (không test nào nhắc tới)"])
+        self.assertEqual(others, ["supabase/b_v1.sql", "index.html: dòng 9–9 (ngoài khối có id)"])
+
+    def test_changed_summary_lists_suggested_tests_and_the_two_groups(self):
+        chosen = {"xa_vai_a4_browser.cjs": "index.html · xa-vai-script", "icon_standard_browser.cjs": "index.html · bộ chuẩn giao diện"}
+        unmapped = ["index.html: dòng 5–6 trong khối worker-bundle (không test nào nhắc tới)", "supabase/b_v1.sql"]
+        text = "\n".join(rt.changed_summary(chosen, unmapped, self.FILES, listing=True))
+        self.assertIn("Gợi ý 2/4 test", text)
+        self.assertIn("xa_vai_a4_browser.cjs", text)
+        self.assertIn("Khối index.html chưa có test nào nhắc", text)
+        self.assertIn("worker-bundle", text)
+        self.assertIn("Tệp không map được", text)
+        self.assertIn("supabase/b_v1.sql", text)
+        self.assertIn("lead quyết bậc", text)
+        self.assertIn("--only xa_vai_a4_browser,icon_standard_browser", text)
+        # Không --list: vẫn báo sẽ chạy cả bộ (hành vi cũ giữ nguyên)
+        text = "\n".join(rt.changed_summary(chosen, unmapped, self.FILES, listing=False))
+        self.assertIn("CẢ BỘ", text)
+        # Map được hết: không có hai nhóm
+        text = "\n".join(rt.changed_summary(chosen, [], self.FILES, listing=True))
+        self.assertNotIn("chưa có test", text)
+        self.assertNotIn("không map được", text)
+
+
 if __name__ == "__main__":
     unittest.main()

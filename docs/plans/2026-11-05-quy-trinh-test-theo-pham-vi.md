@@ -82,9 +82,9 @@ Phạm vi test: bậc 1 (Xả vải, khối xa-vai-script + hàm SQL mới) — 
 - [x] `RULES.md` mã `[N20261105-hhmm]`: quyết định, số đo trên, lý do đổi; bộ nhớ `feedback_remind_commit_when_done` + `project_test_speedup_plan` cập nhật.
 - [ ] `commit_gate --cached` không cảnh báo dòng > 400 ký tự; commit + push (bậc 0).
 
-### Việc 2 — Cải tiến runner (tuỳ chọn, commit riêng) · lead · [ ]
-- [ ] `--only a,b,c` nhiều từ khoá; test đỏ trước ở `tests/test_run_tests.py`.
-- [ ] `--changed --list` in "khối không test nào nhắc" tách riêng khỏi "chạy cả bộ".
+### Việc 2 — Cải tiến runner (commit riêng) · lead · [x]
+- [x] `--only a,b,c` nhiều từ khoá (`only_filter`); test đỏ trước `ScopeTest` ở `tests/test_run_tests.py` (4 ca đỏ → 30/30 OK).
+- [x] `--changed --list` in gợi ý + hai nhóm (`split_unmapped`, `changed_summary`) + lệnh `--only` sẵn; không `--list` giữ hành vi cũ.
 
 ## Chờ người dùng chốt
 
@@ -94,4 +94,5 @@ Phạm vi test: bậc 1 (Xả vải, khối xa-vai-script + hàm SQL mới) — 
 
 ## Nhật ký
 - 05/11/2026 09:10 Soạn bản nháp (phiên Fable), đo `outputs/test-times.json`; chưa sửa tệp luật.
-- 05/11/2026 09:20 Người dùng duyệt cả 3 khuyến nghị; sửa 4 tệp luật + nhật ký, commit + push (bậc 0). Việc 2 (runner) chưa làm.
+- 05/11/2026 09:20 Người dùng duyệt cả 3 khuyến nghị; sửa 4 tệp luật + nhật ký, commit + push `94200f3` (bậc 0).
+- 05/11/2026 09:45 Việc 2 (người dùng "Làm Việc 2"): runner `--only` nhiều từ khoá, `--changed --list` tách nhóm; bậc 3 (hạ tầng test) cả bộ trước push.
