@@ -24,7 +24,8 @@ const makeServer = () => {
   const add = (n, sku, systemMm, lot = 'L1', roll = `R${n}`) => s.details.set(uid(n), { sku, lot, roll, systemMm, productName: sku === SKU ? NAME : `Vải thử ${sku}` });
   add(1, SKU, 60758); add(2, SKU, 50000); add(3, SKU, 40000); add(4, SKU, 30000); add(5, SKU, null); add(6, SKU, 60000); add(9, SKU2, 20000);
   for (let i = 0; i < 150; i++) add(500 + i, SKU_BIG, 10000, 'LB', `B${i}`);
-  s.item = (u, m) => ({ groupUid: u, sku: m.sku, itemCode: m.itemCode || null, lot: m.lot, roll: m.roll, systemMm: m.systemMm, actualMm: m.actualMm, measuredAt: m.measuredAt, status: m.status, printedAt: m.printedAt || null, printJobId: m.jobId || null });
+  // m.unitFields: trường đơn vị gốc của máy chủ xa_vai_a4_v2 (05/11/2026); không có thì như máy chủ cũ (Excel giữ mm).
+  s.item = (u, m) => ({ groupUid: u, sku: m.sku, itemCode: m.itemCode || null, lot: m.lot, roll: m.roll, systemMm: m.systemMm, actualMm: m.actualMm, measuredAt: m.measuredAt, status: m.status, printedAt: m.printedAt || null, printJobId: m.jobId || null, ...(m.unitFields || {}) });
   s.measure = (u, actualMm, status = 'pending', extra = {}) => { const d = s.details.get(u); s.measures.set(u, { sku: d.sku, lot: d.lot, roll: d.roll, systemMm: d.systemMm, actualMm, measuredAt: new Date(Date.now() + (s.seq++)).toISOString(), status, printedAt: null, jobId: null, itemCode: null, ...extra }); };
   // Lệnh do máy khác gửi (hoặc trước khi tải lại trang): UID đang "printing" gắn printJobId + mã hàng.
   s.foreignJob = (id, uids, itemCode = 'CWSH02') => { s.jobs.set(id, { status: 'queued', uids, reprint: false }); uids.forEach(u => { const m = s.measures.get(u); m.status = 'printing'; m.jobId = id; m.itemCode = itemCode; }); };
@@ -426,17 +427,23 @@ async function desktop(browser) {
   await waitMsg(page, /Chưa gửi được lệnh in: Mỗi phiếu một mã hàng/);
   assert.equal(calls(s, 'xa_vai_print_enqueue').length, before + 1, 'máy chủ từ chối MIXED_ITEM_CODE');
   s.measures.get(uid(3)).itemCode = 'CWSH02';
+  // Một dòng có trường đơn vị gốc (vải g): Excel dùng đơn vị gốc + mã vải / màu; dòng khác (máy chủ cũ) giữ mm.
+  s.measures.get(uid(4)).unitFields = { unit: 'g', systemQty: 16763, actualQty: 16500, fabricCode: 'M001_NCC', color: 'Đen' };
+  await page.locator('#xa-vai-search button[type="submit"]').click();
+  await page.waitForFunction(() => document.querySelectorAll('#xa-vai-printed-rows tr[data-uid]').length === 5);
   const [download] = await Promise.all([page.waitForEvent('download'), page.locator('#xa-vai-export').click()]);
   assert.match(download.suggestedFilename(), /\.xlsx$/);
   const book = readXlsx(require('node:fs').readFileSync(await download.path()));
-  assert.deepEqual(book.table[0], ['STT', 'Mã hàng', 'SKU', 'Group UID', 'Lot', 'Roll', 'Hệ thống (mm)', 'Thực tế (mm)', 'Chênh lệch (mm)', 'Giờ nhập', 'Giờ in'], 'Excel: cột mm, không cột co');
+  assert.deepEqual(book.table[0], ['STT', 'Mã hàng', 'SKU', 'Mã vải', 'Màu', 'Group UID', 'Lot', 'Roll', 'Đơn vị', 'Hệ thống', 'Thực tế', 'Chênh lệch', 'Giờ nhập', 'Giờ in'], 'Excel: đơn vị gốc + mã vải / màu, không cột co');
   assert.equal(book.table.length, 6, 'tiêu đề + 5 dòng');
-  const x1 = book.table.find(r => r[3] === uid(1));
-  assert.ok(x1, 'Group UID là chữ đủ 16 số'); assert.equal(x1[1], 'CWSH02'); assert.equal(x1[2], SKU); assert.equal(x1[6], 60758); assert.equal(x1[7], 61000); assert.equal(x1[8], 242, 'mm nguyên: thực tế − hệ thống');
-  const x4 = book.table.find(r => r[3] === uid(4));
-  assert.equal(x4[6], 30000); assert.equal(x4[7], 29900); assert.equal(x4[8], -100, 'chênh lệch âm');
-  const x5 = book.table.find(r => r[3] === uid(5));
-  assert.equal(x5[6], ''); assert.equal(x5[7], 12000); assert.equal(x5[8], '', 'không có hệ thống thì ô chênh lệch trống');
+  const x1 = book.table.find(r => r[5] === uid(1));
+  assert.ok(x1, 'Group UID là chữ đủ 16 số'); assert.equal(x1[1], 'CWSH02'); assert.equal(x1[2], SKU); assert.equal(x1[8], 'mm', 'máy chủ cũ: mm');
+  assert.equal(x1[9], 60758); assert.equal(x1[10], 61000); assert.equal(x1[11], 242, 'mm nguyên: thực tế − hệ thống');
+  const x4 = book.table.find(r => r[5] === uid(4));
+  assert.deepEqual(x4.slice(3, 5), ['M001_NCC', 'Đen']); assert.equal(x4[8], 'g');
+  assert.equal(x4[9], 16763); assert.equal(x4[10], 16500); assert.equal(x4[11], -263, 'đơn vị gốc (g): thực tế − hệ thống');
+  const x5 = book.table.find(r => r[5] === uid(5));
+  assert.equal(x5[9], ''); assert.equal(x5[10], 12000); assert.equal(x5[11], '', 'không có hệ thống thì ô chênh lệch trống');
   assert.ok(book.table.every(r => r.every(v => !/(^|\s)co(\s|$)|%/i.test(String(v)))), 'Excel không có độ co %');
   assert.equal(x5[1], 'TEST01');
   assert.ok(calls(s, 'xa_vai_measure_list').length && calls(s, 'xa_vai_measure_list').every(c => !('p_access_token' in c.body)), 'xa_vai_measure_list (đọc) không gửi khoá máy');

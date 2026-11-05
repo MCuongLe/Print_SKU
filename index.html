@@ -10348,9 +10348,14 @@ var FSK_CORE = (function () {
           if(!printedItems.length)return;
           // Excel (người dùng chốt 04/11/2026): số là mm NGUYÊN (màn hình vẫn hiện mét); chênh lệch = thực tế − hệ thống, trống khi không có hệ thống;
           // không cột co. Mã hàng / SKU / Group UID giữ chữ. AdminSyncUI.xlsxBlob đã đặt trang A4 ngang, vừa một trang theo chiều ngang.
-          const mm=v=>finite(v)?Math.round(Number(v)):'';
-          const head=['STT','Mã hàng','SKU','Group UID','Lot','Roll','Hệ thống (mm)','Thực tế (mm)','Chênh lệch (mm)','Giờ nhập','Giờ in'];
-          const rows=printedItems.map((x,i)=>[i+1,String(x.itemCode??''),String(x.sku??''),String(x.groupUid??''),String(x.lot??''),String(x.roll??''),mm(x.systemMm),mm(x.actualMm),finite(x.systemMm)&&finite(x.actualMm)?mm(x.actualMm)-mm(x.systemMm):'',fmtAt(x.measuredAt),fmtAt(x.printedAt)]);
+          // 05/11/2026 (xa_vai_a4_v2): số theo ĐƠN VỊ GỐC của SKU như phiếu A4 (g, mm số nguyên; m 2 chữ số) + Mã vải, Màu; màn hình vẫn mét.
+          // Máy chủ chưa có trường unit (trước migration) thì giữ mm như cũ.
+          const q=(v,u)=>!finite(v)?'':String(u||'').toLowerCase()==='m'?Math.round(Number(v)*100)/100:Math.round(Number(v));
+          const head=['STT','Mã hàng','SKU','Mã vải','Màu','Group UID','Lot','Roll','Đơn vị','Hệ thống','Thực tế','Chênh lệch','Giờ nhập','Giờ in'];
+          const rows=printedItems.map((x,i)=>{
+            const base='unit' in x,u=base?x.unit:'mm',sys=base?x.systemQty:x.systemMm,act=base?x.actualQty:x.actualMm;
+            return [i+1,String(x.itemCode??''),String(x.sku??''),String(x.fabricCode??''),String(x.color??''),String(x.groupUid??''),String(x.lot??''),String(x.roll??''),String(u??''),q(sys,u),q(act,u),finite(sys)&&finite(act)?q(Number(act)-Number(sys),u):'',fmtAt(x.measuredAt),fmtAt(x.printedAt)];
+          });
           const blob=window.AdminSyncUI.xlsxBlob(head,rows,'Xả vải'),a=document.createElement('a'),day=(dateFrom.value||todayVN()).replace(/-/g,''),f=itemFilter.value.trim().toUpperCase();
           a.href=URL.createObjectURL(blob);a.download=`Xa_vai_da_in_${CODE_RE.test(f)?`${f}_`:''}${day}.xlsx`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),10000);
           tell(`Đã xuất ${printedItems.length.toLocaleString('vi-VN')} dòng`,'ok','search');

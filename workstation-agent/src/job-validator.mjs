@@ -54,6 +54,8 @@ const XA_VAI_MAX_COPIES = 5;
 const XA_VAI_MAX_ITEMS = 100;
 // CONTRACT V2: actual_mm ≤ 100.000 m (check của bảng xa_vai_measures); Lot/Roll phiếu tối đa 40 ký tự.
 const XA_VAI_MAX_MM = 100000000;
+// Trần số lượng theo đơn vị gốc (g / mm / m) của phiếu 0.12.0: rộng hơn mm vì vải g có cuộn hàng chục kg.
+const XA_VAI_MAX_QTY = 1e9;
 const XA_VAI_CODE_LENGTH = 40;
 // CONTRACT V3: Mã hàng (mã kiểu hàng, ví dụ CWSH02) — cùng mẫu với check item_code của bảng xa_vai_measures.
 const XA_VAI_ITEM_CODE = /^[0-9A-Z._-]{1,40}$/;
@@ -197,6 +199,16 @@ export function normalizeJob(input, { printerKind } = {}) {
     const sourceItems = Array.isArray(payload.items) ? payload.items : [];
     if (!sourceItems.length) errors.push("Danh sách Group UID đang trống");
     if (sourceItems.length > XA_VAI_MAX_ITEMS) errors.push(`Phiếu tối đa ${XA_VAI_MAX_ITEMS} Group UID`);
+    // 0.12.0 (máy chủ xa_vai_a4_v2): trường thêm cho mẫu phiếu mới — có khoá `unit` ở MỌI dòng thì giữ unit / systemQty / actualQty (đơn vị gốc),
+    // fabricCode, color, itNumber; số lượng sai thì từ chối cả lệnh như mét. itNumbers: số phiếu IT 16 chữ số (bỏ mã sai, tối đa 10).
+    const rich = sourceItems.length > 0 && sourceItems.every((entry) => entry && typeof entry === "object" && Object.prototype.hasOwnProperty.call(entry, "unit"));
+    const optionalQty = (value, label, where) => {
+      if (value === null || value === undefined || value === "") return null;
+      const number = Number(value);
+      if (!Number.isFinite(number) || number < 0 || number > XA_VAI_MAX_QTY) { errors.push(`${label}${where} không hợp lệ`); return null; }
+      return number;
+    };
+    const itNumbers = [...new Set((Array.isArray(payload.itNumbers) ? payload.itNumbers : []).map((value) => String(value ?? "").trim()).filter((value) => /^\d{16}$/.test(value)))].slice(0, 10);
     const items = sourceItems.slice(0, XA_VAI_MAX_ITEMS).map((raw, index) => {
       const entry = raw && typeof raw === "object" ? raw : {};
       const where = ` dòng ${index + 1}`;
@@ -210,13 +222,25 @@ export function normalizeJob(input, { printerKind } = {}) {
       if (systemMm !== null && !(Number.isFinite(systemMm) && systemMm >= 0)) errors.push(`Mét hệ thống${where} không hợp lệ`);
       const measuredAt = typeof entry.measuredAt === "string" ? entry.measuredAt.trim() : "";
       if (!validIsoDateTime(measuredAt)) errors.push(`Giờ nhập${where} không hợp lệ`);
-      return { groupUid, sku, lot: cleanText(entry.lot, XA_VAI_CODE_LENGTH), roll: cleanText(entry.roll, XA_VAI_CODE_LENGTH), systemMm, actualMm, measuredAt };
+      const base = { groupUid, sku, lot: cleanText(entry.lot, XA_VAI_CODE_LENGTH), roll: cleanText(entry.roll, XA_VAI_CODE_LENGTH), systemMm, actualMm, measuredAt };
+      if (!rich) return base;
+      const itNumber = String(entry.itNumber ?? "").trim();
+      return {
+        ...base,
+        unit: cleanText(entry.unit, 20) || null,
+        systemQty: optionalQty(entry.systemQty, "Số lượng hệ thống", where),
+        actualQty: optionalQty(entry.actualQty, "Số lượng thực tế", where),
+        fabricCode: cleanText(entry.fabricCode, 80) || null,
+        color: cleanText(entry.color, 80) || null,
+        itNumber: /^\d{16}$/.test(itNumber) ? itNumber : null
+      };
     });
     normalizedPayload = {
       itemCode,
       productName: cleanText(payload.productName, 180) || null,
       printedAt,
       reprint: payload.reprint === true,
+      ...(rich ? { itNumbers } : {}),
       items
     };
   }

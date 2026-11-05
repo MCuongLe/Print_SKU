@@ -1,6 +1,7 @@
 import sharp from "sharp";
 import { escapeXml, LABEL_FONT_FAMILY } from "./common.mjs";
 import { estimateTextWidth } from "./text-layout.mjs";
+import { barcodeRects } from "./code128.mjs";
 
 /**
  * PHIẾU THEO DÕI XẢ VẢI (agent 0.11.0, lệnh xa_vai_sheet v1) — khổ A4 NGANG, 300 dpi = 3508 × 2480 px mỗi trang.
@@ -15,6 +16,11 @@ import { estimateTextWidth } from "./text-layout.mjs";
  * Mỗi trang tối đa XA_VAI_ROWS_PER_PAGE dòng (tự tính từ chiều cao biển, dòng 7 mm); chỗ cho dòng TỔNG và hai ô ký được
  * chừa sẵn trên MỌI trang (chỉ vẽ ở trang cuối) nên số trang = ceil(số dòng / XA_VAI_ROWS_PER_PAGE), không bao giờ có trang
  * chỉ chứa phần ký.
+ *
+ * Bản 0.12.0 (05/11/2026, cùng lệnh v1 nhưng có thêm trường từ migration xa_vai_a4_v2): khi MỌI dòng có khoá `unit` thì in mẫu mới —
+ * dải barcode số phiếu IT (mỗi phiếu một barcode, tối đa 3) dưới biển; bảng nhóm theo SKU (dòng tiêu đề nhóm "SKU · Mã vải · Màu ·
+ * Đơn vị", các cuộn, dòng cộng nhóm); cột Mã vải, Màu; số lượng theo ĐƠN VỊ GỐC của SKU (systemQty / actualQty: g, mm, m). Lệnh không có
+ * khoá `unit` (máy chủ cũ) in mẫu cũ (mm) như 0.11.0.
  *
  * Bề rộng chữ ước lượng bằng estimateTextWidth (bảng em của Arial, rộng hơn chữ thật ~10–20%) cộng thêm hệ số cho
  * chữ đậm: chữ nào không vừa ô thì thu cỡ rồi mới cắt kèm "…" — không bao giờ tràn ô hay tràn lề.
@@ -330,9 +336,259 @@ function signatureSvg(top) {
   return parts.join("");
 }
 
+// ---------------- Mẫu 0.12.0: barcode phiếu IT + nhóm SKU + đơn vị gốc ----------------
+const BARCODE_BAND = 150;       // vạch 92 px + số 34 px + đệm
+const BARCODE_H = 92;
+const BARCODE_W = 900;          // mỗi phiếu IT một ô 900 px (16 số ở Code128 C ≈ 123 module → module 6 px, đọc được ở 300 dpi)
+const MAX_IT_BARCODES = 3;
+// Tổng đúng CONTENT_W (3224). Cột số không ghi đơn vị (đơn vị nằm ở dòng tiêu đề nhóm SKU).
+const RICH_COLUMNS = Object.freeze([
+  { key: "stt", title: "STT", width: 100, align: "middle" },
+  { key: "groupUid", title: "Group UID", width: 360, align: "start" },
+  { key: "fabricCode", title: "Mã vải", width: 420, align: "start" },
+  { key: "color", title: "Màu", width: 380, align: "start" },
+  { key: "lot", title: "Lot", width: 400, align: "start" },
+  { key: "roll", title: "Roll", width: 330, align: "start" },
+  { key: "system", title: "Hệ thống", width: 340, align: "end" },
+  { key: "actual", title: "Thực tế", width: 320, align: "end" },
+  { key: "diff", title: "Chênh lệch", width: 340, align: "end" },
+  { key: "measuredAt", title: "Giờ nhập", width: 234, align: "middle" }
+].map((column) => Object.freeze(column)));
+export const XA_VAI_RICH_COLUMNS = RICH_COLUMNS;
+const RICH_LABEL_SPAN = RICH_COLUMNS.findIndex((column) => column.key === "system");
+
+/** Lệnh có trường mới (máy chủ xa_vai_a4_v2): mọi dòng có khoá `unit` (giá trị có thể null). */
+export function isRichXaVai(payload) {
+  const items = Array.isArray(payload?.items) ? payload.items : [];
+  return items.length > 0 && items.every((entry) => entry && Object.prototype.hasOwnProperty.call(entry, "unit"));
+}
+
+/** Số dòng (tiêu đề nhóm + cuộn + cộng nhóm) tối đa của TRANG CUỐI (chừa TỔNG + ô ký); có dải barcode thì ít hơn. */
+export function xaVaiRichRowsPerPage(hasBarcodes) {
+  return Math.floor((H - MY - TABLE_TOP - (hasBarcodes ? BARCODE_BAND : 0) - HEAD_H - ROW_H - SIGN_GAP - SIGN_H) / ROW_H);
+}
+
+/** Số dòng tối đa của trang GIỮA (không có TỔNG / ô ký nên dùng hết chiều cao). */
+export function xaVaiRichRowsPerFullPage(hasBarcodes) {
+  return Math.floor((H - MY - TABLE_TOP - (hasBarcodes ? BARCODE_BAND : 0) - HEAD_H) / ROW_H);
+}
+
+const finiteOrNull = (value) => (value === null || value === undefined || value === "" || !Number.isFinite(Number(value)) ? null : Number(value));
+
+/** Số theo đơn vị gốc kiểu Việt: m → 2 chữ số thập phân "1.234,50"; g / mm / khác → số nguyên "60.758"; null → "—". */
+export function formatViQty(value, unit) {
+  const number = finiteOrNull(value);
+  if (number === null) return DASH;
+  const meters = String(unit ?? "").toLowerCase() === "m";
+  const rounded = meters ? Math.round(number * 100) / 100 : Math.round(number);
+  if (rounded === 0) return meters ? "0,00" : "0";
+  const [integer, fraction] = Math.abs(rounded).toFixed(meters ? 2 : 0).split(".");
+  const grouped = integer.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  return `${rounded < 0 ? "-" : ""}${grouped}${fraction ? `,${fraction}` : ""}`;
+}
+
+/** Nhóm dòng theo SKU, giữ thứ tự xuất hiện (máy chủ đã xếp theo SKU rồi giờ nhập). */
+export function xaVaiGroups(items) {
+  const groups = new Map();
+  for (const item of items) {
+    if (!groups.has(item.sku)) groups.set(item.sku, { sku: item.sku, fabricCode: item.fabricCode ?? null, color: item.color ?? null, unit: item.unit ?? null, items: [] });
+    groups.get(item.sku).items.push(item);
+  }
+  return [...groups.values()];
+}
+
+/** Cộng nhóm theo đơn vị gốc: Hệ thống cộng dòng có số; Thực tế cộng dòng đổi được; Chênh lệch chỉ trên dòng có cả hai số. */
+export function xaVaiQtyTotals(items) {
+  let system = 0, actual = 0, pairedActual = 0, pairedSystem = 0, systemCount = 0, actualCount = 0, paired = 0;
+  for (const item of items) {
+    const s = finiteOrNull(item.systemQty), a = finiteOrNull(item.actualQty);
+    if (s !== null) { system += s; systemCount += 1; }
+    if (a !== null) { actual += a; actualCount += 1; }
+    if (s !== null && a !== null) { pairedSystem += s; pairedActual += a; paired += 1; }
+  }
+  return {
+    count: items.length, comparedCount: paired,
+    system: systemCount ? system : null, actual: actualCount ? actual : null,
+    diff: paired ? pairedActual - pairedSystem : null, actualMissing: items.length - actualCount
+  };
+}
+
+/** Dãy dòng của bảng: tiêu đề nhóm, cuộn (kèm số thứ tự toàn phiếu), cộng nhóm. */
+export function xaVaiRichEntries(items) {
+  const entries = [];
+  let index = 0;
+  for (const group of xaVaiGroups(items)) {
+    entries.push({ type: "head", group });
+    for (const item of group.items) entries.push({ type: "row", item, index: index++, group });
+    entries.push({ type: "sum", group, totals: xaVaiQtyTotals(group.items) });
+  }
+  return entries;
+}
+
+/**
+ * Chia trang: trang giữa chứa tới `full` dòng, trang cuối tới `last` dòng (chừa TỔNG + ô ký). Không để tiêu đề nhóm đứng cuối trang;
+ * nhóm sang trang mới thì lặp tiêu đề "(tiếp)". Phần còn lại quá `last` thì tách trang cuối, ưu tiên cắt ở đầu một nhóm SKU (trang cuối
+ * không chỉ còn mỗi dòng "Cộng").
+ */
+export function paginateXaVaiRich(entries, full, last = full) {
+  const fullCap = Math.max(3, full);
+  const lastCap = Math.max(3, Math.min(last, fullCap));
+  const pages = [];
+  let current = [];
+  let lastHead = null;
+  const continuation = (head) => (head ? [{ ...head, continued: true }] : []);
+  for (const entry of entries) {
+    if (entry.type === "head") lastHead = entry;
+    const closing = current.length >= fullCap || (entry.type === "head" && current.length >= fullCap - 1);
+    if (closing) {
+      pages.push(current);
+      current = entry.type === "head" ? [] : continuation(lastHead);
+    }
+    current.push(entry);
+  }
+  if (current.length > lastCap) {
+    // Cắt trong cửa sổ để phần sau ≤ lastCap (kể cả tiêu đề "(tiếp)" nếu cần): ưu tiên vị trí xa nhất mà dòng sau là tiêu đề nhóm.
+    const minCut = current.length - (lastCap - 1);
+    let cut = -1;
+    for (let index = current.length - 1; index >= Math.max(1, current.length - lastCap); index -= 1) {
+      if (current[index].type === "head" && !current[index].continued) { cut = index; break; }
+    }
+    if (cut < 0) {
+      cut = Math.max(1, minCut);
+      if (current[cut - 1].type === "head") cut -= 1;
+    }
+    const head = current.slice(0, cut);
+    let tail = current.slice(cut);
+    if (tail[0].type !== "head") {
+      const owner = [...head].reverse().find((entry) => entry.type === "head");
+      tail = [...continuation(owner && { ...owner, continued: false }), ...tail];
+    }
+    pages.push(head);
+    current = tail;
+  }
+  if (current.length) pages.push(current);
+  return pages;
+}
+
+function groupTitle(group, continued) {
+  const unit = group.unit ? `Đơn vị ${group.unit}` : "Đơn vị —";
+  return [`SKU ${group.sku}`, group.fabricCode ? `Mã vải ${group.fabricCode}` : "", group.color ? `Màu ${group.color}` : "", unit].filter(Boolean).join(" · ") + (continued ? " (tiếp)" : "");
+}
+
+function itBarcodesSvg(itNumbers, top) {
+  const parts = [];
+  itNumbers.slice(0, MAX_IT_BARCODES).forEach((number, index) => {
+    const left = MX + index * (BARCODE_W + 60);
+    parts.push(barcodeRects(number, { x: left, y: top + 8, width: BARCODE_W, height: BARCODE_H }).rects);
+    parts.push(textEl(left + BARCODE_W / 2, top + 8 + BARCODE_H + 38, `IT ${number}`, { size: 32, bold: true, anchor: "middle", role: "it-number" }));
+  });
+  if (itNumbers.length > MAX_IT_BARCODES) {
+    const left = MX + MAX_IT_BARCODES * (BARCODE_W + 60);
+    parts.push(textEl(left, top + 8 + BARCODE_H / 2 + 12, `+${itNumbers.length - MAX_IT_BARCODES} phiếu IT`, { size: 32, bold: true }));
+  }
+  return parts.join("");
+}
+
+function richTableSvg(entries, tableTop, finalTotals) {
+  const parts = [];
+  const lines = [];
+  const lefts = [];
+  let x = MX;
+  for (const column of RICH_COLUMNS) { lefts.push(x); x += column.width; }
+  const bodyTop = tableTop + HEAD_H;
+  const bodyBottom = bodyTop + entries.length * ROW_H;
+  const tableBottom = finalTotals ? bodyBottom + ROW_H : bodyBottom;
+  const labelWidth = RICH_COLUMNS.slice(0, RICH_LABEL_SPAN).reduce((sum, column) => sum + column.width, 0);
+
+  parts.push(`<rect x="${MX}" y="${tableTop}" width="${CONTENT_W}" height="${HEAD_H}" fill="#dcdcdc"/>`);
+  RICH_COLUMNS.forEach((column, index) => parts.push(cellText(column, lefts[index], tableTop, HEAD_H, column.title, { size: 30, bold: true })));
+  const mergedRows = [];
+  entries.forEach((entry, position) => {
+    const top = bodyTop + position * ROW_H;
+    if (entry.type === "head") {
+      mergedRows.push({ top, full: true });
+      parts.push(`<rect x="${MX}" y="${top}" width="${CONTENT_W}" height="${ROW_H}" fill="#e6e6e6"/>`);
+      parts.push(cellText({ width: CONTENT_W, align: "start" }, MX, top, ROW_H, groupTitle(entry.group, entry.continued), { bold: true }));
+      return;
+    }
+    if (entry.type === "sum") {
+      mergedRows.push({ top, full: false });
+      const t = entry.totals, unit = entry.group.unit;
+      const note = t.actualMissing ? ` · ${t.actualMissing} cuộn chưa đổi được đơn vị` : t.comparedCount < t.count ? ` · chênh lệch ${t.comparedCount}/${t.count} cuộn` : "";
+      parts.push(cellText({ width: labelWidth, align: "start" }, MX, top, ROW_H, `Cộng SKU ${entry.group.sku} (${t.count} cuộn)${note}`, { bold: true, size: note ? 28 : undefined }));
+      const values = { system: formatViQty(t.system, unit), actual: formatViQty(t.actual, unit), diff: formatViQty(t.diff, unit), measuredAt: "" };
+      RICH_COLUMNS.slice(RICH_LABEL_SPAN).forEach((column, offset) => parts.push(cellText(column, lefts[RICH_LABEL_SPAN + offset], top, ROW_H, values[column.key], { bold: true })));
+      return;
+    }
+    const item = entry.item, unit = entry.group.unit;
+    const system = finiteOrNull(item.systemQty), actual = finiteOrNull(item.actualQty);
+    const values = {
+      stt: String(entry.index + 1), groupUid: item.groupUid, fabricCode: item.fabricCode ?? DASH, color: item.color ?? DASH, lot: item.lot, roll: item.roll,
+      system: formatViQty(system, unit), actual: formatViQty(actual, unit),
+      diff: system === null || actual === null ? DASH : formatViQty(actual - system, unit), measuredAt: formatViShort(item.measuredAt)
+    };
+    RICH_COLUMNS.forEach((column, columnIndex) => parts.push(cellText(column, lefts[columnIndex], top, ROW_H, values[column.key])));
+  });
+
+  for (let index = 1; index <= entries.length; index += 1) lines.push(`<line x1="${MX}" y1="${bodyTop + index * ROW_H}" x2="${W - MX}" y2="${bodyTop + index * ROW_H}" stroke-width="2"/>`);
+  lines.push(`<line x1="${MX}" y1="${bodyTop}" x2="${W - MX}" y2="${bodyTop}" stroke-width="4"/>`);
+
+  if (finalTotals) {
+    const top = bodyBottom;
+    const t = finalTotals;
+    const note = t.mixedUnits ? " · nhiều đơn vị, xem dòng cộng từng SKU" : "";
+    parts.push(cellText({ width: labelWidth, align: "start" }, MX, top, ROW_H, `TỔNG (${t.count} UID · ${t.groups} SKU)${note}`, { bold: true, size: note ? 28 : undefined }));
+    const values = t.mixedUnits ? { system: DASH, actual: DASH, diff: DASH, measuredAt: "" }
+      : { system: formatViQty(t.system, t.unit), actual: formatViQty(t.actual, t.unit), diff: formatViQty(t.diff, t.unit), measuredAt: t.unit ? t.unit : "" };
+    RICH_COLUMNS.slice(RICH_LABEL_SPAN).forEach((column, offset) => parts.push(cellText(column, lefts[RICH_LABEL_SPAN + offset], top, ROW_H, values[column.key], { bold: true })));
+    lines.push(`<line x1="${MX}" y1="${top}" x2="${W - MX}" y2="${top}" stroke-width="5"/>`);
+    mergedRows.push({ top, full: false });
+  }
+
+  // Kẻ dọc theo từng đoạn dòng: dòng tiêu đề nhóm gộp cả bảng; dòng cộng / TỔNG gộp các cột mã.
+  const segments = [{ top: tableTop, bottom: bodyTop, full: false, merged: false }];
+  entries.forEach((entry, position) => segments.push({ top: bodyTop + position * ROW_H, bottom: bodyTop + (position + 1) * ROW_H, merged: entry.type !== "row", full: entry.type === "head" }));
+  if (finalTotals) segments.push({ top: bodyBottom, bottom: tableBottom, merged: true, full: false });
+  RICH_COLUMNS.forEach((column, index) => {
+    if (index === 0) return;
+    for (const seg of segments) {
+      if (seg.full) continue;
+      if (seg.merged && index < RICH_LABEL_SPAN) continue;
+      lines.push(`<line x1="${lefts[index]}" y1="${seg.top}" x2="${lefts[index]}" y2="${seg.bottom}" stroke-width="2"/>`);
+    }
+  });
+  lines.push(`<rect x="${MX}" y="${tableTop}" width="${CONTENT_W}" height="${tableBottom - tableTop}" fill="none" stroke-width="4"/>`);
+  return { svg: `${parts.join("")}<g stroke="#000" fill="none" shape-rendering="crispEdges">${lines.join("")}</g>`, bottom: tableBottom };
+}
+
+/** TỔNG cả phiếu theo đơn vị gốc: chỉ cộng số khi mọi SKU cùng một đơn vị. */
+export function xaVaiRichTotals(items) {
+  const groups = xaVaiGroups(items);
+  const units = new Set(groups.map((group) => String(group.unit ?? "")));
+  const base = xaVaiQtyTotals(items);
+  return { ...base, groups: groups.length, mixedUnits: units.size !== 1 || units.has(""), unit: units.size === 1 ? groups[0].unit : null };
+}
+
+function renderRichSvgs(payload, items) {
+  const itNumbers = Array.isArray(payload.itNumbers) ? payload.itNumbers : [];
+  const hasBarcodes = itNumbers.length > 0;
+  const tableTop = TABLE_TOP + (hasBarcodes ? BARCODE_BAND : 0);
+  const pages = paginateXaVaiRich(xaVaiRichEntries(items), xaVaiRichRowsPerFullPage(hasBarcodes), xaVaiRichRowsPerPage(hasBarcodes));
+  const totals = xaVaiRichTotals(items);
+  const releaseLabel = xaVaiReleaseLabel(items);
+  return pages.map((entries, pageIndex) => {
+    const last = pageIndex === pages.length - 1;
+    const table = richTableSvg(entries, tableTop, last ? totals : null);
+    const barcodes = hasBarcodes ? itBarcodesSvg(itNumbers, TABLE_TOP - 4) : "";
+    const body = `${headerSvg({ ...payload, items }, releaseLabel, pageIndex, pages.length)}${barcodes}${table.svg}${last ? signatureSvg(table.bottom + SIGN_GAP) : ""}`;
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" font-family="${LABEL_FONT_FAMILY}" fill="#000"><rect width="${W}" height="${H}" fill="#fff"/>${body}</svg>`;
+  });
+}
+
 /** SVG của từng trang phiếu (payload đã qua normalizeJob). */
 export function renderXaVaiSheetSvgs(payload) {
   const items = Array.isArray(payload?.items) ? payload.items : [];
+  if (isRichXaVai(payload)) return renderRichSvgs(payload, items);
   const pages = paginateXaVai(items);
   const totals = xaVaiTotals(items);
   const releaseLabel = xaVaiReleaseLabel(items);   // cùng một chuỗi trên mọi trang

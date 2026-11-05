@@ -2,6 +2,11 @@
 
 Agent Windows độc lập phục vụ ứng dụng Print SKU. Bản 0.11.0 thêm chế độ máy in A4 (`PRINTER_KIND=a4`) in PHIẾU THEO DÕI XẢ VẢI; chế độ mặc định in tem SKU (mẫu gộp `sku:v3`: tem có PO + ngày nhận và tem thường trong cùng một lệnh; vẫn in `sku:v1`, `sku:v2`), Group UID và mã vị trí (tem Fabric Relaxation đã bỏ) tem.
 
+## Cập nhật 0.12.0 — phiếu A4 xả vải: barcode phiếu IT, nhóm theo SKU, đơn vị gốc (05/11/2026)
+
+- Cùng lệnh `xa_vai_sheet` v1, không đổi capability. Máy chủ `supabase/xa_vai_a4_v2.sql` thêm vào payload `itNumbers` và ở từng dòng `itNumber`, `fabricCode`, `color`, `unit`, `systemQty`, `actualQty` (đơn vị gốc của SKU: g / mm / m). Khi MỌI dòng có khoá `unit`, agent in mẫu mới: dải barcode Code128 từng số phiếu IT (tối đa 3) dưới biển mã hàng; bảng nhóm theo SKU (dòng tiêu đề "SKU · Mã vải · Màu · Đơn vị", các cuộn, dòng cộng nhóm); cột Mã vải, Màu; số lượng theo đơn vị gốc (g, mm số nguyên; m 2 chữ số thập phân); TỔNG chỉ cộng số khi mọi SKU cùng đơn vị. Lệnh không có trường mới in mẫu cũ (mm) như 0.11.0.
+- Chỉ máy in A4 (`may-a4-01`, DESKTOP-foq5t89) cần cài lại; máy tem không cần (phần tem không đổi). Cài: gói `release/PrintSKUAgent-0.12.0.zip` (`powershell/build-release.ps1`), giữ `.env` cũ.
+
 ## Cập nhật 0.11.0 — chế độ máy in A4: PHIẾU THEO DÕI XẢ VẢI (`xa_vai_sheet:v1`)
 
 - Dòng mới trong `config\.env`: `PRINTER_KIND=label` (mặc định, máy tem TSC như cũ) hoặc `PRINTER_KIND=a4` (máy in A4

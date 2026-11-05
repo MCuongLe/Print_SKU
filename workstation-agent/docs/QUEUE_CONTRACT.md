@@ -70,6 +70,8 @@ Chế độ `a4` (`PRINTER_KIND=a4`, 0.11.0) — CHỈ một khả năng, không
 
 ## Phiếu theo dõi xả vải `xa_vai_sheet` (agent 0.11.0, chế độ `a4`)
 
+Bản 0.12.0 (máy chủ `xa_vai_a4_v2`, 05/11/2026) nhận thêm, đều tuỳ chọn và không đổi `templateVersion`: `payload.itNumbers` (mảng số phiếu IT 16 chữ số, barcode), và ở mỗi dòng `itNumber`, `fabricCode`, `color`, `unit`, `systemQty`, `actualQty` (số ≥ 0 theo đơn vị gốc hoặc null). Mọi dòng có khoá `unit` → mẫu mới (nhóm SKU, đơn vị gốc); thiếu → mẫu 0.11.0.
+
 Lệnh: `type: "xa_vai_sheet"`, `templateVersion: 1`, `copies` 1–5 = số bản của **cả phiếu** (không phải số tem). Hàng đợi
 chỉ giao cho agent khai `xa_vai_sheet:v1` (migration `xa_vai_a4_v1`).
 

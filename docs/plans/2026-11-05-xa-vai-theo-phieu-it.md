@@ -70,6 +70,15 @@ Thứ tự: Việc 1 → Việc 2 → Việc 3 → Việc 4 (review) → Việc 
 - [x] Review vòng 1 (Codex mã 5 + ảnh 6, Claude A 4 + BC 8; co-van 14 vấn đề): sửa — máy chủ ép gắn cùng SKU (75, [cả hai]), một UID một đợt + gỡ 'scan' khi nạp phiếu (60, [cả hai]), báo vận hành kho chỉ nói đã báo khi xong + lỗi luôn hiện, OUTSIDE_BATCH chuyển pop-up chặn (60), lỗi gắn BATCH_DONE tra lại, giữ phiếu đã chọn khi tra lại, mục Bất thường + "Hiện n / N" + Excel 2.000 dòng, icon nút đợt, QUYET_DINH dòng mâu thuẫn; bỏ qua: phân loại-ghi không nguyên tử (20), gắn rồi lưu lỗi (20, tự lành), đợt v1 thành mở (0 dòng). Làm sau: outbox bền cho báo cáo, timeout riêng cho check, race hộp đăng nhập Admin chung.
 - [x] Commit, migration `xa_vai_it_v2` (~12:55, kiểm `-- kiem:` true), push `ac73fd8`; người dùng chốt "Chuyển" cho UID WMS trả về phiếu mới. Web đợt 2 lên sớm ~7 phút do phiên khác push commit chồng lên (commit đó sau đã gỡ khỏi lịch sử; SHA đợt 2 đổi b169ad6 → ac73fd8, 3990226 → 0caff0f), không hại dữ liệu (0 đợt).
 
+## Đợt 3: phiếu A4 đơn vị gốc (05/11/2026)
+- Yêu cầu: "Phần in A4 tôi cần 1 dòng phiếu IT dạng barcode. các group UID thì nhóm lại theo SKU. thêm cột mã vải và màu" + "Giao diện web thì vẫn giữ như cũ hệ mét … phần in A4 thì cần chuyển về đơn vị gốc". Chốt (khuyến nghị cả 4): mỗi phiếu IT một barcode; mã vải nguyên trường 2; đơn vị gốc cho phiếu A4 + Excel; nhóm SKU có tiêu đề + cộng nhóm.
+- Số đo (Supabase 05/11): 672 SKU vải có UID, 669 tên ≥ 4 trường; SKU g 200, đổi được 165 (35 vải bo / rib không ghi GSM). Hàm `_xa_vai_print_enqueue_body`, `_xa_vai_item_json` đang chạy = `xa_vai_a4_v1.sql`.
+- Thiết kế: cùng lệnh v1, chỉ thêm trường (agent cũ in mẫu cũ) → không đổi capability / claim, không cần cài agent trước migration.
+- [x] SQL `supabase/xa_vai_a4_v2.sql` + `tests/xa_vai_a4_v2_sql.cjs` PASS
+- [x] Agent 0.12.0 (mẫu mới, validator, phiên bản) + `workstation-agent/tests/xa-vai-sheet-0120.test.mjs`; `node --test` 242/242
+- [x] Web: Excel đơn vị gốc + Mã vải / Màu; `xa_vai_a4_browser` PASS
+- [ ] Review, commit, migration, push, build gói 0.12.0, người dùng cài trên DESKTOP-foq5t89 + in thử
+
 ## Phát sinh
 - 05/11/2026 Tách hunk: cây làm việc có phần "Đối chiếu phủ lot theo PO" của phiên khác (`index.html`, `docs/QUYET_DINH.md`, `tests/bridge_ready.cjs` + tệp chưa theo dõi) → commit chỉ phần của đợt này; `bridge_ready` phần commit 11, cây làm việc 12; `tests/cut_po_coverage_browser.cjs` (chưa theo dõi) đã đổi số phiên bản giả lập 0.12.5 → 0.12.6 để cổng commit đạt.
 
