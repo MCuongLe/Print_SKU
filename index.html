@@ -10370,7 +10370,7 @@ var FSK_CORE = (function () {
         let itDraft=null,itBusy=false,itSaving=false,itRun=0,itListRun=0,itItems=[],itTotal=0;
         const itOpen=new Set(),itOf=new Map();
         const pickRow=$('xa-vai-it-pickrow'),pickSel=$('xa-vai-it-pick'),outBox=$('xa-vai-it-out'),outCount=$('xa-vai-it-out-count'),outBody=$('xa-vai-it-out-body');
-        let outData={attached:[],outside:[],attachedTotal:0,outsideTotal:0};
+        let outData={attached:[],outside:[],attachedTotal:0,outsideTotal:0},outDelBusy=false;
         // Đợt 2: UID cùng SKU với nhiều đợt đang xả → chọn đợt (mặc định đợt nạp gần nhất); một đợt thì ẩn ô chọn.
         const fillPick=(d,keep='')=>{
           const many=Array.isArray(d?.out)&&d.out.length>1;
@@ -10429,7 +10429,7 @@ var FSK_CORE = (function () {
           if((r.status===401||r.status===403)&&retry)return adminRpc(name,args,false);
           const d=await r.json().catch(()=>null);
           if(r.status===408||r.status>=500||(r.ok&&!d))throw Object.assign(new Error(d?.message||(r.ok?'phản hồi hỏng':`Supabase HTTP ${r.status}`)),{unclear:true});
-          if(d?.code==='PGRST202')throw new Error('máy chủ chưa có chức năng đợt xả theo phiếu IT');
+          if(d?.code==='PGRST202')throw Object.assign(new Error('máy chủ chưa có chức năng đợt xả theo phiếu IT'),{code:'PGRST202'});
           if(!r.ok||!d)throw new Error(d?.message||`Supabase HTTP ${r.status}`);
           if(!d.ok)throw Object.assign(new Error(d.error?.message||'máy chủ từ chối'),{code:d.error?.code});
           return d.data;
@@ -10618,10 +10618,10 @@ var FSK_CORE = (function () {
           if(!n){outBody.innerHTML='';return}
           const att=outData.attached.map(x=>`<tr>${td('Group UID',`<b>${esc(x.groupUid)}</b>`)}${td('SKU',esc(x.sku))}${td('Mã hàng',esc(x.itemCode))}${td('Phiếu IT',esc(x.itNumber))}${td('Giờ gắn',esc(fmtAt(x.addedAt)))}${td('Máy',esc(x.device||'—'))}${td('Trạng thái',`<span class="xv-state" data-state="${esc(x.state)}">${esc(STATE[x.state]||x.state||'')}</span>`)}</tr>`).join('');
           const outAdmin=!!window.PrintSkuAdminAccess?.peekToken?.();
-          const off=outData.outside.map(x=>`<tr>${td('Group UID',`<b>${esc(x.groupUid)}</b>`)}${td('SKU',esc(x.sku))}${td('Đợt đang xả',esc(x.openItems||'—'))}${td('Lần cuối',esc(fmtAt(x.lastAt)))}${td('Số lần',Number(x.scanCount||1).toLocaleString('vi-VN'),'n')}${td('Máy',esc(x.device||'—'))}${outAdmin?td('Xoá',`<button class="cut-icon-btn" type="button" data-out-del="${esc(x.groupUid)}" title="Xoá" aria-label="Xoá ${esc(x.groupUid)}"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><path d="M10 11v6"/><path d="M14 11v6"/></svg></button>`):''}</tr>`).join('');
+          const off=outData.outside.map(x=>`<tr>${td('Group UID',`<b>${esc(x.groupUid)}</b>`)}${td('SKU',esc(x.sku))}${td('Đợt đang xả',esc(x.openItems||'—'))}${td('Lần cuối',esc(fmtAt(x.lastAt)))}${td('Số lần',Number(x.scanCount||1).toLocaleString('vi-VN'),'n')}${td('Máy',esc(x.device||'—'))}${outAdmin?td('Xoá',`<button class="cut-icon-btn" type="button" data-out-del="${esc(x.groupUid)}" title="Xoá" aria-label="Xoá ${esc(x.groupUid)}"${outDelBusy?' disabled':''}><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><path d="M10 11v6"/><path d="M14 11v6"/></svg></button>`):''}</tr>`).join('');
           const cnt=(n,total)=>total>n?`${n.toLocaleString('vi-VN')} / ${Number(total).toLocaleString('vi-VN')}`:Number(total).toLocaleString('vi-VN');
           outBody.innerHTML=(att?`<h3>Ngoài phiếu · gắn vào đợt · ${cnt(outData.attached.length,outData.attachedTotal)}</h3><div class="cut-table-wrap"><table class="cut-table xv-table"><thead><tr><th>Group UID</th><th>SKU</th><th>Mã hàng</th><th>Phiếu IT</th><th>Giờ gắn</th><th>Máy</th><th>Trạng thái</th></tr></thead><tbody>${att}</tbody></table></div>`:'')+
-            (off?`<h3>Ngoài đợt xả · không lưu · ${cnt(outData.outside.length,outData.outsideTotal)}</h3>${outAdmin?'<div class="cut-actions"><button class="cut-danger act-icon act-icon--trash" type="button" data-out-del-all>Xoá hết</button></div>':''}<div class="cut-table-wrap"><table class="cut-table xv-table"><thead><tr><th>Group UID</th><th>SKU</th><th>Đợt đang xả</th><th>Lần cuối</th><th class="n">Số lần</th><th>Máy</th>${outAdmin?'<th aria-label="Xoá"></th>':''}</tr></thead><tbody>${off}</tbody></table></div>`:'');
+            (off?`<h3>Ngoài đợt xả · không lưu · ${cnt(outData.outside.length,outData.outsideTotal)}</h3>${outAdmin?`<div class="cut-actions"><button class="cut-danger act-icon act-icon--trash" type="button" data-out-del-all${outDelBusy?' disabled':''}>Xoá hết</button></div>`:''}<div class="cut-table-wrap"><table class="cut-table xv-table"><thead><tr><th>Group UID</th><th>SKU</th><th>Đợt đang xả</th><th>Lần cuối</th><th class="n">Số lần</th><th>Máy</th>${outAdmin?'<th aria-label="Xoá"></th>':''}</tr></thead><tbody>${off}</tbody></table></div>`:'');
         };
         let outRun=0;
         const readOutside=async limit=>{
@@ -10637,31 +10637,35 @@ var FSK_CORE = (function () {
           const run=++outRun;
           try{
             const d=await readOutside(500);
-            if(run!==outRun||!d)return;
-            outData=d;renderOutside();
-          }catch(e){if(run===outRun&&activeTab==='it')tell(`Không tải được mục Bất thường: ${e.message}`,'error')}
+            if(run!==outRun)return true;
+            if(!d)return false;
+            outData=d;renderOutside();return true;
+          }catch(e){if(run===outRun&&activeTab==='it')tell(`Không tải được mục Bất thường: ${e.message}`,'error');return run!==outRun}
         };
         // Admin xoá dòng "Ngoài đợt xả" (xa_vai_it_report_delete): UID quét lại khi còn đợt mở thì máy chủ ghi lại như lần đầu.
-        let outDelBusy=false;
         outBody.addEventListener('click',async event=>{
           const one=event.target.closest('button[data-out-del]'),all=event.target.closest('button[data-out-del-all]');
           if((!one&&!all)||outDelBusy)return;
-          const uids=one?[one.dataset.outDel]:outData.outside.map(x=>String(x.groupUid));
-          if(!uids.length)return;
-          const row=one?outData.outside.find(x=>String(x.groupUid)===uids[0]):null;
+          const rows=one?outData.outside.filter(x=>String(x.groupUid)===one.dataset.outDel):outData.outside.slice();
+          if(!rows.length)return;
+          const uids=rows.map(x=>String(x.groupUid)),row=one?rows[0]:null;
           const rest=all&&outData.outsideTotal>uids.length?`còn ${(outData.outsideTotal-uids.length).toLocaleString('vi-VN')} dòng chưa hiện`:'';
           if(!await window.WhDialog.confirm({tone:'danger',icon:'trash',title:one?'Xoá dòng Ngoài đợt xả':'Xoá hết Ngoài đợt xả',facts:one?[uids[0],row?.sku?`SKU ${row.sku}`:'']:[`${uids.length.toLocaleString('vi-VN')} dòng`,rest],list:one?[]:uids,confirmText:'Xoá',cancelText:'Huỷ'}))return;
-          if(!await itToken()){syncAdmin();tell('Phiên Admin đã hết hạn. Đăng nhập lại rồi xoá.','error');window.PrintSkuAdminAccess?.getToken().then(syncAdmin);return}
-          outDelBusy=true;
-          for(const b of outBody.querySelectorAll('button[data-out-del],button[data-out-del-all]'))b.disabled=true;
+          const setBusy=v=>{outDelBusy=v;for(const b of outBody.querySelectorAll('button[data-out-del],button[data-out-del-all]'))b.disabled=v};
+          setBusy(true);
           try{
-            const r=await adminRpc('xa_vai_it_report_delete',{p_uids:uids});
-            await loadOutside();
-            tell(`Đã xoá ${Number(r.deleted||0).toLocaleString('vi-VN')} dòng Ngoài đợt xả`,'ok');
+            if(!await itToken()){syncAdmin();tell('Phiên Admin đã hết hạn. Đăng nhập lại rồi xoá.','error');window.PrintSkuAdminAccess?.getToken().then(syncAdmin);return}
+            const r=await adminRpc('xa_vai_it_report_delete',{p_items:rows.map(x=>({groupUid:String(x.groupUid),lastAt:String(x.lastAt||'')}))});
+            const ok=await loadOutside(),deleted=Number(r.deleted||0),stale=Number(r.stale||0);
+            const parts=[`Đã xoá ${deleted.toLocaleString('vi-VN')} dòng Ngoài đợt xả`];
+            if(stale)parts.push(`${stale.toLocaleString('vi-VN')} dòng có lượt quét mới hoặc đã xoá trước, chưa xoá`);
+            if(!ok)parts.push('bấm tab Phiếu IT để tải lại');
+            tell(parts.join(' · '),stale||!ok?'warn':'ok');
           }catch(e){
-            if(e.unclear){await loadOutside();tell(`Chưa rõ đã xoá hay chưa (${e.message})`,'warn')}
+            if(e.unclear){const ok=await loadOutside();tell(`Chưa rõ đã xoá hay chưa (${e.message}) · ${ok?'đã tải lại':'bấm tab Phiếu IT để tải lại'}`,'warn')}
+            else if(e.code==='PGRST202')tell('Chưa xoá được: máy chủ chưa có chức năng xoá mục Ngoài đợt xả','error');
             else tell(`Chưa xoá được: ${e.message}`,'error');
-          }finally{outDelBusy=false;for(const b of outBody.querySelectorAll('button[data-out-del],button[data-out-del-all]'))b.disabled=false}
+          }finally{setBusy(false)}
         });
         $('xa-vai-it-out-export').addEventListener('click',async()=>{
           if(!outData.attached.length&&!outData.outside.length)return;

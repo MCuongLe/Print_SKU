@@ -94,9 +94,11 @@ function mock(page, s) {
     }
     if (rpc === 'xa_vai_it_report_delete') {
       if (request.headers().authorization !== 'Bearer test-admin-token') return json({ ok: false, error: { code: 'FORBIDDEN', message: 'Chỉ Admin được xoá mục Ngoài đợt xả' } });
-      const before = s.outside.outside.length;
-      s.outside.outside = s.outside.outside.filter(x => !body.p_uids.includes(x.groupUid)); s.outside.outsideTotal = s.outside.outside.length;
-      return ok({ deleted: before - s.outside.outside.length, requested: body.p_uids.length });
+      // Chỉ xoá dòng có giờ quét cuối khớp bản web đang thấy (lượt quét mới giữ lại).
+      const want = new Map(body.p_items.map(x => [x.groupUid, x.lastAt])), before = s.outside.outside.length;
+      s.outside.outside = s.outside.outside.filter(x => want.get(x.groupUid) !== x.lastAt); s.outside.outsideTotal = s.outside.outside.length;
+      const deleted = before - s.outside.outside.length;
+      return ok({ deleted, requested: want.size, stale: want.size - deleted });
     }
     if (rpc === 'xa_vai_it_outside') return ok(s.outside || { attached: [], outside: [], attachedTotal: 0, outsideTotal: 0 });
     if (rpc === 'xa_vai_measure_save' && s.saveError) { const e = s.saveError; if (s.saveErrorOnce) s.saveError = null; return json({ ok: false, error: e }); }
@@ -463,14 +465,22 @@ const noOverflow = async (page, sel) => {
         await page.locator('dialog.whd .whd-ok').click();
         await out.locator(`[data-out-del="${uid(41)}"]`).waitFor({ state: 'detached' });
         let rd = calls(s, 'xa_vai_it_report_delete');
-        assert.deepEqual(rd.at(-1).body.p_uids, [uid(41)]); assert.equal(rd.at(-1).auth, 'Bearer test-admin-token');
+        assert.deepEqual(rd.at(-1).body.p_items.map(x => x.groupUid), [uid(41)]); assert.equal(rd.at(-1).auth, 'Bearer test-admin-token');
+        assert.equal(typeof rd.at(-1).body.p_items[0].lastAt, 'string', 'gửi kèm giờ quét cuối đang thấy');
         await page.waitForFunction(() => /Đã xoá 1 dòng Ngoài đợt xả/.test(document.getElementById('xa-vai-message').textContent));
+        // Máy xưởng quét lại uid(44) sau khi Admin tải danh sách: Xoá hết không xoá lượt mới, báo vàng, danh sách tải lại.
+        s.outside.outside.find(x => x.groupUid === uid(44)).lastAt = new Date(Date.now() + 1000).toISOString();
         await out.locator('[data-out-del-all]').click();
         assert.match(await page.locator('dialog.whd .whd-list').innerText(), new RegExp(uid(44)));
         await page.locator('dialog.whd .whd-ok').click();
+        await page.waitForFunction(() => /Đã xoá 0 dòng Ngoài đợt xả · 1 dòng có lượt quét mới/.test(document.getElementById('xa-vai-message').textContent));
+        assert.equal(await page.locator('#xa-vai-message').getAttribute('data-tone'), 'warn');
+        await out.locator(`[data-out-del="${uid(44)}"]`).waitFor();
+        await out.locator('[data-out-del-all]').click();
+        await page.locator('dialog.whd .whd-ok').click();
         await out.locator('[data-out-del-all]').waitFor({ state: 'detached' });
         rd = calls(s, 'xa_vai_it_report_delete');
-        assert.equal(rd.length, 2); assert.deepEqual(rd.at(-1).body.p_uids, [uid(44)]);
+        assert.equal(rd.length, 3); assert.deepEqual(rd.at(-1).body.p_items.map(x => x.groupUid), [uid(44)]);
         assert.doesNotMatch(await out.innerText(), /Ngoài đợt xả · không lưu/);
         assert.equal((await page.locator('#xa-vai-it-out-count').innerText()).trim(), '1', 'còn dòng Ngoài phiếu · gắn vào đợt');
       }
