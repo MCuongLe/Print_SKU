@@ -92,6 +92,12 @@ function mock(page, s) {
       if (request.headers().authorization !== 'Bearer test-admin-token') return json({ ok: false, error: { code: 'FORBIDDEN', message: 'Chỉ Admin' } });
       s.batch.batchStatus = body.p_status; return ok({ itNumber: body.p_it_number, status: body.p_status });
     }
+    if (rpc === 'xa_vai_it_report_delete') {
+      if (request.headers().authorization !== 'Bearer test-admin-token') return json({ ok: false, error: { code: 'FORBIDDEN', message: 'Chỉ Admin được xoá mục Ngoài đợt xả' } });
+      const before = s.outside.outside.length;
+      s.outside.outside = s.outside.outside.filter(x => !body.p_uids.includes(x.groupUid)); s.outside.outsideTotal = s.outside.outside.length;
+      return ok({ deleted: before - s.outside.outside.length, requested: body.p_uids.length });
+    }
     if (rpc === 'xa_vai_it_outside') return ok(s.outside || { attached: [], outside: [], attachedTotal: 0, outsideTotal: 0 });
     if (rpc === 'xa_vai_measure_save' && s.saveError) { const e = s.saveError; if (s.saveErrorOnce) s.saveError = null; return json({ ok: false, error: e }); }
     if (rpc === 'xa_vai_measure_lookup') {
@@ -413,6 +419,7 @@ const noOverflow = async (page, sel) => {
       assert.equal((await card.locator('.xv-it-card__out').innerText()).trim(), 'Ngoài phiếu 1');
       assert.equal(await card.locator('[data-it-act="status"]').count(), 0, 'chưa Admin: không có nút Đóng đợt');
       assert.equal(await card.locator('[data-it-act="delete"]').count(), 0, 'chưa Admin: không có nút Xoá đợt');
+      assert.equal(await page.locator('#xa-vai-it-out [data-out-del], #xa-vai-it-out [data-out-del-all]').count(), 0, 'chưa Admin: không có nút Xoá ở Ngoài đợt xả');
       const out = page.locator('#xa-vai-it-out');
       await out.waitFor({ state: 'visible' });
       assert.equal((await page.locator('#xa-vai-it-out-count').innerText()).trim(), '2');
@@ -443,6 +450,29 @@ const noOverflow = async (page, sel) => {
         const del = calls(s, 'xa_vai_it_delete');
         assert.equal(del.length, 1); assert.equal(del[0].body.p_it_number, IT); assert.equal(del[0].auth, 'Bearer test-admin-token');
         await page.waitForFunction(() => /Đã xoá đợt CWSH02 · IT 1007260000000001 · 2 UID/.test(document.getElementById('xa-vai-message').textContent));
+        // Mục "Ngoài đợt xả" (06/11/2026): Admin xoá một dòng, rồi Xoá hết; Huỷ không gọi máy chủ.
+        s.outside.outside.push({ groupUid: uid(44), sku: '900000009', lastAt: now(), scanCount: 1, device: 'may-test-01', openItems: 'CWSH02' }); s.outside.outsideTotal = 2;
+        await page.locator('#xa-vai-tab-scan').click();
+        await page.locator('#xa-vai-tab-it').click();
+        await out.locator(`[data-out-del="${uid(44)}"]`).waitFor();
+        await out.locator(`[data-out-del="${uid(41)}"]`).click();
+        assert.equal(await page.locator('dialog.whd').getAttribute('data-tone'), 'danger');
+        await page.locator('dialog.whd .whd-cancel').click();
+        assert.equal(calls(s, 'xa_vai_it_report_delete').length, 0, 'Huỷ: không xoá');
+        await out.locator(`[data-out-del="${uid(41)}"]`).click();
+        await page.locator('dialog.whd .whd-ok').click();
+        await out.locator(`[data-out-del="${uid(41)}"]`).waitFor({ state: 'detached' });
+        let rd = calls(s, 'xa_vai_it_report_delete');
+        assert.deepEqual(rd.at(-1).body.p_uids, [uid(41)]); assert.equal(rd.at(-1).auth, 'Bearer test-admin-token');
+        await page.waitForFunction(() => /Đã xoá 1 dòng Ngoài đợt xả/.test(document.getElementById('xa-vai-message').textContent));
+        await out.locator('[data-out-del-all]').click();
+        assert.match(await page.locator('dialog.whd .whd-list').innerText(), new RegExp(uid(44)));
+        await page.locator('dialog.whd .whd-ok').click();
+        await out.locator('[data-out-del-all]').waitFor({ state: 'detached' });
+        rd = calls(s, 'xa_vai_it_report_delete');
+        assert.equal(rd.length, 2); assert.deepEqual(rd.at(-1).body.p_uids, [uid(44)]);
+        assert.doesNotMatch(await out.innerText(), /Ngoài đợt xả · không lưu/);
+        assert.equal((await page.locator('#xa-vai-it-out-count').innerText()).trim(), '1', 'còn dòng Ngoài phiếu · gắn vào đợt');
       }
       if (width < 768) await noOverflow(page, '#xa-vai-screen [data-panel="it"]');
       assert.deepEqual(errors, []);
