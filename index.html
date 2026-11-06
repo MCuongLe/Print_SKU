@@ -9655,6 +9655,11 @@ var FSK_CORE = (function () {
       #xa-vai-screen .xv-itprog__meta b { color: var(--wms-text); font-size: var(--fs-16); }
       #xa-vai-screen .xv-itprog__head .xv-it-st { margin-left: auto; }
       #xa-vai-screen .xv-it-st[data-st="left"] { background: color-mix(in srgb, var(--wms-warning) 12%, #fff); color: var(--wms-warning); }
+      #xa-vai-screen .xv-itprog__skus { display: grid; gap: var(--space-1); margin: 0; padding: 0; list-style: none; }
+      #xa-vai-screen .xv-itprog__sku { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: var(--space-2) var(--space-3); min-height: 32px; font-size: var(--fs-14); font-variant-numeric: tabular-nums; }
+      #xa-vai-screen .xv-itprog__sku > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      #xa-vai-screen .xv-itprog__sku b { color: var(--wms-text); }
+      #xa-vai-screen .xv-itprog__sku > .xv-it-st { margin-left: 0; }
       #xa-vai-screen .xv-itprog__left > summary { display: flex; align-items: center; min-height: var(--target-min); color: var(--wms-warning); font-weight: var(--fw-semibold); cursor: pointer; }
       #xa-vai-screen .xv-itprog__list { display: grid; gap: var(--space-1); margin: 0; padding: 0; list-style: none; font-size: var(--fs-14); }
       #xa-vai-screen .xv-itprog__list li { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-3); font-variant-numeric: tabular-nums; }
@@ -10672,9 +10677,15 @@ var FSK_CORE = (function () {
           if(!open.length){progBox.innerHTML='';return}
           progBox.innerHTML=open.map(b=>{
             const n=Number(b.uidCount)||0,m=Math.min(n,Number(b.measuredCount)||0),left=n-m,it=String(b.itNumber);
-            return `<div class="xv-itprog__card" data-it="${esc(it)}"${left?' data-left="true"':''}${progCur===it?' data-cur="true"':''}><div class="xv-itprog__head"><strong class="xv-itprog__code">${esc(b.itemCode)}</strong><span class="xv-itprog__meta">IT ${esc(it)}</span><span class="xv-itprog__meta"><b>${m.toLocaleString('vi-VN')}</b> / ${n.toLocaleString('vi-VN')} UID</span><span class="xv-it-st" data-st="${left?'left':'open'}">${left?`Còn ${left.toLocaleString('vi-VN')}`:'Đủ'}</span></div><span class="xv-it-bar" aria-hidden="true"><i style="width:${pct(m,n)}%"></i></span>${left?`<details class="xv-itprog__left" data-it="${esc(it)}"${progOpen.has(it)?' open':''}><summary>Chưa quét · ${left.toLocaleString('vi-VN')}</summary><div class="xv-itprog__body"></div></details>`:''}</div>`;
+            return `<div class="xv-itprog__card" data-it="${esc(it)}"${left?' data-left="true"':''}${progCur===it?' data-cur="true"':''}><div class="xv-itprog__head"><strong class="xv-itprog__code">${esc(b.itemCode)}</strong><span class="xv-itprog__meta">IT ${esc(it)}</span><span class="xv-itprog__meta"><b>${m.toLocaleString('vi-VN')}</b> / ${n.toLocaleString('vi-VN')} UID</span><span class="xv-it-st" data-st="${left?'left':'open'}">${left?`Còn ${left.toLocaleString('vi-VN')}`:'Đủ'}</span></div><span class="xv-it-bar" aria-hidden="true"><i style="width:${pct(m,n)}%"></i></span>${skuRows(b)}${left?`<details class="xv-itprog__left" data-it="${esc(it)}"${progOpen.has(it)?' open':''}><summary>Chưa quét · ${left.toLocaleString('vi-VN')}</summary><div class="xv-itprog__body"></div></details>`:''}</div>`;
           }).join('');
           for(const det of progBox.querySelectorAll('details[open]'))loadProgLeft(det);
+        };
+        const skuRows=b=>{
+          const rows=(Array.isArray(b.lines)?b.lines:[]).filter(l=>Number(l.uidCount)>0);
+          if(!rows.length)return '';
+          return `<ul class="xv-itprog__skus">${rows.map(l=>{const n=Number(l.uidCount)||0,m=Math.min(n,Number(l.measuredCount)||0),left=n-m;
+            return `<li class="xv-itprog__sku" data-sku="${esc(l.sku)}"${left?' data-left="true"':''}><span${l.name?` title="${esc(l.name)}"`:''}>SKU ${esc(l.sku)}</span><span><b>${m.toLocaleString('vi-VN')}</b> / ${n.toLocaleString('vi-VN')}</span><span class="xv-it-st" data-st="${left?'left':'open'}">${left?`Còn ${left.toLocaleString('vi-VN')}`:'Đủ'}</span></li>`}).join('')}</ul>`;
         };
         const loadProgLeft=async det=>{
           const it=det.dataset.it,body=det.querySelector('.xv-itprog__body');
@@ -10683,7 +10694,7 @@ var FSK_CORE = (function () {
             const r=await rpc('xa_vai_it_get',{p_it_number:it});
             if(!r.ok)throw new Error(r.error?.message||'máy chủ từ chối');
             if(!det.isConnected||!det.open)return;
-            const left=(Array.isArray(r.data?.uids)?r.data.uids:[]).filter(u=>u.state==='new');
+            const left=(Array.isArray(r.data?.uids)?r.data.uids:[]).filter(u=>u.state==='new').sort((a,b)=>String(a.sku).localeCompare(String(b.sku))||String(a.groupUid).localeCompare(String(b.groupUid)));
             body.innerHTML=left.length?`<ul class="xv-itprog__list">${left.map(u=>`<li><b>${esc(u.groupUid)}</b><span>SKU ${esc(u.sku)}</span><span>Lot ${esc(u.lot||'—')}</span><span>Roll ${esc(u.roll||'—')}</span></li>`).join('')}</ul>`:'<p class="cut-empty">Đã quét đủ</p>';
           }catch(e){if(det.isConnected){body.innerHTML='';const p=document.createElement('p');p.className='xv-it-err';p.textContent=`Không tải được UID chưa quét: ${e.message}`;body.append(p)}}
         };

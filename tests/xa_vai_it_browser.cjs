@@ -354,9 +354,12 @@ const noOverflow = async (page, sel) => {
       await prog.waitFor();
       assert.match((await prog.innerText()).replace(/\s+/g, ' '), /CWSH02 IT 1007260000000001 1 \/ 2 UID Còn 1/);
       assert.equal(await prog.getAttribute('data-left'), 'true');
+      // Theo SKU: mỗi SKU có UID một dòng "đã lưu / tổng" + Còn n / Đủ.
+      assert.deepEqual((await prog.locator('.xv-itprog__sku').allInnerTexts()).map(t => t.replace(/\s+/g, ' ').trim()), ['SKU 900000001 1 / 2 Còn 1']);
       await prog.locator('summary').click();
       await prog.locator('.xv-itprog__list li').first().waitFor();
       assert.deepEqual(await prog.locator('.xv-itprog__list b').allInnerTexts(), [uid(2)], 'chỉ UID chưa có mét');
+      await shot(page, `scan-prog-${width}`);
       if (width < 768) await noOverflow(page, '#xa-vai-screen [data-panel="scan"]');
       // Cùng SKU, hai đợt đang xả: pop-up "Ngoài phiếu", chọn đợt thứ hai, lưu → gắn đúng đợt TRƯỚC rồi mới lưu mét.
       await page.locator('#xa-vai-code').click();
