@@ -90,6 +90,16 @@ Thứ tự: Việc 1 → Việc 2 → Việc 3 → Việc 4 (review) → Việc 
 - [x] Build gói 0.12.1; người dùng cài trên DESKTOP-foq5t89 (06/11: print_agents may-a4-01 báo 0.12.1, máy in READY)
 - [ ] In thử phiếu thật bằng 0.12.1 (06/11 kiểm: chưa có lệnh xa_vai_sheet nào sau khi cài) — vạch mép trên không bị xén, máy cầm tay quét được, ô Người xả có tên máy
 
+## Đợt 5: xoá đợt phiếu IT (06/11/2026)
+- Yêu cầu: "SWSH02 IT 1007261104006916 xóa giúp tôi đợt xả vải này và build tính năng xóa phiếu IT."
+- Hợp đồng: `xa_vai_it_delete(p_it_number)` (JWT Admin) → `{ itNumber, itemCode, uidCount, measuredCount }`; lỗi `FORBIDDEN`, `INVALID_INPUT`, `NOT_FOUND`. Xoá đợt mọi trạng thái; `xa_vai_it_uids` theo FK cascade; không đụng `xa_vai_measures` / `print_jobs`.
+- [x] SQL `supabase/xa_vai_it_delete_v1.sql` + `tests/xa_vai_it_delete_sql.cjs` PASS
+- [x] Web: nút Xoá trên thẻ đợt (Admin), hộp đỏ hỏi lại; `tests/xa_vai_it_browser.cjs` PASS; 3 test chuẩn giao diện PASS
+- [x] Review vòng 1 (Codex 2, Claude A 5, BC 2; co-van chấm): sửa — khoá chéo Lưu đợt / Xoá (Codex: Xoá commit trước lượt Lưu đang bay thì Lưu tạo lại đợt; 50, phóng đại mức nghiêm trọng), báo theo kết quả tải lại + bỏ thẻ khỏi màn ngay ([cả hai], 55), hộp hỏi lại nêu UID gắn khi quét (50), lưu mét NOT_FOUND tra lại UID; tài liệu (50). Làm sau: cache đợt 60 s trên máy khác (40). Bỏ qua: in lại sau xoá mất barcode IT (đúng thiết kế), advisory lock / tombstone (không đổi kết quả / trái chốt không nhật ký). Không chạy vòng 2 (sửa chỉ ở web, test bao phủ). Cần người dùng quyết: dọn mục Ngoài đợt xả (xa_vai_it_reports) — có sẵn trước đợt này
+- [x] Migration `xa_vai_it_delete_v1` (6 câu, `-- kiem:` true, ghi sổ ở 07615f7), push
+- [x] Xoá đợt SWSH02 / IT 1007261104006916 theo yêu cầu (58 UID, Xong, 0 UID đã đo; chạy cùng thân hàm bằng script, kiểm lại: 0 đợt, 0 UID còn lại; đợt CWHO0014 giữ nguyên)
+- [ ] Admin bấm Xoá thật trên web lần đầu (chưa thử bằng phiên Admin thật)
+
 ## Phát sinh
 - 05/11/2026 Tách hunk: cây làm việc có phần "Đối chiếu phủ lot theo PO" của phiên khác (`index.html`, `docs/QUYET_DINH.md`, `tests/bridge_ready.cjs` + tệp chưa theo dõi) → commit chỉ phần của đợt này; `bridge_ready` phần commit 11, cây làm việc 12; `tests/cut_po_coverage_browser.cjs` (chưa theo dõi) đã đổi số phiên bản giả lập 0.12.5 → 0.12.6 để cổng commit đạt.
 
