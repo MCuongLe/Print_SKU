@@ -54,6 +54,7 @@ function mock(page, s) {
     s.calls.push({ rpc, body, auth: request.headers().authorization });
     const ok = data => json({ ok: true, data });
     const { uids: _u, ...head } = s.batch;
+    if (rpc === 'xa_vai_it_list' && s.listFail) return json({ message: 'lỗi máy chủ giả lập' }, 500);
     if (rpc === 'xa_vai_it_list') { const items = [head, ...s.saved.map(b => b.listItem)].filter(b => !(s.deletedIts || []).includes(b.itNumber)); return ok({ items, total: items.length }); }
     if (rpc === 'xa_vai_it_delete') {
       if (request.headers().authorization !== 'Bearer test-admin-token') return json({ ok: false, error: { code: 'FORBIDDEN', message: 'Chỉ Admin được xoá đợt xả' } });
@@ -71,6 +72,7 @@ function mock(page, s) {
       return ok({ items: body.p_uids.filter(u => map.has(u)).map(u => ({ groupUid: u, ...map.get(u) })) });
     }
     if (rpc === 'xa_vai_it_save') {
+      if (s.saveDelayMs) await new Promise(r => setTimeout(r, s.saveDelayMs));
       if (request.headers().authorization !== 'Bearer test-admin-token') return json({ ok: false, error: { code: 'FORBIDDEN', message: 'Chỉ Admin được nạp phiếu IT' } });
       const b = body.p_batch;
       s.saved.push({ p_batch: b, listItem: { itNumber: b.itNumber, itemCode: b.itemCode, description: b.description, loadedAt: now(), uidCount: b.uids.length, measuredCount: 0, printedCount: 0,
@@ -230,6 +232,26 @@ const noOverflow = async (page, sel) => {
         assert.equal(await page.locator('#xa-vai-it-code').inputValue(), 'SWSH09B');
         assert.match(await msg(page), /đã có đợt/);
         assert.equal((await page.locator('#xa-vai-it-count').innerText()).trim(), '2');
+        if (width >= 768) {
+          // Review 06/11: đang Lưu đợt thì nút Xoá không gửi (Xoá commit trước lượt Lưu đang bay thì Lưu tạo lại đợt).
+          s.saveDelayMs = 1500;
+          await page.locator('#xa-vai-it-save').click();
+          await page.locator(`.xv-it-card[data-it="${IT}"] [data-it-act="delete"]`).click();
+          assert.equal(await page.locator('dialog.whd[open]').count(), 0, 'đang lưu: không mở hộp xoá');
+          await page.waitForFunction(() => /Đã lưu đợt SWSH09B/.test(document.getElementById('xa-vai-message').textContent));
+          assert.equal(calls(s, 'xa_vai_it_delete').length, 0);
+          s.saveDelayMs = 0;
+          // Xoá xong mà tải lại danh sách lỗi: thẻ rời màn ngay, câu báo không nói "đã tải lại".
+          s.listFail = true;
+          const countBefore = Number((await page.locator('#xa-vai-it-count').innerText()).trim());
+          const gone = page.locator(`.xv-it-card[data-it="${IT}"]`);
+          await gone.locator('[data-it-act="delete"]').click();
+          await page.locator('dialog.whd .whd-ok').click();
+          await gone.waitFor({ state: 'detached' });
+          await page.waitForFunction(() => /Đã xoá đợt CWSH02 · IT 1007260000000001 · 2 UID · bấm tab Phiếu IT để tải lại/.test(document.getElementById('xa-vai-message').textContent));
+          assert.equal(Number((await page.locator('#xa-vai-it-count').innerText()).trim()), countBefore - 1, 'bớt một đợt trên màn');
+          s.listFail = false;
+        }
         assert.deepEqual(errors, []);
         await context.close();
       }

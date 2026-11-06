@@ -9968,7 +9968,7 @@ var FSK_CORE = (function () {
             // Máy chủ ép (web không kiểm được đợt lúc tra): khác SKU → pop-up chặn + báo; cùng SKU nhiều đợt → cho chọn phiếu IT rồi Lưu lại.
             if(r.error?.code==='OUTSIDE_BATCH'&&current===d){blockOutside(d,{state:'other_sku'});return}
             if(r.error?.code==='NEED_BATCH'&&current===d&&Array.isArray(r.error.batches)&&r.error.batches.length){d.out=r.error.batches;d.it={itNumber:String(d.out[0].itNumber),itemCode:String(d.out[0].itemCode)};fillPick(d);renderUid(d,'warn');tell('Chọn phiếu IT rồi Lưu','warn');cue('warn');pickSel.focus();return}
-            if(!r.ok){tell(saveError(r.error),'error');cue('error');if(r.error?.code==='NOT_PENDING')lookup(d.groupUid,{quiet:true});return}
+            if(!r.ok){tell(saveError(r.error),'error');cue('error');if(['NOT_PENDING','NOT_FOUND'].includes(r.error?.code))lookup(d.groupUid,{quiet:true});return}
             savedCount+=1;savedOut.textContent=String(savedCount);
             tell(`${r.data?.replaced?'Đã sửa':'Đã lưu'} ${d.groupUid} · ${mmM(r.data?.item?.actualMm??n)} m${d.out&&d.it?` · ngoài phiếu ${d.it.itemCode}`:''}`,'ok');cue('ok');if(d.out)loadIts({silent:true});
             clearUid();focusScan();loadQueue({quiet:true,silent:true});
@@ -10515,7 +10515,7 @@ var FSK_CORE = (function () {
         itForm.addEventListener('submit',event=>{event.preventDefault();readIt()});
         const saveIt=async()=>{
           const d=itDraft,input=$('xa-vai-it-code'),btn=$('xa-vai-it-save');
-          if(!d||itSaving||!input||btn?.disabled)return;
+          if(!d||itSaving||itStatusBusy||!input||btn?.disabled)return;
           const itemCode=input.value.trim().toUpperCase();
           if(!CODE_RE.test(itemCode)){markItCode(itemCode?CODE_ERROR:'Chưa nhập Mã hàng');input.focus();input.select();return}
           if(!await itToken()){syncAdmin();tell('Phiên Admin đã hết hạn. Đăng nhập lại rồi lưu đợt.','error');window.PrintSkuAdminAccess?.getToken().then(syncAdmin);return}
@@ -10576,26 +10576,28 @@ var FSK_CORE = (function () {
         // Xoá đợt (Admin, xa_vai_it_delete): xoá đợt + danh sách UID của phiếu; mét đã đo / lệnh in giữ nguyên (UID thành UID tự do).
         itList.addEventListener('click',async event=>{
           const btn=event.target.closest('button[data-it-act="delete"]');
-          if(!btn||itStatusBusy)return;
+          if(!btn||itStatusBusy||itSaving)return;
           const it=btn.dataset.it,b=itItems.find(x=>x.itNumber===it);
           const measured=Number(b?.measuredCount)||0;
-          if(!await window.WhDialog.confirm({tone:'danger',icon:'trash',title:'Xoá đợt xả',facts:[b?.itemCode||'',`IT ${it}`,`${Number(b?.uidCount||0).toLocaleString('vi-VN')} UID`,measured?`${measured.toLocaleString('vi-VN')} UID đã đo giữ mét`:''],confirmText:'Xoá đợt',cancelText:'Huỷ'}))return;
+          if(!await window.WhDialog.confirm({tone:'danger',icon:'trash',title:'Xoá đợt xả',facts:[b?.itemCode||'',`IT ${it}`,`${Number(b?.uidCount||0).toLocaleString('vi-VN')} UID`,measured?`${measured.toLocaleString('vi-VN')} UID đã đo giữ mét`:'',Number(b?.outsideCount)>0?`${Number(b.outsideCount).toLocaleString('vi-VN')} UID gắn khi quét sẽ rời đợt`:''],confirmText:'Xoá đợt',cancelText:'Huỷ'}))return;
           if(!await itToken()){syncAdmin();tell('Phiên Admin đã hết hạn. Đăng nhập lại rồi xoá đợt.','error');window.PrintSkuAdminAccess?.getToken().then(syncAdmin);return}
           itStatusBusy=true;btn.disabled=true;
           try{
             const r=await adminRpc('xa_vai_it_delete',{p_it_number:it});
             itOf.clear();itOpen.delete(it);
-            await loadIts({silent:true});loadOutside();
-            tell(`Đã xoá đợt ${r.itemCode||b?.itemCode||''} · IT ${it} · ${Number(r.uidCount||0).toLocaleString('vi-VN')} UID`,'ok');
+            const before=itItems.length;itItems=itItems.filter(x=>x.itNumber!==it);itTotal=Math.max(0,itTotal-(before-itItems.length));renderIts();
+            const ok=await loadIts({silent:true});
+            tell(`Đã xoá đợt ${r.itemCode||b?.itemCode||''} · IT ${it} · ${Number(r.uidCount||0).toLocaleString('vi-VN')} UID${ok?'':' · bấm tab Phiếu IT để tải lại'}`,'ok');
           }catch(e){
-            if(e.unclear){itOf.clear();await loadIts({silent:true});tell(`Chưa rõ đã xoá đợt hay chưa (${e.message}) · đã tải lại`,'warn')}
-            else if(e.code==='NOT_FOUND'){itOf.clear();await loadIts({silent:true});tell(`Đợt IT ${it} đã bị xoá trước đó · đã tải lại`,'warn')}
+            const reload=async()=>{itOf.clear();itOpen.delete(it);return await loadIts({silent:true})?'đã tải lại':'bấm tab Phiếu IT để tải lại'};
+            if(e.unclear)tell(`Chưa rõ đã xoá đợt hay chưa (${e.message}) · ${await reload()}`,'warn');
+            else if(e.code==='NOT_FOUND')tell(`Đợt IT ${it} đã bị xoá trước đó · ${await reload()}`,'warn');
             else tell(`Chưa xoá được đợt: ${e.message}`,'error');
           }finally{itStatusBusy=false;if(btn.isConnected)btn.disabled=false}
         });
         itList.addEventListener('click',async event=>{
           const btn=event.target.closest('button[data-it-act="status"]');
-          if(!btn||itStatusBusy)return;
+          if(!btn||itStatusBusy||itSaving)return;
           const it=btn.dataset.it,to=btn.dataset.to,b=itItems.find(x=>x.itNumber===it);
           if(to==='done'&&!await window.WhDialog.confirm({tone:'warning',icon:'alert',title:'Đóng đợt xả',facts:[b?.itemCode||'',`IT ${it}`],confirmText:'Đóng đợt',cancelText:'Huỷ'}))return;
           if(!await itToken()){syncAdmin();tell('Phiên Admin đã hết hạn. Đăng nhập lại rồi đóng đợt.','error');window.PrintSkuAdminAccess?.getToken().then(syncAdmin);return}
