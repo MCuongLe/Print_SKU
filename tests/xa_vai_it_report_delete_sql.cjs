@@ -30,7 +30,8 @@ let at = -1;
 for (const step of order) { const i = body.indexOf(step); assert.ok(i > at, `thứ tự: ${step}`); at = i; }
 // Giờ sai mẫu bị chặn trước khi ép kiểu; ép kiểu lỗi (tháng 13…) trả INVALID_INPUT, không ném lỗi.
 assert.ok(body.includes("coalesce(e->>'lastAt', '') !~"));
-assert.ok(body.includes("exception when invalid_datetime_format or datetime_field_overflow then"));
+assert.ok(body.includes("exception when invalid_datetime_format or datetime_field_overflow or invalid_time_zone_displacement_value then"), "giờ / múi giờ hỏng → INVALID_INPUT");
+assert.ok(kiem[1].includes("to_regprocedure('public.xa_vai_it_report_delete(text[])') is null"), "không có overload text[] (bản nháp chưa chạy)");
 assert.equal((body.match(/\bdelete from\b/g) || []).length, 1, "một lệnh xoá duy nhất, chỉ xa_vai_it_reports");
 assert.ok(!/\b(update|delete from|insert into) public\.(xa_vai_it_uids|xa_vai_measures|xa_vai_it_batches)\b/.test(body));
 assert.ok(body.includes("'deleted', v_n, 'requested', v_req, 'stale', v_req - v_n"));

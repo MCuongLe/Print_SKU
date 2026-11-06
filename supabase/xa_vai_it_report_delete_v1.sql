@@ -8,13 +8,14 @@
 --     cuối web đang thấy, nguyên văn từ xa_vai_it_outside). Chỉ xoá dòng có last_at KHỚP: UID vừa được quét lại sau khi Admin tải danh sách (upsert
 --     đổi last_at / scan_count) thì giữ nguyên để Admin xem lượt mới (review 06/11: Codex + Claude A/BC). timestamptz qua JSON giữ đủ micro giây
 --     (đo 06/11: to_jsonb → ::timestamptz bằng nhau). Trả { deleted, requested, stale } — stale = dòng đã đổi hoặc đã bị xoá trước.
+--     Bản nháp p_uids text[] (commit a6caf8f) CHƯA từng chạy (kiểm pg_proc 06/11: không có hàm) → không cần drop; -- kiem xác nhận không có overload.
 --     Không đụng xa_vai_it_uids (mục "Ngoài phiếu · gắn vào đợt"), xa_vai_measures. UID quét lại sau khi xoá thì máy chủ ghi dòng mới như lần đầu.
 --   Phân loại: thêm hàm (không đổi hàm / bảng có sẵn).
 -- Không DROP / DELETE ở cấp cao nhất → không cần --allow-destructive. Chạy lại được (create or replace).
 -- Thứ tự lên: commit (chưa push) → migration này → push web (nút Xoá ở mục Ngoài đợt xả; web cũ không gọi hàm này).
 -- Kiểm cục bộ: node tests/xa_vai_it_report_delete_sql.cjs; python scripts/apply_supabase_sql.py supabase/xa_vai_it_report_delete_v1.sql --dry-run
 -- Chạy: python scripts/apply_supabase_sql.py supabase/xa_vai_it_report_delete_v1.sql
--- kiem: select to_regprocedure('public.xa_vai_it_report_delete(jsonb)') is not null and has_function_privilege('authenticated', 'public.xa_vai_it_report_delete(jsonb)', 'execute') and not has_function_privilege('anon', 'public.xa_vai_it_report_delete(jsonb)', 'execute') and position('print_admin_allowed' in pg_get_functiondef('public.xa_vai_it_report_delete(jsonb)'::regprocedure)) > 0 and position('r.last_at = w.seen_at' in pg_get_functiondef('public.xa_vai_it_report_delete(jsonb)'::regprocedure)) > 0
+-- kiem: select to_regprocedure('public.xa_vai_it_report_delete(jsonb)') is not null and has_function_privilege('authenticated', 'public.xa_vai_it_report_delete(jsonb)', 'execute') and not has_function_privilege('anon', 'public.xa_vai_it_report_delete(jsonb)', 'execute') and position('print_admin_allowed' in pg_get_functiondef('public.xa_vai_it_report_delete(jsonb)'::regprocedure)) > 0 and position('r.last_at = w.seen_at' in pg_get_functiondef('public.xa_vai_it_report_delete(jsonb)'::regprocedure)) > 0 and to_regprocedure('public.xa_vai_it_report_delete(text[])') is null
 -- Rút lui (kèm --allow-destructive): drop function if exists public.xa_vai_it_report_delete(jsonb);
 begin;
 
@@ -44,7 +45,7 @@ begin
       returning 1
     )
     select (select count(*)::integer from want), (select count(*)::integer from d) into v_req, v_n;
-  exception when invalid_datetime_format or datetime_field_overflow then
+  exception when invalid_datetime_format or datetime_field_overflow or invalid_time_zone_displacement_value then
     return jsonb_build_object('ok', false, 'error', jsonb_build_object('code', 'INVALID_INPUT', 'message', 'Giờ quét cuối không hợp lệ'));
   end;
   return jsonb_build_object('ok', true, 'data', jsonb_build_object('deleted', v_n, 'requested', v_req, 'stale', v_req - v_n),

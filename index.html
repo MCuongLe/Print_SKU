@@ -10370,7 +10370,7 @@ var FSK_CORE = (function () {
         let itDraft=null,itBusy=false,itSaving=false,itRun=0,itListRun=0,itItems=[],itTotal=0;
         const itOpen=new Set(),itOf=new Map();
         const pickRow=$('xa-vai-it-pickrow'),pickSel=$('xa-vai-it-pick'),outBox=$('xa-vai-it-out'),outCount=$('xa-vai-it-out-count'),outBody=$('xa-vai-it-out-body');
-        let outData={attached:[],outside:[],attachedTotal:0,outsideTotal:0},outDelBusy=false;
+        let outData={attached:[],outside:[],attachedTotal:0,outsideTotal:0},outDelBusy=false,outLoad=null;
         // Đợt 2: UID cùng SKU với nhiều đợt đang xả → chọn đợt (mặc định đợt nạp gần nhất); một đợt thì ẩn ô chọn.
         const fillPick=(d,keep='')=>{
           const many=Array.isArray(d?.out)&&d.out.length>1;
@@ -10633,14 +10633,18 @@ var FSK_CORE = (function () {
           return {attached:Array.isArray(d.attached)?d.attached:[],outside:Array.isArray(d.outside)?d.outside:[],attachedTotal:Number(d.attachedTotal)||0,outsideTotal:Number(d.outsideTotal)||0};
         };
         // Máy chủ chưa có hàm (trước migration) → ẩn mục; lỗi khác báo ở tab Phiếu IT (không giành dòng báo của tab Quét).
-        const loadOutside=async()=>{
+        // Trả true khi lượt MỚI NHẤT tải + vẽ xong, false khi lỗi; lượt bị lượt mới thay thế thì chờ kết quả lượt mới nhất (review vòng 2).
+        const loadOutside=()=>{
           const run=++outRun;
-          try{
-            const d=await readOutside(500);
-            if(run!==outRun)return true;
-            if(!d)return false;
-            outData=d;renderOutside();return true;
-          }catch(e){if(run===outRun&&activeTab==='it')tell(`Không tải được mục Bất thường: ${e.message}`,'error');return run!==outRun}
+          const p=(async()=>{
+            try{
+              const d=await readOutside(500);
+              if(run!==outRun)return null;
+              if(!d)return false;
+              outData=d;renderOutside();return true;
+            }catch(e){if(run===outRun&&activeTab==='it')tell(`Không tải được mục Bất thường: ${e.message}`,'error');return run!==outRun?null:false}
+          })().then(r=>r===null?outLoad:r);
+          outLoad=p;return p;
         };
         // Admin xoá dòng "Ngoài đợt xả" (xa_vai_it_report_delete): UID quét lại khi còn đợt mở thì máy chủ ghi lại như lần đầu.
         outBody.addEventListener('click',async event=>{
