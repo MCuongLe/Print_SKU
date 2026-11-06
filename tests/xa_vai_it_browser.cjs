@@ -118,6 +118,15 @@ const msg = page => page.locator('#xa-vai-message').innerText();
 // XV_IT_SHOTS=<thư mục> thì chụp tab Phiếu IT ở từng khổ (không bắt buộc; ảnh cho vòng review giao diện).
 const shot = async (page, name) => { if (process.env.XV_IT_SHOTS) await page.screenshot({ path: `${process.env.XV_IT_SHOTS}/${name}.png`, fullPage: true }); };
 
+// Pop-up UID mới chưa lưu (06/11/2026): Esc không đóng; nút X hỏi "Bỏ không lưu?" → bấm Bỏ.
+const discardUid = async (page, { tap = false } = {}) => {
+  const x = page.locator('#xa-vai-uid-close');
+  if (tap) await x.tap(); else await x.click();
+  await page.locator('dialog.whd').waitFor({ state: 'visible' });
+  assert.equal(await page.locator('dialog.whd').getAttribute('data-tone'), 'danger');
+  if (tap) await page.locator('dialog.whd .whd-ok').tap(); else await page.locator('dialog.whd .whd-ok').click();
+  await page.locator('#xa-vai-uid-dialog').waitFor({ state: 'hidden' });
+};
 async function open(browser, width, s, { ext = EXT_IT } = {}) {
   const mobile = width < 768;
   const context = await browser.newContext({ viewport: { width, height: mobile ? 800 : 900 }, isMobile: mobile, hasTouch: mobile });
@@ -312,7 +321,7 @@ const noOverflow = async (page, sel) => {
       await page.waitForFunction(() => /Mã hàng\s*CWSH02/.test(document.getElementById('xa-vai-uid').innerText));
       await shot(page, `popup-${width}`);
       assert.equal(await page.locator('#xa-vai-uid dd[title]').filter({ hasText: 'CWSH02' }).getAttribute('title'), `Phiếu IT ${IT}`);
-      await page.locator('#xa-vai-uid-close').click();
+      await discardUid(page);
 
       await page.locator('#xa-vai-tab-queue').click();
       await page.locator(`#xa-vai-queue-rows tr[data-uid="${uid(2)}"]`).waitFor();
@@ -340,6 +349,15 @@ const noOverflow = async (page, sel) => {
         outside: { attached: [{ groupUid: uid(39), sku: '900000001', itNumber: IT, itemCode: 'CWSH02', addedAt: now(), device: 'may-test-01', state: 'pending' }],
           outside: [{ groupUid: uid(41), sku: '900000009', lastAt: now(), scanCount: 2, device: 'may-test-01', openItems: 'CWSH02' }], attachedTotal: 1, outsideTotal: 1 } };
       const { context, page, errors } = await open(browser, width, s);
+      // Tab Quét (06/11/2026): tiến độ đợt Đang xả — đã lưu / tổng UID, "Còn n", mở "Chưa quét" ra đúng UID chưa có mét.
+      const prog = page.locator(`#xa-vai-itprog .xv-itprog__card[data-it="${IT}"]`);
+      await prog.waitFor();
+      assert.match((await prog.innerText()).replace(/\s+/g, ' '), /CWSH02 IT 1007260000000001 1 \/ 2 UID Còn 1/);
+      assert.equal(await prog.getAttribute('data-left'), 'true');
+      await prog.locator('summary').click();
+      await prog.locator('.xv-itprog__list li').first().waitFor();
+      assert.deepEqual(await prog.locator('.xv-itprog__list b').allInnerTexts(), [uid(2)], 'chỉ UID chưa có mét');
+      if (width < 768) await noOverflow(page, '#xa-vai-screen [data-panel="scan"]');
       // Cùng SKU, hai đợt đang xả: pop-up "Ngoài phiếu", chọn đợt thứ hai, lưu → gắn đúng đợt TRƯỚC rồi mới lưu mét.
       await page.locator('#xa-vai-code').click();
       await page.keyboard.type(uid(40));
@@ -375,7 +393,7 @@ const noOverflow = async (page, sel) => {
       await page.waitForFunction(() => /Mã hàng\s*CWSH02/.test(document.getElementById('xa-vai-uid').innerText));
       assert.equal(calls(s, 'xa_vai_measure_lookup').length, lookups + 1);
       assert.equal(calls(s, 'xa_vai_measure_lookup').pop().body.p_group_uid, uid(2), 'không mất ký tự đầu của lượt quét kế');
-      await page.locator('#xa-vai-uid-close').click();
+      await discardUid(page);
 
       // Máy chủ chặn OUTSIDE_BATCH lúc lưu (đợt vừa đổi): báo lỗi + báo vận hành kho.
       s.saveError = { code: 'OUTSIDE_BATCH', message: 'Group UID nằm ngoài đợt xả vải đang mở' };

@@ -147,6 +147,15 @@ async function newPage(browser, width) {
   page.on('console', m => { if (m.type() === 'error' && !/Failed to load resource|ERR_INTERNET_DISCONNECTED/.test(m.text())) errors.push(m.text()); });
   return { context, page, errors };
 }
+// Pop-up UID mới chưa lưu (06/11/2026): Esc không đóng; nút X hỏi "Bỏ không lưu?" → bấm Bỏ.
+const discardUid = async (page, { tap = false } = {}) => {
+  const x = page.locator('#xa-vai-uid-close');
+  if (tap) await x.tap(); else await x.click();
+  await page.locator('dialog.whd').waitFor({ state: 'visible' });
+  assert.equal(await page.locator('dialog.whd').getAttribute('data-tone'), 'danger');
+  if (tap) await page.locator('dialog.whd .whd-ok').tap(); else await page.locator('dialog.whd .whd-ok').click();
+  await page.locator('#xa-vai-uid-dialog').waitFor({ state: 'hidden' });
+};
 const scan = async (page, value) => { await chibiGone(page); await page.locator('#xa-vai-code').fill(value); await page.locator('#xa-vai-code').press('Enter'); };
 const typeMeters = async (page, value) => { await chibiGone(page); await page.locator('#xa-vai-meters').fill(value); await page.locator('#xa-vai-meters').press('Enter'); };
 
@@ -507,8 +516,8 @@ async function tracking(browser) {
   await sleep(400);
   assert.equal(await msg(page), 'Đã tra 1028260000000004', 'lệnh máy khác không đè dòng báo của tab Quét');
   assert.deepEqual(await cues(page), [], 'lệnh máy khác không phát âm');
-  // Chờ in: total > số dòng → "Hiện n / tổng" (pop-up nhập mét của UID vừa quét chặn bấm tab: đóng trước)
-  await page.locator('#xa-vai-uid-close').click();
+  // Chờ in: total > số dòng → "Hiện n / tổng" (pop-up nhập mét của UID vừa quét chặn bấm tab: bỏ trước)
+  await discardUid(page);
   await page.locator('#xa-vai-tab-queue').click();
   await page.waitForFunction(() => document.querySelectorAll('#xa-vai-queue-rows tr[data-uid]').length === 3);
   assert.match((await page.locator('#xa-vai-queue-total').innerText()).replace(/\s+/g, ' '), /Hiện 3 \/ 250/, 'total > số dòng → "Hiện n / tổng"');
@@ -718,9 +727,17 @@ async function popupScan(browser) {
   await dlg.waitFor({ state: 'visible' });
   await sleep(300);
   assert.equal(lookups(), 2, 'tự tra + Enter chỉ tra một lần');
-  // Esc / đóng: không ghi, con trỏ về ô quét, ô mét sạch
+  // UID mới chưa lưu: Esc KHÔNG đóng (báo "Chưa lưu"); nút X hỏi lại rồi mới bỏ — không ghi, con trỏ về ô quét, ô mét sạch
   await page.keyboard.press('Escape');
-  await dlg.waitFor({ state: 'hidden' });
+  await sleep(200);
+  assert.equal(await dlg.isVisible(), true, 'Esc không đóng pop-up UID mới chưa lưu');
+  assert.match(await page.locator('#xa-vai-uid-error').innerText(), /Chưa lưu/);
+  await page.locator('#xa-vai-uid-close').click();
+  await page.locator('dialog.whd').waitFor({ state: 'visible' });
+  await page.locator('dialog.whd .whd-cancel').click();
+  await sleep(200);
+  assert.equal(await dlg.isVisible(), true, 'Huỷ ở hộp hỏi lại: pop-up giữ nguyên');
+  await discardUid(page);
   assert.equal(calls(s, 'xa_vai_measure_save').length, 1, 'đóng pop-up không ghi');
   await waitFor(async () => await focused(page) === 'xa-vai-code', 'đóng pop-up con trỏ về ô quét');
   assert.equal(await meters.inputValue(), '', 'đóng pop-up xoá số đang gõ');
@@ -771,8 +788,7 @@ async function popupScan(browser) {
   await code.fill(uid(5));
   await dlg.waitFor({ state: 'visible' });
   assert.equal(await page.locator('#xa-vai-note').isHidden(), true, 'quét UID mới thì xoá thẻ báo cũ');
-  await page.keyboard.press('Escape');
-  await dlg.waitFor({ state: 'hidden' });
+  await discardUid(page);
   // UID không có trong hệ thống: KHÔNG mở pop-up, báo lỗi, giữ mã trong ô quét
   const before = lookups();
   await code.fill(uid(99));
@@ -868,14 +884,15 @@ async function typedScan(browser) {
     await waitMsg(page, new RegExp(`Đã lưu ${uid(n)}`));
     await dlg.waitFor({ state: 'hidden' });
   }
-  // Chạm Đóng rồi quét tiếp
+  // Chạm Đóng → hỏi lại → Bỏ rồi quét tiếp (UID mới chưa lưu không đóng thẳng)
   await typeScan(1);
-  await page.locator('#xa-vai-uid-close').tap();
-  await dlg.waitFor({ state: 'hidden' });
-  // Esc rồi quét tiếp (máy quét có Enter cuối mã)
+  await discardUid(page, { tap: true });
+  // Máy quét có Enter cuối mã: Esc không đóng, chạm Đóng → Bỏ rồi quét tiếp
   await typeScan(3, true);
   await page.keyboard.press('Escape');
-  await dlg.waitFor({ state: 'hidden' });
+  await sleep(150);
+  assert.equal(await dlg.isVisible(), true, 'Esc không đóng UID mới chưa lưu');
+  await discardUid(page, { tap: true });
   // Enter ở ô mét rồi quét tiếp
   await typeScan(9);
   await page.keyboard.type('20,5');
@@ -883,8 +900,7 @@ async function typedScan(browser) {
   await waitMsg(page, new RegExp(`Đã lưu ${uid(9)}`));
   await dlg.waitFor({ state: 'hidden' });
   await typeScan(5);
-  await page.keyboard.press('Escape');
-  await dlg.waitFor({ state: 'hidden' });
+  await discardUid(page, { tap: true });
   assert.deepEqual(errors, []);
   await context.close();
   console.log('PASS quét bằng gõ phím thật: chạm Lưu / chạm Đóng / Esc / Enter rồi quét UID kế vẫn hiện pop-up (không focus ma)');
@@ -904,7 +920,7 @@ async function mobile(browser) {
   await page.locator('#xa-vai-meters').fill('11,5');
   assert.equal(await over(), false, '375 px tab Quét không tràn ngang');
   await shot(page, '375-quet');
-  await page.locator('#xa-vai-uid-close').click(); // pop-up nhập mét chặn bấm tab: đóng trước
+  await discardUid(page); // pop-up nhập mét chặn bấm tab: bỏ trước (UID mới chưa lưu: hỏi lại)
   await page.locator('#xa-vai-tab-queue').click();
   await page.waitForFunction(() => document.querySelectorAll('#xa-vai-queue-rows tr[data-uid]').length === 2);
   await page.waitForFunction(() => /Máy in A4/.test(document.getElementById('xa-vai-printer').textContent));
