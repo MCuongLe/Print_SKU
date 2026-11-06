@@ -87,7 +87,8 @@ Thứ tự: Việc 1 → Việc 2 → Việc 3 → Việc 4 (review) → Việc 
 - [x] Agent 0.12.1 + `workstation-agent/tests/xa-vai-sheet-0121.test.mjs`; `node --test` 246/246
 - [x] Review vòng 1 (Codex 1, Claude A 0, BC 4; co-van chấm): sửa tài liệu (70); bỏ qua >3 phiếu IT (có sẵn từ 0.12.0, đã chốt tối đa 3), tên máy dài / in lại ghi máy in lại (đã chốt), log nhánh dải dưới biển; làm sau: log khi lệnh mẫu mới thiếu deviceName (35)
 - [x] Migration `xa_vai_a4_v3` (5 câu, `-- kiem:` true, ghi sổ release_ledger ở 7c2534e)
-- [ ] Build gói 0.12.1, người dùng cài trên DESKTOP-foq5t89 + in thử (vạch ở mép trên không bị xén, máy cầm tay quét được, ô Người xả có tên máy)
+- [x] Build gói 0.12.1; người dùng cài trên DESKTOP-foq5t89 (06/11: print_agents may-a4-01 báo 0.12.1, máy in READY)
+- [ ] In thử phiếu thật bằng 0.12.1 (06/11 kiểm: chưa có lệnh xa_vai_sheet nào sau khi cài) — vạch mép trên không bị xén, máy cầm tay quét được, ô Người xả có tên máy
 
 ## Phát sinh
 - 05/11/2026 Tách hunk: cây làm việc có phần "Đối chiếu phủ lot theo PO" của phiên khác (`index.html`, `docs/QUYET_DINH.md`, `tests/bridge_ready.cjs` + tệp chưa theo dõi) → commit chỉ phần của đợt này; `bridge_ready` phần commit 11, cây làm việc 12; `tests/cut_po_coverage_browser.cjs` (chưa theo dõi) đã đổi số phiên bản giả lập 0.12.5 → 0.12.6 để cổng commit đạt.
