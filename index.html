@@ -10547,7 +10547,7 @@ var FSK_CORE = (function () {
           itList.innerHTML=itItems.map(b=>{
             const lines=(Array.isArray(b.lines)?b.lines:[]).map(l=>{const p=finite(l.deliveredMm)&&Number(l.deliveredMm)>0?pct(Number(l.actualMm)||0,Number(l.deliveredMm)):pct(Number(l.measuredCount)||0,Number(l.uidCount)||0);
               return `<tr>${td('SKU',`<span class="xv-it-sku">${esc(l.sku)}${l.name?`<small>${esc(l.name)}</small>`:''}</span>`)}${td('UID đã đo',`${Number(l.measuredCount||0).toLocaleString('vi-VN')} / ${Number(l.uidCount||0).toLocaleString('vi-VN')}`,'n')}${td('Mét TT',mmM(l.actualMm),'n')}${td('Đã xuất',finite(l.deliveredMm)?`${mmM(l.deliveredMm)} m`:qtyText(l.deliveredQty,l.unit),'n')}${td('Tiến độ',`<span class="xv-it-prog"><span class="xv-it-bar" aria-hidden="true"><i style="width:${p}%"></i></span><b>${p}%</b></span>`)}</tr>`}).join('');
-            return `<article class="xv-it-card" data-it="${esc(b.itNumber)}" data-st="${b.batchStatus==='done'?'done':'open'}"><header class="xv-it-card__head"><strong class="xv-it-card__code">${esc(b.itemCode)}</strong><span class="xv-it-card__meta" title="${esc(b.description||'')}">IT ${esc(b.itNumber)}</span><span class="xv-it-card__meta">${esc(fmtAt(b.loadedAt))}</span><span class="xv-it-st" data-st="${b.batchStatus==='done'?'done':'open'}">${b.batchStatus==='done'?'Xong':'Đang xả'}</span>${Number(b.outsideCount)>0?`<span class="xv-it-card__out">Ngoài phiếu ${Number(b.outsideCount).toLocaleString('vi-VN')}</span>`:''}${window.PrintSkuAdminAccess?.peekToken?.()?`<button class="cut-secondary" type="button" data-it-act="status" data-it="${esc(b.itNumber)}" data-to="${b.batchStatus==='done'?'open':'done'}">${b.batchStatus==='done'?'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>Mở lại':'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Đóng đợt'}</button>`:''}<span class="xv-state"${Number(b.printedCount)>=Number(b.uidCount)&&Number(b.uidCount)>0?' data-state="printed"':''}>${Number(b.measuredCount||0).toLocaleString('vi-VN')} / ${Number(b.uidCount||0).toLocaleString('vi-VN')} UID</span></header>`+
+            return `<article class="xv-it-card" data-it="${esc(b.itNumber)}" data-st="${b.batchStatus==='done'?'done':'open'}"><header class="xv-it-card__head"><strong class="xv-it-card__code">${esc(b.itemCode)}</strong><span class="xv-it-card__meta" title="${esc(b.description||'')}">IT ${esc(b.itNumber)}</span><span class="xv-it-card__meta">${esc(fmtAt(b.loadedAt))}</span><span class="xv-it-st" data-st="${b.batchStatus==='done'?'done':'open'}">${b.batchStatus==='done'?'Xong':'Đang xả'}</span>${Number(b.outsideCount)>0?`<span class="xv-it-card__out">Ngoài phiếu ${Number(b.outsideCount).toLocaleString('vi-VN')}</span>`:''}${window.PrintSkuAdminAccess?.peekToken?.()?`<button class="cut-secondary" type="button" data-it-act="status" data-it="${esc(b.itNumber)}" data-to="${b.batchStatus==='done'?'open':'done'}">${b.batchStatus==='done'?'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>Mở lại':'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Đóng đợt'}</button><button class="cut-danger act-icon act-icon--trash" type="button" data-it-act="delete" data-it="${esc(b.itNumber)}">Xoá</button>`:''}<span class="xv-state"${Number(b.printedCount)>=Number(b.uidCount)&&Number(b.uidCount)>0?' data-state="printed"':''}>${Number(b.measuredCount||0).toLocaleString('vi-VN')} / ${Number(b.uidCount||0).toLocaleString('vi-VN')} UID</span></header>`+
               `<div class="cut-table-wrap"><table class="cut-table xv-table"><thead><tr><th>SKU</th><th class="n">UID đã đo</th><th class="n">Mét TT</th><th class="n">Đã xuất</th><th>Tiến độ</th></tr></thead><tbody>${lines}</tbody></table></div>`+
               `<details class="xv-it-uids" data-it="${esc(b.itNumber)}"${itOpen.has(b.itNumber)?' open':''}><summary>UID · ${Number(b.uidCount||0).toLocaleString('vi-VN')}</summary><div class="xv-it-uids__body"></div></details></article>`;
           }).join('')+more;
@@ -10573,6 +10573,26 @@ var FSK_CORE = (function () {
         itList.addEventListener('toggle',event=>{const det=event.target;if(!det.matches?.('details.xv-it-uids'))return;if(det.open){itOpen.add(det.dataset.it);loadItUids(det)}else itOpen.delete(det.dataset.it)},true);
         // Trả true khi tải xong (hoặc có lượt mới hơn), false khi lỗi.
         let itStatusBusy=false;
+        // Xoá đợt (Admin, xa_vai_it_delete): xoá đợt + danh sách UID của phiếu; mét đã đo / lệnh in giữ nguyên (UID thành UID tự do).
+        itList.addEventListener('click',async event=>{
+          const btn=event.target.closest('button[data-it-act="delete"]');
+          if(!btn||itStatusBusy)return;
+          const it=btn.dataset.it,b=itItems.find(x=>x.itNumber===it);
+          const measured=Number(b?.measuredCount)||0;
+          if(!await window.WhDialog.confirm({tone:'danger',icon:'trash',title:'Xoá đợt xả',facts:[b?.itemCode||'',`IT ${it}`,`${Number(b?.uidCount||0).toLocaleString('vi-VN')} UID`,measured?`${measured.toLocaleString('vi-VN')} UID đã đo giữ mét`:''],confirmText:'Xoá đợt',cancelText:'Huỷ'}))return;
+          if(!await itToken()){syncAdmin();tell('Phiên Admin đã hết hạn. Đăng nhập lại rồi xoá đợt.','error');window.PrintSkuAdminAccess?.getToken().then(syncAdmin);return}
+          itStatusBusy=true;btn.disabled=true;
+          try{
+            const r=await adminRpc('xa_vai_it_delete',{p_it_number:it});
+            itOf.clear();itOpen.delete(it);
+            await loadIts({silent:true});loadOutside();
+            tell(`Đã xoá đợt ${r.itemCode||b?.itemCode||''} · IT ${it} · ${Number(r.uidCount||0).toLocaleString('vi-VN')} UID`,'ok');
+          }catch(e){
+            if(e.unclear){itOf.clear();await loadIts({silent:true});tell(`Chưa rõ đã xoá đợt hay chưa (${e.message}) · đã tải lại`,'warn')}
+            else if(e.code==='NOT_FOUND'){itOf.clear();await loadIts({silent:true});tell(`Đợt IT ${it} đã bị xoá trước đó · đã tải lại`,'warn')}
+            else tell(`Chưa xoá được đợt: ${e.message}`,'error');
+          }finally{itStatusBusy=false;if(btn.isConnected)btn.disabled=false}
+        });
         itList.addEventListener('click',async event=>{
           const btn=event.target.closest('button[data-it-act="status"]');
           if(!btn||itStatusBusy)return;

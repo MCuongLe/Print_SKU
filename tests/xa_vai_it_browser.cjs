@@ -54,7 +54,12 @@ function mock(page, s) {
     s.calls.push({ rpc, body, auth: request.headers().authorization });
     const ok = data => json({ ok: true, data });
     const { uids: _u, ...head } = s.batch;
-    if (rpc === 'xa_vai_it_list') return ok({ items: [head, ...s.saved.map(b => b.listItem)], total: 1 + s.saved.length });
+    if (rpc === 'xa_vai_it_list') { const items = [head, ...s.saved.map(b => b.listItem)].filter(b => !(s.deletedIts || []).includes(b.itNumber)); return ok({ items, total: items.length }); }
+    if (rpc === 'xa_vai_it_delete') {
+      if (request.headers().authorization !== 'Bearer test-admin-token') return json({ ok: false, error: { code: 'FORBIDDEN', message: 'Chỉ Admin được xoá đợt xả' } });
+      s.deletedIts = [...(s.deletedIts || []), body.p_it_number];
+      return ok({ itNumber: body.p_it_number, itemCode: 'CWSH02', uidCount: 2, measuredCount: 1 });
+    }
     if (rpc === 'xa_vai_it_get') {
       if (body.p_it_number === IT) return ok({ ...head, uids: s.batch.uids });
       const hit = s.saved.find(b => b.p_batch.itNumber === body.p_it_number);
@@ -385,6 +390,7 @@ const noOverflow = async (page, sel) => {
       assert.equal((await card.locator('.xv-it-st').innerText()).trim(), 'Đang xả');
       assert.equal((await card.locator('.xv-it-card__out').innerText()).trim(), 'Ngoài phiếu 1');
       assert.equal(await card.locator('[data-it-act="status"]').count(), 0, 'chưa Admin: không có nút Đóng đợt');
+      assert.equal(await card.locator('[data-it-act="delete"]').count(), 0, 'chưa Admin: không có nút Xoá đợt');
       const out = page.locator('#xa-vai-it-out');
       await out.waitFor({ state: 'visible' });
       assert.equal((await page.locator('#xa-vai-it-out-count').innerText()).trim(), '2');
@@ -402,12 +408,25 @@ const noOverflow = async (page, sel) => {
         assert.equal(st.length, 1); assert.equal(st[0].body.p_status, 'done'); assert.equal(st[0].auth, 'Bearer test-admin-token');
         assert.equal((await card.locator('[data-it-act="status"]').innerText()).trim(), 'Mở lại');
         await shot(page, `out-list-${width}`);
+        // Xoá đợt (06/11/2026): hộp đỏ hỏi lại; Huỷ không gọi máy chủ; Xoá đợt → gọi bằng JWT Admin, thẻ biến mất, báo số UID.
+        await card.locator('[data-it-act="delete"]').click();
+        await page.locator('dialog.whd').waitFor({ state: 'visible' });
+        assert.equal(await page.locator('dialog.whd').getAttribute('data-tone'), 'danger');
+        assert.match(await page.locator('dialog.whd .whd-facts').innerText(), /CWSH02[\s\S]*IT 1007260000000001[\s\S]*2 UID[\s\S]*1 UID đã đo giữ mét/);
+        await page.locator('dialog.whd .whd-cancel').click();
+        assert.equal(calls(s, 'xa_vai_it_delete').length, 0, 'Huỷ: không xoá');
+        await card.locator('[data-it-act="delete"]').click();
+        await page.locator('dialog.whd .whd-ok').click();
+        await card.waitFor({ state: 'detached' });
+        const del = calls(s, 'xa_vai_it_delete');
+        assert.equal(del.length, 1); assert.equal(del[0].body.p_it_number, IT); assert.equal(del[0].auth, 'Bearer test-admin-token');
+        await page.waitForFunction(() => /Đã xoá đợt CWSH02 · IT 1007260000000001 · 2 UID/.test(document.getElementById('xa-vai-message').textContent));
       }
       if (width < 768) await noOverflow(page, '#xa-vai-screen [data-panel="it"]');
       assert.deepEqual(errors, []);
       await context.close();
     }
-    console.log('xa_vai_it_browser: đợt 2 (cùng SKU gắn đợt, khác SKU chặn + báo, OUTSIDE_BATCH, đóng đợt, mục Ngoài phiếu) + xem đợt + tiến độ + UID, Admin đọc phiếu (mã hàng từ ghi chú, thiếu UID, Extension cũ, phiếu chưa xuất), Lưu đợt bằng JWT Admin, pop-up quét + In A4 điền mã của đợt — 1280 + 375 passed');
+    console.log('xa_vai_it_browser: đợt 2 (cùng SKU gắn đợt, khác SKU chặn + báo, OUTSIDE_BATCH, đóng đợt, xoá đợt, mục Ngoài phiếu) + xem đợt + tiến độ + UID, Admin đọc phiếu (mã hàng từ ghi chú, thiếu UID, Extension cũ, phiếu chưa xuất), Lưu đợt bằng JWT Admin, pop-up quét + In A4 điền mã của đợt — 1280 + 375 passed');
   } finally {
     await browser.close();
   }
