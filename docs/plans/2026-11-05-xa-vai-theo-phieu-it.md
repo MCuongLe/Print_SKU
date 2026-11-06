@@ -100,6 +100,14 @@ Thứ tự: Việc 1 → Việc 2 → Việc 3 → Việc 4 (review) → Việc 
 - [x] Xoá đợt SWSH02 / IT 1007261104006916 theo yêu cầu (58 UID, Xong, 0 UID đã đo; chạy cùng thân hàm bằng script, kiểm lại: 0 đợt, 0 UID còn lại; đợt CWHO0014 giữ nguyên)
 - [ ] Admin bấm Xoá thật trên web lần đầu (chưa thử bằng phiên Admin thật)
 
+## Đợt 6: xoá dòng Ngoài đợt xả (06/11/2026)
+- Yêu cầu: "Ngoài đợt xả có nút xóa giúp tôi." (xa_vai_it_reports chưa có đường dọn nào).
+- Hợp đồng: `xa_vai_it_report_delete(p_items jsonb)` (JWT Admin), `p_items = [{ groupUid, lastAt }]` 1–2.000 dòng, lastAt nguyên chuỗi từ `xa_vai_it_outside` → `{ deleted, requested, stale }`; chỉ xoá dòng `last_at` khớp (UID quét lại sau khi tải = stale, giữ lại); lỗi `FORBIDDEN`, `INVALID_INPUT`.
+- [x] SQL `supabase/xa_vai_it_report_delete_v1.sql` + `tests/xa_vai_it_report_delete_sql.cjs` PASS
+- [x] Web: nút Xoá từng dòng (icon) + Xoá hết (Admin), hộp đỏ hỏi lại, báo vàng khi có dòng stale / tải lại lỗi; `tests/xa_vai_it_browser.cjs` PASS; 3 test chuẩn giao diện PASS
+- [x] Review vòng 1 (Codex 4, Claude A 4, BC 4; co-van chấm): sửa — chỉ xoá dòng có giờ quét cuối khớp ([cả hai], 75; Fable khuyến nghị một mốc p_seen_at, lead giữ so từng dòng vì đo 06/11 timestamptz qua JSON khớp micro giây và web gửi nguyên chuỗi), báo theo kết quả tải lại ([cả hai], 75), khoá nút trước khi lấy token (50), icon 20 (75), nút vẽ lại khi đang bận, PGRST202 báo đúng chức năng; bỏ qua nút Admin theo peekToken (mẫu chung). Vòng 2 (Codex, chỉ phần sửa): sửa lượt tải bị thay thế chờ lượt mới nhất, bắt lỗi múi giờ; overload text[] không có (bản nháp chưa chạy, kiểm pg_proc). Migration  đã chạy (6 câu, kiem true, ghi sổ dc5cb7f), push
+- [ ] Admin bấm Xoá thật trên web lần đầu (bảng đang trống lúc lên)
+
 ## Phát sinh
 - 05/11/2026 Tách hunk: cây làm việc có phần "Đối chiếu phủ lot theo PO" của phiên khác (`index.html`, `docs/QUYET_DINH.md`, `tests/bridge_ready.cjs` + tệp chưa theo dõi) → commit chỉ phần của đợt này; `bridge_ready` phần commit 11, cây làm việc 12; `tests/cut_po_coverage_browser.cjs` (chưa theo dõi) đã đổi số phiên bản giả lập 0.12.5 → 0.12.6 để cổng commit đạt.
 
