@@ -751,14 +751,23 @@ async function popupScan(browser) {
   assert.equal(await err.isVisible(), true);
   assert.equal(await dlg.evaluate(d => d.open), true, 'lỗi thì pop-up giữ nguyên để sửa');
   assert.equal(calls(s, 'xa_vai_measure_save').length, 1, 'số sai không gửi lên máy chủ');
-  // Máy quét bắn tiếp UID khác vào ô mét (chưa lưu): chuyển sang UID mới, lỗi cũ xoá, UID đã có mét hiện số cũ + nút Sửa
+  // Máy quét bắn tiếp UID khác vào ô mét khi UID mới CHƯA lưu (06/11/2026): KHÔNG chuyển, không tra, giữ UID cũ + báo "Chưa lưu <UID cũ>".
   await spyCue(page);
+  const lookupsBefore = calls(s, 'xa_vai_measure_lookup').length;
   await meters.fill(uid(1));
   await meters.press('Enter'); // máy quét có Enter cuối mã: không được lưu / báo lỗi giả
-  await waitFor(async () => (await page.locator('#xa-vai-uid').innerText()).includes(uid(1)), 'chuyển sang UID quét tiếp trong ô mét');
-  await sleep(500);
-  assert.equal(calls(s, 'xa_vai_measure_save').length, 1, 'Enter đến sau mã quét không lưu UID mới');
+  await waitFor(async () => /Chưa lưu 1028260000000006/.test(await err.innerText()), 'báo chưa lưu UID cũ');
+  await sleep(300);
+  assert.ok((await page.locator('#xa-vai-uid').innerText()).includes(uid(6)), 'giữ UID chưa lưu');
+  assert.equal(calls(s, 'xa_vai_measure_lookup').length, lookupsBefore, 'không tra UID quét đè');
+  assert.equal(calls(s, 'xa_vai_measure_save').length, 1, 'Enter đến sau mã quét không lưu');
   assert.ok(!(await cues(page)).includes('error'), 'Enter đến sau mã quét không phát tiếng lỗi');
+  assert.ok((await cues(page)).includes('warn'), 'kêu cảnh báo');
+  // Bỏ UID cũ (X → Bỏ không lưu) rồi quét UID kế: UID đã có mét hiện số cũ + nút Sửa
+  await discardUid(page);
+  await code.fill(uid(1));
+  await dlg.waitFor({ state: 'visible' });
+  await waitFor(async () => (await page.locator('#xa-vai-uid').innerText()).includes(uid(1)), 'quét UID kế sau khi bỏ');
   assert.equal(await meters.inputValue(), '60,50', 'UID đã có mét hiện số cũ');
   assert.match((await page.locator('#xa-vai-save').textContent()).trim(), /Sửa/);
   // Enter đến muộn (máy quét hậu tố chậm, gõ tay) khi ô mét chưa đổi gì: KHÔNG lưu, dù đã quá 0,3 s; nút Sửa vẫn lưu được
@@ -858,7 +867,7 @@ async function popupScan(browser) {
   await waitFor(async () => await focused(page) === 'xa-vai-code', 'con trỏ ở ô quét sau cuộc đua');
   assert.deepEqual(errors, []);
   await context.close();
-  console.log('PASS pop-up quét: đủ 16 chữ số tự tra, tự tra + Enter một lần, pop-up neo đầu màn, Enter lưu → về ô quét, Esc không ghi, lỗi báo trong pop-up, UID mới thay trong ô mét, UID đã in chỉ hiện thẻ báo không pop-up, UID lạ không pop-up, rời màn đóng pop-up');
+  console.log('PASS pop-up quét: đủ 16 chữ số tự tra, tự tra + Enter một lần, pop-up neo đầu màn, Enter lưu → về ô quét, Esc không ghi, lỗi báo trong pop-up, UID khác quét vào ô mét khi chưa lưu bị chặn (giữ UID cũ), UID đã in chỉ hiện thẻ báo không pop-up, UID lạ không pop-up, rời màn đóng pop-up');
 }
 // Máy quét thật CHỈ gõ vào ô đang nhận phím (không tự focus như locator.fill). Chạm nút Lưu / Đóng rồi quét tiếp: pop-up phải hiện lại.
 // Lỗi gốc (người dùng báo 04/11, đo bằng gõ phím thật): đóng pop-up khi nút đang giữ focus → document.activeElement = ô quét nhưng phím KHÔNG

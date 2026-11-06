@@ -360,6 +360,14 @@ const noOverflow = async (page, sel) => {
       await prog.locator('.xv-itprog__list li').first().waitFor();
       assert.deepEqual(await prog.locator('.xv-itprog__list b').allInnerTexts(), [uid(2)], 'chỉ UID chưa có mét');
       await shot(page, `scan-prog-${width}`);
+      // Tải tiến độ lỗi: giữ số cũ + dòng "Chưa cập nhật tiến độ"; tải lại được thì dòng mất.
+      s.listFail = true;
+      await page.locator('#xa-vai-tab-queue').click(); await page.locator('#xa-vai-tab-scan').click();
+      await page.locator('#xa-vai-itprog .xv-itprog__stale').waitFor();
+      assert.equal(await prog.isVisible(), true, 'lỗi tải: giữ thẻ cũ');
+      s.listFail = false;
+      await page.locator('#xa-vai-tab-queue').click(); await page.locator('#xa-vai-tab-scan').click();
+      await page.locator('#xa-vai-itprog .xv-itprog__stale').waitFor({ state: 'detached' });
       if (width < 768) await noOverflow(page, '#xa-vai-screen [data-panel="scan"]');
       // Cùng SKU, hai đợt đang xả: pop-up "Ngoài phiếu", chọn đợt thứ hai, lưu → gắn đúng đợt TRƯỚC rồi mới lưu mét.
       await page.locator('#xa-vai-code').click();

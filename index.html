@@ -9660,7 +9660,9 @@ var FSK_CORE = (function () {
       #xa-vai-screen .xv-itprog__sku > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       #xa-vai-screen .xv-itprog__sku b { color: var(--wms-text); }
       #xa-vai-screen .xv-itprog__sku > .xv-it-st { margin-left: 0; }
-      #xa-vai-screen .xv-itprog__left > summary { display: flex; align-items: center; min-height: var(--target-min); color: var(--wms-warning); font-weight: var(--fw-semibold); cursor: pointer; }
+      #xa-vai-screen .xv-itprog__left > summary { display: flex; align-items: center; gap: var(--space-2); min-height: var(--target-min); color: var(--wms-warning); font-weight: var(--fw-semibold); cursor: pointer; }
+      #xa-vai-screen .xv-itprog__left[open] > summary .xv-itprog__chev { transform: rotate(180deg); }
+      #xa-vai-screen .xv-itprog__stale { margin: 0; color: var(--wms-warning); font-size: var(--fs-14); font-weight: var(--fw-semibold); }
       #xa-vai-screen .xv-itprog__list { display: grid; gap: var(--space-1); margin: 0; padding: 0; list-style: none; font-size: var(--fs-14); }
       #xa-vai-screen .xv-itprog__list li { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-3); font-variant-numeric: tabular-nums; }
       #xa-vai-screen .xv-itprog__list b { overflow-wrap: anywhere; }
@@ -9898,6 +9900,8 @@ var FSK_CORE = (function () {
           try{return await lookupNow(uid,opts)}finally{if(!opts.quiet&&lookingUid===uid)lookingUid=''}
         };
         const lookupNow=async(raw,{quiet=false}={})=>{
+          // Review 06/11 [cả hai]: pop-up UID mới chưa lưu đang mở mà máy quét bắn mã khác (vào ô mét) → KHÔNG tra / không thay UID cũ; báo, giữ ô mét.
+          if(!quiet&&entry.open&&unsavedNew()&&String(raw).trim()!==current.groupUid){tell(`Chưa lưu ${current.groupUid}`,'warn');entryErr.textContent=`Chưa lưu ${current.groupUid}`;cue('warn');setTimeout(()=>{if(entry.open)meters.focus()},0);return null}
           const run=++lookupRun;
           if(!quiet){tell(`Đang tra ${raw}…`);if(code.value.trim()===String(raw).trim())code.value=''}
           // RFID A5000 → Group UID (khối dùng chung #rfid-resolve-script); tra nền (quiet) luôn nhận Group UID đã giải mã.
@@ -9912,15 +9916,15 @@ var FSK_CORE = (function () {
           if(!r.ok){if(!quiet){clearUid();tell(r.error?.message||'Không tra được Group UID','error');cue('error');code.value=raw;code.select()}return null}
           const prevPick=current?.groupUid===String(r.data?.groupUid||uid)&&current?.out?.length>1?pickSel.value:'';
           const d={...r.data,groupUid:String(r.data?.groupUid||uid),state:r.data?.state||'new',via,it:itCached(String(r.data?.groupUid||uid))};
-          current=d;code.value='';hintIt(d);markProgCur(d.it);
-          if(d.state==='printing'||d.state==='printed'){closeEntry({keep:true});uidBox.hidden=true;meterForm.hidden=true;renderUid(d,'warn',noteBox);if(!quiet){tell(`${d.groupUid} ${d.state==='printed'?'đã in phiếu':'đang in phiếu'}${d.itemCode?` ${d.itemCode}`:''} — không sửa mét`,'warn');cue('warn')}focusScan();return d}
+          current=d;code.value='';hintIt(d);
+          if(d.state==='printing'||d.state==='printed'){markProgCur(d.it||null);closeEntry({keep:true});uidBox.hidden=true;meterForm.hidden=true;renderUid(d,'warn',noteBox);if(!quiet){tell(`${d.groupUid} ${d.state==='printed'?'đã in phiếu':'đang in phiếu'}${d.itemCode?` ${d.itemCode}`:''} — không sửa mét`,'warn');cue('warn')}focusScan();return d}
           if(d.state==='new'){
             const chk=await chkP;
             if(run!==lookupRun||!active()||current!==d)return null;
             if(chk?.state==='other_sku'){blockOutside(d,chk,{quiet});return d}
             if(chk?.state==='same_sku'&&Array.isArray(chk.batches)&&chk.batches.length){d.out=chk.batches;d.it={itNumber:String(chk.batches[0].itNumber),itemCode:String(chk.batches[0].itemCode)}}
           }
-          fillPick(d,prevPick);
+          fillPick(d,prevPick);markProgCur(d.it||null);
           noteBox.hidden=true;noteBox.innerHTML='';renderUid(d,d.state==='pending'||d.out?'warn':'ok');meterForm.hidden=false;
           if(!quiet){meters.value=d.state==='pending'?plainMm(d.actualMm):'';openedValue=meters.value}
           saveBtn.textContent=d.state==='pending'?'Sửa':'Lưu';
@@ -9952,7 +9956,7 @@ var FSK_CORE = (function () {
           diffLine.textContent=`Chênh lệch ${signedMm(d)} m`;
           if(Math.abs(d)/sys>DIFF_WARN)diffLine.dataset.tone='warn';else delete diffLine.dataset.tone;
         };
-        meters.addEventListener('input',()=>{const raw=meters.value.replace(/\s/g,'');if((UID_RE.test(raw)||RFID_RE.test(raw))&&!saving){meters.value='';lookup(raw);return}updateDiff()});
+        meters.addEventListener('input',()=>{if(/^Chưa lưu/.test(entryErr.textContent))entryErr.textContent='';const raw=meters.value.replace(/\s/g,'');if((UID_RE.test(raw)||RFID_RE.test(raw))&&!saving){meters.value='';lookup(raw);return}updateDiff()});
         const saveError=e=>e?.code==='OUTSIDE_BATCH'?'Ngoài đợt xả vải — không lưu':e?.code==='NOT_PENDING'?'UID đã gửi in — không sửa mét':e?.code==='INVALID_QTY'?'Mét thực tế không hợp lệ':`Không lưu được: ${e?.message||'máy chủ từ chối'}`;
         const save=async()=>{
           const d=current;
@@ -9993,7 +9997,7 @@ var FSK_CORE = (function () {
             if(r.error?.code==='NEED_BATCH'&&current===d&&Array.isArray(r.error.batches)&&r.error.batches.length){d.out=r.error.batches;d.it={itNumber:String(d.out[0].itNumber),itemCode:String(d.out[0].itemCode)};fillPick(d);renderUid(d,'warn');tell('Chọn phiếu IT rồi Lưu','warn');cue('warn');pickSel.focus();return}
             if(!r.ok){tell(saveError(r.error),'error');cue('error');if(['NOT_PENDING','NOT_FOUND'].includes(r.error?.code))lookup(d.groupUid,{quiet:true});return}
             savedCount+=1;savedOut.textContent=String(savedCount);
-            tell(`${r.data?.replaced?'Đã sửa':'Đã lưu'} ${d.groupUid} · ${mmM(r.data?.item?.actualMm??n)} m${d.out&&d.it?` · ngoài phiếu ${d.it.itemCode}`:''}`,'ok');cue('ok');loadIts({silent:true});
+            tell(`${r.data?.replaced?'Đã sửa':'Đã lưu'} ${d.groupUid} · ${mmM(r.data?.item?.actualMm??n)} m${d.out&&d.it?` · ngoài phiếu ${d.it.itemCode}`:''}`,'ok');cue('ok');if(d.state==='new'||d.out)loadIts({silent:true,outside:Boolean(d.out)||activeTab==='it'});
             clearUid();focusScan();loadQueue({quiet:true,silent:true});
           }catch(e){
             // Hết giờ / mất mạng khi GHI không chứng minh máy chủ chưa ghi (quyết định 19/09): báo "chưa rõ" rồi tra lại UID.
@@ -10008,15 +10012,16 @@ var FSK_CORE = (function () {
         // người dùng chọn 06/11). Rời màn (đổi đường dẫn) vẫn đóng.
         let discarding=false;
         const unsavedNew=()=>Boolean(current&&!current.block&&current.state==='new'&&!meterForm.hidden);
-        const nagSave=()=>{entryErr.textContent='Chưa lưu — nhập mét rồi bấm Lưu';cue('warn');setTimeout(()=>{if(entry.open)meters.focus()},0)};
+        const nagSave=({sound=true}={})=>{entryErr.textContent='Chưa lưu mét';if(sound)cue('warn');setTimeout(()=>{if(entry.open)meters.focus()},0)};
         entryClose.addEventListener('click',async()=>{
           if(saving)return;
           if(unsavedNew()){
-            const d=current;
-            const ok=await window.WhDialog.confirm({tone:'danger',icon:'alert',title:'Chưa lưu mét',facts:[d.groupUid,d.sku?`SKU ${d.sku}`:''],confirmText:'Bỏ không lưu',cancelText:'Huỷ'});
-            if(!entry.open||current!==d||saving)return;
-            if(!ok){nagSave();return}
-            discarding=true;
+            const code0=current.groupUid,sku0=current.sku;
+            let ok=false;
+            try{ok=await window.WhDialog.confirm({tone:'danger',icon:'alert',title:'Chưa lưu mét',facts:[code0,sku0?`SKU ${sku0}`:''],confirmText:'Bỏ không lưu',cancelText:'Huỷ'})}
+            catch(_){ok=window.confirm(`Bỏ ${code0} không lưu?`)}
+            if(!entry.open||current?.groupUid!==code0||saving)return;
+            if(unsavedNew()){if(!ok){nagSave({sound:false});return}discarding=true}
           }
           entry.close();
         });
@@ -10032,7 +10037,7 @@ var FSK_CORE = (function () {
           const keep=keepOnClose;keepOnClose=false;if(entry.open)return;
           // Esc lần hai (Chrome bỏ qua cancel khi không có thao tác người dùng giữa hai lần) vẫn đóng được: mở lại khi UID mới chưa lưu và còn ở màn này.
           const discard=discarding;discarding=false;
-          if(!keep&&!saving&&!discard&&unsavedNew()&&active()&&!screen.hidden){try{entry.showModal()}catch(_){}if(entry.open){nagSave();return}}
+          if(!keep&&!discard&&(saving||unsavedNew())&&active()&&!screen.hidden){try{entry.showModal()}catch(_){}if(entry.open){if(!saving)nagSave();return}}
           if(!keep){if(saving)clearAfterSave=true;else clearUid()}refocusScan();
         });
 
@@ -10414,7 +10419,7 @@ var FSK_CORE = (function () {
         const itForm=$('xa-vai-it-form'),itNumber=$('xa-vai-it-number'),itRead=$('xa-vai-it-read'),itPreview=$('xa-vai-it-preview'),itList=$('xa-vai-it-list'),itCount=$('xa-vai-it-count');
         let itDraft=null,itBusy=false,itSaving=false,itRun=0,itListRun=0,itItems=[],itTotal=0;
         const itOpen=new Set(),itOf=new Map();
-        const progBox=$('xa-vai-itprog'),progOpen=new Set();let progCur='';
+        const progBox=$('xa-vai-itprog'),progOpen=new Set(),progLeftHtml=new Map(),progLoading=new WeakSet();let progCur='',progStale=false;
         const pickRow=$('xa-vai-it-pickrow'),pickSel=$('xa-vai-it-pick'),outBox=$('xa-vai-it-out'),outCount=$('xa-vai-it-out-count'),outBody=$('xa-vai-it-out-body');
         let outData={attached:[],outside:[],attachedTotal:0,outsideTotal:0},outDelBusy=false,outLoad=null;
         // Đợt 2: UID cùng SKU với nhiều đợt đang xả → chọn đợt (mặc định đợt nạp gần nhất); một đợt thì ẩn ô chọn.
@@ -10675,11 +10680,13 @@ var FSK_CORE = (function () {
           const open=itItems.filter(b=>b.batchStatus!=='done'&&Number(b.uidCount)>0);
           progBox.hidden=!open.length;
           if(!open.length){progBox.innerHTML='';return}
-          progBox.innerHTML=open.map(b=>{
+          const hadFocus=progBox.contains(document.activeElement);
+          progBox.innerHTML=(progStale?'<p class="xv-itprog__stale">Chưa cập nhật tiến độ</p>':'')+open.map(b=>{
             const n=Number(b.uidCount)||0,m=Math.min(n,Number(b.measuredCount)||0),left=n-m,it=String(b.itNumber);
-            return `<div class="xv-itprog__card" data-it="${esc(it)}"${left?' data-left="true"':''}${progCur===it?' data-cur="true"':''}><div class="xv-itprog__head"><strong class="xv-itprog__code">${esc(b.itemCode)}</strong><span class="xv-itprog__meta">IT ${esc(it)}</span><span class="xv-itprog__meta"><b>${m.toLocaleString('vi-VN')}</b> / ${n.toLocaleString('vi-VN')} UID</span><span class="xv-it-st" data-st="${left?'left':'open'}">${left?`Còn ${left.toLocaleString('vi-VN')}`:'Đủ'}</span></div><span class="xv-it-bar" aria-hidden="true"><i style="width:${pct(m,n)}%"></i></span>${skuRows(b)}${left?`<details class="xv-itprog__left" data-it="${esc(it)}"${progOpen.has(it)?' open':''}><summary>Chưa quét · ${left.toLocaleString('vi-VN')}</summary><div class="xv-itprog__body"></div></details>`:''}</div>`;
+            return `<div class="xv-itprog__card" data-it="${esc(it)}"${left?' data-left="true"':''}${progCur===it?' data-cur="true"':''}><div class="xv-itprog__head"><strong class="xv-itprog__code">${esc(b.itemCode)}</strong><span class="xv-itprog__meta">IT ${esc(it)}</span><span class="xv-itprog__meta"><b>${m.toLocaleString('vi-VN')}</b> / ${n.toLocaleString('vi-VN')} UID</span><span class="xv-it-st" data-st="${left?'left':'open'}">${left?`Còn ${left.toLocaleString('vi-VN')}`:'Đủ'}</span></div><span class="xv-it-bar" aria-hidden="true"><i style="width:${pct(m,n)}%"></i></span>${skuRows(b)}${left?`<details class="xv-itprog__left" data-it="${esc(it)}"${progOpen.has(it)?' open':''}><summary><svg class="xv-itprog__chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>Chưa quét · ${left.toLocaleString('vi-VN')}</summary><div class="xv-itprog__body">${progOpen.has(it)?progLeftHtml.get(it)||'':''}</div></details>`:''}</div>`;
           }).join('');
           for(const det of progBox.querySelectorAll('details[open]'))loadProgLeft(det);
+          if(hadFocus)refocusScan();
         };
         const skuRows=b=>{
           const rows=(Array.isArray(b.lines)?b.lines:[]).filter(l=>Number(l.uidCount)>0);
@@ -10688,6 +10695,8 @@ var FSK_CORE = (function () {
             return `<li class="xv-itprog__sku" data-sku="${esc(l.sku)}"${left?' data-left="true"':''}><span${l.name?` title="${esc(l.name)}"`:''}>SKU ${esc(l.sku)}</span><span><b>${m.toLocaleString('vi-VN')}</b> / ${n.toLocaleString('vi-VN')}</span><span class="xv-it-st" data-st="${left?'left':'open'}">${left?`Còn ${left.toLocaleString('vi-VN')}`:'Đủ'}</span></li>`}).join('')}</ul>`;
         };
         const loadProgLeft=async det=>{
+          if(progLoading.has(det))return;
+          progLoading.add(det);
           const it=det.dataset.it,body=det.querySelector('.xv-itprog__body');
           if(!body.childElementCount)body.innerHTML='<p class="cut-empty">Đang tải UID…</p>';
           try{
@@ -10695,11 +10704,14 @@ var FSK_CORE = (function () {
             if(!r.ok)throw new Error(r.error?.message||'máy chủ từ chối');
             if(!det.isConnected||!det.open)return;
             const left=(Array.isArray(r.data?.uids)?r.data.uids:[]).filter(u=>u.state==='new').sort((a,b)=>String(a.sku).localeCompare(String(b.sku))||String(a.groupUid).localeCompare(String(b.groupUid)));
-            body.innerHTML=left.length?`<ul class="xv-itprog__list">${left.map(u=>`<li><b>${esc(u.groupUid)}</b><span>SKU ${esc(u.sku)}</span><span>Lot ${esc(u.lot||'—')}</span><span>Roll ${esc(u.roll||'—')}</span></li>`).join('')}</ul>`:'<p class="cut-empty">Đã quét đủ</p>';
+            const html=left.length?`<ul class="xv-itprog__list">${left.map(u=>`<li><b>${esc(u.groupUid)}</b><span>SKU ${esc(u.sku)}</span><span>Lot ${esc(u.lot||'—')}</span><span>Roll ${esc(u.roll||'—')}</span></li>`).join('')}</ul>`:'<p class="cut-empty">Đã quét đủ</p>';
+            progLeftHtml.set(it,html);body.innerHTML=html;
           }catch(e){if(det.isConnected){body.innerHTML='';const p=document.createElement('p');p.className='xv-it-err';p.textContent=`Không tải được UID chưa quét: ${e.message}`;body.append(p)}}
+          finally{progLoading.delete(det)}
         };
-        progBox.addEventListener('toggle',event=>{const det=event.target;if(!det.matches?.('details.xv-itprog__left'))return;if(det.open){progOpen.add(det.dataset.it);loadProgLeft(det)}else progOpen.delete(det.dataset.it)},true);
-        const markProgCur=it=>{const v=it?.itNumber?String(it.itNumber):'';if(v&&v!==progCur){progCur=v;renderScanProg()}};
+        // Chạm "Chưa quét" lấy con trỏ khỏi ô quét: trả lại ô quét để máy quét (bàn phím) gõ tiếp được.
+        progBox.addEventListener('toggle',event=>{const det=event.target;if(!det.matches?.('details.xv-itprog__left'))return;if(det.open){progOpen.add(det.dataset.it);loadProgLeft(det)}else progOpen.delete(det.dataset.it);setTimeout(refocusScan,0)},true);
+        const markProgCur=it=>{const v=it?.itNumber?String(it.itNumber):'';if(v===progCur)return;progCur=v;for(const c of progBox.querySelectorAll('.xv-itprog__card')){if(c.dataset.it===v)c.dataset.cur='true';else delete c.dataset.cur}};
         let outRun=0;
         const readOutside=async limit=>{
           let r;
@@ -10762,17 +10774,17 @@ var FSK_CORE = (function () {
           const total=outData.attachedTotal+outData.outsideTotal;
           tell(`Đã xuất ${rows.length.toLocaleString('vi-VN')}${total>rows.length?` / ${total.toLocaleString('vi-VN')}`:''} dòng bất thường`,total>rows.length?'warn':'ok');
         });
-        const loadIts=async({silent=false}={})=>{
-          loadOutside();
+        const loadIts=async({silent=false,outside=true}={})=>{
+          if(outside)loadOutside();
           const run=++itListRun;
           try{
             const r=await rpc('xa_vai_it_list',{p_limit:50});
             if(!r.ok)throw new Error(r.error?.message||'máy chủ từ chối');
             if(run!==itListRun)return true;
             itItems=Array.isArray(r.data?.items)?r.data.items:[];itTotal=Number(r.data?.total)||0;
-            renderIts();renderScanProg();
+            renderIts();progStale=false;renderScanProg();
             return true;
-          }catch(e){if(!silent&&run===itListRun){tell(`Không tải được đợt xả theo phiếu IT: ${e.message}`,'error');window.PrintSkuNotice?.retry(()=>loadIts(),message)}return run!==itListRun}
+          }catch(e){if(run===itListRun){progStale=true;renderScanProg()}if(!silent&&run===itListRun){tell(`Không tải được đợt xả theo phiếu IT: ${e.message}`,'error');window.PrintSkuNotice?.retry(()=>loadIts(),message)}return run!==itListRun}
         };
 
 
@@ -10786,7 +10798,7 @@ var FSK_CORE = (function () {
           activeTab=name;
           for(const [key,button] of Object.entries(tabs)){const on=key===name;button.setAttribute('aria-selected',String(on));panels[key].dataset.active=String(on)}
           clearTimeout(printerTimer);
-          if(name==='scan'){focusScan();if(load)loadIts({silent:true})}
+          if(name==='scan'){focusScan();if(load)loadIts({silent:true,outside:false})}
           if(name==='queue'){if(load)loadQueue({quiet:true});pollPrinter()}
           if(name==='printed'&&load)runSearch({quiet:true});
           if(name==='it'&&load)loadIts();
