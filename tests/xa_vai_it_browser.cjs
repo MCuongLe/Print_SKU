@@ -368,6 +368,14 @@ const noOverflow = async (page, sel) => {
       s.listFail = false;
       await page.locator('#xa-vai-tab-queue').click(); await page.locator('#xa-vai-tab-scan').click();
       await page.locator('#xa-vai-itprog .xv-itprog__stale').waitFor({ state: 'detached' });
+      // Lần tải đầu lỗi (chưa có số cũ): vẫn hiện dòng "Chưa cập nhật tiến độ", không ẩn như không có đợt.
+      {
+        const s2 = { batch: { ...seedBatch(), batchStatus: 'open' }, saved: [], calls: [], queue: [], listFail: true };
+        const p2 = await open(browser, width, s2);
+        await p2.page.locator('#xa-vai-itprog .xv-itprog__stale').waitFor();
+        assert.equal(await p2.page.locator('#xa-vai-itprog').isVisible(), true);
+        await p2.context.close();
+      }
       if (width < 768) await noOverflow(page, '#xa-vai-screen [data-panel="scan"]');
       // Cùng SKU, hai đợt đang xả: pop-up "Ngoài phiếu", chọn đợt thứ hai, lưu → gắn đúng đợt TRƯỚC rồi mới lưu mét.
       await page.locator('#xa-vai-code').click();

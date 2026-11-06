@@ -10019,7 +10019,7 @@ var FSK_CORE = (function () {
             const code0=current.groupUid,sku0=current.sku;
             let ok=false;
             try{ok=await window.WhDialog.confirm({tone:'danger',icon:'alert',title:'Chưa lưu mét',facts:[code0,sku0?`SKU ${sku0}`:''],confirmText:'Bỏ không lưu',cancelText:'Huỷ'})}
-            catch(_){ok=window.confirm(`Bỏ ${code0} không lưu?`)}
+            catch(_){ok=false}
             if(!entry.open||current?.groupUid!==code0||saving)return;
             if(unsavedNew()){if(!ok){nagSave({sound:false});return}discarding=true}
           }
@@ -10678,8 +10678,8 @@ var FSK_CORE = (function () {
         // (xa_vai_it_get, state new). Đợt của UID vừa quét viền đậm. Tải lại sau mỗi lần lưu mét và khi về tab Quét.
         const renderScanProg=()=>{
           const open=itItems.filter(b=>b.batchStatus!=='done'&&Number(b.uidCount)>0);
-          progBox.hidden=!open.length;
-          if(!open.length){progBox.innerHTML='';return}
+          progBox.hidden=!open.length&&!progStale;
+          if(!open.length){progBox.innerHTML=progStale?'<p class="xv-itprog__stale">Chưa cập nhật tiến độ</p>':'';return}
           const hadFocus=progBox.contains(document.activeElement);
           progBox.innerHTML=(progStale?'<p class="xv-itprog__stale">Chưa cập nhật tiến độ</p>':'')+open.map(b=>{
             const n=Number(b.uidCount)||0,m=Math.min(n,Number(b.measuredCount)||0),left=n-m,it=String(b.itNumber);
