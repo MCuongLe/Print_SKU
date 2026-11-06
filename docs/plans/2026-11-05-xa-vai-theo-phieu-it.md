@@ -108,6 +108,14 @@ Thứ tự: Việc 1 → Việc 2 → Việc 3 → Việc 4 (review) → Việc 
 - [x] Review vòng 1 (Codex 4, Claude A 4, BC 4; co-van chấm): sửa — chỉ xoá dòng có giờ quét cuối khớp ([cả hai], 75; Fable khuyến nghị một mốc p_seen_at, lead giữ so từng dòng vì đo 06/11 timestamptz qua JSON khớp micro giây và web gửi nguyên chuỗi), báo theo kết quả tải lại ([cả hai], 75), khoá nút trước khi lấy token (50), icon 20 (75), nút vẽ lại khi đang bận, PGRST202 báo đúng chức năng; bỏ qua nút Admin theo peekToken (mẫu chung). Vòng 2 (Codex, chỉ phần sửa): sửa lượt tải bị thay thế chờ lượt mới nhất, bắt lỗi múi giờ; overload text[] không có (bản nháp chưa chạy, kiểm pg_proc). Migration `xa_vai_it_report_delete_v1` đã chạy (6 câu, kiem true, ghi sổ dc5cb7f), push
 - [ ] Admin bấm Xoá thật trên web lần đầu (bảng đang trống lúc lên)
 
+## Đợt 7: tab Quét — tiến độ phiếu IT + khoá pop-up chưa lưu (06/11/2026)
+- Ca thật: đợt CWHO0014 (14 UID) in 13 dòng — UID …428 quét lúc 15:43 nhưng không có lần lưu nào (nhật ký API: lookup không kèm save). Người dùng: in trước nhiều phiếu một đợt là bình thường (hết xe chứa vải) → bỏ bản nháp hộp "Vẫn in / Huỷ" ở In A4.
+- Yêu cầu: "Làm cảnh báo ở màn hình quét … + tiến độ phiếu IT để người dùng còn biết bao nhiêu group UID trong phiếu IT chưa scan", "Chưa lưu thì không được đóng pop-up", "Tiến độ phân theo SKU". Người dùng chọn: Esc không đóng, nút X hỏi lại "Bỏ không lưu?" (thoát khi quét nhầm).
+- [x] Thẻ tiến độ ở tab Quét (đợt Đang xả, theo SKU, "Chưa quét"), khoá pop-up; test `xa_vai_it_browser` + `xa_vai_a4_browser` (helper `discardUid`) PASS; 3 test chuẩn giao diện + scan_field PASS
+- [x] Review vòng 1 (Codex 4, Claude A 5, BC 7; co-van chấm): sửa — quét UID khác khi UID mới chưa lưu bị chặn ([cả hai], 90; hướng A: giữ UID cũ + báo, phải Đóng → Bỏ), Esc lần hai khi đang lưu mở lại pop-up (40), viền đợt xoá khi UID không thuộc đợt ([cả hai], 50), tiến độ tải nhẹ không kéo mục Bất thường + dòng "Chưa cập nhật tiến độ" ([cả hai], 50), một nguồn tải danh sách chưa quét, giữ con trỏ ở ô quét, câu nhắc ngắn "Chưa lưu mét", chevron cho "Chưa quét", tài liệu (75). Làm sau: tiến độ chỉ từ 50 đợt mới nhất (30), máy khác lưu không tự cập nhật. Vòng 2 (Codex): hộp hỏi lỗi giữ pop-up, tải lần đầu lỗi vẫn hiện dòng chưa cập nhật
+- [ ] Thử thật trên máy quét Honeywell / RFID: quét UID kế khi chưa lưu bị chặn, Esc, nút Đóng → Bỏ
+- [ ] Cuộn còn thiếu của đợt CWHO0014 (mã ở RULES.md N20261106-1720): người dùng quét lại, lưu mét, In A4 riêng
+
 ## Phát sinh
 - 05/11/2026 Tách hunk: cây làm việc có phần "Đối chiếu phủ lot theo PO" của phiên khác (`index.html`, `docs/QUYET_DINH.md`, `tests/bridge_ready.cjs` + tệp chưa theo dõi) → commit chỉ phần của đợt này; `bridge_ready` phần commit 11, cây làm việc 12; `tests/cut_po_coverage_browser.cjs` (chưa theo dõi) đã đổi số phiên bản giả lập 0.12.5 → 0.12.6 để cổng commit đạt.
 
