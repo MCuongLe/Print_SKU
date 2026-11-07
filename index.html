@@ -5195,7 +5195,6 @@ Error generating stack: `+y.message+`
       .fsk-sku{font-size:18px;letter-spacing:0}
       .fsk-badge{padding:2px 8px;border-radius:10px;background:rgba(183,121,31,.12);color:var(--wms-warning,#b7791f);font-size:12px;font-weight:600}
       .fsk-name{margin:8px 0 10px;font-size:14px;line-height:1.45;overflow-wrap:anywhere}
-      .fsk-pick{width:100%;margin-top:10px}
       .fsk-warn{margin:12px 0 0;padding:10px 12px;border-radius:12px;background:rgba(183,121,31,.12);font-size:13px;line-height:1.5}
       .fsk-warn--bad{background:rgba(194,65,59,.1);color:var(--wms-danger,#c2413b)}
       .fsk-near{margin-top:8px}.fsk-near .cut-secondary{min-height:40px;margin:6px 6px 0 0;padding:0 14px}
@@ -5258,7 +5257,6 @@ Error generating stack: `+y.message+`
       .fsk-why{color:var(--wms-muted,#60736b);font-size:12px}
       .fsk-why summary{display:flex;align-items:center;min-height:32px;cursor:pointer}
       .fsk-why .fsk-tags{margin-top:4px}
-      #find-sku-screen .fsk-pick{min-height:48px;margin-top:6px}
       .fsk-sel__id{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
       .fsk-link{min-height:44px;margin-left:auto;padding:0 10px;border:0;background:transparent;color:var(--wms-brand,#005f41);font:inherit;font-size:14px;font-weight:600;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
       .fsk-sel small.fsk-sel-combo{color:var(--wms-brand,#005f41);font-weight:600}
@@ -5301,7 +5299,7 @@ Error generating stack: `+y.message+`
       .fsk-via svg{flex:none;width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
       .fsk-card[data-alert="true"]{border-color:#d4483f;background:#fff7f6;box-shadow:inset 0 0 0 1px #d4483f}
       .fsk-card[data-alert="true"] .fsk-via{color:#b42318}
-      #find-sku-screen .fsk-card .fsk-pick{min-height:46px;margin-top:10px}
+      .fsk-card:focus-visible{outline:3px solid var(--wms-focus-ring);outline-offset:2px}
       .fsk-alt .fsk-more-btn{position:relative;display:inline-flex;align-items:center;justify-content:center;flex:none;width:52px;min-height:52px;padding:0}
       .fsk-more-btn .cut-badge{position:absolute;top:-7px;right:-7px;min-width:20px;height:20px}
       .fsk-more-btn .cut-badge[hidden]{display:none}
@@ -5378,8 +5376,8 @@ Error generating stack: `+y.message+`
         #find-sku-screen .fsk-inrow:has(> .cut-input) > .fsk-seg button::after, #unit-converter-screen .fsk-inrow:has(> .cut-input) > .fsk-seg button::after { content: ""; position: absolute; inset: -5px 0; }
         #find-sku-screen .fsk-inrow:has(> .cut-input) > .fsk-seg button[aria-pressed="true"], #unit-converter-screen .fsk-inrow:has(> .cut-input) > .fsk-seg button[aria-pressed="true"] { background: var(--pro-brand); color: #fff; }
         #find-sku-screen .fsk-doc, #unit-converter-screen .fsk-doc { margin-top: 5px; font-size: 12px; }
-        /* TÌM SKU — gợi ý dạng danh sách: % bên trái, SKU + đơn vị, tên đầy đủ (không cắt dòng, 07/11/2026), nút chọn tròn bên phải; chạm cả dòng là chọn */
-        #find-sku-screen .fsk-card { display: grid; grid-template-columns: 60px minmax(0, 1fr) 44px; grid-template-areas: "pct id pick" "pct name pick" "pct via pick"; align-items: center; gap: 2px 12px; margin-top: 8px; padding: 10px 12px; border-color: var(--pro-line); border-radius: 14px; }
+        /* TÌM SKU — gợi ý dạng danh sách: % bên trái, SKU + đơn vị, tên đầy đủ (không cắt dòng, 07/11/2026); chạm cả dòng là chọn (bỏ nút tick tròn 07/11/2026) */
+        #find-sku-screen .fsk-card { display: grid; grid-template-columns: 60px minmax(0, 1fr); grid-template-areas: "pct id" "pct name" "pct via"; align-items: center; gap: 2px 12px; margin-top: 8px; padding: 10px 12px; border-color: var(--pro-line); border-radius: 14px; }
         #find-sku-screen .fsk-card__head { display: contents; }
         #find-sku-screen .fsk-card__id { grid-area: id; gap: 6px; margin: 0; }
         #find-sku-screen .fsk-sku { font-size: 16px; font-weight: 600; letter-spacing: 0; }
@@ -5389,9 +5387,6 @@ Error generating stack: `+y.message+`
         #find-sku-screen .fsk-card .fsk-pct small { font-size: 12px; font-weight: 600; }
         #find-sku-screen .fsk-card .fsk-name { grid-area: name; margin: 0; color: var(--pro-muted); font-size: 13px; line-height: 1.4; overflow-wrap: anywhere; }
         #find-sku-screen .fsk-card .fsk-via { grid-area: via; margin: 2px 0 0; }
-        /* #fsk-results: thắng :is(…) :is(.cut-primary, .cut-secondary) của ui-standard (1,3,0) đang ép 48 px / bo 12 / chữ 16 (22/10/2026) */
-        #find-sku-screen #fsk-results .fsk-card .fsk-pick { grid-area: pick; width: 44px; min-width: 44px; height: 44px; min-height: 44px; margin: 0; padding: 0; border: 1px solid var(--wms-border,#d9e2de); border-radius: 50%; background: var(--pro-soft); color: var(--pro-brand); box-shadow: none; font-size: 0; }
-        #find-sku-screen #fsk-results .fsk-card .fsk-pick::before { width: 18px; height: 18px; }
         #find-sku-screen .fsk-card[data-best="true"] { border-color: #00a873; box-shadow: inset 0 0 0 1px #00a873; }
         #find-sku-screen .fsk-card[data-alert="true"] { border-color: #d4483f; box-shadow: inset 0 0 0 1px #d4483f; }
         #find-sku-screen .fsk-warn { border-radius: 10px; font-size: 13px; }
@@ -7658,7 +7653,7 @@ var FSK_CORE = (function () {
             : "";
         };
         // Thẻ gọn: % khớp là thông tin nổi bật (xanh + dấu tích khi khớp mã, vàng + cảnh báo khi chỉ khớp chữ chung), ĐƠN VỊ cũng nổi bật vì
-        // bản Normal và Combo cùng mã hàng thường ra cùng điểm (vd Roman N0144: "mm" và "cuộn"). Chạm cả thẻ hay nút đều chọn.
+        // bản Normal và Combo cùng mã hàng thường ra cùng điểm (vd Roman N0144: "mm" và "cuộn"). Chạm cả thẻ là chọn (bỏ nút tick 07/11/2026; bàn phím: Tab + Enter/Space).
         // Thẻ đổi từ Combo (r.via): % là điểm khớp tem của CHÍNH tên Normal, kèm dòng "Combo … · %"; r.warn (Combo khớp cao, Normal thấp) → thẻ đỏ.
         const card = (r, best) => {
           const unit = FSK_CORE.unitOf(r.pn).raw, known = r.pct !== null && r.pct !== undefined;
@@ -7666,13 +7661,12 @@ var FSK_CORE = (function () {
           const label = r.warn ? `Kiểm tra lại: tên Combo khớp ${r.via.pct}%, tên Normal khớp ${known ? `${pct}%` : "—"}` : hit ? "Khớp mã" : "Cần kiểm tra";
           const icon = hit && !r.warn ? '<path d="M20 6 9 17l-5-5"/>' : '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>';
           const combo = r.via ? ` data-combo="${esc(r.via.sku)}" data-combo-pn="${esc(r.via.pn)}" data-ratio="${esc(r.via.ratio)}"` : "";
-          return `<article class="fsk-card" data-sku="${esc(r.sku)}" data-pn="${esc(r.pn)}"${combo}${best ? ' data-best="true"' : ""}${r.warn ? ' data-alert="true"' : ""}><div class="fsk-card__head">` +
+          return `<article class="fsk-card" role="button" tabindex="0" data-sku="${esc(r.sku)}" data-pn="${esc(r.pn)}"${combo}${best ? ' data-best="true"' : ""}${r.warn ? ' data-alert="true"' : ""}><div class="fsk-card__head">` +
             `<div class="fsk-card__id"><strong class="fsk-sku">${esc(r.sku)}</strong>${unit ? `<span class="fsk-unit-chip" title="Đơn vị của SKU">${esc(unit)}</span>` : ""}` +
             (r.type === "COMBO" ? '<span class="fsk-badge">Combo</span>' : "") + (r.status === "INACTIVE" ? '<span class="fsk-badge">Ngừng</span>' : "") + "</div>" +
             `<span class="fsk-pct" data-tone="${tone}" title="${esc(label)}" aria-label="${esc(r.warn ? label : `${label} ${known ? pct : "—"}%`)}"><svg viewBox="0 0 24 24" aria-hidden="true">${icon}</svg>${known ? pct : "—"}<small>%</small></span></div>` +
             `<p class="fsk-name">${esc(r.pn)}</p>` +
-            (r.via ? `<p class="fsk-via" title="Tên Combo khớp ${esc(r.via.pct)}%"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>Combo ${esc(r.via.sku)} · ${esc(r.via.pct)}%</p>` : "") +
-            `<button class="cut-primary fsk-pick act-icon act-icon--check" type="button" data-sku="${esc(r.sku)}" data-pn="${esc(r.pn)}"${combo}>Chọn</button></article>`;
+            (r.via ? `<p class="fsk-via" title="Tên Combo khớp ${esc(r.via.pct)}%"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>Combo ${esc(r.via.sku)} · ${esc(r.via.pct)}%</p>` : "") + "</article>";
         };
         // Luôn gợi ý SKU Normal (10/10/2026): dòng Combo trong kết quả được thay bằng SKU Normal theo quan hệ Combo → Normal (RPC sku_combo_lookup,
         // cùng RPC với hộp chọn Normal). % của thẻ là điểm khớp tem của tên Normal; tên Combo khớp cao (≥ COMBO_HIGH) mà tên Normal khớp thấp
@@ -8310,6 +8304,10 @@ var FSK_CORE = (function () {
         });
         const moreDlg = $("fsk-more");
         $("fsk-more-open").addEventListener("click", () => { if (!moreDlg.open) moreDlg.showModal(); });
+        results.addEventListener("keydown", event => {
+          if ((event.key !== "Enter" && event.key !== " ") || !event.target.matches(".fsk-card[data-sku]")) return;
+          event.preventDefault(); event.target.click();
+        });
         moreDlg.addEventListener("click", event => { if (event.target === moreDlg || event.target.closest("[data-fsk-close]")) moreDlg.close(); });
         window.addEventListener("hashchange", () => { if (moreDlg.open) moreDlg.close(); });
         $("fsk-match").addEventListener("click", () => { moreDlg.close(); match(); });

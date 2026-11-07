@@ -57,7 +57,7 @@ const LINKS = {
       assert.ok(Number.parseInt(red.via.split('·')[1], 10) >= 70, 'Combo khớp cao');
       assert.ok(Number.parseInt(red.pct, 10) < 70 || red.pct.startsWith('—'), `Normal khớp thấp: ${red.pct}`);
       // Chọn thẻ đỏ → bước Số lượng nhận SKU Normal, ghi rõ đổi từ Combo nào (tỷ lệ 1 Combo = 5.000.000 mm)
-      await page.locator('#fsk-results .fsk-card[data-sku="900000401"] .fsk-pick').click();
+      await page.locator('#fsk-results .fsk-card[data-sku="900000401"]').click();
       await page.locator('#fsk-calc-body').waitFor({ state: 'visible' });
       assert.equal((await page.locator('#fsk-sel-sku').innerText()).trim(), '900000401');
       assert.match(await page.locator('#fsk-sel-combo').innerText(), /Đổi từ SKU Combo 900000411 · 1 Combo = 5\.000\.000/);

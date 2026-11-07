@@ -82,28 +82,26 @@ const NAME = 'Chỉ may mẫu/Tex 27/Black/5000m/mm';
       }
       // Chọn SKU chỉ (đơn vị mm) → tab 2
       await page.locator('#fsk-code').fill(SKU); await page.locator('#fsk-code-form').press('Enter');
-      await page.locator('#fsk-results button').first().waitFor();
+      await page.locator('#fsk-results .fsk-card').first().waitFor();
       // Thẻ gợi ý: % nổi bật (chữ lớn), không còn "Vì sao gợi ý" / "Khớp mã"/"Cần kiểm tra" dạng chữ
       const pct = page.locator('#fsk-results .fsk-pct').first();
       assert.match((await pct.innerText()).replace(/\s+/g, ''), /^\d{1,3}%$/);
       assert.ok(Number.parseFloat(await pct.evaluate(node => getComputedStyle(node).fontSize)) >= 22, '% phải nổi bật (>= 22 px)');
       assert.match(await pct.getAttribute('aria-label'), /\d+%$/);
       assert.equal(await page.locator('#fsk-results .fsk-why, #fsk-results .fsk-conf, #fsk-results details').count(), 0, 'thẻ gợi ý không còn mục "Vì sao gợi ý"');
-      assert.equal((await page.locator('#fsk-results .fsk-pick').first().innerText()).trim(), 'Chọn');
+      // Bỏ nút tick (07/11/2026): chạm cả thẻ là chọn; thẻ là nút cho bàn phím (Tab + Enter/Space)
+      assert.equal(await page.locator('#fsk-results .fsk-pick, #fsk-results button').count(), 0, 'thẻ gợi ý không còn nút chọn riêng');
+      assert.deepEqual(await page.locator('#fsk-results .fsk-card').first().evaluate(node => [node.getAttribute('role'), node.tabIndex]), ['button', 0]);
       // Tên SKU hiện đầy đủ, không cắt còn 2 dòng (07/11/2026)
       const nameBox = await page.locator('#fsk-results .fsk-name').first().evaluate(node => ({ clamp: getComputedStyle(node).webkitLineClamp, cut: node.scrollHeight > node.clientHeight + 1 }));
       assert.deepEqual(nameBox, { clamp: 'none', cut: false }, 'tên SKU trong thẻ gợi ý không bị cắt');
       if (mobile) {
-        // Giao diện điện thoại: font hệ thống, gợi ý dạng danh sách (% bên trái, nút chọn tròn 44 px), đơn vị nằm trong khung ô nhập
-        const look = await page.evaluate(() => { const screen = document.getElementById('find-sku-screen'), card = document.querySelector('#fsk-results .fsk-card'), pickButton = card.querySelector('.fsk-pick'), pick = pickButton.getBoundingClientRect(), pct = card.querySelector('.fsk-pct').getBoundingClientRect(), tabs = getComputedStyle(document.querySelector('#find-sku-screen .cut-tab[aria-selected="true"]')), pickStyle = getComputedStyle(pickButton), pickIcon = getComputedStyle(pickButton, '::before'); return { font: getComputedStyle(screen).fontFamily, grid: getComputedStyle(card).display, pick: Math.round(pick.width), pickH: Math.round(pick.height), pickShape: [pickStyle.borderTopLeftRadius, pickStyle.fontSize], pickFill: pickStyle.backgroundColor, pickIcon: [pickIcon.width, pickIcon.height], pickTextHidden: pickButton.scrollWidth <= pickButton.clientWidth + 1, pctLeft: pct.right <= card.querySelector('.fsk-card__id').getBoundingClientRect().left, tabBorder: tabs.borderTopWidth }; });
+        // Giao diện điện thoại: font hệ thống, gợi ý dạng danh sách (% bên trái, tên chiếm hết phần còn lại), đơn vị nằm trong khung ô nhập
+        const look = await page.evaluate(() => { const screen = document.getElementById('find-sku-screen'), card = document.querySelector('#fsk-results .fsk-card'), pct = card.querySelector('.fsk-pct').getBoundingClientRect(), tabs = getComputedStyle(document.querySelector('#find-sku-screen .cut-tab[aria-selected="true"]')), name = card.querySelector('.fsk-name').getBoundingClientRect(), box = card.getBoundingClientRect(); return { font: getComputedStyle(screen).fontFamily, grid: getComputedStyle(card).display, nameGap: Math.round(box.right - name.right), pctLeft: pct.right <= card.querySelector('.fsk-card__id').getBoundingClientRect().left, tabBorder: tabs.borderTopWidth }; });
         assert.match(look.font, /system-ui/, 'điện thoại dùng font hệ thống');
-        assert.equal(look.grid, 'grid'); assert.equal(look.pick, 44, 'nút chọn tròn đạt vùng chạm tối thiểu 44 px');
-        // Giữ nút tròn + chỉ icon, đồng thời đạt chuẩn vùng chạm của dự án.
-        assert.equal(look.pickH, 44, 'nút chọn cao 44 px và vẫn tròn');
-        assert.deepEqual(look.pickShape, ['50%', '0px'], 'nút chọn bo tròn, chỉ icon (chữ ẩn)');
-        assert.equal(look.pickFill, 'rgb(233, 239, 236)', 'nút chọn dùng nền xanh nhạt, không còn mảng xanh đặc nặng');
-        assert.deepEqual(look.pickIcon, ['18px', '18px'], 'dấu tick gọn 18 px');
-        assert.equal(look.pickTextHidden, true, 'chữ "Chọn" không tràn khỏi nút'); assert.equal(look.pctLeft, true, '% nằm bên trái SKU');
+        assert.equal(look.grid, 'grid');
+        assert.ok(look.nameGap <= 16, `tên chạy sát mép phải thẻ, không chừa cột nút (${look.nameGap} px)`);
+        assert.equal(look.pctLeft, true, '% nằm bên trái SKU');
         assert.equal(look.tabBorder, '0px', 'tab bước là nút chọn liền khối, không viền riêng');
       }
       // Chi tiết xử lý là popup mở bằng nút icon (có số từ khoá), Esc đóng
@@ -114,7 +112,8 @@ const NAME = 'Chỉ may mẫu/Tex 27/Black/5000m/mm';
       await page.locator('#fsk-more').waitFor({ state: 'visible' });
       for (const id of ['#fsk-tags', '#fsk-raw', '#fsk-match', '#fsk-reload']) assert.equal(await visible(id), true, `${id} nằm trong popup`);
       await page.keyboard.press('Escape'); await page.locator('#fsk-more').waitFor({ state: 'hidden' });
-      await page.locator('#fsk-results button').first().click();
+      if (mobile) await page.locator('#fsk-results .fsk-card').first().click();
+      else { await page.locator('#fsk-results .fsk-card').first().focus(); await page.keyboard.press('Enter'); } // máy tính: chọn thẻ bằng bàn phím
       await page.locator('#fsk-calc-body').waitFor({ state: 'visible' });
       assert.equal(await visible('#find-sku-screen [data-panel="scan"]'), false, 'tab 2 không được hiện chồng khung quét');
       assert.equal((await page.locator('#fsk-message').innerText()).trim(), '', 'chọn SKU xong không còn dòng "nhập số lượng và số tem"');
