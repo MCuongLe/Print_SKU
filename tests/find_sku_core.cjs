@@ -130,6 +130,18 @@ test('unitOf lấy ô cuối tên SKU, bỏ dấu', () => {
   assert.equal(CORE.unitOf('').key, '');
 });
 
+test('unitOf nhận mm khi ô cuối ghép quy cách cuộn + đơn vị', () => {
+  const mm = { raw: 'mm', key: 'mm', isLength: true };
+  assert.deepEqual(CORE.unitOf('Chỉ Filtex/F1-1274_Phong Việt/100% Polyester/none/Brilliant White/None/Tex 24- 100D-2/(cuộn 5000m) mm'), mm);
+  assert.deepEqual(CORE.unitOf('Chỉ may/X/cuộn 5000m, mm'), mm);
+  assert.deepEqual(CORE.unitOf('Chỉ may/X/5000M, mm'), mm);
+  assert.deepEqual(CORE.unitOf('Chỉ may/X/None,mm'), mm);
+  assert.deepEqual(CORE.unitOf('Chỉ may/X/mm (Cuộn 5000)'), mm);
+  assert.equal(CORE.unitOf('Chỉ may/X/cuộn 5000mm').isLength, false);
+  assert.equal(CORE.unitOf('Chỉ may/X/cuộn 200m').isLength, false);
+  assert.equal(CORE.unitOf('Chỉ may/X/m cuộn').isLength, false);
+});
+
 test('specFromName đọc quy cách cuộn nguyên, không bắt nhầm cm/mm/gsm', () => {
   assert.equal(CORE.specFromName('Chỉ may/Roman TX0144/Be/None/5000m/mm'), 5000000);
   assert.equal(CORE.specFromName('Chỉ astra/QZ3966_Brand/Polyester/None/Red/None/Text 27-60-3-Tkt 120/Cuộn 3.000M'), 3000000);

@@ -7396,7 +7396,10 @@ var FSK_CORE = (function () {
   function unitOf(productName) {
     var parts = String(productName || "").split("/");
     var raw = (parts[parts.length - 1] || "").trim();
-    var key = raw.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/đ/g, "d").replace(/[^a-z0-9]/g, "");
+    var plain = raw.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/đ/g, "d");
+    var key = plain.replace(/[^a-z0-9]/g, "");
+    // Ô cuối ghép quy cách + đơn vị: "(cuộn 5000m) mm", "cuộn 5000m, mm", "None,mm", "mm (Cuộn 5000)".
+    if (key !== "mm" && key !== "m" && /(^|[^a-z0-9])mm($|[^a-z0-9])/.test(plain)) return { raw: "mm", key: "mm", isLength: true };
     return { raw: raw, key: key, isLength: key === "mm" || key === "m" };
   }
 
