@@ -5378,7 +5378,7 @@ Error generating stack: `+y.message+`
         #find-sku-screen .fsk-inrow:has(> .cut-input) > .fsk-seg button::after, #unit-converter-screen .fsk-inrow:has(> .cut-input) > .fsk-seg button::after { content: ""; position: absolute; inset: -5px 0; }
         #find-sku-screen .fsk-inrow:has(> .cut-input) > .fsk-seg button[aria-pressed="true"], #unit-converter-screen .fsk-inrow:has(> .cut-input) > .fsk-seg button[aria-pressed="true"] { background: var(--pro-brand); color: #fff; }
         #find-sku-screen .fsk-doc, #unit-converter-screen .fsk-doc { margin-top: 5px; font-size: 12px; }
-        /* TÌM SKU — gợi ý dạng danh sách: % bên trái, SKU + đơn vị, tên 2 dòng, nút chọn tròn bên phải; chạm cả dòng là chọn */
+        /* TÌM SKU — gợi ý dạng danh sách: % bên trái, SKU + đơn vị, tên đầy đủ (không cắt dòng, 07/11/2026), nút chọn tròn bên phải; chạm cả dòng là chọn */
         #find-sku-screen .fsk-card { display: grid; grid-template-columns: 60px minmax(0, 1fr) 44px; grid-template-areas: "pct id pick" "pct name pick" "pct via pick"; align-items: center; gap: 2px 12px; margin-top: 8px; padding: 10px 12px; border-color: var(--pro-line); border-radius: 14px; }
         #find-sku-screen .fsk-card__head { display: contents; }
         #find-sku-screen .fsk-card__id { grid-area: id; gap: 6px; margin: 0; }
@@ -5387,7 +5387,7 @@ Error generating stack: `+y.message+`
         #find-sku-screen .fsk-card .fsk-pct { display: block; grid-area: pct; align-self: stretch; padding: 8px 0; border-radius: 10px; font-size: 22px; font-weight: 700; line-height: 1.1; text-align: center; }
         #find-sku-screen .fsk-card .fsk-pct svg { display: block; width: 16px; height: 16px; margin: 0 auto 3px; }
         #find-sku-screen .fsk-card .fsk-pct small { font-size: 12px; font-weight: 600; }
-        #find-sku-screen .fsk-card .fsk-name { display: -webkit-box; grid-area: name; margin: 0; overflow: hidden; color: var(--pro-muted); font-size: 13px; line-height: 1.4; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+        #find-sku-screen .fsk-card .fsk-name { grid-area: name; margin: 0; color: var(--pro-muted); font-size: 13px; line-height: 1.4; overflow-wrap: anywhere; }
         #find-sku-screen .fsk-card .fsk-via { grid-area: via; margin: 2px 0 0; }
         /* #fsk-results: thắng :is(…) :is(.cut-primary, .cut-secondary) của ui-standard (1,3,0) đang ép 48 px / bo 12 / chữ 16 (22/10/2026) */
         #find-sku-screen #fsk-results .fsk-card .fsk-pick { grid-area: pick; width: 44px; min-width: 44px; height: 44px; min-height: 44px; margin: 0; padding: 0; border: 1px solid var(--wms-border,#d9e2de); border-radius: 50%; background: var(--pro-soft); color: var(--pro-brand); box-shadow: none; font-size: 0; }

@@ -90,6 +90,9 @@ const NAME = 'Chỉ may mẫu/Tex 27/Black/5000m/mm';
       assert.match(await pct.getAttribute('aria-label'), /\d+%$/);
       assert.equal(await page.locator('#fsk-results .fsk-why, #fsk-results .fsk-conf, #fsk-results details').count(), 0, 'thẻ gợi ý không còn mục "Vì sao gợi ý"');
       assert.equal((await page.locator('#fsk-results .fsk-pick').first().innerText()).trim(), 'Chọn');
+      // Tên SKU hiện đầy đủ, không cắt còn 2 dòng (07/11/2026)
+      const nameBox = await page.locator('#fsk-results .fsk-name').first().evaluate(node => ({ clamp: getComputedStyle(node).webkitLineClamp, cut: node.scrollHeight > node.clientHeight + 1 }));
+      assert.deepEqual(nameBox, { clamp: 'none', cut: false }, 'tên SKU trong thẻ gợi ý không bị cắt');
       if (mobile) {
         // Giao diện điện thoại: font hệ thống, gợi ý dạng danh sách (% bên trái, nút chọn tròn 44 px), đơn vị nằm trong khung ô nhập
         const look = await page.evaluate(() => { const screen = document.getElementById('find-sku-screen'), card = document.querySelector('#fsk-results .fsk-card'), pickButton = card.querySelector('.fsk-pick'), pick = pickButton.getBoundingClientRect(), pct = card.querySelector('.fsk-pct').getBoundingClientRect(), tabs = getComputedStyle(document.querySelector('#find-sku-screen .cut-tab[aria-selected="true"]')), pickStyle = getComputedStyle(pickButton), pickIcon = getComputedStyle(pickButton, '::before'); return { font: getComputedStyle(screen).fontFamily, grid: getComputedStyle(card).display, pick: Math.round(pick.width), pickH: Math.round(pick.height), pickShape: [pickStyle.borderTopLeftRadius, pickStyle.fontSize], pickFill: pickStyle.backgroundColor, pickIcon: [pickIcon.width, pickIcon.height], pickTextHidden: pickButton.scrollWidth <= pickButton.clientWidth + 1, pctLeft: pct.right <= card.querySelector('.fsk-card__id').getBoundingClientRect().left, tabBorder: tabs.borderTopWidth }; });
