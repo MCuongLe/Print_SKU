@@ -15,6 +15,8 @@ const FLOOR_TOKEN = 'pd_' + 'ab'.repeat(24);
       const comboLookups = [];
       const searchBodies = [];
       const adminDeletes = [];
+      const recutBodies = [];
+      const forceStale = { on: false };
       page.on('pageerror', error => errors.push(error.message));
       await page.route('**/*', async route => {
         const request = route.request(), url = request.url();
@@ -24,11 +26,19 @@ const FLOOR_TOKEN = 'pd_' + 'ab'.repeat(24);
         let result = { ok: true, data: {} };
         if (rpc === 'cut_group_uid_scan') {
           if (body.p_group_uid === 'MISSING') result = { ok: false, error: { code: 'GROUP_UID_NOT_READY', message: 'Group UID chưa có đủ dữ liệu.' } };
-          else if (records.some(x => x.groupUid === body.p_group_uid)) result = { ok: false, error: { code: 'ALREADY_CUT', message: 'Group UID này đã được cắt trước đó' } };
+          else if (records.some(x => x.groupUid === body.p_group_uid)) { const x = records.find(r => r.groupUid === body.p_group_uid); result = { ok: false, error: { code: 'ALREADY_CUT', message: 'Group UID này đã được cắt trước đó', data: { groupUid: x.groupUid, sku: x.sku, status: x.printStatus, cutAt: x.cutAt } } }; }
           else {
             const row = { groupUid: body.p_group_uid, sku: 'SKU-001', productName: 'Vải thử nghiệm', lot: 'LOT-7', roll: 'ROLL-2', printStatus: 'pending', cutAt: new Date().toISOString() };
             records.push(row); result = { ok: true, data: row };
           }
+        } else if (rpc === 'cut_group_uid_recut') {
+          // Cắt lại: chỉ khi cut_at web gửi khớp dòng hiện tại (giống RECUT_STALE của máy chủ); forceStale = máy khác vừa cắt lại.
+          recutBodies.push(body);
+          const x = records.find(r => r.groupUid === body.p_group_uid);
+          if (forceStale.on && x) { forceStale.on = false; x.cutAt = new Date(Date.parse(x.cutAt) + 60000).toISOString(); }
+          if (!x) result = { ok: false, error: { code: 'NOT_CUT', message: 'Group UID chưa cắt. Quét lại để cắt.' } };
+          else if (x.cutAt !== body.p_cut_at) result = { ok: false, error: { code: 'RECUT_STALE', message: 'Group UID này vừa được cắt lại trên thiết bị khác', data: { groupUid: x.groupUid, sku: x.sku, status: x.printStatus, cutAt: x.cutAt } } };
+          else { x.recuts = (x.recuts || 0) + 1; x.cutAt = new Date(Date.parse(x.cutAt) + 1000).toISOString(); x.printStatus = 'pending'; result = { ok: true, data: { ...x, recutCount: x.recuts } }; }
         } else if (rpc === 'cut_group_uid_list') result = { ok: true, data: { items: records.filter(x => ['pending', 'queued', 'failed'].includes(x.printStatus)) } };
         else if (rpc === 'cut_group_uid_search') { searchBodies.push(body); result = { ok: true, data: { items: records.filter(x => (!body.p_sku || x.sku.includes(body.p_sku)) && (!body.p_po || x.po === body.p_po)) } }; }
         else if (rpc === 'cut_group_uid_mark_queued') { records.filter(x => body.p_codes.includes(x.groupUid)).forEach(x => { x.printStatus = 'queued'; x.printJobId = body.p_job_id; }); result = { ok: true, data: { count: body.p_codes.length } }; }
@@ -77,6 +87,31 @@ const FLOOR_TOKEN = 'pd_' + 'ab'.repeat(24);
       assert.equal(await page.locator('#cut-count').textContent(), '0');
       await scan('UID-0001');
       await page.waitForFunction(() => document.querySelector('#cut-message').textContent.includes('đã được cắt'));
+      // UID đã cắt: thẻ hiện giờ cắt cũ + nút Cắt lại (retest); bấm thì gửi đúng cut_at đã thấy, thẻ báo Lần cắt 2.
+      const recutBtn = page.locator('#cut-last .cut-recut');
+      await recutBtn.waitFor({ state: 'visible' });
+      assert.match(await page.locator('#cut-last').innerText(), /UID-0001 · SKU-001[\s\S]*Đã cắt/);
+      const firstCutAt = records[0].cutAt;
+      await recutBtn.click();
+      await page.waitForFunction(() => document.querySelector('#cut-message').textContent.includes('Đã cắt lại'));
+      assert.equal(recutBodies.length, 1);
+      assert.equal(recutBodies[0].p_group_uid, 'UID-0001');
+      assert.equal(recutBodies[0].p_cut_at, firstCutAt, 'gửi cut_at đã thấy để máy chủ chặn cắt lại hai lần');
+      assert.notEqual(records[0].cutAt, firstCutAt);
+      assert.match(await page.locator('#cut-last').innerText(), /Lần cắt 2/);
+      assert.equal(await recutBtn.count(), 0, 'cắt lại xong thì bỏ nút');
+      // Máy khác vừa cắt lại: báo vàng, thẻ đổi sang giờ mới và vẫn cho bấm lại có chủ ý.
+      await scan('UID-0001');
+      await recutBtn.waitFor({ state: 'visible' });
+      forceStale.on = true;
+      await recutBtn.click();
+      await page.waitForFunction(() => document.querySelector('#cut-message').textContent.includes('vừa được cắt lại'));
+      assert.equal(await page.locator('#cut-message').getAttribute('data-tone'), 'warn');
+      await recutBtn.waitFor({ state: 'visible' });
+      assert.equal(recutBodies.length, 2);
+      // Quét UID khác thì thẻ cắt lại cũ ẩn đi, không bấm nhầm.
+      await scan('MISSING');
+      await page.waitForFunction(() => document.querySelector('#cut-last').hidden);
       // Tem chỉ vào hàng chờ in sau khi chọn ở Tra cứu và đưa vào hàng chờ.
       await page.locator('#cut-tab-data').click();
       await page.locator('#cut-search').evaluate(form => form.requestSubmit());

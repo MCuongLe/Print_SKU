@@ -229,6 +229,8 @@
 
 ### Cắt Group UID
 - `cut_group_uids` khoá `group_uid_code`, chụp SKU/Lot/Roll/Tên lúc cắt; UID không tồn tại hoặc thiếu SKU/tên → chặn; đã cắt → chặn; in lại được trừ dòng `queued`. (23/09, 26/09 · N0319, N0336)
+  - Cắt lại để retest (Cắt tự do): quét UID đã cắt → thẻ `#cut-last` có nút "Cắt lại"; `cut_group_uid_recut(token, uid, cut_at đã thấy)` qua khoá máy chép dòng cũ vào `cut_group_uid_recuts` rồi đặt lại dòng: giờ cắt mới, tem `pending`, xoá trạng thái ADJ. (09/11 · N20261109-1400)
+    - `cut_at` lệch → `RECUT_STALE`; tem `queued` → chặn; Đối chiếu ADJ so Cut WMS từ giờ cắt mới; Theo PO không cắt lại. Giữ bởi: `cut_group_uid_recut_sql`, `cut_group_uid_browser`.
 - Xoá chỉ Admin (`cut_group_uid_admin_delete`, chép `cut_group_uid_deletions`, chặn cả lô nếu có `queued`); đường xoá anon khoá hẳn. (25/09, 08/10 · N0340, N0050)
 - 4 tab Quét / Tra cứu / Tem chờ in / Đối chiếu; "Tem chờ in" là giỏ trên trình duyệt (`stagedItems`); tab 1 công tắc **Cắt tự do | Theo PO** dùng chung `#cut-code`; Quản lý phiên = hộp thoại Admin; UID ngoài phiên báo đỏ. (26/09, 16/10 · N0331, N0332, N0003)
 - Lấy mẫu Theo PO: nhóm SKU Normal + Lot; mỗi lot cắt + QC ≥ ceil(30%), mỗi bên ≥ 1 khi lot ≥ 2 cây; cắt:QC = 20:10; cắt cây nhỏ nhất, QC cây lớn nhất; lot 1 cây = 1 cây cắt, không báo thiếu QC; máy chủ ép `SAMPLE_BELOW_MIN`. (16/10, 21/10 · N0003, N1060)
