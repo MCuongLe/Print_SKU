@@ -8,7 +8,7 @@ Agent này thuộc ứng dụng Print SKU, cài độc lập tại `C:\PrintSKUA
 
 | Object | Field | Value | Rule | OK/NG |
 | --- | --- | --- | --- | --- |
-| PrintJob | `type` | `sku` hoặc `group_uid` | Loại khác phải bị từ chối, không đoán template | OK nếu thuộc danh sách hỗ trợ |
+| PrintJob | `type` | `sku`, `group_uid`, `location` (máy tem) hoặc `xa_vai_sheet` (máy A4, `PRINTER_KIND=a4`) | Loại khác phải bị từ chối, không đoán template | OK nếu thuộc danh sách hỗ trợ |
 | PrintJob | `nonce` | Chuỗi duy nhất | Một nonce chỉ được nhận một lần tại queue | NG nếu trùng |
 | PrintJob | `copies` | 1–500 | Số nguyên dương | NG nếu ngoài giới hạn |
 | SKU label | `sku` | ASCII tối đa 40 ký tự | Phải tạo được Code 128 | NG nếu không hợp lệ |
@@ -75,7 +75,7 @@ Từ 0.3.6, N4 mới thật sự là N4. Trước đó agent báo hoàn tất ng
 Xem lại khi đổi khổ giấy, máy in, barcode, queue contract, thời hạn lease hoặc nội dung một trong hai template.
 
 
-## Fabric Relaxation (23/09/2026)
+## Fabric Relaxation (23/09/2026) — LỊCH SỬ, đã bỏ ở agent 0.9.0
 
 - Nguồn yêu cầu: ảnh tem xả vải và chỉ đạo dùng cùng giấy/agent SKU, UID.
 - Object: lệnh in `fabric_relaxation:v1`; mã hàng nhập tay, chưa đối chiếu danh mục (N3).
@@ -88,7 +88,7 @@ Xem lại khi đổi khổ giấy, máy in, barcode, queue contract, thời hạ
 - Agent cũ không claim Fabric; cần migration v2 và agent 0.5.0. Giữ nguyên cơ chế quyền, lease và spooler hiện có.
 - CHƯA VERIFY: chất lượng trên máy in vật lý, căn tem và độ đậm với cuộn giấy thực tế. Xem lại khi đổi giấy, driver, máy in hoặc quy tắc mã hàng.
 
-### Fabric Relaxation v2 — nhiều mã trên một tem
+### Fabric Relaxation v2 — nhiều mã trên một tem (lịch sử)
 
 - Payload v2 là `itemCodes`: mảng 1–5 mã, mỗi mã 1–40 ký tự hợp lệ.
 - Payload v3 là `{handwritten:true}`; frontend chỉ nhập số tem. Mã hàng và Lot để trống ghi tay, Lot dưới Mã hàng cách khoảng hai dòng; Ngày là `..... / .....`, Giờ là `..... : .....`; các nhãn dùng cỡ chữ 28.
@@ -125,7 +125,7 @@ Xem lại khi đổi khổ giấy, máy in, barcode, queue contract, thời hạ
   - Từ lúc bắt đầu gửi byte, lỗi mạng KHÔNG BAO GIỜ thành `failed`. Agent ghi sổ tay `temp/sent-jobs.json` (`sending` → `sent` → `printed`/`failed`) và thử báo hoàn tất giãn dần tới 30 giây/lần, ~10 phút. Báo được kết quả thì xoá mục đó; mục quá 7 ngày tự dọn.
   - Nhận lại một lệnh còn trong sổ tay: `printed` → chỉ báo hoàn tất (`recoveredFromJournal: true`); `failed` → báo đúng lỗi đã ghi; `sending`/`sent` → báo `SENT_UNCONFIRMED` để người vận hành nhìn máy in trước khi in lại. Tuyệt đối không in lần hai.
   - Lỗi máy in thật (`PRINTER_STALLED`, `SPOOLER_TIMEOUT`, spooler từ chối…) vẫn báo failed kèm `pagesPrinted` như cũ.
-- Sổ tay chỉ chống in trùng trên CÙNG một máy trạm. Hiện chỉ có một agent (`may-kho-01`); thêm agent thứ hai thì phải xem lại.
+- Sổ tay chỉ chống in trùng trên CÙNG một máy trạm. Đã có agent thứ hai `may-a4-01` (máy A4, chỉ nhận `xa_vai_sheet`); từ `backend_hygiene_v1` lệnh hết lease ở sending/spooling chỉ trả về đúng agent cũ. Thêm máy tem thứ hai thì phải xem lại.
 - Kiểm chứng: `tests/network-resilience.test.mjs` tái hiện đúng lệnh `22f65c10` (timeout lúc dựng tem) và `706c10a6` (fetch failed lúc báo hoàn tất); thử thật lỗi `ENOTFOUND` và timeout của undici trên máy dev.
 - CHƯA VERIFY: chạy trên máy kho thật khi rút dây mạng giữa lúc in; hành vi khi antivirus khoá `temp/sent-jobs.json`.
 
@@ -147,7 +147,7 @@ Xem lại khi đổi khổ giấy, máy in, barcode, queue contract, thời hạ
 - Tem Group UID (agent): trước đây đếm cố định 26 ký tự/dòng và LẶNG LẼ cắt từ dòng thứ 7 (6 khi có SKU). Dữ liệu thật tới 30/09/2026: 2 tên dài bị cắt, ứng với 558 tem đã in thiếu đuôi tên. Nay dùng chung `planProductNames` (`src/render.mjs`) với tem SKU; khung tên và công thức số dòng ở `GROUP_UID_NAME_LAYOUT`/`groupUidMaxLines` (`src/templates/group-uid-label.mjs`). Kiểm trên toàn bộ tên thật: 0 tên bị cắt, 0 tem tràn mép; 558 tem trên chuyển xuống cỡ 20, còn lại giữ cỡ 22.
 - Chọn cỡ (`productNameCandidates`, `src/templates/text-layout.mjs`): mỗi cỡ thử chia dòng dùng đủ khung trước, rồi mức thận trọng `WRAP_SAFETY_FACTOR`. Vòng 2 đo lại nguyên dòng của MỌI phương án còn lại trong cùng một lần gọi PowerShell; chọn phương án vừa khung ở cỡ lớn nhất, cùng cỡ thì ưu tiên phương án không phải tách dòng. Trước đây dòng bị tách ở vòng 2 làm vượt số dòng thì bị cắt đuôi tên; nay chuyển sang cỡ nhỏ hơn, chỉ cắt (có log cảnh báo) khi đã ở cỡ 16 vẫn không vừa.
 - In tạm bằng trình duyệt (`index.html`, hàm `x` trong bundle — nút "in bằng máy này" khi hàng đợi không phản hồi): trước đây ước lượng 0,55em/ký tự nên tên viết hoa/token dài tràn ra ngoài tem (đo lại: tới 446px trên khung 272px). Nay đo bằng `canvas.measureText` cùng font Arial của SVG; không có canvas thì dùng lại cách cũ (`xUocLuongCu`). Đây là sửa tay trong bundle đã minify — repo không có mã nguồn gốc của bundle.
-- LOT/ROLL tem Group UID: hai chuỗi cùng một hàng cỡ 24 (LOT x=12, ROLL canh phải x=308) và KHÔNG tự thu nhỏ. Dữ liệu thật: 67/149 tem có cả LOT và ROLL bị chồng chữ (cả font Times lẫn Arial). Người dùng quyết định: không tự sửa bố cục, chỉ cảnh báo trước khi in. `index.html` đo bằng canvas (`window.PrintSkuQueue.lotRollOverlaps`), trang PRINT UID và Cắt Group UID hỏi xác nhận với câu "Tem in Lot và roll có thể trùng lên nhau, cần báo kiểm tra." — Cancel thì không gửi lệnh. Lưu ý: ROLL như `N03-76/5/26DT-004` nghĩa là roll 004, phần trước là tên Lot; nhưng rút gọn ROLL thành `004` vẫn chưa đủ vì riêng `LOT: N03-76/5/26DT` đã rộng 221/296px.
+- LỊCH SỬ (thay ở agent 0.9.0, mục dưới; hàm web nay là `lotRollTooLong`): LOT/ROLL tem Group UID: hai chuỗi cùng một hàng cỡ 24 (LOT x=12, ROLL canh phải x=308) và KHÔNG tự thu nhỏ. Dữ liệu thật: 67/149 tem có cả LOT và ROLL bị chồng chữ (cả font Times lẫn Arial). Người dùng quyết định: không tự sửa bố cục, chỉ cảnh báo trước khi in. `index.html` đo bằng canvas (`window.PrintSkuQueue.lotRollOverlaps`), trang PRINT UID và Cắt Group UID hỏi xác nhận với câu "Tem in Lot và roll có thể trùng lên nhau, cần báo kiểm tra." — Cancel thì không gửi lệnh. Lưu ý: ROLL như `N03-76/5/26DT-004` nghĩa là roll 004, phần trước là tên Lot; nhưng rút gọn ROLL thành `004` vẫn chưa đủ vì riêng `LOT: N03-76/5/26DT` đã rộng 221/296px.
 - CHƯA VERIFY: in thật tem Group UID tên dài ở cỡ 18–20 trên TSC PE200; nút "in bằng máy này" qua hộp thoại in thật của trình duyệt; đo canvas trên điện thoại (không có Arial thì trình duyệt thay font khác, ngưỡng cảnh báo lệch vài px).
 
 ## Realtime đánh thức, hỏi thưa khi rảnh (30/09/2026, agent 0.8.4)
@@ -245,7 +245,7 @@ Xem lại khi đổi khổ giấy, máy in, barcode, queue contract, thời hạ
 
 - **LOT/ROLL ở đáy tem Group UID chọn bố cục theo bề rộng chữ thật** (`fitLotRoll` trong `src/templates/text-layout.mjs`): một hàng ở cỡ 24 → 22 → 20 → 18 (rộng LOT + 10 + rộng ROLL ≤ 296); không vừa thì hai hàng cỡ 22 — LOT chân chữ y=440 (đỉnh ≈ 424, không chạm barcode SKU kết thúc y=418), ROLL chân y=470 (đuôi ≈ 475 < 480) **vẫn canh phải x=308** (người dùng chốt); một chuỗi đơn lẻ quá rộng thì thu theo tỷ lệ, tối thiểu 14. Cỡ không có trong bảng đo suy theo tỷ lệ từ cỡ 22.
 - **Đo trong vòng 1 của `planProductNames`** như số lượng/ngày tem SKU: nhóm `extra` thứ ba `{texts: LOT:…/ROLL:…, sizes: [24,22,20,18,14]}` — vẫn HAI lần gọi PowerShell cho cả lô; kết quả gắn `payload.lotRollFit = {rows, fontSize}`; template không có `lotRollFit` (preview đơn lẻ, đo lỗi) thì tự `fitLotRoll` với `estimateTextWidth` (ước dư nên chỉ nhỏ hơn cần, không đè).
-- **Web** (`index.html`, `lotRollOverlaps`): chỉ còn cảnh báo khi một chuỗi ở cỡ 14 vẫn rộng hơn 296 (tem chắc chắn mất chữ); trước đây hỏi khi hai chuỗi cỡ 24 không chung hàng.
+- **Web** (`index.html`, `lotRollOverlaps`, nay là `lotRollTooLong`): chỉ còn cảnh báo khi một chuỗi ở cỡ 14 vẫn rộng hơn 296 (tem chắc chắn mất chữ); trước đây hỏi khi hai chuỗi cỡ 24 không chung hàng.
 - **Bỏ Fabric Relaxation**: xoá template, test, nhánh validator, mẫu CLI, hai lệnh npm; `CAPABILITIES` = sku:v1, group_uid:v1, location:v1, location:name-optional (hàng đợi không giao lệnh fabric nữa; máy chủ vẫn giữ CHECK/kiểm payload cho lệnh cũ). `build-release.ps1` không chép `print_queue_v4` nữa.
 - **Test**: 177/177. Trước đó 3 test thất bại vì giá trị thế chỗ `[SKU_DA_XOA]`/`[UID_DA_XOA]` (dấu ngoặc vuông bị validator từ chối và thành lớp ký tự trong regex) — thay bằng mã tổng hợp `900000001`/`1028260000000001`; thêm `tests/lot-roll-090.test.mjs`; `sku-footer.test.mjs` đổi kỳ vọng 3 nhóm extra.
 - **Đã nghiệm thu 12/10/2026**: cài ZIP 0.9.0 trên may-kho-01 lúc 07:38 (log: v0.9.0, 4 capability, cache đo chữ làm lại từ đầu, Realtime nối; Supabase thấy version 0.9.0). In thử lệnh `e8e66e35` 2 tem UID giả: `9999991000000001` Lot `L-2026-0001-ABCDEF` / Roll `R-0000123456-XYZ` → hai hàng; `9999991000000002` Lot `5` / Roll `ROLL-0000123456-AB1` → một hàng cỡ nhỏ hơn; agent hoàn tất sau 4 s (`pagesPrinted 0 / spoolConfirmed false` = không đọc được spooler trong 1,5 s, không phải lỗi). Người dùng xem tem thật, xác nhận "nghiệm thu".

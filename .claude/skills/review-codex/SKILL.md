@@ -1,6 +1,6 @@
 ---
 name: review-codex
-description: Gửi thay đổi (một commit, cây làm việc, hoặc bộ ảnh chụp màn) cho Codex CLI review độc lập ở chế độ chỉ đọc, rồi lọc kết quả theo quyết định đã chốt của dự án. Một vòng cuối mỗi đợt, trước khi báo xong, cho SQL, Edge Function, Extension, luồng in/quyền và mọi thay đổi giao diện (kèm ảnh chụp).
+description: Gửi thay đổi (một commit, cây làm việc, hoặc bộ ảnh chụp màn) cho Codex CLI review độc lập ở chế độ chỉ đọc, rồi lọc kết quả theo quyết định đã chốt của dự án. Cuối mỗi đợt, trước khi báo xong (số vòng: docs/DOI_AGENT.md bước 3), cho SQL, Edge Function, Extension, luồng in/quyền và mọi thay đổi giao diện (kèm ảnh chụp).
 ---
 
 # Review độc lập bằng Codex
@@ -17,7 +17,7 @@ Review chất lượng độc lập bằng mô hình khác họ (bước 3 của
 
 ## Cách chạy
 1. Kiểm tra `codex --version` (chưa có thì nhờ người dùng cài: `npm install -g @openai/codex@latest`, đăng nhập bằng `codex login`).
-2. Chuẩn bị bối cảnh: bản giao việc hoặc 5–10 dòng mô tả màn/luồng, ghi vào một tệp Markdown tạm trong thư mục scratchpad của phiên. Liệt kê rõ QUYẾT ĐỊNH ĐÃ CHỐT liên quan (lấy từ RULES.md) để Codex không báo nhầm.
+2. Chuẩn bị bối cảnh: bản giao việc hoặc 5–10 dòng mô tả màn/luồng, ghi vào một tệp Markdown tạm trong thư mục scratchpad của phiên. Liệt kê rõ QUYẾT ĐỊNH ĐÃ CHỐT liên quan (lấy từ `docs/QUYET_DINH.md`) để Codex không báo nhầm.
 3. Chạy một trong:
    - `python scripts/codex_review.py --commit <sha> --brief <tệp.md> --keywords "<từ khoá RULES>"`
    - `python scripts/codex_review.py --working-tree --brief <tệp.md>`

@@ -8,7 +8,7 @@ Luật về cách viết tài liệu chỉ nằm ở tệp này; tệp khác tr�
 | Nội dung | Nơi duy nhất |
 |---|---|
 | Luật cứng, thứ tự đọc, loại việc → đọc gì | `AGENTS.md` |
-| Quy trình một yêu cầu (bước 1–9), đội agent, review | `docs/DOI_AGENT.md` |
+| Quy trình một yêu cầu (bước 1–6), đội agent, review | `docs/DOI_AGENT.md` |
 | Bản đồ 6 nguồn ngữ cảnh | `docs/CONTEXT_MAP.md` |
 | Module ↔ khối `index.html` ↔ Extension ↔ Edge ↔ SQL ↔ test | `docs/PROJECT_MAP.md` |
 | Cách viết tài liệu, khuôn mẫu | tệp này |

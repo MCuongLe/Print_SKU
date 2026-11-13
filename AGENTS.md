@@ -18,7 +18,7 @@
 
 | Loại việc | Đọc thêm |
 |---|---|
-| Mọi việc | `docs/DOI_AGENT.md` — quy trình bước 1–9, đội agent, review |
+| Mọi việc | `docs/DOI_AGENT.md` — quy trình bước 1–6, đội agent, review |
 | Tài liệu, quyết định, nhật ký | `docs/chuan/TAI_LIEU.md` |
 | Giao diện | `docs/chuan/GIAO_DIEN.md` |
 | Mã web `index.html` | `docs/chuan/MA_WEB.md`; `docs/PROJECT_MAP.md` mục 2; `python scripts/index_outline.py [chuỗi lọc]` |
@@ -34,7 +34,7 @@ Quyết định riêng của từng module ở `docs/QUYET_DINH.md` theo chủ �
 1. Không báo "xong" khi chưa trích kết quả lệnh thật; điều chưa kiểm phải nói rõ là chưa kiểm.
 2. Không sửa lỗi khi chưa có nguyên nhân gốc có bằng chứng.
 3. Sửa xong: lead Fable / Opus quyết phạm vi test theo bốn bậc (`docs/chuan/KIEM_THU_GIT.md` mục "Chạy test") và ghi dòng `Phạm vi test:` kèm dòng PASS nguyên văn; đạt và `commit_gate` đạt thì lead tự commit (chỉ phần của mình) + push, không chờ người dùng bảo; vẫn theo luật 4. Người dùng chốt 05/11/2026 (bậc test thay bản sáng cùng ngày).
-4. Push `main` = web lên ngay. Web cần hàm / cột / Edge mới: commit (chưa push) → migration → deploy Edge → Reload Extension (tải lại tab Inside / WMS) → push.
+4. Push `main` = web lên ngay. Web cần hàm / cột / Edge mới: commit (chưa push) → migration → deploy Edge → Reload Extension (tải lại tab Inside / WMS) → cài agent + in thử (nếu đổi mẫu tem) → push.
 
 ## Luật kỹ thuật
 
@@ -56,10 +56,7 @@ Quyết định riêng của từng module ở `docs/QUYET_DINH.md` theo chủ �
 3. Chạy luồng bị ảnh hưởng bằng dữ liệu giả, trên máy tính và điện thoại (hai khổ nằm trong test của màn, không phải cả bộ). Giao diện Admin chỉ xét máy tính.
 4. Tem, bố cục in: xem trước khi in — khổ giấy, lề, chữ bị cắt, mã vạch đọc được, nhiều tem sang trang.
 5. Camera, máy quét: từ chối quyền, không có camera, quét đúng, nhập tay. Camera cần `https://` hoặc localhost.
-6. Test theo bậc do lead Fable / Opus quyết (chi tiết `docs/chuan/KIEM_THU_GIT.md`), luôn kèm `python scripts/commit_gate.py`:
-   - Bậc 0 tài liệu: chỉ `commit_gate`. Bậc 1 một màn: `run_tests.py --only <màn>` + SQL tĩnh; đổi markup / CSS thì thêm `design_tokens_ratchet`, `icon_standard`, `ui_standard`.
-   - Bậc 2 khối / hàm dùng chung, Edge, Extension, agent: bậc 1 + test của mọi nơi gọi (lead grep và liệt kê) + cả bộ chuẩn giao diện.
-   - Bậc 3 cả bộ: chỉ khi người dùng bảo, không liệt kê được nơi gọi (> 8 test), đổi hạ tầng test, hoặc chạy nền sau khi push bậc 2 (không chặn báo xong).
+6. Test theo bậc do lead Fable / Opus quyết (bốn bậc định nghĩa ở `docs/chuan/KIEM_THU_GIT.md` mục "Chạy test"), luôn kèm `python scripts/commit_gate.py`.
 7. Phần không tự động kiểm được: nêu đúng những gì người dùng còn phải thử.
 
 ## Bàn giao
