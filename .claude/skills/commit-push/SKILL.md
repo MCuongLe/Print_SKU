@@ -23,7 +23,7 @@ Người dùng gọi `/commit-push` (tương đương câu "commit và push"). L
 - `python scripts/release.py --plan` (chỉ đọc) dùng được để xem việc còn chờ; Claude không chạy `release.py --apply` (`docs/QUYET_DINH.md` chủ đề 9).
 
 ## 4. Commit
-- Stage đúng từng tệp / hunk (không `git add -A`), rồi `python scripts/commit_gate.py --cached` phải in "Đủ điều kiện commit". Hook PreToolUse trong `.claude/settings.json` cũng tự chạy cổng này khi gặp `git commit` trong lệnh Bash.
+- Stage đúng từng tệp / hunk (không `git add -A`), rồi `python scripts/commit_gate.py --cached` phải in "Đủ điều kiện commit". Hook PreToolUse trong `.claude/settings.json` cũng tự chạy cổng này khi gặp `git commit` trong lệnh Bash hoặc PowerShell.
 - Thông điệp tiếng Việt không dấu, dòng đầu tóm hành vi người dùng thấy; các dòng sau: khối / tệp chính, review đã xử lý gì, dòng `Phạm vi test:`. Kết bằng dòng attribution theo hướng dẫn của phiên.
 
 ## 5. Push và ghi nhận

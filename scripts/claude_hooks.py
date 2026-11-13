@@ -1,6 +1,6 @@
 """Hook PreToolUse của Claude Code cho Print_SKU (khai báo ở .claude/settings.json, 18/10/2026).
 
-    python scripts/claude_hooks.py commit   # matcher Bash: lệnh có `git commit` → chạy scripts/commit_gate.py, KHÔNG ĐẠT thì chặn
+    python scripts/claude_hooks.py commit   # matcher Bash|PowerShell: lệnh có `git commit` → chạy scripts/commit_gate.py, KHÔNG ĐẠT thì chặn
     python scripts/claude_hooks.py files    # matcher Write|Edit|MultiEdit: chặn ghi đè cả index.html bằng Write, chặn sửa .env
 
 Đọc JSON sự kiện từ stdin. Thoát 0 = cho qua; thoát 2 = chặn, lý do in ra stderr (Claude Code đưa lại cho model).
@@ -68,7 +68,7 @@ def main() -> int:
     tool = event.get("tool_name", "")
     data = event.get("tool_input") or {}
     try:
-        if mode == "commit" and tool == "Bash":
+        if mode == "commit" and tool in ("Bash", "PowerShell"):
             return check_commit(str(data.get("command", "")))
         if mode == "files" and tool in ("Write", "Edit", "MultiEdit"):
             return check_files(tool, data)
