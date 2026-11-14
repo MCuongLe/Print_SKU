@@ -62,7 +62,7 @@
   - Migration lead đã chạy trực tiếp (không qua `release.py --apply`) phải ghi vào sổ `release_ledger` sau khi commit: `python scripts/record_ledger.py supabase/<tệp>.sql [...]` (không ghi thì `release.py --plan` báo migration còn chờ). (26/10 · N20261026-2142)
   - Token `print-sku-schema` hẹp quyền (không đọc Log Explorer). (10/10, 17/10 · N0028, N0982, N0983, N1054)
 - Dò WMS chỉ bằng GET qua Chrome DevTools MCP; không dùng export "By PO" (tạo job = ghi). (12/10 · N0003, N0004)
-- Kiến thức hệ thống WMS, Inside Mastige, Inside Garment (endpoint, khoá dòng, mã chứng từ, số đo) chỉ lưu ở `docs/local/KIEN_THUC_WMS_INSIDE.md` (trên máy, `.gitignore`); không chép chi tiết vào tài liệu trong git; agent trong worktree được đưa đường dẫn tuyệt đối. (26/10 · N20261026-2142)
+- Kiến thức hệ thống WMS, Inside Mastige, Inside Garment (endpoint, khoá dòng, mã chứng từ, số đo) chỉ lưu trên máy, ngoài git; bản gốc nằm ở thư mục dự án tách riêng (đường dẫn trong bộ nhớ Claude), `docs/local/KIEN_THUC_WMS_INSIDE.md` chỉ còn dòng trỏ; không chép chi tiết vào tài liệu trong git; agent được đưa đường dẫn tuyệt đối. (26/10, 13/11 · N20261026-2142, N20261114-0806)
 - Plugin: `frontend-design` được dùng nhưng chuẩn dự án thắng; không cài wiki (reef), code-review Anthropic, playwright; sơ đồ bằng Mermaid. (17/10 · N0965, N0981, N1000)
 
 ## 2. Giao diện chung

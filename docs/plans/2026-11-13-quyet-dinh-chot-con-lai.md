@@ -2,21 +2,21 @@
 
 ## Thiết kế
 - **Yêu cầu:** rà soát luật 13/11/2026 còn 5 mục chờ chốt trong repo này; người dùng đã chốt rồi nói "Tạm gác các phần này ghi vào kế hoạch tôi cần tắt máy".
-- **Trạng thái (14/11 07:46, N20261114-0746):** mục 3, 4, 5, 6 XONG; mục 1 DỪNG (xem dưới). Đã làm trước đó cùng ngày: sửa luật lệch mã (`edacda2`), hook cổng commit bắt PowerShell (`d24c5e7`); nhật ký `[N20261113-1828]`.
+- **Trạng thái (14/11 07:46, N20261114-0746):** mục 3, 4, 5, 6 XONG; mục 1 XONG 14/11 08:06 (N20261114-0806). Đã làm trước đó cùng ngày: sửa luật lệch mã (`edacda2`), hook cổng commit bắt PowerShell (`d24c5e7`); nhật ký `[N20261113-1828]`.
 - **Phần của dự án tách riêng** (mục 2, 7, 8, 9, 10, 11, 12a, 12b): kế hoạch nằm ở thư mục dự án đó (đường dẫn trong bộ nhớ Claude), không ghi ở đây.
 - **Loại việc:** tài liệu, hồ sơ agent, runner test; không đổi cấu hình hook hay settings.
 
 ## Kế hoạch
 
-### Mục 1 — tệp kiến thức WMS/Inside · người dùng chọn "Bản … làm gốc (Recommended)" · [ ] DỪNG
+### Mục 1 — tệp kiến thức WMS/Inside · người dùng chọn "Bản … làm gốc (Recommended)" · [x]
 - Lệch kế hoạch (14/11): kiểm lại, bản gốc vẫn chưa có 2 dòng dò 13/11 dưới (`batch_codes`, `bin-locations` grep 0) → không thay bản local, không sửa `docs/QUYET_DINH.md` / bộ nhớ; chờ chép 2 dòng sang bản gốc (phiên của thư mục dự án tách riêng) rồi làm tiếp.
 - Bản gốc là `docs\KIEN_THUC_WMS_INSIDE.md` ở thư mục dự án tách riêng; `docs/local/KIEN_THUC_WMS_INSIDE.md` (gitignore) chỉ còn một dòng trỏ sang đó.
-- [ ] Trước khi thay: bản local có mục mà bản gốc KHÔNG có thì chép sang bản gốc hoặc báo người dùng. Đo 13/11 18:3x (so từng dòng): bản local có 2 dòng bản gốc chưa có, đều ở mục "5. Group UID và lịch sử":
+- [x] Trước khi thay: bản local có mục mà bản gốc KHÔNG có thì chép sang bản gốc hoặc báo người dùng. Đo 13/11 18:3x (so từng dòng): bản local có 2 dòng bản gốc chưa có, đều ở mục "5. Group UID và lịch sử":
   - Tra theo Lot / cuộn (dò 13/11/2026): `group-uid-infos?batch_codes=` / `roll_codes=` lọc đúng; `batch_code`, `keywords` bị bỏ qua; `processing_source_code=<PO>`; đọc toàn bộ theo trang.
   - Danh mục vị trí (dò 13/11/2026): `v1/wms/accessories/bin-locations?warehouse_id=<id>&size=500&page=` (bắt buộc `warehouse_id`, đọc tới trang rỗng).
   - Các dòng mẫu in phiếu IT và khối lượng trong app ftr đã có ở bản gốc (mục 3c-1) hoặc tệp kiến thức ftr, dạng viết khác.
-- [ ] `docs/QUYET_DINH.md` dòng "nơi duy nhất" của tệp kiến thức: sửa thành "bản gốc nằm ở thư mục dự án tách riêng, xem bộ nhớ" (không ghi tên dự án đó vào tệp git).
-- [ ] Bộ nhớ `feedback_wms_inside_knowledge_local_only.md` + dòng `MEMORY.md`: ghi đường dẫn gốc mới.
+- [x] `docs/QUYET_DINH.md` dòng "nơi duy nhất" của tệp kiến thức: sửa thành "bản gốc nằm ở thư mục dự án tách riêng, xem bộ nhớ" (không ghi tên dự án đó vào tệp git).
+- [x] Bộ nhớ `feedback_wms_inside_knowledge_local_only.md` + dòng `MEMORY.md`: ghi đường dẫn gốc mới.
 
 ### Mục 3 — lead Sonnet · người dùng chọn "Bậc 0 + dữ liệu giả (Recommended)" · [x]
 - Sonnet làm bậc 0 và sửa test chỉ thay dữ liệu giả (bậc 1 hẹp: chạy đúng test đó + `commit_gate`), tự commit + push; việc logic / dữ liệu / in / quyền / migration thì dừng, báo người dùng mở phiên Fable / Opus.
@@ -47,3 +47,5 @@
 
 ## Nhật ký
 - 14/11 07:46 (N20261114-0746): mục 3–6 làm xong; `test_run_tests` 1/1 PASS; 11 test bộ chuẩn `run_tests.py --only …` "11/11 PASS trong 93s"; mục 1 dừng. Lệch: không chạy cả bộ (bậc 3 điều kiện c) vì `UI_STANDARD` chỉ dùng cho `--changed`; cả bộ không đi qua hằng này, test của nó là `test_run_tests` + 11 test đã chạy.
+- 14/11 08:06 (N20261114-0806): bản gốc đã có 2 dòng dò 13/11 (commit cục bộ 61aed6f của thư mục dự án tách riêng; so lại từng dòng: còn lệch chỉ là dòng đầu tệp và đoạn viết lại cùng nội dung — mẫu in phiếu IT ở mục 3c-1, khối lượng app ftr ở tệp kiến thức ftr; riêng số đếm mẫu 10 SKU của dòng khối lượng không chép).
+  - Bản local thay bằng dòng trỏ, bản cũ giữ ở `docs/local/_cu/` (gitignore); `docs/QUYET_DINH.md` + bộ nhớ sửa theo.
