@@ -33,7 +33,7 @@ Quyết định riêng của từng module ở `docs/QUYET_DINH.md` theo chủ �
 
 1. Không báo "xong" khi chưa trích kết quả lệnh thật; điều chưa kiểm phải nói rõ là chưa kiểm.
 2. Không sửa lỗi khi chưa có nguyên nhân gốc có bằng chứng.
-3. Sửa xong: lead Fable / Opus quyết phạm vi test theo bốn bậc (`docs/chuan/KIEM_THU_GIT.md` mục "Chạy test") và ghi dòng `Phạm vi test:` kèm dòng PASS nguyên văn; đạt và `commit_gate` đạt thì lead tự commit (chỉ phần của mình) + push, không chờ người dùng bảo; vẫn theo luật 4. Người dùng chốt 05/11/2026 (bậc test thay bản sáng cùng ngày).
+3. Sửa xong: lead Fable / Opus quyết phạm vi test theo bốn bậc (`docs/chuan/KIEM_THU_GIT.md` mục "Chạy test"; phiên Sonnet chỉ bậc 0 và sửa test thay dữ liệu giả) và ghi dòng `Phạm vi test:` kèm dòng PASS nguyên văn; đạt và `commit_gate` đạt thì lead tự commit (chỉ phần của mình) + push, không chờ người dùng bảo; vẫn theo luật 4. Người dùng chốt 05/11/2026 (bậc test thay bản sáng cùng ngày).
 4. Push `main` = web lên ngay. Web cần hàm / cột / Edge mới: commit (chưa push) → migration → deploy Edge → Reload Extension (tải lại tab Inside / WMS) → cài agent + in thử (nếu đổi mẫu tem) → push.
 
 ## Luật kỹ thuật
@@ -44,7 +44,7 @@ Quyết định riêng của từng module ở `docs/QUYET_DINH.md` theo chủ �
 - Giữ chữ giao diện tiếng Việt, mã hoá Unicode, kiểu in và bố cục điện thoại.
 - Không commit bí mật, khoá, endpoint riêng hay dữ liệu SKU / UID / PO thật; dùng dữ liệu giả chuẩn (SKU `9000000xx`, UID `1028260000000xxx`).
 - Hàm SQL `SECURITY DEFINER` mới: `revoke execute … from public, anon, authenticated`, rồi chỉ `grant` cho vai cần.
-- Supabase MCP chỉ để đọc (kiểm sau khi chạy). Lead được tự chạy migration (`python scripts/apply_supabase_sql.py <tệp> --dry-run` trước, rồi chạy thật) và deploy Edge (`python scripts/deploy_<tên>.py --dry-run` trước, rồi chạy thật) theo thứ tự luật 4, sau khi đợt đã qua test + review (người dùng cho phép 26/10/2026).
+- Supabase MCP chỉ để đọc (kiểm sau khi chạy); đây là luật viết, cấu hình MCP không chặn ghi (người dùng chốt 13/11/2026). Lead được tự chạy migration (`python scripts/apply_supabase_sql.py <tệp> --dry-run` trước, rồi chạy thật) và deploy Edge (`python scripts/deploy_<tên>.py --dry-run` trước, rồi chạy thật) theo thứ tự luật 4, sau khi đợt đã qua test + review (người dùng cho phép 26/10/2026).
 - Lệnh phá huỷ (`--allow-destructive`, DROP / DELETE / TRUNCATE) vẫn cần người dùng cho phép rõ từng lần. Chạy xong kiểm bằng truy vấn chỉ đọc, ghi `RULES.md`, rồi sau commit ghi sổ `release_ledger` bằng `python scripts/record_ledger.py supabase/<tệp>.sql`. Reload Extension và mọi thao tác trên trình duyệt của người dùng do người dùng làm.
 - Phát hành có cổng gõ tay: `python scripts/release.py` (xem `docs/chuan/DU_LIEU.md`).
 - Agent được giao việc không commit, không chạy migration / deploy, không ghi `RULES.md` hay `docs/QUYET_DINH.md`.

@@ -44,9 +44,12 @@ SKIP = {"xlsx_read.cjs", "page_settle.cjs"}  # thư viện dùng chung của tes
 DEFAULT_PORT = 8000
 DEFAULT_JOBS = 4
 LOCK_WAIT_SECONDS = 1800
-# Bộ chuẩn giao diện (docs/PROJECT_MAP.md mục 5): luôn chạy kèm khi --changed thấy index.html đổi.
-UI_STANDARD = ("typography_browser.cjs", "ui_standard_browser.cjs", "icon_standard_browser.cjs",
-               "a11y_axe_browser.cjs", "app_nav_browser.cjs", "mobile_home_browser.cjs")
+# Bộ chuẩn giao diện: đúng 11 test ở docs/chuan/GIAO_DIEN.md mục "Kiểm giao diện" (nguồn duy nhất, 13/11/2026);
+# luôn chạy kèm khi --changed thấy index.html đổi.
+UI_STANDARD = ("design_tokens_ratchet.cjs", "typography_browser.cjs", "ui_standard_browser.cjs",
+               "icon_standard_browser.cjs", "a11y_axe_browser.cjs", "contrast_states_browser.cjs",
+               "touch_target_browser.cjs", "small_targets_browser.cjs", "tick_standard_browser.cjs",
+               "scan_field_standard_browser.cjs", "notice_standard_browser.cjs")
 # Đường dẫn đổi mà không test nào của bộ này cần chạy (tài liệu, cấu hình máy; workstation-agent/ có bộ test riêng
 # `node --test` trong thư mục đó, không nằm trong run_tests.py): không ép chạy cả bộ.
 IGNORED_PREFIX = ("docs/", ".claude/", "outputs/", "workstation-agent/")

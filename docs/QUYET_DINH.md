@@ -13,15 +13,16 @@
 ### Đội agent và review
 - Đội agent bản 3: lead (Fable, dự phòng Opus) tự làm phần lớn việc, kể cả giao diện; `trinh-sat`, `thuc-thi-logic`, `kiem-thu` chỉ dùng theo điều kiện ở bảng "Ai làm gì" của `docs/DOI_AGENT.md`. (18/10 · N1013, N1039)
 - Chọn model theo loại việc: Sonnet làm lead cho tài liệu / commit / dọn / soát chỉ đọc; Fable (dự phòng Opus) cho logic, giao diện mới, thiết kế, nguyên nhân gốc; mỗi việc một phiên mới; lead giao phần đọc nhiều (cả bộ test, trinh sát, soát) cho agent Sonnet. (25/10 · N20261025-2344)
+  - Lead Sonnet: test bậc 0 + sửa test chỉ thay dữ liệu giả (bậc 1 hẹp), tự commit + push; logic / dữ liệu / in / quyền / migration thì dừng, báo mở phiên Fable / Opus. (13/11 · N20261114-0746)
 - Bốn luật cứng: có bằng chứng mới báo "xong"; tìm nguyên nhân gốc trước khi sửa lỗi; sửa xong test theo bậc do lead Fable / Opus quyết (dòng `Phạm vi test:`) rồi tự commit + push (05/11 · N20261105-0800, N20261105-0915); migration trước push. Test đỏ trước chỉ áp cho sửa lỗi/đổi logic; tệp kế hoạch `docs/plans/` chỉ cho migration nhiều bước. (18/10 · N1013; AGENTS.md)
-- Review: Codex mỗi đợt cho SQL/Edge/Extension/luồng in/quyền VÀ giao diện (ảnh chụp), chạy song song `/review-claude` (A Opus + BC Sonnet; `co-van` chấm độ tin và lọc). (18/10, 25/10, 26/10 · N1016, N1037, N20261025-2344, N20261026-0006)
+- Review: Codex mỗi đợt cho SQL/Edge/Extension/luồng in/quyền VÀ giao diện (ảnh chụp), chạy song song `/review-claude` (A Opus, B + C Sonnet; `co-van` chấm độ tin và lọc). (18/10, 25/10, 13/11 · N1016, N1037, N20261025-2344, N20261114-0746)
   - Số vòng: mặc định 1, còn nhóm Nên sửa thì vòng 2 (tối đa 3 rồi đổi hướng; `docs/DOI_AGENT.md` bước 3); vòng sau chỉ diff vừa sửa (`--since last`), gom lỗi theo loại.
 - `co-van` (Fable, chỉ đọc) là bước cố định mỗi vòng review: gộp phát hiện thô Codex + Claude, mở mã xác nhận, chấm độ tin 0–100 (thay Haiku), xếp Nên sửa / Làm sau / Bỏ qua; còn được gọi ở 4 điểm kẹt (chọn hướng chạm dữ liệu/in/quyền/migration, review chạm 3 vòng, Codex ↔ review-claude mâu thuẫn, 2 giả thuyết chưa ra gốc). Lead vẫn quyết. (18/10, 22/10, 25/10 · N1044, N1132, N20261025-2344)
 - Thay đổi rất nhỏ được bỏ `/review-claude` nhưng phải báo người dùng; sửa chỉ ở test đã chứng minh bằng đột biến thì không cần vòng 3 (số vòng: `docs/DOI_AGENT.md` bước 3). (22/10 · N1107, N1170)
 - Lead tự quyết sửa phát hiện review; chỉ hỏi người dùng khi đổi quyết định đã chốt hoặc đổi hành vi. Lỗi logic đã xác nhận → viết test đỏ rồi sửa. (17–18/10 · N1001, N1038)
 - Năm luật chống sót việc: ô tích từng gạch kèm bằng chứng; rà kế hoạch 3 mốc; phát sinh commit riêng; lệch kế hoạch báo ngay; chia việc cố định. Đánh giá thành viên mỗi đợt, xem lại mỗi 3 đợt. (18/10 · N1046, N1075)
 - `kiem-thu` (Sonnet): khi lead giao bậc 3 (cả bộ) thì chạy nền, phân loại LỖI THẬT / TEST LỆCH / CHẬP CHỜN, chạy commit_gate, không sửa mã. (18/10 · N1041, N1081)
-- `/review-claude` thử gộp B (luật dự án) và C (lỗi im lặng) thành một agent Sonnet `BC` trong 2 đợt kế tiếp; hết thử lead đề xuất giữ gộp hoặc tách lại theo bảng đánh giá (`docs/DOI_AGENT.md`). (20/10, 26/10 · N1098, N1099, N20261026-0006)
+- `/review-claude` tách lại B (luật dự án) và C (lỗi im lặng) thành hai agent Sonnet sau đợt thử gộp `BC`: token không giảm (khoảng 290 nghìn so với 285 nghìn mỗi vòng). (26/10, 13/11 · N20261026-0006, N20261114-0746)
 - `trinh-sat` (Sonnet từ 25/10, trước là Haiku): gọi khi vùng mã lạ hoặc khi phải đọc nhiều mã mà lead chỉ cần bản đồ kết quả. (25/10 · N20261025-2344)
 - Codex CLI chạy qua `python scripts/codex_review.py` (chỉ đọc; cách gọi ở kỹ năng `review-codex`), brief nêu quyết định đã chốt. (16/10 · N0872)
 - Bản giao việc cho agent phải ghi cổng server riêng + `BASE` (cây chính giữ cổng 8000). (16–17/10 · N0890, N1001)
@@ -56,7 +57,7 @@
 - Dữ liệu giả bắt buộc trong test/repo: SKU `9000000xx`, UID `1028260000000xxx`, `100000001`; không đưa SKU/UID thật vào repo. (17/10 · N0920, N1001)
 
 ### Công cụ
-- Supabase MCP chỉ để ĐỌC (id project ở `scripts` / `.env`, không chép vào tài liệu). Migration và deploy do lead tự chạy bằng `scripts/apply_supabase_sql.py` / `deploy_*.py` (dry-run trước, theo thứ tự luật 4, sau test + review). (26/10 · N20261026-2220; đổi chốt 10/10 và 17/10 "do người dùng chạy")
+- Supabase MCP chỉ để ĐỌC (id project ở `scripts` / `.env`, không chép vào tài liệu); đây là luật viết, cấu hình không chặn ghi (13/11 · N20261114-0746). Migration và deploy do lead tự chạy bằng `scripts/apply_supabase_sql.py` / `deploy_*.py` (dry-run trước, theo thứ tự luật 4, sau test + review). (26/10 · N20261026-2220; đổi chốt 10/10 và 17/10 "do người dùng chạy")
   - Lệnh phá huỷ (`--allow-destructive`, DROP / DELETE / TRUNCATE) vẫn cần người dùng cho phép rõ từng lần; Reload Extension do người dùng làm. (26/10 · N20261026-2220)
   - Migration lead đã chạy trực tiếp (không qua `release.py --apply`) phải ghi vào sổ `release_ledger` sau khi commit: `python scripts/record_ledger.py supabase/<tệp>.sql [...]` (không ghi thì `release.py --plan` báo migration còn chờ). (26/10 · N20261026-2142)
   - Token `print-sku-schema` hẹp quyền (không đọc Log Explorer). (10/10, 17/10 · N0028, N0982, N0983, N1054)

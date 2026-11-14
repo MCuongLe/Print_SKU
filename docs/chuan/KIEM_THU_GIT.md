@@ -15,10 +15,11 @@ Gom từ `docs/QUYET_DINH.md` chủ đề 1, `docs/DOI_AGENT.md`, `docs/CONTEXT_
 ## Chạy test
 
 - Phạm vi test do lead **Fable / Opus** quyết theo bốn bậc, ghi dòng `Phạm vi test:` (bậc · test đã chạy với dòng PASS nguyên văn · lý do không chạy phần còn lại) trong báo cáo và nhật ký; runner (`--changed --list`) chỉ gợi ý. Nguồn: (05/11 · N20261105-0915); `docs/plans/2026-11-05-quy-trinh-test-theo-pham-vi.md`
-  - Phiên Sonnet chỉ làm bậc 0; agent được giao việc chạy đúng danh sách test trong bản giao, được thêm không được bớt.
+  - Phiên Sonnet làm bậc 0 và sửa test chỉ thay dữ liệu giả (bậc 1 hẹp: chạy đúng test đã sửa + `commit_gate`), rồi tự commit + push; việc logic / dữ liệu / in / quyền / migration thì dừng, báo người dùng mở phiên Fable / Opus. (13/11 · N20261114-0746)
+  - Agent được giao việc chạy đúng danh sách test trong bản giao, được thêm không được bớt.
   - Bậc 0 — tài liệu, kế hoạch, `RULES.md`, bộ nhớ, chú thích: chỉ `commit_gate --cached` (~10 s).
   - Bậc 1 — một màn / module (khối `index.html` của một màn; SQL chỉ **thêm** hàm / bảng; test của màn; Edge action chỉ màn đó gọi): test đỏ → xanh chỗ sửa; `run_tests.py --only <màn>`; SQL tĩnh nếu có `.sql`; đổi markup / CSS thì thêm `design_tokens_ratchet` + `icon_standard` + `ui_standard` (~40 s song song). Mục tiêu ≤ 3 phút.
-  - Bậc 2 — dùng chung / lan toả: bậc 1 + test của **mọi nơi gọi** (grep id khối / tên hàm, liệt kê trong dòng Phạm vi test) + cả bộ chuẩn giao diện khi `index.html` đổi. Mục tiêu ≤ 8 phút.
+  - Bậc 2 — dùng chung / lan toả: bậc 1 + test của **mọi nơi gọi** (grep id khối / tên hàm, liệt kê trong dòng Phạm vi test) + cả bộ chuẩn giao diện (11 test ở `docs/chuan/GIAO_DIEN.md` mục "Kiểm giao diện") khi `index.html` đổi. Mục tiêu ≤ 8 phút.
     - Đổi agent máy trạm (`workstation-agent/`): thêm `node --test` trong thư mục `workstation-agent` (bộ test riêng, `run_tests.py` không chạy). Nguồn: `README.md` mục test
     - Thuộc bậc 2: khối `PrintSkuQueue`, `WhDialog`, `scan-field`, `PrintSkuAdminAuth` / `Access`, `PrintSkuNotice`, `PrintSkuScanUI`, `PrintSkuFloorAccess`, `app-nav`, token CSS; SQL `create or replace` hàm **đang chạy**, trigger; Edge dùng chung; Extension; agent; `commit_gate.py`.
   - Bậc 3 — cả bộ: (a) người dùng bảo; (b) không liệt kê được nơi gọi (khối không id, hoặc > 8 test); (c) đổi hạ tầng test (`scripts/run_tests.py`, `tests/page_settle.cjs`, `tests/xlsx_read.cjs`, mock dùng chung, cách nạp Playwright); (d) lưới an toàn: sau khi push một đợt bậc 2, chạy **nền, không chặn báo xong**, hỏng thì sửa commit riêng. (a)(b)(c) chạy trước push.
